@@ -1,5 +1,5 @@
 // Generated contract version; owned by packaging/generate-public-query.py.
-const PUBLIC_TOOL_CONTRACT_VERSION = 5;
+const PUBLIC_TOOL_CONTRACT_VERSION = 7;
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
@@ -21,7 +21,9 @@ const command = process.env.KAST_TOOL_RPC_COMMAND ||
 function run(args: string[], input: string, cwd: string, policy?: {callTimeoutMillis: number; maxResponseBytes: number}, signal?: AbortSignal): Promise<unknown> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) return reject(new Error("Kast invocation CANCELLED before launch"));
-    const child = spawn(command, args, { cwd: cwd, stdio: ["pipe", "pipe", "pipe"] });
+    const childEnvironment = { ...process.env };
+    delete childEnvironment.KAST_TOOL_RPC_COMMAND;
+    const child = spawn(command, args, { cwd: cwd, env: childEnvironment, stdio: ["pipe", "pipe", "pipe"] });
     const chunks : Buffer[] = [];
     let size = 0;
     let stderrBytes = 0;

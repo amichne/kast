@@ -5,6 +5,10 @@ package io.github.amichne.kast.protocol.wire.presentation
 import io.github.amichne.kast.protocol.contract.CompilerReceiverDocument
 import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
 import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
+import io.github.amichne.kast.protocol.contract.LocalDeclarationAddressDocument
+import io.github.amichne.kast.protocol.contract.LocalDeclarationFileDocument
+import io.github.amichne.kast.protocol.contract.LocalDeclarationKindDocument
+import io.github.amichne.kast.protocol.contract.LocalPropertyMutabilityDocument
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.SymbolDocument
 import io.github.amichne.kast.protocol.contract.SymbolQualifiedIdentityDocument
@@ -50,12 +54,71 @@ sealed interface CompilerSignatureCliDocument {
     ) : CompilerSignatureCliDocument
 
     @Serializable
+    @SerialName("LOCAL_FUNCTION")
+    data class LocalFunction(
+        val address: LocalDeclarationAddressCliDocument,
+        val receiver: CompilerReceiverCliDocument,
+        @io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint(maximumItems = 1000)
+        val contextReceivers: List<String>,
+        @io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint(maximumItems = 1000)
+        val valueParameters: List<String>,
+        @io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint(minimum = 0, maximum = 2147483647)
+        val typeParameterCount: Int,
+        @io.github.amichne.kast.protocol.contract.ProtocolStringConstraint(minimumLength = 1, maximumLength = 1048576)
+        val returnType: String,
+    ) : CompilerSignatureCliDocument
+
+    @Serializable
+    @SerialName("LOCAL_PROPERTY")
+    data class LocalProperty(
+        val address: LocalDeclarationAddressCliDocument,
+        @io.github.amichne.kast.protocol.contract.ProtocolStringConstraint(minimumLength = 1, maximumLength = 1048576)
+        val returnType: String,
+        val mutability: LocalPropertyMutabilityCliDocument,
+    ) : CompilerSignatureCliDocument
+
+    @Serializable
     @SerialName("type-alias")
     data class TypeAlias(val qualifiedIdentity: String) : CompilerSignatureCliDocument
 
     @Serializable
     @SerialName("class-like")
     data class ClassLike(val qualifiedIdentity: String) : CompilerSignatureCliDocument
+}
+
+@Serializable
+data class LocalDeclarationAddressCliDocument(
+    val file: LocalDeclarationFileCliDocument,
+    val kind: LocalDeclarationKindCliDocument,
+    val range: SourceRangeCliDocument,
+    @io.github.amichne.kast.protocol.contract.ProtocolStringConstraint(
+        minimumLength = 1,
+        maximumLength = 4096,
+        pattern = "^canonical-signature-sha256-v1\\|[0-9a-f]{64}$",
+    )
+    val ownerIdentity: String,
+    val ownerRange: SourceRangeCliDocument,
+    @io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint(maximumItems = 32)
+    val lexicalOwners: List<SourceRangeCliDocument>,
+)
+
+@Serializable
+sealed interface LocalDeclarationFileCliDocument {
+    @Serializable @SerialName("WORKSPACE") data class Workspace(val path: String) : LocalDeclarationFileCliDocument
+
+    @Serializable @SerialName("EXTERNAL") data class External(val url: String) : LocalDeclarationFileCliDocument
+}
+
+@Serializable
+enum class LocalDeclarationKindCliDocument {
+    FUNCTION,
+    PROPERTY,
+}
+
+@Serializable
+enum class LocalPropertyMutabilityCliDocument {
+    VAL,
+    VAR,
 }
 
 @Serializable
@@ -106,9 +169,43 @@ fun CompilerSignatureDocument.toCliDocument(): CompilerSignatureCliDocument =
                 contextReceivers.values.map { it.value },
                 returnType.value,
             )
+        is CompilerSignatureDocument.LocalFunction ->
+            CompilerSignatureCliDocument.LocalFunction(
+                address.toCliDocument(),
+                receiver.toCliDocument(),
+                contextReceivers.values.map { it.value },
+                valueParameters.values.map { it.value },
+                typeParameterCount.value,
+                returnType.value,
+            )
+        is CompilerSignatureDocument.LocalProperty ->
+            CompilerSignatureCliDocument.LocalProperty(
+                address.toCliDocument(),
+                returnType.value,
+                when (mutability) {
+                    LocalPropertyMutabilityDocument.VAL -> LocalPropertyMutabilityCliDocument.VAL
+                    LocalPropertyMutabilityDocument.VAR -> LocalPropertyMutabilityCliDocument.VAR
+                },
+            )
         is CompilerSignatureDocument.TypeAlias -> CompilerSignatureCliDocument.TypeAlias(qualifiedIdentity.value)
         is CompilerSignatureDocument.ClassLike -> CompilerSignatureCliDocument.ClassLike(qualifiedIdentity.value)
     }
+
+fun LocalDeclarationAddressDocument.toCliDocument(): LocalDeclarationAddressCliDocument =
+    LocalDeclarationAddressCliDocument(
+        when (val location = file) {
+            is LocalDeclarationFileDocument.Workspace -> LocalDeclarationFileCliDocument.Workspace(location.value.value)
+            is LocalDeclarationFileDocument.External -> LocalDeclarationFileCliDocument.External(location.value.value)
+        },
+        when (kind) {
+            LocalDeclarationKindDocument.FUNCTION -> LocalDeclarationKindCliDocument.FUNCTION
+            LocalDeclarationKindDocument.PROPERTY -> LocalDeclarationKindCliDocument.PROPERTY
+        },
+        range.toCliDocument(),
+        ownerIdentity.value,
+        ownerRange.toCliDocument(),
+        lexicalOwners.values.map { it.toCliDocument() },
+    )
 
 private fun CompilerReceiverDocument.toCliDocument(): CompilerReceiverCliDocument =
     when (this) {

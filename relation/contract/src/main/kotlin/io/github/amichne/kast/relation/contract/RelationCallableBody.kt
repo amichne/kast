@@ -22,7 +22,8 @@ sealed interface RelationCallableBody {
 
         companion object {
             fun fromCompiler(evidence: CompilerGroundedSymbolEvidence): Refinement<Named, RelationCallableBodyFailure> =
-                if (evidence.signature is CanonicalCompilerSignature.Function) Refinement.Refined(Named(evidence))
+                if (evidence.signature is io.github.amichne.kast.symbol.contract.CanonicalCompilerCallableSignature)
+                    Refinement.Refined(Named(evidence))
                 else Refinement.Rejected(RelationCallableBodyFailure.NOT_CALLABLE)
         }
     }

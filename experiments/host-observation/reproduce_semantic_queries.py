@@ -20,6 +20,89 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
 FIXTURE = HERE / "semantic-fixture"
 FIELDS = ["NAME", "LOCATION", "SIGNATURE"]
+# Independent changed-owner requirement. The native script must supply actual
+# resources; candidate archive admission separately matches these bytes.
+TRY_BRANCH_NATIVE_OWNERS = frozenset({
+    'io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter',
+    'io.github.amichne.kast.relation.intellij.IntellijValueFlowNative',
+    'io.github.amichne.kast.relation.intellij.NativeTryBranchResult',
+    'io.github.amichne.kast.relation.intellij.TryBranchResultPosition',
+    'io.github.amichne.kast.relation.intellij.IntellijCompilerTypeProofKt',
+    'io.github.amichne.kast.relation.intellij.NativeCompilerTypeProof',
+    'io.github.amichne.kast.relation.contract.ValueTransferEvidence$NormalBranchResult',
+})
+LOCAL_IDENTITY_NATIVE_OWNERS = frozenset({
+    'io.github.amichne.kast.workspace.intellij.read.IntellijLocalIdentityObservationKt',
+    'io.github.amichne.kast.symbol.intellij.IntellijLocalDeclarationAddressProjectionKt',
+    'io.github.amichne.kast.symbol.intellij.IntellijLocalDeclarationAnchorsKt',
+    'io.github.amichne.kast.symbol.intellij.IntellijLocalCompilerTypeProofKt',
+    'io.github.amichne.kast.symbol.intellij.LocalCompilerTypeProof',
+    'io.github.amichne.kast.source.intellij.IntellijLocalCompilerTypeProofKt',
+    'io.github.amichne.kast.source.intellij.LocalCompilerTypeProof',
+    'io.github.amichne.kast.source.intellij.IntellijSourceCompilerProjectionKt',
+    'io.github.amichne.kast.source.intellij.SourceLocalOwnerCallableIdentityKt',
+    'io.github.amichne.kast.source.intellij.SourceLocalOwnerCallableIdentityObservationKt',
+    'io.github.amichne.kast.symbol.contract.LocalDeclarationAddress',
+    'io.github.amichne.kast.relation.intellij.IntellijK2RelationProjectionKt',
+    'io.github.amichne.kast.relation.intellij.IntellijK2SymbolIdentityKt',
+    'io.github.amichne.kast.relation.intellij.IntellijLocalDeclarationAnchorsKt',
+    'io.github.amichne.kast.relation.intellij.RelationLocalOwnerCallableIdentityKt',
+    'io.github.amichne.kast.relation.intellij.RelationLocalOwnerCallableIdentityObservationKt',
+    'io.github.amichne.kast.relation.intellij.IntellijLocalRelationOwnerSignatureKt',
+})
+TRY_LOCAL_NATIVE_OWNERS = TRY_BRANCH_NATIVE_OWNERS | LOCAL_IDENTITY_NATIVE_OWNERS
+NATIVE_COMMON_OWNERS = frozenset({
+    'io.github.amichne.kast.workspace.intellij.read.DetachedModelLimits',
+    'io.github.amichne.kast.workspace.intellij.read.LiveNamedGradleSourceScopeCapture',
+    'io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryExecutorKt',
+    'io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadDiagnostics',
+    'io.github.amichne.kast.runtime.hosted.HostedCanonicalQueryKt',
+    'io.github.amichne.kast.symbol.intellij.IntellijNativeDiscoveryQueryKt',
+    'io.github.amichne.kast.relation.intellij.IntellijK2RelationSearch',
+    'io.github.amichne.kast.relation.intellij.IntellijCallbackFlowRead',
+    'io.github.amichne.kast.relation.intellij.IntellijCallbackFlowScan',
+    'io.github.amichne.kast.relation.intellij.CallbackFormalWorklist',
+    'io.github.amichne.kast.relation.intellij.CallbackFlowRetention',
+    'io.github.amichne.kast.relation.intellij.CallbackRetainedRecords',
+    'io.github.amichne.kast.relation.intellij.CallbackParameterSummaries',
+    'io.github.amichne.kast.relation.contract.CompleteCallbackForwardingGraph',
+    'io.github.amichne.kast.relation.contract.CompleteStaticCallbackGraph',
+    'io.github.amichne.kast.relation.contract.RelationReferenceOccurrence',
+})
+
+
+class QualificationSlice(str, Enum):
+    TRY_BRANCH_RESULTS = 'TRY_BRANCH_RESULTS'
+    TRY_LOCAL_IDENTITIES = 'TRY_LOCAL_IDENTITIES'
+
+    @classmethod
+    def admit(cls, value):
+        try:
+            return cls(value)
+        except (ValueError, TypeError):
+            raise ValueError('INVALID_QUALIFICATION_SLICE') from None
+
+    @property
+    def changed_owners(self):
+        return TRY_BRANCH_NATIVE_OWNERS if self == self.TRY_BRANCH_RESULTS else TRY_LOCAL_NATIVE_OWNERS
+
+    @property
+    def public_contract_version(self):
+        return 6 if self == self.TRY_BRANCH_RESULTS else 7
+
+
+def admit_native_owner_profile(slice_, owners):
+    slice_ = QualificationSlice.admit(slice_)
+    if set(owners) != NATIVE_COMMON_OWNERS | slice_.changed_owners:
+        raise ValueError('NATIVE_OWNER_SLICE_MISMATCH')
+    return slice_
+
+
+def admit_public_contract_slice(slice_, observed):
+    slice_ = QualificationSlice.admit(slice_)
+    if type(observed) is not int or observed != slice_.public_contract_version:
+        raise ValueError('PUBLIC_CONTRACT_SLICE_MISMATCH')
+    return slice_
 
 
 class Finding(str, Enum):
@@ -135,7 +218,8 @@ def pin(args):
             if len(row.split(maxsplit=1)) == 2 and row.split(maxsplit=1)[1] == str(launcher)]
     if len(pids) != 1:
         raise ValueError("EXACT_RUNNING_HOST_UNAVAILABLE")
-    request = dict(project=str(args.fixture.resolve(strict=True)), hostPid=pids[0])
+    request = dict(project=str(args.fixture.resolve(strict=True)), hostPid=pids[0],
+                   qualificationSlice=getattr(args, 'qualification_slice', None))
     write(output / "input.json", request)
     script = (HERE / "semantic-reproduction-pin.kts.template").read_text().replace(
         "@INPUT_BASE64@", base64.b64encode(str(output / "input.json").encode()).decode())
@@ -145,6 +229,10 @@ def pin(args):
     if (output / "pin-rejection.json").exists():
         reject_native_pin(json.loads((output / "pin-rejection.json").read_text()))
     host = json.loads((output / "host.json").read_text())
+    slice_ = admit_native_owner_profile(getattr(args, 'qualification_slice', None), host['plugin']['classResources'])
+    profile = json.loads((output / 'profile.json').read_text())
+    if profile['type'] != 'NATIVE_PROFILE_PATHS' or profile['hostPid'] != host['pid'] or profile['processStart'] != host['processStart']:
+        raise ValueError('NATIVE_PROFILE_PIN_MISMATCH')
     mcp = getattr(args, "public_mcp", False)
     rpc = getattr(args, "public_rpc", False) or mcp
     catalog_cli = getattr(args, 'catalog_rpc', None) or (cli.parent / "kast-tool-rpc-complete" if mcp else cli)
@@ -154,6 +242,10 @@ def pin(args):
     write(output / "schema-process.json", schema)
     if schema.get("exitCode") != 0:
         raise ValueError("INSTALLED_SCHEMA_UNAVAILABLE")
+    catalog = json.loads(schema['stdout'])
+    if catalog.get('type') != 'catalog':
+        raise ValueError('PUBLIC_CONTRACT_SLICE_MISMATCH')
+    admit_public_contract_slice(slice_, catalog.get('catalog', {}).get('schemaVersion'))
     (output / "installed-schema.json").write_text(schema["stdout"])
     plugin_path = Path(host["plugin"]["path"])
     plugin_files = {str(p): digest(p) for p in sorted((plugin_path / "lib").glob("*.jar"))}
@@ -163,10 +255,11 @@ def pin(args):
     source_head = capture(["git", "rev-parse", "HEAD"], source)["stdout"].strip()
     untracked_paths = capture(["git", "ls-files", "--others", "--exclude-standard"], source)["stdout"].splitlines()
     untracked = {name: digest(source / name) for name in untracked_paths if (source / name).is_file()}
-    metadata = dict(schemaVersion=1, cli=dict(requested=str(args.cli), executable=str(cli),
+    metadata = dict(schemaVersion=1, qualificationSlice=slice_.value, publicContractVersion=slice_.public_contract_version,
+        cli=dict(requested=str(args.cli), executable=str(cli),
         sha256=digest(cli), transport="MCP_SESSION" if mcp else "TOOL_RPC", catalogExecutableSha256=digest(catalog_cli), version=version["stdout"].strip() if not rpc else "unavailable; RPC exposes catalog version",
         jars={str(p): digest(p) for p in sorted((cli.parent.parent / "lib").glob("*.jar"))}),
-        plugin=dict(native=host["plugin"], jars=plugin_files), host=host,
+        plugin=dict(native=host["plugin"], jars=plugin_files), host=host, profile=profile,
         installedSchemaSha256=digest(output / "installed-schema.json"),
         source=dict(path=str(source), commit=source_head, patchSha256=digest(output / "source.patch"), untrackedHashes=untracked,
                     runtimeCorrespondence="unproven unless independently matched to a release artifact or build receipt"),
@@ -1279,7 +1372,8 @@ def replay_workloads(args):
     # Reuse native pin at both boundaries; validates the loaded plugin, not merely an on-disk CLI label.
     def repin(label):
         pin_args = argparse.Namespace(output=output / label, fixture=root, cli=args.cli,
-            idea_contents=args.idea_contents, source_tree=None, public_rpc=True, public_mcp=pinned["cli"].get("transport") == "MCP_SESSION")
+            idea_contents=args.idea_contents, source_tree=None, public_rpc=True,
+            qualification_slice=pinned['qualificationSlice'], public_mcp=pinned["cli"].get("transport") == "MCP_SESSION")
         if pin(pin_args) != 0: raise ValueError('NATIVE_PIN_UNAVAILABLE')
         current = json.loads((pin_args.output / 'pin.json').read_text())
         if artifact_identity(current) != artifact_identity(pinned): raise ValueError('PIN_CHANGED:artifact')
@@ -1570,6 +1664,7 @@ def main():
     identify.add_argument("--public-mcp", action="store_true", help="Pin the installed persistent MCP query path")
     identify.add_argument("--public-rpc", action="store_true", help="Pin the installed Tool RPC catalog and executable")
     identify.add_argument("--catalog-rpc", type=Path, help="Exact sibling catalog launcher for a candidate Gradle distribution")
+    identify.add_argument('--qualification-slice', choices=tuple(value.value for value in QualificationSlice), required=True)
     identify.set_defaults(run=pin)
     play = commands.add_parser("replay", help="Read-only replay through the public CLI or production provider")
     play.add_argument("--pin", type=Path, required=True)

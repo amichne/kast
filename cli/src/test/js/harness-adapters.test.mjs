@@ -15,8 +15,8 @@ async function load(harness, reply = catalog, outcome = { type: 'complete', docu
     if (failure === 'timeout' && calls.length > 1) { queueMicrotask(callback); return 0; }
     return setTimeout(callback, millis);
   }, clearTimeout, process: { env, cwd: () => '/fixture' } });
-  const spawn = (command, args) => {
-    calls.push({ command, args });
+  const spawn = (command, args, options) => {
+    calls.push({ command, args, options });
     const child = new EventEmitter();
     child.stdout = new EventEmitter();
     child.stderr = new EventEmitter();
@@ -60,6 +60,25 @@ async function load(harness, reply = catalog, outcome = { type: 'complete', docu
   return { registered, calls, error };
 }
 for (const harness of ['copilot', 'pi']) {
+  test(`${harness} keeps its RPC selector outside product configuration`, async () => {
+    const environment = { KAST_TOOL_RPC_COMMAND: '/selected/kast-tool-rpc',
+      KAST_INSTALL_IDEA_HOME: '/owned/idea', JAVA_OPTS: '-Duser.home=/owned/home', PATH: '/owned/bin' };
+    const loaded = await load(harness, catalog, undefined, undefined, environment);
+    assert.ifError(loaded.error);
+    const query = loaded.registered.find(tool => tool.name === 'query_symbols');
+    if (harness === 'pi') await query.execute('call', {request: {type: 'RUN'}}, undefined, undefined, {cwd:'/fixture'});
+    else await query.handler({request: {type: 'RUN'}}, {});
+    assert.equal(loaded.calls.length, 2);
+    for (const call of loaded.calls) {
+      assert.equal(call.command, '/selected/kast-tool-rpc');
+      assert.ok(call.options.env, 'Explicit child environment required');
+      assert.equal(Object.hasOwn(call.options.env, 'KAST_TOOL_RPC_COMMAND'), false);
+      assert.equal(call.options.env.KAST_INSTALL_IDEA_HOME, '/owned/idea');
+      assert.equal(call.options.env.JAVA_OPTS, '-Duser.home=/owned/home');
+      assert.equal(call.options.env.PATH, '/owned/bin');
+    }
+    assert.equal(environment.KAST_TOOL_RPC_COMMAND, '/selected/kast-tool-rpc');
+  });
   for (const [environment, expected] of [
     [{}, '/fixture/.local/share/kast/installation/bin/kast-tool-rpc-complete'],
     [{XDG_DATA_HOME: '/data'}, '/fixture/.local/share/kast/installation/bin/kast-tool-rpc-complete'],
@@ -130,7 +149,7 @@ for (const harness of ['copilot', 'pi']) {
     const reply = structuredClone(catalog); reply.catalog.schemaVersion = 999;
     const loaded = await load(harness, reply);
     assert.equal(loaded.registered.length, 0);
-    assert.match(loaded.error?.message ?? '', /catalog.*expected=5.*observed=999.*executable=\/fixture\/kast-tool-rpc/);
+    assert.match(loaded.error?.message ?? '', /catalog.*expected=7.*observed=999.*executable=\/fixture\/kast-tool-rpc/);
   });
   test(`${harness} validates the last entry before registering the first`, async () => {
     const reply = structuredClone(catalog); reply.catalog.tools.at(-1).inputSchema = null;

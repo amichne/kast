@@ -49,23 +49,37 @@ internal fun RelationEndpoint.storageBytes(g: QueryImpactRetainedGraph): Long =
 
 internal fun CanonicalCompilerSignature.storageBytes(g: QueryImpactRetainedGraph): Long =
     g.node(this) {
-        g.text(qualifiedIdentity.value)
-            .saturatedAdd(
-                when (this) {
-                    is CanonicalCompilerSignature.Function ->
-                        receiver
-                            .storageBytes(g)
-                            .saturatedAdd(g.collection(contextReceivers) { g.text(it.value) })
-                            .saturatedAdd(g.collection(valueParameters) { g.text(it.value) })
-                    is CanonicalCompilerSignature.Property ->
-                        receiver
-                            .storageBytes(g)
-                            .saturatedAdd(g.collection(contextReceivers) { g.text(it.value) })
-                            .saturatedAdd(g.text(returnType.value))
-                    is CanonicalCompilerSignature.ClassLike,
-                    is CanonicalCompilerSignature.TypeAlias -> 0L
+        when (val address = declarationAddress) {
+            is io.github.amichne.kast.symbol.contract.CompilerDeclarationAddress.Qualified ->
+                g.text(address.identity.value)
+            is io.github.amichne.kast.symbol.contract.CompilerDeclarationAddress.Local ->
+                g.node(address.address) {
+                    g.text(address.address.file.stableValue)
+                        .saturatedAdd(g.text(address.address.ownerIdentity.value))
+                        .saturatedAdd(g.node(address.address.range) { 0L })
+                        .saturatedAdd(g.node(address.address.ownerRange) { 0L })
+                        .saturatedAdd(g.collection(address.address.lexicalOwners) { g.node(it) { 0L } })
                 }
-            )
+        }.saturatedAdd(
+            when (this) {
+                is io.github.amichne.kast.symbol.contract.CanonicalCompilerCallableSignature ->
+                    receiver
+                        .storageBytes(g)
+                        .saturatedAdd(g.collection(contextReceivers) { g.text(it.value) })
+                        .saturatedAdd(g.collection(valueParameters) { g.text(it.value) })
+                        .saturatedAdd(
+                            if (this is CanonicalCompilerSignature.LocalFunction) g.text(returnType.value) else 0L
+                        )
+                is CanonicalCompilerSignature.Property ->
+                    receiver
+                        .storageBytes(g)
+                        .saturatedAdd(g.collection(contextReceivers) { g.text(it.value) })
+                        .saturatedAdd(g.text(returnType.value))
+                is CanonicalCompilerSignature.LocalProperty -> g.text(returnType.value)
+                is CanonicalCompilerSignature.ClassLike,
+                is CanonicalCompilerSignature.TypeAlias -> 0L
+            }
+        )
     }
 
 private fun CanonicalCompilerReceiver.storageBytes(g: QueryImpactRetainedGraph): Long =
@@ -183,7 +197,10 @@ private fun ValueDeclarationIdentity.storageBytes(g: QueryImpactRetainedGraph): 
 
 internal fun ValueTransfer.storageBytes(g: QueryImpactRetainedGraph): Long =
     g.node(this) {
-        source.storageBytes(g).saturatedAdd(target.storageBytes(g))
+        source
+            .storageBytes(g)
+            .saturatedAdd(target.storageBytes(g))
+            .saturatedAdd(g.node(evidence) { evidence.retainedBytes })
     }
 
 internal fun ValueFlowStep.storageBytes(g: QueryImpactRetainedGraph): Long =

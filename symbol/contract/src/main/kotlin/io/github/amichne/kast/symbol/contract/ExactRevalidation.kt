@@ -34,6 +34,19 @@ private constructor(
     val owner: ModelOwnedSourceRoot,
     val text: ExactRevalidationTextIdentity,
 ) {
+    /** Hash equality authorizes only exact restoration; fresh compiler proof remains required. */
+    fun admitContent(
+        currentOwner: ModelOwnedSourceRoot,
+        currentText: ExactRevalidationTextIdentity,
+        policy: ExactRevalidationPolicy,
+    ): Refinement<Unit, ExactRevalidationRejection> =
+        when {
+            currentOwner != owner -> Refinement.Rejected(ExactRevalidationRejection.OWNER_MISMATCH)
+            policy.forDeclaration(evidence.signature) == ExactRevalidationPolicy.ORIGINAL_DOCUMENT &&
+                currentText != text -> Refinement.Rejected(ExactRevalidationRejection.CONTENT_CHANGED)
+            else -> Refinement.Refined(Unit)
+        }
+
     companion object {
         fun capture(
             selector: SymbolSelector,
@@ -114,7 +127,14 @@ fun interface ExactRevalidationOperations {
 /** Strict inspection retains the old preimage; a new read can identify the same declaration in current content. */
 enum class ExactRevalidationPolicy {
     ORIGINAL_DOCUMENT,
-    CURRENT_DECLARATION,
+    CURRENT_DECLARATION;
+
+    /** Local source anchors may only be restored against the original owning document. */
+    fun forDeclaration(signature: CanonicalCompilerSignature): ExactRevalidationPolicy =
+        when (signature.declarationAddress) {
+            is CompilerDeclarationAddress.Qualified -> this
+            is CompilerDeclarationAddress.Local -> ORIGINAL_DOCUMENT
+        }
 }
 
 fun CompilerGroundedSymbolEvidence.sameDeclaration(other: CompilerGroundedSymbolEvidence): Boolean =

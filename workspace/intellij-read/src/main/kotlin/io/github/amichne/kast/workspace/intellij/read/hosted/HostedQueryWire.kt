@@ -112,8 +112,11 @@ data class HostedQueryRejectionDocument(
 
 private fun HostedCompilerDeclaration.document(): Map<String, Any> {
     // Reuse the canonical wire proof, including its identity/signature agreement check.
+    val signature =
+        symbol.signature as? io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature.ClassLike
+            ?: error("Hosted class declaration requires class signature proof")
     val qualified =
-        when (val parsed = ProtocolText.parse(symbol.signature.qualifiedIdentity.value)) {
+        when (val parsed = ProtocolText.parse(signature.qualifiedIdentity.value)) {
             is Refinement.Refined -> parsed.value
             is Refinement.Rejected -> error("Bounded compiler identity failed protocol projection")
         }

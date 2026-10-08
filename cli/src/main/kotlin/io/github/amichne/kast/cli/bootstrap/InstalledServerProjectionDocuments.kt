@@ -143,47 +143,51 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "compilerQualifiedIdentity" to textSchema("Compiler qualified identity."),
             "compilerIdentity" to compilerIdentitySchema(),
             "readRecoveryAction" to
-                generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadRecoveryAction.serializer()),
+                generatedOutputSchema(io.github.amichne.kast.protocol.contract.ReadRecoveryAction.serializer()),
             "executionBudget" to
-                generatedRequestSchema(io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer()),
+                generatedOutputSchema(io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer()),
             "executionLimit" to
-                generatedRequestSchema(io.github.amichne.kast.protocol.contract.ExecutionLimitDocument.serializer()),
+                generatedOutputSchema(io.github.amichne.kast.protocol.contract.ExecutionLimitDocument.serializer()),
             "impactSemanticBasis" to
-                generatedRequestSchema(
+                generatedOutputSchema(
                     io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument.serializer()
                 ),
             "impactDeclarationReference" to
-                generatedRequestSchema(
+                generatedOutputSchema(
                     io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument.serializer()
                 ),
             "impactInvocationReference" to
-                generatedRequestSchema(
+                generatedOutputSchema(
                     io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument.serializer()
                 ),
             "impactValueRole" to
-                generatedRequestSchema(io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument.serializer()),
+                generatedOutputSchema(io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument.serializer()),
             "impactValueSiteReference" to
-                generatedRequestSchema(
+                generatedOutputSchema(
                     io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument.serializer()
                 ),
             "impactCompilerTransfer" to
-                generatedRequestSchema(
+                generatedOutputSchema(
                     io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument.serializer()
                 ),
             "liveReadEvidence" to liveReadEvidenceSchema(),
             "hostedEndpointRejection" to HostedRejectionSchemas.endpoint,
             "hostedReadRejection" to HostedRejectionSchemas.read,
             "callbackObservation" to
-                generatedRequestSchema(
+                generatedOutputSchema(
                     io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
                         .callbackObservationSerializer
                 ),
             "callableObservation" to
-                generatedRequestSchema(
+                generatedOutputSchema(
                     io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
                         .callableObservationSerializer
                 ),
             "queryResultItem" to queryResultItemSchema(),
+            "localDeclarationAddress" to
+                generatedOutputSchema(
+                    io.github.amichne.kast.protocol.wire.presentation.LocalDeclarationAddressCliDocument.serializer()
+                ),
             "queryItemFailure" to queryItemFailureSchema(),
             "ExactSymbolRef" to queryTypedPropertySchema("exact-symbol", "ref"),
             "CandidateRef" to queryOutputReferenceSchema("declaration-candidate"),
@@ -215,7 +219,7 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             for ((name, serializer) in
                 io.github.amichne.kast.protocol.wire.presentation.CanonicalCallbackSchemaDocuments.serializers) {
                 check(name !in this) { "Duplicate canonical callback schema address: $name" }
-                this[name] = generatedRequestSchema(serializer)
+                this[name] = generatedOutputSchema(serializer)
             }
             for ((name, definition) in
                 HostedRejectionSchemas.readDefinitions.entries + HostedRejectionSchemas.endpointDefinitions.entries) {
@@ -231,7 +235,7 @@ private fun operationProcessDiagnosticSchema(operation: CanonicalOperation): Jso
     if (operation == CanonicalOperation.WORKSPACE_LIFECYCLE)
         unionSchema(
             processDiagnosticSchema(),
-            generatedRequestSchema(io.github.amichne.kast.protocol.contract.IdeLifecycleRejection.serializer()),
+            generatedOutputSchema(io.github.amichne.kast.protocol.contract.IdeLifecycleRejection.serializer()),
         )
     else processDiagnosticSchema()
 
@@ -249,9 +253,9 @@ private fun operationProcessDocumentSchema(operation: CanonicalOperation): JsonO
 private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
     when (operation) {
         CanonicalOperation.CHANGE ->
-            generatedRequestSchema(io.github.amichne.kast.protocol.contract.ChangeRunDocument.serializer())
+            generatedOutputSchema(io.github.amichne.kast.protocol.contract.ChangeRunDocument.serializer())
         CanonicalOperation.WORKSPACE_LIFECYCLE ->
-            generatedRequestSchema(io.github.amichne.kast.protocol.contract.IdeLifecycleResult.serializer())
+            generatedOutputSchema(io.github.amichne.kast.protocol.contract.IdeLifecycleResult.serializer())
         CanonicalOperation.INDEX_SYNC ->
             outcomeSchema(
                 operation,
@@ -270,20 +274,20 @@ private fun operationDocumentSchema(operation: CanonicalOperation): JsonObject =
                 ServerSchemaProperty("diagnostics", arraySchema(diagnosticSchema())),
                 ServerSchemaProperty(
                     "analysisKind",
-                    generatedRequestSchema(
+                    generatedOutputSchema(
                         io.github.amichne.kast.protocol.wire.presentation.DiagnosticAnalysisKindCliDocument.serializer()
                     ),
                 ),
                 ServerSchemaProperty(
                     "coverage",
-                    generatedRequestSchema(
+                    generatedOutputSchema(
                         io.github.amichne.kast.protocol.wire.presentation.DiagnosticCoverageCliDocument.serializer()
                     ),
                     required = false,
                 ),
                 ServerSchemaProperty(
                     "progress",
-                    generatedRequestSchema(
+                    generatedOutputSchema(
                         io.github.amichne.kast.protocol.contract.DiagnosticProgressDocument.serializer()
                     ),
                     required = false,
@@ -317,13 +321,13 @@ internal fun changeFilePreviewsSchema(): JsonObject =
 
 private val queryRunDocumentSchema: JsonObject by lazy {
     unionSchema(
-        generatedRequestSchema(
+        generatedOutputSchema(
             io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.completeSerializer
         ),
-        generatedRequestSchema(
+        generatedOutputSchema(
             io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.qualifiedSerializer
         ),
-        generatedRequestSchema(
+        generatedOutputSchema(
             io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.rejectedSerializer
         ),
     )
@@ -331,18 +335,18 @@ private val queryRunDocumentSchema: JsonObject by lazy {
 
 private fun queryTerminalReasonSchema(): JsonObject =
     nullableSchema(
-        generatedRequestSchema(
+        generatedOutputSchema(
             io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.terminalReasonSerializer
         )
     )
 
 private fun queryQualificationSchema(): JsonObject =
-    generatedRequestSchema(
+    generatedOutputSchema(
         io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.qualificationSerializer
     )
 
 private fun queryResultItemSchema(): JsonObject =
-    generatedRequestSchema(io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.itemSerializer)
+    generatedOutputSchema(io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.itemSerializer)
 
 private fun queryTypedPropertySchema(kind: String, property: String): JsonObject =
     queryResultItemSchema()
@@ -367,7 +371,7 @@ private fun queryTypedPropertySchema(kind: String, property: String): JsonObject
         .jsonObject
 
 private fun queryContinuationSchema(): JsonObject =
-    generatedRequestSchema(
+    generatedOutputSchema(
             io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.qualifiedSerializer
         )
         .getValue("properties")
@@ -387,12 +391,12 @@ private fun queryOutputReferenceSchema(kind: String): JsonObject =
     )
 
 private fun queryItemFailureSchema(): JsonObject =
-    generatedRequestSchema(
+    generatedOutputSchema(
         io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.itemFailureSerializer
     )
 
 private fun queryRejectionSchema(): JsonObject =
-    generatedRequestSchema(
+    generatedOutputSchema(
         io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.rejectionSerializer
     )
 
@@ -440,7 +444,7 @@ private fun admittedReadRejectionVariants(operation: CanonicalOperation): Array<
                     *readRecoveryActionProperties(operation),
                     ServerSchemaProperty(
                         "execution_budget",
-                        generatedRequestSchema(
+                        generatedOutputSchema(
                             io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer()
                         ),
                     ),
@@ -453,7 +457,7 @@ internal fun sourceReadQualificationSchema(): JsonObject =
     objectSchema(
         ServerSchemaProperty(
             "progress",
-            generatedRequestSchema(
+            generatedOutputSchema(
                 io.github.amichne.kast.protocol.contract.SourceQualifiedProgressDocument.serializer()
             ),
         ),
@@ -680,7 +684,7 @@ private fun diagnosticQualificationSchema(): JsonObject =
         ServerSchemaProperty("continuation", textSchema("Retained same-basis diagnostic progress."), required = false),
         ServerSchemaProperty(
             "retentionFailure",
-            generatedRequestSchema(
+            generatedOutputSchema(
                 io.github.amichne.kast.protocol.contract.DiagnosticRetentionFailureDocument.serializer()
             ),
             required = false,
@@ -1243,7 +1247,7 @@ internal fun executionBudgetProperty() =
     ServerSchemaProperty(
         "execution_budget",
         nullableSchema(
-            generatedRequestSchema(io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer())
+            generatedOutputSchema(io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.serializer())
         ),
         required = false,
     )
@@ -1251,7 +1255,7 @@ internal fun executionBudgetProperty() =
 private fun readRecoveryActionProperty(): ServerSchemaProperty =
     ServerSchemaProperty(
         "next_action",
-        generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadRecoveryAction.serializer()),
+        generatedOutputSchema(io.github.amichne.kast.protocol.contract.ReadRecoveryAction.serializer()),
     )
 
 private fun readRecoveryActionProperties(operation: CanonicalOperation): Array<ServerSchemaProperty> =
@@ -1261,7 +1265,7 @@ private fun readRecoveryActionProperties(operation: CanonicalOperation): Array<S
             arrayOf(
                 ServerSchemaProperty(
                     "next_action",
-                    generatedRequestSchema(
+                    generatedOutputSchema(
                         io.github.amichne.kast.protocol.contract.DiagnosticRecoveryAction.serializer()
                     ),
                 )
@@ -1272,6 +1276,6 @@ private fun readRecoveryActionProperties(operation: CanonicalOperation): Array<S
 internal fun referenceAcquisitionsProperty() =
     ServerSchemaProperty(
         "reference_acquisitions",
-        generatedRequestSchema(io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions.serializer()),
+        generatedOutputSchema(io.github.amichne.kast.protocol.contract.ReadReferenceAcquisitions.serializer()),
         required = false,
     )

@@ -1,6 +1,6 @@
 {
   "sourcePath": "logging/src/main/kotlin/representation/fixture/RepresentationImpactFixture.kt",
-  "sourceSha256": "58509a615028343d7dd5f0b5c919d27d0b234f1cfa94d35c9c8f2fe4fb7a7be2",
+  "sourceSha256": "07f4e58bf6221cb5befe26a1bfd1cfa47bc3785b35b0339a84010f8bb14da5e5",
   "seedAnchors": [
     {
       "name": "first-voltage",

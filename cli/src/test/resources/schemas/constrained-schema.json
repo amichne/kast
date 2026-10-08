@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "short": {"type": "string", "minLength": 2, "maxLength": 4, "pattern": "^[a-z]+$"},
+    "long": {"type": "string", "minLength": 1, "maxLength": 16},
+    "optional": {"anyOf": [{"type": "string", "minLength": 3, "maxLength": 6}, {"type": "null"}]},
+    "text": {"type": "object", "additionalProperties": false, "properties": {"value": {"type": "string"}}, "required": ["value"]},
+    "number": {"type": "object", "additionalProperties": false, "properties": {"value": {"type": "integer"}}, "required": ["value"]}
+  },
+  "required": ["short", "long", "optional", "text", "number"]
+}

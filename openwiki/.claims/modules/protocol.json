@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:436ad799bd7cc21a842378790af2a3241c565f186e5ed16bf23a6582a8a1c4c9",
+  "pageVersion": "sha256:7a6954d6ab510cbde87883ab81a26c1bdba6c3c3814ea1e6c32cc523bf3402fd",
   "claims": [
     {
       "id": "claim_33df4f539870445aaef2d593695dca1b",
@@ -41,8 +41,8 @@
       "statement": "Installed query output schemas derive complete, qualified and rejected shapes from their actual CLI serializers, and CLI projection validates impact completion/accounting before emitting successful documents.",
       "evidence": [
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt#L318-L330",
-          "version": "repo-lines-v1:sha256:4be7e304d8725f1f5c9902b5bff0d219d1ae5ab1de94879a8145da7143fbdda6:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliYjNmYTFhZjIxZDIwYmYwYzMyNzgyMTY0NjU5ZDQ4YTI5NzQ0ZWIxYjEzNjQxMDI1ODY4YjM0NzkyNDY3MWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQxY2QyNDA4ZjMwOTI0NWIyZjU2Mjk4ODcxNGNmNjYzZWQ1M2MwZjNjYzU4ZTIwYzUwMmNkNWM4MzJiYzNmMDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg3NzAwMWZhYmEwZjA5YmJiY2JlYzQ2YmYxYWVmYjE1OTc5YmM1ZjAyMGEwYWM5MjMzNzA5NzliOTFmYjYzMjMifQ"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt#L319-L332",
+          "version": "repo-lines-v1:sha256:faf6c82c92d7b7dd2f5c95c138b848ac5ffb5387db9aed3cf3ef21e5f5def0df:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYxOTllY2ZiNmRkMWE5YWFlZDI4OTllYmQ4YWE0MjI4NTI3YmNkM2NkOTAxNDNlYzdiZjhlMzVhMDY3NzE2MmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwNzBlNjA2MzIxOGQwMTNmMTc2OWYyMDhiMDE1ZDI0YWY4NDBkNGQzYzY4ZGMzNmYwMTc5Y2ZjZWViMDM2YmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUyMTFmM2JhNGQ1M2NlYWFhNDc0YmI3ZjYwMDc2YjMxZTRkMTczY2Q5M2Q0ZDBjMmE0MmIxY2JmOWIxNDJhNmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE5NmU3NGMwYmQ1OTJkMDQzNWRhZjVkZWJkOTM0MGIzZTk0NGNjMDg0MTRmYTgyNTgxNTllYmNiNjRiM2M4YzMifQ"
         },
         {
           "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/CanonicalQueryCliDocuments.kt#L82-L118",
@@ -67,6 +67,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-08T01:13:49.481Z"
+    "at": "2026-10-08T04:02:52.014Z"
   }
 }

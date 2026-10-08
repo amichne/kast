@@ -1,7 +1,7 @@
 package io.github.amichne.kast.relation.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerCallableSignature
 import java.util.Collections
 
 sealed interface CallbackFactoryCaptureSelection {
@@ -111,7 +111,7 @@ private constructor(
                 is Refinement.Rejected -> return admitted
             }
             val positions =
-                (invocation.callable.signature as CanonicalCompilerSignature.Function).valueParameters.indices.toList()
+                (invocation.callable.signature as CanonicalCompilerCallableSignature).valueParameters.indices.toList()
             if (captures.map { it.binding.position.value }.sorted() != positions)
                 return Refinement.Rejected(CallbackFactoryReturnFailure.CAPTURE_INVENTORY_MISMATCH)
             for (capture in captures) when (val admitted = capture.admitFactory(invocation, returnedValue)) {

@@ -279,7 +279,7 @@ private fun validCallableTransfers(
 }
 
 private fun ImpactCompilerTransferDocument.validTransfer(callable: ImpactDeclarationReferenceDocument): Boolean {
-    if (!validRoles() || source == target) return false
+    if (!admitsEvidence() || !validRoles() || source == target) return false
     if (source.enclosing != callable || target.enclosing != callable) return false
     return source.validSite() && target.validSite()
 }

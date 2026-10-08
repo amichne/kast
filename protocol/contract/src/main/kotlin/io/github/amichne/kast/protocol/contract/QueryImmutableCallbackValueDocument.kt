@@ -69,6 +69,7 @@ private fun ImpactValueSiteReferenceDocument.validImmutableSite(): Boolean {
 
 private fun ImpactCompilerTransferDocument.validImmutableTransfer(owner: ImpactDeclarationReferenceDocument): Boolean =
     source != target &&
+        admitsEvidence() &&
         source.enclosing == owner &&
         target.enclosing == owner &&
         source.validImmutableSite() &&
@@ -168,7 +169,7 @@ private fun List<QueryCallbackCallableDocument>.admitsArgument(
 ): Boolean {
     val callable = singleOrNull { it.reference(basis) == role.invocation.callable } ?: return false
     val signature =
-        callable.compilerTarget.compilerEvidence.signature as? CompilerSignatureDocument.Function ?: return false
+        callable.compilerTarget.compilerEvidence.signature as? CompilerCallableSignatureDocument ?: return false
     return role.index.value in signature.valueParameters.values.indices
 }
 

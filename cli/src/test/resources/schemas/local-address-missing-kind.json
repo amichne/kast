@@ -1,0 +1,21 @@
+{
+  "file": {
+    "type": "WORKSPACE",
+    "path": "/workspace/Subject.kt"
+  },
+  "range": {
+    "startInclusive": 2,
+    "endExclusive": 5
+  },
+  "ownerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "ownerRange": {
+    "startInclusive": 0,
+    "endExclusive": 10
+  },
+  "lexicalOwners": [
+    {
+      "startInclusive": 1,
+      "endExclusive": 9
+    }
+  ]
+}

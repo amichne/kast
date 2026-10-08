@@ -25,6 +25,71 @@ import org.junit.jupiter.api.Test
 
 class ValueSiteContractTest {
     @Test
+    fun `normal branch result preserves exact conditional provenance and cannot become a catch fallback`() {
+        val owner = endpoint("investigate", 0, 200)
+        val source = ValueSite.fromCompiler(owner, range(20, 35), ValueRole.ExpressionResult).refined()
+        val target = ValueSite.fromCompiler(owner, range(10, 180), ValueRole.ExpressionResult).refined()
+        val proof =
+            ValueTransferEvidence.NormalBranchResult.fromCompiler(
+                    target.range,
+                    range(15, 70),
+                    ValueTryBranchAlternative.TryBody,
+                )
+                .refined()
+        val edge = ValueTransfer.fromCompiler(source, target, ValueTransferKind.BRANCH_ALTERNATIVE, proof).refined()
+        assertSame(proof, edge.evidence)
+        val fallback =
+            ValueTransferEvidence.NormalBranchResult.fromCompiler(
+                    target.range,
+                    range(90, 180),
+                    ValueTryBranchAlternative.CatchBody(ValueCatchBranchIndex.parse(0).refined()),
+                )
+                .refined()
+        assertEquals(
+            ValueTransferFailure.EVIDENCE_MISMATCH,
+            ValueTransfer.fromCompiler(source, target, ValueTransferKind.BRANCH_ALTERNATIVE, fallback).failure(),
+        )
+        val obligation = ValueFlowObligation(source, ValueFlowUnsupportedCause.FINALLY_UNSUPPORTED)
+        val step =
+            ValueFlowStep.fromCompiler(
+                    source,
+                    listOf(edge),
+                    listOf(obligation),
+                    ValueFlowTerminal.Unresolved,
+                    domain(source),
+                    RelationWorkCount.parse(1).refined(),
+                )
+                .refined()
+        val shared = step.shareCallableEvidence(emptyList())
+        assertEquals(listOf(edge), shared.transfers)
+        assertEquals(listOf(obligation), shared.obligations)
+        assertSame(proof, shared.transfers.single().evidence)
+        val direct = ValueTransfer.fromCompiler(source, target, ValueTransferKind.BRANCH_ALTERNATIVE).refined()
+        assertEquals(
+            4096L,
+            ValueFlowStep.detachedByteCount(source, domain(source), listOf(edge), emptyList()).value -
+                ValueFlowStep.detachedByteCount(source, domain(source), listOf(direct), emptyList()).value,
+        )
+    }
+
+    @Test
+    fun `normal branch anchors and catch index reject invalid ranges`() {
+        val target =
+            ValueSite.fromCompiler(endpoint("investigate", 0, 200), range(10, 180), ValueRole.ExpressionResult)
+                .refined()
+        assertEquals(
+            ValueTransferFailure.EVIDENCE_MISMATCH,
+            ValueTransferEvidence.NormalBranchResult.fromCompiler(
+                    target.range,
+                    range(5, 70),
+                    ValueTryBranchAlternative.TryBody,
+                )
+                .failure(),
+        )
+        assertEquals(ValueTransferFailure.EVIDENCE_MISMATCH, ValueCatchBranchIndex.parse(1024).failure())
+    }
+
+    @Test
     fun `callable sharing preserves invocation identity and excludes different scope file and authority`() {
         val original = endpoint("submit", 210, 250, parameters = listOf("String")) as RelationEndpoint.Resolved
         val copies =

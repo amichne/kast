@@ -12,4 +12,5 @@ base {
 dependencies {
     implementation(project(":symbol:contract"))
     implementation(project(":workspace:contract"))
+    testImplementation(testFixtures(project(":workspace:contract")))
 }

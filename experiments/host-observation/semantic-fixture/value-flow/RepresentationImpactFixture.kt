@@ -53,3 +53,114 @@ fun investigate(accountA: String, accountB: String, choose: Boolean) {
     display(unrelatedResponse.ciphertext)
     persist("account", first)
 }
+
+// Appended cases preserve every earlier authored UTF-16 anchor.
+fun tryResult(input: String): String =
+    try {
+        Voltage.encrypt(input)
+    } catch (failure: IllegalArgumentException) {
+        throw IllegalStateException("try-result", failure)
+    }
+
+fun tryFallback(input: String): String =
+    try {
+        Voltage.encrypt(input)
+    } catch (failure: IllegalArgumentException) {
+        Hiped.encrypt("fallback")
+    }
+
+fun catchResult(input: String): String =
+    try {
+        throw IllegalArgumentException("enter-catch")
+    } catch (failure: IllegalArgumentException) {
+        Voltage.encrypt(input)
+    }
+
+fun tryNonFinal(input: String): String =
+    try {
+        Voltage.encrypt(input)
+        "independent-result"
+    } catch (failure: IllegalArgumentException) {
+        throw IllegalStateException("non-final", failure)
+    }
+
+fun tryNested(input: String): String =
+    try {
+        try {
+            Voltage.encrypt(input)
+        } catch (inner: IllegalArgumentException) {
+            throw IllegalStateException("inner", inner)
+        }
+    } catch (outer: IllegalStateException) {
+        throw IllegalArgumentException("outer", outer)
+    }
+
+fun tryExplicitReturn(input: String): String {
+    try {
+        return Voltage.encrypt(input)
+    } catch (failure: IllegalArgumentException) {
+        throw IllegalStateException("explicit-return", failure)
+    }
+}
+
+fun tryUnit(input: String) {
+    try {
+        Voltage.encrypt(input)
+        Unit
+    } catch (failure: IllegalArgumentException) {
+        Unit
+    }
+}
+
+fun tryFinallyResult(input: String): String =
+    try {
+        Voltage.encrypt(input)
+    } finally {
+        display("cleanup")
+    }
+
+fun tryFinallyReturn(input: String): String {
+    try {
+        return Voltage.encrypt(input)
+    } finally {
+        display("return-cleanup")
+    }
+}
+
+fun tryFinallyThrows(input: String): String =
+    try {
+        Voltage.encrypt(input)
+    } finally {
+        throw IllegalStateException("cleanup-overrides-result")
+    }
+
+fun localBindings(input: String, choose: Boolean) {
+    val binding = Voltage.encrypt(input)
+    display(binding)
+    if (choose) {
+        val binding = Hiped.encrypt(input)
+        display(binding)
+    }
+    display(binding)
+    var mutable = Voltage.encrypt(input)
+    display(mutable)
+    mutable = Hiped.encrypt(input)
+    display(mutable)
+}
+
+fun localOtherOwner(input: String) {
+    val binding = Voltage.encrypt(input)
+    display(binding)
+    fun named(value: String): String = value
+    display(named(binding))
+}
+
+fun localFunctions(input: String, choose: Boolean) {
+    fun named(value: String): String = value
+    display(named(input))
+    if (choose) {
+        fun named(value: String): String = value + "inner"
+        display(named(input))
+    }
+    display(named(input))
+}

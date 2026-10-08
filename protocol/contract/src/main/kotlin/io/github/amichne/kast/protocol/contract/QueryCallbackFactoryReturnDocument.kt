@@ -41,7 +41,7 @@ private constructor(
             bodyCalls: QueryCallbackFactoryBodyCallsDocument,
         ): Refinement<QueryCallbackFactoryReturnDocument, QueryCallbackFactoryFailure> {
             val signature =
-                callable.compilerTarget.compilerEvidence.signature as? CompilerSignatureDocument.Function
+                callable.compilerTarget.compilerEvidence.signature as? CompilerCallableSignatureDocument
                     ?: return invalid(QueryCallbackFactoryFailure.INVALID_INVOCATION)
             if (!callable.admitsFactoryCall(enclosing, invocation))
                 return invalid(QueryCallbackFactoryFailure.INVALID_INVOCATION)

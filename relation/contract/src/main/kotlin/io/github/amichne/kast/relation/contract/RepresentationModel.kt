@@ -1,6 +1,7 @@
 package io.github.amichne.kast.relation.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerCallableSignature
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
@@ -99,11 +100,12 @@ private constructor(
                 return Refinement.Rejected(ModelBindingFailure.DECLARATION_MISMATCH)
             val available =
                 when (val signature = endpoint.signature) {
-                    is CanonicalCompilerSignature.Function ->
+                    is CanonicalCompilerCallableSignature ->
                         when (val position = declared.position) {
                             ModelValuePosition.Result -> true
                             is ModelValuePosition.Argument -> position.position.value < signature.valueParameters.size
                         }
+                    is CanonicalCompilerSignature.LocalProperty,
                     is CanonicalCompilerSignature.Property -> false
                     is CanonicalCompilerSignature.ClassLike,
                     is CanonicalCompilerSignature.TypeAlias -> false

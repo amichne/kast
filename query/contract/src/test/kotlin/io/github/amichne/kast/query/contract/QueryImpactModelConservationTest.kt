@@ -32,7 +32,7 @@ import org.junit.jupiter.api.assertInstanceOf
 class QueryImpactModelConservationTest {
     @Test
     fun `every applicable origin model requires its own retained route`() {
-        val f = QueryImpactLedgerTest.Fixture()
+        val f = QueryImpactLedgerFixture()
         val origins = origins(f)
         val observation = f.observe(f.producer, emptyList())
         val terminal = QueryImpactTerminal.SupportedDomainEnd.admit(observation).value()
@@ -64,7 +64,7 @@ class QueryImpactModelConservationTest {
 
     @Test
     fun `native branches cannot borrow conservation from another origin route`() {
-        val f = QueryImpactLedgerTest.Fixture()
+        val f = QueryImpactLedgerFixture()
         val rules = origins(f)
         val paths = rules.flatMap { rule -> nativePaths(f, rule) }
         fun ledger(retained: List<QueryImpactPath>) =
@@ -82,7 +82,7 @@ class QueryImpactModelConservationTest {
         assertEquals(QueryImpactClosure.Discharged, ledger(paths).value().closure)
     }
 
-    private fun nativePaths(f: QueryImpactLedgerTest.Fixture, rule: RepresentationRule.Origin) =
+    private fun nativePaths(f: QueryImpactLedgerFixture, rule: RepresentationRule.Origin) =
         f.paths.map { route ->
             val evidence =
                 route.steps.fold(
@@ -101,7 +101,7 @@ class QueryImpactModelConservationTest {
 
     @Test
     fun `every applicable boundary alternative retains its obligations`() {
-        val f = QueryImpactLedgerTest.Fixture()
+        val f = QueryImpactLedgerFixture()
         val models = listOf(boundary(f.producer, "first"), boundary(f.producer, "second"))
         val observation = f.observe(f.producer, emptyList())
         val paths = models.map { model ->
@@ -117,7 +117,7 @@ class QueryImpactModelConservationTest {
 
     @Test
     fun `origin models for another exact callable stay retained without creating routes`() {
-        val f = QueryImpactLedgerTest.Fixture()
+        val f = QueryImpactLedgerFixture()
         val unused = origins(f, otherDeclaration(f))
         val observation = f.observe(f.producer, emptyList())
         val retained = path(f, QueryImpactTerminal.SupportedDomainEnd.admit(observation).value())
@@ -139,7 +139,7 @@ class QueryImpactModelConservationTest {
 
     @Test
     fun `unvisited boundary model stays retained without creating a route`() {
-        val f = QueryImpactLedgerTest.Fixture()
+        val f = QueryImpactLedgerFixture()
         val unused = boundary(f.destination, "unused")
         val observation = f.observe(f.producer, emptyList())
         val retained = path(f, QueryImpactTerminal.SupportedDomainEnd.admit(observation).value())
@@ -150,7 +150,7 @@ class QueryImpactModelConservationTest {
 
     @Test
     fun `execution cutoff retains incompleteness before applying boundary models`() {
-        val f = QueryImpactLedgerTest.Fixture()
+        val f = QueryImpactLedgerFixture()
         val model = boundary(f.producer, "pending")
         val cutoff =
             QueryImpactExecutionStop.CheckpointCapacity.admit(
@@ -167,11 +167,11 @@ class QueryImpactModelConservationTest {
         )
     }
 
-    private fun path(f: QueryImpactLedgerTest.Fixture, terminal: QueryImpactTerminal) =
+    private fun path(f: QueryImpactLedgerFixture, terminal: QueryImpactTerminal) =
         QueryImpactPath.fromEvidence(f.producer, emptyList(), QueryImpactRepresentation.NotModeled, terminal).value()
 
     private fun boundaryLedger(
-        f: QueryImpactLedgerTest.Fixture,
+        f: QueryImpactLedgerFixture,
         models: List<BoundaryModel>,
         paths: List<QueryImpactPath>,
         observations: List<io.github.amichne.kast.relation.contract.ValueFlowStep>,
@@ -207,7 +207,7 @@ class QueryImpactModelConservationTest {
     }
 
     private fun origins(
-        f: QueryImpactLedgerTest.Fixture,
+        f: QueryImpactLedgerFixture,
         declaration: CompilerGroundedSymbolEvidence = f.evidence,
     ): List<RepresentationRule.Origin> {
         val owner = RelationEndpoint.resolve(f.lease, f.scope, declaration).value()
@@ -235,7 +235,7 @@ class QueryImpactModelConservationTest {
         }
     }
 
-    private fun otherDeclaration(f: QueryImpactLedgerTest.Fixture) =
+    private fun otherDeclaration(f: QueryImpactLedgerFixture) =
         CompilerGroundedSymbolEvidence.fromBoundary(
                 f.file,
                 50,

@@ -18,7 +18,7 @@ internal fun PsiElement.discoveryDeclaration(request: SymbolDiscoveryRequest): K
     while (element != null && element !is KtFile) {
         val declaration = element as? KtNamedDeclaration
         if (declaration != null && declaration.textRange.startOffset == textRange.startOffset) {
-            val kind = declaration.discoveryKind()
+            val kind = declaration.discoveryCompilerKind()
             if (kind != null && kind in request.requestedDeclarationKinds()) return declaration
         }
         element = element.parent
@@ -26,7 +26,7 @@ internal fun PsiElement.discoveryDeclaration(request: SymbolDiscoveryRequest): K
     return null
 }
 
-private fun KtNamedDeclaration.discoveryKind(): CompilerSymbolKind? =
+internal fun KtNamedDeclaration.discoveryCompilerKind(): CompilerSymbolKind? =
     when (this) {
         is KtEnumEntry -> null
         is KtClassOrObject -> CompilerSymbolKind.CLASSLIKE
