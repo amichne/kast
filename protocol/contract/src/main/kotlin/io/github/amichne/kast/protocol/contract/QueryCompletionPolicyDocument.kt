@@ -1,9 +1,18 @@
-@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+@file:OptIn(ExperimentalSerializationApi::class)
 
 package io.github.amichne.kast.protocol.contract
 
+import io.github.amichne.kast.kernel.Refinement
+import java.util.Collections
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonClassDiscriminator
 
 /** Compiler-resolved source relationships; this model makes no runtime reachability claim. */
 @Serializable
@@ -12,7 +21,7 @@ enum class QueryStaticModelDocument {
 }
 
 @Serializable
-@kotlinx.serialization.json.JsonClassDiscriminator("type")
+@JsonClassDiscriminator("type")
 sealed interface QueryCompletionPolicyDocument {
     companion object {
         val Default: CompleteOnly = CompleteOnly(QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1)
@@ -37,6 +46,7 @@ enum class QueryCompletionUnprovenReason {
     ITEM_FAILURE,
     OMITTED_EVIDENCE,
     CALLBACK_GRAPH_UNPROVEN,
+    INVESTIGATION_UNPROVEN,
 }
 
 @Serializable
@@ -47,7 +57,7 @@ enum class QueryCompletionRetentionFailure {
 
 /** Original coverage is independent of the policy rejection and cannot be relabeled as complete. */
 @Serializable
-@kotlinx.serialization.json.JsonClassDiscriminator("type")
+@JsonClassDiscriminator("type")
 sealed interface QueryCompletionCoverageDocument {
     @Serializable @SerialName("COMPLETE") data object Complete : QueryCompletionCoverageDocument
 
@@ -62,7 +72,7 @@ sealed interface QueryCompletionCoverageDocument {
 }
 
 @Serializable
-@kotlinx.serialization.json.JsonClassDiscriminator("type")
+@JsonClassDiscriminator("type")
 sealed interface QueryCompletionEvidenceDocument {
     @Serializable
     @SerialName("RETAINED")
@@ -83,19 +93,16 @@ class QueryCompletionLimitationsDocument private constructor(val values: List<Qu
     companion object {
         fun from(
             raw: List<QueryLimitationDocument>
-        ): io.github.amichne.kast.kernel.Refinement<
+        ): Refinement<
             QueryCompletionLimitationsDocument,
             QueryCompletionLimitationsFailure,
         > =
             when {
-                raw.isEmpty() ->
-                    io.github.amichne.kast.kernel.Refinement.Rejected(QueryCompletionLimitationsFailure.EMPTY)
+                raw.isEmpty() -> Refinement.Rejected(QueryCompletionLimitationsFailure.EMPTY)
                 raw != raw.distinct().sortedBy { it.ordinal } ->
-                    io.github.amichne.kast.kernel.Refinement.Rejected(QueryCompletionLimitationsFailure.NON_CANONICAL)
+                    Refinement.Rejected(QueryCompletionLimitationsFailure.NON_CANONICAL)
                 else ->
-                    io.github.amichne.kast.kernel.Refinement.Refined(
-                        QueryCompletionLimitationsDocument(java.util.Collections.unmodifiableList(raw.toList()))
-                    )
+                    Refinement.Refined(QueryCompletionLimitationsDocument(Collections.unmodifiableList(raw.toList())))
             }
     }
 
@@ -104,9 +111,8 @@ class QueryCompletionLimitationsDocument private constructor(val values: List<Qu
     override fun hashCode(): Int = values.hashCode()
 }
 
-internal object QueryCompletionLimitationsSerializer :
-    kotlinx.serialization.KSerializer<QueryCompletionLimitationsDocument> {
-    private val delegate = kotlinx.serialization.builtins.ListSerializer(QueryLimitationDocument.serializer())
+internal object QueryCompletionLimitationsSerializer : KSerializer<QueryCompletionLimitationsDocument> {
+    private val delegate = ListSerializer(QueryLimitationDocument.serializer())
     override val descriptor =
         annotatedDescriptor(
             delegate.descriptor,
@@ -117,26 +123,25 @@ internal object QueryCompletionLimitationsSerializer :
             ),
         )
 
-    override fun serialize(encoder: kotlinx.serialization.encoding.Encoder, value: QueryCompletionLimitationsDocument) =
+    override fun serialize(encoder: Encoder, value: QueryCompletionLimitationsDocument) =
         delegate.serialize(encoder, value.values)
 
-    override fun deserialize(decoder: kotlinx.serialization.encoding.Decoder): QueryCompletionLimitationsDocument =
+    override fun deserialize(decoder: Decoder): QueryCompletionLimitationsDocument =
         when (val parsed = QueryCompletionLimitationsDocument.from(delegate.deserialize(decoder))) {
-            is io.github.amichne.kast.kernel.Refinement.Refined -> parsed.value
-            is io.github.amichne.kast.kernel.Refinement.Rejected ->
-                throw kotlinx.serialization.SerializationException("Completion limitations rejected ${parsed.failure}")
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> throw SerializationException("Completion limitations rejected ${parsed.failure}")
         }
 }
 
 /** Historical producer progress is retained independently; the rejected policy issues no resume transition. */
 @Serializable
-@kotlinx.serialization.json.JsonClassDiscriminator("type")
+@JsonClassDiscriminator("type")
 sealed interface QueryCompletionPolicyProgressDocument {
     @Serializable @SerialName("EVIDENCE_ONLY") data object EvidenceOnly : QueryCompletionPolicyProgressDocument
 }
 
 @Serializable
-@kotlinx.serialization.json.JsonClassDiscriminator("type")
+@JsonClassDiscriminator("type")
 sealed interface QueryResultInterpretationDocument {
     @Serializable @SerialName("QUERY_RESULT") data object QueryResult : QueryResultInterpretationDocument
 

@@ -3,7 +3,7 @@ package io.github.amichne.kast.protocol.registry
 
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 
-const val PUBLIC_TOOL_CONTRACT_VERSION = 8
+const val PUBLIC_TOOL_CONTRACT_VERSION = 9
 const val PUBLIC_TOOL_NAMESPACE_DESCRIPTION = "Compiler-grounded Kotlin source intelligence from Kast."
 
 /** Closed presentation identities; canonical operations retain effect and budget ownership. */
@@ -39,7 +39,9 @@ enum class PublicToolIdentity(
             "etion defaults to COMPLETE_ONLY within COMPILER_RESOLVED_STATIC_V1; supported row families execute" +
             " automatically to exhaustion under one grant. Request completion {\"type\":\"PROGRESSIVE\"} explic" +
             "itly for qualified investigation. Unproven or unsupported strict answers reject with retained evid" +
-            "ence when admitted; presentation prefixes never establish completeness.",
+            "ence when admitted; presentation prefixes never establish completeness. For IMPACT, strict VALUE_P" +
+            "ATHS completes the original ledger; strict IMPACT_WITNESS presents a retained section after that p" +
+            "roof.",
         HostedToolLoading.EAGER,
     ),
     CHECK_DIAGNOSTICS("check_diagnostics", CanonicalOperation.DIAGNOSTIC_CHECK,

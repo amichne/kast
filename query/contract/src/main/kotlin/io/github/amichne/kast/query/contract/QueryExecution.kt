@@ -1,10 +1,12 @@
 package io.github.amichne.kast.query.contract
 
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.relation.contract.RelationFact
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationReadRejection
+import io.github.amichne.kast.relation.contract.RelationReferenceOccurrence
 import io.github.amichne.kast.source.contract.SourceReadRejection
 import io.github.amichne.kast.source.contract.SourceTextProjection
 import io.github.amichne.kast.source.contract.SourceTextWithheldReason
@@ -24,10 +26,7 @@ enum class QueryByteLimitFailure {
 @JvmInline
 value class QueryByteLimit private constructor(val value: Long) {
     companion object {
-        val DefaultCheckpoint =
-            QueryByteLimit(
-                io.github.amichne.kast.kernel.ReadLimitParameter.QUERY_CHECKPOINT_BYTES.defaultValue.toLong()
-            )
+        val DefaultCheckpoint = QueryByteLimit(ReadLimitParameter.QUERY_CHECKPOINT_BYTES.defaultValue.toLong())
 
         fun parse(raw: Long): Refinement<QueryByteLimit, QueryByteLimitFailure> =
             if (raw > 0L) {
@@ -106,8 +105,7 @@ data class QuerySymbol(
 
 /** Occurrence identity survives independently of any declaration projection. */
 sealed interface QueryOccurrence {
-    data class Reference(val value: io.github.amichne.kast.relation.contract.RelationReferenceOccurrence) :
-        QueryOccurrence
+    data class Reference(val value: RelationReferenceOccurrence) : QueryOccurrence
 
     data class Declaration(val symbol: QuerySymbol, val fact: RelationFact) : QueryOccurrence {
         init {
@@ -171,7 +169,7 @@ data class QueryResult(
     val failures: List<QueryItemFailure>,
     val omissions: List<QueryRelationOmission> = emptyList(),
     val walkObservations: List<QueryWalkObservation> = emptyList(),
-    val referenceObservations: List<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence> = emptyList(),
+    val referenceObservations: List<RelationReferenceOccurrence> = emptyList(),
     val discoveryObservations: List<QueryDiscoveryObservation> = emptyList(),
     val relationObservations: List<QueryRelationObservation> = emptyList(),
 )
@@ -299,6 +297,7 @@ sealed interface QueryExecutionResult {
         val continuation: QueryContinuationState =
             QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE),
         override val workUsage: QueryWorkUsage = QueryWorkUsage.Unobserved,
+        val investigationCompletion: QueryInvestigationCompletion = QueryInvestigationCompletion.NotEstablished,
     ) : QueryExecutionResult
 
     data class Rejected(

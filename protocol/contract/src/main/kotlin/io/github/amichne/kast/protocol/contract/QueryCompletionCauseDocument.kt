@@ -2,10 +2,11 @@ package io.github.amichne.kast.protocol.contract
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonClassDiscriminator
 
 /** Each completion failure owns exactly the proof detail its case requires. */
 @Serializable
-@kotlinx.serialization.json.JsonClassDiscriminator("type")
+@JsonClassDiscriminator("type")
 sealed interface QueryCompletionCauseDocument {
     val reason: QueryCompletionUnprovenReason
 
@@ -36,5 +37,13 @@ sealed interface QueryCompletionCauseDocument {
         QueryCompletionCauseDocument {
         override val reason
             get() = QueryCompletionUnprovenReason.CALLBACK_GRAPH_UNPROVEN
+    }
+
+    @Serializable
+    @SerialName("INVESTIGATION_UNPROVEN")
+    data class InvestigationUnproven(val investigationFailure: QueryInvestigationCompletionFailureDocument) :
+        QueryCompletionCauseDocument {
+        override val reason
+            get() = QueryCompletionUnprovenReason.INVESTIGATION_UNPROVEN
     }
 }

@@ -1,9 +1,12 @@
 package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.*
+import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.protocol.contract.*
 import io.github.amichne.kast.query.contract.*
+import io.github.amichne.kast.relation.contract.ValueProducerSeedCompilerPort
 import io.github.amichne.kast.workspace.contract.*
+import java.util.Collections
 
 /** Public query admission and projection around the in-process typed evaluator. */
 class CanonicalQueryProtocol(
@@ -11,14 +14,13 @@ class CanonicalQueryProtocol(
     private val authority: QueryReferenceAuthority,
     private val state: QueryStateStore = QueryStateStore(),
     private val publication: QueryExecutionPublication = QueryExecutionPublication.Immediate,
-    private val producerSeeds: io.github.amichne.kast.relation.contract.ValueProducerSeedCompilerPort =
-        UnavailableValueProducerSeeds,
+    private val producerSeeds: ValueProducerSeedCompilerPort = UnavailableValueProducerSeeds,
     private val retentionObservation: QueryResultRetentionObservation = QueryResultRetentionObservation.None,
     peerSiteAdmissions: List<QueryImpactPeerSiteAdmission> = emptyList(),
 ) {
     private var pageAdmission = PageAdmission.PUBLIC
 
-    private val peerSiteAdmissions = java.util.Collections.unmodifiableList(peerSiteAdmissions.toList())
+    private val peerSiteAdmissions = Collections.unmodifiableList(peerSiteAdmissions.toList())
     private val pagePublication = QueryPagePublication(state, publication)
     private val projection = QueryOutcomeProjection(authority, state, retentionObservation)
 
@@ -33,12 +35,16 @@ class CanonicalQueryProtocol(
             is Refinement.Refined -> Unit
             is Refinement.Rejected -> return OperationOutcome.Rejected(admission.failure)
         }
+        if (request !is QueryRunRequest.Run) return execute(request, lease, budget)
         if (
-            request !is QueryRunRequest.Run ||
-                request.output == QueryOutputDocument.ValuePaths ||
-                request.output is QueryOutputDocument.ImpactWitness
+            request.output == QueryOutputDocument.ValuePaths &&
+                request.completion is QueryCompletionPolicyDocument.Progressive
         )
             return execute(request, lease, budget)
+        val semanticRequest =
+            if (request.output is QueryOutputDocument.ImpactWitness)
+                request.copy(output = QueryOutputDocument.ValuePaths)
+            else request
         val recording = QueryInvocationExecution(operations)
         val pages =
             CanonicalQueryProtocol(
@@ -57,7 +63,7 @@ class CanonicalQueryProtocol(
                     AutomaticSymbolQueryRunner(state, lease, policy) { action, remaining ->
                             recording.page(remaining) { pages.execute(action, lease, remaining) }
                         }
-                        .run(request, budget)
+                        .run(semanticRequest, budget)
             ) {
                 is Refinement.Refined -> execution.value
                 is Refinement.Rejected -> return OperationOutcome.Rejected(execution.failure)
@@ -253,7 +259,7 @@ class CanonicalQueryProtocol(
     private fun remainingResources(
         budget: QueryBudget,
         examinedWork: Long = 0L,
-    ): Refinement<io.github.amichne.kast.kernel.ResourceBudget, QueryRunRejection> =
+    ): Refinement<ResourceBudget, QueryRunRejection> =
         when (val remaining = authority.remainingReadBudget(budget.resources)) {
             is Refinement.Refined ->
                 when (

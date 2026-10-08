@@ -50,7 +50,7 @@ class CanonicalOperationDefinitionsTest {
                 when (definition.operation) {
                     CanonicalOperation.SOURCE_READ -> 6
                     CanonicalOperation.DIAGNOSTIC_CHECK -> 5
-                    CanonicalOperation.QUERY_RUN -> 5
+                    CanonicalOperation.QUERY_RUN -> 6
                     CanonicalOperation.CHANGE_APPLY -> 3
                     else -> 2
                 }

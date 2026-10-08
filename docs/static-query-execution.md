@@ -25,7 +25,11 @@ Automatic execution now drains symbols, occurrences, traversal records, and
 binding rows under one invocation allowance. It follows issued continuations,
 including empty pages, without rerunning the source search. Binding names and
 mode survive accumulation. Mixed row families or binding modes fail closed.
-Value paths and impact witnesses retain their separate investigation ledgers.
+Strict value paths accumulate against the original investigation ledger. Completion
+requires every original path exactly once and discharged ledger obligations. A
+complete-only impact witness first completes that same investigation, then presents
+a retained section with the original question and path identities. Shared ledger
+objects are charged once; each page still charges its rows and references.
 
 Presentation size is separate from semantic completion. A bounded preview may
 point to retained rows and independent evidence pages. Reading a retained result
@@ -36,7 +40,10 @@ Omitted or null public completion selects `COMPLETE_ONLY` with
 `COMPILER_RESOLVED_STATIC_V1` on the original question. Canonical requests and
 retained questions encode this policy explicitly. `PROGRESSIVE` is an explicit
 investigation choice; strict execution never falls back to it.
-Unsupported outputs and unproven completion are closed rejection variants.
+Unproven completion is a closed rejection variant. Investigation failures distinguish
+missing original evidence, incomplete original path selection, and unresolved required
+obligations. Mutable flow, cyclic path expansion, unsupported transfers, and exhausted
+budgets still reject strict completion; retained evidence preserves their qualifications.
 Rejected prefixes retain their full evidence when bounded storage admits them;
 storage rejection is explicit. Evidence reads retain the policy verdict and
 original coverage separately. A historical producer checkpoint does not grant a

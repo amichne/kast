@@ -39,4 +39,4 @@ internal data class PublicToolImpactSource(
 @SerialName("IMPACT_WITNESS")
 internal data class PublicToolImpactWitnessOutput(
     val section: io.github.amichne.kast.protocol.contract.ImpactWitnessSectionDocument
-) : PublicToolReadResultOutput
+) : PublicToolOutput, PublicToolReadResultOutput

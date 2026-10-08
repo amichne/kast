@@ -20,6 +20,7 @@ import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryContinuationState
 import io.github.amichne.kast.query.contract.QueryExecutionResult
+import io.github.amichne.kast.query.contract.QueryInvestigationCompletion
 import io.github.amichne.kast.query.contract.QueryTerminalReason
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
@@ -174,15 +175,18 @@ internal class AutomaticSymbolQueryRunner(
             when (page) {
                 is SymbolInvocationPage.Complete -> QueryInvocationTransition.Stopped(QueryInvocationStop.COMPLETED)
                 is SymbolInvocationPage.Qualified ->
-                    when (val progress = page.qualification.progress) {
-                        is QueryQualifiedProgressDocument.Resumable -> resume(page, progress)
-                        is QueryQualifiedProgressDocument.TerminalIncomplete -> {
-                            facts.terminal(page, QueryTerminalReason.valueOf(progress.reason.name))
-                            QueryInvocationTransition.Stopped(QueryInvocationStop.TERMINAL_INCOMPLETE)
+                    if (page.execution.investigationCompletion is QueryInvestigationCompletion.Established)
+                        QueryInvocationTransition.Stopped(QueryInvocationStop.COMPLETED)
+                    else
+                        when (val progress = page.qualification.progress) {
+                            is QueryQualifiedProgressDocument.Resumable -> resume(page, progress)
+                            is QueryQualifiedProgressDocument.TerminalIncomplete -> {
+                                facts.terminal(page, QueryTerminalReason.valueOf(progress.reason.name))
+                                QueryInvocationTransition.Stopped(QueryInvocationStop.TERMINAL_INCOMPLETE)
+                            }
+                            is QueryQualifiedProgressDocument.RetentionUnavailable ->
+                                QueryInvocationTransition.Stopped(QueryInvocationStop.RETENTION_FAILED)
                         }
-                        is QueryQualifiedProgressDocument.RetentionUnavailable ->
-                            QueryInvocationTransition.Stopped(QueryInvocationStop.RETENTION_FAILED)
-                    }
             }
 
         private fun resume(

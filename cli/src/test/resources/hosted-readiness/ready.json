@@ -4,7 +4,7 @@
   "root": "/workspace",
   "hostPid": 123,
   "host": "00000000-0000-0000-0000-000000000001",
-  "querySchema": "kast.query.run.v5",
+  "querySchema": "kast.query.run.v6",
   "operations": [
     "DESCRIBE",
     "CLASS_LOOKUP",

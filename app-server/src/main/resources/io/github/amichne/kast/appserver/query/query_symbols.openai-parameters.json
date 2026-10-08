@@ -256,6 +256,9 @@
         },
         {
           "$ref": "#/$defs/ValuePathsOutput"
+        },
+        {
+          "$ref": "#/$defs/ImpactWitnessOutput"
         }
       ],
       "description": "Omission or null returns symbols with name and location. Choose occurrences, traversal_records, or binding_rows for their typed established evidence."
@@ -4376,7 +4379,7 @@
         "section"
       ],
       "additionalProperties": false,
-      "description": "Page retained producer, model, native-read, rejected-read, or compact finding evidence through READ_RESULT. Each finding links to its original VALUE_PATHS row by ordinal and row ID. This output preserves qualifications and presents the existing investigation without reexecuting semantic reads."
+      "description": "Present a retained original impact ledger through READ_RESULT. A strict RUN from IMPACT with no steps completes the original investigation before presenting this section. Findings retain original VALUE_PATHS row ordinals and IDs; presentation never independently proves completion."
     },
     "ExpansionScope": {
       "anyOf": [

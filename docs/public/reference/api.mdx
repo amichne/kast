@@ -89,7 +89,7 @@ For breadth-first walks, `maximumDepth` includes nodes at that depth without exp
 | `TRAVERSAL_RECORDS` | Relation facts with hop depth. |
 | `BINDING_ROWS` | Named cells from an inner join. |
 | `VALUE_PATHS` | Producer sites, transfers, model applications, representation history, terminals, and obligations. |
-| `IMPACT_WITNESS` | Selected retained impact evidence through `READ_RESULT` only. |
+| `IMPACT_WITNESS` | Retained impact sections from a complete-only `IMPACT` run or `READ_RESULT`. |
 
 Explicit symbol `fields: []` requests mandatory identity and kind. File-scoped occurrences remain use sites. Walks cannot expand them as declaration endpoints.
 
@@ -99,7 +99,8 @@ Explicit symbol `fields: []` requests mandatory identity and kind. File-scoped o
 
 Non-final branch expressions do not supply the try result. Explicit returns remain return transfers, and throws do not produce normal branch results. Crossing a try boundary with `finally`, including an explicit return, retains `FINALLY_UNSUPPORTED`. Keep that obligation and every independent qualification attached to the useful partial paths.
 
-`IMPACT` requires `seeds`, `declarations`, `domain`, `flow`, and `models`. Use no transformation steps, select `VALUE_PATHS`, and explicitly request `completion: {"type": "PROGRESSIVE"}` while strict automatic ledger admission is unsupported. Retain the result for later inspection.
+`IMPACT` requires `seeds`, `declarations`, `domain`, `flow`, and `models`. Use no transformation steps and select `VALUE_PATHS`, or select `IMPACT_WITNESS` with `COMPLETE_ONLY` to complete the original investigation before presenting its selected section. Retain the result for later inspection.
+
 
 | Input | Requirement |
 | --- | --- |
@@ -112,7 +113,9 @@ Non-final branch expressions do not supply the try result. Explicit returns rema
 
 Native reads establish invocation and site identity. Supplied models define representation and boundary meaning. Unsupported transfers, rejected reads, and unresolved obligations preserve qualifications.
 
-A work-limited run can return empty `VALUE_PATHS` with `EVIDENCE_ONLY` accounting and a resumable checkpoint. Before ledger finalization, witnesses return `RESULT_FIELD_UNAVAILABLE`. `RESUME` advances the investigation. Retained reads preserve its checkpoint.
+An explicit `PROGRESSIVE` work-limited run can return empty `VALUE_PATHS` with `EVIDENCE_ONLY` accounting and a resumable checkpoint. Before ledger finalization, witnesses return `RESULT_FIELD_UNAVAILABLE`. `RESUME` advances the investigation. Retained reads preserve its checkpoint.
+
+Strict value-path completion requires discharged original ledger obligations and every original path. Missing evidence, an incomplete path selection, or unresolved obligations returns `INVESTIGATION_UNPROVEN` with case-specific proof details. Budget rejection retains original accounting when storage permits it. Cyclic path expansion and mutable or unsupported native flow remain unproven.
 
 ### Read retained witnesses
 

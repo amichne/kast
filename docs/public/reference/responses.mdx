@@ -20,15 +20,15 @@ Diagnostics cover the reported IDEA scope. Source changes require their own [ver
 
 ## Read an automatic query
 
-The response shape uses `kast.query.run.v5`; Host and Control must provide the same contract.
+The response shape uses `kast.query.run.v6`; Host and Control must provide the same contract.
 
 A `query_symbols` `RUN` returning symbols, occurrences, traversal records, or bindings follows issued resumable execution internally. One call returns the accumulated rows in page order, with their exact references and multiplicity. Empty advancing pages can continue. The original query, scope, output, and semantic basis stay fixed.
 
-Omitted or null `completion` selects `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`. A successful answer requires exhausted execution, no item failures or omitted evidence, and proven callback graphs. Unsupported questions and missing proof return typed rejections. Retained rejection evidence remains rejected evidence when read; it cannot become a successful answer.
+Omitted or null `completion` selects `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`. A successful answer requires exhausted execution, no item failures or omitted evidence, proven callback graphs, and conserved original investigation ledgers where applicable. Unsupported questions and missing proof return typed rejections. Retained rejection evidence remains rejected evidence when read; it cannot become a successful answer.
 
-Request `completion: {"type": "PROGRESSIVE"}` explicitly to inspect useful qualified results and execution checkpoints. This is required for value-path investigations until their original ledger can be admitted by automatic strict execution. Neither policy proves runtime activation or path feasibility.
+Request `completion: {"type": "PROGRESSIVE"}` explicitly to inspect useful qualified results and execution checkpoints. Neither policy proves runtime activation or path feasibility.
 
-The invocation shares one elapsed-time, work, and retention allowance. It stops when work finishes or needs a new decision, including a budget increase, invalid state, or a terminal limit. It does not restart discovery after a stale state or hard timeout. `RESUME` advances an issued progressive checkpoint; `READ_RESULT` presents retained evidence without semantic replay. A strict rejection's historical checkpoint grants no new strict execution allowance.
+The invocation shares one elapsed-time, work, and retention allowance. It stops when work finishes or needs a new decision, including a budget increase, invalid state, or a terminal limit. It does not restart discovery after a stale state or hard timeout. Strict `VALUE_PATHS` follows issued continuations against one original investigation ledger. Strict `IMPACT_WITNESS` from `IMPACT` completes that investigation and presents a retained section. `RESUME` advances an issued progressive checkpoint; `READ_RESULT` presents retained evidence without semantic replay. A strict rejection's historical checkpoint grants no new strict execution allowance.
 
 | Response field | Meaning |
 | --- | --- |
@@ -42,6 +42,8 @@ The invocation shares one elapsed-time, work, and retention allowance. It stops 
 Small results appear inline. Larger results have a preview bounded by row count and encoded bytes, plus a retained-result reference when retention succeeds. Use `READ_RESULT` with that reference and cursor to retrieve additional rows without running semantic providers again.
 
 Accumulated failures, omissions, and observations also use bounded pages. Use `READ_RESULT.evidence_cursor` with `evidence_window.end` when its type is `MORE`. Evidence follows a fixed sequence: failures, omissions, walk observations, reference observations, discovery observations, then relation observations. Track row and evidence positions independently. Once the rows are drained, keep the row `cursor` at `invocation.accumulated_row_count` while advancing the evidence cursor. An evidence-only page does not advance the row cursor.
+
+For impact, completion requires original ledger conservation and discharged obligations. Selected preview paths and witness sections retain that original proof through accounting and a retained presentation window. `INVESTIGATION_UNPROVEN` distinguishes missing original evidence, incomplete path selection, and unresolved required obligations. Retained reads preserve the original question even when reading another witness section or expanding value paths.
 
 Coverage describes semantic execution. Preview truncation describes presentation. A complete retained result remains complete when its preview omits rows. Reading every retained page preserves terminal upstream limitations. Retention failure returns qualified coverage and an explicit retention outcome without inventing a reference.
 

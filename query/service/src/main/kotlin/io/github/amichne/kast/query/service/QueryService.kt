@@ -1,35 +1,46 @@
 package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.query.contract.AdmittedQueryPlan
 import io.github.amichne.kast.query.contract.ExactQueryStage
+import io.github.amichne.kast.query.contract.QueryCompositionInput
 import io.github.amichne.kast.query.contract.QueryContinuationState
+import io.github.amichne.kast.query.contract.QueryCount
 import io.github.amichne.kast.query.contract.QueryExecutionRejection
 import io.github.amichne.kast.query.contract.QueryExecutionRequest
 import io.github.amichne.kast.query.contract.QueryExecutionResult
+import io.github.amichne.kast.query.contract.QueryImpactPath
+import io.github.amichne.kast.query.contract.QueryImpactRetainedGraph
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryLimitation
+import io.github.amichne.kast.query.contract.QueryOccurrence
 import io.github.amichne.kast.query.contract.QueryOperations
+import io.github.amichne.kast.query.contract.QueryPresentationExecution
+import io.github.amichne.kast.query.contract.QueryRelationObservation
 import io.github.amichne.kast.query.contract.QueryRelationOmission
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.query.contract.QueryTerminalReason
 import io.github.amichne.kast.query.contract.QueryWalkObservation
 import io.github.amichne.kast.relation.contract.RelationOperations
+import io.github.amichne.kast.relation.contract.RelationReferenceOccurrence
+import io.github.amichne.kast.relation.contract.ValueFlowCompilerPort
 import io.github.amichne.kast.source.contract.SourceReadOperations
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
 import io.github.amichne.kast.symbol.contract.SymbolExactOperations
 import io.github.amichne.kast.traversal.contract.TraversalBudget
 import io.github.amichne.kast.traversal.contract.TraversalOperations
 
 /** In-process evaluator for the closed compositional exact-symbol query algebra. */
 class QueryService(
-    discovery: io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations,
+    discovery: SymbolDiscoveryOperations,
     exact: SymbolExactOperations,
     source: SourceReadOperations,
     relations: RelationOperations,
     traversal: TraversalOperations,
     private val traversalCeiling: TraversalBudget,
     private val clock: QueryNanoClock = SystemQueryNanoClock,
-    private val valueFlow: io.github.amichne.kast.relation.contract.ValueFlowCompilerPort = unavailableValueFlowPort,
-    private val presentation: io.github.amichne.kast.query.contract.QueryPresentationExecution? = null,
+    private val valueFlow: ValueFlowCompilerPort = unavailableValueFlowPort,
+    private val presentation: QueryPresentationExecution? = null,
 ) : QueryOperations {
     private val stages = QueryReadStages(discovery, exact, source)
     private val relationStage = QueryRelationStage(relations)
@@ -59,15 +70,13 @@ class QueryService(
         private val joinStage = QueryJoinStage(request, state, tasks, checkpoint?.joinState)
         private val impactTasks = QueryImpactTasks(request, state, tasks, valueFlow, checkpoint?.impact)
         private val symbols = mutableListOf<QuerySymbol>()
-        private val valuePaths = mutableListOf<io.github.amichne.kast.query.contract.QueryImpactPath>()
-        private val occurrences = mutableListOf<io.github.amichne.kast.query.contract.QueryOccurrence>()
-        private val referenceObservations =
-            mutableListOf<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence>()
+        private val valuePaths = mutableListOf<QueryImpactPath>()
+        private val occurrences = mutableListOf<QueryOccurrence>()
+        private val referenceObservations = mutableListOf<RelationReferenceOccurrence>()
         private val completedFailures = mutableListOf<QueryItemFailure>()
         private val completedOmissions = mutableListOf<QueryRelationOmission>()
         private val completedWalkObservations = mutableListOf<QueryWalkObservation>()
-        private val relationObservations =
-            mutableListOf<io.github.amichne.kast.query.contract.QueryRelationObservation>()
+        private val relationObservations = mutableListOf<QueryRelationObservation>()
         private val discoveryTasks = QueryDiscoveryTasks(state, tasks)
         private var progressed = false
         private var terminal: QueryTerminalReason? = null
@@ -78,9 +87,7 @@ class QueryService(
         init {
             state.limitations += checkpoint?.limitations.orEmpty()
             state.upstreamLimitations += checkpoint?.limitations.orEmpty()
-            (request.plan as? io.github.amichne.kast.query.contract.AdmittedQueryPlan.Retained)
-                ?.source
-                ?.let(state::inheritRetainedLimitations)
+            (request.plan as? AdmittedQueryPlan.Retained)?.source?.let(state::inheritRetainedLimitations)
         }
 
         suspend fun run(): QueryExecutionResult {
@@ -173,7 +180,7 @@ class QueryService(
                 }
             }
 
-        private fun retainedBytes(graph: io.github.amichne.kast.query.contract.QueryImpactRetainedGraph): Long =
+        private fun retainedBytes(graph: QueryImpactRetainedGraph): Long =
             checkpoint(emittedBefore).retainedBytes(graph)
 
         private fun discovered(
@@ -192,9 +199,7 @@ class QueryService(
             }
 
         private fun feed(task: PipelineTask.Feed): Boolean {
-            (task.stage.input as? io.github.amichne.kast.query.contract.QueryCompositionInput.Retained)
-                ?.result
-                ?.let(state::inheritRetainedLimitations)
+            (task.stage.input as? QueryCompositionInput.Retained)?.result?.let(state::inheritRetainedLimitations)
             tasks.removeFirst()
             task.expand().asReversed().forEach(tasks::addFirst)
             return true
@@ -247,7 +252,7 @@ class QueryService(
             return false
         }
 
-        private fun emitValuePath(path: io.github.amichne.kast.query.contract.QueryImpactPath): Boolean =
+        private fun emitValuePath(path: QueryImpactPath): Boolean =
             when (
                 val admitted =
                     admitValuePathOutput(presentation, { emit(path.retainedBytes) { valuePaths += path } }) {
@@ -359,9 +364,7 @@ class QueryService(
             }
         }
 
-        private fun continuation(
-            emittedCount: io.github.amichne.kast.query.contract.QueryCount
-        ): QueryContinuationState {
+        private fun continuation(emittedCount: QueryCount): QueryContinuationState {
             val reason = terminal
             if (reason != null) return QueryContinuationState.Terminal(reason)
             if (tasks.isEmpty()) return QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE)
@@ -372,7 +375,7 @@ class QueryService(
             else QueryContinuationState.Resumable(next)
         }
 
-        private fun checkpoint(emittedCount: io.github.amichne.kast.query.contract.QueryCount): PipelineCheckpoint =
+        private fun checkpoint(emittedCount: QueryCount): PipelineCheckpoint =
             PipelineCheckpoint(
                 request.plan,
                 request.lease,
@@ -381,14 +384,14 @@ class QueryService(
                 joinStage.snapshot(),
                 state.limitations.filterTo(linkedSetOf()) {
                     it !in pageLimits &&
-                        !(request.plan is io.github.amichne.kast.query.contract.AdmittedQueryPlan.Impact &&
+                        !(request.plan.preservesOriginalInvestigation() &&
+                            it == QueryLimitation.ROW_SELECTION_INCOMPLETE) &&
+                        !(request.plan is AdmittedQueryPlan.Impact &&
                             it == QueryLimitation.IMPACT_COVERAGE_UNPROVEN &&
                             impactTasks.rowsState() == QueryImpactRowsState.Pending)
                 } + state.upstreamLimitations,
                 emittedCount,
-                if (request.plan is io.github.amichne.kast.query.contract.AdmittedQueryPlan.Impact)
-                    impactTasks.snapshot()
-                else null,
+                if (request.plan is AdmittedQueryPlan.Impact) impactTasks.snapshot() else null,
             )
     }
 }

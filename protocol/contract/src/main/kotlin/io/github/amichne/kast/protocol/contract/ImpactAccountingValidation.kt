@@ -6,7 +6,7 @@ import io.github.amichne.kast.kernel.Refinement
 fun QueryRunResult.validateImpactAccounting(): Refinement<Unit, ImpactAccountingFailure> {
     val pathCount = items.values.count { it is QueryResultItemDocument.ValuePath }.toLong()
     if (impactAccounting == ImpactAccountingDocument.NotApplicable) return validateNonImpactAccounting(pathCount)
-    if (question.output != QueryOutputDocument.ValuePaths)
+    if (!question.output.requiresImpactAccounting())
         return Refinement.Rejected(ImpactAccountingFailure.ACCOUNTING_FOR_NON_VALUE_OUTPUT)
     val investigated = impactAccounting as? ImpactAccountingDocument.Investigated
     val source = question.from as? QueryFromDocument.Impact
@@ -31,7 +31,7 @@ private fun QueryRunResult.validateNonImpactAccounting(pathCount: Long): Refinem
     if (
         pathCount != 0L ||
             items.values.any { it is QueryResultItemDocument.ImpactWitness } ||
-            question.output == QueryOutputDocument.ValuePaths
+            question.output.requiresImpactAccounting()
     )
         Refinement.Rejected(ImpactAccountingFailure.MISSING_VALUE_ACCOUNTING)
     else Refinement.Refined(Unit)
@@ -160,13 +160,19 @@ fun QueryRunResult.validateImpactCompletion(): Refinement<Unit, ImpactAccounting
         is Refinement.Rejected -> return accounting
         is Refinement.Refined -> Unit
     }
-    if (question.output != QueryOutputDocument.ValuePaths) return Refinement.Refined(Unit)
+    if (!question.output.requiresImpactAccounting()) return Refinement.Refined(Unit)
     val accounting = impactAccounting
-    return if (
+    val originalConserved =
         accounting is ImpactAccountingDocument.Investigated &&
-            accounting.status == ImpactAccountingStatusDocument.Conserved
-    )
-        Refinement.Refined(Unit)
+            when (val status = accounting.status) {
+                ImpactAccountingStatusDocument.Conserved -> true
+                is ImpactAccountingStatusDocument.Unresolved -> false
+                is ImpactAccountingStatusDocument.SelectedSubset ->
+                    status.originalClosure == ImpactClosureDocument.Discharged &&
+                        retention is QueryResultRetention.Retained &&
+                        presentationWindow != null
+            }
+    return if (originalConserved) Refinement.Refined(Unit)
     else Refinement.Rejected(ImpactAccountingFailure.COMPLETION_NOT_CONSERVED)
 }
 
@@ -184,3 +190,6 @@ private fun ImpactWitnessDocument.section(): ImpactWitnessSectionDocument =
         is ImpactWitnessDocument.FlowObligation -> ImpactWitnessSectionDocument.NATIVE_READS
         is ImpactWitnessDocument.ReadRejection -> ImpactWitnessSectionDocument.READ_REJECTIONS
     }
+
+private fun QueryOutputDocument.requiresImpactAccounting(): Boolean =
+    this == QueryOutputDocument.ValuePaths || this is QueryOutputDocument.ImpactWitness

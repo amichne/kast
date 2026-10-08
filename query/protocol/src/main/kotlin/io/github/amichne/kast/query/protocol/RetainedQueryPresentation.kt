@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
+import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
@@ -113,21 +114,24 @@ private constructor(
             val rowIds =
                 originalWitnessRowIds(restored, retained, view).refinedForQueryOrNull() ?: return contractRejected()
             val coverage =
-                witnessCoverage(retained, start, count.value, maximumResults).refinedForQueryOrNull()
+                witnessCoverage(retained, start, count.value, maximumResults, restored.request).refinedForQueryOrNull()
                     ?: return contractRejected()
             val result = retainedResult(retained, QueryRows.ImpactWitness.of(view))
             return Refinement.Refined(
                 RetainedQueryPresentation(
                     result,
                     coverage as? QueryCoverage.Qualified,
-                    retained.producerProgress
-                        ?: QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE),
+                    witnessProgress(coverage, retained),
                     rowIds,
                     window,
                     originalSiteRowIds(section, restored),
                 )
             )
         }
+
+        private fun witnessProgress(coverage: QueryCoverage, retained: QueryRetainedResult): QueryContinuationState? =
+            if (coverage is QueryCoverage.Complete) null
+            else retained.producerProgress ?: QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE)
 
         private fun originalSiteRowIds(section: QueryImpactWitnessSection, restored: QueryResultRestoration.Restored) =
             if (section == QueryImpactWitnessSection.SITE_ACCOUNTING) restored.rowIds else emptyList()
@@ -173,7 +177,13 @@ private constructor(
             start: Int,
             count: Int,
             maximumResults: ResultLimit,
+            originalRequest: QueryRunRequest.Run,
         ): Refinement<QueryCoverage, QueryExecutionRejectionDocument> {
+            if (
+                originalRequest.completion is QueryCompletionPolicyDocument.CompleteOnly &&
+                    retained.coverage is QueryCoverage.Complete
+            )
+                return Refinement.Refined(retained.coverage)
             val known =
                 when (val coverage = retained.coverage) {
                     is QueryCoverage.Complete -> coverage.resultCount

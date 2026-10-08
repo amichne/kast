@@ -171,7 +171,7 @@ class ImpactWitnessPresentationTest {
     }
 
     @Test
-    fun `path fitting keeps original closure and counts while weakening sliced completion`() = runTest {
+    fun `path fitting preserves complete original closure through its retained presentation window`() = runTest {
         val fixture = ImpactWitnessPresentationFixture()
         val protocol =
             CanonicalQueryProtocol(
@@ -194,9 +194,10 @@ class ImpactWitnessPresentationTest {
         assertEquals(ImpactAccountingStatusDocument.SelectedSubset(ImpactClosureDocument.Discharged), accounting.status)
         assertEquals(QueryResultCursor.Start, prefix.nextCursor)
         assertEquals(Refinement.Refined(Unit), prefix.validateImpactAccounting())
+        assertEquals(Refinement.Refined(Unit), prefix.validateImpactCompletion())
         assertEquals(
             Refinement.Rejected(ImpactAccountingFailure.COMPLETION_NOT_CONSERVED),
-            prefix.validateImpactCompletion(),
+            prefix.copy(presentationWindow = null).validateImpactCompletion(),
         )
         val required = bounded(listOf(ImpactRequiredObligationDocument.NATIVE_FLOW))
         val unresolved =
