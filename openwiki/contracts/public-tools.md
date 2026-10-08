@@ -83,12 +83,22 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactDocuments.kt
   - id: openwiki-source-25b472ce8bd658b8f8006f96
     resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolExpansionScopeContractTest.kt
+  - id: openwiki-source-13541e0f8bd3fead648241e7
+    resource: repo://cli/src/test/js/harness-adapters.test.mjs
+  - id: openwiki-source-ffafcc2936c3877f4b78db93
+    resource: repo://copilot/extension.mjs
+  - id: openwiki-source-9202c39abfaacebb6448e73f
+    resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt
   - id: openwiki-source-c3a707e4531bdd548867dd23
     resource: repo://packaging/generate-public-query.py
+  - id: openwiki-source-32e1c94e6e0a0ff71b06b0e3
+    resource: repo://pi/extension.ts
   - id: openwiki-source-a21072bd22321038737c578c
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingDocument.kt
   - id: openwiki-source-368288aea315bf5b4628a899
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingValidation.kt
+  - id: openwiki-source-c4f2ea6fc71d7cadb12a1658
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactPathDocuments.kt
   - id: openwiki-source-11f9ee447344d26046d96f7d
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactPeerAccountingValidation.kt
   - id: openwiki-source-340e5089f189b3661207f6a6
@@ -97,6 +107,8 @@ sources:
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactSiteAccountingDocuments.kt
   - id: openwiki-source-1363c35728458151b90e82c5
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryExpansionScopeDocument.kt
+  - id: openwiki-source-e8708d938df772dd92d2daf2
+    resource: repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt
   - id: openwiki-source-25796dce45aaa5a543a07570
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryCompleteMembership.kt
   - id: openwiki-source-a184ae82a49703816522523e
@@ -111,10 +123,10 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt
   - id: openwiki-source-ff3a32a34def3fbe81d63b1c
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt
-generated: { by: "codex", at: "2026-10-03T17:08:58.136Z" }
+generated: { by: "codex", at: "2026-10-08T03:31:21.414Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-05T19:11:53.820Z
+    at: 2026-10-08T03:31:21.414Z
 ---
 
 # Public intent tools
@@ -282,3 +294,19 @@ Before an impact ledger is finalized, a qualified, empty `EVIDENCE_ONLY` value-p
 An `IMPACT` source may supply up to 128 exact `requestedSites`; omitted or null public input lowers to an empty universe. Each selected site is revalidated natively under the admitted basis and retains its admission grant and observed work. The investigated response requires the original requested-site universe even when empty. `SITE_ACCOUNTING` reports one finite `REACHED`, `EXCLUDED` or `RELATIONSHIP_UNPROVEN` outcome per original target. Reached paths and exclusions link to original path ordinals and row IDs; an unmatched target preserves required unresolved relationship closure. Selection proves site identity, not a producer relationship. These pages use the existing retained store and presentation cursor without repeating native reads.
 
 A guarded cross-root continuation uses the existing reviewed `CONTINUATION` input. The target must be independently admitted from an already registered peer root. Path and finding output use `UNRESOLVED_PEER_CONTINUATION` with required target admission and fixed `PEER_FLOW_NOT_INVESTIGATED` reason. The original `MODELS` row uses `PEER_BOUNDARY_MODEL`, retaining the reviewed rule and the same completed acquisition and site receipts. Raw accounting rejects foreign ordinary source claims and inconsistent peer receipts; decoding these documents does not grant live authority.
+
+Compiler transfers require a closed evidence discriminator: `DIRECT` or
+`NORMAL_BRANCH_RESULT`. A normal branch result retains exact enclosing try and
+originating branch ranges, a `TRY_BODY` or indexed `CATCH_BODY` alternative, and
+the `NORMAL_COMPLETION` condition. Raw admission rejects inconsistent transfer
+roles, owners, ranges or catch indexes. This evidence describes the supported
+static transfer, without asserting runtime path feasibility.
+
+Public contract version 6 requires this evidence and matching generated Pi and
+Copilot adapter versions. Catalog admission rejects incompatible versions before
+tool registration; clients cannot silently discard the branch proof.
+
+Pi and Copilot consume `KAST_TOOL_RPC_COMMAND` as their own executable selector
+and remove it from each child environment. Other supplied settings remain
+unchanged. This keeps private adapter selection outside Kast's strict product
+configuration admission without accepting unknown product settings.

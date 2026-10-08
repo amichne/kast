@@ -6,6 +6,8 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
 
+private const val MAX_IMPACT_CATCH_BRANCHES = 1024
+
 /** Detached path evidence. Completion is exclusively carried by the containing query coverage ledger. */
 @Serializable
 data class ImpactPathDocument(
@@ -34,7 +36,75 @@ data class ImpactCompilerTransferDocument(
     val source: ImpactValueSiteReferenceDocument,
     val target: ImpactValueSiteReferenceDocument,
     val kind: ImpactTransferKindDocument,
-)
+    val evidence: ImpactTransferEvidenceDocument,
+) {
+    constructor(
+        source: ImpactValueSiteReferenceDocument,
+        target: ImpactValueSiteReferenceDocument,
+        kind: ImpactTransferKindDocument,
+    ) : this(source, target, kind, ImpactTransferEvidenceDocument.Direct)
+
+    fun admitsEvidence(): Boolean =
+        when (val proof = evidence) {
+            ImpactTransferEvidenceDocument.Direct -> true
+            is ImpactTransferEvidenceDocument.NormalBranchResult ->
+                kind == ImpactTransferKindDocument.BRANCH_ALTERNATIVE &&
+                    (source.role == ImpactValueRoleDocument.ExpressionResult ||
+                        source.role == ImpactValueRoleDocument.LocalRead) &&
+                    target.role == ImpactValueRoleDocument.ExpressionResult &&
+                    source.enclosing == target.enclosing &&
+                    proof.admitsAnchors(source.range, target.range) &&
+                    proof.alternative.admitsIndex()
+        }
+}
+
+private fun ImpactTransferEvidenceDocument.NormalBranchResult.admitsAnchors(
+    source: ImpactSourceRangeDocument,
+    target: ImpactSourceRangeDocument,
+): Boolean =
+    target == tryRange &&
+        tryRange.start.value < branchRange.start.value &&
+        branchRange.start.value < branchRange.end.value &&
+        branchRange.end.value <= tryRange.end.value &&
+        source.start.value >= branchRange.start.value &&
+        source.end.value <= branchRange.end.value
+
+private fun ImpactTryBranchAlternativeDocument.admitsIndex(): Boolean =
+    when (this) {
+        ImpactTryBranchAlternativeDocument.TryBody -> true
+        is ImpactTryBranchAlternativeDocument.CatchBody -> index in 0 until MAX_IMPACT_CATCH_BRANCHES
+    }
+
+@Serializable
+enum class ImpactBranchCompletionDocument {
+    NORMAL_COMPLETION
+}
+
+@Serializable
+@JsonClassDiscriminator("type")
+sealed interface ImpactTryBranchAlternativeDocument {
+    @Serializable @SerialName("TRY_BODY") data object TryBody : ImpactTryBranchAlternativeDocument
+
+    @Serializable
+    @SerialName("CATCH_BODY")
+    data class CatchBody(@ProtocolIntegerConstraint(minimum = 0, maximum = 1023) val index: Int) :
+        ImpactTryBranchAlternativeDocument
+}
+
+@Serializable
+@JsonClassDiscriminator("type")
+sealed interface ImpactTransferEvidenceDocument {
+    @Serializable @SerialName("DIRECT") data object Direct : ImpactTransferEvidenceDocument
+
+    @Serializable
+    @SerialName("NORMAL_BRANCH_RESULT")
+    data class NormalBranchResult(
+        @SerialName("try_range") val tryRange: ImpactSourceRangeDocument,
+        @SerialName("branch_range") val branchRange: ImpactSourceRangeDocument,
+        val alternative: ImpactTryBranchAlternativeDocument,
+        val condition: ImpactBranchCompletionDocument,
+    ) : ImpactTransferEvidenceDocument
+}
 
 @Serializable
 data class ImpactRepresentationApplicationDocument(
@@ -157,6 +227,8 @@ enum class ImpactConsumerOutcomeDocument {
 
 @Serializable
 enum class ImpactFlowUnsupportedDocument {
+    FINALLY_UNSUPPORTED,
+    ABRUPT_COMPLETION,
     EXTERNAL_CALL,
     UNMODELED_CALL,
     MUTABLE_CONTROL_FLOW,

@@ -40,6 +40,8 @@ data class QueryImpactSourceDocument(
 
 @Serializable
 enum class QueryImpactSourceFailureCode(internal val recoveryAction: ReadRecoveryAction) {
+    FINALLY_UNSUPPORTED(ReadRecoveryAction.CORRECT_REQUEST),
+    ABRUPT_COMPLETION(ReadRecoveryAction.CORRECT_REQUEST),
     EMPTY_PRODUCERS(ReadRecoveryAction.CORRECT_REQUEST),
     DUPLICATE_REQUESTED_SITE(ReadRecoveryAction.CORRECT_REQUEST),
     DUPLICATE_PEER_BOUNDARY(ReadRecoveryAction.CORRECT_REQUEST),

@@ -30,11 +30,11 @@
       "completedRunId": "ac636f95-b4c5-406a-b7fa-053064382265"
     },
     "/openwiki/contracts/public-tools.md": {
-      "gitHead": "968b3e75fcabdc69b1271da2c3397ee8e402ab44",
-      "sourceFingerprint": "sha256:6353a268670b5ca236dfe99c78ce5bf8e0f98bd0fe32acbe167daa6569c033b7",
-      "pageVersion": "sha256:051719bd9f30c7bc615a11882d19306f656fd122275fb23b6c9b21aed8ac6e1f",
+      "pageVersion": "sha256:0eb3313b21425f588a0d840d517e9b169bedfe2e59014a0c12db3451bfcde34c",
       "completedBy": "codex",
-      "completedRunId": "9887339a-b437-4cab-8397-858032703ab7"
+      "completedRunId": "baa55218-eb18-4665-be8c-4e6f866f2a7d",
+      "gitHead": "e1a39b586118c6cf8aa9f6c5b25c36113ec94221",
+      "sourceFingerprint": "sha256:9d3450f1368699bfabe43af1ba2a2c8dd09cd8acaff485cfa7843321150a350f"
     },
     "/openwiki/contracts/source-failures.md": {
       "gitHead": "bfa5a1201c725b7fa4f92d95762e8bc662ede7b2",
@@ -100,11 +100,11 @@
       "completedRunId": "ac636f95-b4c5-406a-b7fa-053064382265"
     },
     "/openwiki/glossary/evidence-authority.md": {
+      "gitHead": "7fcf114b5d9e5b4835cd49903858792ade0a4157",
+      "sourceFingerprint": "sha256:4bfcc9aeb196da847de6ebbf75bfa10937c6db453532c67c00a5458abefa1681",
       "pageVersion": "sha256:f5f6597f1a2a921feb0f084ace6cdece5c5a70480b11cf3f9c637019048167d4",
       "completedBy": "codex",
-      "completedRunId": "83d19d08-ff16-42cd-b13c-c36b5d08e971",
-      "gitHead": "7fcf114b5d9e5b4835cd49903858792ade0a4157",
-      "sourceFingerprint": "sha256:4bfcc9aeb196da847de6ebbf75bfa10937c6db453532c67c00a5458abefa1681"
+      "completedRunId": "83d19d08-ff16-42cd-b13c-c36b5d08e971"
     },
     "/openwiki/glossary/evidence-generation.md": {
       "gitHead": "bfa5a1201c725b7fa4f92d95762e8bc662ede7b2",
@@ -156,25 +156,25 @@
       "completedRunId": "2e69370a-834c-47d2-b0f0-f117ab96a8e5"
     },
     "/openwiki/modules/query-protocol.md": {
-      "gitHead": "7fcf114b5d9e5b4835cd49903858792ade0a4157",
-      "sourceFingerprint": "sha256:21dd7ca0b5285dbc8bb8ce188c6cdafd243fe54c6d37f424ae777b442228dcb6",
-      "pageVersion": "sha256:296debc4a17d489d167dd7ed985f6e112c94422fbf06c3ff262173bedc031cb7",
+      "gitHead": "2b2f5ef7634706124d3edf6bd1a91c8cd4d0f2db",
+      "sourceFingerprint": "sha256:3353d7bd1c369cfc7962cf24184f9c479ed17d2d8124db3717292a1f302f5a0f",
+      "pageVersion": "sha256:c0946a8118a0b07288dd4282e21b85e59557f27a8e27fd5aaef3c02c16db6f2f",
       "completedBy": "codex",
-      "completedRunId": "2e69370a-834c-47d2-b0f0-f117ab96a8e5"
+      "completedRunId": "627cab10-6953-4f19-97ea-447d32d679fd"
     },
     "/openwiki/modules/runtime-hosts.md": {
+      "gitHead": "7fcf114b5d9e5b4835cd49903858792ade0a4157",
+      "sourceFingerprint": "sha256:4bfcc9aeb196da847de6ebbf75bfa10937c6db453532c67c00a5458abefa1681",
       "pageVersion": "sha256:bf40987f9e6af331f827e2c8a70e2429b46ef3dd66696686b1fbb97520ac48d5",
       "completedBy": "codex",
-      "completedRunId": "83d19d08-ff16-42cd-b13c-c36b5d08e971",
-      "gitHead": "7fcf114b5d9e5b4835cd49903858792ade0a4157",
-      "sourceFingerprint": "sha256:4bfcc9aeb196da847de6ebbf75bfa10937c6db453532c67c00a5458abefa1681"
+      "completedRunId": "83d19d08-ff16-42cd-b13c-c36b5d08e971"
     },
     "/openwiki/modules/semantic-reads.md": {
-      "gitHead": "7fcf114b5d9e5b4835cd49903858792ade0a4157",
-      "sourceFingerprint": "sha256:21dd7ca0b5285dbc8bb8ce188c6cdafd243fe54c6d37f424ae777b442228dcb6",
-      "pageVersion": "sha256:dcb35e8634f23a6ed952558243b6caab232d8b8fbcbf662c1e41757411ac116d",
+      "gitHead": "2b2f5ef7634706124d3edf6bd1a91c8cd4d0f2db",
+      "sourceFingerprint": "sha256:3353d7bd1c369cfc7962cf24184f9c479ed17d2d8124db3717292a1f302f5a0f",
+      "pageVersion": "sha256:b46422fbf038b20137eb27ea6fdff64a1fa1667420437d9f970d2b12d935bda7",
       "completedBy": "codex",
-      "completedRunId": "2e69370a-834c-47d2-b0f0-f117ab96a8e5"
+      "completedRunId": "627cab10-6953-4f19-97ea-447d32d679fd"
     },
     "/openwiki/modules/topology-evidence.md": {
       "gitHead": "bfa5a1201c725b7fa4f92d95762e8bc662ede7b2",

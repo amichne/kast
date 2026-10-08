@@ -183,7 +183,10 @@ private fun ValueDeclarationIdentity.storageBytes(g: QueryImpactRetainedGraph): 
 
 internal fun ValueTransfer.storageBytes(g: QueryImpactRetainedGraph): Long =
     g.node(this) {
-        source.storageBytes(g).saturatedAdd(target.storageBytes(g))
+        source
+            .storageBytes(g)
+            .saturatedAdd(target.storageBytes(g))
+            .saturatedAdd(g.node(evidence) { evidence.retainedBytes })
     }
 
 internal fun ValueFlowStep.storageBytes(g: QueryImpactRetainedGraph): Long =

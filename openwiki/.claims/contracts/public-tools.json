@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:051719bd9f30c7bc615a11882d19306f656fd122275fb23b6c9b21aed8ac6e1f",
+  "pageVersion": "sha256:0eb3313b21425f588a0d840d517e9b169bedfe2e59014a0c12db3451bfcde34c",
   "claims": [
     {
       "id": "claim_d5f49799d6a64a78a95f34b3ba0fa09a",
       "statement": "The authored tools.schema.json generates Kotlin DTOs, per-tool admission and strict Responses schemas, examples and App Server registrations; check mode rejects any stale generated artifact.",
       "evidence": [
         {
-          "resource": "repo://packaging/generate-public-query.py#L467-L505",
+          "resource": "repo://packaging/generate-public-query.py#L470-L508",
           "version": "repo-lines-v1:sha256:94373d8b7b4e73d1639969c94e24a12d62e722e0a8f9a0f572aa9df8cc095e6c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExMDFhMmQ5YjhlZmRkODg2MTQ1Zjk4ZTg0Nzg0Mzc0OWY5ZWEyN2U5Mzg0NmIwNDg2Mjk5MDUzYmQ4YmIxNGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmNDRkZTQ0ZDdiMzUzYzFmZDRkMjljMTRhMDQwMmUwMDJlYTgzNTNlZGM1ZjdhZjM0NzUxZDY3NTJjNDE4ZDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJlZjEzMjY1NjFlMjFiNDdjZDdmYWFiNzc3MzJlMDU2NjljYzJjY2YxNDlkYzNmZjI0YjUzZDhiYTM2YTVlMjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIxMzVjYzI2Zjk3ZGMxY2RkNmM3NGVlZThhZjI0NTI3YzVhODYzMzVlZmU1Y2RiODA4N2Y0NDQyNzBhNzBkMmYifQ"
         }
       ]
@@ -149,10 +149,64 @@
           "version": "repo-file-v1:sha256:909f1ec0f1e527c2cbd840d5c7663a036cdc1c18ede9a2a955d90bc3d2d59140"
         }
       ]
+    },
+    {
+      "id": "claim_dd2ac8f2e08944dab7adc437b884ebeb",
+      "statement": "Compiler transfers require closed DIRECT or NORMAL_BRANCH_RESULT evidence; normal branch results retain exact try and branch ranges, a typed try/catch alternative and normal completion, with raw role, owner, range and index consistency admission.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactPathDocuments.kt#L35-L107",
+          "version": "repo-lines-v1:sha256:f5a202dd16a03ec7c473e9cc42a40877a0e7c6b47b55e1d044807f498d7831da:eyJzZWxlY3RlZExpbmVDb3VudCI6NzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1YWY4NzE4NzEyMmFkNGNmZGVhOGIxNmRkZDY5NzU3ZDAzNDczNDAzNjJhYzc3ZTc1OTIzM2QwNTBiMDIxZGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5MmI2NzQ1YzFjNTFjMDA5OTI5YTc1YWE4YmNjNDdjNTczNzc2ZGRkNWI2ZTFiZDNmZDJjZjdhYzJlOTIxNjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA0Y2I3YmQ5ODYwYjJmOGU0OTU4NjU4NDc3YzQ0ODQzNmM1NWVmODVhZjkwN2EyNTIxNzkzNDhjYjdjM2YxMWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9631e8c5a90e442f94b16206c07b3094",
+      "statement": "Public contract version 6 and generated Pi/Copilot catalog admission require compatible versions before registration, preserving required branch evidence.",
+      "evidence": [
+        {
+          "resource": "repo://copilot/extension.mjs#L69-L76",
+          "version": "repo-lines-v1:sha256:ec8b643b8bd46245d5433fdd582318fbb2b441249b703442b4f3599f5b2f02d3:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTJhMDQxMzRjM2ExZWYxMDQ4ZjdlMGI2M2NmOWRjOTI3NGM5ODFjMjlhNmVjZTQ0YzFlNDZlMzI5OTUyYTI5NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWJjMDhlNmNmMDY4ODU0ZWIxZTNjNGJkYzUwNjY5OGI1NWQ1Zjk5N2E5ZjQ1ZGJlOWFkNDk3ZmI0MGQxNDVmNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTY2OGIwZTY3NDYzOGY2NWRkZDIzMDVlYTM5NTY1Mzg5NzY2NWM4YTk4ZDk0ZWJhOGQwMzI1ZmFhZGI5MDdlOCJ9"
+        },
+        {
+          "resource": "repo://pi/extension.ts#L1-L2",
+          "version": "repo-lines-v1:sha256:2794208572c7bd8ee990eef3c287426f0b1c04e1702c2a8523e8450c7b724b64:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTUwMzVmMGQ4MzdmZGQ5MjdhZWUxNjUwYjgxMWJjZWU1OGY1ZTdiZTkyYTU2NDU1ZDAwMzAwNjI3Y2NkNTU0NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODYyZTZlMzAwNDk1OWYxNDA3NTUzZGU2OTAwODEyZDBlMDQzMjdlNjljNjZhNDhhZWNjYmRjNmJlMTBhOTIwYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDE4Y2I2ODJhYTVlMTlhMTZjZjRhNjRjMjFlMmFjNzRhNTgzNmU5ZDJiYjM4NzBkN2M3NDk0Y2E3NDgzYTgyZiJ9"
+        },
+        {
+          "resource": "repo://pi/extension.ts#L81-L88",
+          "version": "repo-lines-v1:sha256:9ab54a37bc182e5ebb907f4a7a3615c41ca48c67d269eeb4d5d412b20e38a02b:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDVjYjI5OWYwZGI1ZWE3ZmU0NmM4NDM1ZGIxZDM1NTQzMGNlM2FkNjhjNGVlODg3MThjY2JmNmNkYjljMjcyMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOGQxOWRmNjkyYzYxMWZiMmI1MWZmYzg1NGFiMDA0NzJkMDJlMzYyZjI1OGM5OTIxMjBhYWI1NWVjNmYyYjVmMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWExYTc2ZTBlN2UxNmEzMzJlZWU2M2I3NDdmNzMwNDg1YTljMDI3ODk5ZmIzMDMwYmEyMWEyNzk5ZGUzZjZlZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDc4YzE0ZWNhZmFhNmM2ZjgwYTg5MmVlNGI0OTI3NzIyMjFmNjdlMDg4NWUxODA0NDNlMDY2YWMwOWEwZjU2MSJ9"
+        },
+        {
+          "resource": "repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt#L1-L6",
+          "version": "repo-lines-v1:sha256:52dc8fec4bcccbffe93cbd0407b08c0f8024505d5a3265d46297987f69d16d35:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjk2NGRhNmQ1NGE3MDE1ZDllM2QxOWNhNDYxNjVjYWNmZjBmZDFjZTMzZmMyODBjOThkMGFmZGQzZDk2MDI4NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTFhNzA3ZDYxMWE2NWFlZWNlZmQzYWQ0MGIwZWFiMjUwMjk5OTBkMDkxNmUyNjQ3ODQwMjVlNjA1M2I3MjE2NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTAxZThlNjk1ZWU1NmIzZjJlNTlkYWY0ZWUwMTUzMWQ3ZGQ5NDk0ZWUyN2RkNWFjN2U2MTk4Mzg5NzE3YTM4ZSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_55b85b562afc4dd980e162077f0e5167",
+      "statement": "Pi and Copilot consume KAST_TOOL_RPC_COMMAND as a private executable selector and remove it from child environments while preserving other settings; strict product configuration still rejects unknown keys.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/test/js/harness-adapters.test.mjs",
+          "version": "repo-file-v1:sha256:7ad63165d4b887eca8b5337c0b8996a38b9b6c025e8c6ff682fc6dbdbab58124"
+        },
+        {
+          "resource": "repo://copilot/extension.mjs",
+          "version": "repo-file-v1:sha256:4cdc5308fd89eab635ba0028d42884e7d927e1e8591d87dfebaf6e74d068575b"
+        },
+        {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt",
+          "version": "repo-file-v1:sha256:32bcd225d2772e66c8b0ab231fd8062260991c22f3f6a839f811b422446edc83"
+        },
+        {
+          "resource": "repo://pi/extension.ts",
+          "version": "repo-file-v1:sha256:b7e98efed3b59a6f52d05958377eb61857bfad5ab54423187c95f5e39b321f4c"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-05T19:11:53.820Z"
+    "at": "2026-10-08T03:31:21.414Z"
   }
 }

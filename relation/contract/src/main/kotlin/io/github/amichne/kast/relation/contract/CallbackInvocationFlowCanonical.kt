@@ -56,6 +56,7 @@ private fun StringBuilder.invocation(invocation: CallbackParameterInvocation) {
     field(invocation.callableTransfers.size.toString())
     invocation.callableTransfers.forEach { transfer ->
         field(transfer.kind.name)
+        transferEvidence(transfer.evidence)
         site(transfer.source)
         site(transfer.target)
     }
@@ -74,8 +75,28 @@ private fun StringBuilder.forwarding(forwarding: CallbackParameterForwarding) {
     field(forwarding.callableTransfers.size.toString())
     forwarding.callableTransfers.forEach { transfer ->
         field(transfer.kind.name)
+        transferEvidence(transfer.evidence)
         site(transfer.source)
         site(transfer.target)
+    }
+}
+
+private fun StringBuilder.transferEvidence(evidence: ValueTransferEvidence) {
+    when (evidence) {
+        ValueTransferEvidence.Direct -> field("DIRECT")
+        is ValueTransferEvidence.NormalBranchResult -> {
+            field("NORMAL_BRANCH_RESULT")
+            range(evidence.tryRange)
+            range(evidence.branchRange)
+            when (val alternative = evidence.alternative) {
+                ValueTryBranchAlternative.TryBody -> field("TRY_BODY")
+                is ValueTryBranchAlternative.CatchBody -> {
+                    field("CATCH_BODY")
+                    field(alternative.index.value.toString())
+                }
+            }
+            field("NORMAL_COMPLETION")
+        }
     }
 }
 
@@ -219,6 +240,7 @@ internal fun ImmutableCallbackValue.canonicalProjection(): String = buildString 
     field(transfers.size.toString())
     transfers.forEach {
         field(it.kind.name)
+        transferEvidence(it.evidence)
         site(it.source)
         site(it.target)
     }

@@ -1,7 +1,6 @@
 package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
-import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
@@ -29,18 +28,9 @@ import io.github.amichne.kast.query.contract.QueryImpactRepresentation
 import io.github.amichne.kast.query.contract.QueryImpactStep
 import io.github.amichne.kast.query.contract.QueryImpactTerminal
 import io.github.amichne.kast.relation.contract.BoundaryArrival
-import io.github.amichne.kast.relation.contract.BoundaryContractIdentity
-import io.github.amichne.kast.relation.contract.BoundaryKind
 import io.github.amichne.kast.relation.contract.BoundaryModel
-import io.github.amichne.kast.relation.contract.BoundaryPosition
 import io.github.amichne.kast.relation.contract.BoundaryUnresolvedReason
-import io.github.amichne.kast.relation.contract.ContractModelIdentity
-import io.github.amichne.kast.relation.contract.ExactModelCallablePosition
-import io.github.amichne.kast.relation.contract.ModelCallableReference
-import io.github.amichne.kast.relation.contract.ModelIdentifier
-import io.github.amichne.kast.relation.contract.ModelRuleReference
 import io.github.amichne.kast.relation.contract.ModelValuePosition
-import io.github.amichne.kast.relation.contract.ModelVersion
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteCount
 import io.github.amichne.kast.relation.contract.RelationByteLimit
@@ -49,34 +39,15 @@ import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RelationWorkCount
-import io.github.amichne.kast.relation.contract.RepresentationDomain
-import io.github.amichne.kast.relation.contract.RepresentationEvidence
 import io.github.amichne.kast.relation.contract.RepresentationRule
-import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowStepFailure
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
-import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.relation.contract.ValueRole
-import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueTransfer
 import io.github.amichne.kast.relation.contract.ValueTransferKind
-import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
-import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
-import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
-import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
-import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
-import io.github.amichne.kast.symbol.contract.SymbolSearchScope
-import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
-import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
-import java.nio.file.Path
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonArray
@@ -88,7 +59,7 @@ import org.junit.jupiter.api.Test
 class QueryImpactPathProjectionTest {
     @Test
     fun `consumer projection retains different current state and complete expected rule separately`() {
-        val fixture = Fixture()
+        val fixture = ImpactPathProjectionFixture()
         val path = consumerPath(fixture)
         val encoded =
             Json.encodeToJsonElement(ImpactPathDocument.serializer(), path.impactDocument().refined()).jsonObject
@@ -130,7 +101,7 @@ class QueryImpactPathProjectionTest {
 
     @Test
     fun `modeled boundary keeps two bases obligations and unknown current without erasing origin`() {
-        val fixture = Fixture()
+        val fixture = ImpactPathProjectionFixture()
         val path = boundaryPath(fixture)
         val projected = path.impactDocument().refined()
         val current =
@@ -170,7 +141,7 @@ class QueryImpactPathProjectionTest {
 
     @Test
     fun `supported terminal projects exact original domain and measured work without complete field`() {
-        val fixture = Fixture()
+        val fixture = ImpactPathProjectionFixture()
         val budget =
             RelationBudget(
                 ResourceBudget(
@@ -220,7 +191,7 @@ class QueryImpactPathProjectionTest {
 
     @Test
     fun `rejected reads preserve every native and contract cause with exact site and requested domain`() {
-        val fixture = Fixture()
+        val fixture = ImpactPathProjectionFixture()
         for (cause in ValueFlowRejection.entries) {
             val rejected =
                 QueryImpactReadRejection.Native(
@@ -261,7 +232,7 @@ class QueryImpactPathProjectionTest {
 
     @Test
     fun `cycle and checkpoint stops retain positive ordered route and exact capacity witnesses`() {
-        val fixture = Fixture()
+        val fixture = ImpactPathProjectionFixture()
         val second = fixture.site(50, 51, ValueRole.ExpressionResult)
         val route =
             listOf(
@@ -299,7 +270,7 @@ class QueryImpactPathProjectionTest {
         assertEquals(1024L, cut.availableBytes.value)
     }
 
-    private fun consumerPath(fixture: Fixture): QueryImpactPath {
+    private fun consumerPath(fixture: ImpactPathProjectionFixture): QueryImpactPath {
         val input = fixture.site(31, 39, ValueRole.Argument(fixture.call, ValueArgumentPosition.parse(0).refined()))
         val transfer = ValueTransfer.fromCompiler(fixture.producer, input, ValueTransferKind.ARGUMENT).refined()
         val arrived = fixture.origin.transfer(transfer).refined()
@@ -319,8 +290,8 @@ class QueryImpactPathProjectionTest {
             .refined()
     }
 
-    private fun boundaryPath(fixture: Fixture): QueryImpactPath {
-        val other = Fixture("/client", 9)
+    private fun boundaryPath(fixture: ImpactPathProjectionFixture): QueryImpactPath {
+        val other = ImpactPathProjectionFixture("/client", 9)
         val source = fixture.boundary(fixture.producer)
         val target = other.boundary(other.producer)
         val model =
@@ -343,102 +314,6 @@ class QueryImpactPathProjectionTest {
                 QueryImpactTerminal.Unresolved.Boundary(unresolved),
             )
             .refined()
-    }
-
-    private inner class Fixture(val root: String = "/workspace", generation: Long = 1) {
-        val lease =
-            SemanticReadLease(
-                CanonicalWorkspaceRoot.fromCanonicalPath(Path.of(root)).refined(),
-                EvidenceGeneration.parse(generation).refined(),
-            )
-        val owner = endpoint("owner", 0, 200)
-        val call =
-            ValueInvocation.fromCompiler(
-                    owner,
-                    ExactDeclarationTextRange.parse(30, 40).refined(),
-                    endpoint("encrypt", 210, 250),
-                )
-                .refined()
-        val producer = site(30, 40, ValueRole.ExpressionResult)
-        val model = ContractModelIdentity(id("encryption"), ModelVersion.parse(1).refined(), id("review:913"))
-        val domain = RepresentationDomain.admit(model, listOf(id("HIPED"), id("PLAINTEXT"))).refined()
-        val origin =
-            RepresentationEvidence.origin(
-                    producer,
-                    call,
-                    RepresentationRule.Origin.admit(
-                            rule("origin"),
-                            bind(ModelValuePosition.Result),
-                            domain.state(id("HIPED")).refined(),
-                        )
-                        .refined(),
-                )
-                .refined()
-
-        fun id(raw: String) = ModelIdentifier.parse(raw).refined()
-
-        fun rule(raw: String) = ModelRuleReference(model, id(raw))
-
-        fun site(start: Int, end: Int, role: ValueRole) =
-            ValueSite.fromCompiler(owner, ExactDeclarationTextRange.parse(start, end).refined(), role).refined()
-
-        fun boundary(site: ValueSite) =
-            BoundaryPosition.at(
-                site,
-                BoundaryKind.PERSISTENCE,
-                BoundaryContractIdentity(id("cache"), ModelVersion.parse(1).refined()),
-                id("ciphertext"),
-            )
-
-        fun bind(position: ModelValuePosition): ExactModelCallablePosition {
-            val callable = call.callable as RelationEndpoint.Resolved
-            return ExactModelCallablePosition.admit(
-                    ModelCallableReference(
-                        callable.lease.identity,
-                        callable.compilerIdentity,
-                        callable.file,
-                        callable.range,
-                        position,
-                    ),
-                    RevalidatedRelationEndpoint.validate(callable, callable.evidence).refined(),
-                )
-                .refined()
-        }
-
-        private fun endpoint(name: String, start: Int, end: Int): RelationEndpoint {
-            val candidate =
-                SymbolDiscoveryCandidate.fromBoundary(
-                        SymbolDiscoveryKind.SYMBOL,
-                        name,
-                        lease,
-                        Path.of("$root/File.kt"),
-                        "file://$root/File.kt",
-                        start,
-                    )
-                    .refined()
-            val evidence =
-                CompilerGroundedSymbolEvidence.fromBoundary(
-                        (candidate.location as SymbolDiscoveryCandidateLocation.Declaration).file,
-                        start,
-                        end,
-                        name,
-                        "fixture.$name",
-                        CompilerSymbolKind.FUNCTION,
-                        CanonicalCompilerSignature.function("fixture.$name", null, emptyList(), listOf("String"), 0)
-                            .refined(),
-                    )
-                    .refined()
-            return RelationEndpoint.resolve(
-                    lease,
-                    SymbolSearchScope.Workspace(
-                        SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-                        SymbolGeneratedSourcePolicy.EXCLUDE,
-                        SymbolLibraryPolicy.EXCLUDE,
-                    ),
-                    evidence,
-                )
-                .refined()
-        }
     }
 
     private fun <S, F> Refinement<S, F>.refined(): S =

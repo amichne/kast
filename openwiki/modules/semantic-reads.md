@@ -179,8 +179,14 @@ sources:
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueProducerSeedNative.kt
   - id: openwiki-source-5e4eb99eb5fd7a5dcae4b5eb
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueSiteRevalidationNative.kt
+  - id: openwiki-source-e96f3ebb85ab3d6d5604f8e8
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeTryBranchResult.kt
   - id: openwiki-source-24e2e528bd8a607e4d35c899
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueSiteRestorationFailure.kt
+  - id: openwiki-source-0f09a987fe57b61a10d3e717
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/ReturnFinallyBoundary.kt
+  - id: openwiki-source-6a0218a8a217d89cd93d2524
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/TryBranchResultPosition.kt
   - id: openwiki-source-b8e3c573182d699252496925
     resource: repo://relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/ValueSiteRestorationTest.kt
   - id: openwiki-source-9d98513f38a6f5a6f98d8cdc
@@ -201,10 +207,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-8d15fa1e67cdc054e05e2796
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedValueFlowDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-03T14:44:52.932Z" }
+generated: { by: "codex", at: "2026-10-08T03:03:28.717Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-08T01:13:49.481Z
+    at: 2026-10-08T03:03:28.717Z
 ---
 
 # Semantic read domains
@@ -620,3 +626,21 @@ intervals and authority. The adapter preserves the existing traversal plan,
 relation requests and outcomes; phase timing grants no semantic coverage.
 
 The existing read counter vocabulary also distinguishes presented, pending-impact and original-investigation retention capture, each finite capture failure, and result issuance outcomes. The hosted adapter records them in the existing `RETENTION` phase. An encoded diagnostic golden verifies actual success and rejection receipt shapes; these observations carry no source payload or handles and cannot establish compiler proof or investigation closure.
+
+### Normal try/catch results
+
+The value-flow reader admits a branch's final value expression as a transfer to
+the enclosing try expression only with exact lexical ownership, exact anchors
+and valid compiler-confirmed source and result types. Each transfer retains the
+originating try or catch alternative and normal-completion condition. Nested
+try expressions compose independently admitted transfers. A non-final expression
+does not supply the enclosing result, and exception entry never carries a
+successfully produced try value into a catch fallback.
+
+Explicit returns and throws remain separate control-flow outcomes. Unit and
+nonnullable Nothing results do not manufacture a normal value edge. Any admitted
+path crossing a try boundary with finally retains `FINALLY_UNSUPPORTED`, including
+an explicit return bypass; internal paths may still be useful. Bounded counters
+record candidate admission and finite type, abrupt-completion and finally
+rejections without source payloads. This supported static model does not prove
+runtime path feasibility.
