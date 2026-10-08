@@ -85,7 +85,7 @@ private fun PublicToolRunAction.lowerRun(): Refinement<PublicToolCanonical, Publ
                                 completion =
                                     completion
                                         ?: io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument
-                                            .Progressive,
+                                            .Default,
                                 from = from.value,
                                 steps = bounded(loweredSteps.value),
                                 output = output?.lower() ?: PublicToolDefaults.output,

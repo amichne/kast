@@ -14,6 +14,10 @@ enum class QueryStaticModelDocument {
 @Serializable
 @kotlinx.serialization.json.JsonClassDiscriminator("type")
 sealed interface QueryCompletionPolicyDocument {
+    companion object {
+        val Default: CompleteOnly = CompleteOnly(QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1)
+    }
+
     @Serializable @SerialName("PROGRESSIVE") data object Progressive : QueryCompletionPolicyDocument
 
     @Serializable

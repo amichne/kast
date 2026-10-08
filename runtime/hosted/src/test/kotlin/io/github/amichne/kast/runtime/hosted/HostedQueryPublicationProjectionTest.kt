@@ -245,6 +245,7 @@ class HostedQueryPublicationProjectionTest {
             bounded(emptyList()),
             QueryOutputDocument.Symbols(bounded(listOf(QuerySymbolFieldDocument.NAME))),
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
+            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun complete(owner: RelationPagingFixture) =

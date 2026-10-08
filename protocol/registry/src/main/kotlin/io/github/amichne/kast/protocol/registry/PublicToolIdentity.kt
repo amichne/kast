@@ -3,7 +3,7 @@ package io.github.amichne.kast.protocol.registry
 
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 
-const val PUBLIC_TOOL_CONTRACT_VERSION = 7
+const val PUBLIC_TOOL_CONTRACT_VERSION = 8
 const val PUBLIC_TOOL_NAMESPACE_DESCRIPTION = "Compiler-grounded Kotlin source intelligence from Kast."
 
 /** Closed presentation identities; canonical operations retain effect and budget ownership. */
@@ -35,7 +35,11 @@ enum class PublicToolIdentity(
             "IN to control native relation destinations separately from source discovery and output predicates." +
             " Inspect a callback occurrence, anonymous callable body, or proof declaration with request {\"type" +
             "\":\"READ_SOURCE\",\"candidateRef\":\"<exact issued candidate reference>\"}; this returns the exis" +
-            "ting source.read document for that exact range, preserving freshness and authority failures.",
+            "ting source.read document for that exact range, preserving freshness and authority failures. Compl" +
+            "etion defaults to COMPLETE_ONLY within COMPILER_RESOLVED_STATIC_V1; supported row families execute" +
+            " automatically to exhaustion under one grant. Request completion {\"type\":\"PROGRESSIVE\"} explic" +
+            "itly for qualified investigation. Unproven or unsupported strict answers reject with retained evid" +
+            "ence when admitted; presentation prefixes never establish completeness.",
         HostedToolLoading.EAGER,
     ),
     CHECK_DIAGNOSTICS("check_diagnostics", CanonicalOperation.DIAGNOSTIC_CHECK,

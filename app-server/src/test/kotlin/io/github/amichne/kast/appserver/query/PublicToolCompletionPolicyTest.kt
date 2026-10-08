@@ -31,6 +31,44 @@ class PublicToolCompletionPolicyTest {
         )
 
     @Test
+    fun `omitted and null policy select complete compiler static execution`() {
+        val omitted = encodePublicTool(PublicToolQuerySymbols(PublicToolRunAction(source)), Json)
+        val explicitNull =
+            Json.encodeToJsonElement(
+                NullablePublicCompletionEnvelope.serializer(),
+                NullablePublicCompletionEnvelope(NullablePublicCompletionRun(source)),
+            )
+        for (input in listOf(omitted, explicitNull)) {
+            val admitted =
+                PublicToolContract.admit(
+                    PublicToolIdentity.QUERY_SYMBOLS,
+                    input,
+                ) as Refinement.Refined
+            val run = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
+            assertEquals(
+                QueryCompletionPolicyDocument.CompleteOnly(QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1),
+                run.completion,
+            )
+        }
+    }
+
+    @Test
+    fun `progressive execution requires an explicit policy`() {
+        val admitted =
+            PublicToolContract.admit(
+                PublicToolIdentity.QUERY_SYMBOLS,
+                encodePublicTool(
+                    PublicToolQuerySymbols(
+                        PublicToolRunAction(source, completion = QueryCompletionPolicyDocument.Progressive)
+                    ),
+                    Json,
+                ),
+            ) as Refinement.Refined
+        val run = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
+        assertEquals(QueryCompletionPolicyDocument.Progressive, run.completion)
+    }
+
+    @Test
     fun `actual public run lowers explicit complete only model`() {
         val admitted =
             PublicToolContract.admit(
@@ -81,6 +119,17 @@ class PublicToolCompletionPolicyTest {
         }
     }
 }
+
+@kotlinx.serialization.Serializable
+private data class NullablePublicCompletionEnvelope(val request: NullablePublicCompletionRun)
+
+@kotlinx.serialization.Serializable
+private data class NullablePublicCompletionRun(
+    val source: PublicToolSource,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.ALWAYS)
+    val completion: QueryCompletionPolicyDocument? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.ALWAYS) val type: String = "RUN",
+)
 
 @kotlinx.serialization.Serializable
 private data class InvalidPublicCompletionEnvelope(val request: InvalidPublicCompletionRun)

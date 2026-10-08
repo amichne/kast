@@ -19,6 +19,36 @@ class QueryCompletionContractTest {
     }
 
     @Test
+    fun `canonical omission selects strict static completion and question encodes that proof`() {
+        val input =
+            DefaultCompletionRun(
+                QueryFromDocument.Location(
+                    (ProtocolText.parse("src/Example.kt") as Refinement.Refined).value,
+                    (ProtocolOffset.parse(0) as Refinement.Refined).value,
+                ),
+                (BoundedProtocolList.create(emptyList<QueryStepDocument>()) as Refinement.Refined).value,
+                QueryOutputDocument.Occurrences,
+                QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
+            )
+        val request =
+            json.decodeFromString(
+                QueryRunRequest.Run.serializer(),
+                json.encodeToString(DefaultCompletionRun.serializer(), input),
+            )
+        val expected = QueryCompletionPolicyDocument.CompleteOnly(QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1)
+        assertEquals(expected, request.completion)
+        val question = Json.encodeToJsonElement(QueryQuestionDocument.serializer(), QueryQuestionDocument.from(request))
+        assertEquals(
+            "COMPLETE_ONLY",
+            question.jsonObject.getValue("completion").jsonObject.getValue("type").jsonPrimitive.content,
+        )
+        assertEquals(
+            "COMPILER_RESOLVED_STATIC_V1",
+            question.jsonObject.getValue("completion").jsonObject.getValue("model").jsonPrimitive.content,
+        )
+    }
+
+    @Test
     fun `complete only has required explicit discriminator and model`() {
         val policy = QueryCompletionPolicyDocument.CompleteOnly(QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1)
         val encoded = json.encodeToJsonElement(QueryCompletionPolicyDocument.serializer(), policy).jsonObject
@@ -66,3 +96,12 @@ class QueryCompletionContractTest {
 
 /** Deliberately invalid typed boundary fixture; nullable fields exercise absence. */
 @Serializable private data class InvalidPolicy(val type: String? = null, val model: String? = null)
+
+/** Boundary input deliberately omits completion to independently exercise its default. */
+@Serializable
+private data class DefaultCompletionRun(
+    val from: QueryFromDocument,
+    val steps: BoundedProtocolList<QueryStepDocument>,
+    val output: QueryOutputDocument,
+    val execution: QueryExecutionDocument,
+)

@@ -32,7 +32,10 @@ point to retained rows and independent evidence pages. Reading a retained result
 does not run the semantic query again. An exhausted upstream prefix cannot become
 complete merely because its preview fits.
 
-`COMPLETE_ONLY` selects `COMPILER_RESOLVED_STATIC_V1` on the original question.
+Omitted or null public completion selects `COMPLETE_ONLY` with
+`COMPILER_RESOLVED_STATIC_V1` on the original question. Canonical requests and
+retained questions encode this policy explicitly. `PROGRESSIVE` is an explicit
+investigation choice; strict execution never falls back to it.
 Unsupported outputs and unproven completion are closed rejection variants.
 Rejected prefixes retain their full evidence when bounded storage admits them;
 storage rejection is explicit. Evidence reads retain the policy verdict and

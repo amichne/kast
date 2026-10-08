@@ -9,6 +9,7 @@ import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryBindingNameDocument
+import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive
 import io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionBudgetDocument
@@ -347,7 +348,8 @@ class QueryRetainedRowAdmissionTest {
         )
     }
 
-    private fun run(from: QueryFromDocument) = QueryRunRequest.Run(from, bounded(emptyList()), output, execution)
+    private fun run(from: QueryFromDocument) =
+        QueryRunRequest.Run(from, bounded(emptyList()), output, execution, completion = Progressive)
 
     private fun discovery() =
         QueryDiscoveryDocument(
@@ -361,12 +363,12 @@ class QueryRetainedRowAdmissionTest {
             QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
             QueryCoverage.Complete(QueryCount.parse(0).refined()),
         )
-
-    private fun <Value> bounded(values: List<Value>) = BoundedProtocolList.create(values).refined()
-
-    private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
-        when (this) {
-            is Refinement.Refined -> value
-            is Refinement.Rejected -> error(failure.toString())
-        }
 }
+
+private fun <Value> bounded(values: List<Value>) = BoundedProtocolList.create(values).refined()
+
+private fun <Value, Failure> Refinement<Value, Failure>.refined(): Value =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error(failure.toString())
+    }

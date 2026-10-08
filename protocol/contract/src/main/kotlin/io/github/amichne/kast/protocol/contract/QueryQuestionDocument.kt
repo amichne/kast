@@ -10,8 +10,8 @@ data class QueryQuestionDocument(
     val from: QueryFromDocument,
     val steps: BoundedProtocolList<QueryStepDocument>,
     val output: QueryOutputDocument,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-    val completion: QueryCompletionPolicyDocument = QueryCompletionPolicyDocument.Progressive,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.ALWAYS)
+    val completion: QueryCompletionPolicyDocument = QueryCompletionPolicyDocument.Default,
 ) {
     companion object {
         fun from(request: QueryRunRequest.Run): QueryQuestionDocument =

@@ -104,6 +104,7 @@ internal class PendingImpactRetentionFixture {
             execution =
                 QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
             retention = QueryRetentionModeDocument.RETAIN,
+            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     fun pending(
