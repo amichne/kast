@@ -34,7 +34,66 @@ data class ImpactCompilerTransferDocument(
     val source: ImpactValueSiteReferenceDocument,
     val target: ImpactValueSiteReferenceDocument,
     val kind: ImpactTransferKindDocument,
-)
+    val evidence: ImpactTransferEvidenceDocument,
+) {
+    constructor(
+        source: ImpactValueSiteReferenceDocument,
+        target: ImpactValueSiteReferenceDocument,
+        kind: ImpactTransferKindDocument,
+    ) : this(source, target, kind, ImpactTransferEvidenceDocument.Direct)
+
+    fun admitsEvidence(): Boolean =
+        when (val proof = evidence) {
+            ImpactTransferEvidenceDocument.Direct -> true
+            is ImpactTransferEvidenceDocument.NormalBranchResult ->
+                kind == ImpactTransferKindDocument.BRANCH_ALTERNATIVE &&
+                    (source.role == ImpactValueRoleDocument.ExpressionResult ||
+                        source.role == ImpactValueRoleDocument.LocalRead) &&
+                    target.role == ImpactValueRoleDocument.ExpressionResult &&
+                    source.enclosing == target.enclosing &&
+                    target.range == proof.tryRange &&
+                    proof.tryRange.start.value < proof.branchRange.start.value &&
+                    proof.branchRange.start.value < proof.branchRange.end.value &&
+                    proof.branchRange.end.value <= proof.tryRange.end.value &&
+                    source.range.start.value >= proof.branchRange.start.value &&
+                    source.range.end.value <= proof.branchRange.end.value &&
+                    when (val alternative = proof.alternative) {
+                        ImpactTryBranchAlternativeDocument.TryBody -> true
+                        is ImpactTryBranchAlternativeDocument.CatchBody -> alternative.index in 0 until 1024
+                    }
+        }
+}
+
+@Serializable
+enum class ImpactBranchCompletionDocument {
+    NORMAL_COMPLETION
+}
+
+@Serializable
+@JsonClassDiscriminator("type")
+sealed interface ImpactTryBranchAlternativeDocument {
+    @Serializable @SerialName("TRY_BODY") data object TryBody : ImpactTryBranchAlternativeDocument
+
+    @Serializable
+    @SerialName("CATCH_BODY")
+    data class CatchBody(@ProtocolIntegerConstraint(minimum = 0, maximum = 1023) val index: Int) :
+        ImpactTryBranchAlternativeDocument
+}
+
+@Serializable
+@JsonClassDiscriminator("type")
+sealed interface ImpactTransferEvidenceDocument {
+    @Serializable @SerialName("DIRECT") data object Direct : ImpactTransferEvidenceDocument
+
+    @Serializable
+    @SerialName("NORMAL_BRANCH_RESULT")
+    data class NormalBranchResult(
+        @SerialName("try_range") val tryRange: ImpactSourceRangeDocument,
+        @SerialName("branch_range") val branchRange: ImpactSourceRangeDocument,
+        val alternative: ImpactTryBranchAlternativeDocument,
+        val condition: ImpactBranchCompletionDocument,
+    ) : ImpactTransferEvidenceDocument
+}
 
 @Serializable
 data class ImpactRepresentationApplicationDocument(
@@ -157,6 +216,8 @@ enum class ImpactConsumerOutcomeDocument {
 
 @Serializable
 enum class ImpactFlowUnsupportedDocument {
+    FINALLY_UNSUPPORTED,
+    ABRUPT_COMPLETION,
     EXTERNAL_CALL,
     UNMODELED_CALL,
     MUTABLE_CONTROL_FLOW,

@@ -15,6 +15,7 @@ enum class ValueTransferKind {
 }
 
 enum class ValueTransferFailure {
+    EVIDENCE_MISMATCH,
     BASIS_MISMATCH,
     ROLE_MISMATCH,
     SELF_EDGE,
@@ -26,6 +27,7 @@ private constructor(
     val source: ValueSite,
     val target: ValueSite,
     val kind: ValueTransferKind,
+    val evidence: ValueTransferEvidence,
 ) {
     internal fun shareCallableEvidence(
         callables: MutableMap<RelationEndpoint.Resolved, RelationEndpoint.Resolved>
@@ -33,7 +35,7 @@ private constructor(
         val sharedSource = source.shareCallableEvidence(callables)
         val sharedTarget = target.shareCallableEvidence(callables)
         return if (sharedSource === source && sharedTarget === target) this
-        else ValueTransfer(sharedSource, sharedTarget, kind)
+        else ValueTransfer(sharedSource, sharedTarget, kind, evidence)
     }
 
     companion object {
@@ -42,9 +44,12 @@ private constructor(
             source: ValueSite,
             target: ValueSite,
             kind: ValueTransferKind,
+            evidence: ValueTransferEvidence = ValueTransferEvidence.Direct,
         ): Refinement<ValueTransfer, ValueTransferFailure> {
             if (source.basis != target.basis) return Refinement.Rejected(ValueTransferFailure.BASIS_MISMATCH)
             if (source.identity == target.identity) return Refinement.Rejected(ValueTransferFailure.SELF_EDGE)
+            if (!evidence.admits(source, target, kind))
+                return Refinement.Rejected(ValueTransferFailure.EVIDENCE_MISMATCH)
             val rolesMatch =
                 when (kind) {
                     ValueTransferKind.LOCAL_BINDING -> target.role == ValueRole.LocalBinding
@@ -57,18 +62,25 @@ private constructor(
                     ValueTransferKind.WRAPPER_RETURN ->
                         source.role is ValueRole.Argument && target == source.role.call.resultSite()
                 }
-            return if (rolesMatch) Refinement.Refined(ValueTransfer(source, target, kind))
+            return if (rolesMatch) Refinement.Refined(ValueTransfer(source, target, kind, evidence))
             else Refinement.Rejected(ValueTransferFailure.ROLE_MISMATCH)
         }
     }
 
     override fun equals(other: Any?): Boolean =
-        other is ValueTransfer && source == other.source && target == other.target && kind == other.kind
+        other is ValueTransfer &&
+            source == other.source &&
+            target == other.target &&
+            kind == other.kind &&
+            evidence == other.evidence
 
-    override fun hashCode(): Int = 31 * (31 * source.hashCode() + target.hashCode()) + kind.hashCode()
+    override fun hashCode(): Int =
+        31 * (31 * (31 * source.hashCode() + target.hashCode()) + kind.hashCode()) + evidence.hashCode()
 }
 
 enum class ValueFlowUnsupportedCause {
+    FINALLY_UNSUPPORTED,
+    ABRUPT_COMPLETION,
     EXTERNAL_CALL,
     UNMODELED_CALL,
     MUTABLE_CONTROL_FLOW,

@@ -8,6 +8,7 @@ import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.ImpactBoundaryRequiredDocument
 import io.github.amichne.kast.protocol.contract.ImpactBoundaryUnresolvedDocument
+import io.github.amichne.kast.protocol.contract.ImpactBranchCompletionDocument
 import io.github.amichne.kast.protocol.contract.ImpactExecutionStopDocument
 import io.github.amichne.kast.protocol.contract.ImpactFlowEndObservationDocument
 import io.github.amichne.kast.protocol.contract.ImpactFlowReadPositionDocument
@@ -17,17 +18,28 @@ import io.github.amichne.kast.protocol.contract.ImpactPathTerminalDocument
 import io.github.amichne.kast.protocol.contract.ImpactReadRejectionDocument
 import io.github.amichne.kast.protocol.contract.ImpactRepresentationCurrentDocument
 import io.github.amichne.kast.protocol.contract.ImpactRepresentationEvidenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactRepresentationHistoryDocument
 import io.github.amichne.kast.protocol.contract.ImpactRepresentationUnknownDocument
 import io.github.amichne.kast.protocol.contract.ImpactRequestedBoundaryDocument
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
+import io.github.amichne.kast.protocol.contract.ImpactTransferEvidenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactTryBranchAlternativeDocument
+import io.github.amichne.kast.protocol.contract.ImpactWitnessDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationRequestedDomainDocument
+import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.reason
 import io.github.amichne.kast.query.contract.QueryImpactExecutionStop
+import io.github.amichne.kast.query.contract.QueryImpactFlowSemantics
+import io.github.amichne.kast.query.contract.QueryImpactLedger
 import io.github.amichne.kast.query.contract.QueryImpactPath
+import io.github.amichne.kast.query.contract.QueryImpactProducer
 import io.github.amichne.kast.query.contract.QueryImpactReadRejection
 import io.github.amichne.kast.query.contract.QueryImpactRepresentation
 import io.github.amichne.kast.query.contract.QueryImpactStep
 import io.github.amichne.kast.query.contract.QueryImpactTerminal
+import io.github.amichne.kast.query.contract.QueryImpactWitnessSection
+import io.github.amichne.kast.query.contract.QueryImpactWitnessView
+import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.relation.contract.BoundaryArrival
 import io.github.amichne.kast.relation.contract.BoundaryContractIdentity
 import io.github.amichne.kast.relation.contract.BoundaryKind
@@ -62,7 +74,9 @@ import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueTransfer
+import io.github.amichne.kast.relation.contract.ValueTransferEvidence
 import io.github.amichne.kast.relation.contract.ValueTransferKind
+import io.github.amichne.kast.relation.contract.ValueTryBranchAlternative
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
@@ -73,6 +87,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
+import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
@@ -86,6 +101,104 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class QueryImpactPathProjectionTest {
+    @Test
+    fun `normal branch proof survives path representation history and single record witness pages`() {
+        val f = Fixture()
+        val target = f.site(20, 80, ValueRole.ExpressionResult)
+        val branch = ExactDeclarationTextRange.parse(25, 45).refined()
+        val evidence =
+            ValueTransferEvidence.NormalBranchResult.fromCompiler(
+                    target.range,
+                    branch,
+                    ValueTryBranchAlternative.TryBody,
+                )
+                .refined()
+        val edge =
+            ValueTransfer.fromCompiler(f.producer, target, ValueTransferKind.BRANCH_ALTERNATIVE, evidence).refined()
+        val owner = f.owner as RelationEndpoint.Resolved
+        val domain =
+            RelationRequest.start(
+                SymbolSelector.issue(owner.lease, owner.scope, owner.evidence),
+                RelationMeaning.References,
+                RelationBudget(
+                    ResourceBudget(
+                        ResultLimit.parse(20).refined(),
+                        WorkUnitLimit.parse(100).refined(),
+                        ElapsedTimeLimitMillis.parse(1000).refined(),
+                    ),
+                    RelationByteLimit.parse(100000).refined(),
+                ),
+                RelationSearchBoundary.WORKSPACE_EXPANSION,
+            )
+        fun observation(source: ValueSite, transfers: List<ValueTransfer>) =
+            ValueFlowStep.fromCompiler(
+                    source,
+                    transfers,
+                    emptyList(),
+                    ValueFlowTerminal.SupportedDomainExhausted,
+                    domain,
+                    RelationWorkCount.parse(1).refined(),
+                )
+                .refined()
+        val first = observation(f.producer, listOf(edge))
+        val end = observation(target, emptyList())
+        val terminal = QueryImpactTerminal.SupportedDomainEnd.admit(end).refined()
+        val path =
+            QueryImpactPath.fromEvidence(
+                    f.producer,
+                    listOf(QueryImpactStep.Compiler(edge)),
+                    QueryImpactRepresentation.Present(f.origin.transfer(edge).refined()),
+                    terminal,
+                )
+                .refined()
+        val document = path.impactDocument().refined()
+        val proof =
+            (document.steps.values.single() as ImpactPathStepDocument.Compiler).transfer.evidence
+                as ImpactTransferEvidenceDocument.NormalBranchResult
+        assertEquals(20, proof.tryRange.start.value)
+        assertEquals(80, proof.tryRange.end.value)
+        assertEquals(25, proof.branchRange.start.value)
+        assertEquals(45, proof.branchRange.end.value)
+        assertEquals(ImpactTryBranchAlternativeDocument.TryBody, proof.alternative)
+        assertEquals(ImpactBranchCompletionDocument.NORMAL_COMPLETION, proof.condition)
+        val history =
+            (document.representation as ImpactRepresentationEvidenceDocument.Present)
+                .branches
+                .values
+                .single()
+                .history
+                .values
+                .last() as ImpactRepresentationHistoryDocument.CompilerTransfer
+        assertEquals(proof, history.transfer.evidence)
+        val plainPath =
+            QueryImpactPath.fromEvidence(
+                    f.producer,
+                    listOf(QueryImpactStep.Compiler(edge)),
+                    QueryImpactRepresentation.NotModeled,
+                    terminal,
+                )
+                .refined()
+        val ledger =
+            QueryImpactLedger.fromEvidence(
+                    listOf(f.producer),
+                    domain.boundary,
+                    QueryImpactFlowSemantics.KOTLIN_FORWARD_V1,
+                    emptyList(),
+                    emptyList(),
+                    listOf(first, end),
+                    listOf(plainPath),
+                    originalProducers = listOf(QueryImpactProducer.admit(f.producer, f.call).refined()),
+                )
+                .refined()
+        val view = QueryImpactWitnessView.create(ledger, QueryImpactWitnessSection.NATIVE_READS, 1, 2).refined()
+        val page = QueryRows.ImpactWitness.of(view).projectWitnessItems() as QueryProjection.Projected
+        val witness =
+            (page.values.single() as QueryResultItemDocument.ImpactWitness).item.witness
+                as ImpactWitnessDocument.CompilerTransfer
+        assertEquals(proof, witness.transfer.evidence)
+        assertEquals(page, QueryRows.ImpactWitness.of(view).projectWitnessItems())
+    }
+
     @Test
     fun `consumer projection retains different current state and complete expected rule separately`() {
         val fixture = Fixture()

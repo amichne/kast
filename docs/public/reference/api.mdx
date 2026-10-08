@@ -93,6 +93,10 @@ Explicit symbol `fields: []` requests mandatory identity and kind. File-scoped o
 
 ## Investigate value impact
 
+`KOTLIN_FORWARD_V1` transfers a final try or catch value to its enclosing try expression when the compiler confirms a value type and the try has no `finally`. Each transfer retains the enclosing try range, branch range, `TRY_BODY` or indexed `CATCH_BODY` alternative, and `NORMAL_COMPLETION` condition. Catch fallback values have their own producers. These paths describe static provenance; they do not prove runtime path feasibility.
+
+Non-final branch expressions do not supply the try result. Explicit returns remain return transfers, and throws do not produce normal branch results. Crossing a try boundary with `finally`, including an explicit return, retains `FINALLY_UNSUPPORTED`. Keep that obligation and every independent qualification attached to the useful partial paths.
+
 `IMPACT` requires `seeds`, `declarations`, `domain`, `flow`, and `models`. Use no transformation steps and select `VALUE_PATHS`. Retain the result for later inspection.
 
 | Input | Requirement |

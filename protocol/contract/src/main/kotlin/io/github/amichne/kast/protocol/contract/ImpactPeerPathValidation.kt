@@ -74,7 +74,7 @@ private fun ImpactRepresentationHistoryDocument.isOnBasis(basis: ImpactSemanticB
     }
 
 private fun ImpactCompilerTransferDocument.isOnBasis(basis: ImpactSemanticBasisDocument): Boolean =
-    source.isOnBasis(basis) && target.isOnBasis(basis)
+    admitsEvidence() && source.isOnBasis(basis) && target.isOnBasis(basis)
 
 private fun ImpactRepresentationApplicationDocument.isOnBasis(basis: ImpactSemanticBasisDocument): Boolean =
     source.isOnBasis(basis) && target.isOnBasis(basis) && invocation.callable.basis == basis && rule.isOnBasis(basis)
