@@ -11,7 +11,6 @@ import io.github.amichne.kast.change.apply.LiveSourceWriteResult
 import io.github.amichne.kast.change.apply.ObservedAbsentMutationSource
 import io.github.amichne.kast.change.apply.ObservedMutationSource
 import io.github.amichne.kast.change.apply.SourceObservationResult
-import io.github.amichne.kast.change.apply.VerifiedLivePlanApproval
 import io.github.amichne.kast.change.contract.LiveChangeBasisComparison
 import io.github.amichne.kast.change.contract.LiveChangePlan
 import io.github.amichne.kast.change.intellij.HostedLiveSourceWriter
@@ -44,7 +43,6 @@ internal suspend fun applyHostedChange(
     query: HostedQueryService,
     resources: HostedChangeResources,
     plan: LiveChangePlan,
-    approval: VerifiedLivePlanApproval,
 ): HostedApplyOutcome {
     when (val history = observeHostedApplication(resources, plan)) {
         HostedApplicationHistory.Unattempted -> Unit
@@ -61,7 +59,7 @@ internal suspend fun applyHostedChange(
             when (
                 val prepared =
                     LiveMutationAuthority.prepare(
-                        fresh.candidate(plan, approval),
+                        fresh.candidate(plan),
                         resources.plans,
                         recovery,
                     )
@@ -130,10 +128,8 @@ private data class FreshHostedMutation(
     val guard: HostedPreWriteObservation,
 )
 
-private fun FreshHostedMutation.candidate(
-    plan: LiveChangePlan,
-    approval: VerifiedLivePlanApproval,
-) = LiveMutationCandidate(plan = plan, current = authority, model = model, observed = source, approval = approval)
+private fun FreshHostedMutation.candidate(plan: LiveChangePlan) =
+    LiveMutationCandidate(plan = plan, current = authority, model = model, observed = source)
 
 private fun observeHostedMutation(
     project: Project,

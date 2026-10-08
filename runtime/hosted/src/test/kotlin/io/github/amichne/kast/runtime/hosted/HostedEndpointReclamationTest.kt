@@ -182,7 +182,6 @@ class HostedEndpointReclamationTest {
             "TRAVERSAL_RUN",
             "DIAGNOSTIC_CHECK",
             "CHANGE_PLAN",
-            "CHANGE_APPROVAL_PREPARE",
             "CHANGE_APPLY",
             "CHANGE_RECOVER",
         )

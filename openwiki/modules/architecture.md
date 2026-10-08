@@ -33,6 +33,8 @@ code_sources:
 sources:
   - id: openwiki-source-48edfaeb8d917960adc80600
     resource: repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt
+  - id: openwiki-source-5c861b8d15a750f35fef8a31
+    resource: repo://build-logic/src/main/kotlin/support/architecture/validation/ModulePolicyValidator.kt
   - id: openwiki-source-dfe8403e5aee6d5722e08a79
     resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt
   - id: openwiki-source-2a9daaac1604f238ef4c63fb
@@ -41,10 +43,10 @@ sources:
     resource: repo://runtime/hosted/build.gradle.kts
   - id: openwiki-source-e620d7484b72a53c7fa812cd
     resource: repo://settings.gradle.kts
-generated: { by: "codex", at: "2026-10-02T03:24:34.910Z" }
+generated: { by: "codex", at: "2026-10-08T01:13:49.481Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T13:22:01.032Z
+    at: 2026-10-08T01:13:49.481Z
 ---
 
 # Verified module architecture
@@ -63,8 +65,8 @@ Every module role requires its matching Gradle convention. Validated module poli
 - IntelliJ and filesystem/SQLite modules own explicit effects.
 - The existing-IDE host connects proven contracts to effectful adapters.
 - App Server and CLI expose broker, installation and transport boundaries.
-- `distribution:cli` is the isolated native management surface. Its production project dependencies are `distribution:contract` and `distribution:managed`; it reuses the managed selected-IDE metadata owner and retains no IntelliJ, semantic, MCP implementation, or App Server implementation dependency. Shutdown fence writes remain confined to the exact lifecycle effect owner.
-- The MCP launcher retains the hosted catalog and uses Kotlin MCP SDK tool annotations at its adapter boundary. Its one-call change tool signs an exact internal plan challenge without an interactive approval file.
+- `distribution:cli` is the isolated native management surface. Its production project dependencies are `distribution:contract`, `distribution:managed`, and the durable `evidence:sqlite` owner for read-only settled mutation-state inspection. The exact distribution-to-SQLite edge is named in policy; general CLI-to-SQLite dependencies remain rejected. It reuses the managed selected-IDE metadata owner and retains no IntelliJ, semantic, MCP implementation, or App Server implementation dependency. Shutdown fence writes remain confined to the exact lifecycle effect owner.
+- The MCP launcher retains the hosted catalog and uses Kotlin MCP SDK tool annotations at its adapter boundary. Its one-call change tool submits the exact canonical plan identity to current native mutation admission.
 
 The App Server's direct login-agent publisher and the installation service lock are explicit scoped filesystem-write owners. The publisher writes or removes only the qualified per-user launchd entry; the lock serializes launchd start, retirement, and direct login resumption.
 
@@ -79,8 +81,7 @@ dependencies from semantic service modules.
 It depends only on `kernel`, `protocol:contract`, and `change:contract`; the
 plan-storage interface is defined in `change:contract`. Its dependency closure
 cannot acquire workspace startup, import, IntelliJ, SQLite, or isolated-runtime
-capabilities. The hosted coordinator composes the native live plan, internal exact-challenge
-signing, guarded write, verification and recovery adapters in one caller invocation. Their IntelliJ and SQLite effects remain
+capabilities. The hosted coordinator composes the native live plan, exact canonical plan admission, guarded write, verification and recovery adapters in one caller invocation. Their IntelliJ and SQLite effects remain
 explicit host dependencies; a live plan does not acquire worker-start authority.
 
 ## Formatting and structural checks
@@ -121,7 +122,7 @@ scoped guide resources staged with the control product.
 
 The explicit hosted workspace refresh adapter is the sole scoped caller permitted to perform native Gradle model reload and recursive VFS refresh. These capabilities are not granted to `workspace:intellij-read` or the general hosted runtime. Architecture regression tests retain rejection of passive-read callers and of unapproved native import entry points and cache/index rebuilding.
 
-The native lifecycle adapter alone has scoped project-manager authority. The existing refresh adapter alone can create initial Gradle link settings and call the narrow native link-plus-refresh seam; its shared spec builder has only the exact quiet import-spec methods. Approval-key reads are confined to the exact lifecycle verification owner. Passive workspace reads retain no project-open, link, import, or lifecycle-control authority.
+The native lifecycle adapter alone has scoped project-manager authority. The existing refresh adapter alone can create initial Gradle link settings and call the narrow native link-plus-refresh seam; its shared spec builder has only the exact quiet import-spec methods. Project close retains its exact local confirmation and scoped native lifecycle owner. Passive workspace reads retain no project-open, link, import, or lifecycle-control authority.
 
 Builds use strict dependency verification against the checked checksum metadata. Task registration uses the explicit Gradle Kotlin DSL API, retaining lazy task providers without the deprecated delegated registration syntax. The IDEA distribution and platform compilation artifacts share `idea-platform-build`; `ide-host-build` independently pins the packaged host. Unused Maven publication conventions and their plugin dependency have been removed; release delivery remains the GitHub release assembly.
 

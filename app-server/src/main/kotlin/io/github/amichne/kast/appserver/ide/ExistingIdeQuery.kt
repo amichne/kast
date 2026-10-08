@@ -69,26 +69,33 @@ sealed interface ExistingIdeOperation {
         }
     }
 
-    class ApprovalPreparation constructor(val kind: HostedMutationOperation, val identity: HostedPlanIdentity) :
-        ExistingIdeOperation
-
-    class ApprovedMutation
+    class Mutation
     private constructor(
         override val request: PreparedOperationRequest,
         val kind: HostedMutationOperation,
         val identity: HostedPlanIdentity,
-        val assertion: HostedApprovalAssertion,
     ) : Change {
         companion object {
             fun admit(
                 request: PreparedOperationRequest,
                 kind: HostedMutationOperation,
                 identity: HostedPlanIdentity,
-                assertion: HostedApprovalAssertion,
-            ): Refinement<ApprovedMutation, ExistingIdeFailure> =
-                if (request.operation == kind.canonical)
-                    Refinement.Refined(ApprovedMutation(request, kind, identity, assertion))
-                else Refinement.Rejected(ExistingIdeFailure.APPROVAL_REJECTED)
+            ): Refinement<Mutation, ExistingIdeFailure> {
+                if (request.operation != kind.canonical)
+                    return Refinement.Rejected(ExistingIdeFailure.OPERATION_UNSUPPORTED)
+                val matches =
+                    when (val effect = request.hostedEffect) {
+                        is HostedRequestEffect.ChangeApply ->
+                            kind == HostedMutationOperation.CHANGE_APPLY && effect.planIdentity.value == identity.value
+                        is HostedRequestEffect.ChangeRecover ->
+                            kind == HostedMutationOperation.CHANGE_RECOVER &&
+                                effect.planIdentity.value == identity.value
+                        is HostedRequestEffect.ChangePlan,
+                        is HostedRequestEffect.Operation -> false
+                    }
+                return if (matches) Refinement.Refined(Mutation(request, kind, identity))
+                else Refinement.Rejected(ExistingIdeFailure.INVALID_REQUEST)
+            }
         }
     }
 

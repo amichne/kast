@@ -1,0 +1,341 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kast.michne.com/schemas/uninstall-retirement.schema.json",
+  "title": "Kast uninstall retirement proof",
+  "type": "object",
+  "required": [
+    "type",
+    "installationRoot",
+    "executable",
+    "executableSha256",
+    "channel",
+    "managedRootIdentity",
+    "recoveryProof",
+    "controlIdentity",
+    "homeConfiguration"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "REMOVAL_REQUESTED",
+        "CONTROL_RETIRED",
+        "EXTERNALS_CLEANED"
+      ]
+    },
+    "installationRoot": {
+      "type": "string",
+      "pattern": "^/",
+      "minLength": 2,
+      "maxLength": 4096
+    },
+    "executable": {
+      "type": "string",
+      "pattern": "^/",
+      "minLength": 2,
+      "maxLength": 4096
+    },
+    "executableSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "channel": {
+      "type": "string",
+      "enum": [
+        "STABLE",
+        "DEVELOPER"
+      ]
+    },
+    "managedRootIdentity": {
+      "$ref": "#/$defs/FilesystemIdentity"
+    },
+    "recoveryProof": {
+      "$ref": "#/$defs/RecoveryProof"
+    },
+    "controlIdentity": {
+      "$ref": "#/$defs/FilesystemIdentity"
+    },
+    "homeConfiguration": {
+      "$ref": "#/$defs/HomeConfigurationProof"
+    }
+  },
+  "examples": [
+    {
+      "type": "REMOVAL_REQUESTED",
+      "installationRoot": "/home/user/.local/share/kast",
+      "executable": "/home/user/.local/bin/kast",
+      "executableSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "channel": "STABLE",
+      "managedRootIdentity": {
+        "device": 1,
+        "inode": 2,
+        "owner": 501
+      },
+      "recoveryProof": {
+        "type": "ABSENT_RECOVERY"
+      },
+      "controlIdentity": {
+        "device": 1,
+        "inode": 3,
+        "owner": 501
+      },
+      "homeConfiguration": {
+        "type": "ABSENT_CONFIGURATION"
+      }
+    },
+    {
+      "type": "CONTROL_RETIRED",
+      "installationRoot": "/home/user/.local/share/kast",
+      "executable": "/home/user/.local/bin/kast",
+      "executableSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "channel": "STABLE",
+      "managedRootIdentity": {
+        "device": 1,
+        "inode": 2,
+        "owner": 501
+      },
+      "recoveryProof": {
+        "type": "ABSENT_RECOVERY"
+      },
+      "controlIdentity": {
+        "device": 1,
+        "inode": 3,
+        "owner": 501
+      },
+      "homeConfiguration": {
+        "type": "ABSENT_CONFIGURATION"
+      }
+    },
+    {
+      "type": "EXTERNALS_CLEANED",
+      "installationRoot": "/home/user/.local/share/kast",
+      "executable": "/home/user/.local/bin/kast",
+      "executableSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "channel": "STABLE",
+      "managedRootIdentity": {
+        "device": 1,
+        "inode": 2,
+        "owner": 501
+      },
+      "recoveryProof": {
+        "type": "ABSENT_RECOVERY"
+      },
+      "controlIdentity": {
+        "device": 1,
+        "inode": 3,
+        "owner": 501
+      },
+      "homeConfiguration": {
+        "type": "ABSENT_CONFIGURATION"
+      }
+    }
+  ],
+  "$defs": {
+    "FilesystemIdentity": {
+      "type": "object",
+      "required": [
+        "device",
+        "inode",
+        "owner"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "device": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "inode": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "owner": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "CapturedRecoveryFile": {
+      "type": "object",
+      "required": [
+        "identity",
+        "digest"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "identity": {
+          "$ref": "#/$defs/FilesystemIdentity"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "RecoveryProof": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "ABSENT_RECOVERY"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "installation",
+            "installationIdentity",
+            "recoveryDirectoryIdentity",
+            "bundleIdentity",
+            "receipt",
+            "recoveryScript",
+            "lifecycleScript"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "ADMITTED_RECOVERY"
+              ]
+            },
+            "installation": {
+              "type": "string",
+              "pattern": "^/",
+              "minLength": 2,
+              "maxLength": 4096
+            },
+            "installationIdentity": {
+              "$ref": "#/$defs/FilesystemIdentity"
+            },
+            "recoveryDirectoryIdentity": {
+              "$ref": "#/$defs/FilesystemIdentity"
+            },
+            "bundleIdentity": {
+              "$ref": "#/$defs/FilesystemIdentity"
+            },
+            "receipt": {
+              "$ref": "#/$defs/CapturedRecoveryFile"
+            },
+            "recoveryScript": {
+              "$ref": "#/$defs/CapturedRecoveryFile"
+            },
+            "lifecycleScript": {
+              "$ref": "#/$defs/CapturedRecoveryFile"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "installation",
+            "recoveryDirectoryIdentity"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "EMPTY_RECOVERY"
+            },
+            "installation": {
+              "type": "string",
+              "pattern": "^/",
+              "maxLength": 4096
+            },
+            "recoveryDirectoryIdentity": {
+              "$ref": "#/$defs/FilesystemIdentity"
+            }
+          }
+        }
+      ]
+    },
+    "HomeConfigurationProof": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "ABSENT_CONFIGURATION"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "home",
+            "directoryIdentity",
+            "directoryMode",
+            "files"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "ADMITTED_CONFIGURATION"
+            },
+            "home": {
+              "type": "string",
+              "pattern": "^/",
+              "maxLength": 4096
+            },
+            "directoryIdentity": {
+              "$ref": "#/$defs/FilesystemIdentity"
+            },
+            "directoryMode": {
+              "enum": [
+                "PRIVATE",
+                "READABLE"
+              ]
+            },
+            "files": {
+              "type": "array",
+              "maxItems": 2,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/HomeConfigurationFile"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "HomeConfigurationFile": {
+      "type": "object",
+      "required": [
+        "artifact",
+        "identity",
+        "digest"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "artifact": {
+          "enum": [
+            "CONFIGURATION",
+            "CHECKPOINT"
+          ]
+        },
+        "identity": {
+          "$ref": "#/$defs/FilesystemIdentity"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    }
+  }
+}

@@ -286,6 +286,7 @@ class InstalledBrokerServerTest {
         val readiness = BrokerInstallationLayout.from(kast, codexHome).broker.resolve("service-readiness.json")
         Files.createDirectories(userHome.resolve("lib"))
         Files.createDirectories(userHome.resolve("share"))
+        Files.writeString(userHome.resolve("settings.gradle.kts"), "")
         WorkspaceEnrollmentStore(userHome.resolve("config/workspaces.json")).enroll(userHome)
         val identity = "sha256:${"a".repeat(64)}"
         val executor = InstalledProcessExecutor(kast, codex)

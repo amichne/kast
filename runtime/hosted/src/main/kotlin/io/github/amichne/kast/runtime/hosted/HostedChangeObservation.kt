@@ -14,7 +14,6 @@ internal enum class HostedChangeStage {
     READINESS_WAIT,
     REFERENCE_RESTORATION,
     PLANNING,
-    APPROVAL,
     MUTATION_PERMIT_WAIT,
     APPLICATION,
     VERIFICATION,

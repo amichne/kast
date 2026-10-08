@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kast.michne.com/schemas/selected-ide.schema.json",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "home",
+        "bundle",
+        "executable",
+        "hostPluginTarget"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "resolved"
+        },
+        "home": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        },
+        "bundle": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        },
+        "executable": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        },
+        "hostPluginTarget": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "const": "UNRECORDED"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "type",
+                "root"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "const": "RECORDED"
+                },
+                "root": {
+                  "type": "string",
+                  "pattern": "^/",
+                  "maxLength": 4096
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "home",
+        "bundle",
+        "executable"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "resolved"
+        },
+        "home": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        },
+        "bundle": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        },
+        "executable": {
+          "type": "string",
+          "pattern": "^/",
+          "maxLength": 4096
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "unavailable"
+        },
+        "reason": {
+          "enum": [
+            "METADATA_UNAVAILABLE",
+            "INVALID_METADATA",
+            "SAVED_SELECTION_REJECTED",
+            "UNSUPPORTED_PLATFORM_LINE",
+            "MISSING_LAUNCHER",
+            "AMBIGUOUS_LAUNCHER",
+            "INVALID_LAUNCHER",
+            "EXECUTABLE_UNAVAILABLE"
+          ]
+        }
+      }
+    }
+  ]
+}

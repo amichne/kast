@@ -181,9 +181,6 @@ internal sealed interface InstalledBrokerServerConfiguration {
                     BrokerServiceReadinessAdmission.Rejected ->
                         return rejected(InstalledBrokerServerConfigurationFailure.READINESS_REJECTED)
                 }
-            val approvalHome =
-                io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory.admit(canonicalUserHome)
-                    ?: return rejected(InstalledBrokerServerConfigurationFailure.USER_HOME_REJECTED)
             val kastOptions =
                 KastProviderOptions(
                     catalogSource =
@@ -241,7 +238,6 @@ internal sealed interface InstalledBrokerServerConfiguration {
             return Configured(
                 InstalledBrokerServerOptions(
                     kastOptions = kastOptions,
-                    approvalHome = approvalHome,
                     protocolOptions = protocolOptions,
                     upstreamOptions = upstreamOptions,
                     threadStore = stateDirectory.resolve("threads.json"),
@@ -324,7 +320,6 @@ internal sealed interface InstalledBrokerServerConfiguration {
 
 internal data class InstalledBrokerServerOptions(
     val kastOptions: KastProviderOptions,
-    val approvalHome: io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory,
     val protocolOptions: CodexProtocolQualificationOptions,
     val upstreamOptions: ManagedCodexUpstreamOptions,
     val threadStore: Path,
@@ -602,9 +597,6 @@ internal object InstalledBrokerHost {
                 maximumMessageBytes = options.maximumMessageBytes,
                 activitySink = JsonLineBrokerInvocationActivitySink(System.err),
                 sessionBootstrap = kastQualification.bootstrap,
-                projectCloseSigner =
-                    io.github.amichne.kast.appserver.provider.EnrolledPlanApprovalSigner(options.approvalHome.path)::
-                        signProjectClose,
                 enrollment = enrollment,
                 bindingOwner = owner,
                 sessionActivitySink = io.github.amichne.kast.appserver.runtime.JsonLineSessionActivitySink(System.err),

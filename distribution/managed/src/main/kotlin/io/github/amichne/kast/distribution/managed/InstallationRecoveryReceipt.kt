@@ -219,6 +219,36 @@ private fun pendingRecoveryTransfer(receipt: RecoveryReceipt, layout: RecoveryLa
 
 fun admitInstallationRecovery(root: Path): InstallationRecoveryAdmission = InstallationRecoveryBaseline.admit(root)
 
+/** Capture terminal receipt ownership while its physical installation still exists. */
+internal fun admitRecoveryRemovalIdentity(
+    root: Path
+): io.github.amichne.kast.kernel.Refinement<InstallationFilesystemIdentity, RecoveryRemovalFailure> {
+    val slot = RecoverySlot.observe(root)
+    if (slot.layout != RecoveryLayout.DIRECT || !slot.validRoot())
+        return io.github.amichne.kast.kernel.Refinement.Rejected(RecoveryRemovalFailure.ROOT_REJECTED)
+    val receipt =
+        when (val decoded = readRecoveryDocument(slot)) {
+            is RecoveryDocumentRead.Decoded -> decoded.receipt
+            RecoveryDocumentRead.Rejected ->
+                return io.github.amichne.kast.kernel.Refinement.Rejected(RecoveryRemovalFailure.RECEIPT_REJECTED)
+        }
+    if (!matchesInstallation(receipt, root))
+        return io.github.amichne.kast.kernel.Refinement.Rejected(RecoveryRemovalFailure.OWNERSHIP_UNPROVEN)
+    return when (receipt.stage) {
+        RecoveryStage.PREPARED,
+        RecoveryStage.ACTIVE ->
+            if (validRecoveryPlugin(receipt.plugin, receipt.pluginRoot))
+                io.github.amichne.kast.kernel.Refinement.Refined(receipt.installationIdentity)
+            else io.github.amichne.kast.kernel.Refinement.Rejected(RecoveryRemovalFailure.RECEIPT_REJECTED)
+        RecoveryStage.PLUGIN_PREPARED,
+        RecoveryStage.FINALIZING ->
+            io.github.amichne.kast.kernel.Refinement.Rejected(RecoveryRemovalFailure.RECOVERY_PENDING)
+        RecoveryStage.DETACHED,
+        RecoveryStage.CLEAN ->
+            io.github.amichne.kast.kernel.Refinement.Rejected(RecoveryRemovalFailure.RECOVERY_UNRESOLVED)
+    }
+}
+
 /** Called under the stable activation lock after the physical payload has been committed. */
 fun prepareInstallationRecovery(
     root: Path,
@@ -276,7 +306,13 @@ private fun readReceipt(path: Path): String {
             if (it.size > MAXIMUM_RECOVERY_RECEIPT_BYTES || identity(path) != before)
                 throw java.io.IOException("recovery receipt rejected")
         }
-        .toString(Charsets.UTF_8)
+        .let { bytes ->
+            Charsets.UTF_8.newDecoder()
+                .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+                .decode(java.nio.ByteBuffer.wrap(bytes))
+                .toString()
+        }
 }
 
 private fun validReceiptFile(path: Path): Boolean =

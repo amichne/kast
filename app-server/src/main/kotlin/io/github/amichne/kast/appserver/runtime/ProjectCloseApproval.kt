@@ -10,11 +10,11 @@ internal sealed interface ControllerApprovedProjectClose {
     val invocation: BrokerInvocationContext
 }
 
-internal class ProjectCloseApprovalGrant
-private constructor(
-    val approval: ControllerApprovedProjectClose,
-    val assertion: String,
-) {
+internal class ProjectCloseApprovalGrant private constructor(val approval: ControllerApprovedProjectClose) {
+
+    val confirmation: ProjectCloseApprovalPayload
+        get() = approval.payload()
+
     fun matches(context: BrokerInvocationContext, request: WorkspaceLifecycleRequest.RequestUserClose): Boolean =
         approval.invocation.threadId == context.threadId &&
             approval.invocation.turnId == context.turnId &&
@@ -22,8 +22,7 @@ private constructor(
             approval.request == request
 
     companion object {
-        fun signed(approval: ControllerApprovedProjectClose, assertion: String) =
-            ProjectCloseApprovalGrant(approval, assertion)
+        fun confirmed(approval: ControllerApprovedProjectClose) = ProjectCloseApprovalGrant(approval)
     }
 }
 
@@ -36,3 +35,10 @@ internal fun ControllerApprovedProjectClose.payload() =
         invocation.turnId.value,
         invocation.callId.value,
     )
+
+internal enum class ProjectCloseConfirmationFailure {
+    UNKNOWN_REQUEST,
+    MALFORMED_RESPONSE,
+    NOT_RESPONSIBLE_CONTROLLER,
+    ALREADY_RESOLVED,
+}

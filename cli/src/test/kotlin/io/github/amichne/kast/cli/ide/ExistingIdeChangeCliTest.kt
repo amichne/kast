@@ -9,7 +9,6 @@ import io.github.amichne.kast.appserver.DaemonOperationResult
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.ExistingIdeClient
-import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.canonicalRootFixture
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
@@ -67,52 +66,16 @@ class ExistingIdeChangeCliTest {
     }
 
     @Test
-    fun `approval preparation reaches hosted ingress with exact plan identity`() {
-        val root = canonicalRootFixture(Path.of("/workspace"))
-        var calls = 0
-        executeExistingIdeCli(
-            argv = listOf("change", "apply", "--stdin", "--hosted-approval-prepare"),
-            start = root.path,
-            roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(root) },
-            client =
-                ExistingIdeClient { _, _ ->
-                    error("Approval preparation reached direct IDE")
-                },
-            requestInput = CliRequestDocumentInput.Provided("""{"planIdentity":"plan:${"a".repeat(64)}"}"""),
-            read =
-                DaemonOperationClient { admittedRoot, call ->
-                    assertEquals(root, admittedRoot)
-                    val action = (call as DaemonOperationCall.Change).action as DaemonChangeAction.Prepare
-                    assertEquals("plan:${"a".repeat(64)}", action.identity)
-                    calls++
-                    DaemonOperationResult.Rejected(
-                        DaemonOperationClientRejection.Server(
-                            DaemonOperationFailure.Host(ExistingIdeFailure.HOST_UNAVAILABLE)
-                        )
-                    )
-                },
-        )
-        assertEquals(1, calls)
-    }
-
-    @Test
-    fun `ordinary apply requires approval before calling the hosted capability`() {
-        val root = canonicalRootFixture(Path.of("/workspace"))
-        var calls = 0
-        val result =
-            executeExistingIdeCli(
-                argv = listOf("change", "apply"),
-                start = root.path,
-                roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(root) },
-                client =
-                    ExistingIdeClient { _, _ ->
-                        calls++
-                        ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
-                    },
-                requestInput = CliRequestDocumentInput.Provided("""{"planIdentity":"plan:${"a".repeat(64)}"}"""),
+    fun `retired approval modes fail before consuming input or host effects`() {
+        for (flag in listOf("--hosted-approval-prepare", "--hosted-approved-invocation")) {
+            assertTrue(
+                admitHostedCliInput(
+                    listOf("change", "apply", flag),
+                    CliRequestDocumentInput.Deferred { error("retired mode must not read stdin") },
+                )
+                    is Refinement.Rejected
             )
-        assertEquals(0, calls)
-        assertTrue(result.document.value.contains("approval-required"))
+        }
     }
 
     @Test

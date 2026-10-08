@@ -1,6 +1,5 @@
 package io.github.amichne.kast.change.verify
 
-import io.github.amichne.kast.change.apply.LiveApprovalChallenge
 import io.github.amichne.kast.change.contract.AddDeclarationKind
 import io.github.amichne.kast.change.contract.AddDeclarationObligation
 import io.github.amichne.kast.change.contract.ChangePlanId
@@ -12,7 +11,8 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 
 internal fun decodeReceiptBody(
-    body: LiveReceiptBody
+    body: LiveReceiptFacts,
+    execution: HistoricalLiveExecution,
 ): Refinement<HistoricalLiveAddDeclarationReceipt, LiveReceiptFailure> {
     val plan =
         when (val decoded = LiveAddDeclarationPlanCodec.decode(body.plan.toString())) {
@@ -21,11 +21,6 @@ internal fun decodeReceiptBody(
         }
     val result =
         when (val decoded = decodeReceiptResult(plan, body)) {
-            is Refinement.Refined -> decoded.value
-            is Refinement.Rejected -> return decoded
-        }
-    val approval =
-        when (val decoded = decodeReceiptApproval(body.approval)) {
             is Refinement.Refined -> decoded.value
             is Refinement.Rejected -> return decoded
         }
@@ -42,7 +37,7 @@ internal fun decodeReceiptBody(
     return HistoricalLiveAddDeclarationReceipt.restore(
         plan = plan,
         result = result,
-        approval = approval,
+        execution = execution,
         recovery = recovery,
         obligations = obligations,
     )
@@ -50,7 +45,7 @@ internal fun decodeReceiptBody(
 
 private fun decodeReceiptResult(
     plan: LiveAddDeclarationChangePlan,
-    body: LiveReceiptBody,
+    body: LiveReceiptFacts,
 ): Refinement<HistoricalLiveSemanticResult, LiveReceiptFailure> {
     val after =
         when (val decoded = decodeReceiptAfter(plan, body)) {
@@ -88,7 +83,7 @@ private fun decodeReceiptResult(
 
 internal fun decodeReceiptApproval(body: LiveReceiptApproval): Refinement<HistoricalLiveApproval, LiveReceiptFailure> {
     val challenge =
-        when (val decoded = LiveApprovalChallenge.parse(body.challenge)) {
+        when (val decoded = HistoricalApprovalChallenge.parse(body.challenge)) {
             is Refinement.Refined -> decoded.value
             is Refinement.Rejected -> return Refinement.Rejected(LiveReceiptFailure.APPROVAL_MISMATCH)
         }
@@ -120,7 +115,7 @@ internal fun decodeReceiptRecovery(body: LiveReceiptRecovery): Refinement<Histor
 }
 
 private fun decodeReceiptObligations(
-    body: LiveReceiptBody
+    body: LiveReceiptFacts
 ): Refinement<HistoricalLiveReceiptObligations, LiveReceiptFailure> {
     val semantic =
         body.semanticObligations.map { name ->
@@ -134,3 +129,48 @@ private fun decodeReceiptObligations(
         }
     return Refinement.Refined(HistoricalLiveReceiptObligations(semantic, live))
 }
+
+internal fun decodeReceiptExecution(
+    document: LocalEndpointExecutionDocument,
+    plan: io.github.amichne.kast.change.contract.LiveChangePlan,
+): Refinement<HistoricalLiveExecution.LocalEndpointOperation, LiveReceiptFailure> {
+    val identity =
+        when (val parsed = ChangePlanId.parse(document.planId)) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> return Refinement.Rejected(LiveReceiptFailure.MALFORMED)
+        }
+    val path =
+        try {
+            java.nio.file.Path.of(document.root)
+        } catch (_: java.nio.file.InvalidPathException) {
+            return Refinement.Rejected(LiveReceiptFailure.MALFORMED)
+        }
+    val root =
+        when (val parsed = io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot.fromCanonicalPath(path)) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> return Refinement.Rejected(LiveReceiptFailure.MALFORMED)
+        }
+    val host =
+        try {
+            java.util.UUID.fromString(document.host)
+        } catch (_: IllegalArgumentException) {
+            return Refinement.Rejected(LiveReceiptFailure.MALFORMED)
+        }
+    if (host.toString() != document.host) return Refinement.Rejected(LiveReceiptFailure.MALFORMED)
+    return HistoricalLiveExecution.LocalEndpointOperation.restore(
+        plan,
+        identity,
+        root,
+        io.github.amichne.kast.workspace.contract.IdeReadHostLifetime.fromBoundary(host),
+        document.operation,
+    )
+}
+
+internal fun HistoricalLiveExecution.LocalEndpointOperation.document() =
+    LocalEndpointExecutionDocument(
+        LocalEndpointExecutionType.LOCAL_ENDPOINT_OPERATION,
+        operation,
+        root.value,
+        host.value.toString(),
+        planId.value,
+    )

@@ -8,9 +8,6 @@ import io.github.amichne.kast.appserver.DaemonManagementFailure
 import io.github.amichne.kast.appserver.DaemonManagementRejection
 import io.github.amichne.kast.appserver.PersistentBrokerServiceFailure
 import io.github.amichne.kast.appserver.UnavailableAppServerManager
-import io.github.amichne.kast.cli.ide.BrokerTrustFailure
-import io.github.amichne.kast.cli.ide.BrokerTrustResult
-import io.github.amichne.kast.cli.ide.BrokerTrustStatus
 import java.nio.file.Path
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -44,7 +41,7 @@ class KastServiceMainTest {
             ServiceControlSelection.Selected(ServiceControlAction.STATUS),
             selectServiceControl(listOf("status")),
         )
-        assertEquals(ServiceControlSelection.Trust, selectServiceControl(listOf("enroll-trust")))
+        assertEquals(ServiceControlSelection.Rejected, selectServiceControl(listOf("enroll-trust")))
         for (arguments in
             listOf(
                 emptyList(),
@@ -127,26 +124,6 @@ class KastServiceMainTest {
     }
 
     @Test
-    fun `private trust enrollment preserves finite success and rejection`() {
-        assertEquals(
-            ServiceControlOutcome.TrustCompleted(BrokerTrustStatus.PRESERVED),
-            executePrivateTrust { BrokerTrustResult.Complete(BrokerTrustStatus.PRESERVED) },
-        )
-        val completion =
-            serviceControlJson
-                .encodeToJsonElement(ServiceTrustCompletionDocument(BrokerTrustStatus.PRESERVED))
-                .jsonObject
-        assertEquals(setOf("status", "outcome", "operation"), completion.keys)
-        assertEquals("PRESERVED", completion.getValue("status").jsonPrimitive.content)
-        assertEquals("complete", completion.getValue("outcome").jsonPrimitive.content)
-        assertEquals("private-trust-enrollment", completion.getValue("operation").jsonPrimitive.content)
-        assertEquals(
-            ServiceControlOutcome.Rejected(ServiceControlFailureDocument.Trust(BrokerTrustFailure.INCOMPLETE_KEYS)),
-            executePrivateTrust { BrokerTrustResult.Rejected(BrokerTrustFailure.INCOMPLETE_KEYS) },
-        )
-    }
-
-    @Test
     fun `private repair and stop dispatch typed manager actions`() {
         val observedActions = mutableListOf<AppServerAction>()
         val manager = AppServerManager { action, _ ->
@@ -179,7 +156,6 @@ class KastServiceMainTest {
                 ServiceControlFailureDocument.Daemon(
                     DaemonManagementRejection.Protocol(DaemonManagementFailure.RESPONSE_REJECTED)
                 ) to "daemon",
-                ServiceControlFailureDocument.Trust(BrokerTrustFailure.INCOMPLETE_KEYS) to "trust",
             )
         for ((document, discriminator) in cases) {
             val encoded = serviceControlJson.encodeToJsonElement<ServiceControlFailureDocument>(document).jsonObject
@@ -220,10 +196,6 @@ class KastServiceMainTest {
                 val reason = encoded.getValue("reason").jsonObject
                 assertEquals("protocol", reason.getValue("type").jsonPrimitive.content)
                 assertEquals("RESPONSE_REJECTED", reason.getValue("failure").jsonPrimitive.content)
-            }
-            is ServiceControlFailureDocument.Trust -> {
-                assertEquals(setOf("type", "failure"), encoded.keys)
-                assertEquals("INCOMPLETE_KEYS", encoded.getValue("failure").jsonPrimitive.content)
             }
         }
     }

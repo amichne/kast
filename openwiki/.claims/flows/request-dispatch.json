@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:09aa614c7b9729ea601ea62044d1ca6eeab98abafa89cfdd8d681c4e72bc44c0",
+  "pageVersion": "sha256:660e0fe77a3d4371140e496e1afeac4487e8503cbed1a5a2ff702465b6880401",
   "claims": [
     {
       "id": "claim_07361b0d848e4ee7895255b78a26d60b",
@@ -59,8 +59,8 @@
           "version": "repo-file-v1:sha256:630c9a7e3a62ab0be5718e60b2d0c681621f21517eaec6dc9011bf1d791e13c8"
         },
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt#L75-L127",
-          "version": "repo-lines-v1:sha256:c377a261740512a32b5164ad4298e08a0d4e712010a30e0f133cbb1c3cce3c03:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJhYzNhYTAwOWQzNzUzMjZiYmVkN2MzOTc3ZTI2MmY0MTljNTQ1ZjQ2YmUxYTdjZGVhNmIzYWFjZDYxZjY5OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI3NGY2ZmUzYzM2ZTVhZGM0Y2EwODRlMWJhOGE5YTgxYTY0OWU1ZjA2NGUxYmI3ODJiMjg0YjdjYjdmNTdjNmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM2OWJlNTUyNGI3MTBiZDQ5YThjMTAzMzYyYTQ1ODAwZDM5MTQwNTZkNmU3NTdlNTRlZGZiNDM3YThjODVmZDQifQ"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt#L75-L155",
+          "version": "repo-lines-v1:sha256:bc3c1fc21b2d791ccf4931c8356be3ffa7206e28009e6969ff2a445ca7adfe3c:eyJzZWxlY3RlZExpbmVDb3VudCI6ODEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJhYzNhYTAwOWQzNzUzMjZiYmVkN2MzOTc3ZTI2MmY0MTljNTQ1ZjQ2YmUxYTdjZGVhNmIzYWFjZDYxZjY5OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlhYjMyY2FlYjVjYmMwMTNlZDUxMTBmNDcyMjJjNTRhMGFkM2JlZmY1MjRlYWE1Y2FiYTUxY2JkMGZmZmQxNzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzZTZlMjQ4MzhhNTIxMzQxNzA1OTIxOGEwN2UzNWUyZjFjNmNkZTk0Mjg3NDZhZGNlOWVhNmI4ZTFmN2Y2M2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhjYzkwZTE0YmU2MzM2Y2NhZTlmNzIwMmQ0MzA4YzUwN2M5OGE4YzUxNjc0ZTMzNjJhOTBlNzVjY2E1Zjg4OTQifQ"
         }
       ]
     },
@@ -74,7 +74,7 @@
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseEvidence.kt",
-          "version": "repo-file-v1:sha256:4d0894be4bea8b658b8f223fc61e6e5c99315d6132b8cd5217cb60a096a92c73"
+          "version": "repo-file-v1:sha256:ea827caee7329908e7e6a2869840eb2a8043d75e0e88fdafba37567b7c45a635"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseFrame.kt",
@@ -92,13 +92,23 @@
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt",
-          "version": "repo-file-v1:sha256:6fc0525af30bcd59074948e9bff7beb8f187edcbd299ec3f6f1115108df81593"
+          "version": "repo-file-v1:sha256:9afd0f3b9e72e04757a249491a2ef6583c24160713b23508e53d2e182cc3a9cd"
+        }
+      ]
+    },
+    {
+      "id": "claim_e676e8bcaf054ea2a78833bb3a91849f",
+      "statement": "Canonical-root discovery rejections are known pre-dispatch failures and cannot fence workspace recovery; post-dispatch uncertainty and schema rejection for writing effects retain recovery-required handling.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/SettledOutputRejection.kt",
+          "version": "repo-file-v1:sha256:4f3e7d944d248804d908f7914651a99b606cb481686db98679f3c43ea55178c4"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-05T19:11:53.820Z"
+    "at": "2026-10-08T01:13:49.481Z"
   }
 }

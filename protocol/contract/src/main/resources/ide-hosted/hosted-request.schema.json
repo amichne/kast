@@ -126,8 +126,7 @@
             "SOURCE_READ",
             "DIAGNOSTIC_CHECK",
             "CHANGE_PLAN",
-            "WORKSPACE_REFRESH",
-            "CHANGE_APPROVAL_PREPARE"
+            "WORKSPACE_REFRESH"
           ]
         },
         "root": {
@@ -149,8 +148,7 @@
       "required": [
         "type",
         "root",
-        "document",
-        "approval"
+        "document"
       ],
       "properties": {
         "type": {
@@ -170,11 +168,6 @@
           "minLength": 1,
           "maxLength": 67108864,
           "description": "Encoded JSON refined by the owning canonical wire decoder; its generated request serializers are included in WireSchemaDigest."
-        },
-        "approval": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 16384
         }
       }
     }

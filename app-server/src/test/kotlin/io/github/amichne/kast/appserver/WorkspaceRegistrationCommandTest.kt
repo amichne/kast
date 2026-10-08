@@ -19,6 +19,7 @@ class WorkspaceRegistrationCommandTest {
             val installation = Files.createDirectories(temporary.resolve("installation/bin")).parent.toRealPath()
             val kast = installedExecutable(installation)
             val workspace = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
+            Files.writeString(workspace.resolve("settings.gradle.kts"), "")
             val home = Files.createDirectory(temporary.resolve("home")).toRealPath()
             val environment = mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private") + selectedBrokerJbr(temporary)
             val command =
@@ -65,6 +66,24 @@ class WorkspaceRegistrationCommandTest {
         }
 
     @Test
+    fun `home registration rejects without observing service or writing state`(@TempDir temporary: Path) {
+        val installation = Files.createDirectories(temporary.resolve("installation/bin")).parent.toRealPath()
+        val kast = installedExecutable(installation)
+        val home = Files.createDirectory(temporary.resolve("home")).toRealPath()
+        val result =
+            InstalledAppServerManager(kast, home, mapOf(selectedBrokerJbr(temporary)))
+                .execute(AppServerAction.Register, home)
+        assertEquals(
+            AppServerManagementResult.DaemonRejected(
+                DaemonManagementRejection.Enrollment(EnrollmentFailure.PATH_REJECTED)
+            ),
+            result,
+        )
+        assertFalse(Files.exists(installation.resolve("config/workspaces.json")))
+        assertFalse(Files.exists(home.resolve("Library")))
+    }
+
+    @Test
     fun `registration rejects relative root before service observation`(@TempDir temporary: Path) {
         val installation = Files.createDirectories(temporary.resolve("installation/bin")).parent.toRealPath()
         val kast = installedExecutable(installation)
@@ -95,6 +114,7 @@ class WorkspaceRegistrationCommandTest {
         val kast = Files.writeString(installation.resolve("bin/kast"), "fixture")
         Files.setPosixFilePermissions(kast, PosixFilePermissions.fromString("rwx------"))
         val workspace = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
+        Files.writeString(workspace.resolve("settings.gradle.kts"), "")
         val home = Files.createDirectory(temporary.resolve("home")).toRealPath()
         val result =
             InstalledAppServerManager(kast, home, mapOf(selectedBrokerJbr(temporary)))

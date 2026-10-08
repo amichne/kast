@@ -102,6 +102,21 @@ internal class ControlInstallationInput(private val environment: Map<String, Str
         return Refinement.Refined(version)
     }
 
+    fun pluginTarget(
+        home: InstallationPath
+    ): Refinement<io.github.amichne.kast.distribution.managed.InstalledHostPluginTarget, InstallationRequestFailure> =
+        when (
+            val admitted =
+                io.github.amichne.kast.distribution.managed.SelectedIdeInstallation.admitPluginTarget(
+                    environment[InstallationEnvironment.IDEA_PLUGIN_ROOT.key],
+                    home.value,
+                )
+        ) {
+            is Refinement.Refined -> admitted
+            is Refinement.Rejected ->
+                Refinement.Rejected(InstallationRequestFailure.InvalidPath(InstallationEnvironment.IDEA_PLUGIN_ROOT))
+        }
+
     fun locations(): Refinement<ControlInstallationLocations, InstallationRequestFailure> {
         val ideaHome =
             when (val refined = path(InstallationEnvironment.IDEA_HOME)) {

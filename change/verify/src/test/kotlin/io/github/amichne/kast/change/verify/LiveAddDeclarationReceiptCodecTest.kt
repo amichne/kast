@@ -1,5 +1,6 @@
 package io.github.amichne.kast.change.verify
 
+import io.github.amichne.kast.change.apply.LiveChangeEffect
 import io.github.amichne.kast.change.contract.LiveAddDeclarationPlanCodec
 import io.github.amichne.kast.change.contract.LiveChangeBasis
 import io.github.amichne.kast.kernel.Refinement
@@ -8,6 +9,7 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 import java.security.MessageDigest
 import java.util.Locale
 import java.util.UUID
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -21,6 +23,68 @@ import org.junit.jupiter.api.assertInstanceOf
 
 class LiveAddDeclarationReceiptCodecTest {
     @Test
+    fun `keyless receipt names existing local operation and rejects another host or plan`() {
+        val receipt = historicalReceiptFixture(local = true)
+        val encoded = LiveAddDeclarationReceiptCodec.encode(receipt)
+        val content = Json.parseToJsonElement(encoded).jsonObject.getValue("content").jsonObject
+        val body = content.getValue("body").jsonObject
+        assertEquals(JsonPrimitive(2), content.getValue("version"))
+        assertFalse("approval" in body)
+        val execution = body.getValue("execution").jsonObject
+        assertEquals(setOf("type", "operation", "root", "host", "planId"), execution.keys)
+        assertEquals(JsonPrimitive("LOCAL_ENDPOINT_OPERATION"), execution.getValue("type"))
+        assertEquals(JsonPrimitive("CHANGE_APPLY"), execution.getValue("operation"))
+        assertEquals(JsonPrimitive("/workspace"), execution.getValue("root"))
+        assertEquals(JsonPrimitive("00000000-0000-0000-0000-000000000001"), execution.getValue("host"))
+        assertEquals(JsonPrimitive(receipt.plan.planId.value), execution.getValue("planId"))
+        assertEquals(
+            encoded,
+            LiveAddDeclarationReceiptCodec.encode(LiveAddDeclarationReceiptCodec.decode(encoded).receiptRefined()),
+        )
+        for ((field, value) in
+            listOf(
+                "host" to UUID(0, 99).toString(),
+                "planId" to "f".repeat(64),
+                "root" to "/other",
+                "operation" to "CHANGE_RECOVER",
+            )) {
+            val fixtureJson = Json {
+                encodeDefaults = true
+                explicitNulls = true
+            }
+            val document = fixtureJson.decodeFromString<LiveReceiptDocumentV2>(encoded)
+            val original = document.content.body.execution
+            val changed =
+                when (field) {
+                    "host" -> original.copy(host = value)
+                    "planId" -> original.copy(planId = value)
+                    "root" -> original.copy(root = value)
+                    "operation" -> original.copy(operation = LiveChangeEffect.CHANGE_RECOVER)
+                    else -> error("Unexpected fixture field")
+                }
+            val altered =
+                fixtureJson.encodeToString(
+                    document.copy(
+                        content = document.content.copy(body = document.content.body.copy(execution = changed))
+                    )
+                )
+            assertEquals(LiveReceiptFailure.APPROVAL_MISMATCH, rejected(altered))
+        }
+    }
+
+    @Test
+    fun `legacy receipt retains its independently stored identity and exact bytes`() {
+        val encoded =
+            checkNotNull(javaClass.getResource("/live-add-declaration-receipt-v1-plan-v2.json")).readText().trim()
+        val restored = LiveAddDeclarationReceiptCodec.decode(encoded).receiptRefined()
+        assertEquals(
+            "receipt:4af87ed7915b41b064bc84b92a7047bb26f467da6e8a8173029e2f7f8c12b15c",
+            restored.identity.value,
+        )
+        assertEquals(encoded, LiveAddDeclarationReceiptCodec.encode(restored))
+    }
+
+    @Test
     fun `historical receipt round trip retains exact plan scope approval recovery and observed evidence`() {
         val receipt = historicalReceiptFixture()
         val encoded = LiveAddDeclarationReceiptCodec.encode(receipt)
@@ -33,7 +97,10 @@ class LiveAddDeclarationReceiptCodecTest {
         assertEquals(receipt.postimage, restored.postimage)
         assertEquals(receipt.anchor, restored.anchor)
         assertEquals(receipt.evidence, restored.evidence)
-        assertEquals(receipt.approval.call, restored.approval.call)
+        assertEquals(
+            (receipt.execution as HistoricalLiveApproval).call,
+            (restored.execution as HistoricalLiveApproval).call,
+        )
         assertEquals(receipt.recovery, restored.recovery)
         assertEquals(receipt.semanticObligations, restored.semanticObligations)
         assertEquals(receipt.liveObligations, restored.liveObligations)
@@ -96,7 +163,7 @@ class LiveAddDeclarationReceiptCodecTest {
         val encoded = LiveAddDeclarationReceiptCodec.encode(historicalReceiptFixture())
         assertEquals(
             LiveReceiptFailure.VERSION_UNSUPPORTED,
-            rejected(encoded.replaceFirst("\"version\":1", "\"version\":2")),
+            rejected(encoded.replaceFirst("\"version\":1", "\"version\":99")),
         )
         assertEquals(LiveReceiptFailure.MALFORMED, rejected(encoded.dropLast(1)))
         assertEquals(LiveReceiptFailure.MALFORMED, rejected(encoded.dropLast(1) + ",\"unknown\":true}"))
@@ -124,7 +191,7 @@ class LiveAddDeclarationReceiptCodecTest {
 /**
  * Synthetic historical data for codec/storage checks. It is never admitted as live authority or verified application.
  */
-internal fun historicalReceiptFixture(): HistoricalLiveAddDeclarationReceipt {
+internal fun historicalReceiptFixture(local: Boolean = false): HistoricalLiveAddDeclarationReceipt {
     val plan =
         LiveAddDeclarationPlanCodec.decode(
                 checkNotNull(
@@ -151,7 +218,7 @@ internal fun historicalReceiptFixture(): HistoricalLiveAddDeclarationReceipt {
                     observedDelta = plan.expectedSemanticDelta,
                     evidence = plan.evidence,
                 ),
-            approval = receiptApprovalFixture(),
+            execution = receiptExecutionFixture(plan, local),
             recovery =
                 HistoricalLiveRecovery(
                     plan.planId,
@@ -167,13 +234,28 @@ internal fun historicalReceiptFixture(): HistoricalLiveAddDeclarationReceipt {
         .receiptRefined()
 }
 
+private fun receiptExecutionFixture(
+    plan: io.github.amichne.kast.change.contract.LiveAddDeclarationChangePlan,
+    local: Boolean,
+): HistoricalLiveExecution =
+    if (local) {
+        val before = plan.basis.observation.reference
+        HistoricalLiveExecution.LocalEndpointOperation.restore(
+                plan,
+                plan.planId,
+                before.workspaceRoot,
+                before.host,
+                io.github.amichne.kast.change.apply.LiveChangeEffect.CHANGE_APPLY,
+            )
+            .receiptRefined()
+    } else receiptApprovalFixture()
+
 private fun receiptApprovalFixture(): HistoricalLiveApproval =
     HistoricalLiveApproval.restore(
             thread = "fixture-thread",
             turn = "fixture-turn",
             call = "fixture-call",
-            challenge =
-                io.github.amichne.kast.change.apply.LiveApprovalChallenge.parse("c".repeat(64)).receiptRefined(),
+            challenge = HistoricalApprovalChallenge.parse("c".repeat(64)).receiptRefined(),
         )
         .receiptRefined()
 

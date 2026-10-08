@@ -11,9 +11,6 @@ internal enum class SessionStage {
     TRANSPORT,
     SUBSCRIPTION,
     INVOCATION,
-    APPROVAL_PREPARE,
-    APPROVAL_REQUEST,
-    APPROVAL_REDEEM,
     TOOL_DISPLAY,
     RECONCILIATION,
 }

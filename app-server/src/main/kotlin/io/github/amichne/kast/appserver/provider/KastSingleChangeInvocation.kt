@@ -7,12 +7,9 @@ import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
-import io.github.amichne.kast.appserver.ide.HostedApprovalAssertion
 import io.github.amichne.kast.appserver.ide.HostedMutationOperation
 import io.github.amichne.kast.appserver.ide.HostedPlanIdentity
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
-import io.github.amichne.kast.appserver.runtime.HostedChangeApprovalOperation
-import io.github.amichne.kast.appserver.runtime.HostedPlanApprovalRequest
 import io.github.amichne.kast.appserver.runtime.ResolvedMutationRecovery
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandResult
 import io.github.amichne.kast.appserver.runtime.WorkspaceRecoverySettlement
@@ -48,14 +45,12 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
-/** One broker invocation around the host's durable plan, exact challenge, write, and recovery boundaries. */
+/** One broker invocation around the host's durable plan, write, and recovery boundaries. */
 internal class KastSingleChangeInvocation(
     private val options: KastProviderOptions,
     private val detail: ToolOutputDetail = ToolOutputDetail.VERBOSE,
 ) {
     private val preparers = canonicalCliRequestPreparers()
-    private val gateway = KastHostedPlanApprovalGateway(options, options.userHome, options.ioDispatcher)
-    private val signer = EnrolledPlanApprovalSigner(options.userHome)
 
     suspend fun invoke(
         input: KastInvocationInput,
@@ -82,8 +77,7 @@ internal class KastSingleChangeInvocation(
                     }
             ) {
                 is CanonicalRootDiscovery.Discovered -> discovered.root
-                is CanonicalRootDiscovery.Rejected ->
-                    return ProviderCall.Rejected(ProviderFailureCode.IDE_INVALID_REQUEST)
+                is CanonicalRootDiscovery.Rejected -> return ProviderCall.Rejected(discovered.failure.providerFailure())
             }
         val prepared = preparers.changePlan.prepare(ChangePlanRequest(request.intent))
         if (prepared !is OperationPreparation.Prepared)
@@ -124,17 +118,14 @@ internal class KastSingleChangeInvocation(
         plan: JsonObject,
         context: BrokerInvocationContext,
     ): ProviderCall<KastInvocationOutput> {
-        val assertion =
-            authorize(HostedChangeApprovalOperation.APPLY, identity, context)
-                ?: return authorizationFailure(identity, plan, context)
         val operation =
-            mutation(HostedMutationOperation.CHANGE_APPLY, identity, assertion)
+            mutation(HostedMutationOperation.CHANGE_APPLY, identity)
                 ?: return authorizationFailure(identity, plan, context)
         val application =
             try {
                 phase(root, operation)
             } catch (cancelled: CancellationException) {
-                settleCancelledApply(root, identity, context)
+                settleCancelledApply(root, identity)
                 throw cancelled
             } catch (_: RuntimeException) {
                 SingleChangeNativePhase.Incomplete(null)
@@ -159,9 +150,9 @@ internal class KastSingleChangeInvocation(
             )
         val recovery =
             try {
-                recover(root, identity, context)
+                recover(root, identity)
             } catch (cancelled: CancellationException) {
-                settleCancelledApply(root, identity, context)
+                settleCancelledApply(root, identity)
                 throw cancelled
             }
         val failure =
@@ -200,12 +191,11 @@ internal class KastSingleChangeInvocation(
     private suspend fun settleCancelledApply(
         root: CanonicalRoot,
         identity: String,
-        context: BrokerInvocationContext,
     ) {
         withContext(NonCancellable) {
             val recovery =
                 withTimeoutOrNull(OperationExecutionBudget.SEMANTIC_READ.operation.value) {
-                    recover(root, identity, context)
+                    recover(root, identity)
                 }
             if (recovery is SingleChangeRecoveryAttempt.Resolved)
                 currentCoroutineContext()[WorkspaceRecoverySettlement]?.confirm(recovery.state)
@@ -215,13 +205,9 @@ internal class KastSingleChangeInvocation(
     private suspend fun recover(
         root: CanonicalRoot,
         identity: String,
-        context: BrokerInvocationContext,
     ): SingleChangeRecoveryAttempt {
-        val assertion =
-            authorize(HostedChangeApprovalOperation.RECOVER, identity, context)
-                ?: return SingleChangeRecoveryAttempt.Unresolved(null)
         val operation =
-            mutation(HostedMutationOperation.CHANGE_RECOVER, identity, assertion)
+            mutation(HostedMutationOperation.CHANGE_RECOVER, identity)
                 ?: return SingleChangeRecoveryAttempt.Unresolved(null)
         val phase =
             try {
@@ -249,39 +235,9 @@ internal class KastSingleChangeInvocation(
         }
     }
 
-    private suspend fun authorize(
-        kind: HostedChangeApprovalOperation,
-        identity: String,
-        context: BrokerInvocationContext,
-    ): String? {
-        val request =
-            HostedPlanApprovalRequest.admit(
-                kind,
-                context,
-                changeJson.encodeToJsonElement(PlanIdentityInput(identity)),
-            )
-        if (request !is Refinement.Refined) return null
-        val challenge = gateway.prepare(request.value)
-        if (challenge !is Refinement.Refined) return null
-        return when (
-            val signed =
-                runInterruptible(options.ioDispatcher) {
-                    signer.signForInvocation(challenge.value.subject, context)
-                }
-        ) {
-            is Refinement.Refined -> signed.value
-            is Refinement.Rejected -> null
-        }
-    }
-
-    private fun mutation(kind: HostedMutationOperation, identity: String, assertion: String): ExistingIdeOperation? {
+    private fun mutation(kind: HostedMutationOperation, identity: String): ExistingIdeOperation? {
         val planIdentity =
             when (val parsed = HostedPlanIdentity.parse(identity)) {
-                is Refinement.Refined -> parsed.value
-                is Refinement.Rejected -> return null
-            }
-        val approval =
-            when (val parsed = HostedApprovalAssertion.parse(assertion)) {
                 is Refinement.Refined -> parsed.value
                 is Refinement.Rejected -> return null
             }
@@ -298,11 +254,10 @@ internal class KastSingleChangeInvocation(
         if (prepared !is OperationPreparation.Prepared) return null
         return when (
             val admitted =
-                ExistingIdeOperation.ApprovedMutation.admit(
+                ExistingIdeOperation.Mutation.admit(
                     prepared.request,
                     kind,
                     planIdentity,
-                    approval,
                 )
         ) {
             is Refinement.Refined -> admitted.value
@@ -371,8 +326,6 @@ private enum class NativeApplyState {
     @SerialName("verified") VERIFIED,
     @SerialName("applied_unverified") APPLIED_UNVERIFIED,
 }
-
-@Serializable private data class PlanIdentityInput(val planIdentity: String)
 
 private val changeJson = Json {
     ignoreUnknownKeys = true

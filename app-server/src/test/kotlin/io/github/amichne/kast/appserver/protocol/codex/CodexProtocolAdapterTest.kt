@@ -1266,6 +1266,7 @@ class CodexProtocolAdapterTest {
         runBlocking {
             val root = temporary.toRealPath()
             val first = Files.createDirectory(root.resolve("first"))
+            Files.writeString(first.resolve("settings.gradle.kts"), "")
             val second = Files.createDirectory(root.resolve("second"))
             val registry = io.github.amichne.kast.appserver.WorkspaceEnrollmentStore(root.resolve("workspaces.json"))
             val enrollment = (registry.read() as io.github.amichne.kast.appserver.EnrollmentRead.Read).enrollment
@@ -1330,6 +1331,8 @@ class CodexProtocolAdapterTest {
             val first = Files.createDirectory(root.resolve("first"))
             val firstCwd = Files.createDirectory(first.resolve("subdirectory"))
             val second = Files.createDirectory(root.resolve("second"))
+            Files.writeString(first.resolve("settings.gradle.kts"), "")
+            Files.writeString(second.resolve("settings.gradle.kts"), "")
             val registry = io.github.amichne.kast.appserver.WorkspaceEnrollmentStore(root.resolve("workspaces.json"))
             val enrollment = (registry.read() as io.github.amichne.kast.appserver.EnrollmentRead.Read).enrollment
             val owner =
@@ -1398,69 +1401,6 @@ class CodexProtocolAdapterTest {
                     .failure,
             )
             adapter.close()
-        }
-
-    @Test
-    fun `overlap requires explicit workspace and stale owner cannot resume or invoke`(@TempDir temporary: Path) =
-        runBlocking {
-            val root = temporary.toRealPath()
-            val child = Files.createDirectory(root.resolve("child"))
-            val registry = io.github.amichne.kast.appserver.WorkspaceEnrollmentStore(root.resolve("workspaces.json"))
-            registry.enroll(root)
-            registry.enroll(child)
-            val enrollment = (registry.read() as io.github.amichne.kast.appserver.EnrollmentRead.Read).enrollment
-            val owner =
-                io.github.amichne.kast.appserver.protocol.ThreadBindingOwner.admit(
-                        "installation",
-                        "00000000-0000-0000-0000-000000000001",
-                    )
-                    .refinedValue()
-            val store = MemoryThreadCatalogStore()
-            val broker = echoBroker()
-            val adapter =
-                CodexProtocolAdapter(broker, protocolContracts(), store, enrollment = enrollment, bindingOwner = owner)
-            assertInstanceOf(
-                ProtocolRouting.ReplyDownstream::class.java,
-                adapter.fromDownstream("""{"id":1,"method":"thread/start","params":{"cwd":"$child"}}"""),
-            )
-            val selected =
-                adapter.fromDownstream(
-                    """{"id":1,"method":"thread/start","params":{"cwd":"$child","kastWorkspaceRoot":"$root"}}"""
-                ) as ProtocolRouting.ForwardUpstream
-            assertFalse(selected.message.objectValue("params").containsKey("kastWorkspaceRoot"))
-            adapter.fromUpstream("""{"id":1,"result":{"thread":{"id":"thread-1","turns":[]},"cwd":"$child"}}""")
-            assertEquals(root, (store.read("thread-1") as ThreadStoreRead.Found).binding.workspace.root.path)
-            val staleOwner =
-                io.github.amichne.kast.appserver.protocol.ThreadBindingOwner.admit(
-                        "installation",
-                        "00000000-0000-0000-0000-000000000002",
-                    )
-                    .refinedValue()
-            val restarted =
-                CodexProtocolAdapter(
-                    broker,
-                    protocolContracts(),
-                    store,
-                    enrollment = enrollment,
-                    bindingOwner = staleOwner,
-                )
-            assertInstanceOf(
-                ProtocolRouting.ReplyDownstream::class.java,
-                restarted.fromDownstream("""{"id":2,"method":"thread/resume","params":{"threadId":"thread-1"}}"""),
-            )
-            assertEquals(
-                ThreadWorkspaceFailure.OWNER_INCOMPATIBLE,
-                (restarted.boundWorkspace(io.github.amichne.kast.appserver.core.BrokerThreadId.admit("thread-1")!!)
-                        as Refinement.Rejected)
-                    .failure,
-            )
-            val call =
-                restarted.fromUpstream(
-                    """{"id":3,"method":"item/tool/call","params":{"threadId":"thread-1","turnId":"turn-1","callId":"call-1","namespace":"echo","tool":"say","arguments":{"value":"hello"}}}"""
-                ) as ProtocolRouting.ReplyUpstream
-            assertFalse(call.message.objectValue("result").getValue("success").jsonPrimitive.content.toBoolean())
-            adapter.close()
-            restarted.close()
         }
 
     private fun echoBroker(): Broker {

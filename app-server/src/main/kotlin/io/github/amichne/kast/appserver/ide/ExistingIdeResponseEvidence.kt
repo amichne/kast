@@ -12,7 +12,6 @@ internal enum class ExistingIdeResponseOperation {
     STATUS,
     CLASSES,
     SUPERTYPE,
-    APPROVAL_PREPARATION,
     QUERY_RUN,
     SOURCE_READ,
     DIAGNOSTIC_CHECK,
@@ -26,7 +25,6 @@ internal fun ExistingIdeOperation.responseOperation(): ExistingIdeResponseOperat
         ExistingIdeOperation.Status -> ExistingIdeResponseOperation.STATUS
         is ExistingIdeOperation.Classes -> ExistingIdeResponseOperation.CLASSES
         is ExistingIdeOperation.Supertype -> ExistingIdeResponseOperation.SUPERTYPE
-        is ExistingIdeOperation.ApprovalPreparation -> ExistingIdeResponseOperation.APPROVAL_PREPARATION
         is ExistingIdeOperation.Read ->
             when (kind) {
                 ExistingIdeReadOperation.QUERY_RUN -> ExistingIdeResponseOperation.QUERY_RUN
@@ -34,7 +32,7 @@ internal fun ExistingIdeOperation.responseOperation(): ExistingIdeResponseOperat
                 ExistingIdeReadOperation.DIAGNOSTIC_CHECK -> ExistingIdeResponseOperation.DIAGNOSTIC_CHECK
             }
         is ExistingIdeOperation.Plan -> ExistingIdeResponseOperation.CHANGE_PLAN
-        is ExistingIdeOperation.ApprovedMutation ->
+        is ExistingIdeOperation.Mutation ->
             when (kind) {
                 HostedMutationOperation.CHANGE_APPLY -> ExistingIdeResponseOperation.CHANGE_APPLY
                 HostedMutationOperation.CHANGE_RECOVER -> ExistingIdeResponseOperation.CHANGE_RECOVER

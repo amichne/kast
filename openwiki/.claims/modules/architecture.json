@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:d1ff8d77dc183d0c8483eb075757d8ba9c79c42abe7f35972a477d8586d2fbab",
+  "pageVersion": "sha256:c400943bf39b839771e489c382bf2f75f7c27b1cbf209700a33b229c1c60d5c8",
   "claims": [
     {
       "id": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
@@ -14,11 +14,15 @@
     },
     {
       "id": "claim_8fbe8cf0364241bd9c44e5851da8c409",
-      "statement": "Change and query protocol modules retain service roles with contract-only dependency policies; the native distribution management CLI depends on distribution contracts and managed adapters, with process control and explicitly scoped lifecycle/reset filesystem effect owners.",
+      "statement": "Change and query protocol modules retain service roles with contract-only dependency policies; the native distribution CLI reuses distribution contracts and managed adapters plus the durable SQLite owner for read-only settled-state inspection through an exact named cross-role edge, retaining explicitly scoped lifecycle, uninstall and reset effects.",
       "evidence": [
         {
-          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L3-L51",
-          "version": "repo-lines-v1:sha256:619ee7d5da13c2b29dc49d1410ca467ed35424bba8ed355566ad69bbfaba3eb3:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwM2M4MWRjMDJiY2Q2ZGM1YTA0ZGRiMTA5ODQ0MDhiNWM4MjM1OTVlNmFiNzg5ZWQzOWMwZDg2NjY1MWI1ZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0MzNkMGVhOWVjZjJmMzljOWE1MDQwNzM5NWVlNDExNzJmZTY4MmM5Yzg4NWEzNTA4Zjc1YmRlZTE1MWVmZmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjZTdlYjg1MjYzN2ZjZGZkMDIwYjBmZmVlZjg0YmNmNDYwYTZiNjU0OGIzMzAzY2YzOTNkNDFjZGYxNjczNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImViZTNlZWQ0Y2Y0ODM3MGVlOTViMDgxMzA2N2RjNGZiNTczMTU0NDkwNWZmMWFiMmU3ZWE5ZTg5NTg3Zjg4ODkifQ"
+          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L3-L54",
+          "version": "repo-lines-v1:sha256:7f0dc0cc4e814847846539f46e04ba3a7dd6adf134d11a8725b4ddbed0cdb3c7:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwM2M4MWRjMDJiY2Q2ZGM1YTA0ZGRiMTA5ODQ0MDhiNWM4MjM1OTVlNmFiNzg5ZWQzOWMwZDg2NjY1MWI1ZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkOWM1ZmYyYmQ2MzYxNWFhMGQ0ZTc2ZmQyMDU0OTY3MDk1MDZlNTU1YWViYjBkYWVhYzhlZjVlYjU1ZmQ4YmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjZTdlYjg1MjYzN2ZjZGZkMDIwYjBmZmVlZjg0YmNmNDYwYTZiNjU0OGIzMzAzY2YzOTNkNDFjZGYxNjczNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFiMWRlMGRlN2NlNjg4OTZiMzc4Yzc1OTI2NDZiMjcyZmM4NzNkZGU0NjE1NTE1OTNiMGE2NzkzZTk1MTE0ZTYifQ"
+        },
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/architecture/validation/ModulePolicyValidator.kt#L161-L181",
+          "version": "repo-lines-v1:sha256:694665a83cf13aa6c8b5a354b715e5e7b887a701edcd094a9bd69923b62c384b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE1Y2MwODE0NzdhMjRjOTk0OGJkZTRiNGQzNjI2NjVkZmZjMTFjOTM5ZWQ5Y2RhODc1NDc5M2Y0YmZmOTdjZmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNkNGVjZTEyZTEzYjU4NGViYzc3MjI4Mjg3YTExOWJkNjJjMGY4ZTNlNWVlNjQxYmIyMjA4Y2ZiYjcxODM3YmMifQ"
         }
       ]
     },
@@ -32,17 +36,17 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:c234ec14cfedabbc7f1635f49a66e370b5fdf1c5b2dd709f8563502a8883e3b2"
+          "version": "repo-file-v1:sha256:6e024696fed21fbe2935599d84ba9508e602ce458055c86c648ab2e68a4b3491"
         },
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
-          "version": "repo-file-v1:sha256:e27534317f56be5e0eac740a434d157021983b7cc4de6c4d02460e00ef5b566a"
+          "version": "repo-file-v1:sha256:4aa089d6ce3c28c0c9fed53e253f4aa9946732b369ffba20c939717ca595282d"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-02T13:22:01.032Z"
+    "at": "2026-10-08T01:13:49.481Z"
   }
 }

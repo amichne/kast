@@ -14,6 +14,8 @@ class WorkspaceEnrollmentTest {
         val root = temporary.toRealPath()
         val first = Files.createDirectory(root.resolve("first"))
         val second = Files.createDirectory(root.resolve("second"))
+        Files.writeString(first.resolve("settings.gradle.kts"), "")
+        Files.writeString(second.resolve("settings.gradle.kts"), "")
         val store = WorkspaceEnrollmentStore(root.resolve("config/workspaces.json"))
         val enrollment = (store.read() as EnrollmentRead.Read).enrollment
         val observations = mutableListOf<WorkspaceStartupObservation>()
@@ -58,6 +60,7 @@ class WorkspaceEnrollmentTest {
     fun `thread admission registers once and read only selection never registers`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
         val workspace = Files.createDirectory(root.resolve("workspace"))
+        Files.writeString(workspace.resolve("settings.gradle.kts"), "")
         val child = Files.createDirectory(workspace.resolve("child"))
         val store = WorkspaceEnrollmentStore(root.resolve("config/workspaces.json"))
         val enrollment = (store.read() as EnrollmentRead.Read).enrollment

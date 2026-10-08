@@ -42,7 +42,7 @@ private fun historicalRecoveryRequirement(
     operation: ExistingIdeOperation,
 ): Boolean =
     when (operation) {
-        is ExistingIdeOperation.ApprovedMutation ->
+        is ExistingIdeOperation.Mutation ->
             when (operation.kind) {
                 HostedMutationOperation.CHANGE_APPLY -> false
                 HostedMutationOperation.CHANGE_RECOVER -> {
@@ -78,7 +78,7 @@ fun admitHostedChangeEvidence(
     operation: ExistingIdeOperation,
 ): Refinement<Unit, ExistingIdeFailure> =
     if (
-        operation is ExistingIdeOperation.ApprovedMutation &&
+        operation is ExistingIdeOperation.Mutation &&
             operation.kind == HostedMutationOperation.CHANGE_APPLY &&
             historicalApplyState(evidence.payload)
     ) {

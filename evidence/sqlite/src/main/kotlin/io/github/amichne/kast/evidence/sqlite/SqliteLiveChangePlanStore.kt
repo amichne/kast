@@ -120,10 +120,7 @@ private constructor(private val connections: InitializedSqliteMutationRecoveryCo
     override fun loadPlan(identity: ChangePlanIdentity): LiveChangePlanLookup =
         storage({ LiveChangePlanLookup.Rejected(it) }) {
             connections.use { connection ->
-                when (val observed = connection.livePlanRow(identity)) {
-                    LivePlanRowObservation.Missing -> LiveChangePlanLookup.Missing
-                    is LivePlanRowObservation.Found -> observed.row.decode(identity)
-                }
+                connection.loadLiveChangePlan(identity)
             }
         }
 
@@ -134,21 +131,8 @@ private constructor(private val connections: InitializedSqliteMutationRecoveryCo
             try {
                 connections.use { connection ->
                     connection.createStatement().use { statement ->
-                        statement.execute(
-                            """CREATE TABLE IF NOT EXISTS live_change_attempt (
-                            identity TEXT PRIMARY KEY NOT NULL REFERENCES live_change_plan(identity)
-                        ) WITHOUT ROWID"""
-                        )
-                        statement.execute(
-                            """CREATE TABLE IF NOT EXISTS live_change_plan (
-                                identity TEXT PRIMARY KEY NOT NULL
-                                    CHECK(length(identity) = 69 AND identity GLOB 'plan:[0-9a-f]*'),
-                                plan_id TEXT NOT NULL UNIQUE CHECK(length(plan_id) = 64),
-                                codec_version INTEGER NOT NULL CHECK(codec_version > 0),
-                                document TEXT NOT NULL,
-                                document_sha256 TEXT NOT NULL CHECK(length(document_sha256) = 64)
-                            ) WITHOUT ROWID"""
-                        )
+                        statement.execute(LIVE_CHANGE_ATTEMPT_SCHEMA)
+                        statement.execute(LIVE_CHANGE_PLAN_SCHEMA)
                     }
                 }
 
@@ -259,6 +243,13 @@ private fun Connection.livePlanRow(identity: ChangePlanIdentity): LivePlanRowObs
             }
         }
 
+/** Reuses the complete stored-plan decoder without initializing or mutating the database. */
+internal fun Connection.loadLiveChangePlan(identity: ChangePlanIdentity): LiveChangePlanLookup =
+    when (val observed = livePlanRow(identity)) {
+        LivePlanRowObservation.Missing -> LiveChangePlanLookup.Missing
+        is LivePlanRowObservation.Found -> observed.row.decode(identity)
+    }
+
 private fun identity(plan: LiveChangePlan): ChangePlanIdentity =
     checkNotNull(ChangePlanIdentity.parse("plan:${plan.planId.value}"))
 
@@ -279,3 +270,18 @@ private const val PLAN_DIGEST_PARAMETER = 5
 
 /** Row envelope version is independent of each embedded plan document codec. */
 private const val LIVE_PLAN_STORAGE_VERSION = 1
+
+internal const val LIVE_CHANGE_ATTEMPT_SCHEMA =
+    """CREATE TABLE IF NOT EXISTS live_change_attempt (
+                            identity TEXT PRIMARY KEY NOT NULL REFERENCES live_change_plan(identity)
+                        ) WITHOUT ROWID"""
+
+internal const val LIVE_CHANGE_PLAN_SCHEMA =
+    """CREATE TABLE IF NOT EXISTS live_change_plan (
+                                identity TEXT PRIMARY KEY NOT NULL
+                                    CHECK(length(identity) = 69 AND identity GLOB 'plan:[0-9a-f]*'),
+                                plan_id TEXT NOT NULL UNIQUE CHECK(length(plan_id) = 64),
+                                codec_version INTEGER NOT NULL CHECK(codec_version > 0),
+                                document TEXT NOT NULL,
+                                document_sha256 TEXT NOT NULL CHECK(length(document_sha256) = 64)
+                            ) WITHOUT ROWID"""

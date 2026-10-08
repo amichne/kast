@@ -142,6 +142,7 @@ class HostReportType(str, Enum):
 
 class HostReceiptType(str, Enum):
     HOST_PREPARED = 'HOST_PREPARED'
+    HOST_ACTIVE = 'HOST_ACTIVE'
 
 
 class HostRejectionType(str, Enum):
@@ -165,6 +166,48 @@ class HostReceipt:
     priorIdentity: Identity | None
     version: str
     sha256: str
+
+
+class HostArtifactType(str, Enum):
+    DIRECTORY = 'DIRECTORY'
+    FILE = 'FILE'
+
+
+@dataclass(frozen=True)
+class HostDirectoryArtifact:
+    type: HostArtifactType
+    path: str
+    identity: Identity
+
+
+@dataclass(frozen=True)
+class HostFileArtifact:
+    type: HostArtifactType
+    path: str
+    identity: Identity
+    sha256: str
+    bytes: int
+
+
+@dataclass(frozen=True)
+class HostActiveReceipt:
+    type: HostReceiptType
+    destination: str
+    pluginRootIdentity: Identity
+    destinationIdentity: Identity
+    version: str
+    sha256: str
+    inventory: tuple[HostDirectoryArtifact | HostFileArtifact, ...]
+
+
+class HostRemovalType(str, Enum):
+    REMOVED = 'REMOVED'
+
+
+@dataclass(frozen=True)
+class HostRemoval:
+    type: HostRemovalType
+    plugin: str
 
 
 @dataclass(frozen=True)
@@ -194,14 +237,288 @@ def sync(path):
 
 
 def write_receipt(path, receipt):
+    document = encode(receipt)
+    if len(document.encode('utf-8')) > 2097152:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
     temporary = path.with_name(path.name + '.new')
     descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
     with os.fdopen(descriptor, 'w') as stream:
-        stream.write(encode(receipt))
+        stream.write(document)
         stream.flush()
         os.fsync(stream.fileno())
     temporary.replace(path)
     sync(path.parent)
+
+
+def owned_file(path, private=False):
+    observed = path.lstat()
+    if (observed.st_uid != os.getuid() or not stat.S_ISREG(observed.st_mode)
+            or (private and stat.S_IMODE(observed.st_mode) != 0o600)):
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    return Identity(observed.st_dev, observed.st_ino, observed.st_uid)
+
+
+def file_artifact(path, relative):
+    identity = owned_file(path)
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    digest, size = hashlib.sha256(), 0
+    with os.fdopen(descriptor, 'rb') as stream:
+        observed = os.fstat(stream.fileno())
+        if Identity(observed.st_dev, observed.st_ino, observed.st_uid) != identity:
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        for block in iter(lambda: stream.read(65536), b''):
+            size += len(block)
+            if size > 1073741824:
+                raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+            digest.update(block)
+    if owned_file(path) != identity:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    return HostFileArtifact(HostArtifactType.FILE, relative, identity, digest.hexdigest(), size)
+
+
+def inventory(destination):
+    captured = []
+    total = 0
+    def visit(directory):
+        nonlocal total
+        if len(directory.relative_to(destination).parts) > 32:
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        directory_identity = Identity.observe(directory)
+        with os.scandir(directory) as entries:
+            for entry in entries:
+                if len(captured) >= 4096:
+                    raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+                path = Path(entry.path)
+                relative = path.relative_to(destination).as_posix()
+                if len(relative) > 4096 or '\\' in relative:
+                    raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+                if entry.is_dir(follow_symlinks=False):
+                    captured.append(HostDirectoryArtifact(HostArtifactType.DIRECTORY, relative, Identity.observe(path)))
+                    visit(path)
+                else:
+                    artifact = file_artifact(path, relative)
+                    total += artifact.bytes
+                    if total > 1073741824:
+                        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+                    captured.append(artifact)
+        if Identity.observe(directory) != directory_identity:
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    visit(destination)
+    return tuple(sorted(captured, key=lambda artifact: artifact.path))
+
+
+def parse_identity(value):
+    if (not isinstance(value, dict) or set(value) != {'device', 'inode', 'owner'}
+            or any(type(value[key]) is not int or value[key] < 0 for key in value)
+            or value['owner'] != os.getuid()):
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    return Identity(**value)
+
+
+def reject_duplicate_fields(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        result[key] = value
+    return result
+
+
+def read_active_receipt(path):
+    owned_file(path, private=True)
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    with os.fdopen(descriptor, 'rb') as stream:
+        raw = stream.read(2097153)
+    if len(raw) > 2097152:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    try:
+        value = json.loads(raw.decode('utf-8'), object_pairs_hook=reject_duplicate_fields)
+    except (ValueError, UnicodeError):
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN) from None
+    if isinstance(value, dict) and value.get('type') == 'HOST_PREPARED':
+        raise Rejected(Failure.RECOVERY_REQUIRED)
+    if (not isinstance(value, dict)
+            or set(value) != {'type', 'destination', 'pluginRootIdentity', 'destinationIdentity', 'version', 'sha256', 'inventory'}
+            or value['type'] != 'HOST_ACTIVE' or not isinstance(value['destination'], str)
+            or not isinstance(value['version'], str) or re.fullmatch(r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)', value['version']) is None
+            or not isinstance(value['sha256'], str) or re.fullmatch(r'[0-9a-f]{64}', value['sha256']) is None
+            or not isinstance(value['inventory'], list) or not 1 <= len(value['inventory']) <= 4096):
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    artifacts, total = [], 0
+    for entry in value['inventory']:
+        if not isinstance(entry, dict) or not isinstance(entry.get('path'), str):
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        relative = entry['path']
+        if (not relative or len(relative) > 4096 or '\\' in relative
+                or len(Path(relative).parts) > 32 or Path(relative).is_absolute()
+                or any(part in ('', '.', '..') for part in relative.split('/'))):
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        identity = parse_identity(entry.get('identity'))
+        if entry.get('type') == 'DIRECTORY' and set(entry) == {'type', 'path', 'identity'}:
+            artifacts.append(HostDirectoryArtifact(HostArtifactType.DIRECTORY, relative, identity))
+        elif (entry.get('type') == 'FILE' and set(entry) == {'type', 'path', 'identity', 'sha256', 'bytes'}
+                and isinstance(entry['sha256'], str) and re.fullmatch(r'[0-9a-f]{64}', entry['sha256'])
+                and type(entry['bytes']) is int and 0 <= entry['bytes'] <= 1073741824):
+            total += entry['bytes']
+            artifacts.append(HostFileArtifact(HostArtifactType.FILE, relative, identity, entry['sha256'], entry['bytes']))
+        else:
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    paths = [artifact.path for artifact in artifacts]
+    directories = {artifact.path for artifact in artifacts if artifact.type is HostArtifactType.DIRECTORY}
+    if paths != sorted(set(paths)) or total > 1073741824:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    for path in paths:
+        if any(parent.as_posix() not in directories for parent in Path(path).parents if parent != Path('.')):
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    return HostActiveReceipt(HostReceiptType.HOST_ACTIVE, value['destination'], parse_identity(value['pluginRootIdentity']),
+                             parse_identity(value['destinationIdentity']), value['version'], value['sha256'], tuple(artifacts))
+
+
+def admit_active(root, receipt, missing=False):
+    destination = root / 'kast-ide-hosted'
+    if receipt.destination != str(destination) or Identity.observe(root) != receipt.pluginRootIdentity:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    if not os.path.lexists(destination):
+        if missing:
+            return
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    if Identity.observe(destination) != receipt.destinationIdentity:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    actual = inventory(destination)
+    expected = {artifact.path: artifact for artifact in receipt.inventory}
+    if any(expected.get(artifact.path) != artifact for artifact in actual):
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    if not missing and actual != receipt.inventory:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+
+
+def admit_root(root):
+    if not root.is_absolute() or root != Path(os.path.normpath(root)) or root.resolve() != root:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+
+
+def admit_removal_artifact(root, receipt, artifact):
+    destination = root / 'kast-ide-hosted'
+    if Identity.observe(root) != receipt.pluginRootIdentity:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    if not os.path.lexists(destination):
+        return
+    if Identity.observe(destination) != receipt.destinationIdentity:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    expected = {item.path: item for item in receipt.inventory}
+    for parent in reversed(Path(artifact.path).parents):
+        if parent == Path('.'):
+            continue
+        path = destination / parent
+        if not os.path.lexists(path):
+            return
+        if Identity.observe(path) != expected[parent.as_posix()].identity:
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    path = destination / artifact.path
+    if os.path.lexists(path):
+        observed = (HostDirectoryArtifact(HostArtifactType.DIRECTORY, artifact.path, Identity.observe(path))
+                    if artifact.type is HostArtifactType.DIRECTORY else file_artifact(path, artifact.path))
+        if observed != artifact:
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+
+
+def remove_host(root):
+    try:
+        return remove_host_files(root)
+    except OSError:
+        raise Rejected(Failure.FILESYSTEM_REJECTED) from None
+
+
+def admit_removal_root(root):
+    admit_root(root)
+    ancestor = root
+    while not os.path.lexists(ancestor):
+        ancestor = ancestor.parent
+    Identity.observe(ancestor)
+    if stat.S_IMODE(ancestor.lstat().st_mode) & 0o022:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+
+
+def admit_empty_retained(retained):
+    identity = Identity.observe(retained)
+    if stat.S_IMODE(retained.lstat().st_mode) != 0o700:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    with os.scandir(retained) as entries:
+        if next(entries, None) is not None:
+            raise Rejected(Failure.RECOVERY_REQUIRED)
+    return identity
+
+
+def retire_empty_retained(root, retained):
+    captured = admit_empty_retained(retained)
+    admit_removal_root(root)
+    if os.path.lexists(root / 'kast-ide-hosted') or admit_empty_retained(retained) != captured:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    retained.rmdir()
+    sync(retained.parent)
+
+
+def remove_host_files(root):
+    admit_removal_root(root)
+    destination = root / 'kast-ide-hosted'
+    retained = root.parent / '.kast-plugin-recovery'
+    receipt_path = retained / 'host-install.json'
+    if not os.path.lexists(receipt_path):
+        if os.path.lexists(destination):
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        if os.path.lexists(retained):
+            retire_empty_retained(root, retained)
+        return HostRemoval(HostRemovalType.REMOVED, str(destination))
+    retained_identity = Identity.observe(retained)
+    if stat.S_IMODE(retained.lstat().st_mode) != 0o700:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    lock_path = retained / 'host-install.lock'
+    if not os.path.lexists(lock_path):
+        # A prior removal may have retired the lock before deleting its final receipt.
+        admitted = read_active_receipt(receipt_path)
+        admit_active(root, admitted, missing=True)
+        descriptor = os.open(lock_path, os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        os.close(descriptor)
+    lock_identity = owned_file(lock_path, private=True)
+    descriptor = os.open(lock_path, os.O_RDWR | os.O_NOFOLLOW)
+    with os.fdopen(descriptor, 'r+') as lock:
+        observed = os.fstat(lock.fileno())
+        if Identity(observed.st_dev, observed.st_ino, observed.st_uid) != lock_identity:
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        receipt_identity = owned_file(receipt_path, private=True)
+        receipt = read_active_receipt(receipt_path)
+        admit_active(root, receipt, missing=True)
+        with os.scandir(retained) as entries:
+            if any(entry.name not in ('host-install.lock', 'host-install.json') for entry in entries):
+                raise Rejected(Failure.RECOVERY_REQUIRED)
+        for artifact in sorted(receipt.inventory, key=lambda item: (len(Path(item.path).parts), item.path), reverse=True):
+            admit_root(root)
+            if Identity.observe(retained) != retained_identity or owned_file(receipt_path, private=True) != receipt_identity:
+                raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+            admit_removal_artifact(root, receipt, artifact)
+            path = destination / artifact.path
+            if os.path.lexists(path):
+                if artifact.type is HostArtifactType.DIRECTORY:
+                    path.rmdir()
+                else:
+                    path.unlink()
+        admit_active(root, receipt, missing=True)
+        if os.path.lexists(destination):
+            destination.rmdir()
+            sync(root)
+        if Identity.observe(retained) != retained_identity or owned_file(receipt_path, private=True) != receipt_identity:
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        if owned_file(lock_path, private=True) != lock_identity:
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        lock_path.unlink()
+        if Identity.observe(retained) != retained_identity or owned_file(receipt_path, private=True) != receipt_identity:
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        receipt_path.unlink()
+        sync(retained)
+        retained.rmdir()
+        sync(retained.parent)
+    return HostRemoval(HostRemovalType.REMOVED, str(destination))
 
 
 def validate_payload(payload, stage):
@@ -255,8 +572,7 @@ def validate_payload(payload, stage):
 
 def install(request):
     root = request.plugin_root
-    if not root.is_absolute() or root != Path(os.path.normpath(root)):
-        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    admit_root(root)
     with tempfile.TemporaryDirectory(prefix='kast-host-stage-') as temporary:
         plugin = validate_payload(request.payload, Path(temporary))
         if request.mode is HostInstallMode.PLAN:
@@ -266,14 +582,18 @@ def install(request):
         retained = root.parent / '.kast-plugin-recovery'
         retained.mkdir(mode=0o700, exist_ok=True)
         Identity.observe(retained)
+        if stat.S_IMODE(retained.lstat().st_mode) != 0o700:
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
         lock_descriptor = os.open(retained / 'host-install.lock', os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
         with os.fdopen(lock_descriptor, 'r+') as lock:
             if os.fstat(lock.fileno()).st_uid != os.getuid():
                 raise Rejected(Failure.OWNERSHIP_UNPROVEN)
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             receipt_path = retained / 'host-install.json'
+            previous_receipt = None
             if os.path.lexists(receipt_path):
-                raise Rejected(Failure.RECOVERY_REQUIRED)
+                previous_receipt = read_active_receipt(receipt_path)
+                admit_active(root, previous_receipt)
             destination = root / 'kast-ide-hosted'
             prior = Identity.observe(destination) if os.path.lexists(destination) else None
             token = uuid.uuid4().hex
@@ -292,6 +612,10 @@ def install(request):
                 sync(root)
                 if Identity.observe(destination) != candidate_identity:
                     raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+                active = HostActiveReceipt(HostReceiptType.HOST_ACTIVE, str(destination), Identity.observe(root),
+                                           candidate_identity, request.payload.version, request.payload.sha256,
+                                           inventory(destination))
+                write_receipt(receipt_path, active)
             except (OSError, Rejected):
                 try:
                     if os.path.lexists(destination):
@@ -308,7 +632,10 @@ def install(request):
                         raise Rejected(Failure.OWNERSHIP_UNPROVEN)
                     sync(root)
                     shutil.rmtree(candidate)
-                    receipt_path.unlink()
+                    if previous_receipt is None:
+                        receipt_path.unlink()
+                    else:
+                        write_receipt(receipt_path, previous_receipt)
                 except (OSError, Rejected):
                     raise Rejected(Failure.RECOVERY_REQUIRED) from None
                 raise Rejected(Failure.FILESYSTEM_REJECTED) from None
@@ -316,33 +643,41 @@ def install(request):
                 if Identity.observe(backup) != prior:
                     raise Rejected(Failure.RECOVERY_REQUIRED)
                 shutil.rmtree(backup)
-            receipt_path.unlink()
             sync(retained)
             return HostReport(HostReportType.ACTIVATED, request.payload.version, str(destination))
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--archive', required=True, type=Path)
-    parser.add_argument('--sha256', required=True)
-    parser.add_argument('--version', required=True)
-    parser.add_argument('--idea-build', required=True)
+    parser.add_argument('--archive', type=Path)
+    parser.add_argument('--sha256')
+    parser.add_argument('--version')
+    parser.add_argument('--idea-build')
     parser.add_argument('--plugin-root', required=True, type=Path)
-    parser.add_argument('--release-record', required=True, type=Path)
+    parser.add_argument('--release-record', type=Path)
     parser.add_argument('--required-control', type=Path)
     parser.add_argument('--dry-run', action='store_true')
+    parser.add_argument('--remove', action='store_true')
     arguments = parser.parse_args()
     try:
+        install_values = (arguments.archive, arguments.sha256, arguments.version, arguments.idea_build, arguments.release_record)
+        if arguments.remove:
+            if any(value is not None for value in install_values) or arguments.required_control is not None or arguments.dry_run:
+                raise Rejected(Failure.PAYLOAD_REJECTED)
+            print(encode(remove_host(arguments.plugin_root)), end='')
+            return 0
+        if any(value is None for value in install_values):
+            raise Rejected(Failure.PAYLOAD_REJECTED)
         payload = HostedPluginPayload(arguments.archive, arguments.sha256, arguments.version, arguments.idea_build)
         admit_host_release(arguments.release_record, payload, arguments.required_control)
         report = install(HostInstallRequest(payload, arguments.plugin_root, HostInstallMode.PLAN if arguments.dry_run else HostInstallMode.APPLY))
         print(encode(report), end='')
         return 0
     except Rejected as rejected:
-        print(encode(HostRejection(HostRejectionType.REJECTED, rejected.failure)), end='', file=sys.stderr)
+        print(encode(HostRejection(HostRejectionType.REJECTED, rejected.failure)), end='', file=sys.stdout if arguments.remove else sys.stderr)
         return 1
     except (OSError, ValueError, zipfile.BadZipFile, XML.ParseError):
-        print(encode(HostRejection(HostRejectionType.REJECTED, Failure.FILESYSTEM_REJECTED)), end='', file=sys.stderr)
+        print(encode(HostRejection(HostRejectionType.REJECTED, Failure.FILESYSTEM_REJECTED)), end='', file=sys.stdout if arguments.remove else sys.stderr)
         return 1
 
 

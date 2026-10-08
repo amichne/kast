@@ -45,7 +45,7 @@ internal sealed interface BrokerPlanApprovalReply {
 
     data object Handled : BrokerPlanApprovalReply
 
-    data class Rejected(val failure: PlanApprovalFailure) : BrokerPlanApprovalReply
+    data class Rejected(val failure: ProjectCloseConfirmationFailure) : BrokerPlanApprovalReply
 }
 
 /** Preserves both the selected registered workspace and admitted call identity. */
@@ -206,7 +206,7 @@ internal class BrokerLifecycleApprovals(
             }
         return when (proof) {
             is Refinement.Rejected -> proof
-            is Refinement.Refined -> options.projectCloseSigner(proof.value)
+            is Refinement.Refined -> Refinement.Refined(ProjectCloseApprovalGrant.confirmed(proof.value))
         }
     }
 
@@ -273,25 +273,27 @@ internal class BrokerLifecycleApprovals(
     fun respond(client: ClientConnectionId, document: JsonObject): BrokerPlanApprovalReply {
         val id = (document["id"] as? JsonPrimitive)?.content ?: return BrokerPlanApprovalReply.Unowned
         if (!id.startsWith("kast-project-close-")) return BrokerPlanApprovalReply.Unowned
-        val entry = pending[id] ?: return BrokerPlanApprovalReply.Rejected(PlanApprovalFailure.UNKNOWN_REQUEST)
+        val entry =
+            pending[id] ?: return BrokerPlanApprovalReply.Rejected(ProjectCloseConfirmationFailure.UNKNOWN_REQUEST)
         if (entry.controller != client)
-            return BrokerPlanApprovalReply.Rejected(PlanApprovalFailure.NOT_RESPONSIBLE_CONTROLLER)
+            return BrokerPlanApprovalReply.Rejected(ProjectCloseConfirmationFailure.NOT_RESPONSIBLE_CONTROLLER)
         val result =
-            document["result"] ?: return BrokerPlanApprovalReply.Rejected(PlanApprovalFailure.MALFORMED_RESPONSE)
+            document["result"]
+                ?: return BrokerPlanApprovalReply.Rejected(ProjectCloseConfirmationFailure.MALFORMED_RESPONSE)
         if (
             document.keys != setOf("id", "result") ||
                 options.contracts.admit(CodexOwnedSchema.COMMAND_EXECUTION_REQUEST_APPROVAL_RESPONSE, result) !is
                     Validation.Validated
         )
-            return BrokerPlanApprovalReply.Rejected(PlanApprovalFailure.MALFORMED_RESPONSE)
+            return BrokerPlanApprovalReply.Rejected(ProjectCloseConfirmationFailure.MALFORMED_RESPONSE)
         val response =
             try {
                 json.decodeFromJsonElement<CloseApprovalResponse>(result)
             } catch (_: SerializationException) {
-                return BrokerPlanApprovalReply.Rejected(PlanApprovalFailure.MALFORMED_RESPONSE)
+                return BrokerPlanApprovalReply.Rejected(ProjectCloseConfirmationFailure.MALFORMED_RESPONSE)
             }
         return if (entry.response.complete(response.decision)) BrokerPlanApprovalReply.Handled
-        else BrokerPlanApprovalReply.Rejected(PlanApprovalFailure.ALREADY_RESOLVED)
+        else BrokerPlanApprovalReply.Rejected(ProjectCloseConfirmationFailure.ALREADY_RESOLVED)
     }
 
     fun disconnect(client: ClientConnectionId) {

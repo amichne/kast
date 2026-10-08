@@ -33,7 +33,7 @@ TOOL_PATH = str(Path(sys.executable).resolve().parent) + os.pathsep + os.defpath
 @dataclass(frozen=True)
 class ContractFixture:
     type: str = 'HOSTED_CONTRACT'
-    runtimeProtocolIdentity: str = 'kast.ide-hosted.runtime.v2'
+    runtimeProtocolIdentity: str = 'kast.ide-hosted.runtime.v3'
     operationRegistryDigest: str = 'sha256:' + 'a' * 64
     wireSchemaDigest: str = 'sha256:' + 'b' * 64
     capabilities: tuple[str, ...] = ('query.run',)
@@ -101,6 +101,7 @@ class InstallerEntrypointTest(unittest.TestCase):
         control_name = f"kast-control-v{version}-macos-aarch64.tar.gz"
         control = assets / control_name
         executable = b"#!/bin/sh\nprintf 'profile=%s mode=%s force=%s idea=%s\\n' \"$KAST_INSTALL_PROFILE\" \"$KAST_INSTALL_MODE\" \"$KAST_INSTALL_FORCE\" \"$KAST_INSTALL_IDEA_HOME\" >&2\n"
+        executable += b"printf 'plugin-root=%s\\n' \"$KAST_INSTALL_IDEA_PLUGIN_ROOT\" >&2\n"
         if reset_capability:
             executable += b"printf 'options=%s\\n' \"$*\" >&2\n"
         info = tarfile.TarInfo("share/kast/libexec/kast-service")
@@ -163,6 +164,15 @@ esac
             "KAST_INSTALL_ROOT": str(home / ".local/share/kast"), "KAST_BIN_DIR": str(home / ".local/bin"),
         }
         return idea, assets, environment
+
+    def test_control_stage_receives_the_exact_host_install_target(self):
+        with tempfile.TemporaryDirectory(prefix='kast-host-target-relay-') as directory:
+            idea, _, environment = self.installer_fixture(directory)
+            result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea), '--dry-run', '--verbose'],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10)
+            self.assertEqual(0, result.returncode, result.stderr)
+            expected = Path(environment['HOME']) / 'Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins'
+            self.assertIn('plugin-root=' + str(expected), result.stderr)
 
     def test_legacy_control_completion_uses_only_its_supported_commit_protocol(self):
         with tempfile.TemporaryDirectory(prefix='kast-completion-legacy-') as directory:

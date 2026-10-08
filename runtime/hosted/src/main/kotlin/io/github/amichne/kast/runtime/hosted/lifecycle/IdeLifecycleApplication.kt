@@ -184,10 +184,7 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
     private fun submitAuthorized(received: IdeLifecycleCommand): IdeLifecycleResult {
         val authority =
             if (received is IdeLifecycleCommand.AuthorizedClose) {
-                when (
-                    val verified =
-                        ProjectCloseAuthority.UserApproved.verify(Path.of(System.getProperty("user.home")), received)
-                ) {
+                when (val verified = ProjectCloseAuthority.UserDirected.admit(received)) {
                     is Refinement.Rejected -> return IdeLifecycleResult.Blocked(verified.failure)
                     is Refinement.Refined -> verified.value
                 }

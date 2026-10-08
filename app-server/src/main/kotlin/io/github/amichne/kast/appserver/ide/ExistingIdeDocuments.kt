@@ -135,8 +135,6 @@ object ExistingIdeDocuments {
         return when (operation) {
             is ExistingIdeOperation.Read -> readResponse(raw, operation, context)
             ExistingIdeOperation.Status -> ExistingIdeDecodedResponse.fromExchange(responseRejected())
-            is ExistingIdeOperation.ApprovalPreparation ->
-                ExistingIdeDecodedResponse.fromExchange(preparationResponse(raw, operation, context))
             is ExistingIdeOperation.Change ->
                 ExistingIdeDecodedResponse.fromExchange(changeResponse(raw, operation, context))
             is ExistingIdeOperation.Classes,
@@ -167,24 +165,6 @@ object ExistingIdeDocuments {
         else responseRejected()
     }
 
-    private fun preparationResponse(
-        raw: ByteArray,
-        operation: ExistingIdeOperation.ApprovalPreparation,
-        context: ResponseContext,
-    ): ExistingIdeExchange =
-        when (
-            val admitted =
-                admitHostedApprovalChallenge(
-                    raw = raw,
-                    root = context.root,
-                    descriptor = context.descriptor,
-                    operation = operation,
-                )
-        ) {
-            is Refinement.Refined -> received(admitted.value)
-            is Refinement.Rejected -> operationRejection(raw, admitted.failure)
-        }
-
     private fun changeResponse(
         raw: ByteArray,
         operation: ExistingIdeOperation.Change,
@@ -194,7 +174,7 @@ object ExistingIdeDocuments {
         val decoded =
             when (operation) {
                 is ExistingIdeOperation.Plan -> CanonicalOperationWireBindings.changePlan.decodeOutcome(document)
-                is ExistingIdeOperation.ApprovedMutation ->
+                is ExistingIdeOperation.Mutation ->
                     when (operation.kind) {
                         HostedMutationOperation.CHANGE_APPLY ->
                             CanonicalOperationWireBindings.changeApply.decodeOutcome(document)

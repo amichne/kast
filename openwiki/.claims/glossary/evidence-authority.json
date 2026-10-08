@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:6eae5cb18197320ee42635678f44813168580a38cfc7435d823caf235bc53781",
+  "pageVersion": "sha256:f5f6597f1a2a921feb0f084ace6cdece5c5a70480b11cf3f9c637019048167d4",
   "claims": [
     {
       "id": "claim_9eeea62d677a4b40b7d9c6496402165e",
@@ -17,18 +17,28 @@
       "statement": "A decoded live reference proves representation validity only; its original owner must re-admit the current epoch and selectors must recheck scope, declaration, and content.",
       "evidence": [
         {
-          "resource": "repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt#L192-L227",
+          "resource": "repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt#L245-L280",
           "version": "repo-lines-v1:sha256:e915a860f67fa989c16304ea8cdb1602f0f9d6baaf3b43a3576dce8477a132ff:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI4NDljMjNkZTM2NTYwNzJhZWY1ZjI2MTIxZGY4ZmU0NTA1YWU3ZTRjMTIzYmM0YWE4Nzk2ZGVlODJhMTQyYjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJhNDJhNmFkYTA4ZjVkMGM2MTU1NTMzZjczMGJhZTc1NWZjYTY2ODE5ZjVkMjU5ZDkyZWYzZDM0MGJkOTdiMDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRmOGIxZDE1MWZlZjVjMjQ1YWZhYTJiMWU5ZDY3NThjMmYxMjY2MTE2ZjNkNjEwOWVmMDJiNWNjMGMyNDQ3ODAifQ"
         },
         {
-          "resource": "repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt#L44-L90",
-          "version": "repo-lines-v1:sha256:dc4f65d9e53860adbf994d0da8e7eb086bf9004f2e4ec5f7dde4bc659802a3bb:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUwYmRjODUzMzUyYzMyYjhjOWM3ZTZiMWRjYTRiYWJiYmRmNzJjOGUzMTVmNGNlNmVmMDEyZDA4ZTA1NGI0YTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMzY2M5NmY2ZjcyMTQ4ZmYzODBlYzQ3ODZkMjE2MmY5MDI5MjBhZmJkMGIzNzczZDc5YTUyYTQ0YjBjNzY1ZjQifQ"
+          "resource": "repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt#L44-L143",
+          "version": "repo-lines-v1:sha256:c519cfb50072b363f9ecf1c59e546256f1eaeded74a183f8d6704216d18d43ab:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJlYWYyMmNmMDczMjU5MmMyNDcxNDFjYmU2MWVmYTExMDEyNjEyZjVhMzEyMmI5YWY5YmJhZjUyZjU3MjRkMTk0IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI1MGJkYzg1MzM1MmMzMmI4YzljN2U2YjFkY2E0YmFiYmJkZjcyYzhlMzE1ZjRjZTZlZjAxMmQwOGUwNTRiNGE2IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJjM2NjOTZmNmY3MjE0OGZmMzgwZWM0Nzg2ZDIxNjJmOTAyOTIwYWZiZDBiMzc3M2Q3OWE1MmE0NGIwYzc2NWY0In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_0fc3967c800144349c8092b362bfbf00",
+      "statement": "LiveMutationAuthority retains the current admitted observation, exact plan, saved preimage and derived postimage only after permanent application claim and durable recovery preparation; it contains no verified signing approval.",
+      "evidence": [
+        {
+          "resource": "repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt#L47-L137",
+          "version": "repo-lines-v1:sha256:7ee7be99e9f0854116295741a02f0f27e1b91c109a9b5706871300369b886252:eyJzZWxlY3RlZExpbmVDb3VudCI6OTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzNDg2MjA4ZmViOTgyNDI5YTkyYmNjM2U3ZGUwOWY4MmE1YzY4MTE5OTY0Y2I1Y2U4YjQ3NTNlZDY3ZWRhNjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZTJjYTMyYmYxMjFmMGNhZDIxNGI5NDVjMjA0ZDVhZGFjMzQ3OTQwNjcyOGUxYzRmMzhlNzIxMjFjYjg3YmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk2NDk1YzM2NGU4MjM4ZTQyNGUzMGE1YTYzYzk5MmU3ZmRlMTI1NDEyYTFmMDFkMGYwOGU2ZTc1NTc5ODExMTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZkMzliMGJmYTc0OGE2ZmMwMGM4YjAwYzdlNTBlZDhkMjZhMGE3OTUwMjVkMGQxMjhjYjU5M2E3ODVhOGQzNWIifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-05T19:11:53.820Z"
+    "at": "2026-10-08T02:33:12.078Z"
   }
 }

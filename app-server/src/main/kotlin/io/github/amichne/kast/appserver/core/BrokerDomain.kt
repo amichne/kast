@@ -172,11 +172,6 @@ private constructor(
                     approval = approval,
                 )
             if (
-                approval is io.github.amichne.kast.appserver.runtime.BrokerInvocationApproval.Granted &&
-                    !approval.grant.matchesInvocation(context)
-            )
-                return Refinement.Rejected(BrokerInvocationContextFailure.APPROVAL_CONTEXT_MISMATCH)
-            if (
                 approval is io.github.amichne.kast.appserver.runtime.BrokerInvocationApproval.ProjectClose &&
                     !approval.grant.matches(context, approval.grant.approval.request)
             )

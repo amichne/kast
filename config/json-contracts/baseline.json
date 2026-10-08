@@ -2624,56 +2624,6 @@
     {
       "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapterTest.kt",
-        "scope": "type:CodexProtocolAdapterTest/fun:overlap requires explicit workspace and stale owner cannot resume or invoke(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_LITERAL",
-        "sha256": "56268dfed2ddded656107ce31824bc1228178613349640b2fe21e36a5e559b49"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapterTest.kt",
-        "scope": "type:CodexProtocolAdapterTest/fun:overlap requires explicit workspace and stale owner cannot resume or invoke(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_LITERAL",
-        "sha256": "b7ebb0e131fb18568afea71d9b6c3158f5bf8f08a999950ff3d424d618cc0889"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapterTest.kt",
-        "scope": "type:CodexProtocolAdapterTest/fun:overlap requires explicit workspace and stale owner cannot resume or invoke(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_LITERAL",
-        "sha256": "c71ff844376ce81edc9c6f176fb3f49db01682090d69a611f39a9f6c6f1baf55"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapterTest.kt",
-        "scope": "type:CodexProtocolAdapterTest/fun:overlap requires explicit workspace and stale owner cannot resume or invoke(4:Path)/declaration:<anonymous>/val:call",
-        "kind": "JSON_LITERAL",
-        "sha256": "4978cb9e6346dd9a14b422d232cec47e4a907e77923b4dc3de8ddb99917f1e10"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapterTest.kt",
-        "scope": "type:CodexProtocolAdapterTest/fun:overlap requires explicit workspace and stale owner cannot resume or invoke(4:Path)/declaration:<anonymous>/val:selected",
-        "kind": "JSON_LITERAL",
-        "sha256": "540cb25c23f6753848f596444fd64e0972f12c248943aebbbc4640228d270c26"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapterTest.kt",
         "scope": "type:CodexProtocolAdapterTest/fun:owned dynamic call is consumed and replied upstream(4:Path)/declaration:<anonymous>/val:call",
         "kind": "JSON_LITERAL",
         "sha256": "c2d5e119808406bb1597895a6c3879b593fa48c1d283702ef9ad427979509fb1"
@@ -3413,26 +3363,6 @@
     },
     {
       "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/EnrolledPlanApprovalSignerTest.kt",
-        "scope": "type:EnrolledPlanApprovalSignerTest/fun:approval(4:Path)/val:resolved",
-        "kind": "JSON_BUILDER",
-        "sha256": "5983cd871100acc8c48bf479790a5df4368efc425a3e8f8858178cd3c8dec12e"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/EnrolledPlanApprovalSignerTest.kt",
-        "scope": "type:EnrolledPlanApprovalSignerTest/fun:enrolled signer authenticates exact plan owner challenge and controller invocation(4:Path)/val:expected",
-        "kind": "JSON_BUILDER",
-        "sha256": "5da63dbfd1e3b75270a4e7b918c0c53ad1c6d2dc1d1f2d703980a8099845bbf3"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/GradleProviderTest.kt",
         "scope": "type:GradleProviderTest/fun:Gradle tools bind only the admitted wrapper arguments(4:Path)/declaration:<anonymous>",
         "kind": "JSON_LITERAL",
@@ -3457,106 +3387,6 @@
         "scope": "type:GradleProviderTest/fun:Gradle wrapper absence is finite provider failure(4:Path)/declaration:<anonymous>/val:dispatch",
         "kind": "JSON_BUILDER",
         "sha256": "518daf9dd40e33de3cb176062ff61eda6a4d41c58534793f686e1d7b258c096b"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastHostedPlanApprovalGatewayTest.kt",
-        "scope": "type:KastHostedPlanApprovalGatewayTest/fun:prepare rejects wrong plan operation owner malformed response and escaping preview(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "7ea6abc65afd4c26d318d914f38a9458eeb751e3bc3fdf792c7e00cda1a3640f"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastHostedPlanApprovalGatewayTest.kt",
-        "scope": "type:KastHostedPlanApprovalGatewayTest/fun:prepare rejects wrong plan operation owner malformed response and escaping preview(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "518daf9dd40e33de3cb176062ff61eda6a4d41c58534793f686e1d7b258c096b"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastHostedPlanApprovalGatewayTest.kt",
-        "scope": "type:KastHostedPlanApprovalGatewayTest/fun:prepare rejects wrong plan operation owner malformed response and escaping preview(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_OBJECT",
-        "sha256": "67c73ddbe5fcc3b1d7b94956a833b641f0f427b5007b46cdcfe6d01eb47f6eaa"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastHostedPlanApprovalGatewayTest.kt",
-        "scope": "type:KastHostedPlanApprovalGatewayTest/fun:prepare rejects wrong plan operation owner malformed response and escaping preview(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_OBJECT",
-        "sha256": "513fcbd66670477036ad30f6413c087702824c595838ec16e589d730596298f4"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastHostedPlanApprovalGatewayTest.kt",
-        "scope": "type:KastHostedPlanApprovalGatewayTest/fun:prepare rejects wrong plan operation owner malformed response and escaping preview(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_OBJECT",
-        "sha256": "7f4b1d79a2dffed25cb6b172184843829d7c9b9d8079afa7ed3f91b19fff7166"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastHostedPlanApprovalGatewayTest.kt",
-        "scope": "type:KastHostedPlanApprovalGatewayTest/fun:prepare rejects wrong plan operation owner malformed response and escaping preview(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_OBJECT",
-        "sha256": "d5d04727d84572ed590fdd96e46ab1221988eb820b16bcf4b1809da595ab9521"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastHostedPlanApprovalGatewayTest.kt",
-        "scope": "type:KastHostedPlanApprovalGatewayTest/fun:prepare rejects wrong plan operation owner malformed response and escaping preview(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_OBJECT",
-        "sha256": "c82365d8733b7ec6c63ed44f0328420be7d39cf53f77a8fbdd7050056faa4aa6"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastHostedPlanApprovalGatewayTest.kt",
-        "scope": "type:KastHostedPlanApprovalGatewayTest/fun:request(4:Path)",
-        "kind": "JSON_BUILDER",
-        "sha256": "e3c2337624883bcb7a0e1a37f38831cb1dbf49c1c7bd1d8a9c81a51a733def62"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastHostedPlanApprovalGatewayTest.kt",
-        "scope": "type:KastHostedPlanApprovalGatewayTest/fun:response(4:Path)",
-        "kind": "JSON_BUILDER",
-        "sha256": "be1afd8d13daa99cab034f5d561416829e76e39713dc87f51c6d67f1505f2735"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastHostedPlanApprovalGatewayTest.kt",
-        "scope": "type:KastHostedPlanApprovalGatewayTest/fun:response(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "31e70073140b1cf0f3d119f95c74d86f2d7f2e86a5be0a04b38e120bad3c21a5"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
@@ -3757,16 +3587,6 @@
         "scope": "type:KastObserverProjectorTest/val:live",
         "kind": "JSON_LITERAL",
         "sha256": "0dddef35e9a0480d428c2c5fb56ceeb83305622cc6bb66db2570142492e0c6f3"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastProviderTest.kt",
-        "scope": "type:KastProviderTest/fun:approvedGrant(4:Path)/val:resolution",
-        "kind": "JSON_BUILDER",
-        "sha256": "5983cd871100acc8c48bf479790a5df4368efc425a3e8f8858178cd3c8dec12e"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
@@ -4147,156 +3967,6 @@
         "scope": "type:BrokerSessionHubTest/type:Companion/fun:toolCall(6:String,6:String,3:Int,7:Boolean)",
         "kind": "JSON_LITERAL",
         "sha256": "e1c05f5ade7bd5d5acea164b57985573850287dabc55c214fe800be0a599ce9a"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/ExactPlanApprovalTest.kt",
-        "scope": "type:ExactPlanApprovalTest/fun:concurrent accept and disconnect produce exactly one terminal outcome(4:Path)/val:accepted/declaration:<anonymous>",
-        "kind": "JSON_LITERAL",
-        "sha256": "3daceb1b1750808bd474b1fa99efb43c7e45f9a340d2be8d0b18f1f18fa6c904"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/ExactPlanApprovalTest.kt",
-        "scope": "type:ExactPlanApprovalTest/fun:disconnect cancellation timeout and owner retirement cannot later become approvals(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_LITERAL",
-        "sha256": "3daceb1b1750808bd474b1fa99efb43c7e45f9a340d2be8d0b18f1f18fa6c904"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/ExactPlanApprovalTest.kt",
-        "scope": "type:ExactPlanApprovalTest/fun:malformed and caller supplied approval flags cannot grant(4:Path)",
-        "kind": "JSON_LITERAL",
-        "sha256": "f4e0b6db8027f899673a2ec2338d614a1c5c5bae46ec9c4328192e79ce2f5a0c"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/ExactPlanApprovalTest.kt",
-        "scope": "type:ExactPlanApprovalTest/fun:malformed and caller supplied approval flags cannot grant(4:Path)",
-        "kind": "JSON_LITERAL",
-        "sha256": "e951e0529a48f403ef1751f1c42d135f4e10447002446e0a84c5458be8e84ce7"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/ExactPlanApprovalTest.kt",
-        "scope": "type:ExactPlanApprovalTest/fun:malformed and caller supplied approval flags cannot grant(4:Path)",
-        "kind": "JSON_LITERAL",
-        "sha256": "2b775bff906a308b72324c8f1555ff5173334b575f7c60920e6ef6e3177ad88a"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/ExactPlanApprovalTest.kt",
-        "scope": "type:ExactPlanApprovalTest/fun:malformed and caller supplied approval flags cannot grant(4:Path)",
-        "kind": "JSON_LITERAL",
-        "sha256": "896d5b4d36378fc3648c67cd5d12ef6183c389735a81fcc70c80b69949a26c7e"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/ExactPlanApprovalTest.kt",
-        "scope": "type:ExactPlanApprovalTest/fun:malformed and caller supplied approval flags cannot grant(4:Path)",
-        "kind": "JSON_LITERAL",
-        "sha256": "a5e97da022867bbf4c53b143cc71fce89c6f0361d61e81047ea4bbfaf309ba49"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/ExactPlanApprovalTest.kt",
-        "scope": "type:ExactPlanApprovalTest/fun:malformed and caller supplied approval flags cannot grant(4:Path)",
-        "kind": "JSON_LITERAL",
-        "sha256": "39de80db61114c51cb17e16797f12ba78d6810b46c7bdad247cae528b2c51fd5"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/ExactPlanApprovalTest.kt",
-        "scope": "type:ExactPlanApprovalTest/fun:malformed and caller supplied approval flags cannot grant(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_LITERAL",
-        "sha256": "3daceb1b1750808bd474b1fa99efb43c7e45f9a340d2be8d0b18f1f18fa6c904"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/ExactPlanApprovalTest.kt",
-        "scope": "type:ExactPlanApprovalTest/fun:native non-accept decisions terminate without granting(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_LITERAL",
-        "sha256": "367dadc6241ac13e1f1e6da66ae3d0f23a2b1e4fbdf26c621c6d94dee24b372e"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/ExactPlanApprovalTest.kt",
-        "scope": "type:ExactPlanApprovalTest/fun:observer reply cannot spend the controllers pending request(4:Path)/val:accept",
-        "kind": "JSON_LITERAL",
-        "sha256": "3daceb1b1750808bd474b1fa99efb43c7e45f9a340d2be8d0b18f1f18fa6c904"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/ExactPlanApprovalTest.kt",
-        "scope": "type:ExactPlanApprovalTest/fun:only controller accept proves the exact pending challenge and invocation(4:Path)",
-        "kind": "JSON_LITERAL",
-        "sha256": "3daceb1b1750808bd474b1fa99efb43c7e45f9a340d2be8d0b18f1f18fa6c904"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/ExactPlanApprovalTest.kt",
-        "scope": "type:ExactPlanApprovalTest/fun:only controller accept proves the exact pending challenge and invocation(4:Path)/val:result",
-        "kind": "JSON_LITERAL",
-        "sha256": "3daceb1b1750808bd474b1fa99efb43c7e45f9a340d2be8d0b18f1f18fa6c904"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/ExactPlanApprovalTest.kt",
-        "scope": "type:ExactPlanApprovalTest/fun:reacquired controller identity cannot revive a stale lease(4:Path)/val:accept",
-        "kind": "JSON_LITERAL",
-        "sha256": "3daceb1b1750808bd474b1fa99efb43c7e45f9a340d2be8d0b18f1f18fa6c904"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/ExactPlanApprovalTest.kt",
-        "scope": "type:ExactPlanApprovalTest/fun:task reconciliation blocks both new requests and pending acceptance(4:Path)",
-        "kind": "JSON_LITERAL",
-        "sha256": "3daceb1b1750808bd474b1fa99efb43c7e45f9a340d2be8d0b18f1f18fa6c904"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
@@ -4767,26 +4437,6 @@
         "scope": "type:WriteProcessOutputTaskTest/fun:declared process output is captured byte for byte()/val:task/declaration:<anonymous>",
         "kind": "JSON_LITERAL",
         "sha256": "84744cd013dfc25ff04eafb2e148cdcc2cbd6070f142f17452d86081dfa5cc8e"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "change/apply/src/test/kotlin/io/github/amichne/kast/change/apply/LivePlanApprovalTest.kt",
-        "scope": "type:LivePlanApprovalTest/fun:payload()",
-        "kind": "JSON_OBJECT",
-        "sha256": "e398efa59a2e5e309939c19645663122e598e861520142c2941a2cbac94444f1"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "change/apply/src/test/kotlin/io/github/amichne/kast/change/apply/LivePlanApprovalTest.kt",
-        "scope": "type:LivePlanApprovalTest/fun:signed but changed subject fails exact binding()/declaration:<anonymous>",
-        "kind": "JSON_OBJECT",
-        "sha256": "baf954bbbc6e21ce942cb3892f6427bc6c12eed11da6ec06ca4a8510eddde344"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
@@ -5883,26 +5533,6 @@
     },
     {
       "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeChangeCliTest.kt",
-        "scope": "type:ExistingIdeChangeCliTest/fun:approval preparation reaches hosted ingress with exact plan identity()",
-        "kind": "JSON_LITERAL",
-        "sha256": "1b5b2e3ed0fddbd64dae0f551113be3180502bd30477f953cdd7f6f12c84e6d2"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeChangeCliTest.kt",
-        "scope": "type:ExistingIdeChangeCliTest/fun:ordinary apply requires approval before calling the hosted capability()/val:result",
-        "kind": "JSON_LITERAL",
-        "sha256": "1b5b2e3ed0fddbd64dae0f551113be3180502bd30477f953cdd7f6f12c84e6d2"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
         "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCliTest.kt",
         "scope": "type:ExistingIdeCliTest/fun:schema admits empty index evidence and rejects wrong names roots and duplicate fields()/val:valid",
         "kind": "JSON_LITERAL",
@@ -6007,76 +5637,6 @@
         "scope": "type:ExistingIdeSocketTest/fun:native framed client accepts the exact host and rejects oversized and invalid UTF8 responses()/declaration:<anonymous>/val:task/declaration:<anonymous>/declaration:<anonymous>/val:rejected",
         "kind": "JSON_LITERAL",
         "sha256": "875ba5fdfeda4c6acd20374e4e1029e2300797feec010dc3f16a9707bfef2c56"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/ide/HostedApprovalChallengeTest.kt",
-        "scope": "type:HostedApprovalChallengeTest/fun:challenge requires exact plan owner root and operation()/val:changed",
-        "kind": "JSON_OBJECT",
-        "sha256": "cdf9ee1b837a2e415c4214d59e2d219cc96ae4f5f9fc16ca59abdfacaa6c7bd9"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/ide/HostedApprovalChallengeTest.kt",
-        "scope": "type:HostedApprovalChallengeTest/fun:challenge()",
-        "kind": "JSON_BUILDER",
-        "sha256": "e13e2fc8bf2d3a824aa97ee06905d43ff0f5aea2a7ef405eb4cfe1496b47d7b3"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/ide/HostedApprovalChallengeTest.kt",
-        "scope": "type:HostedApprovalChallengeTest/fun:challenge()/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "5adbab5a7095c178825c0acb1c49593e4cc5f49c044c167b3038a8b620a658ef"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/ide/HostedApprovalChallengeTest.kt",
-        "scope": "type:HostedApprovalChallengeTest/fun:unsafe preview and unknown response properties are rejected()",
-        "kind": "JSON_OBJECT",
-        "sha256": "f66fa7df9d21e0de5eb45dbf1a2f29ce5b57ca6a1c5cf144f830e3e0218bc5f2"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/ide/HostedApprovalChallengeTest.kt",
-        "scope": "type:HostedApprovalChallengeTest/fun:unsafe preview and unknown response properties are rejected()/val:changed",
-        "kind": "JSON_BUILDER",
-        "sha256": "70c525a3ad917824862d159a3f396694b84358be1418f6af35aac3b89dc0be17"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/ide/HostedApprovalChallengeTest.kt",
-        "scope": "type:HostedApprovalChallengeTest/fun:unsafe preview and unknown response properties are rejected()/val:changed",
-        "kind": "JSON_OBJECT",
-        "sha256": "2e29a24a05131b8ac40382dab5aac1ccad5b055946df9b946d59f5df53323e92"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "cli/src/test/kotlin/io/github/amichne/kast/cli/ide/HostedChangeCliInputTest.kt",
-        "scope": "type:HostedChangeCliInputTest/fun:approved apply and recovery retain exact request identity and opaque assertion()",
-        "kind": "JSON_LITERAL",
-        "sha256": "634d647e6c10b53eadd3f2c698c18679f85b074234ccefd3dbcb8a8358502fa4"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
@@ -6707,56 +6267,6 @@
         "scope": "type:SnapshotEvidenceWireBindingTest/fun:with(6:String,11:JsonElement)10:JsonObject",
         "kind": "JSON_OBJECT",
         "sha256": "948810b4f4285cc8fff66ff7c878a63869ef51ba16ced34eff950fa4379c443e"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedApprovalFixture.kt",
-        "scope": "type:HostedApprovalFixture/fun:signed(21:LiveApprovalChallenge,16:LiveChangeEffect,7:KeyPair,3:Map1:<6:String1:,11:JsonElement1:>)/val:bytes",
-        "kind": "JSON_OBJECT",
-        "sha256": "13c14719d896720291a179c915703be9fe7c75ef0d37db8dcfa9948b83d8301c"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedApprovalFixture.kt",
-        "scope": "type:HostedApprovalFixture/fun:signed(21:LiveApprovalChallenge,16:LiveChangeEffect,7:KeyPair,3:Map1:<6:String1:,11:JsonElement1:>)/val:payload",
-        "kind": "JSON_BUILDER",
-        "sha256": "2fe0f3a2e66e6add530fa25fe3d6e0a43af8615db4c4173120f5100394956501"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedApprovalPreparationTest.kt",
-        "scope": "type:HostedApprovalPreparationTest/fun:duplicate unknown coerced trailing and unsupported preparation inputs reject()/val:normal",
-        "kind": "JSON_LITERAL",
-        "sha256": "a6b0339c4514327549a81f73825da9da821b97c79c231e0a21704efff60b9906"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedApprovalPreparationTest.kt",
-        "scope": "type:HostedApprovalPreparationTest/fun:strict request retains exact effect and canonical plan identity()/val:decoded",
-        "kind": "JSON_LITERAL",
-        "sha256": "a6b0339c4514327549a81f73825da9da821b97c79c231e0a21704efff60b9906"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeRequestBoundaryTest.kt",
-        "scope": "type:HostedChangeRequestBoundaryTest/fun:caller approval flag cannot replace authenticated assertion()/val:document",
-        "kind": "JSON_LITERAL",
-        "sha256": "e951e0529a48f403ef1751f1c42d135f4e10447002446e0a84c5458be8e84ce7"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."

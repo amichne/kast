@@ -61,7 +61,7 @@ class IdeLifecycleClient(private val userHome: Path, private val selectedHome: P
                 invocation.arguments.requestId,
                 client,
                 invocation.arguments.target,
-                invocation.approval,
+                invocation.confirmation,
             )
         )
 
@@ -246,7 +246,8 @@ class IdeLifecycleClient(private val userHome: Path, private val selectedHome: P
 private fun IdeLaunchFailure.lifecycleFailure(): IdeLifecycleFailure =
     when (this) {
         IdeLaunchFailure.METADATA_UNAVAILABLE -> IdeLifecycleFailure.LAUNCH_METADATA_UNAVAILABLE
-        IdeLaunchFailure.INVALID_METADATA -> IdeLifecycleFailure.LAUNCH_METADATA_INVALID
+        IdeLaunchFailure.INVALID_METADATA,
+        IdeLaunchFailure.SAVED_SELECTION_REJECTED -> IdeLifecycleFailure.LAUNCH_METADATA_INVALID
         IdeLaunchFailure.UNSUPPORTED_PLATFORM_LINE -> IdeLifecycleFailure.UNSUPPORTED_PLATFORM_LINE
         IdeLaunchFailure.MISSING_LAUNCHER -> IdeLifecycleFailure.LAUNCHER_MISSING
         IdeLaunchFailure.AMBIGUOUS_LAUNCHER -> IdeLifecycleFailure.LAUNCHER_AMBIGUOUS

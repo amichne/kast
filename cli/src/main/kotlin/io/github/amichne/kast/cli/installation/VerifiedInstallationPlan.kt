@@ -23,11 +23,10 @@ internal data class VerifiedInstallationPlan(
             installation = targetRoot.toString(),
             controlSha256 = "sha256:${request.controlDigest.value}",
             ideaHome = request.ideaHome.value.toString(),
-            ideaLaunch =
-                io.github.amichne.kast.distribution.managed.SelectedIdeInstallation.resolve(request.ideaHome.value),
+            ideaLaunch = installationReportIdeLaunch(request, targetRoot, activation),
             changes =
                 listOf(
-                    "enroll-or-preserve-broker-trust",
+                    "retire-owned-legacy-approval-artifacts",
                     "install-single-payload",
                     "write-release-local-configuration",
                     "retire-previous-app-server",

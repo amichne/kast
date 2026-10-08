@@ -12,6 +12,7 @@ import io.github.amichne.kast.appserver.core.BrokerTool
 import io.github.amichne.kast.appserver.core.BrokerTurnId
 import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.appserver.core.ProviderCall
+import io.github.amichne.kast.appserver.core.ProviderFailureCode
 import io.github.amichne.kast.appserver.core.ProviderNamespace
 import io.github.amichne.kast.appserver.core.ProviderRegistration
 import io.github.amichne.kast.appserver.core.ProviderStartup
@@ -50,6 +51,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 internal enum class FixtureTermination {
+    ROOT_DISCOVERY_REJECTION,
     INVALID_OUTPUT,
     MUTATION_THEN_INVALID_OUTPUT,
     AWAIT_CANCELLATION,
@@ -105,8 +107,13 @@ private constructor(
                         entered.complete(Unit)
                         release.await()
                         when (termination) {
-                            FixtureTermination.INVALID_OUTPUT -> Unit
-                            FixtureTermination.MUTATION_THEN_INVALID_OUTPUT -> mutations++
+                            FixtureTermination.ROOT_DISCOVERY_REJECTION ->
+                                ProviderCall.Rejected(ProviderFailureCode.WORKSPACE_ROOT_MARKER_NOT_FOUND)
+                            FixtureTermination.INVALID_OUTPUT -> ProviderCall.Completed(Output("unsupported"))
+                            FixtureTermination.MUTATION_THEN_INVALID_OUTPUT -> {
+                                mutations++
+                                ProviderCall.Completed(Output("unsupported"))
+                            }
                             FixtureTermination.AWAIT_CANCELLATION ->
                                 try {
                                     awaitCancellation()
@@ -117,7 +124,6 @@ private constructor(
                                     }
                                 }
                         }
-                        ProviderCall.Completed(Output("unsupported"))
                     } else ProviderCall.Completed(Output("valid:fixture"))
                 } finally {
                     active--

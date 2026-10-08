@@ -1,17 +1,44 @@
 package io.github.amichne.kast.runtime.hosted
 
-import com.google.gson.Gson
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireEncoding
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertInstanceOf
 
 class HostedChangeRequestBoundaryTest {
+    @Test
+    fun `local endpoint change requests need no approval credential`() {
+        val identity = hostedProtocolText("plan:" + "a".repeat(64))
+        val document =
+            assertInstanceOf<WireEncoding.Encoded>(
+                    CanonicalOperationWireBindings.changeApply.encodeRequest(ChangeApplyRequest(identity))
+                )
+                .document
+        val raw = Json.encodeToString(LocalChangeDocument("CHANGE_APPLY", "/workspace", document))
+        val admitted = HostedRequests.decode(raw).approvalRefined()
+        assertEquals(identity, assertInstanceOf<HostedRequest.ApplyChange>(admitted).request.planIdentity)
+    }
+
+    @Test
+    fun `legacy signature field cannot enter the local effect contract`() {
+        val identity = hostedProtocolText("plan:" + "a".repeat(64))
+        val document =
+            assertInstanceOf<WireEncoding.Encoded>(
+                    CanonicalOperationWireBindings.changeApply.encodeRequest(ChangeApplyRequest(identity))
+                )
+                .document
+        val raw = Json.encodeToString(LegacyChangeDocument("CHANGE_APPLY", "/workspace", document, "legacy"))
+        assertEquals(Refinement.Rejected(HostedEndpointFailure.INVALID_REQUEST), HostedRequests.decode(raw))
+    }
+
     @Test
     fun `effect requests retain canonical identities and cannot enter hosted reads`() {
         val identity = hostedProtocolText("plan:" + "a".repeat(64))
@@ -36,31 +63,31 @@ class HostedChangeRequestBoundaryTest {
     }
 
     @Test
-    fun `caller approval flag cannot replace authenticated assertion`() {
-        val document =
-            Gson()
-                .toJson(
-                    mapOf(
-                        "type" to "CHANGE_APPLY",
-                        "root" to "/workspace",
-                        "document" to "{}",
-                        "approved" to true,
-                    )
+    fun `caller approval flag cannot widen local change request`() {
+        val identity = hostedProtocolText("plan:" + "a".repeat(64))
+        val request =
+            assertInstanceOf<WireEncoding.Encoded>(
+                    CanonicalOperationWireBindings.changeApply.encodeRequest(ChangeApplyRequest(identity))
                 )
+                .document
+        val document = Json.encodeToString(FlaggedChangeDocument("CHANGE_APPLY", "/workspace", request, true))
         assertEquals(Refinement.Rejected(HostedEndpointFailure.INVALID_REQUEST), HostedRequests.decode(document))
     }
 
     private fun decode(operation: String, document: String): HostedRequest =
-        HostedRequests.decode(
-                Gson()
-                    .toJson(
-                        mapOf(
-                            "type" to operation,
-                            "root" to "/workspace",
-                            "document" to document,
-                            "approval" to "representation-only-assertion",
-                        )
-                    )
-            )
+        HostedRequests.decode(Json.encodeToString(LocalChangeDocument(operation, "/workspace", document)))
             .approvalRefined()
 }
+
+@Serializable private data class LocalChangeDocument(val type: String, val root: String, val document: String)
+
+@Serializable
+private data class LegacyChangeDocument(val type: String, val root: String, val document: String, val approval: String)
+
+@Serializable
+private data class FlaggedChangeDocument(
+    val type: String,
+    val root: String,
+    val document: String,
+    val approved: Boolean,
+)

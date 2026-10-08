@@ -1,5 +1,13 @@
 # Mixed-version native acceptance
 
+For the keyless `kast.ide-hosted.runtime.v3` contract, use components declaring
+that same contract and wire digest. The historical C1/C2/P1/P2 inventories below
+do not qualify a keyless change. An old loaded plugin must be replaced and IDEA
+restarted before new Control can use it. The keyless mutation path also needs a
+separate real apply, receipt replay, and recovery run in an authorized disposable
+workspace; query-only success cannot establish those effects. See the
+[migration boundary](../../../app-server/docs/compatibility.md#keyless-hosted-change-migration).
+
 This opt-in check uses the current UID, actual HOME, normal IntelliJ profile,
 and the sole installation at `~/.local/share/kast/installation`. It replaces that
 installation in place. Its owned evidence directory contains logs, a genuine

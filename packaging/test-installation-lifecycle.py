@@ -542,6 +542,61 @@ class SingleInstallationLifecycleTest(unittest.TestCase):
         self.assertTrue(pending.is_dir())
         self.assertTrue(self.root.is_dir())
 
+    def removal_journal(self):
+        path = self.outer.parent / ('.kast-uninstall-' + hashlib.sha256(str(self.outer).encode()).hexdigest() + '.json')
+        record = {'installationRoot': str(self.outer), 'executable': str(self.outer.parent / 'kast'),
+            'executableSha256': 'a' * 64, 'channel': 'STABLE', 'type': 'REMOVAL_REQUESTED',
+            'managedRootIdentity': lifecycle.asdict(lifecycle.FileIdentity.observe(self.outer)),
+            'controlIdentity': lifecycle.asdict(lifecycle.FileIdentity.observe(self.root)),
+            'homeConfiguration': {'type': 'ABSENT_CONFIGURATION'}, 'recoveryProof': {'type': 'ABSENT_RECOVERY'}}
+        path.write_text(json.dumps(record))
+        path.chmod(0o600)
+        return path, record
+
+    def test_retirement_proof_survives_failure_after_payload_deletion_before_parent_return(self):
+        journal, expected = self.removal_journal()
+        admitted = lifecycle.Installation.admit(str(self.root))
+        original = lifecycle.delete_tree
+        def fail_after_delete(path):
+            original(path)
+            if path == self.root:
+                raise OSError('controlled parent-return boundary failure')
+        with patch.object(lifecycle, 'delete_tree', side_effect=fail_after_delete):
+            with self.assertRaises(OSError):
+                lifecycle.execute(admitted, 'remove', False, journal)
+        self.assertFalse(self.root.exists())
+        expected['type'] = 'CONTROL_RETIRED'
+        self.assertEqual(expected, json.loads(journal.read_text()))
+
+    def test_failed_retirement_keeps_requested_journal_and_exact_state(self):
+        state = self.root / 'state'
+        state.mkdir(mode=0o700)
+        identity = lifecycle.FileIdentity.observe(state)
+        journal, expected = self.removal_journal()
+        admitted = lifecycle.Installation.admit(str(self.root))
+        failure = lifecycle.retirement_unproven(lifecycle.RetirementStage.COORDINATOR,
+                                                lifecycle.RetirementOutcome.EXIT_REJECTED)
+        with patch.object(lifecycle, 'retire', side_effect=failure) as retirement:
+            with self.assertRaises(lifecycle.Rejected) as rejected:
+                lifecycle.execute(admitted, 'remove', False, journal)
+            retirement.assert_called_once_with(admitted, [])
+        self.assertEqual(lifecycle.RetirementRejection(lifecycle.RetirementStage.COORDINATOR,
+            lifecycle.RetirementOutcome.EXIT_REJECTED), rejected.exception.retirement)
+        self.assertEqual(identity, lifecycle.FileIdentity.observe(state))
+        self.assertEqual(expected, json.loads(journal.read_text()))
+        self.assertTrue(self.root.exists())
+
+    def test_changed_control_identity_rejects_before_state_or_payload_deletion(self):
+        journal, record = self.removal_journal()
+        record['controlIdentity']['inode'] += 1
+        journal.write_text(json.dumps(record))
+        admitted = lifecycle.Installation.admit(str(self.root))
+        with self.assertRaises(lifecycle.Rejected) as rejected:
+            lifecycle.execute(admitted, 'remove', False, journal)
+        self.assertEqual(lifecycle.Failure.RECOVERY_REJECTED, rejected.exception.failure)
+        self.assertTrue(self.root.exists())
+        self.assertEqual('REMOVAL_REQUESTED', json.loads(journal.read_text())['type'])
+
     def test_ordinary_payload_removal_keeps_managed_parent_and_foreign_state(self):
         protected = self.outer / 'management.json'
         protected.write_text('protected receipt')

@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import shlex
 import shutil
+import sqlite3
 import subprocess
 import tarfile
 import zipfile
@@ -17,10 +18,18 @@ from installer_fixture import InstallerFixture, FixtureFailure, FixtureRejected,
 
 
 @dataclass(frozen=True)
+class IdeaLaunch:
+    os: str = "macOS"
+    arch: str = "aarch64"
+    launcherPath: str = "../MacOS/idea"
+
+
+@dataclass(frozen=True)
 class IdeaProductInfo:
     buildNumber: str
     dataDirectoryName: str = "IntelliJIdea2026.2"
     version: str = "2026.2.3"
+    launch: tuple[IdeaLaunch, ...] = (IdeaLaunch(),)
 
 
 @dataclass(frozen=True)
@@ -115,7 +124,7 @@ def verify_assembled_installer(fixture: InstallerFixture, pair: AdmittedArtifact
 
     metadata = json.loads((product / "share/kast/ide-host.json").read_text())
     idea = fixture.root / "IntelliJ IDEA.app/Contents"
-    for relative in ("Resources", "plugins/Kotlin", "jbr/Contents/Home/bin"):
+    for relative in ("Resources", "MacOS", "plugins/Kotlin", "jbr/Contents/Home/bin"):
         (idea / relative).mkdir(parents=True)
     (idea / "Resources/build.txt").write_text("IU-" + metadata["ideaBuild"] + "\n")
     (idea / "Resources/product-info.json").write_text(json.dumps(asdict(IdeaProductInfo(metadata["ideaBuild"]))))
@@ -123,6 +132,9 @@ def verify_assembled_installer(fixture: InstallerFixture, pair: AdmittedArtifact
     java = idea / "jbr/Contents/Home/bin/java"
     java.write_text("#!/bin/sh\nexec " + shlex.quote(str(fixture.tools["java"])) + ' "$@"\n')
     java.chmod(0o755)
+    launcher = idea / "MacOS/idea"
+    launcher.write_text("#!/bin/sh\nexit 1\n")
+    launcher.chmod(0o755)
 
     environment = dict(fixture.environment)
     installation = Path(environment["HOME"]) / ".local/share/kast"
@@ -160,6 +172,50 @@ def verify_assembled_installer(fixture: InstallerFixture, pair: AdmittedArtifact
                     and report.get("activation") == {"type": "not-requested"}
                     and report.get("status") == "installed" for report in reports),
             "assembled installer rejected release:\n" + result.stderr[-4096:] + "\n" + result.stdout[-4096:])
+    verify_native_uninstall(fixture, pair, product, installation, publication, environment, metadata)
+
+
+def verify_native_uninstall(fixture, pair, product, installation, publication, environment, metadata):
+    """Real native cleanup; only filesystem and staged Host artifacts inside the owned fixture are used."""
+    plugin_root = Path(environment["HOME"]) / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins"
+    helper = product / "share/kast/host-installation.py"
+    host = subprocess.run([
+        str(fixture.tools["python3"]), "-I", str(helper), "--archive", str(pair.host),
+        "--sha256", hashlib.sha256(pair.host.read_bytes()).hexdigest(), "--version", pair.host_version,
+        "--idea-build", metadata["ideaBuild"], "--plugin-root", str(plugin_root),
+        "--release-record", str(pair.host_release_record),
+        "--required-control", str(product / "share/kast/ide-host.json"),
+    ], env=environment, capture_output=True, text=True, timeout=60)
+    require(host.returncode == 0 and (plugin_root / "kast-ide-hosted").is_dir(),
+            "owned Host staging failed:\n" + host.stderr[-4096:])
+    namespace = hashlib.sha256(str(fixture.root / "workspace").encode()).hexdigest()
+    state = Path(environment["HOME"]) / ".kast/state/workspaces" / namespace
+    state.mkdir(parents=True, mode=0o700)
+    repository = Path(__file__).resolve().parent.parent
+    database = state / "mutation.sqlite"
+    # Use the owning schema, without manufacturing mutation, receipt, or recovery success.
+    source_names = ("SqliteLiveChangePlanStore.kt", "SqliteMutationRecoveryDatabase.kt", "SqliteLiveChangeReceiptStore.kt")
+    owner = repository / "evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite"
+    statements = [sql for name in source_names
+                  for sql in re.findall(r'"""(CREATE TABLE IF NOT EXISTS .*?)"""', (owner / name).read_text(), re.S)]
+    require(len(statements) == 6, "mutation schema owner changed; fixture requires explicit reconciliation")
+    with sqlite3.connect(database) as connection:
+        for statement in statements:
+            connection.execute(statement)
+    database.chmod(0o600)
+    sentinel = fixture.root / "protected-native-uninstall.txt"
+    sentinel.write_text("protected")
+    uninstall = subprocess.run([str(publication), "uninstall"], cwd=fixture.root / "workspace",
+                               env=environment, capture_output=True, text=True, timeout=90)
+    events = [json.loads(line) for line in uninstall.stderr.splitlines() if line.startswith("{")]
+    require(uninstall.returncode == 0 and not installation.exists() and not publication.exists()
+            and not (plugin_root / "kast-ide-hosted").exists()
+            and not plugin_root.parent.joinpath(".kast-plugin-recovery").exists()
+            and not Path(environment["HOME"]).joinpath(".kast").exists()
+            and sentinel.read_text() == "protected"
+            and {"type": "COMPLETED", "artifact": "USER_STATE"} in events
+            and {"type": "COMPLETED", "artifact": "HOST_PLUGIN"} in events,
+            "native full uninstall failed:\n" + uninstall.stderr[-4096:] + "\n" + uninstall.stdout[-4096:])
 
 
 def main() -> None:
@@ -179,7 +235,7 @@ def main() -> None:
         verify_launcher(fixture, product, pair)
         verify_assembled_installer(fixture, pair, product)
         fixture.mark_passed()
-    print("installed-product: artifact identity, launcher, and canonical persistent staging passed")
+    print("installed-product: artifact identity, persistent staging, and native Host/SQLite/full cleanup passed")
 
 
 if __name__ == "__main__":

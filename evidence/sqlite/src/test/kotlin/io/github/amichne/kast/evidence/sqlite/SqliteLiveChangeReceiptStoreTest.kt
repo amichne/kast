@@ -53,7 +53,10 @@ class SqliteLiveChangeReceiptStoreTest {
         )
         assertEquals(receipt.before.reference, restoredAddition.before.reference)
         assertEquals(receipt.after.reference, restoredAddition.after.reference)
-        assertEquals(receipt.approval.call, restoredAddition.approval.call)
+        assertEquals(
+            (receipt.execution as io.github.amichne.kast.change.verify.HistoricalLiveApproval).call,
+            (restoredAddition.execution as io.github.amichne.kast.change.verify.HistoricalLiveApproval).call,
+        )
         assertEquals(receipt.recovery, restoredAddition.recovery)
         assertEquals(
             issued.identity,
@@ -111,11 +114,31 @@ class SqliteLiveChangeReceiptStoreTest {
     }
 
     @Test
+    fun `stored historical receipt retains codec version and rejects a different supported row version`() {
+        val location = location()
+        val receipt = fixture()
+        assertInstanceOf<LiveChangeReceiptIssuance.Issued>(open(location).persistHistorical(receipt))
+        database(location) { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery("SELECT codec_version FROM live_change_receipt").use { rows ->
+                    rows.next()
+                    assertEquals(1L, rows.getLong(1))
+                }
+                statement.executeUpdate("UPDATE live_change_receipt SET codec_version = 2")
+            }
+        }
+        assertEquals(
+            LiveChangeReceiptStoreFailure.CORRUPT_RECORD,
+            rejected(open(location).loadReceipt(planIdentity(receipt))),
+        )
+    }
+
+    @Test
     fun `unknown row versions including integers wider than Int fail closed`() {
         val location = location()
         val receipt = fixture()
         assertInstanceOf<LiveChangeReceiptIssuance.Issued>(open(location).persistHistorical(receipt))
-        for (version in listOf(2L, 4294967297L)) {
+        for (version in listOf(3L, 4294967297L)) {
             database(location) { connection ->
                 connection.prepareStatement("UPDATE live_change_receipt SET codec_version = ?").use { statement ->
                     statement.setLong(1, version)

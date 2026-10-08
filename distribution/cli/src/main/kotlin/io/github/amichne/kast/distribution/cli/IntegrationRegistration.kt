@@ -76,6 +76,11 @@ internal fun connectHarness(
     commitReceipt: (Path, ManagementReceipt) -> Unit = ::writeManagementReceipt,
 ): Boolean =
     withRegistrationLock(root) {
+        if (Files.exists(uninstallJournalPath(root), LinkOption.NOFOLLOW_LINKS))
+            throw ManagementRejected(
+                "connection-registration",
+                "installation removal is unfinished; retry uninstall first",
+            )
         val receipt = admittedReceipt(root)
         val source = verifiedBundledSource(selectedInstallation(root), connection)
         val payload = registrationPayload(root, source, connection)

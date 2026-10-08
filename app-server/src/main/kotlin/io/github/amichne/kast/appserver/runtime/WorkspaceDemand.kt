@@ -120,7 +120,6 @@ private fun ExistingIdeOperation.canRetryAfterModelReload(): Boolean =
         is ExistingIdeOperation.Classes,
         is ExistingIdeOperation.Supertype,
         is ExistingIdeOperation.Plan,
-        is ExistingIdeOperation.ApprovalPreparation,
-        is ExistingIdeOperation.ApprovedMutation -> true
+        is ExistingIdeOperation.Mutation -> true
         ExistingIdeOperation.Status -> false
     }

@@ -61,7 +61,7 @@ internal sealed interface WorkspaceEnrollment {
         internal fun snapshot(): WorkspaceRegistryRead = store.snapshot()
 
         internal fun register(
-            root: CanonicalBrokerDirectory
+            root: io.github.amichne.kast.appserver.ide.CanonicalRoot
         ): Refinement<WorkspaceRegistrationAcknowledgement, EnrollmentFailure> = store.enroll(root.path)
     }
 

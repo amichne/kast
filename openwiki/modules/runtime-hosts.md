@@ -2,7 +2,7 @@
 type: Kotlin Module Group
 title: Runtime and process hosts
 description: The existing IDEA plugin owns semantic execution; CLI and App Server
-  own installation, transport, sessions and exact challenge signing.
+  own installation, transport, sessions and canonical native mutation admission.
 resource: file://runtime
 tags:
 - kotlin
@@ -141,7 +141,8 @@ code_sources:
 - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt
 - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/ide/IdeCommands.kt
 - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeCoordinator.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/BrokerTrustEnrollment.kt
+- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceStartupEnrollment.kt
+- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/ProjectCloseAuthority.kt
 - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedResponse.kt
 - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt
 - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/CoordinatorControl.kt
@@ -187,6 +188,8 @@ code_sources:
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt
 - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt
 sources:
+  - id: openwiki-source-948a9971897847e7bf395c0e
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerManagement.kt
   - id: openwiki-source-d042914045998ac241003506
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerJavaRuntime.kt
   - id: openwiki-source-4497996830a7e09fc6368cb3
@@ -209,10 +212,16 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt
   - id: openwiki-source-f60c4760fc0979d7f2c54537
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/PersistentBrokerService.kt
+  - id: openwiki-source-41fd3211f83e8818b2bbfa99
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt
+  - id: openwiki-source-fbea068a13125b931c0783c9
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/SettledOutputRejection.kt
   - id: openwiki-source-d0f22f03abacc7b6ee9cd104
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServices.kt
   - id: openwiki-source-8ece5abae2f9aab84f07b127
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ResetActivationAdmission.kt
+  - id: openwiki-source-5e6cd1a13b9fb0a90d7aea12
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceStartupEnrollment.kt
   - id: openwiki-source-6b063183ca57510a100a1579
     resource: repo://app-server/src/main/resources/control/hosted-endpoint-owner.schema.json
   - id: openwiki-source-d719877f4ac62761c9b248b1
@@ -259,10 +268,10 @@ sources:
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt
   - id: openwiki-source-73144b588342a1cc6d17731e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-05T20:36:23.129Z" }
+generated: { by: "codex", at: "2026-10-08T02:31:16.815Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-05T20:36:23.129Z
+    at: 2026-10-08T02:33:12.078Z
 ---
 
 # Runtime and process hosts
@@ -293,11 +302,11 @@ The hosted provider admits public intent tools and supported changes through the
 
 Installation lifecycle admission fences automatic coordinator startup while detachment, shutdown, transition or reset markers remain. Unknown observation rejects. A reset marker permits startup only for an exact installation-bound `ACTIVATING` record and a currently held exclusive reset lease; malformed, foreign, oversized or unlocked records remain fenced. Installed direct tools separately reject shutdown or reset markers, including unproven absence, before workspace discovery or dispatch. This allows the reset owner to establish daemon readiness while tool calls remain stopped until it lifts the exterior fence. The focused `InstallationLifecycleFenceTest` covers absent installation state, held versus released activation locks, and malformed, foreign and oversized records. See [distribution lifecycle](distribution.md) for retirement, cold staging and readiness obligations.
 
-App Server owns persistent sessions, the invocation journal, project-close controller approval, provider qualification and workspace lanes. A cancelled change apply settles the journal and releases its lane only after native recovery proves `prior_state` or `rolled_back`; unresolved effects retain uncertainty. `CoordinatorControl` provides bounded owner-correlated status with zero worker reservations and rejects retired worker demands. New Codex threads automatically persist an unregistered canonical working directory (or explicit containing root) before binding. Existing containing registrations are reused. Registration preserves closed failures and emits bounded, payload-free startup evidence. Thread-binding validation for resume and invocation remains read-only. Workspace enrollment remains routing data. It grants no importer or worker capability. Provider qualification verifies the packaged catalog against the canonical registry. Installed semantic provider calls first use the shared workspace preparation owner. They then use the App Server-owned IDEA client directly; internal change challenges use the same workspace demand before immutable plan loading, preserving canonical request admission, finite failures, root/host binding and operation output validation. Pure request and result projection lives in `protocol:wire`.
+App Server owns persistent sessions, the invocation journal, project-close controller confirmation, provider qualification and workspace lanes. A cancelled change apply settles the journal and releases its lane only after native recovery proves `prior_state` or `rolled_back`; unresolved effects retain uncertainty. `CoordinatorControl` provides bounded owner-correlated status with zero worker reservations and rejects retired worker demands. Service enablement starts the daemon without enrolling its current directory. New Codex threads discover the nearest canonical `settings.gradle.kts` owner, or validate the explicit exact owner, before registration and binding. Broad historical HOME registration cannot replace that repository owner; saved incorrect bindings reject without retargeting. Registration preserves closed failures and emits bounded, payload-free startup evidence. Thread-binding validation for resume and invocation remains read-only. Workspace enrollment remains routing data. It grants no importer or worker capability. Provider qualification verifies the packaged catalog against the canonical registry. Installed semantic provider calls first use the shared workspace preparation owner. They then use the App Server-owned IDEA client directly; canonical changes use the same workspace demand before immutable plan loading, preserving canonical request admission, finite failures, root/host binding and operation output validation. Pure request and result projection lives in `protocol:wire`.
 
 Installed service admission uses the existing explicitly owned Java candidate when supplied, otherwise the saved IDEA selection's bundled JBR. It admits canonical executable paths and a bounded Java release declaration with feature 25 or newer into `BrokerJavaRuntime`, which command construction retains. Exactly one `JAVA_VERSION` declaration must be present and fully quoted; a malformed duplicate beside a valid declaration also rejects. An absent selection or incompatible runtime rejects with `JAVA_RUNTIME_UNAVAILABLE`; ambient `JAVA_HOME` supplies no fallback. A managed upstream socket alias is admitted only when its resolved socket is open in the launched Codex process; the alias and target identities are retained and rechecked before and after later connections. A successful WebSocket probe alone does not prove ownership. Unproven aliases reject with `SOCKET_ALIAS_OWNER_UNPROVEN`.
 
-Planning stores immutable live plans; applying and recovering require the exact controller-approved plan and current native admission. Installation owns automatic trust enrollment and preserves existing valid keys. Isolated acceptance fixtures can use the private installed control to enroll trust. Apply never creates trust. Read [request dispatch](../flows/request-dispatch.md) and [change lifecycle](../flows/change-lifecycle.md) for the complete boundaries.
+Planning stores immutable live plans; applying and recovering require their exact canonical identity and current native admission. Installation and apply create no broker keys or replacement trust mechanism. Read [request dispatch](../flows/request-dispatch.md) and [change lifecycle](../flows/change-lifecycle.md) for the complete boundaries.
 
 The [installed knowledge contract](../contracts/installed-knowledge.md) describes
 `kast knowledge`, its isolated PSI extraction, verified module ownership and
@@ -376,13 +385,12 @@ and mutation planning do not use this capability. The
 [query protocol](query-protocol.md#automatic-acquisition-for-fresh-reads) specifies
 the identity checks and returned handle metadata.
 
-The plugin additionally owns one `IdeLifecycleApplication` service and user-scoped control endpoint per selected graphical application home. It remains available with zero projects, advertises actual build, host incarnation and capabilities, and retains at most 256 operation records. The endpoint reuses existing ownership and framed transport. A dead endpoint with the same root and socket can be reclaimed after a plugin upgrade without matching its old capability catalog; the absent PID, exclusive lock and unchanged file identities still govern retirement. Project semantic services remain project-scoped. The agent-only `workspace_lifecycle` tool calls the App Server-owned lifecycle client directly and exposes inspect/open/present/release/close/status. `request_user_close` uses the existing controller lease and enrolled signing authority to approve one exact target; session-wide approval is insufficient. The daemon uses opening before semantic dispatch and never obtains user-close authority from that preparation. Existing-project opening waits through active import and requests one linked Gradle model reload on first attach, after tracked Gradle changes, or when the cached model is unavailable. A clean subsequent opening reuses the admitted model. Project-owned documents are saved before refresh or read; a failed save rejects. An indexing transition rejected before semantic evaluation waits briefly for smart mode and retries the read once. Canonical reads discard and replay results invalidated by a moved VFS epoch within the same host deadline; change workflows retain one evaluation.
+The plugin additionally owns one `IdeLifecycleApplication` service and user-scoped control endpoint per selected graphical application home. It remains available with zero projects, advertises actual build, host incarnation and capabilities, and retains at most 256 operation records. The endpoint reuses existing ownership and framed transport. A dead endpoint with the same root and socket can be reclaimed after a plugin upgrade without matching its old capability catalog; the absent PID, exclusive lock and unchanged file identities still govern retirement. Project semantic services remain project-scoped. The agent-only `workspace_lifecycle` tool calls the App Server-owned lifecycle client directly and exposes inspect/open/present/release/close/status. `request_user_close` requires the existing controller lease and an exact local confirmation for one native target. Preparation cannot produce that confirmation. The daemon uses opening before semantic dispatch and never obtains user-close authority from that preparation. Existing-project opening waits through active import and requests one linked Gradle model reload on first attach, after tracked Gradle changes, or when the cached model is unavailable. A clean subsequent opening reuses the admitted model. Project-owned documents are saved before refresh or read; a failed save rejects. An indexing transition rejected before semantic evaluation waits briefly for smart mode and retries the read once. Canonical reads discard and replay results invalidated by a moved VFS epoch within the same host deadline; change workflows retain one evaluation.
 
 App Server qualifies its complete tool catalog from the bounded packaged provider
 contract and canonical registry. It has no Kast process executor or CLI version
 probe. The provider retains contract identity across qualification and startup;
-a changed contract rejects before execution. Approval signing uses the explicitly
-admitted user home independently of catalog qualification.
+a changed contract rejects before execution. Mutation authority remains with current native plan and recovery admission.
 
 Catalog qualification emits one bounded typed stage/outcome observation per contract
 read. It retains source, document, projection, metadata, input-schema and output-schema
@@ -422,12 +430,12 @@ the historical record remains. A second change rejects. Transport failures never
 semantic request. Preparation rejection retains its finite cause and operation ID
 as known pre-execution failure evidence.
 
-Hosted provider calls use the shared workspace demand owner and the existing-IDE client. Approved mutations preserve plan identity and signed assertion. Complete, qualified, rejected and hosted challenge outcomes retain distinct replies. The former `/kast-operation` CLI RPC route is removed.
+Hosted provider calls use the shared workspace demand owner and the existing-IDE client. Canonical mutations preserve exact plan identity. Complete, qualified and rejected outcomes retain distinct replies. The former `/kast-operation` CLI RPC route is removed.
 
 Launchd invokes the private daemon entry point without the public CLI command graph. The managed readiness environment is required at ingress and then qualified by the existing coordinator. Published-command recovery admits the private daemon form only when the entire plist matches the document generated from the recovered command, including launch behavior and logging. It still admits the earlier `kast broker serve` form for retirement.
 On enable, the login variant of the exact service plist is published only after the service and its private receipt are qualified. It retains the same label and daemon executable and adds the private `--login` argument. At login the daemon verifies that exact agent, retained service receipt and loaded launchd label under the service lock before clearing a prior stop. Explicit disable removes the agent, so login cannot override it. An unknown file blocks lifecycle effects. The legacy bootstrap command remains available to converge an older one-shot entry on the direct service job.
 Installation activation and new-release retirement use a separate private
-service-control entry point. It admits registration, enable, disable, stop, destructive repair and trust enrollment. Older installed
+service-control entry point. It admits registration, enable, disable, stop, destructive repair. Older installed
 releases retain their admitted public CLI disable path only during retirement.
 The legacy login bootstrap is admitted only from an exact generated file under
 owned, physical LaunchAgents directories with private file permissions. Enable,
@@ -535,3 +543,5 @@ constructing discovery schemas. The complete hosted and direct catalogs are proj
 lazily on discovery, with exact name and count checks against the same registration
 owner. Canonical public request admission and installation shutdown admission still
 precede workspace preparation and execution.
+
+Only known root admission failures before dispatch (`WORKSPACE_START_UNAVAILABLE`, `WORKSPACE_START_NOT_DIRECTORY`, `WORKSPACE_ROOT_MARKER_NOT_FOUND`, `WORKSPACE_INVALID_ROOT_MARKER`) settle as known without fencing recovery. Other provider or interrupted effect outcomes preserve uncertainty unless native recovery proves settlement.

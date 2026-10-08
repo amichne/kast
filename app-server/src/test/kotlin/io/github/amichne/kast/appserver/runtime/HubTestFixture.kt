@@ -77,9 +77,7 @@ internal class HubTestFixture(
     invocationJournal: Path? = null,
     executionPolicy: WorkspaceExecutionPolicy = WorkspaceExecutionPolicy.Default,
     cancellationRetirement: CompletableDeferred<Unit>? = null,
-    closeSigner:
-        ((ControllerApprovedProjectClose) -> Refinement<ProjectCloseApprovalGrant, HostedPlanApprovalFailure>)? =
-        null,
+    lifecycleTools: Boolean = false,
 ) {
     val root: Path = root.toRealPath()
     val activities = java.util.concurrent.CopyOnWriteArrayList<SessionActivity>()
@@ -147,7 +145,7 @@ internal class HubTestFixture(
             present = { ToolPresentation.text(it.toString(), true) },
         )
     private val bootstrap =
-        if (closeSigner == null) null
+        if (!lifecycleTools) null
         else {
             val canonical = CanonicalAgentToolDefinitions.changeApply
             val apply =
@@ -190,7 +188,7 @@ internal class HubTestFixture(
                     ProviderRegistration.define(
                             namespace = ProviderNamespace.admit("kast").refined(),
                             version = ProviderVersion.admit("1").refined(),
-                            tools = if (closeSigner == null) listOf(tool) else listOf(tool, changeTool, lifecycleTool),
+                            tools = if (!lifecycleTools) listOf(tool) else listOf(tool, changeTool, lifecycleTool),
                             start = { ProviderStartup.Started(Unit) },
                         )
                         .validated()
@@ -220,8 +218,6 @@ internal class HubTestFixture(
                 maximumMessageBytes = 4 * 1_024 * 1_024,
                 enrollment = enrollment,
                 sessionBootstrap = bootstrap,
-                projectCloseSigner =
-                    closeSigner ?: { Refinement.Rejected(HostedPlanApprovalFailure.SIGNING_UNAVAILABLE) },
                 invocationJournal = invocationJournal,
                 sessionActivitySink = SessionActivitySink { activities.add(it) },
             ),

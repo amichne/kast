@@ -15,12 +15,14 @@ code_sources:
   - path: change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/LiveChangeBasis.kt
   - path: change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt
 sources:
+  - id: openwiki-source-432d05143d371dfe54d7f30d
+    resource: repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt
   - id: openwiki-source-096cb7b190932815f87b4a1d
     resource: repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt
-generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+generated: { by: "codex", at: "2026-10-08T02:33:12.078Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-05T19:11:53.820Z
+    at: 2026-10-08T02:33:12.078Z
 ---
 
 # Evidence authority
@@ -37,5 +39,5 @@ refinement rejects live authority at effects that require a publication;
 the installed editable mutation target still carries a published
 `SemanticReadLease`. Hosted `AddDeclaration` uses a separate `LiveMutationAuthority`
 that retains current observation, saved preimage, the planned write set and
-verified approval. Its detached `ChangePlanningBasis.Live` remains historical
+durable recovery preparation. Its detached `ChangePlanningBasis.Live` remains historical
 evidence and cannot revive an expired IDE owner or authorize a write by itself.

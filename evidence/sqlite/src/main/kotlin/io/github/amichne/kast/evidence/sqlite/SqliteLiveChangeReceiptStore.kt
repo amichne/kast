@@ -30,6 +30,15 @@ sealed interface SqliteLiveChangeReceiptStoreOpenResult {
 }
 
 /** Immutable receipts coexist with live plans and all legacy/recovery rows in the installed mutation database. */
+internal const val LIVE_CHANGE_RECEIPT_SCHEMA =
+    """CREATE TABLE IF NOT EXISTS live_change_receipt (
+                            plan_identity TEXT PRIMARY KEY NOT NULL CHECK(length(plan_identity) = 69 AND plan_identity GLOB 'plan:[0-9a-f]*'),
+                            receipt_identity TEXT UNIQUE NOT NULL CHECK(length(receipt_identity) = 72 AND receipt_identity GLOB 'receipt:[0-9a-f]*'),
+                            codec_version INTEGER NOT NULL CHECK(codec_version > 0),
+                            document TEXT NOT NULL,
+                            document_sha256 TEXT NOT NULL CHECK(length(document_sha256) = 64)
+                        ) WITHOUT ROWID"""
+
 class SqliteLiveChangeReceiptStore
 private constructor(private val connections: InitializedSqliteMutationRecoveryConnections) : LiveChangeReceiptStore {
     override fun issueReceipt(receipt: VerifiedLiveAddDeclarationReceipt): LiveChangeReceiptIssuance =
@@ -48,6 +57,11 @@ private constructor(private val connections: InitializedSqliteMutationRecoveryCo
                 is HistoricalLiveAddDeclarationReceipt -> LiveAddDeclarationReceiptCodec.encode(receipt)
                 is HistoricalLiveReplaceBodyReceipt -> LiveReplaceBodyReceiptCodec.encode(receipt)
             }
+        val version =
+            when (receipt) {
+                is HistoricalLiveAddDeclarationReceipt -> LiveAddDeclarationReceiptCodec.version(receipt)
+                is HistoricalLiveReplaceBodyReceipt -> LiveReplaceBodyReceiptCodec.version(receipt)
+            }
         val digest = digest(document)
         return storage({ LiveChangeReceiptIssuance.Rejected(it) }) {
             connections.use { connection ->
@@ -60,7 +74,7 @@ private constructor(private val connections: InitializedSqliteMutationRecoveryCo
                     .use { statement ->
                         statement.setString(1, planIdentity.value)
                         statement.setString(2, receipt.identity.value)
-                        statement.setInt(RECEIPT_VERSION_PARAMETER, LiveAddDeclarationReceiptCodec.VERSION)
+                        statement.setInt(RECEIPT_VERSION_PARAMETER, version)
                         statement.setString(RECEIPT_DOCUMENT_PARAMETER, document)
                         statement.setString(RECEIPT_DIGEST_PARAMETER, digest)
                         statement.executeUpdate()
@@ -68,7 +82,7 @@ private constructor(private val connections: InitializedSqliteMutationRecoveryCo
                 val expected =
                     LiveReceiptRow(
                         receiptIdentity = receipt.identity.value,
-                        version = LiveAddDeclarationReceiptCodec.VERSION.toLong(),
+                        version = version.toLong(),
                         document = document,
                         digest = digest,
                     )
@@ -106,40 +120,6 @@ private constructor(private val connections: InitializedSqliteMutationRecoveryCo
             }
         }
 
-    private fun decode(planIdentity: ChangePlanIdentity, row: LiveReceiptRow): LiveChangeReceiptLookup {
-        if (row.version != LiveAddDeclarationReceiptCodec.VERSION.toLong())
-            return LiveChangeReceiptLookup.Rejected(LiveChangeReceiptStoreFailure.VERSION_UNSUPPORTED)
-        if (digest(row.document) != row.digest)
-            return LiveChangeReceiptLookup.Rejected(LiveChangeReceiptStoreFailure.CORRUPT_RECORD)
-        val kind =
-            try {
-                Json { ignoreUnknownKeys = true }.decodeFromString<StoredReceiptKind>(row.document).content.kind
-            } catch (_: SerializationException) {
-                return LiveChangeReceiptLookup.Rejected(LiveChangeReceiptStoreFailure.CORRUPT_RECORD)
-            }
-        val decoded =
-            when (kind) {
-                "LIVE_ADD_DECLARATION_RECEIPT" -> LiveAddDeclarationReceiptCodec.decode(row.document)
-                "LIVE_REPLACE_BODY_RECEIPT" -> LiveReplaceBodyReceiptCodec.decode(row.document)
-                else -> return LiveChangeReceiptLookup.Rejected(LiveChangeReceiptStoreFailure.VERSION_UNSUPPORTED)
-            }
-        val receipt: HistoricalLiveChangeReceipt =
-            when (decoded) {
-                is Refinement.Refined -> decoded.value
-                is Refinement.Rejected ->
-                    return LiveChangeReceiptLookup.Rejected(
-                        when (decoded.failure) {
-                            LiveReceiptFailure.VERSION_UNSUPPORTED -> LiveChangeReceiptStoreFailure.VERSION_UNSUPPORTED
-                            else -> LiveChangeReceiptStoreFailure.CORRUPT_RECORD
-                        }
-                    )
-            }
-        if (receipt.identity.value != row.receiptIdentity || planIdentity(receipt) != planIdentity) {
-            return LiveChangeReceiptLookup.Rejected(LiveChangeReceiptStoreFailure.CORRUPT_RECORD)
-        }
-        return LiveChangeReceiptLookup.Found(receipt.identity, receipt)
-    }
-
     companion object {
         internal fun retain(
             connections: InitializedSqliteMutationRecoveryConnections
@@ -147,15 +127,7 @@ private constructor(private val connections: InitializedSqliteMutationRecoveryCo
             try {
                 connections.use { connection ->
                     connection.createStatement().use { statement ->
-                        statement.execute(
-                            """CREATE TABLE IF NOT EXISTS live_change_receipt (
-                            plan_identity TEXT PRIMARY KEY NOT NULL CHECK(length(plan_identity) = 69 AND plan_identity GLOB 'plan:[0-9a-f]*'),
-                            receipt_identity TEXT UNIQUE NOT NULL CHECK(length(receipt_identity) = 72 AND receipt_identity GLOB 'receipt:[0-9a-f]*'),
-                            codec_version INTEGER NOT NULL CHECK(codec_version > 0),
-                            document TEXT NOT NULL,
-                            document_sha256 TEXT NOT NULL CHECK(length(document_sha256) = 64)
-                        ) WITHOUT ROWID"""
-                        )
+                        statement.execute(LIVE_CHANGE_RECEIPT_SCHEMA)
                     }
                 }
 
@@ -230,7 +202,7 @@ private fun planIdentity(receipt: HistoricalLiveChangeReceipt): ChangePlanIdenti
 
 @Serializable private data class StoredReceiptKind(val content: StoredReceiptContentKind)
 
-@Serializable private data class StoredReceiptContentKind(val kind: String)
+@Serializable private data class StoredReceiptContentKind(val kind: String, val version: Int)
 
 private fun digest(value: String): String =
     java.util.HexFormat.of()
@@ -246,3 +218,45 @@ private inline fun <T> storage(rejected: (LiveChangeReceiptStoreFailure) -> T, a
 private const val RECEIPT_VERSION_PARAMETER = 3
 private const val RECEIPT_DOCUMENT_PARAMETER = 4
 private const val RECEIPT_DIGEST_PARAMETER = 5
+
+private fun decode(planIdentity: ChangePlanIdentity, row: LiveReceiptRow): LiveChangeReceiptLookup {
+    if (row.version !in setOf(1L, 2L))
+        return LiveChangeReceiptLookup.Rejected(LiveChangeReceiptStoreFailure.VERSION_UNSUPPORTED)
+    if (digest(row.document) != row.digest)
+        return LiveChangeReceiptLookup.Rejected(LiveChangeReceiptStoreFailure.CORRUPT_RECORD)
+    val content =
+        try {
+            Json { ignoreUnknownKeys = true }.decodeFromString<StoredReceiptKind>(row.document).content
+        } catch (_: SerializationException) {
+            return LiveChangeReceiptLookup.Rejected(LiveChangeReceiptStoreFailure.CORRUPT_RECORD)
+        }
+    if (content.version.toLong() != row.version)
+        return LiveChangeReceiptLookup.Rejected(LiveChangeReceiptStoreFailure.CORRUPT_RECORD)
+    val decoded =
+        when (content.kind) {
+            "LIVE_ADD_DECLARATION_RECEIPT" -> LiveAddDeclarationReceiptCodec.decode(row.document)
+            "LIVE_REPLACE_BODY_RECEIPT" -> LiveReplaceBodyReceiptCodec.decode(row.document)
+            else -> return LiveChangeReceiptLookup.Rejected(LiveChangeReceiptStoreFailure.VERSION_UNSUPPORTED)
+        }
+    val receipt: HistoricalLiveChangeReceipt =
+        when (decoded) {
+            is Refinement.Refined -> decoded.value
+            is Refinement.Rejected ->
+                return LiveChangeReceiptLookup.Rejected(
+                    when (decoded.failure) {
+                        LiveReceiptFailure.VERSION_UNSUPPORTED -> LiveChangeReceiptStoreFailure.VERSION_UNSUPPORTED
+                        else -> LiveChangeReceiptStoreFailure.CORRUPT_RECORD
+                    }
+                )
+        }
+    if (receipt.identity.value != row.receiptIdentity || planIdentity(receipt) != planIdentity) {
+        return LiveChangeReceiptLookup.Rejected(LiveChangeReceiptStoreFailure.CORRUPT_RECORD)
+    }
+    return LiveChangeReceiptLookup.Found(receipt.identity, receipt)
+}
+
+internal fun Connection.loadLiveChangeReceipt(planIdentity: ChangePlanIdentity): LiveChangeReceiptLookup =
+    when (val observed = receiptRow(planIdentity)) {
+        LiveReceiptRowObservation.Missing -> LiveChangeReceiptLookup.Missing
+        is LiveReceiptRowObservation.Found -> decode(planIdentity, observed.row)
+    }

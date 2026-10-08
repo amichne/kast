@@ -36,7 +36,7 @@ code_sources:
   - path: change/intellij/src/main/kotlin/io/github/amichne/kast/change/intellij/LiveIntellijDocumentSession.kt
   - path: change/intellij/src/main/kotlin/io/github/amichne/kast/change/intellij/ProjectDocumentAdmission.kt
   - path: change/intellij/src/main/kotlin/io/github/amichne/kast/change/intellij/PhysicalWriteCompletion.kt
-  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApprovals.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeCoordinator.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeVerification.kt
   - path: change/verify/src/main/kotlin/io/github/amichne/kast/change/verify/LiveReplaceBodyVerification.kt
@@ -46,25 +46,31 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/SettledOutputRejection.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/HostedPlanApprovalGateway.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexPlanApprovalProjection.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/BrokerTrustEnrollment.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeTool.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-03T04:57:02.812Z
 sources:
+  - id: openwiki-source-9eebdaad33b185c6221e0065
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastSingleChangeInvocation.kt
   - id: openwiki-source-432d05143d371dfe54d7f30d
     resource: repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt
+  - id: openwiki-source-53d384bcfef2c02d23673a22
+    resource: repo://change/verify/src/main/kotlin/io/github/amichne/kast/change/verify/LiveAddDeclarationReceiptCodec.kt
+  - id: openwiki-source-078482f4b11fb41bcb274966
+    resource: repo://change/verify/src/main/kotlin/io/github/amichne/kast/change/verify/LiveReplaceBodyReceipt.kt
   - id: openwiki-source-42e44e88cc264dc00c12ebc2
     resource: repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteLiveChangePlanStore.kt
   - id: openwiki-source-c664f45de26537caea2696fb
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt
-generated: { by: "codex", at: "2026-10-03T04:57:02.812Z" }
+generated: { by: "codex", at: "2026-10-08T01:13:49.481Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-08T01:13:49.481Z
 ---
 
 # Semantic change lifecycle
 
 ```text
-exact selector -> immutable plan + stored preview -> internal exact-plan signing
+exact selector -> immutable plan + stored preview -> canonical apply request
                -> fresh preimage admission -> IDE write -> semantic verification
                                                   -> durable verified receipt
                                                   -> qualified recovery evidence
@@ -86,15 +92,14 @@ it before returning its identity and preview. The CLI preserves reference bytes
 and routes the entire change family before isolated bootstrap. Unsupported
 intents and absent hosts reject without worker fallback.
 
-The agent-facing `change` invocation creates the plan, prepares the host's
-exact challenge, signs it with the enrolled key, applies the mutation, and
-attempts recovery on an unverified result. The caller receives one completion
-or a finite failure carrying retained phase evidence. Native plan, apply, and
-recovery remain private effect boundaries. The plugin verifies the Ed25519
-assertion against the explicitly enrolled key and consumes the challenge once.
-Plan identity alone does not grant write authority. Concurrent requests retain
-distinct challenges for the same plan; only the cryptographically matched
-challenge is consumed.
+The agent-facing `change` invocation creates the immutable plan, sends its exact
+identity through canonical apply, and attempts recovery on an unverified result.
+The caller receives one completion or a finite failure carrying retained phase
+evidence. Native plan, apply, and recovery remain private effect boundaries.
+There is no approval challenge, signing key, assertion, or trust-enrollment phase.
+The existing IDE owner independently admits the current root, host, epoch,
+model, exact source preimage and write scope, then claims the plan permanently
+and prepares durable recovery evidence before mutation.
 
 A definitive host or semantic apply rejection remains `APPLY_REJECTED` with its
 host document and does not start recovery. A workspace preparation rejection
@@ -116,7 +121,7 @@ Cleanup does not fabricate a delivered receipt.
 
 Apply compares the plan with a fresh live root, host, epoch, content view and
 model, then observes the exact saved preimage. `LiveMutationAuthority` retains
-that proof and the approved write set. A pre-write observation guards the
+that proof and the admitted write set. A pre-write observation guards the
 IntelliJ write command; the adapter receives only the admitted single-file effect.
 Durable pre-write and applied records retain recovery evidence across effects.
 Pre-write and rollback document admission considers unsaved buffers under the
@@ -130,7 +135,7 @@ The IDE save can enqueue an asynchronous VFS write. Before reading the physical
 postimage, the adapter calls the pinned platform's per-file
 `ManagingFS.flushPendingUpdates(file)` outside EDT. A failed completion prevents
 physical observation. Completion and exact postimage refinement emit typed
-success or finite rejection causes without source content, paths, or approval
+success or finite rejection causes without source content, paths, or request
 payloads. Document save flags alone do not prove physical write completion.
 
 A successful source write is not completion. Apply reacquires a live read,
@@ -145,7 +150,7 @@ The broker rejects further operations for that workspace, including recovery.
 Private update admission also retains this recovery state as a blocker; it cannot
 clear uncertainty or authorize forced replacement.
 Replace the broker while retaining its invocation journal and thread store before
-requesting separately approved recovery. The IDE's durable mutation records remain
+requesting canonical exact-plan recovery. The IDE's durable mutation records remain
 authoritative; replacing the broker does not make an attempted plan executable again.
 A legacy thread-store migration requires a new Kast conversation before requesting
 recovery; retained historical bindings do not authorize resumed execution. Invocation
@@ -158,7 +163,7 @@ authority.
 A repeated verified apply returns its stored receipt without another write,
 including when the current IDE owner differs from the historical receipt.
 An attempted plan without a verified receipt cannot be applied again. Recovery
-requires a new approval and durable records. Qualified manual-recovery-required
+requires fresh native admission and durable records. Qualified manual-recovery-required
 results may retain the original plan's historical live evidence when fresh read
 admission fails. They do not prove current source state; completed prior-state or
 rollback results still require the current owner's fresh source observation.
@@ -187,16 +192,17 @@ may change. Only a verified receipt returns a fresh exact reference.
 A daemon preparation rejection is a known pre-execution failure: the requested
 semantic operation was not sent. Its finite cause and preparation identity survive
 Codex projection. A transport failure after semantic dispatch remains uncertain and
-is never automatically replayed. Apply and recovery approval challenges use the
-same workspace demand before loading the immutable hosted plan. Preparation failure
-retains its finite cause and operation identity, before any controller prompt or
-signature. The preparation deadline includes workspace readiness; the separate
-controller deadline begins only after a challenge is admitted.
+is never automatically replayed. Apply and recovery use the same workspace
+demand before the IDE owner loads the immutable hosted plan. Preparation failure
+retains its finite cause and operation identity before semantic dispatch.
 
-Installation creates the broker signing identity before activating the product. Reinstallation preserves an admitted matching pair; partial or conflicting enrollment fails closed without replacing surviving keys. Runtime apply and recovery only read existing enrolled authority.
+Installation and runtime change paths create no signing keys. New verified
+receipts record the exact local endpoint operation in version 2; admitted legacy
+version-1 approval fields remain historical evidence and grant no current
+mutation authority.
 
 Hosted phase observations distinguish admission, exact-reference restoration,
-planning, approval, mutation-permit wait, application, readiness, verification,
+planning, mutation-permit wait, application, readiness, verification,
 and receipt persistence. The source adapter observes document commit and explicit
 save; the existing transport trace observes encoding and reply delivery. A
 phase returning is effect-boundary evidence, not verification success. The outer

@@ -10,7 +10,6 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 
 enum class LiveRecoveryAdmissionFailure {
-    APPROVAL_MISMATCH,
     ROOT_MISMATCH,
     MODEL_MOVED,
     RECORD_MISMATCH,
@@ -22,7 +21,6 @@ enum class LiveRecoveryAdmissionFailure {
 class LiveRecoveryAuthority
 private constructor(
     val plan: LiveChangePlan,
-    val approval: VerifiedLivePlanApproval,
     val current: LiveSemanticReadReference,
     val record: MutationRecoveryRecord,
     private val preimage: ObservedMutationSource,
@@ -43,7 +41,6 @@ private constructor(
     companion object {
         fun admit(
             plan: LiveChangePlan,
-            approval: VerifiedLivePlanApproval,
             current: LiveSemanticReadAuthority,
             model: WorkspaceSearchScopeModel,
             record: MutationRecoveryRecord,
@@ -56,14 +53,6 @@ private constructor(
             }
             if (model.sourceRoots != plan.basis.observation.model.sourceRoots)
                 return rejected(LiveRecoveryAdmissionFailure.MODEL_MOVED)
-            if (
-                approval.operation != LiveChangeEffect.CHANGE_RECOVER ||
-                    approval.owner != current.reference.host ||
-                    approval.root != current.workspaceRoot
-            ) {
-                return rejected(LiveRecoveryAdmissionFailure.APPROVAL_MISMATCH)
-            }
-            if (approval.planId != plan.planId) return rejected(LiveRecoveryAdmissionFailure.APPROVAL_MISMATCH)
             val preimage =
                 when (val observed = observePreimage(plan, record)) {
                     is Refinement.Refined -> observed.value
@@ -77,7 +66,6 @@ private constructor(
             return Refinement.Refined(
                 LiveRecoveryAuthority(
                     plan = plan,
-                    approval = approval,
                     current = current.reference,
                     record = record,
                     preimage = preimage,

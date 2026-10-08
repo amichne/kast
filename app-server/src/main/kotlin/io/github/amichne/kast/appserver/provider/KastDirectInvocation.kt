@@ -129,13 +129,11 @@ internal class KastDirectInvocation(private val options: KastProviderOptions) {
                                 IdeLifecycleFailure.USER_AUTHORIZATION_REQUIRED
                             )
                         options.lifecycleClient.approvedClose(
-                            ApprovedProjectCloseInvocation(request, approval.grant.assertion),
+                            ApprovedProjectCloseInvocation(request, approval.grant.confirmation),
                             context.threadId.value,
                         )
                     }
                     BrokerInvocationApproval.Absent -> options.lifecycleClient.execute(request, context.threadId.value)
-                    is BrokerInvocationApproval.Granted ->
-                        IdeLifecycleResult.Blocked(IdeLifecycleFailure.USER_AUTHORIZATION_REQUIRED)
                 }
             }
         val payload = invocationJson.encodeToJsonElement(IdeLifecycleResult.serializer(), result)

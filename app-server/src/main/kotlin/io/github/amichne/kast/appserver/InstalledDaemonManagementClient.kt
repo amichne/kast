@@ -1,6 +1,8 @@
 package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
+import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.appserver.runtime.BrokerControlRoute
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamConnection
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamConnectionAdmission
@@ -24,12 +26,22 @@ internal class InstalledDaemonManagementClient(private val kast: Path) {
         command: BrokerServiceLaunchCommand,
         workspace: Path,
     ): Refinement<WorkspaceRegistrationAcknowledgement, DaemonManagementRejection> {
-        val root =
+        val directory =
             try {
                 workspace.takeIf(Path::isAbsolute)?.toRealPath()?.let(CanonicalBrokerDirectory::admit)
             } catch (_: Exception) {
                 null
             } ?: return Refinement.Rejected(DaemonManagementRejection.Enrollment(EnrollmentFailure.PATH_REJECTED))
+        val root =
+            when (val discovered = FilesystemCanonicalRootDiscovery.discover(directory.path)) {
+                is CanonicalRootDiscovery.Discovered ->
+                    CanonicalBrokerDirectory.admit(discovered.root.path)
+                        ?: return Refinement.Rejected(
+                            DaemonManagementRejection.Enrollment(EnrollmentFailure.PATH_REJECTED)
+                        )
+                is CanonicalRootDiscovery.Rejected ->
+                    return Refinement.Rejected(DaemonManagementRejection.Enrollment(EnrollmentFailure.PATH_REJECTED))
+            }
         val target =
             when (val admitted = target(command)) {
                 is Refinement.Refined -> admitted.value

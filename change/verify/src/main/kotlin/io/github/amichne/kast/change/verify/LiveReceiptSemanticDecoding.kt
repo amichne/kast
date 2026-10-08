@@ -15,7 +15,7 @@ import java.util.UUID
 
 internal fun decodeReceiptAfter(
     plan: LiveAddDeclarationChangePlan,
-    body: LiveReceiptBody,
+    body: LiveReceiptFacts,
 ): Refinement<LiveChangeBasis, LiveReceiptFailure> {
     val original = plan.basis.observation
     if (

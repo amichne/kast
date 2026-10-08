@@ -114,11 +114,19 @@ object UnavailableAppServerManager : AppServerManager {
 }
 
 /** Installation effects are explicit and remain separate from semantic runtime demand. */
-class InstalledAppServerManager(
+class InstalledAppServerManager
+internal constructor(
     private val kast: Path,
     private val userHome: Path,
-    private val environment: Map<String, String> = System.getenv(),
+    private val environment: Map<String, String>,
+    private val serviceHost: PersistentBrokerServiceHost,
 ) : AppServerManager {
+    constructor(
+        kast: Path,
+        userHome: Path,
+        environment: Map<String, String> = System.getenv(),
+    ) : this(kast, userHome, environment, MacOsPersistentBrokerServiceHost())
+
     override fun execute(action: AppServerAction, workspace: Path): AppServerManagementResult {
         val installationRoot =
             try {
@@ -164,7 +172,7 @@ class InstalledAppServerManager(
                 AppServerAction.Enable -> {
                     if (ServiceLoginAgent.observe(command) == ServiceLoginAgentObservation.REJECTED)
                         return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
-                    if (enrollment.enroll(workspace) is Refinement.Rejected)
+                    if (enrollment.read() is EnrollmentRead.Rejected)
                         return reject(AppServerManagementFailure.ENROLLMENT_REJECTED)
                     Files.deleteIfExists(command.stateDirectory.resolve("stopped"))
                     bootstrapAndPublish(command)
@@ -183,8 +191,6 @@ class InstalledAppServerManager(
                     }
                     val registry = installationRoot.resolve("config/workspaces.json")
                     Files.deleteIfExists(registry)
-                    if (enrollment.enroll(workspace) is Refinement.Rejected)
-                        return reject(AppServerManagementFailure.ENROLLMENT_REJECTED)
                     if (ServiceLoginAgent.remove(command) == ServiceLoginAgentChange.REJECTED)
                         return reject(AppServerManagementFailure.SERVICE_OWNERSHIP_UNPROVEN)
                     Files.deleteIfExists(command.stateDirectory.resolve("stopped"))
@@ -262,7 +268,7 @@ class InstalledAppServerManager(
     }
 
     private fun bootstrap(command: BrokerServiceLaunchCommand): AppServerManagementResult {
-        when (val ensured = MacOsPersistentBrokerServiceHost().ensure(command)) {
+        when (val ensured = serviceHost.ensure(command)) {
             PersistentBrokerServiceAdmission.Ready -> Unit
             is PersistentBrokerServiceAdmission.Rejected ->
                 return AppServerManagementResult.Rejected(

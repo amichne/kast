@@ -178,38 +178,24 @@ private fun SemanticSource.changeCall(operation: ExistingIdeOperation): DaemonCh
 
 private fun SemanticSource.ChangeApply.changeCall(operation: ExistingIdeOperation): DaemonChangeAction? =
     when (operation) {
-        is ExistingIdeOperation.ApprovalPreparation ->
+        is ExistingIdeOperation.Mutation ->
             if (
                 operation.kind == HostedMutationOperation.CHANGE_APPLY &&
                     operation.identity.value == request.planIdentity.value
             )
-                DaemonChangeAction.Prepare(operation.kind, operation.identity.value)
-            else null
-        is ExistingIdeOperation.ApprovedMutation ->
-            if (
-                operation.kind == HostedMutationOperation.CHANGE_APPLY &&
-                    operation.identity.value == request.planIdentity.value
-            )
-                DaemonChangeAction.Apply(request, operation.assertion.value)
+                DaemonChangeAction.Apply(request)
             else null
         else -> null
     }
 
 private fun SemanticSource.ChangeRecover.changeCall(operation: ExistingIdeOperation): DaemonChangeAction? =
     when (operation) {
-        is ExistingIdeOperation.ApprovalPreparation ->
+        is ExistingIdeOperation.Mutation ->
             if (
                 operation.kind == HostedMutationOperation.CHANGE_RECOVER &&
                     operation.identity.value == request.planIdentity.value
             )
-                DaemonChangeAction.Prepare(operation.kind, operation.identity.value)
-            else null
-        is ExistingIdeOperation.ApprovedMutation ->
-            if (
-                operation.kind == HostedMutationOperation.CHANGE_RECOVER &&
-                    operation.identity.value == request.planIdentity.value
-            )
-                DaemonChangeAction.Recover(request, operation.assertion.value)
+                DaemonChangeAction.Recover(request)
             else null
         else -> null
     }

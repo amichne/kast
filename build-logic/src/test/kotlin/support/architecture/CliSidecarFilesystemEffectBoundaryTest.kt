@@ -7,7 +7,7 @@ import org.junit.jupiter.api.assertInstanceOf
 
 class CliSidecarFilesystemEffectBoundaryTest {
     private val expectedCallers = setOf(
-        JvmClassName("io/github/amichne/kast/cli/ide/FilesystemBrokerTrustRegistrar"),
+        JvmClassName("io/github/amichne/kast/cli/ide/RetiredApprovalArtifacts"),
         JvmClassName("io/github/amichne/kast/cli/installation/InstallationWorkflow"),
         JvmClassName("io/github/amichne/kast/cli/installation/InstallationWorkflow\$copyControl\$1"),
         JvmClassName("io/github/amichne/kast/cli/installation/InstallationWorkflowKt"),

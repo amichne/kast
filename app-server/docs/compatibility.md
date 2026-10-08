@@ -127,9 +127,9 @@ receipt is claimed by this change.
 fallback attachment route. Dynamic tools are broker-owned at thread start;
 clients that bypass the broker do not receive them. Implicit CLI discovery can
 fall back to an embedded server. Existing protocol/version, canonical socket
-ownership, workspace enrollment, host readiness and mutation approval gates
+ownership, workspace enrollment, host readiness and native mutation admission
 remain in force. Fresh CLI and Desktop sessions, resumed and concurrent sessions,
-absent IDEA, unregistered roots and mutation approval still require installed
+absent IDEA, unregistered roots and keyless mutation execution still require installed
 client qualification against the exact release before broader compatibility
 claims.
 
@@ -175,9 +175,9 @@ provides the reference launch pattern. Local inspection of desktop build
 `-c features.code_mode_host=true app-server --analytics-default-enabled`.
 The façade accepts that vector, and the shared server applies the same profile.
 Additional host-specific configuration overrides still reject. No alternate
-backend or replacement conversation store is added. Hosted change approval adds
-a separate broker-owned native `fileChange` preview item derived from the stored
-plan; it preserves the upstream dynamic-tool item unchanged.
+backend or replacement conversation store is added. The earlier hosted change
+contract emitted a broker-owned `fileChange` preview item; the current keyless
+contract uses the existing local endpoint and native exact-plan admission.
 
 The launcher test runs a desktop stand-in and observes its executable override,
 Codex home, and stdio selection. Installed acceptance exercises the exact desktop
@@ -194,7 +194,7 @@ applies.
 | Standard daemon discovery | Stock `codex app-server daemon version` reached the broker in a disposable home and reported CLI and server version `0.153.4`. |
 | Persistent lifecycle | Staged-product acceptance enabled launchd, completed initialize and thread/start via `kast-codex app-server`, closed parent stdio, rediscovered the running service, then disabled it. |
 | Session ownership | Module tests cover reused request IDs, blocked writers, ordered repeated deltas, observer authorization, detached exactly-once execution, pending approval correlation, source loss, and explicit control handoff. These are protocol tests, not desktop UI evidence. |
-| Native representation | Broker-owned dynamic calls project to the schema-admitted `mcpToolCall` display shape while retaining their complete original fields. Exact-plan approval uses a distinct `fileChange` preview and `item/fileChange/requestApproval`, admitted against the generated Codex schemas. Contract tests do not establish desktop rendering. |
+| Native representation | Broker-owned dynamic calls project to the schema-admitted `mcpToolCall` display shape while retaining their complete original fields. The earlier exact-plan approval contract used a distinct `fileChange` preview and `item/fileChange/requestApproval`; the current hosted contract carries no approval assertion. Contract tests do not establish desktop rendering. |
 | Installed product | `installedProductTest` and `installedCodexHostTest` passed. The executable and contract hashes are recorded in `build/reports/installed-product/codex-host.json`; its desktop field remains `UNQUALIFIED`. |
 
 ## Blockers and limitations
@@ -207,7 +207,7 @@ applies.
 | Stock TUI | `codex --remote unix://<isolated-home>/.codex/app-server-control/app-server-control.sock --no-alt-screen` rendered Codex `0.153.4`, loaded the repository directory, then required sign-in in the disposable home. The client was closed and the service disabled successfully. No credentials were copied. | TUI authentication and real model execution | Use an authorized authenticated test profile to exercise Kast, native tools, approvals, history, and reconnect. Transport/rendered startup is observed; the full TUI gate remains unqualified. |
 | Desktop UI automation | `cua.getApp("/Applications/ChatGPT.app")` returned: `Computer Use is not allowed to use the app 'com.openai.codex' for safety reasons.` No UI test was performed or bypass attempted. User permission cannot override this tool restriction. | Execution environment's computer-use policy | A human performs the desktop checklist, or an authorized desktop testing environment executes it and records evidence. |
 | Former lifecycle split | Source now routes facade attachment through the persistent service. There is no per-frontend broker launch/close in `runInstalledCodex`. | App-server host/lifecycle | Covered by service and installed attachment tests; keep detach-versus-stop regression coverage. |
-| Tool-result display projection | Live and history carriers project broker-owned dynamic calls to `mcpToolCall`, retain their original fields, and expose exact text plus any final Kast JSON envelope through standard MCP result fields. Hosted approval separately emits a stored-plan file-change preview. | App-server protocol adapters | Keep real desktop rendering/history acceptance alongside these contract tests. |
+| Tool-result display projection | Live and history carriers project broker-owned dynamic calls to `mcpToolCall`, retain their original fields, and expose exact text plus any final Kast JSON envelope through standard MCP result fields. The earlier hosted approval contract separately emitted a stored-plan file-change preview. | App-server protocol adapters | Keep real desktop rendering/history acceptance alongside these contract tests. |
 | Post-start catalog updates | [Codex registry update issue 24808](https://github.com/openai/codex/issues/24808). Target generated schema admits `dynamicTools` on start, not resume/fork. No post-start mutation is injected. | Upstream Codex experimental protocol | Test a changed catalog with a fresh thread, and verify bound resume rejects catalog drift. Upstream support must be separately qualified before implementation promises registry updates. |
 | Clean-context subagent inheritance | [Codex inheritance issue 42565](https://github.com/openai/codex/issues/42565). This session has not established an upstream fix. | Upstream Codex subagent tool inheritance | Run the clean-context subagent reproduction on the pinned client and record actual tools/invocation. It remains a release limitation until observed. |
 | Shared-client precedent | [OpenClaw issue 80618](https://github.com/openclaw/openclaw/issues/80618) was closed as not planned. Its scenario motivates the multi-client tests. | Regression scenario, not Codex authority | Retain two-client request-ID, disconnect, and stream-order tests. Do not infer a Codex defect from the OpenClaw report. |
@@ -222,24 +222,70 @@ service log.
 
 ## Hosted change boundary
 
-The implemented route is provider → App Server-owned IDEA client → existing IDEA plugin. Its
-first intent is `AddDeclaration` in one authored Kotlin file. `change_plan` has
-no approval requirement. Apply and recovery load the immutable stored plan and
-require a current controller decision for that exact root, host, operation and
-plan. The broker signs only a controller-approved challenge; the plugin verifies
-the signature with the explicitly enrolled key and consumes the challenge once.
-Installation creates or preserves the local key pair. The private installed control
-can enroll trust for isolated acceptance fixtures. Missing trust remains unavailable
-and is never enrolled by apply.
+The implemented route is provider → App Server-owned IDEA client → existing IDEA
+plugin. `AddDeclaration` and `ReplaceBody` target one existing authored Kotlin
+file. Planning leaves source unchanged. Apply and recovery load the immutable
+stored plan through the existing private local endpoint; their requests contain
+only the operation, workspace root, and canonical request document. No approval
+key, signature, challenge, token, or replacement trust handshake is required.
+
+The native owner admits current workspace and source observations. Apply retains
+the original Host, epoch, model, exact preimage, permanent attempt claim, and
+durable recovery preimage requirements. Recovery may use a new Host incarnation,
+but must retain the exact root, model, plan, recovery record, and source images.
+The client also rejects a canonical request whose plan differs from its admitted
+mutation identity before socket exchange.
 
 The source write, semantic verification and durable receipt are separate facts.
 Apply returns `Verified`, `AppliedUnverified` or `RecoveryRequired`; the latter
 two retain their qualifications. Stored verified receipts can be replayed without
-repeating the write. Recovery requires a fresh approval and rejects divergent or
-unobservable source state. Change tools are deferred defaults after the matched
-installed provider/CLI/plugin workflow passed the
+repeating the write. Recovery rejects divergent or unobservable source state.
+Earlier matched installed provider/CLI/plugin qualification passed the
 [native change matrix](../../docs/reviews/plugin-native-change-acceptance.md).
-The desktop checklist below remains a separate, unqualified client gate.
+That recorded run used the earlier approval contract; it does not qualify the
+keyless native path. The desktop checklist below remains a separate, unqualified
+client gate.
+
+### Keyless hosted change migration
+
+The current source contract is `kast.ide-hosted.runtime.v3`. Removing approval
+preparation changes the declared operations, request schema, and wire digest.
+Control and Host must agree on those facts; a mixed old/new pair rejects with its
+typed compatibility mismatch. Upgrade both components, restart IDEA to load the
+matching plugin, and attach a fresh agent session. A Control-only upgrade cannot
+make an older loaded Host implement the new contract.
+
+New verified receipts use format version 2 with discriminated
+`LOCAL_ENDPOINT_OPERATION` evidence: exact plan, root, Host, and operation. Version
+1 signed-invocation receipts remain historical data with their original bytes,
+identities, and invocation evidence. Reading either version grants no live write
+authority. Repeating a completed plan returns its stored receipt instead of
+writing again.
+
+The installer removes owned legacy `broker.pk8` and `broker.pub` files during
+migration and creates no replacement keys. Cleanup failures retain their finite
+stage failure; the keyless operation path does not depend on those files.
+
+The Host installer now keeps a `HOST_ACTIVE` receipt with its exact destination,
+directory identities, and bounded file inventory. Uninstall consumes that existing
+ownership record before removing Control, while the native lifecycle owner holds
+the inactive-endpoint admission. Modified artifacts, foreign retained candidates,
+and unfinished Host recovery reject removal. Other plugins remain protected.
+The saved IDE selection records the same plugin root used by installation. Removal
+uses that recorded target even if current vendor metadata names a different profile.
+A legacy selection without this fact rejects with `TARGET_UNRECORDED`; install again
+to record the actual target before uninstalling. A recorded target that is physically
+absent admits removal without creating a profile or lock.
+An older Host without a completed receipt cannot be safely removed by filename;
+reinstall it through the verified Host installer to record ownership, then retry
+uninstall after closing IDEA. This source change has fixture coverage; it does not
+claim an installed or live IDEA uninstall qualification.
+
+The broker still owns exact-target user confirmation for closing a borrowed or
+presented project. The lifecycle endpoint correlates that existing confirmation
+with the command and keeps Host, project-incarnation, other-client, and pending-work
+checks. It does not cryptographically establish user consent. The existing private
+local endpoint remains the transport boundary.
 
 ## Semantic-access reproduction
 
