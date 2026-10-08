@@ -50,6 +50,7 @@ enum class CompilerGroundedSymbolEvidenceFailure {
     QUALIFIED_IDENTITY_MISMATCH,
     SIGNATURE_KIND_MISMATCH,
     COMPILER_IDENTITY_MISMATCH,
+    LOCAL_ADDRESS_MISMATCH,
 }
 
 /** Detached evidence created only after one native declaration resolves to a compiler symbol. */
@@ -123,11 +124,9 @@ private constructor(
             if (!signature.supports(kind)) {
                 return Refinement.Rejected(CompilerGroundedSymbolEvidenceFailure.SIGNATURE_KIND_MISMATCH)
             }
-            if (
-                qualifiedIdentity !is ExactDeclarationQualifiedIdentity.Available ||
-                    qualifiedIdentity.value != signature.qualifiedIdentity.value
-            ) {
-                return Refinement.Rejected(CompilerGroundedSymbolEvidenceFailure.QUALIFIED_IDENTITY_MISMATCH)
+            when (val admitted = signature.admitDeclarationAddress(file, range, qualifiedIdentity)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return admitted
             }
             return Refinement.Refined(
                 CompilerGroundedSymbolEvidence(
@@ -393,7 +392,31 @@ private fun CanonicalCompilerSignature.supports(kind: CompilerSymbolKind): Boole
     when (this) {
         is CanonicalCompilerSignature.Function ->
             kind == CompilerSymbolKind.FUNCTION || kind == CompilerSymbolKind.CONSTRUCTOR
+        is CanonicalCompilerSignature.LocalFunction -> kind == CompilerSymbolKind.FUNCTION
+        is CanonicalCompilerSignature.LocalProperty -> kind == CompilerSymbolKind.PROPERTY
         is CanonicalCompilerSignature.Property -> kind == CompilerSymbolKind.PROPERTY
         is CanonicalCompilerSignature.TypeAlias -> kind == CompilerSymbolKind.TYPE_ALIAS
         is CanonicalCompilerSignature.ClassLike -> kind == CompilerSymbolKind.CLASSLIKE
     }
+
+private fun CanonicalCompilerSignature.admitDeclarationAddress(
+    file: SymbolDiscoveryFileIdentity,
+    range: ExactDeclarationTextRange,
+    qualifiedIdentity: ExactDeclarationQualifiedIdentity,
+): Refinement<Unit, CompilerGroundedSymbolEvidenceFailure> {
+    when (val address = declarationAddress) {
+        is CompilerDeclarationAddress.Qualified ->
+            if (
+                qualifiedIdentity !is ExactDeclarationQualifiedIdentity.Available ||
+                    qualifiedIdentity.value != address.identity.value
+            )
+                return Refinement.Rejected(CompilerGroundedSymbolEvidenceFailure.QUALIFIED_IDENTITY_MISMATCH)
+        is CompilerDeclarationAddress.Local -> {
+            if (qualifiedIdentity != ExactDeclarationQualifiedIdentity.Unavailable)
+                return Refinement.Rejected(CompilerGroundedSymbolEvidenceFailure.QUALIFIED_IDENTITY_MISMATCH)
+            if (address.address.file != file || address.address.range != range)
+                return Refinement.Rejected(CompilerGroundedSymbolEvidenceFailure.LOCAL_ADDRESS_MISMATCH)
+        }
+    }
+    return Refinement.Refined(Unit)
+}

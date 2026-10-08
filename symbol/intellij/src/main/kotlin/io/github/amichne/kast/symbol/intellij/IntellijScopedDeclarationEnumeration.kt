@@ -3,13 +3,13 @@ package io.github.amichne.kast.symbol.intellij
 import com.intellij.navigation.NavigationItem
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
 import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.stubs.StubIndex
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
@@ -17,13 +17,10 @@ import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.kotlin.idea.stubindex.KotlinExactPackagesIndex
-import org.jetbrains.kotlin.psi.KtClassOrObject
-import org.jetbrains.kotlin.psi.KtEnumEntry
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtProperty
-import org.jetbrains.kotlin.psi.KtTypeAlias
 
 /** Cheap retained constraints choose the index and declaration families before any native work. */
 internal fun SymbolDiscoveryRequest.requestedDeclarationKinds(): Set<CompilerSymbolKind> =
@@ -44,9 +41,7 @@ internal fun SymbolDiscoveryRequest.usesScopedDeclarationEnumeration(): Boolean 
     when (val selected = target) {
         is SymbolDiscoveryTarget.All -> false
         is SymbolDiscoveryTarget.Name ->
-            selected.kind != SymbolNameDiscoveryKind.FILE &&
-                selected.match == SymbolDiscoveryMatch.FUZZY &&
-                scope.scope.libraryPolicy() == SymbolLibraryPolicy.EXCLUDE
+            selected.kind != SymbolNameDiscoveryKind.FILE && scope.scope.libraryPolicy() == SymbolLibraryPolicy.EXCLUDE
         else -> false
     }
 
@@ -74,6 +69,7 @@ internal fun collectScopedKotlinDeclarations(
     request: SymbolDiscoveryRequest,
     callbacks: ScopedDeclarationCallbacks,
     limits: io.github.amichne.kast.kernel.ReadLimits = io.github.amichne.kast.kernel.ReadLimits.Default,
+    localOnly: Boolean = false,
 ): Boolean {
     val fileLimit =
         (io.github.amichne.kast.kernel.WorkUnitLimit.parse(
@@ -86,6 +82,7 @@ internal fun collectScopedKotlinDeclarations(
             workLimit = fileLimit,
             observe = callbacks.observe,
             qualify = callbacks.qualify,
+            localSourceOnly = localOnly,
         )
     val packageConstraint = request.constraints.packageName
     val complete =
@@ -113,6 +110,7 @@ internal fun collectScopedKotlinDeclarations(
             observe = callbacks.observe,
             qualify = callbacks.qualify,
             accept = callbacks.accept,
+            localOnly = localOnly,
         )
     return files.values.sortedBy { it.path }.all(visitor::read)
 }
@@ -129,6 +127,7 @@ internal class ScopedKotlinFileCollection(
     private val workLimit: io.github.amichne.kast.kernel.WorkUnitLimit,
     private val observe: () -> Boolean,
     private val qualify: (SymbolDiscoveryQualification) -> Unit,
+    private val localSourceOnly: Boolean = false,
 ) {
     val values = ArrayList<VirtualFile>()
     var stop = ScopedFileCollectionStop.NONE
@@ -141,6 +140,7 @@ internal class ScopedKotlinFileCollection(
                 false
             }
             !scope.nativeScope.contains(file) -> true
+            localSourceOnly && !admittedLocalSource(file) -> true
             values.size.toLong() >= workLimit.value -> {
                 stop = ScopedFileCollectionStop.WORK_LIMIT
                 qualify(SymbolDiscoveryQualification.WORK_LIMIT_REACHED)
@@ -151,15 +151,24 @@ internal class ScopedKotlinFileCollection(
                 true
             }
         }
+
+    private fun admittedLocalSource(file: VirtualFile): Boolean =
+        when (val path = nativePath(file)) {
+            is IntellijVirtualFilePath.Absolute ->
+                scope.sourceRoots.any { path.value.startsWith(java.nio.file.Path.of(it.sourceRoot.value)) }
+            IntellijVirtualFilePath.Relative,
+            IntellijVirtualFilePath.Unavailable -> false
+        }
 }
 
-private class ScopedKotlinDeclarationVisitor(
+internal class ScopedKotlinDeclarationVisitor(
     private val manager: PsiManager,
     private val constraints: SymbolDiscoveryConstraints,
     private val kinds: Set<CompilerSymbolKind>,
     private val observe: () -> Boolean,
     private val qualify: (SymbolDiscoveryQualification) -> Unit,
     private val accept: (NavigationItem) -> Boolean,
+    private val localOnly: Boolean = false,
 ) {
     fun read(file: VirtualFile): Boolean {
         if (!observe()) return false
@@ -171,8 +180,7 @@ private class ScopedKotlinDeclarationVisitor(
         return when (
             constraints.packageName.admitPackage { IntellijPackageEvidence.Known(ktFile.packageFqName.asString()) }
         ) {
-            IntellijDiscoveryItemAdmission.ADMITTED ->
-                ktFile.declarations.all { it !is KtNamedDeclaration || visit(it) }
+            IntellijDiscoveryItemAdmission.ADMITTED -> visit(ktFile)
             IntellijDiscoveryItemAdmission.FILTERED -> true
             IntellijDiscoveryItemAdmission.UNSUPPORTED -> {
                 qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
@@ -181,29 +189,40 @@ private class ScopedKotlinDeclarationVisitor(
         }
     }
 
-    private fun visit(declaration: KtNamedDeclaration): Boolean {
-        if (!observe()) return false
-        return when (declaration) {
-            is KtClassOrObject -> visitClass(declaration)
-            is KtNamedFunction -> CompilerSymbolKind.FUNCTION !in kinds || accept(declaration)
-            is KtProperty -> CompilerSymbolKind.PROPERTY !in kinds || accept(declaration)
-            is KtTypeAlias -> CompilerSymbolKind.TYPE_ALIAS !in kinds || accept(declaration)
-            else -> true
+    private fun visit(file: KtFile): Boolean {
+        var current = file.firstChild
+        while (current != null) {
+            if (!observe()) return false
+            if (current is KtNamedDeclaration && !admit(current)) return false
+            current = current.firstChild ?: nextSiblingWithin(current, file)
         }
+        return true
     }
 
-    private fun visitClass(declaration: KtClassOrObject): Boolean {
-        // Enum entries inherit KtClassOrObject but are not supported class declarations.
-        if (declaration !is KtEnumEntry) {
-            if (CompilerSymbolKind.CLASSLIKE in kinds && !accept(declaration)) return false
-            if (CompilerSymbolKind.PROPERTY in kinds && !constructorProperties(declaration)) return false
-        }
-        // Excluded containers can own eligible members; pruning the container cannot prune its subtree.
-        return declaration.declarations.all { it !is KtNamedDeclaration || visit(it) }
+    private fun admit(declaration: KtNamedDeclaration): Boolean {
+        if (localOnly && !declaration.isSupportedLocal()) return true
+        val kind = declaration.discoveryCompilerKind() ?: return true
+        return kind !in kinds || accept(declaration)
     }
 
-    private fun constructorProperties(declaration: KtClassOrObject): Boolean =
-        declaration.primaryConstructorParameters.all { observe() && (!it.hasValOrVar() || accept(it)) }
+    private fun KtNamedDeclaration.isSupportedLocal(): Boolean =
+        when (this) {
+            is KtNamedFunction -> isLocal
+            is KtProperty -> isLocal
+            else -> false
+        }
+
+    private fun nextSiblingWithin(element: PsiElement, root: KtFile): PsiElement? {
+        var current = element
+        while (current !== root) {
+            if (!observe()) return null
+            current.nextSibling?.let {
+                return it
+            }
+            current = current.parent ?: return null
+        }
+        return null
+    }
 }
 
 internal data class ScopedDeclarationCallbacks(

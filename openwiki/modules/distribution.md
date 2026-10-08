@@ -222,7 +222,7 @@ sources:
 generated: { by: "codex", at: "2026-10-05T20:36:23.129Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-05T20:36:23.129Z
+    at: 2026-10-08T02:35:11.074Z
 ---
 
 # Distribution and packaging

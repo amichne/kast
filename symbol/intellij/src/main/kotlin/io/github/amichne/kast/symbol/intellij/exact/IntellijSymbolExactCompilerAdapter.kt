@@ -83,6 +83,7 @@ internal fun IntellijSymbolSelectorRejection.toCompilerRejection(): SymbolExactC
         IntellijSymbolSelectorRejection.OUTSIDE_SCOPE -> SymbolExactCompilerRejection.OUTSIDE_SCOPE
         IntellijSymbolSelectorRejection.AMBIGUOUS_DECLARATION -> SymbolExactCompilerRejection.AMBIGUOUS_DECLARATION
         IntellijSymbolSelectorRejection.UNSUPPORTED_DECLARATION -> SymbolExactCompilerRejection.UNSUPPORTED_DECLARATION
+        IntellijSymbolSelectorRejection.WORK_LIMIT_REACHED,
         IntellijSymbolSelectorRejection.COMPILER_IDENTITY_UNAVAILABLE ->
             SymbolExactCompilerRejection.COMPILER_IDENTITY_UNAVAILABLE
         IntellijSymbolSelectorRejection.DECLARATION_MOVED_OR_CHANGED ->

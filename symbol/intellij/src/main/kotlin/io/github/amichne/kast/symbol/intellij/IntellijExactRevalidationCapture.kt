@@ -78,15 +78,11 @@ class IntellijExactRevalidationCapture(
         when (val current = read(locator.evidence.file, psi, maximumWork)) {
             is Refinement.Rejected -> current
             is Refinement.Refined ->
-                when {
-                    current.value.owner != locator.owner ->
-                        Refinement.Rejected(ExactRevalidationRejection.OWNER_MISMATCH)
-                    policy == io.github.amichne.kast.symbol.contract.ExactRevalidationPolicy.ORIGINAL_DOCUMENT &&
-                        current.value.identity != locator.text ->
-                        Refinement.Rejected(ExactRevalidationRejection.CONTENT_CHANGED)
-                    else -> {
+                when (val admitted = locator.admitContent(current.value.owner, current.value.identity, policy)) {
+                    is Refinement.Rejected -> admitted
+                    is Refinement.Refined -> {
                         entries[locator.evidence.file] = current
-                        Refinement.Refined(Unit)
+                        admitted
                     }
                 }
         }

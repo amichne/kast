@@ -1,7 +1,7 @@
 package io.github.amichne.kast.relation.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerCallableSignature
 
 enum class CallbackParameterIdentityFailure {
     NOT_CALLABLE,
@@ -27,7 +27,7 @@ private constructor(
             parameter: RelationOccurrence,
         ): Refinement<CallbackParameterIdentity, CallbackParameterIdentityFailure> {
             val signature =
-                callable.signature as? CanonicalCompilerSignature.Function
+                callable.signature as? CanonicalCompilerCallableSignature
                     ?: return Refinement.Rejected(CallbackParameterIdentityFailure.NOT_CALLABLE)
             return when {
                 position.value !in signature.valueParameters.indices ->

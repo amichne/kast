@@ -1,7 +1,7 @@
 package io.github.amichne.kast.relation.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerCallableSignature
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
@@ -83,7 +83,7 @@ private constructor(
                     Refinement.Rejected(ValueInvocationFailure.BASIS_MISMATCH)
                 !enclosing.range.containsValueRange(range) ->
                     Refinement.Rejected(ValueInvocationFailure.ANCHOR_OUTSIDE_OWNER)
-                callable.signature !is CanonicalCompilerSignature.Function ->
+                callable.signature !is CanonicalCompilerCallableSignature ->
                     Refinement.Rejected(ValueInvocationFailure.NOT_CALLABLE)
                 else -> Refinement.Refined(ValueInvocation(enclosing, range, callable))
             }
@@ -173,7 +173,7 @@ private constructor(
                         return Refinement.Rejected(ValueSiteFailure.INVOCATION_OWNER_MISMATCH)
                     if (!role.call.range.containsValueRange(range))
                         return Refinement.Rejected(ValueSiteFailure.ARGUMENT_OUTSIDE_INVOCATION)
-                    val signature = role.call.callable.signature as CanonicalCompilerSignature.Function
+                    val signature = role.call.callable.signature as CanonicalCompilerCallableSignature
                     if (role.position.value !in signature.valueParameters.indices)
                         return Refinement.Rejected(ValueSiteFailure.INVALID_ARGUMENT_POSITION)
                 }

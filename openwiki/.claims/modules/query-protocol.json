@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:32a0b1be6ec737d3b0de4aeed2777c3e50768cf69f34966984129d6caf31f99f",
+  "pageVersion": "sha256:978c0b9a6f9033c0fffaf0e4299abe995655e94b2f6dbbbb174c3904971ef89d",
   "claims": [
     {
       "id": "claim_b9727187adfc4e2c9be8e3a620b37051",
       "statement": "Canonical query protocol separates new run, checkpoint/output continuation, and retained result presentation under the supplied semantic authority; read-result projects retained rows instead of executing a new semantic query.",
       "evidence": [
         {
-          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt#L22-L52",
-          "version": "repo-lines-v1:sha256:2fd718225851375effa62ffbc5694d3e39cd360f4747b74ff6a8d9d7ef3f29d6:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk5ZTBiNDUzYzdjYjhkY2E4NTRlYTNhNTVjOTQ0ZmE5NTdkMTYyMTQ5YzJmZmFlZDVkNTUyYTM0OGVmNmQ2N2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg3MTVhZTI0ZDlmMzA3OTdiOWNmYmUzMGMwZTFmZTVhMmE2N2RjYzg4YWQzNmNiNzMxODg5NjdjYWQ0NTEyMGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUyNmQ1NWIzOGNkZDllZDY1NDU3ZjE3MGQxYzU4OTNlNGUzMzk1ZjBlYzYyYzQzYmFhZTllNjQ2OWZkMDFhNTEifQ"
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt#L82-L117",
+          "version": "repo-lines-v1:sha256:79e6a8a506406345317f6579f7c9971103852815b46b69117eb10382c4d41aa4:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVkZjU0NDg5NDRjZDkxY2IyYjQzN2IzOWY0YzkzMmJiZjk5ZTM0OWYwNTJjODU1NzY1NWYzMmQ1NjQxNzVmZjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY3ODc1NjZhOWM4ZDgzNWJhNDljNWUyNTAyZDNlZmI1YWYzNWMwZmNjODM3NmU0OTI1MDgwN2ZlZmYzZDA4YzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIxODY4ZDQ4MGMzYzFkNzMxYjI2ZDc4MWM0YzliNTRkMTg0YjMwNDE1NjZiNTFiYTI3YjlhMzdlYjQyOGYwZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM2OGNmZjQ3NDJjZmQwOGViNmJkODg4NDI2MGQwZmMwMDk4MWNlZDk0YzBhYmRjZDljZmM4OWEzMmI1YjI0NzMifQ"
         }
       ]
     },
@@ -17,8 +17,8 @@
       "statement": "Continuation acquisition has explicit in-use, unavailable, mismatch and capacity failures; publication preparation retains the claim only when the owning publication boundary prepares it, otherwise finally releases it.",
       "evidence": [
         {
-          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt#L54-L116",
-          "version": "repo-lines-v1:sha256:5a6b0ea92869b31c0b1ad9d620156e77d1684fbb7623a5f3d1563bc15ade7a61:eyJzZWxlY3RlZExpbmVDb3VudCI6NjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ODZlMDY0Mjg1ZDFmMWE3OGM3ZWIyNmE1ZTY5NDgxNWExMTU3YTIzZTExZjA3NmI4MGUzYzBhMDNiY2EzODEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY2MjhlNmE3NGZjZjI4ZDU4N2JkZDdjOGU0N2YyOTNmYjAyOTNmOWFmYmI1YTUzNTQwMDk4ZTI4NjljZWM2N2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQzNmYyNDVmMDhmM2I4YTU0MGQ3NmU5Y2IxN2I2MTEzMzQ2N2VlOGY3NTkxMGMxZDNhMjQwY2U3Njk2NjIyZGIifQ"
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt#L109-L149",
+          "version": "repo-lines-v1:sha256:8e7378ce7142e11eb43584de8f8808f11e2b2dfa1d5798239a2f59a12fd79842:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ODZlMDY0Mjg1ZDFmMWE3OGM3ZWIyNmE1ZTY5NDgxNWExMTU3YTIzZTExZjA3NmI4MGUzYzBhMDNiY2EzODEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUwOTNjYTYwNjEwNDdlNzU5ZjhmZDMwMzk1Mjg2MTBjM2MyYjYwZDQ4NDA1MjgzZWYxMWMyYTQxYmI5ZTAxZDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY2MjhlNmE3NGZjZjI4ZDU4N2JkZDdjOGU0N2YyOTNmYjAyOTNmOWFmYmI1YTUzNTQwMDk4ZTI4NjljZWM2N2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQzNmYyNDVmMDhmM2I4YTU0MGQ3NmU5Y2IxN2I2MTEzMzQ2N2VlOGY3NTkxMGMxZDNhMjQwY2U3Njk2NjIyZGIifQ"
         }
       ]
     },
@@ -90,7 +90,7 @@
       "evidence": [
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt",
-          "version": "repo-file-v1:sha256:16f16e031712f05ff257bb41a635b716f6d885a7abf5f03e9b777d947957b0ba"
+          "version": "repo-file-v1:sha256:4c1e70002f9c4f5bbd9842dbccc3b5926f3d038c7421f05b9a1b65c8b9626e57"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt",
@@ -130,7 +130,7 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt",
-          "version": "repo-file-v1:sha256:4bb77cd3cfab20bfa19049b9b6a73d0e3e5262421e6447bd9086abcdaf643f32"
+          "version": "repo-file-v1:sha256:2ea8279a4405516e2e2b2aab484ca1a5e9ac6d81c5f6e9957e5513186b1602e9"
         }
       ]
     },
@@ -239,10 +239,38 @@
           "version": "repo-file-v1:sha256:2c0c20f400ae197cd9ca00d526d9a2fc28cb1e12221876f85aa2826d0fd6e814"
         }
       ]
+    },
+    {
+      "id": "claim_834d252821094ee9b326c85e487674b9",
+      "statement": "Normal branch-result evidence and local address signatures retain their anchors and alternatives in impact projection and are charged under existing retained graph storage accounting.",
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRelationStorage.kt",
+          "version": "repo-file-v1:sha256:398b59d969c3f06619a94c2c597679522fff95fbcdcd6bd2d1b1c2f2dd0084aa"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactModelEvidenceProjection.kt",
+          "version": "repo-file-v1:sha256:68f58724208a6cb1ffbc60e397e9f8e22fe2778c1e9d3446c3bb2b4de7ca28db"
+        }
+      ]
+    },
+    {
+      "id": "claim_5a57e99d4c9640149e87eb793203b275",
+      "statement": "Local exact revalidation requires unchanged owning-file content and original exact address with fresh compiler confirmation; qualified fresh-read revalidation may admit changed offsets and body contents.",
+      "evidence": [
+        {
+          "resource": "repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactRevalidation.kt",
+          "version": "repo-file-v1:sha256:e966d06a82ca37b3b4ea8d52026ce1935a91101b037edf5b5e56bad6a4e0e618"
+        },
+        {
+          "resource": "repo://symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt",
+          "version": "repo-file-v1:sha256:1dacbb29b54269cf7de0a13088a2ad2513a3b63125b67d242b0840f0754a81ed"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-05T19:11:53.820Z"
+    "at": "2026-10-08T02:35:11.074Z"
   }
 }

@@ -136,8 +136,9 @@ private fun KaSession.functionValueInvocation(
 /** Module and origin prove a known source boundary; missing PSI alone proves nothing about membership. */
 internal fun KaSession.sourceLessCallable(symbol: KaSymbol): IntellijK2ResolvedDeclaration {
     val projected =
-        when (val result = symbol.compilerProjection()) {
+        when (val result = symbol.compilerProjection(this)) {
             is IntellijCompilerProjectionResult.Projected -> result.projection
+            is IntellijCompilerProjectionResult.LocalRejected,
             IntellijCompilerProjectionResult.Unsupported ->
                 return unsupported(IntellijResolvedCallableFailure.COMPILER_IDENTITY_UNAVAILABLE)
         }

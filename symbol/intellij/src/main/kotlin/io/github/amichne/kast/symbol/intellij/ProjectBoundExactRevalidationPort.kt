@@ -94,7 +94,7 @@ class ProjectBoundExactRevalidationPort(
                     SymbolSearchScopeRequest(current, locator.scope),
                     WorkspaceSearchScopeModelCompilation.Compiled(model),
                 ) { compiled ->
-                    when (policy) {
+                    when (policy.forDeclaration(locator.evidence.signature)) {
                         io.github.amichne.kast.symbol.contract.ExactRevalidationPolicy.ORIGINAL_DOCUMENT ->
                             confirmScoped(locator, compiled, key)
                         io.github.amichne.kast.symbol.contract.ExactRevalidationPolicy.CURRENT_DECLARATION ->
@@ -164,6 +164,7 @@ internal fun IntellijSymbolSelectorRejection.revalidationFailure(): ExactRevalid
         IntellijSymbolSelectorRejection.COMPILER_EVIDENCE_MISMATCH,
         IntellijSymbolSelectorRejection.DECLARATION_MOVED_OR_CHANGED ->
             ExactRevalidationRejection.COMPILER_IDENTITY_CHANGED
+        IntellijSymbolSelectorRejection.WORK_LIMIT_REACHED -> ExactRevalidationRejection.WORK_LIMIT_REACHED
         IntellijSymbolSelectorRejection.COMPILER_IDENTITY_UNAVAILABLE,
         IntellijSymbolSelectorRejection.NATIVE_FAILURE,
         IntellijSymbolSelectorRejection.INTERNAL_INVARIANT -> ExactRevalidationRejection.COMPILER_UNAVAILABLE

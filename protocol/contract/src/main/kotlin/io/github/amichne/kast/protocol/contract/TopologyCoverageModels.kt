@@ -88,6 +88,7 @@ data class TopologyCoverageCandidateEvidenceMismatch(
 enum class TopologyCoverageSymbolFailure {
     NODE_COMPILER_IDENTITY_MISMATCH,
     NODE_FILE_MISMATCH,
+    LOCAL_ADDRESS_MISMATCH,
     SIGNATURE_KIND_MISMATCH,
     QUALIFIED_IDENTITY_MISMATCH,
 }
@@ -126,11 +127,17 @@ private constructor(
             if (!compilerEvidence.signature.supports(kind.symbolKind())) {
                 return Refinement.Rejected(TopologyCoverageSymbolFailure.SIGNATURE_KIND_MISMATCH)
             }
-            if (
-                qualifiedIdentity !is TopologyCoverageQualifiedIdentity.Available ||
-                    qualifiedIdentity.value != compilerEvidence.signature.qualifiedIdentity()
-            ) {
+            val expectedQualified =
+                when (val identity = compilerEvidence.signature.qualifiedIdentity()) {
+                    is SymbolQualifiedIdentityDocument.Available ->
+                        TopologyCoverageQualifiedIdentity.Available(identity.value)
+                    SymbolQualifiedIdentityDocument.Unavailable -> TopologyCoverageQualifiedIdentity.Unavailable
+                }
+            if (qualifiedIdentity != expectedQualified) {
                 return Refinement.Rejected(TopologyCoverageSymbolFailure.QUALIFIED_IDENTITY_MISMATCH)
+            }
+            if (!compilerEvidence.signature.matchesLocation(node.file, node.range)) {
+                return Refinement.Rejected(TopologyCoverageSymbolFailure.LOCAL_ADDRESS_MISMATCH)
             }
             return Refinement.Refined(
                 TopologyCoverageSymbol(

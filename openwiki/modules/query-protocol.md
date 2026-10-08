@@ -117,6 +117,8 @@ sources:
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactFinding.kt
   - id: openwiki-source-9fcd90db4b894268639790f3
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt
+  - id: openwiki-source-305db76ab141797a5afa2665
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRelationStorage.kt
   - id: openwiki-source-8f4d7aa8b32709ae3dfa417b
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRequestedSite.kt
   - id: openwiki-source-ceaa6e4a1cc8af84eede173b
@@ -131,6 +133,8 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingProjection.kt
   - id: openwiki-source-37ab3b1971d180b6eee551f9
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingTerminalProjection.kt
+  - id: openwiki-source-26ee87f940d3d4435a19eb9b
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactModelEvidenceProjection.kt
   - id: openwiki-source-0f6f5a60fd62343e10a988ad
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactPeerSourceEvidence.kt
   - id: openwiki-source-3c2b2f675cf9e1f0d4b1d01c
@@ -175,10 +179,14 @@ sources:
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryValuePathOutputAdmission.kt
   - id: openwiki-source-680008eb9e24b45cf91f6d9d
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
-generated: { by: "codex", at: "2026-10-03T17:08:58.136Z" }
+  - id: openwiki-source-436e0d50dd1efa48daac0182
+    resource: repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactRevalidation.kt
+  - id: openwiki-source-d3e7e4c127d3b87501a5acd5
+    resource: repo://symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt
+generated: { by: "codex", at: "2026-10-08T02:35:11.074Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-05T19:11:53.820Z
+    at: 2026-10-08T02:35:11.074Z
 ---
 
 # Query protocol
@@ -314,8 +322,10 @@ Fresh query-reference and source-symbol reads use
 bounded lookup per handle in the same invocation. The original owner, file,
 scope, kind, name and constraints remain fixed. Exact-name native indexes are
 restricted to the owning file before candidate collection. K2 must find one
-matching declaration identity and signature; changed offsets or body contents
-are allowed. Missing, ambiguous, unsupported and changed compiler identities
+matching declaration identity and signature. Qualified declarations may move
+offsets or change body contents. Local declarations require unchanged owning-file
+content, their original exact address, and fresh compiler confirmation; changed
+locals require rediscovery. Missing, ambiguous, unsupported and changed compiler identities
 remain finite rejections. Compiler refinement runs outside native index callbacks.
 
 Capture, candidate work and elapsed recovery time consume the same request grant
@@ -395,3 +405,10 @@ The source may name a bounded, ordered requested-site universe independently of 
 Native admission shares the source's aggregate work and checkpoint-storage grants. Its site byte grant is remaining checkpoint capacity, independently of encoded output bytes. The source and final ledger retain these proofs through the existing storage visitor and checkpoint owner.
 
 The ledger derives one finite outcome per requested site from original paths. Reached links preserve original ordinals and row IDs alongside any separate exact site and domain exclusions. An unmatched site retains a required `REQUESTED_SITE_RELATIONSHIP` obligation. `SITE_ACCOUNTING` presents those outcomes and native admission receipts through the existing retained witness window and byte fitter; it performs no new flow traversal or site revalidation. These local contracts require separate installed qualification.
+
+Normal try/catch branch-result transfers retain exact try and originating branch
+anchors, the branch alternative, and the normal-completion condition through
+impact path and model projections. Their retained storage is charged alongside
+local address signatures and lexical ownership anchors under the existing
+query storage owner and budgets. Paging does not erase these facts or turn
+remaining control-flow obligations into complete coverage.

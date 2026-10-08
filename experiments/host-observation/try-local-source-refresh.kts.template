@@ -1,0 +1,112 @@
+// One owned source file: refresh its VFS bytes, admit saved content, commit PSI, then verify hashes.
+import java.nio.file.Files
+import java.nio.file.Path
+import java.security.MessageDigest
+import com.google.gson.Gson
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.PathManager
+import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.project.ProjectManager
+import com.intellij.openapi.project.DumbService
+import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiManager
+
+enum class SourceRefreshStage { HOST_ADMISSION, PROJECT_ADMISSION, SOURCE_ADMISSION, VFS_REFRESH, PSI_COMMIT, SOURCE_VERIFICATION }
+enum class SourceRefreshBlock { HOST_MISMATCH, PROJECT_MISMATCH, DIRTY_DOCUMENTS, SOURCE_MISMATCH, VFS_UNAVAILABLE, DOCUMENT_UNAVAILABLE, UNCOMMITTED_PSI, INDEXING, PLATFORM_FAILURE }
+enum class SourceRefreshAction { OBSERVED_CURRENT, REFRESHED_AND_COMMITTED }
+sealed interface SourceRefreshOutcome
+ data class SourceReady(val type: String = "SOURCE_READY", val hostPid: Long, val processStart: String, val projectRoot: String, val source: String, val expectedSha256: String, val diskSha256: String, val vfsSha256: String, val documentSha256: String, val psiSha256: String, val saved: Boolean, val committed: Boolean, val smart: Boolean, val action: SourceRefreshAction) : SourceRefreshOutcome
+ data class SourceBlocked(val type: String = "BLOCKED", val hostPid: Long, val stage: SourceRefreshStage, val reason: SourceRefreshBlock) : SourceRefreshOutcome
+
+data class SourceRefreshInput(val ownedRoot: String, val projectRoot: String, val source: String, val expectedSha256: String, val hostPid: Long, val protectedPid: Long, val processStart: String, val receipt: String)
+
+run {
+    val inputPath = Path.of(String(java.util.Base64.getDecoder().decode("@INPUT_BASE64@"), Charsets.UTF_8))
+    val input = Gson().fromJson(Files.readString(inputPath), SourceRefreshInput::class.java)
+    val owned = Path.of(input.ownedRoot).toRealPath()
+    val root = Path.of(input.projectRoot).toRealPath()
+    val source = Path.of(input.source).toAbsolutePath()
+    val expected = input.expectedSha256
+    val pid = ProcessHandle.current().pid()
+    val app = ApplicationManager.getApplication()
+    val documents = FileDocumentManager.getInstance()
+    val receipt = Path.of(input.receipt).toAbsolutePath()
+    val gson = Gson()
+    var stage = SourceRefreshStage.HOST_ADMISSION
+    fun hash(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+    fun publish(value: SourceRefreshOutcome) = Files.writeString(receipt, gson.toJson(value))
+    fun blocked(reason: SourceRefreshBlock) { publish(SourceBlocked(hostPid = pid, stage = stage, reason = reason)) }
+    try {
+        if (pid != input.hostPid || pid == input.protectedPid || ProcessHandle.current().info().startInstant().get().toString() != input.processStart ||
+            root != owned.resolve("fixture") || !source.startsWith(root) || !receipt.startsWith(owned.resolve("pi-qualification-fixture")) ||
+            Path.of(PathManager.getHomePath()).toRealPath() != owned.resolve("IntelliJ IDEA.app/Contents") ||
+            Path.of(System.getProperty("user.home")).toRealPath() != owned.resolve("h") ||
+            Path.of(PathManager.getConfigPath()).toRealPath() != owned.resolve("config") ||
+            Path.of(PathManager.getSystemPath()).toRealPath() != owned.resolve("system") ||
+            Path.of(PathManager.getPluginsPath()).toRealPath() != owned.resolve("plugins") || app.isHeadlessEnvironment) {
+            blocked(SourceRefreshBlock.HOST_MISMATCH); return@run
+        }
+        stage = SourceRefreshStage.PROJECT_ADMISSION
+        val project = ProjectManager.getInstance().openProjects.singleOrNull { it.basePath == root.toString() }
+        if (project == null || !project.isInitialized || project.isDisposed || ProjectManager.getInstance().openProjects.size != 1) {
+            blocked(SourceRefreshBlock.PROJECT_MISMATCH); return@run
+        }
+        if (documents.unsavedDocuments.isNotEmpty()) { blocked(SourceRefreshBlock.DIRTY_DOCUMENTS); return@run }
+        stage = SourceRefreshStage.SOURCE_ADMISSION
+        if (source.toRealPath() != source || !Files.isRegularFile(source) || Files.size(source) > 65536 || hash(Files.readAllBytes(source)) != expected) {
+            blocked(SourceRefreshBlock.SOURCE_MISMATCH); return@run
+        }
+        val fs = LocalFileSystem.getInstance()
+        val observed = ReadAction.compute<SourceReady?, RuntimeException> {
+            val currentVf = fs.findFileByNioFile(source) ?: return@compute null
+            val currentDocument = documents.getCachedDocument(currentVf) ?: return@compute null
+            val currentPsi = PsiManager.getInstance(project).findFile(currentVf) ?: return@compute null
+            val psiDocuments = PsiDocumentManager.getInstance(project)
+            if (DumbService.isDumb(project) || documents.unsavedDocuments.isNotEmpty() || !psiDocuments.isCommitted(currentDocument) || psiDocuments.hasUncommitedDocuments()) return@compute null
+            val disk = hash(Files.readAllBytes(source))
+            val vfs = hash(currentVf.contentsToByteArray())
+            val doc = hash(currentDocument.text.toByteArray(Charsets.UTF_8))
+            val psi = hash(currentPsi.text.toByteArray(Charsets.UTF_8))
+            if (listOf(disk, vfs, doc, psi).any { it != expected }) return@compute null
+            SourceReady(hostPid = pid, processStart = ProcessHandle.current().info().startInstant().get().toString(), projectRoot = root.toString(), source = source.toString(), expectedSha256 = expected, diskSha256 = disk, vfsSha256 = vfs, documentSha256 = doc, psiSha256 = psi, saved = true, committed = true, smart = true, action = SourceRefreshAction.OBSERVED_CURRENT)
+        }
+        if (observed != null) { publish(observed); return@run }
+        stage = SourceRefreshStage.VFS_REFRESH
+        fs.refreshNioFiles(listOf(source), false, false, null)
+        val vf = fs.refreshAndFindFileByNioFile(source)
+        if (vf == null || vf.path != source.toString()) { blocked(SourceRefreshBlock.VFS_UNAVAILABLE); return@run }
+        val vfsHash = hash(vf.contentsToByteArray())
+        if (vfsHash != expected) { blocked(SourceRefreshBlock.SOURCE_MISMATCH); return@run }
+        stage = SourceRefreshStage.PSI_COMMIT
+        var outcome: SourceRefreshOutcome = SourceBlocked(hostPid = pid, stage = stage, reason = SourceRefreshBlock.DOCUMENT_UNAVAILABLE)
+        app.invokeAndWait {
+            val document = ReadAction.compute<com.intellij.openapi.editor.Document?, RuntimeException> { documents.getDocument(vf) }
+            if (documents.unsavedDocuments.isNotEmpty()) {
+                outcome = SourceBlocked(hostPid = pid, stage = stage, reason = SourceRefreshBlock.DIRTY_DOCUMENTS)
+            } else if (document != null) {
+                if (hash(document.text.toByteArray(Charsets.UTF_8)) != expected) documents.reloadFromDisk(document, project)
+                val psiDocuments = PsiDocumentManager.getInstance(project)
+                psiDocuments.commitAllDocuments()
+                stage = SourceRefreshStage.SOURCE_VERIFICATION
+                outcome = ReadAction.compute<SourceRefreshOutcome, RuntimeException> {
+                    val psi = PsiManager.getInstance(project).findFile(vf)
+                    val diskHash = hash(Files.readAllBytes(source))
+                    val documentHash = hash(document.text.toByteArray(Charsets.UTF_8))
+                    val psiHash = psi?.let { hash(it.text.toByteArray(Charsets.UTF_8)) }
+                    when {
+                        documents.unsavedDocuments.isNotEmpty() -> SourceBlocked(hostPid = pid, stage = stage, reason = SourceRefreshBlock.DIRTY_DOCUMENTS)
+                        !psiDocuments.isCommitted(document) || psiDocuments.hasUncommitedDocuments() -> SourceBlocked(hostPid = pid, stage = stage, reason = SourceRefreshBlock.UNCOMMITTED_PSI)
+                        DumbService.isDumb(project) -> SourceBlocked(hostPid = pid, stage = stage, reason = SourceRefreshBlock.INDEXING)
+                        psiHash == null || diskHash != expected || documentHash != expected || psiHash != expected -> SourceBlocked(hostPid = pid, stage = stage, reason = SourceRefreshBlock.SOURCE_MISMATCH)
+                        else -> SourceReady(hostPid = pid, processStart = ProcessHandle.current().info().startInstant().get().toString(), projectRoot = root.toString(), source = source.toString(), expectedSha256 = expected, diskSha256 = diskHash, vfsSha256 = vfsHash, documentSha256 = documentHash, psiSha256 = psiHash, saved = true, committed = true, smart = true, action = SourceRefreshAction.REFRESHED_AND_COMMITTED)
+                    }
+                }
+            }
+        }
+        publish(outcome)
+    } catch (failure: Throwable) {
+        blocked(SourceRefreshBlock.PLATFORM_FAILURE)
+    }
+}

@@ -60,12 +60,18 @@ code_sources:
 sources:
   - id: openwiki-source-d16ec0b0b90b8cd04743a4f3
     resource: repo://source/service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt
+  - id: openwiki-source-436e0d50dd1efa48daac0182
+    resource: repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactRevalidation.kt
+  - id: openwiki-source-5dc71c24cf32522bcaec58f5
+    resource: repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/LocalDeclarationAddress.kt
+  - id: openwiki-source-a3cdc2cd949e8a87b5cc630c
+    resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactRevalidationCapture.kt
   - id: openwiki-source-096cb7b190932815f87b4a1d
     resource: repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt
-generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+generated: { by: "codex", at: "2026-10-08T02:35:11.074Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-05T19:11:53.820Z
+    at: 2026-10-08T02:35:11.074Z
 ---
 
 # Source and workspace identity
@@ -201,3 +207,11 @@ same invocation and return `reference_acquisitions`. This is a new read of the
 current declaration, not restoration of the prior source snapshot. Source-anchor
 and continuation reads keep their original snapshot checks. See
 [automatic acquisition](../modules/query-protocol.md#automatic-acquisition-for-fresh-reads).
+
+Local properties and named functions retain a compiler-confirmed local address
+instead of a qualified name. The address binds declaration kind, exact file and
+range, containing declaration identity and range, and bounded lexical ownership.
+Local selectors require `ORIGINAL_DOCUMENT` revalidation even when the caller
+requests current-declaration reacquisition. The saved owning-file hash must
+match before fresh compiler confirmation; an edited, moved or replaced local
+requires rediscovery rather than rebinding the old reference by name.

@@ -38,6 +38,24 @@ internal fun IntellijNativeDiscoveryQuery.discoverNative(
                 limits = limits,
             )
         }
+    } else if (target is SymbolDiscoveryTarget.Name && target.kind != SymbolNameDiscoveryKind.FILE) {
+        discoverMixedDeclarations(scope, request) { observe, qualify, accept ->
+            val complete =
+                collectIndexedNamedDeclarations(project, scope, request, observe, qualify, limits) {
+                    accept(IntellijDiscoveryDeclarationInput.Indexed(it))
+                }
+            complete &&
+                collectScopedKotlinDeclarations(
+                    project,
+                    scope,
+                    request,
+                    ScopedDeclarationCallbacks(observe, qualify) {
+                        accept(IntellijDiscoveryDeclarationInput.Scoped(it))
+                    },
+                    limits,
+                    localOnly = true,
+                )
+        }
     } else if (target is SymbolDiscoveryTarget.Name && target.match == SymbolDiscoveryMatch.EXACT_NAME) {
         discoverExactName(scope, request) { name, accept ->
             when (target.kind) {

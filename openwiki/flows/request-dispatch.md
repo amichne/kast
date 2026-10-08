@@ -80,6 +80,8 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactSourceMapping.kt
   - id: openwiki-source-6699d194831006a24f8c790c
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt
+  - id: openwiki-source-56d9cab6d2a0ea1dd436fd76
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolOutputMapping.kt
   - id: openwiki-source-473526fe1b8c21a06df3f01f
     resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/HostedRequiredPolicyExchangeTest.kt
   - id: openwiki-source-6fc4d1c9f6659b50cecc0294
@@ -87,7 +89,7 @@ sources:
 generated: { by: "codex", at: "2026-10-03T14:16:26.318Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-05T19:11:53.820Z
+    at: 2026-10-08T02:35:11.074Z
 ---
 
 # Request dispatch

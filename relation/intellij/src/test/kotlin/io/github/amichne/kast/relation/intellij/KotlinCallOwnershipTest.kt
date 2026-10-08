@@ -23,8 +23,6 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertNotEquals
-import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
@@ -140,22 +138,6 @@ class KotlinCallOwnershipTest {
                 IntellijRelationDefinition.Unsupported,
                 normalizeRelationDefinition(factory.createExpression("42")),
             )
-        }
-
-    @Test
-    fun `local callable identity retains its file and exact declaration position`(@TempDir home: Path) =
-        withParser(home) { factory ->
-            val file = factory.createFile("fun outer() { val instance = object { fun run() {} ; fun stop() {} } }")
-            val members = PsiTreeUtil.findChildrenOfType(file, KtNamedFunction::class.java)
-            val run = members.single { it.name == "run" }
-            val stop = members.single { it.name == "stop" }
-            val runIdentity = run.sourceBoundCallableIdentity("file:///workspace/Probe.kt")
-            val stopIdentity = stop.sourceBoundCallableIdentity("file:///workspace/Probe.kt")
-            assertNotNull(runIdentity)
-            assertNotNull(stopIdentity)
-            assertNotEquals(runIdentity, stopIdentity)
-            assertEquals(runIdentity, run.sourceBoundCallableIdentity("file:///workspace/Probe.kt"))
-            assertNotEquals(runIdentity, run.sourceBoundCallableIdentity("file:///workspace/Other.kt"))
         }
 
     @Test

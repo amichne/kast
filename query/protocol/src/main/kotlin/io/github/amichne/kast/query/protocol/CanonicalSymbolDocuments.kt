@@ -6,6 +6,10 @@ import io.github.amichne.kast.protocol.contract.CompilerReceiverDocument
 import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
 import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
 import io.github.amichne.kast.protocol.contract.CompilerTypeParameterCountDocument
+import io.github.amichne.kast.protocol.contract.LocalDeclarationAddressDocument
+import io.github.amichne.kast.protocol.contract.LocalDeclarationFileDocument
+import io.github.amichne.kast.protocol.contract.LocalDeclarationKindDocument
+import io.github.amichne.kast.protocol.contract.LocalPropertyMutabilityDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
@@ -19,7 +23,10 @@ import io.github.amichne.kast.symbol.contract.CanonicalCompilerType
 import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
+import io.github.amichne.kast.symbol.contract.LocalDeclarationAddress
+import io.github.amichne.kast.symbol.contract.LocalPropertyMutability
 import io.github.amichne.kast.symbol.contract.SymbolDescription
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 
 fun SymbolDescription.protocolDocument(exactSelector: ProtocolText): SymbolDocument? =
     symbolDocument(
@@ -85,6 +92,16 @@ private fun symbolDocument(
 
 internal fun CanonicalCompilerSignature.protocolDocument(): CompilerSignatureDocument? {
     return when (this) {
+        is CanonicalCompilerSignature.LocalFunction -> protocolLocalFunction()
+        is CanonicalCompilerSignature.LocalProperty ->
+            CompilerSignatureDocument.LocalProperty(
+                address.protocolDocument() ?: return null,
+                text(returnType.value) ?: return null,
+                when (mutability) {
+                    LocalPropertyMutability.VAL -> LocalPropertyMutabilityDocument.VAL
+                    LocalPropertyMutability.VAR -> LocalPropertyMutabilityDocument.VAR
+                },
+            )
         is CanonicalCompilerSignature.Function -> protocolFunction()
         is CanonicalCompilerSignature.Property -> protocolProperty()
         is CanonicalCompilerSignature.TypeAlias ->
@@ -92,6 +109,17 @@ internal fun CanonicalCompilerSignature.protocolDocument(): CompilerSignatureDoc
         is CanonicalCompilerSignature.ClassLike ->
             CompilerSignatureDocument.ClassLike(qualifiedIdentity = text(qualifiedIdentity.value) ?: return null)
     }
+}
+
+private fun CanonicalCompilerSignature.LocalFunction.protocolLocalFunction(): CompilerSignatureDocument.LocalFunction? {
+    return CompilerSignatureDocument.LocalFunction(
+        address.protocolDocument() ?: return null,
+        receiver.protocolDocument() ?: return null,
+        contextReceivers.protocolTypes() ?: return null,
+        valueParameters.protocolTypes() ?: return null,
+        CompilerTypeParameterCountDocument.parse(typeParameterCount.value).refinedOrNull() ?: return null,
+        text(returnType.value) ?: return null,
+    )
 }
 
 private fun CanonicalCompilerSignature.Function.protocolFunction(): CompilerSignatureDocument.Function? {
@@ -152,4 +180,32 @@ private fun <Value, Failure> Refinement<Value, Failure>.refinedOrNull(): Value? 
     when (this) {
         is Refinement.Refined -> value
         is Refinement.Rejected -> null
+    }
+
+private fun LocalDeclarationAddress.protocolDocument(): LocalDeclarationAddressDocument? =
+    LocalDeclarationAddressDocument.create(
+            when (val source = file) {
+                is SymbolDiscoveryFileIdentity.Workspace ->
+                    LocalDeclarationFileDocument.Workspace(text(source.stableValue) ?: return null)
+                is SymbolDiscoveryFileIdentity.External ->
+                    LocalDeclarationFileDocument.External(text(source.stableValue) ?: return null)
+            },
+            when (kind) {
+                io.github.amichne.kast.symbol.contract.LocalDeclarationKind.FUNCTION ->
+                    LocalDeclarationKindDocument.FUNCTION
+                io.github.amichne.kast.symbol.contract.LocalDeclarationKind.PROPERTY ->
+                    LocalDeclarationKindDocument.PROPERTY
+            },
+            range(range.startInclusive, range.endExclusive) ?: return null,
+            text(ownerIdentity.value) ?: return null,
+            range(ownerRange.startInclusive, ownerRange.endExclusive) ?: return null,
+            BoundedProtocolList.create(lexicalOwners.map { range(it.startInclusive, it.endExclusive) ?: return null })
+                .refinedOrNull() ?: return null,
+        )
+        .refinedOrNull()
+
+private fun CanonicalCompilerReceiver.protocolDocument(): CompilerReceiverDocument? =
+    when (this) {
+        CanonicalCompilerReceiver.Absent -> CompilerReceiverDocument.Absent
+        is CanonicalCompilerReceiver.Present -> CompilerReceiverDocument.Present(text(type.value) ?: return null)
     }

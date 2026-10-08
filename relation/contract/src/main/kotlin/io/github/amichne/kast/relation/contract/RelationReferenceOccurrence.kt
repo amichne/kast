@@ -1,8 +1,10 @@
 package io.github.amichne.kast.relation.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerCallableSignature
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerReceiver
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CompilerDeclarationAddress
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
@@ -232,16 +234,26 @@ private fun RelationEndpoint.projectedDocumentTextBytes(): Long =
         signature.projectedDocumentTextBytes()
 
 private fun CanonicalCompilerSignature.projectedDocumentTextBytes(): Long =
-    qualifiedIdentity.value.projectedJsonTextBytes() +
+    when (val address = declarationAddress) {
+        is CompilerDeclarationAddress.Qualified -> address.identity.value.projectedJsonTextBytes()
+        is CompilerDeclarationAddress.Local ->
+            address.address.file.stableValue.projectedJsonTextBytes() +
+                address.address.ownerIdentity.value.projectedJsonTextBytes() +
+                LOCAL_ADDRESS_DOCUMENT_BYTES +
+                address.address.lexicalOwners.size * LOCAL_LEXICAL_OWNER_DOCUMENT_BYTES
+    } +
         when (this) {
-            is CanonicalCompilerSignature.Function ->
+            is CanonicalCompilerCallableSignature ->
                 receiver.projectedTextBytes() +
                     contextReceivers.sumOf { it.value.projectedJsonTextBytes() + JSON_LIST_ITEM_BYTES } +
-                    valueParameters.sumOf { it.value.projectedJsonTextBytes() + JSON_LIST_ITEM_BYTES }
+                    valueParameters.sumOf { it.value.projectedJsonTextBytes() + JSON_LIST_ITEM_BYTES } +
+                    if (this is CanonicalCompilerSignature.LocalFunction) returnType.value.projectedJsonTextBytes()
+                    else 0L
             is CanonicalCompilerSignature.Property ->
                 receiver.projectedTextBytes() +
                     contextReceivers.sumOf { it.value.projectedJsonTextBytes() + JSON_LIST_ITEM_BYTES } +
                     returnType.value.projectedJsonTextBytes()
+            is CanonicalCompilerSignature.LocalProperty -> returnType.value.projectedJsonTextBytes()
             is CanonicalCompilerSignature.TypeAlias,
             is CanonicalCompilerSignature.ClassLike -> 0L
         }
@@ -346,3 +358,7 @@ private const val CONSTRAINT_FIELD_BYTES = 24L
 private const val JSON_LIST_ITEM_BYTES = 3L
 private const val BASE64_INPUT_GROUP_BYTES = 3L
 private const val BASE64_ENCODED_GROUP_BYTES = 4L
+
+/** Detached local address fields and bounded source-range/owner framing. */
+private const val LOCAL_ADDRESS_DOCUMENT_BYTES = 512L
+private const val LOCAL_LEXICAL_OWNER_DOCUMENT_BYTES = 128L

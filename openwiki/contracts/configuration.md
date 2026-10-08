@@ -48,7 +48,7 @@ code_sources:
   - path: build.gradle.kts
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-05T20:36:23.129Z
+    at: 2026-10-08T02:35:11.074Z
 sources:
   - id: openwiki-source-b49f63bec354bf14b4c28692
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt

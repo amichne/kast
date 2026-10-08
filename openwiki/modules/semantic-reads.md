@@ -75,7 +75,7 @@ code_sources:
   - RelationFact
 - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2SymbolIdentity.kt
   symbols:
-  - sourceBoundCallableIdentity
+  - compilerProjection
 - path: traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPlan.kt
   symbols:
   - TraversalPlan
@@ -171,6 +171,8 @@ sources:
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueBoundary.kt
   - id: openwiki-source-d3f0d7e24d35ed4b47aff3d5
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueSite.kt
+  - id: openwiki-source-6774ed1d0295b67d908dbbd8
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2SymbolIdentity.kt
   - id: openwiki-source-b237fe55f86308ccb96d0596
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowCompilerAdapter.kt
   - id: openwiki-source-eeb2af1b330e389cae564042
@@ -179,8 +181,12 @@ sources:
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueProducerSeedNative.kt
   - id: openwiki-source-5e4eb99eb5fd7a5dcae4b5eb
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueSiteRevalidationNative.kt
+  - id: openwiki-source-e96f3ebb85ab3d6d5604f8e8
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeTryBranchResult.kt
   - id: openwiki-source-24e2e528bd8a607e4d35c899
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueSiteRestorationFailure.kt
+  - id: openwiki-source-0f09a987fe57b61a10d3e717
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/ReturnFinallyBoundary.kt
   - id: openwiki-source-b8e3c573182d699252496925
     resource: repo://relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/ValueSiteRestorationTest.kt
   - id: openwiki-source-9d98513f38a6f5a6f98d8cdc
@@ -191,6 +197,8 @@ sources:
     resource: repo://runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperationsTest.kt
   - id: openwiki-source-d16ec0b0b90b8cd04743a4f3
     resource: repo://source/service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt
+  - id: openwiki-source-5dc71c24cf32522bcaec58f5
+    resource: repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/LocalDeclarationAddress.kt
   - id: openwiki-source-ca4cb79efb8948231564ac6f
     resource: repo://symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolExactService.kt
   - id: openwiki-source-738d50046b5f0d1312b7fcb7
@@ -201,10 +209,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-8d15fa1e67cdc054e05e2796
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedValueFlowDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-03T14:44:52.932Z" }
+generated: { by: "codex", at: "2026-10-08T02:35:11.074Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-05T19:11:53.820Z
+    at: 2026-10-08T02:35:11.074Z
 ---
 
 # Semantic read domains
@@ -441,9 +449,12 @@ Constructor caller admission retains its separate callee-range and constructor-o
 
 Kotlin one-hop calls use an explicit lexical ownership boundary. Calls in local
 property initializers belong to the enclosing callable. A named nested function
-keeps its own owner; callers do not climb past it. A K2-resolved function without
-a global callable ID receives a source-bound identity from its exact file and
-declaration position plus its compiler signature. Both directions refine a
+keeps its own owner; callers do not climb past it. Local properties and named
+functions receive the shared explicit local address with compiler-confirmed kind,
+containing declaration identity, exact file/range and bounded lexical anchors.
+Symbol, source and relation adapters project this same address through their
+module-owned K2 boundaries. Mutable property identity does not prove assignment
+flow, and deferred execution retains its separate qualification. Both directions refine a
 literal lambda boundary only when a successful K2 call maps that argument to an
 ordinary function parameter of the selected inline callable. Each intervening boundary must pass;
 returned/stored lambdas, non-inline callbacks, `noinline`, and `crossinline`
@@ -620,3 +631,19 @@ intervals and authority. The adapter preserves the existing traversal plan,
 relation requests and outcomes; phase timing grants no semantic coverage.
 
 The existing read counter vocabulary also distinguishes presented, pending-impact and original-investigation retention capture, each finite capture failure, and result issuance outcomes. The hosted adapter records them in the existing `RETENTION` phase. An encoded diagnostic golden verifies actual success and rejection receipt shapes; these observations carry no source payload or handles and cannot establish compiler proof or investigation closure.
+
+### Normal try/catch branch results
+
+A final value expression in a try or catch body can supply the enclosing try
+result only after compiler type and ownership confirmation. Its transfer retains
+the exact enclosing try and originating branch anchors, try/catch alternative,
+and normal-completion condition. Nested branch results compose through the
+existing flow reader. Non-final expressions do not supply that result.
+
+Catch fallback provenance stays separate from a successfully produced try value.
+Explicit returns and throws retain distinct control-flow outcomes; abrupt exits
+produce no normal-result transfer. Transfers crossing a try boundary with a
+finally block, including explicit returns, retain FINALLY_UNSUPPORTED. These
+static facts do not prove runtime path feasibility. Bounded classification
+counters retain admitted branch results and rejected type, abrupt and finally
+cases without recording source payloads.
