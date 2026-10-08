@@ -1,5 +1,19 @@
 // Generated contract version; owned by packaging/generate-public-query.py.
 const PUBLIC_TOOL_CONTRACT_VERSION = 11;
+// Generated from ToolRpcFailure; owned by packaging/generate-public-query.py.
+const TOOL_RPC_FAILURES = [
+  "INSTALLATION_STOPPED",
+  "OBSERVATION_UNAVAILABLE",
+  "CATALOG_UNAVAILABLE",
+  "INVALID_COMMAND",
+  "REQUEST_TOO_LARGE",
+  "UNKNOWN_TOOL",
+  "INVALID_ARGUMENTS",
+  "OUT_OF_SCOPE",
+  "INVOCATION_FAILED",
+  "INVALID_RESULT",
+] as const;
+// End generated ToolRpcFailure.
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
@@ -67,11 +81,42 @@ function run(args: string[], input: string, cwd: string, policy?: {callTimeoutMi
       cleanup();
       if (termination) return reject(failure(termination));
       if (code !== 0) return reject(failure(exitSignal ? "SIGNALLED" : "NONZERO_EXIT", code));
-      try { resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))); }
-      catch { reject(failure("INVALID_JSON")); }
+      let decoded: string;
+      try { decoded = new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks)); }
+      catch { return reject(failure("INVALID_UTF8")); }
+      let result: unknown;
+      try { result = JSON.parse(decoded); }
+      catch { return reject(failure("INVALID_JSON")); }
+      if (args[0] === "call" && !isToolResult(result)) return reject(failure("INVALID_RESULT"));
+      resolve(result);
     });
     child.stdin.end(input);
   });
+}
+
+type ToolRpcResult =
+  | { type: "complete" | "qualified" | "rejected_document"; document: Record<string, unknown> }
+  | { type: "rejected"; failure: (typeof TOOL_RPC_FAILURES)[number] };
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isToolResult(value: unknown): value is ToolRpcResult {
+  if (!isObject(value) || Object.keys(value).length !== 2) return false;
+  if (value.type === "rejected") return typeof value.failure === "string" &&
+    (TOOL_RPC_FAILURES as readonly string[]).includes(value.failure);
+  // Canonical document is opaque here; the Kotlin RPC validates its owning schema.
+  return typeof value.type === "string" &&
+    ["complete", "qualified", "rejected_document"].includes(value.type) && isObject(value.document);
+}
+
+function approvalSummary(tool: Tool, params: Record<string, unknown>, cwd: string): string {
+  const bounded = (value: string, limit: number) => value.length <= limit ? value :
+    value.slice(0, limit) + " [truncated; review full tool arguments]";
+  const target = typeof params.exactTarget === "string" ? params.exactTarget : "[missing exact target]";
+  return `Tool: ${tool.name}\nWorkspace: ${bounded(JSON.stringify(cwd), 384)}\n` +
+    `Target: ${bounded(JSON.stringify(target), 256)}\nIntent: ${bounded(JSON.stringify(params), 1200)}`;
 }
 
 export default async function (pi: ExtensionAPI) {
@@ -99,14 +144,20 @@ export default async function (pi: ExtensionAPI) {
       name: tool.name,
       label: `Kast ${tool.name}`,
       description: tool.description,
-      parameters: Type.Unsafe(tool.inputSchema),
+      parameters: Type.Unsafe<Record<string, unknown>>(tool.inputSchema),
       async execute(_id, params, signal, _onUpdate, ctx) {
         if (tool.effect === "WRITE" &&
-            (!ctx.hasUI || !await ctx.ui.confirm("Apply Kast change?", tool.description))) {
-          return { content: [{ type: "text", text: "Kast change was not approved." }] };
+            (!ctx.hasUI || !await ctx.ui.confirm("Apply Kast change?", approvalSummary(tool, params, ctx.cwd), { signal }))) {
+          const denied = { type: "APPROVAL_DENIED" } as const;
+          return { content: [{ type: "text", text: JSON.stringify(denied) }], details: denied, isError: true };
         }
         const result = await run(["call", tool.name], JSON.stringify(params), ctx.cwd, policy, signal);
-        return { content: [{ type: "text", text: JSON.stringify(result) }] };
+        if (!isToolResult(result)) throw new Error("Kast reply admission outcome=INVALID_RESULT");
+        return {
+          content: [{ type: "text", text: JSON.stringify(result) }],
+          details: result,
+          isError: ["rejected", "rejected_document"].includes(result.type),
+        };
       },
     });
   }

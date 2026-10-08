@@ -56,7 +56,7 @@ Discovery accepts directory or package scope. Its default is recursive workspace
 | `WHERE` | Filter compiler-confirmed visibility or literal `NAME`, `KIND`, or `FILE`. Comparisons: `EQUALS`, `NOT_EQUALS`, `STARTS_WITH`, `ENDS_WITH`. |
 | `DISTINCT_SYMBOLS` | Keep the first row per canonical identity at this pipeline position. |
 | `EXPAND_RELATION` | One hop through `REFERENCES`, `CALLERS`, `CALLEES`, `IMPLEMENTATIONS`, `INHERITORS`, `OVERRIDES`, or `TYPE_USES`. |
-| `WALK` | Bounded relation traversal. Default depth one, breadth-first strategy. |
+| `WALK` | Exhaustive relation traversal when `maximumDepth` is omitted or null; explicit depth bounds reach. Default breadth-first strategy. |
 | `CONCAT` | Append `input`, preserving order and duplicates. |
 | `UNION`, `INTERSECT`, `DIFFERENCE` | Compare retained symbol rows in `right` by canonical identity. Difference requires complete right coverage. |
 | `JOIN` | `INNER` pairs named cells. `SEMI` keeps matches. `ANTI` requires complete right coverage to establish absence. |
@@ -70,8 +70,8 @@ There is no arbitrary-field join or general-purpose `MAP`. Steps after compositi
 
 | Scope | Meaning |
 | --- | --- |
-| `WORKSPACE` | Workspace expansion. Default for `EXPAND_RELATION`. |
-| `RETAINED_SEED` | Scope carried by each seed. Default for `WALK`. Acquire an `AT_LOCATION` seed for exact-file scope. |
+| `WORKSPACE` | Workspace expansion. Default for `EXPAND_RELATION` and for `WALK` with omitted or null `maximumDepth`. |
+| `RETAINED_SEED` | Scope carried by each seed. Default for `WALK` with explicit `maximumDepth`. Acquire an `AT_LOCATION` seed for exact-file scope. |
 | `SOURCE_DOMAIN` | Exact imported `sourceSets`, source policy, generated-source policy, and optional workspace-relative directory. |
 
 Omission or `null` uses the operation's default. `SOURCE_DOMAIN` requires `sourcePolicy` and `generatedSources`. `includeSubdirectories` defaults to `true`. `IMPACT.domain` requires an explicit scope.

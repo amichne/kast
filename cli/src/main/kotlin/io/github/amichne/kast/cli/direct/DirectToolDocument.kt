@@ -15,8 +15,22 @@ internal data class DirectToolDocument(
     val description: String,
     val inputSchema: JsonObject,
     val outputSchema: JsonObject,
-    val readOnly: Boolean,
-)
+    val effect: OperationEffect,
+) {
+    /** Semantic effect, independent of MCP preparation's editor-save and model-refresh effects. */
+    val readOnly: Boolean
+        get() =
+            when (effect) {
+                OperationEffect.NONE,
+                OperationEffect.INTELLIJ_READ -> true
+                OperationEffect.INTELLIJ_READ_AND_PERSISTENCE_WRITE,
+                OperationEffect.INTELLIJ_WRITE,
+                OperationEffect.FILESYSTEM_WRITE,
+                OperationEffect.PERSISTENCE_WRITE,
+                OperationEffect.WORKSPACE_MODEL_WRITE,
+                OperationEffect.PROCESS_CONTROL -> false
+            }
+}
 
 internal fun InstalledHostedToolDocument.directToolDocument(): DirectToolDocument {
     val effect = OperationEffect.entries.single { it.name.lowercase() == this.effect }
@@ -27,7 +41,7 @@ internal fun InstalledHostedToolDocument.directToolDocument(): DirectToolDocumen
         description,
         input,
         McpStructuredResults.schemaFor(name),
-        effect == OperationEffect.NONE || effect == OperationEffect.INTELLIJ_READ,
+        effect,
     )
 }
 
@@ -47,6 +61,6 @@ internal fun directSupportTools(): List<DirectToolDocument> =
                 identity.description,
                 objectInput,
                 McpStructuredResults.schemaFor(identity.toolName),
-                readOnly = true,
+                effect = OperationEffect.NONE,
             )
         }

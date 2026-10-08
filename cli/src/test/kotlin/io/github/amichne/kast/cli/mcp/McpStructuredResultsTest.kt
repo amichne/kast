@@ -11,11 +11,33 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class McpStructuredResultsTest {
+    @Test
+    fun `every transport failure has a closed MCP schema without widening semantic contracts`() {
+        val names =
+            io.github.amichne.kast.protocol.registry.PublicToolIdentity.entries.map { it.toolName } + "health_check"
+        for (failure in McpCallFailure.entries) {
+            val document =
+                mcpWire
+                    .encodeToJsonElement(
+                        McpTransportRejection.serializer(),
+                        McpTransportRejection.CallFailure(McpCallError(failure, failure.nextAction)),
+                    )
+                    .jsonObject
+            assertEquals("MCP_REJECTED", document.getValue("type").jsonPrimitive.content)
+            assertEquals("rejected", document.getValue("status").jsonPrimitive.content)
+            for (name in names) {
+                assertTrue(McpStructuredResults.validates(name, document), name)
+                assertFalse(McpStructuredResults.validatesSemantic(name, document), name)
+            }
+        }
+    }
+
     @Test
     fun `public query accepts exact source result without widening canonical query result`() {
         val fixture = io.github.amichne.kast.cli.LiveReadOutputSchemaTest()

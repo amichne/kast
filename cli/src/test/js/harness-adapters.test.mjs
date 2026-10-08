@@ -8,10 +8,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 // The catalog is serialized by the production Kotlin RPC bridge, never reconstructed here.
 const catalog = JSON.parse(readFileSync(process.env.KAST_ADAPTER_TEST_CATALOG, 'utf8'));
+const failures = JSON.parse(readFileSync(process.env.KAST_ADAPTER_TEST_FAILURES, 'utf8'));
 const root = process.env.KAST_PACKAGED_ADAPTER_ROOT ? pathToFileURL(process.env.KAST_PACKAGED_ADAPTER_ROOT + '/share/kast/adapters/') : new URL('../../../../', import.meta.url);
 async function load(harness, reply = catalog, outcome = { type: 'complete', document: {} }, failure, env = {KAST_TOOL_RPC_COMMAND: '/fixture/kast-tool-rpc'}) {
   const registered = [], calls = [];
-  const context = createContext({ Buffer, setTimeout: (callback, millis) => {
+  const context = createContext({ Buffer, TextDecoder, setTimeout: (callback, millis) => {
     if (failure === 'timeout' && calls.length > 1) { queueMicrotask(callback); return 0; }
     return setTimeout(callback, millis);
   }, clearTimeout, process: { env, cwd: () => '/fixture' } });
@@ -30,7 +31,7 @@ async function load(harness, reply = catalog, outcome = { type: 'complete', docu
         child.stderr.emit('data', Buffer.from('kast_change stage=APPLICATION outcome=STARTED\nexact:v3:private-source-token\n'));
         child.emit('close', 7);
       } else {
-        child.stdout.emit('data', Buffer.from(JSON.stringify(args[0] === 'catalog' ? reply : outcome)));
+        child.stdout.emit('data', args[0] === 'catalog' ? Buffer.from(JSON.stringify(reply)) : Buffer.isBuffer(outcome) ? outcome : Buffer.from(JSON.stringify(outcome)));
         child.emit('close', 0);
       }
     }) };
@@ -151,6 +152,43 @@ for (const harness of ['copilot', 'pi']) {
     assert.equal(loaded.registered.length, 0);
     assert.match(loaded.error?.message ?? '', /catalog.*expected=11.*observed=999.*executable=\/fixture\/kast-tool-rpc/);
   });
+  const invokeRead = async (outcome) => {
+    const loaded = await load(harness, catalog, outcome);
+    assert.ifError(loaded.error);
+    const query = loaded.registered.find(t => t.name === 'query_symbols');
+    return harness === 'pi'
+      ? await query.execute('call', {}, undefined, undefined, {cwd:'/fixture'})
+      : await query.handler({}, {});
+  };
+  test(`${harness} preserves every canonical boundary rejection as a host failure`, async () => {
+    for (const failure of failures) {
+      const outcome = {type:'rejected', failure};
+      const result = await invokeRead(outcome);
+      assert.deepEqual(JSON.parse(harness === 'pi' ? result.content[0].text : result.textResultForLlm), outcome);
+      if (harness === 'pi') { assert.equal(result.isError, true); assert.deepEqual(JSON.parse(JSON.stringify(result.details)), outcome); }
+      else assert.equal(result.resultType, 'failure');
+    }
+  });
+  test(`${harness} preserves document rejection and qualified continuation`, async () => {
+    for (const type of ['qualified', 'rejected_document']) {
+      const outcome = {type, document:{status:type === 'qualified' ? 'qualified' : 'rejected', qualification:{type:'PARTIAL'}, continuation:'opaque:test'}};
+      const result = await invokeRead(outcome);
+      assert.deepEqual(JSON.parse(harness === 'pi' ? result.content[0].text : result.textResultForLlm), outcome);
+      if (harness === 'pi') assert.equal(result.isError, type === 'rejected_document');
+      else assert.equal(result.resultType, type === 'qualified' ? 'success' : 'failure');
+    }
+  });
+  test(`${harness} rejects malformed closed reply envelopes before presentation`, async () => {
+    for (const outcome of [null, [], {}, {type:'unknown'}, {type:'complete'}, {type:'qualified',document:null},
+      {type:'complete',document:5}, {type:'rejected_document',document:[]}, {type:'rejected',failure:'MADE_UP'},
+      {type:'rejected',failure:'OUT_OF_SCOPE',document:{}}, {type:'complete',document:{},extra:true}]) {
+      await assert.rejects(() => invokeRead(outcome), /INVALID_RESULT/);
+    }
+  });
+  test(`${harness} rejects invalid UTF-8 instead of changing identity bytes`, async () => {
+    const bytes = Buffer.concat([Buffer.from('{"type":"complete","document":{"ref":"'), Buffer.from([0x80]), Buffer.from('"}}')]);
+    await assert.rejects(() => invokeRead(bytes), /INVALID_UTF8/);
+  });
   test(`${harness} validates the last entry before registering the first`, async () => {
     const reply = structuredClone(catalog); reply.catalog.tools.at(-1).inputSchema = null;
     const loaded = await load(harness, reply);
@@ -183,4 +221,43 @@ test('installed Pi loader registers the packaged catalog and invokes the product
     if (prior === undefined) delete process.env.KAST_TOOL_RPC_COMMAND; else process.env.KAST_TOOL_RPC_COMMAND = prior;
     rmSync(temporary, {recursive:true, force:true});
   }
+});
+
+test('Pi write denial retains a closed failed outcome without dispatch', async () => {
+  const loaded = await load('pi');
+  assert.ifError(loaded.error);
+  const write = loaded.registered.find(t => t.name === 'replace_body');
+  for (const ctx of [{cwd:'/fixture',hasUI:false}, {cwd:'/fixture',hasUI:true,ui:{confirm:async()=>false}}]) {
+    const result = await write.execute('call', {exactTarget:'exact:test',body:'{ return Unit }'}, undefined, undefined, ctx);
+    assert.equal(result.isError, true);
+    assert.deepEqual(JSON.parse(JSON.stringify(result.details)), {type:'APPROVAL_DENIED'});
+    assert.deepEqual(JSON.parse(result.content[0].text), {type:'APPROVAL_DENIED'});
+    assert.equal(loaded.calls.length, 1);
+  }
+});
+
+test('Pi write approval shows bounded workspace target and intent with cancellation', async () => {
+  const loaded = await load('pi');
+  assert.ifError(loaded.error);
+  const controller = new AbortController();
+  const prompts = [];
+  const ctx = {cwd:'/fixture/worktree',hasUI:true,ui:{confirm:async (...args)=>{prompts.push(args);return false;}}};
+  for (const [name, params] of [['replace_body',{exactTarget:'exact:test',body:'{ return Unit }'}],
+    ['add_declaration',{exactTarget:'exact:test',declaration:'fun added() = Unit'}]]) {
+    const tool = loaded.registered.find(t => t.name === name);
+    await tool.execute('call',params,controller.signal,undefined,ctx);
+    const [title,message,options] = prompts.at(-1);
+    assert.equal(title,'Apply Kast change?');
+    assert.ok(message.includes('/fixture/worktree'));
+    assert.ok(message.includes('exact:test'));
+    assert.ok(message.includes(name));
+    assert.ok(message.includes(params.body ?? params.declaration));
+    assert.equal(options.signal,controller.signal);
+    assert.ok(message.length <= 2048);
+  }
+  await loaded.registered.find(t=>t.name==='replace_body').execute('call',
+    {exactTarget:'exact:test',body:'x'.repeat(10000)},controller.signal,undefined,ctx);
+  assert.ok(prompts.at(-1)[1].length <= 2048);
+  assert.ok(prompts.at(-1)[1].includes('truncated'));
+  assert.equal(loaded.calls.length,1);
 });

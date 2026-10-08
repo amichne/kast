@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli.mcp
 
 import io.modelcontextprotocol.kotlin.sdk.types.ToolAnnotations
+import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -21,7 +22,7 @@ internal inline fun <reified T> success(id: JsonElement, result: T): McpResponse
 
 @Serializable
 internal data class McpRequest(
-    val jsonrpc: String = "2.0",
+    @Required val jsonrpc: String = "2.0",
     val id: JsonElement? = null,
     val method: String,
     val params: JsonElement? = null,
@@ -126,7 +127,7 @@ internal data class McpTool(
 internal data class McpCallResult(
     val content: List<McpTextContent>,
     val isError: Boolean,
-    /** Full machine envelope; the second text item retains the canonical response for older clients. */
+    /** Full machine envelope; semantic calls also retain canonical JSON in their text content. */
     val structuredContent: JsonObject? = null,
     val resultType: String? = null,
     @SerialName("_meta") val meta: McpServerMeta = McpServerMeta(),
@@ -137,8 +138,6 @@ internal data class McpCallResult(
 @Serializable internal data class McpError(val code: Int, val message: String, val data: McpVersionErrorData? = null)
 
 @Serializable internal data class McpVersionErrorData(val supported: List<String>, val requested: String)
-
-@Serializable internal data class McpRejected(val status: String = "rejected", val error: McpCallError)
 
 @Serializable
 internal data class McpCallError(
@@ -191,6 +190,7 @@ internal enum class McpResultVariant {
 internal enum class McpResultSchemaFailure {
     UNPARSEABLE_DOCUMENT,
     SCHEMA_VIOLATION,
+    OUTCOME_MISMATCH,
 }
 
 @Serializable

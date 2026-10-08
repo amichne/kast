@@ -1,8 +1,18 @@
 # Kast agent tools
 
 This package bundles the Kast query skill with the MCP configuration for the
-managed Kast installation. Install Kast and open your repository in IntelliJ IDEA
-before using its semantic tools.
+managed Kast installation. Install Kast and restart IntelliJ IDEA to load the
+matched Host plugin before using its semantic tools. Queries prepare the exact
+repository automatically; start the agent from that repository or worktree.
+
+Preparation can save existing editor buffers and refresh the imported project.
+MCP annotations include these effects, even for semantic read tools.
+
+Tool failures set `isError: true`. MCP transport rejections use
+`type: "MCP_REJECTED"` with a finite `error.code`, or
+`type: "BOUNDARY_REJECTED"` with the original CLI failure in `document`.
+Both have `status: "rejected"` and satisfy the tool's advertised output schema.
+Canonical semantic documents retain their own outcome and qualification fields.
 
 For a released installation, run:
 

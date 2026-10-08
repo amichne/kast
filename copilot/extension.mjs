@@ -1,5 +1,19 @@
 // Generated contract version; owned by packaging/generate-public-query.py.
 const PUBLIC_TOOL_CONTRACT_VERSION = 11;
+// Generated from ToolRpcFailure; owned by packaging/generate-public-query.py.
+const TOOL_RPC_FAILURES = [
+  "INSTALLATION_STOPPED",
+  "OBSERVATION_UNAVAILABLE",
+  "CATALOG_UNAVAILABLE",
+  "INVALID_COMMAND",
+  "REQUEST_TOO_LARGE",
+  "UNKNOWN_TOOL",
+  "INVALID_ARGUMENTS",
+  "OUT_OF_SCOPE",
+  "INVOCATION_FAILED",
+  "INVALID_RESULT",
+];
+// End generated ToolRpcFailure.
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
@@ -60,11 +74,25 @@ function run(args, input = "", policy = null, signal = null) {
       cleanup();
       if (termination) return reject(failure(termination));
       if (code !== 0) return reject(failure(exitSignal ? "SIGNALLED" : "NONZERO_EXIT", code));
-      try { resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))); }
-      catch { reject(failure("INVALID_JSON")); }
+      let decoded;
+      try { decoded = new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks)); }
+      catch { return reject(failure("INVALID_UTF8")); }
+      let result;
+      try { result = JSON.parse(decoded); }
+      catch { return reject(failure("INVALID_JSON")); }
+      if (args[0] === "call" && !isToolResult(result)) return reject(failure("INVALID_RESULT"));
+      resolve(result);
     });
     child.stdin.end(input);
   });
+}
+
+function isToolResult(value) {
+  if (value === null || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length !== 2) return false;
+  if (value.type === "rejected") return TOOL_RPC_FAILURES.includes(value.failure);
+  // Canonical document is opaque here; the Kotlin RPC validates its owning schema.
+  return ["complete", "qualified", "rejected_document"].includes(value.type) &&
+    value.document !== null && typeof value.document === "object" && !Array.isArray(value.document);
 }
 
 const reply = await run(["catalog"]);

@@ -14,8 +14,9 @@ absolute executable path when trying a checkout build.
 
 `catalog` writes one UTF-8 JSON object to stdout. Its `type` is `catalog`, and
 `catalog.tools` contains each tool's name, description, generated input schema,
-and `READ` or `WRITE` effect. The schema version is `2`; the catalog also gives
-the call deadline and response ceiling used by bundled adapters.
+and `READ` or `WRITE` effect. Read `catalog.schemaVersion` for the generated
+public-tool contract version; the catalog also gives the call deadline and
+response ceiling used by bundled adapters.
 
 ```shell
 "$HOME/.local/share/kast/installation/bin/kast-tool-rpc-complete" catalog
@@ -34,8 +35,9 @@ printf '%s\n' '{"request":{"type":"RUN","source":{"type":"SEARCH_DECLARATIONS","
 ```
 
 Use the exact `ref` and qualification returned by one tool in follow-up calls.
-The `add_declaration` tool is marked `WRITE`; it plans, applies, verifies, and attempts
-recovery within one call. Clients must request write approval for it.
+The `add_declaration` and `replace_body` tools are marked `WRITE`; each plans,
+applies, verifies, and attempts recovery within one call. Clients must request
+write approval for both.
 
 ## Copilot CLI
 
@@ -73,6 +75,7 @@ the prior connection and Kast configuration. Use `--no-recover` to reject a
 conflict without replacement.
 
 It registers the same live catalog in Pi.
-For `add_declaration`, it asks for interactive approval and refuses the call without an
+For every catalog tool marked `WRITE`, including `add_declaration` and
+`replace_body`, it asks for interactive approval and refuses the call without an
 approving UI. Both clients pass their current workspace to the same RPC
 command, so one Kast installation serves different repositories and worktrees.

@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli.mcp
 import com.networknt.schema.InputFormat
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
+import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.generatedRequestSchema
 import io.github.amichne.kast.cli.installedPublicToolSemanticResultSchema
 import io.github.amichne.kast.protocol.contract.ChangeRunDocument
@@ -17,13 +18,13 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-/** MCP advertises and validates the owning operation's semantic document. */
+/** Semantic validation remains separate from MCP's finite transport rejection contract. */
 internal object McpStructuredResults {
     private val registry = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
 
     val healthSchema: JsonObject = healthResultSchema()
 
-    fun schemaFor(name: String): JsonObject =
+    fun semanticSchemaFor(name: String): JsonObject =
         rootedResultSchema(
             when {
                 PublicToolIdentity.entries.any {
@@ -37,6 +38,35 @@ internal object McpStructuredResults {
             }
         )
 
+    fun schemaFor(name: String): JsonObject {
+        val semantic =
+            resultSchemaJson.decodeFromJsonElement(McpObjectUnionSchema.serializer(), semanticSchemaFor(name))
+        return resultSchemaJson
+            .encodeToJsonElement(
+                McpObjectUnionSchema(
+                    type = "object",
+                    anyOf = semantic.anyOf + generatedRequestSchema(McpTransportRejection.serializer()),
+                    definitions = semantic.definitions,
+                )
+            )
+            .jsonObject
+    }
+
+    fun validatesSemantic(name: String, content: JsonObject): Boolean =
+        registry.getSchema(semanticSchemaFor(name).toString()).validate(content.toString(), InputFormat.JSON).isEmpty()
+
+    /** Schema admission precedes this check; an emitted exit must preserve its semantic success or failure. */
+    fun matchesExit(exit: CliExit, document: JsonObject): Boolean =
+        when (exit) {
+            is CliExit.Complete -> variant(document) == McpResultVariant.COMPLETE
+            is CliExit.Qualified -> variant(document) == McpResultVariant.QUALIFIED
+            is CliExit.OperationRejected ->
+                variant(document) in setOf(McpResultVariant.REJECTED, McpResultVariant.HOST_REJECTED) ||
+                    document["outcome"] == JsonPrimitive("rejected")
+            is CliExit.BoundaryRejected,
+            is CliExit.Delegated -> false
+        }
+
     fun validates(name: String, content: JsonObject): Boolean =
         registry.getSchema(schemaFor(name).toString()).validate(content.toString(), InputFormat.JSON).isEmpty()
 
@@ -44,8 +74,10 @@ internal object McpStructuredResults {
         if (content == null)
             return McpResultSchemaEvidence(McpResultSchemaFailure.UNPARSEABLE_DOCUMENT, McpResultSchemaField.UNKNOWN)
         val violation =
-            registry.getSchema(schemaFor(name).toString()).validate(content.toString(), InputFormat.JSON).firstOrNull()
-                ?: return null
+            registry
+                .getSchema(semanticSchemaFor(name).toString())
+                .validate(content.toString(), InputFormat.JSON)
+                .firstOrNull() ?: return null
         val field =
             when (violation.property ?: violation.instanceLocation.getName(-1)) {
                 "status" -> McpResultSchemaField.STATUS
