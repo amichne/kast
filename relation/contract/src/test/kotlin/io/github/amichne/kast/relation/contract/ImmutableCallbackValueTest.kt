@@ -110,4 +110,53 @@ class ImmutableCallbackValueTest {
                     .failure(),
             )
         }
+
+    @Test
+    fun `normal try branch witness is retained and charged to immutable callback storage`() =
+        with(fixture) {
+            val source = ValueSite.fromCompiler(caller, body.range, ValueRole.ExpressionResult).value()
+            val destination = ValueSite.fromCompiler(caller, range(10, 80), ValueRole.ExpressionResult).value()
+            val proof =
+                ValueTransferEvidence.NormalBranchResult.fromCompiler(
+                        destination.range,
+                        range(15, 60),
+                        ValueTryBranchAlternative.TryBody,
+                    )
+                    .value()
+            fun callback(evidence: ValueTransferEvidence): ImmutableCallbackValue =
+                ImmutableCallbackValue.fromCompiler(
+                        ImmutableCallbackValueOrigin.Anonymous(body),
+                        source,
+                        destination,
+                        listOf(
+                            ValueTransfer.fromCompiler(
+                                    source,
+                                    destination,
+                                    ValueTransferKind.BRANCH_ALTERNATIVE,
+                                    evidence,
+                                )
+                                .value()
+                        ),
+                    )
+                    .value()
+            val direct = callback(ValueTransferEvidence.Direct)
+            val qualified = callback(proof)
+            assertEquals(proof, qualified.transfers.single().evidence)
+            assertEquals(direct.retainedBytes + proof.retainedBytes, qualified.retainedBytes)
+            assertEquals(
+                ValueTransferFailure.EVIDENCE_MISMATCH,
+                ValueTransfer.fromCompiler(
+                        source,
+                        destination,
+                        ValueTransferKind.BRANCH_ALTERNATIVE,
+                        ValueTransferEvidence.NormalBranchResult.fromCompiler(
+                                destination.range,
+                                range(45, 65),
+                                ValueTryBranchAlternative.TryBody,
+                            )
+                            .value(),
+                    )
+                    .failure(),
+            )
+        }
 }

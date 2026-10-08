@@ -9,6 +9,7 @@ import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueTransfer
+import io.github.amichne.kast.relation.contract.ValueTransferEvidence
 import io.github.amichne.kast.relation.contract.ValueTransferKind
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import org.jetbrains.kotlin.idea.references.KtInvokeFunctionReference
@@ -25,6 +26,7 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParenthesizedExpression
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
+import org.jetbrains.kotlin.psi.KtTryExpression
 import org.jetbrains.kotlin.psi.KtWhenExpression
 
 /** Native backward supply resolution. Every alternative retains the original callable and ordered transport. */
@@ -32,7 +34,11 @@ internal class IntellijImmutableCallbackValueResolver(
     private val context: IntellijCallbackFlowContext,
     private val summaries: CallbackParameterSummaries,
 ) {
-    private data class Arrival(val target: ValueSite, val kind: ValueTransferKind)
+    private data class Arrival(
+        val target: ValueSite,
+        val kind: ValueTransferKind,
+        val evidence: ValueTransferEvidence = ValueTransferEvidence.Direct,
+    )
 
     private data class Pending(
         val expression: KtExpression,
@@ -83,6 +89,7 @@ internal class IntellijImmutableCallbackValueResolver(
                 is KtNameReferenceExpression -> local(value, item)
                 is KtIfExpression -> conditional(value, item)
                 is KtWhenExpression -> conditional(value, item)
+                is KtTryExpression -> tryAlternatives(value, item)
                 is KtCallExpression -> returned(value, item)
                 is KtQualifiedExpression -> returned(value.selectorExpression as? KtCallExpression, item)
                 is KtLambdaExpression -> anonymous(value.functionLiteral, item)
@@ -160,6 +167,46 @@ internal class IntellijImmutableCallbackValueResolver(
                     it.expression ?: return rejected(CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY)
                 }
             return branches(value, alternatives, owner, item.arrivals, item.visited, pending)
+        }
+
+        private fun tryAlternatives(
+            value: KtTryExpression,
+            item: Pending,
+        ): Refinement<Unit, CallbackInvocationFlowCause> {
+            val candidates =
+                when (val read = immutableCallbackTryResults(value, context::permit)) {
+                    is Refinement.Refined -> read.value
+                    is Refinement.Rejected -> return read
+                }
+            val destination =
+                context.site(value, owner, ValueRole.ExpressionResult)
+                    ?: return rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+            for (candidate in candidates) {
+                when (val permit = context.permit()) {
+                    is Refinement.Refined -> Unit
+                    is Refinement.Rejected -> return permit
+                }
+                val evidence =
+                    when (
+                        val admitted =
+                            NativeTryBranchResult.admit(
+                                candidate.expression,
+                                candidate.position,
+                                summaries.observation,
+                            )
+                    ) {
+                        is Refinement.Refined -> admitted.value
+                        is Refinement.Rejected -> return rejected(admitted.failure.callbackTryFailure())
+                    }
+                pending.add(
+                    Pending(
+                        candidate.expression,
+                        listOf(Arrival(destination, ValueTransferKind.BRANCH_ALTERNATIVE, evidence)) + item.arrivals,
+                        item.visited,
+                    )
+                )
+            }
+            return Refinement.Refined(Unit)
         }
 
         private fun returned(call: KtCallExpression?, item: Pending): Refinement<Unit, CallbackInvocationFlowCause> {
@@ -249,7 +296,9 @@ internal class IntellijImmutableCallbackValueResolver(
         arrivals: List<Arrival>,
     ): Refinement<ImmutableCallbackValue, CallbackInvocationFlowCause> {
         var current = value
-        for (arrival in arrivals) when (val result = transport(current, arrival.target, arrival.kind)) {
+        for (arrival in arrivals) when (
+            val result = transport(current, arrival.target, arrival.kind, arrival.evidence)
+        ) {
             is Refinement.Refined -> current = result.value
             is Refinement.Rejected -> return result
         }
@@ -269,7 +318,7 @@ internal class IntellijImmutableCallbackValueResolver(
         var current = source
         val transfers = mutableListOf<ValueTransfer>()
         for (arrival in arrivals) {
-            when (val transfer = ValueTransfer.fromCompiler(current, arrival.target, arrival.kind)) {
+            when (val transfer = ValueTransfer.fromCompiler(current, arrival.target, arrival.kind, arrival.evidence)) {
                 is Refinement.Refined -> transfers += transfer.value
                 is Refinement.Rejected -> return rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
             }

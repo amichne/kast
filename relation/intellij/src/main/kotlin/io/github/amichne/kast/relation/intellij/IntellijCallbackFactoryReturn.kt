@@ -2,7 +2,6 @@
 
 package io.github.amichne.kast.relation.intellij
 
-import com.intellij.psi.PsiElement
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.CallbackArgumentBinding
 import io.github.amichne.kast.relation.contract.CallbackFactoryCapture
@@ -22,7 +21,6 @@ import org.jetbrains.kotlin.analysis.api.types.KaFunctionType
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
-import org.jetbrains.kotlin.psi.KtReturnExpression
 
 private data class NativeFactoryResolution(
     val lexicalOwner: CompilerGroundedSymbolEvidence,
@@ -185,7 +183,7 @@ internal class IntellijCallbackFactoryReturn(
             captures: List<CallbackFactoryCapture>,
         ): Refinement<List<ImmutableCallbackValue>, CallbackInvocationFlowCause> {
             val returns =
-                when (val found = returns(mapped.function)) {
+                when (val found = callbackFactoryReturns(mapped.function, context::permit)) {
                     is Refinement.Refined -> found.value
                     is Refinement.Rejected -> return found
                 }
@@ -336,35 +334,6 @@ internal class IntellijCallbackFactoryReturn(
             }
         }
         return Refinement.Refined(NativeFactoryCall(function, arguments))
-    }
-
-    private fun returns(function: KtNamedFunction): Refinement<List<KtExpression>, CallbackInvocationFlowCause> {
-        val body = function.bodyExpression ?: return rejected(CallbackInvocationFlowCause.EXTERNAL_CALLABLE)
-        if (!function.hasBlockBody()) return Refinement.Refined(listOf(body))
-        val pending = ArrayDeque<PsiElement>()
-        pending.add(body)
-        val results = mutableListOf<KtExpression>()
-        while (pending.isNotEmpty()) {
-            when (val permit = context.permit()) {
-                is Refinement.Rejected -> return permit
-                is Refinement.Refined -> Unit
-            }
-            val element = pending.removeFirst()
-            if (element is KtReturnExpression) {
-                val target =
-                    analyze(element) { element.resolveSymbol()?.psi }
-                        ?: return rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
-                if (target.originalElement == function.originalElement) {
-                    val expression =
-                        element.returnedExpression
-                            ?: return rejected(CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY)
-                    results += expression
-                }
-            }
-            element.children.forEach(pending::addLast)
-        }
-        return if (results.isEmpty()) rejected(CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY)
-        else Refinement.Refined(results)
     }
 
     private fun rejected(cause: CallbackInvocationFlowCause) = Refinement.Rejected(cause)

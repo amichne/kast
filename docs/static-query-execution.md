@@ -214,6 +214,25 @@ behavior for these cases.
 
 ## Immutable-flow and cross-generation acceptance inputs
 
+Immutable callback transport now reuses the normal try/catch result proof owner.
+Forward use enumeration and backward supplier resolution retain each branch's
+exact try range, branch range, catch ordinal, and `NORMAL_COMPLETION` condition.
+Nested branches preserve their ordered witnesses through local aliases and
+factory returns. Each candidate consumes the existing shared work grant; retained
+branch witnesses consume the callback evidence budget. This proof describes
+possible static flow, not exception feasibility or runtime activation.
+
+`finally` remains unsupported. Explicit factory returns crossing a finally boundary
+are rejected with `FINALLY_UNSUPPORTED`, including a return overridden by the
+finally body. Abrupt callback factory alternatives retain `ABRUPT_COMPLETION`;
+Unit or unavailable compiler types and exhausted grants remain rejected.
+The compiler-compiled corpus and physical PSI checks establish Kotlin validity,
+structural admission, and protected rejection. The `direct-try`, `local-try`,
+`nested-try`, and `factory-try` native qualification cases additionally require the
+independently authored alpha/beta inventory and exact source-anchored branch
+witnesses. Fixture, runtime control, and receipt-reader checks do not establish
+native K2 or public-tool qualification.
+
 `immutable-callback-fixture` is a separate four-module input corpus for the next
 qualification boundary. Its independent module has no callback-module dependency.
 The authored oracle distinguishes named references, bound and unbound receivers,

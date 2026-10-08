@@ -5,6 +5,8 @@ import io.github.amichne.kast.workspace.contract.SemanticReadIdentity
 import java.util.Collections
 
 enum class CallbackInvocationFlowCause {
+    FINALLY_UNSUPPORTED,
+    ABRUPT_COMPLETION,
     STORED_CALLBACK,
     RETURNED_CALLBACK,
     UNSUPPORTED_CALLBACK_SUPPLY,

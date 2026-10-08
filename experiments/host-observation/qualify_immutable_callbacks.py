@@ -51,7 +51,9 @@ def negative_control(case, document):
     assert detail['model'] == 'COMPILER_RESOLVED_STATIC_V1', detail
     assert detail['cause']['type'] == 'CALLBACK_GRAPH_UNPROVEN', detail
     cause = detail['cause']['graphFailure']['cause']
-    expected = {oracle.Boundary.MUTABLE_STORAGE: 'STORED_CALLBACK',
+    expected = {oracle.Boundary.TRY_FINALLY: 'FINALLY_UNSUPPORTED',
+                oracle.Boundary.TRY_ABRUPT: 'ABRUPT_COMPLETION',
+                oracle.Boundary.MUTABLE_STORAGE: 'STORED_CALLBACK',
                 oracle.Boundary.EXTERNAL_TRANSFER: 'EXTERNAL_CALLABLE',
                 oracle.Boundary.FACTORY_RECEIVER: 'UNSUPPORTED_CALLBACK_SUPPLY',
                 oracle.Boundary.CAPTURE_FORWARDING: 'PARAMETER_ESCAPES',

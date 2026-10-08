@@ -114,6 +114,8 @@ data class QueryWalkCallbackObservationDocument(
 
 @Serializable
 enum class QueryCallbackFlowCauseDocument {
+    FINALLY_UNSUPPORTED,
+    ABRUPT_COMPLETION,
     STORED_CALLBACK,
     RETURNED_CALLBACK,
     UNSUPPORTED_CALLBACK_SUPPLY,
