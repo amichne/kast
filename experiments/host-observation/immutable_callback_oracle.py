@@ -19,6 +19,8 @@ class Claim(str, Enum):
 
 
 class Boundary(str, Enum):
+    TRY_FINALLY = 'TRY_FINALLY'
+    TRY_ABRUPT = 'TRY_ABRUPT'
     MUTABLE_STORAGE = 'MUTABLE_STORAGE'
     EXTERNAL_TRANSFER = 'EXTERNAL_TRANSFER'
     FACTORY_RECEIVER = 'FACTORY_RECEIVER'
@@ -98,7 +100,14 @@ CASES = (
     case('local-reference', 'localReferenceEntry', 'val first = ::alphaTarget\n    val second = first\n    return wrapper(second)', Complete(('alphaTarget',))),
     case('direct-branch', 'directBranchEntry', 'wrapper(if (first) ::alphaTarget else ::betaTarget)', Complete(('alphaTarget', 'betaTarget'))),
     case('local-branch', 'localBranchEntry', 'val selected = if (first) ::alphaTarget else ::betaTarget\n    return wrapper(selected)', Complete(('alphaTarget', 'betaTarget'))),
-    case('anonymous-function', 'anonymousEntry', 'wrapper(fun(): String { return alphaTarget() })', Complete(('alphaTarget',))),
+    case('direct-try', 'directTryEntry', 'wrapper(try { ::alphaTarget } catch(e: Exception) { ::betaTarget })', Complete(('alphaTarget', 'betaTarget'))),
+    case('local-try', 'localTryEntry', 'val callback = try { ::alphaTarget } catch(e: Exception) { ::betaTarget }\n    val alias = callback\n    return wrapper(alias)', Complete(('alphaTarget', 'betaTarget'))),
+    case('nested-try', 'nestedTryEntry', 'try { try { ::alphaTarget } catch(e: IllegalStateException) { ::betaTarget } }\n    catch(e: Exception) { ::betaTarget }', Complete(('alphaTarget', 'betaTarget'))),
+    case('factory-try', 'factoryTryEntry', 'wrapper(tryChoiceFactory())', Complete(('alphaTarget', 'betaTarget'))),
+    case('try-finally-control', 'finallyTryEntry', 'wrapper(try { ::alphaTarget } finally { betaTarget() })', Rejected(Boundary.TRY_FINALLY)),
+    case('factory-finally-control', 'finallyFactoryEntry', 'wrapper(finallyOverrideFactory())', Rejected(Boundary.TRY_FINALLY)),
+    case('try-abrupt-control', 'abruptTryEntry', 'wrapper(abruptTryFactory())', Rejected(Boundary.TRY_ABRUPT)),
+    case('anonymous-function' , 'anonymousEntry', 'wrapper(fun(): String { return alphaTarget() })', Complete(('alphaTarget',))),
     case('default-omission', 'defaultEntry', 'fun defaultEntry(): String = defaultWrapper()', Complete(('alphaTarget',))),
     case('default-override', 'explicitDefaultEntry', 'defaultWrapper(::betaTarget)', Complete(('betaTarget',))),
     case('generic', 'genericEntry', 'invokeGeneric(receiver, Receiver::member)', Complete(('Receiver.member',))),

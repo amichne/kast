@@ -15,6 +15,7 @@ import io.github.amichne.kast.relation.contract.ImmutableCallbackValueOrigin
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueTransfer
+import io.github.amichne.kast.relation.contract.ValueTransferEvidence
 import io.github.amichne.kast.relation.contract.ValueTransferKind
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import org.jetbrains.kotlin.psi.KtExpression
@@ -157,9 +158,10 @@ internal fun transport(
     value: ImmutableCallbackValue,
     destination: ValueSite,
     kind: ValueTransferKind,
+    evidence: ValueTransferEvidence = ValueTransferEvidence.Direct,
 ): Refinement<ImmutableCallbackValue, CallbackInvocationFlowCause> {
     val edge =
-        when (val result = ValueTransfer.fromCompiler(value.destination, destination, kind)) {
+        when (val result = ValueTransfer.fromCompiler(value.destination, destination, kind, evidence)) {
             is Refinement.Refined -> result.value
             is Refinement.Rejected ->
                 return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)

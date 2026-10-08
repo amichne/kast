@@ -12,6 +12,7 @@ import io.github.amichne.kast.relation.contract.ImmutableCallbackValueOrigin
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.relation.contract.ValueTransferEvidence
 import io.github.amichne.kast.relation.contract.ValueTransferKind
 import org.jetbrains.kotlin.psi.KtBlockExpression
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -57,8 +58,14 @@ internal class ImmutableCallbackEnumeration(
         }
     }
 
-    fun schedule(item: ImmutableCallbackPending, next: KtExpression, target: ValueSite, kind: ValueTransferKind) {
-        when (val transported = transport(item.value, target, kind)) {
+    fun schedule(
+        item: ImmutableCallbackPending,
+        next: KtExpression,
+        target: ValueSite,
+        kind: ValueTransferKind,
+        evidence: ValueTransferEvidence = ValueTransferEvidence.Direct,
+    ) {
+        when (val transported = transport(item.value, target, kind, evidence)) {
             is Refinement.Refined ->
                 when (val retained = summaries.retention.admit(transported.value.retainedBytes)) {
                     is Refinement.Refined ->
@@ -193,6 +200,25 @@ internal fun ImmutableCallbackEnumeration.block(
     value: KtExpression,
     parent: KtBlockExpression,
 ): Refinement<Unit, CallbackInvocationFlowFailure> {
+    when (val position = tryBranchResultPosition(value)) {
+        is TryBranchResultPosition.Result -> {
+            val proof =
+                when (val admitted = NativeTryBranchResult.admit(value, position, summaries.observation)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return obligation(admitted.failure.callbackTryFailure())
+                }
+            val site =
+                context.site(position.enclosing, item.value.destination.enclosing, ValueRole.ExpressionResult)
+                    ?: return obligation(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+            schedule(item, position.enclosing, site, ValueTransferKind.BRANCH_ALTERNATIVE, proof)
+            return Refinement.Refined(Unit)
+        }
+        TryBranchResultPosition.Discarded -> {
+            retain(ImmutableCallbackInvocationUse.Unused(item.value))
+            return Refinement.Refined(Unit)
+        }
+        TryBranchResultPosition.Unavailable -> Unit
+    }
     if (
         parent.statements.lastOrNull() === value &&
             (parent.parent is KtContainerNodeForControlStructureBody || parent.parent is KtWhenEntry)

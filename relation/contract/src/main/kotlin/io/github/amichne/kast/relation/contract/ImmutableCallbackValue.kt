@@ -54,7 +54,10 @@ private constructor(
             .addBytes(destination.retainedBytes)
             .addBytes(
                 transfers.fold(4096L) { bytes, edge ->
-                    bytes.addBytes(edge.source.retainedBytes).addBytes(edge.target.retainedBytes)
+                    bytes
+                        .addBytes(edge.source.retainedBytes)
+                        .addBytes(edge.target.retainedBytes)
+                        .addBytes(edge.evidence.retainedBytes)
                 }
             )
             .addBytes(

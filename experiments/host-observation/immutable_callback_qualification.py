@@ -252,4 +252,8 @@ def qualify_case(case, pages, root=None):
         require(root is not None, QualificationFailure.MISSING_EVIDENCE)
         from immutable_factory_qualification import assert_transparent_return
         assert_transparent_return(root, pages)
+    if case.name in ('direct-try', 'local-try', 'nested-try', 'factory-try'):
+        require(root is not None, QualificationFailure.MISSING_EVIDENCE)
+        from immutable_try_qualification import assert_try_witnesses
+        assert_try_witnesses(root, case, pages)
     return result

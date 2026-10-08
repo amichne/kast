@@ -55,3 +55,18 @@ fun localReturnedEntry(): String {
 fun getterEntry(): String = wrapper(getterFactory())
 fun operatorEntry(): String = wrapper(operatorFactory(::alphaTarget, 1))
 fun subjectfulWhenEntry(): String = wrapper(subjectfulWhenFactory(1))
+
+fun directTryEntry(): String = wrapper(try { ::alphaTarget } catch(e: Exception) { ::betaTarget })
+fun localTryEntry(): String {
+    val callback = try { ::alphaTarget } catch(e: Exception) { ::betaTarget }
+    val alias = callback
+    return wrapper(alias)
+}
+fun nestedTryEntry(): String = wrapper(
+    try { try { ::alphaTarget } catch(e: IllegalStateException) { ::betaTarget } }
+    catch(e: Exception) { ::betaTarget }
+)
+fun factoryTryEntry(): String = wrapper(tryChoiceFactory())
+fun finallyTryEntry(): String = wrapper(try { ::alphaTarget } finally { betaTarget() })
+fun finallyFactoryEntry(): String = wrapper(finallyOverrideFactory())
+fun abruptTryEntry(): String = wrapper(abruptTryFactory())

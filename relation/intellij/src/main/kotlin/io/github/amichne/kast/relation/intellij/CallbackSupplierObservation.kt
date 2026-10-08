@@ -6,6 +6,8 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 /** Finite native supplier rejection vocabulary; no source payload or guessed success. */
 internal fun CallbackInvocationFlowCause.supplierTermination(): IntellijReadTermination =
     when (this) {
+        CallbackInvocationFlowCause.FINALLY_UNSUPPORTED -> IntellijReadTermination.CALLBACK_SUPPLIER_FINALLY_UNSUPPORTED
+        CallbackInvocationFlowCause.ABRUPT_COMPLETION -> IntellijReadTermination.CALLBACK_SUPPLIER_ABRUPT_COMPLETION
         CallbackInvocationFlowCause.STORED_CALLBACK -> IntellijReadTermination.CALLBACK_SUPPLIER_STORED_CALLBACK
         CallbackInvocationFlowCause.RETURNED_CALLBACK -> IntellijReadTermination.CALLBACK_SUPPLIER_RETURNED_CALLBACK
         CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY ->

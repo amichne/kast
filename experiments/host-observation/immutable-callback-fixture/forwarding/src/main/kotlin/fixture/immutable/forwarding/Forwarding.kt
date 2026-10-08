@@ -33,3 +33,9 @@ fun operatorFactory(block: () -> String, scalar: Int): () -> String = { scalar +
 fun subjectfulWhenFactory(value: Any): () -> String = {
     when (value) { 1 -> betaTarget(); else -> betaTarget() }
 }
+
+fun tryChoiceFactory(): () -> String = try { ::alphaTarget } catch(e: Exception) { ::betaTarget }
+fun finallyOverrideFactory(): () -> String {
+    try { return ::alphaTarget } finally { return ::betaTarget }
+}
+fun abruptTryFactory(): () -> String = try { ::alphaTarget } catch(e: Exception) { throw e }

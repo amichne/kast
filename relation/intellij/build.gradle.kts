@@ -89,6 +89,10 @@ dependencies {
 
 // The native call oracle must compile with the repository's compiler before IDE acceptance.
 tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileTestKotlin") {
+    // Compile the independently authored immutable-callback oracle through the production Kotlin compiler.
+    source(rootProject.file("experiments/host-observation/immutable-callback-fixture/invocation/src/main/kotlin"))
+    source(rootProject.file("experiments/host-observation/immutable-callback-fixture/forwarding/src/main/kotlin"))
+    source(rootProject.file("experiments/host-observation/immutable-callback-fixture/suppliers/src/main/kotlin"))
     source(rootProject.file("experiments/host-observation/semantic-fixture/value-flow/RepresentationImpactFixture.kt"))
     source(rootProject.file("experiments/host-observation/semantic-fixture/value-flow/LocalIdentityOtherFixture.kt"))
     source(rootProject.file("experiments/host-observation/semantic-fixture/read-reliability/ReadKotlinCalls.kt"))

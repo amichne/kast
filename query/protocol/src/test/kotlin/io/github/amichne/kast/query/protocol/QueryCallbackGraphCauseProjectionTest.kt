@@ -28,6 +28,18 @@ class QueryCallbackGraphCauseProjectionTest {
     }
 
     @Test
+    fun `try completion refusals retain exact callback cause`() {
+        for ((native, wire) in
+            listOf(
+                CallbackInvocationFlowCause.FINALLY_UNSUPPORTED to QueryCallbackFlowCauseDocument.FINALLY_UNSUPPORTED,
+                CallbackInvocationFlowCause.ABRUPT_COMPLETION to QueryCallbackFlowCauseDocument.ABRUPT_COMPLETION,
+            )) assertEquals(
+            QueryCallbackGraphCauseDocument.Unavailable(wire),
+            (StaticCallbackGraphFailure.Unavailable(native).protocolGraphCause() as Refinement.Refined).value,
+        )
+    }
+
+    @Test
     fun `admitted named policies cannot become unproven policy failure documents`() {
         assertEquals(
             Refinement.Rejected(

@@ -31,6 +31,8 @@ internal fun CallbackExclusionReason.protocolCallbackDocument(): QueryCallbackEx
 
 internal fun CallbackInvocationFlowCause.protocolCallbackDocument(): QueryCallbackFlowCauseDocument =
     when (this) {
+        CallbackInvocationFlowCause.FINALLY_UNSUPPORTED -> QueryCallbackFlowCauseDocument.FINALLY_UNSUPPORTED
+        CallbackInvocationFlowCause.ABRUPT_COMPLETION -> QueryCallbackFlowCauseDocument.ABRUPT_COMPLETION
         CallbackInvocationFlowCause.STORED_CALLBACK -> QueryCallbackFlowCauseDocument.STORED_CALLBACK
         CallbackInvocationFlowCause.RETURNED_CALLBACK -> QueryCallbackFlowCauseDocument.RETURNED_CALLBACK
         CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY ->
