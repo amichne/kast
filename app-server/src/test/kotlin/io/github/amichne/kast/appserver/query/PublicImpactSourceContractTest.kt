@@ -19,6 +19,7 @@ import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactWitnessSectionDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryContainmentDocument
 import io.github.amichne.kast.protocol.contract.QueryDirectoryScopeDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument
@@ -31,6 +32,7 @@ import io.github.amichne.kast.protocol.contract.QueryImpactProducerDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.protocol.contract.QueryStaticModelDocument
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
@@ -83,6 +85,50 @@ class PublicImpactSourceContractTest {
         )
         assertEquals(QueryOutputDocument.ValuePaths, run.output)
         assertEncodedQuestion(run)
+    }
+
+    @Test
+    fun `strict impact witness run lowers the original investigation and progressive run rejects`() {
+        val source =
+            PublicToolImpactSource(
+                producerSeeds(),
+                bounded(emptyList()),
+                bounded(emptyList()),
+                PublicToolImpactRetainedDomain,
+                QueryImpactFlowDocument.KOTLIN_FORWARD_V1,
+            )
+        for (section in ImpactWitnessSectionDocument.entries) {
+            val input =
+                PublicToolQuerySymbols(
+                    PublicToolRunAction(
+                        source,
+                        output = PublicToolImpactWitnessOutput(section),
+                        completion =
+                            QueryCompletionPolicyDocument.CompleteOnly(
+                                QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1
+                            ),
+                    )
+                )
+            val encoded = json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input)
+            val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, encoded).refined()
+            val run = (admitted.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
+            assertEquals(QueryOutputDocument.ImpactWitness(section), run.output)
+            assertEquals(producerSeeds(), (run.from as QueryFromDocument.Impact).investigation.seeds)
+            val progressive =
+                input.copy(
+                    request =
+                        (input.request as PublicToolRunAction).copy(
+                            completion = QueryCompletionPolicyDocument.Progressive
+                        )
+                )
+            assertEquals(
+                Refinement.Rejected(PublicToolInputFailure.SyntaxRejected),
+                PublicToolContract.admit(
+                    PublicToolIdentity.QUERY_SYMBOLS,
+                    json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), progressive),
+                ),
+            )
+        }
     }
 
     @Test

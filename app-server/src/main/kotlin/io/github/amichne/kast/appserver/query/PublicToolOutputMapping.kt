@@ -7,6 +7,7 @@ import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
 /** Closed public row presentations lower to their corresponding canonical evidence types. */
 internal fun PublicToolOutput.lower(): QueryOutputDocument =
     when (this) {
+        is PublicToolImpactWitnessOutput -> QueryOutputDocument.ImpactWitness(section)
         is PublicToolSymbolsOutput -> symbolsOutput()
         PublicToolOccurrencesOutput -> QueryOutputDocument.Occurrences
         PublicToolTraversalRecordsOutput -> QueryOutputDocument.TraversalRecords

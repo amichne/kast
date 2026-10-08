@@ -1,7 +1,9 @@
-@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+@file:OptIn(ExperimentalSerializationApi::class)
 
 package io.github.amichne.kast.protocol.contract
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.KeepGeneratedSerializer
 import kotlinx.serialization.SerialName
@@ -154,7 +156,7 @@ sealed interface QueryFromDocument {
     data class Result(
         val reference: QueryResultReference,
         @ProtocolCollectionConstraint(uniqueItems = true)
-        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
         @SerialName("row_ids")
         val rowIds: BoundedProtocolList<QueryResultRowReference>? = null,
     ) : QueryFromDocument, QueryCompositionInputDocument
@@ -198,10 +200,10 @@ sealed interface QueryRunRequest : OperationRequest {
         val output: QueryOutputDocument,
         val execution: QueryExecutionDocument,
         val retention: QueryRetentionModeDocument = QueryRetentionModeDocument.DISCARD,
-        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
         @SerialName("execution_budget")
         override val executionBudget: ExecutionBudgetDocument? = null,
-        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.ALWAYS)
+        @EncodeDefault(EncodeDefault.Mode.ALWAYS)
         val completion: QueryCompletionPolicyDocument = QueryCompletionPolicyDocument.Default,
     ) : QueryRunRequest
 
@@ -209,7 +211,7 @@ sealed interface QueryRunRequest : OperationRequest {
     @SerialName("resume")
     data class Resume(
         val continuation: QueryExecutionContinuation,
-        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
         @SerialName("execution_budget")
         override val executionBudget: ExecutionBudgetDocument? = null,
     ) : QueryRunRequest
@@ -222,10 +224,10 @@ sealed interface QueryRunRequest : OperationRequest {
         val result: QueryResultReference,
         val cursor: QueryResultCursor = QueryResultCursor.Start,
         val output: QueryOutputDocument,
-        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
         @SerialName("execution_budget")
         override val executionBudget: ExecutionBudgetDocument? = null,
-        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
         @SerialName("evidence_cursor")
         @ProtocolIntegerConstraint(minimum = 0, maximum = 1_000_000)
         val evidenceCursor: QueryEvidenceCursor? = null,
@@ -323,7 +325,10 @@ private fun QueryRunRequest.Run.hasCanonicalRequestSyntax(): Boolean {
         QueryOutputDocument.TraversalRecords -> true
         QueryOutputDocument.BindingRows -> true
         QueryOutputDocument.ValuePaths -> true
-        is QueryOutputDocument.ImpactWitness -> false
+        is QueryOutputDocument.ImpactWitness ->
+            from is QueryFromDocument.Impact &&
+                steps.values.isEmpty() &&
+                completion is QueryCompletionPolicyDocument.CompleteOnly
     }
 }
 

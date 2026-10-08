@@ -660,6 +660,43 @@
           "candidateRef": "candidate:v5:AAAAAAAAAAAAAAAAAAAAAA"
         }
       }
+    },
+    "completeImpactFindings": {
+      "summary": "Complete the original impact investigation, then present compact findings linked to retained original path evidence.",
+      "value": {
+        "request": {
+          "type": "RUN",
+          "source": {
+            "type": "IMPACT",
+            "seeds": [
+              {
+                "enclosing": "exact:v5:illustrative-enclosing-handle",
+                "callable": "exact:v5:illustrative-producer-handle",
+                "anchor": {
+                  "start": 120,
+                  "end": 136
+                }
+              }
+            ],
+            "declarations": [],
+            "domain": {
+              "type": "WORKSPACE"
+            },
+            "flow": "KOTLIN_FORWARD_V1",
+            "models": []
+          },
+          "steps": [],
+          "output": {
+            "type": "IMPACT_WITNESS",
+            "section": "FINDINGS"
+          },
+          "retention": "RETAIN",
+          "completion": {
+            "type": "COMPLETE_ONLY",
+            "model": "COMPILER_RESOLVED_STATIC_V1"
+          }
+        }
+      }
     }
   },
   "invalidExamples": {

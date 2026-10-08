@@ -50,11 +50,58 @@ class QueryCompletionCauseDocumentTest {
     }
 
     @Test
+    fun `investigation failures encode exact discriminators and require nonempty canonical obligations`() {
+        val failures =
+            listOf(
+                "MISSING_ORIGINAL_INVESTIGATION" to QueryInvestigationCompletionFailureDocument.MissingOriginal,
+                "ORIGINAL_PATH_SELECTION_INCOMPLETE" to QueryInvestigationCompletionFailureDocument.SelectionIncomplete,
+                "REQUIRED_OBLIGATIONS_UNRESOLVED" to
+                    QueryInvestigationCompletionFailureDocument.ObligationsUnresolved(
+                        (QueryImpactRequiredObligationsDocument.from(
+                                listOf(ImpactRequiredObligationDocument.NATIVE_FLOW)
+                            ) as Refinement.Refined)
+                            .value
+                    ),
+            )
+        for ((type, failure) in failures) {
+            val cause = QueryCompletionCauseDocument.InvestigationUnproven(failure)
+            val encoded = Json.encodeToJsonElement(QueryCompletionCauseDocument.serializer(), cause).jsonObject
+            assertEquals(setOf("type", "investigationFailure"), encoded.keys)
+            assertEquals("INVESTIGATION_UNPROVEN", encoded.getValue("type").jsonPrimitive.content)
+            val detail = encoded.getValue("investigationFailure").jsonObject
+            assertEquals(type, detail.getValue("type").jsonPrimitive.content)
+            assertEquals(
+                if (failure is QueryInvestigationCompletionFailureDocument.ObligationsUnresolved)
+                    setOf("type", "required")
+                else setOf("type"),
+                detail.keys,
+            )
+            assertEquals(cause, Json.decodeFromJsonElement(QueryCompletionCauseDocument.serializer(), encoded))
+        }
+        for (required in
+            listOf(
+                emptyList(),
+                listOf(ImpactRequiredObligationDocument.NATIVE_FLOW, ImpactRequiredObligationDocument.NATIVE_FLOW),
+                listOf(ImpactRequiredObligationDocument.BOUNDARY, ImpactRequiredObligationDocument.NATIVE_FLOW),
+            )) {
+            val encoded =
+                Json.encodeToJsonElement(
+                    InvalidInvestigationFailure.serializer(),
+                    InvalidInvestigationFailure("REQUIRED_OBLIGATIONS_UNRESOLVED", required),
+                )
+            assertThrows(SerializationException::class.java) {
+                Json.decodeFromJsonElement(QueryInvestigationCompletionFailureDocument.serializer(), encoded)
+            }
+        }
+    }
+
+    @Test
     fun `completion boundary excludes missing callback detail and unrelated scalar detail`() {
         for (invalid in
             listOf(
                 InvalidCompletionCause("UNKNOWN"),
                 InvalidCompletionCause("CALLBACK_GRAPH_UNPROVEN"),
+                InvalidCompletionCause("INVESTIGATION_UNPROVEN"),
                 InvalidCompletionCause("INCOMPLETE_EXECUTION", graph),
             )) {
             val encoded = Json.encodeToJsonElement(InvalidCompletionCause.serializer(), invalid)
@@ -67,3 +114,6 @@ class QueryCompletionCauseDocumentTest {
 
 @Serializable
 private data class InvalidCompletionCause(val type: String, val graphFailure: QueryCallbackGraphFailureDocument? = null)
+
+@Serializable
+private data class InvalidInvestigationFailure(val type: String, val required: List<ImpactRequiredObligationDocument>)

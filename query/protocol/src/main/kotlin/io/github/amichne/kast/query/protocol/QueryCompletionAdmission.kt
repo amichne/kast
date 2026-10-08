@@ -1,16 +1,23 @@
 package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ImpactRequiredObligationDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackGraphFailureDocument
+import io.github.amichne.kast.protocol.contract.QueryCompletionCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionUnprovenReason
 import io.github.amichne.kast.protocol.contract.QueryCompletionUnsupportedReason
+import io.github.amichne.kast.protocol.contract.QueryImpactRequiredObligationsDocument
+import io.github.amichne.kast.protocol.contract.QueryInvestigationCompletionFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.query.contract.QueryCoverage
 import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryResult
 import io.github.amichne.kast.query.contract.QueryRetainedResult
+import io.github.amichne.kast.query.contract.QueryRows
+import io.github.amichne.kast.query.contract.QueryValuePathAccountingStatus
+import io.github.amichne.kast.query.contract.accountingStatus
 
 internal sealed interface QueryCompletionFailure {
     val reason: QueryCompletionUnprovenReason
@@ -27,6 +34,10 @@ internal sealed interface QueryCompletionFailure {
         override val reason = QueryCompletionUnprovenReason.OMITTED_EVIDENCE
     }
 
+    data class Investigation(val failure: QueryInvestigationCompletionFailureDocument) : QueryCompletionFailure {
+        override val reason = QueryCompletionUnprovenReason.INVESTIGATION_UNPROVEN
+    }
+
     data class Callback(val cause: QueryCallbackGraphFailureDocument) : QueryCompletionFailure {
         override val reason = QueryCompletionUnprovenReason.CALLBACK_GRAPH_UNPROVEN
     }
@@ -35,8 +46,12 @@ internal sealed interface QueryCompletionFailure {
 /** Cheap finite failures precede construction of every context-sensitive callback graph. */
 internal fun completionProof(execution: QueryExecutionResult): Refinement<Unit, QueryCompletionFailure> =
     when (execution) {
-        is QueryExecutionResult.Rejection,
-        is QueryExecutionResult.Qualified -> Refinement.Rejected(QueryCompletionFailure.Incomplete)
+        is QueryExecutionResult.Rejection -> Refinement.Rejected(QueryCompletionFailure.Incomplete)
+        is QueryExecutionResult.Qualified ->
+            when (val proof = investigationProof(execution.result.rows)) {
+                is Refinement.Rejected -> proof
+                is Refinement.Refined -> Refinement.Rejected(QueryCompletionFailure.Incomplete)
+            }
         is QueryExecutionResult.Complete -> completionProof(execution.result)
     }
 
@@ -44,11 +59,17 @@ internal fun completionProof(result: QueryResult): Refinement<Unit, QueryComplet
     when {
         result.failures.isNotEmpty() -> Refinement.Rejected(QueryCompletionFailure.Item)
         result.omissions.isNotEmpty() -> Refinement.Rejected(QueryCompletionFailure.Omitted)
-        else -> callbackProof(result.relationObservations, result.walkObservations)
+        else ->
+            when (val proof = investigationProof(result.rows)) {
+                is Refinement.Rejected -> proof
+                is Refinement.Refined -> callbackProof(result.relationObservations, result.walkObservations)
+            }
     }
 
 internal fun completionProof(result: QueryRetainedResult): Refinement<Unit, QueryCompletionFailure> =
     when {
+        result is QueryRetainedResult.ValuePaths && investigationProof(result.rows) is Refinement.Rejected ->
+            investigationProof(result.rows)
         result.coverage is QueryCoverage.Qualified -> Refinement.Rejected(QueryCompletionFailure.Incomplete)
         result.failures.isNotEmpty() -> Refinement.Rejected(QueryCompletionFailure.Item)
         result.omissions.isNotEmpty() -> Refinement.Rejected(QueryCompletionFailure.Omitted)
@@ -75,14 +96,32 @@ internal fun completionAdmission(
     else Refinement.Refined(Unit)
 }
 
-internal fun QueryCompletionFailure.protocolCompletionCause():
-    io.github.amichne.kast.protocol.contract.QueryCompletionCauseDocument =
+internal fun QueryCompletionFailure.protocolCompletionCause(): QueryCompletionCauseDocument =
     when (this) {
-        QueryCompletionFailure.Incomplete ->
-            io.github.amichne.kast.protocol.contract.QueryCompletionCauseDocument.IncompleteExecution
-        QueryCompletionFailure.Item -> io.github.amichne.kast.protocol.contract.QueryCompletionCauseDocument.ItemFailure
-        QueryCompletionFailure.Omitted ->
-            io.github.amichne.kast.protocol.contract.QueryCompletionCauseDocument.OmittedEvidence
-        is QueryCompletionFailure.Callback ->
-            io.github.amichne.kast.protocol.contract.QueryCompletionCauseDocument.CallbackGraphUnproven(cause)
+        QueryCompletionFailure.Incomplete -> QueryCompletionCauseDocument.IncompleteExecution
+        QueryCompletionFailure.Item -> QueryCompletionCauseDocument.ItemFailure
+        QueryCompletionFailure.Omitted -> QueryCompletionCauseDocument.OmittedEvidence
+        is QueryCompletionFailure.Investigation -> QueryCompletionCauseDocument.InvestigationUnproven(failure)
+        is QueryCompletionFailure.Callback -> QueryCompletionCauseDocument.CallbackGraphUnproven(cause)
     }
+
+private fun investigationProof(rows: QueryRows): Refinement<Unit, QueryCompletionFailure> {
+    if (rows !is QueryRows.ValuePaths) return Refinement.Refined(Unit)
+    val failure =
+        when (val status = rows.accountingStatus) {
+            QueryValuePathAccountingStatus.Conserved -> return Refinement.Refined(Unit)
+            QueryValuePathAccountingStatus.EvidenceOnly -> QueryInvestigationCompletionFailureDocument.MissingOriginal
+            is QueryValuePathAccountingStatus.SelectedSubset ->
+                QueryInvestigationCompletionFailureDocument.SelectionIncomplete
+            is QueryValuePathAccountingStatus.Unresolved ->
+                QueryInvestigationCompletionFailureDocument.ObligationsUnresolved(
+                    QueryImpactRequiredObligationsDocument.from(
+                            status.required
+                                .sortedBy { it.ordinal }
+                                .map { ImpactRequiredObligationDocument.valueOf(it.name) }
+                        )
+                        .required()
+                )
+        }
+    return Refinement.Rejected(QueryCompletionFailure.Investigation(failure))
+}

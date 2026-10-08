@@ -1,6 +1,7 @@
 package io.github.amichne.kast.query.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.RelationReferenceOccurrence
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import java.util.Collections
 
@@ -13,7 +14,7 @@ protected constructor(
     traversalObservations: List<QueryWalkObservation>,
     resultCoverage: QueryCoverage,
     val producerProgress: QueryContinuationState?,
-    referenceObservations: List<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence>,
+    referenceObservations: List<RelationReferenceOccurrence>,
     discoveryObservations: List<QueryDiscoveryObservation>,
     relationObservations: List<QueryRelationObservation>,
 ) {
@@ -93,7 +94,7 @@ protected constructor(
         observations: List<QueryWalkObservation>,
         coverage: QueryCoverage,
         progress: QueryContinuationState?,
-        references: List<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence> = emptyList(),
+        references: List<RelationReferenceOccurrence> = emptyList(),
         discoveries: List<QueryDiscoveryObservation> = emptyList(),
         relations: List<QueryRelationObservation> = emptyList(),
     ) :
@@ -161,7 +162,7 @@ protected constructor(
         observations: List<QueryWalkObservation>,
         coverage: QueryCoverage,
         progress: QueryContinuationState?,
-        references: List<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence> = emptyList(),
+        references: List<RelationReferenceOccurrence> = emptyList(),
         discoveries: List<QueryDiscoveryObservation> = emptyList(),
         relations: List<QueryRelationObservation> = emptyList(),
     ) :
@@ -237,7 +238,7 @@ protected constructor(
         observations: List<QueryWalkObservation>,
         coverage: QueryCoverage,
         progress: QueryContinuationState?,
-        references: List<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence> = emptyList(),
+        references: List<RelationReferenceOccurrence> = emptyList(),
         discoveries: List<QueryDiscoveryObservation> = emptyList(),
         relations: List<QueryRelationObservation> = emptyList(),
     ) :
@@ -263,26 +264,11 @@ protected constructor(
         override val rowCount: Int
             get() = rows.values.size
 
-        override val retainedBytes: Long =
-            retainedStorageBytes(
-                    emptyList(),
-                    failures,
-                    omissions,
-                    observations,
-                    coverage,
-                    progress,
-                    lease,
-                    references,
-                    discoveries,
-                    relations,
-                )
-                .saturatedAdd(
-                    when (val witness = rows.accounting) {
-                        QueryValuePathAccounting.EvidenceOnly ->
-                            rows.values.fold(0L) { bytes, path -> bytes.saturatedAdd(path.retainedStorageBytes()) }
-                        is QueryValuePathAccounting.Investigated -> witness.ledger.retainedStorageBytes()
-                    }
-                )
+        override val retainedBytes: Long
+            get() = retainedBytes(QueryImpactRetainedGraph())
+
+        /** A request-local graph charges shared original ledger objects once across admitted pages. */
+        fun retainedBytes(graph: QueryImpactRetainedGraph): Long = valuePathRetainedBytes(this, graph)
 
         override fun selectRows(indices: List<Int>): Refinement<ValuePaths, QueryRetainedResultFailure> {
             validateIndices(indices)?.let {
@@ -321,7 +307,7 @@ protected constructor(
         observations: List<QueryWalkObservation>,
         coverage: QueryCoverage,
         progress: QueryContinuationState?,
-        references: List<io.github.amichne.kast.relation.contract.RelationReferenceOccurrence> = emptyList(),
+        references: List<RelationReferenceOccurrence> = emptyList(),
         discoveries: List<QueryDiscoveryObservation> = emptyList(),
         relations: List<QueryRelationObservation> = emptyList(),
     ) :

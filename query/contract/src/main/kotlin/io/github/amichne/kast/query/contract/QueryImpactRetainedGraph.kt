@@ -13,12 +13,31 @@ import java.util.IdentityHashMap
  * charged. Immutable objects and their payload are charged once by JVM identity; equal detached copies remain distinct.
  * The epoch authority stays strongly retained; its externally owned model graph is not copied here.
  */
-class QueryImpactRetainedGraph {
+class QueryImpactRetainedGraph private constructor(private val parent: QueryImpactRetainedGraph?) {
+    constructor() : this(null)
+
+    /** Stage newly charged identities without changing accepted request-local accounting. */
+    fun transaction(): Transaction = Transaction(this)
+
+    class Transaction internal constructor(private val owner: QueryImpactRetainedGraph) {
+        val graph = QueryImpactRetainedGraph(owner)
+
+        fun commit() {
+            owner.visited.putAll(graph.visited)
+        }
+    }
+
+    private fun contains(value: Any): Boolean = visited.containsKey(value) || parent?.contains(value) == true
+
     private val visited = IdentityHashMap<Any, Unit>()
 
     internal fun node(value: Any, fields: () -> Long): Long =
         REFERENCE_STORAGE_BYTES.saturatedAdd(
-            if (visited.put(value, Unit) == null) RETAINED_STATE_BASE_BYTES.saturatedAdd(fields()) else 0L
+            if (contains(value)) 0L
+            else {
+                visited[value] = Unit
+                RETAINED_STATE_BASE_BYTES.saturatedAdd(fields())
+            }
         )
 
     internal fun text(value: String): Long = node(value) { value.utf8UpperBound() }
