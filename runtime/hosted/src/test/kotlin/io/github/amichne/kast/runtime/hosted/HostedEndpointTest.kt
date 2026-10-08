@@ -51,6 +51,7 @@ class HostedEndpointTest {
                 bounded(emptyList()),
                 QueryOutputDocument.Symbols(bounded(emptyList())),
                 QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
+                completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
             )
         val canonical =
             (CanonicalOperationWireBindings.queryRun.encodeRequest(request) as WireEncoding.Encoded).document
@@ -63,7 +64,7 @@ class HostedEndpointTest {
         )
         assertEquals(
             Refinement.Rejected(HostedEndpointFailure.INVALID_REQUEST),
-            HostedRequests.decode(hosted(canonical.replace("kast.query.run.v4", "kast.query.run.v1"))),
+            HostedRequests.decode(hosted(canonical.replace("kast.query.run.v5", "kast.query.run.v1"))),
         )
         assertEquals(
             Refinement.Rejected(HostedEndpointFailure.INVALID_REQUEST),

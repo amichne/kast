@@ -242,12 +242,14 @@ class QueryProducerPayloadReleaseTest {
         val page: QueryPublishedPage,
     )
 
+    private fun fixtureLease() =
+        SemanticReadLease(
+            CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
+            EvidenceGeneration.parse(7).refined(),
+        )
+
     private suspend fun fixture(): Fixture {
-        val lease =
-            SemanticReadLease(
-                CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
-                EvidenceGeneration.parse(7).refined(),
-            )
+        val lease = fixtureLease()
         val request =
             QueryRunRequest.Run(
                 QueryFromDocument.Symbols(
@@ -260,6 +262,7 @@ class QueryProducerPayloadReleaseTest {
                 bounded(emptyList()),
                 QueryOutputDocument.Symbols(bounded(emptyList())),
                 QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
+                completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
             )
         lateinit var checkpoint: QueryCheckpoint
         val page =

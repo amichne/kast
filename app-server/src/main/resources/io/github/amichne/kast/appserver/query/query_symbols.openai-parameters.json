@@ -906,7 +906,8 @@
             {
               "type": "null"
             }
-          ]
+          ],
+          "description": "Omission or null selects COMPLETE_ONLY within COMPILER_RESOLVED_STATIC_V1. Request PROGRESSIVE explicitly for qualified investigation. Unsupported or unproven strict answers reject with typed evidence."
         }
       },
       "required": [

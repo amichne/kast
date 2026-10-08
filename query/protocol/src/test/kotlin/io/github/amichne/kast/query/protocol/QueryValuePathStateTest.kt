@@ -232,6 +232,7 @@ class QueryValuePathStateTest {
             BoundedProtocolList.create(emptyList<QueryStepDocument>()).refined(),
             QueryOutputDocument.ValuePaths,
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
+            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 }
 

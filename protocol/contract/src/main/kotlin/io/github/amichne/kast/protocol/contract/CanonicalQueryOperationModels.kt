@@ -201,8 +201,8 @@ sealed interface QueryRunRequest : OperationRequest {
         @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
         @SerialName("execution_budget")
         override val executionBudget: ExecutionBudgetDocument? = null,
-        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
-        val completion: QueryCompletionPolicyDocument = QueryCompletionPolicyDocument.Progressive,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.ALWAYS)
+        val completion: QueryCompletionPolicyDocument = QueryCompletionPolicyDocument.Default,
     ) : QueryRunRequest
 
     @Serializable

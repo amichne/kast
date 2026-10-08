@@ -300,6 +300,7 @@ class QueryRetainedCallbackPresentationTest {
             bounded(emptyList()),
             output,
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
+            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun <Value> bounded(values: List<Value>) = BoundedProtocolList.create(values).refined()

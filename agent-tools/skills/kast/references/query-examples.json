@@ -48,7 +48,7 @@
       }
     },
     "publicFunctionInventory": {
-      "summary": "List public functions with a known name prefix in one module directory; bounded output can remain qualified.",
+      "summary": "List public functions with a known name prefix in one module directory; strict execution proves the full answer before returning a bounded presentation.",
       "value": {
         "request": {
           "type": "RUN",
@@ -485,7 +485,10 @@
           "output": {
             "type": "VALUE_PATHS"
           },
-          "retention": "RETAIN"
+          "retention": "RETAIN",
+          "completion": {
+            "type": "PROGRESSIVE"
+          }
         }
       }
     },
@@ -629,7 +632,10 @@
           "output": {
             "type": "VALUE_PATHS"
           },
-          "retention": "RETAIN"
+          "retention": "RETAIN",
+          "completion": {
+            "type": "PROGRESSIVE"
+          }
         }
       }
     },

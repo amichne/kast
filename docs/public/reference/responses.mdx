@@ -18,13 +18,17 @@ Confirmed rows remain useful with qualifications. Empty qualified results do not
 
 Diagnostics cover the reported IDEA scope. Source changes require their own [verification and recovery evidence](/change#read-the-receipt).
 
-## Read an automatic symbol query
+## Read an automatic query
 
-The response shape uses `kast.query.run.v4`; Host and Control must provide the same contract.
+The response shape uses `kast.query.run.v5`; Host and Control must provide the same contract.
 
-A `query_symbols` `RUN` that returns symbol rows follows issued resumable execution internally. One call returns the accumulated rows in page order, with their exact references and multiplicity. Empty advancing pages can continue. The original query, scope, output, and semantic basis stay fixed.
+A `query_symbols` `RUN` returning symbols, occurrences, traversal records, or bindings follows issued resumable execution internally. One call returns the accumulated rows in page order, with their exact references and multiplicity. Empty advancing pages can continue. The original query, scope, output, and semantic basis stay fixed.
 
-The invocation shares one elapsed-time, work, and retention allowance. It stops when work finishes or needs a new decision, including a budget increase, invalid state, or a terminal limit. It does not restart discovery after a stale state or hard timeout. Manual `RESUME`, `READ_RESULT`, and other output kinds keep their existing behavior.
+Omitted or null `completion` selects `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`. A successful answer requires exhausted execution, no item failures or omitted evidence, and proven callback graphs. Unsupported questions and missing proof return typed rejections. Retained rejection evidence remains rejected evidence when read; it cannot become a successful answer.
+
+Request `completion: {"type": "PROGRESSIVE"}` explicitly to inspect useful qualified results and execution checkpoints. This is required for value-path investigations until their original ledger can be admitted by automatic strict execution. Neither policy proves runtime activation or path feasibility.
+
+The invocation shares one elapsed-time, work, and retention allowance. It stops when work finishes or needs a new decision, including a budget increase, invalid state, or a terminal limit. It does not restart discovery after a stale state or hard timeout. `RESUME` advances an issued progressive checkpoint; `READ_RESULT` presents retained evidence without semantic replay. A strict rejection's historical checkpoint grants no new strict execution allowance.
 
 | Response field | Meaning |
 | --- | --- |

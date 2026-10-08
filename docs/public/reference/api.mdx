@@ -29,6 +29,8 @@ icon: "book-open"
 
 Omitted output selects symbol name and location. `retention: "RETAIN"` keeps results for later use. Pass issued handles unchanged. Placeholders are not valid references.
 
+Completion defaults to `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`. Supported row queries drain issued execution pages under one grant before admitting a complete answer. Unsupported or unproven answers reject with typed evidence. Set `completion: {"type": "PROGRESSIVE"}` explicitly for qualified investigation and manual execution continuation. Compact output remains the default for both policies.
+
 ## Start from the right input
 
 | Source | Purpose |
@@ -97,7 +99,7 @@ Explicit symbol `fields: []` requests mandatory identity and kind. File-scoped o
 
 Non-final branch expressions do not supply the try result. Explicit returns remain return transfers, and throws do not produce normal branch results. Crossing a try boundary with `finally`, including an explicit return, retains `FINALLY_UNSUPPORTED`. Keep that obligation and every independent qualification attached to the useful partial paths.
 
-`IMPACT` requires `seeds`, `declarations`, `domain`, `flow`, and `models`. Use no transformation steps and select `VALUE_PATHS`. Retain the result for later inspection.
+`IMPACT` requires `seeds`, `declarations`, `domain`, `flow`, and `models`. Use no transformation steps, select `VALUE_PATHS`, and explicitly request `completion: {"type": "PROGRESSIVE"}` while strict automatic ledger admission is unsupported. Retain the result for later inspection.
 
 | Input | Requirement |
 | --- | --- |

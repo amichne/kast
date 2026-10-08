@@ -53,6 +53,7 @@ internal fun queryIdentityRequest(exact: ProtocolText) =
         bounded(emptyList()),
         QueryOutputDocument.Symbols(bounded(emptyList())),
         QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
+        completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
     )
 
 private fun allowanceGrowth() =

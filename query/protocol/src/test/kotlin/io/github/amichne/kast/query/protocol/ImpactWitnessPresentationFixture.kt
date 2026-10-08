@@ -191,6 +191,7 @@ internal class ImpactWitnessPresentationFixture(resumedBinding: Boolean = false)
             bounded(emptyList()),
             QueryOutputDocument.ValuePaths,
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
+            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
     val store = QueryStateStore(clock = { 0 })
     private val execution =

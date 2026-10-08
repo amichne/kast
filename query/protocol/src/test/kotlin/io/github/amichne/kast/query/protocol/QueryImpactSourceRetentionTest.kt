@@ -242,6 +242,7 @@ class QueryImpactSourceRetentionTest {
             bounded(emptyList()),
             QueryOutputDocument.ValuePaths,
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
+            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun token(endpoint: RelationEndpoint.Resolved): ProtocolText =

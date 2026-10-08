@@ -77,6 +77,7 @@ class ImpactPresentationRejectionTest {
                 BoundedProtocolList.create(emptyList<QueryStepDocument>()).refined(),
                 QueryOutputDocument.ValuePaths,
                 QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
+                completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
             )
         val qualified =
             QueryExecutionResult.Qualified(

@@ -6,6 +6,12 @@ Look up an example by its key under `examples`, then adapt its project-specific
 name, package, path, source sets, and budget to the user's task. Discover the
 installed schema before sending it.
 
+Execution defaults to `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`.
+Supported questions run to exhaustion under the admitted grant, then return a
+bounded presentation of the proven answer. Unproven answers reject with typed
+evidence. Request `completion: {"type":"PROGRESSIVE"}` explicitly when a
+qualified investigation is useful; never treat its sample as a complete answer.
+
 Exact-ref placeholders and all-zero UUID handles in these examples are
 illustrative values for contract validation. They were never issued by Kast.
 Replace them with unchanged values from the current workspace's preceding
@@ -32,8 +38,9 @@ Question: â€œWhich public functions starting with `create` are in this module?â€
 Use `publicFunctionInventory`. It restricts discovery to functions in one
 directory and source set, then applies visibility and name-prefix predicates.
 Change the prefix or omit that predicate when listing the whole public API.
-`ALL_DECLARATIONS` remains bounded by the execution grant; a sample is not an
-exhaustive inventory. If the result is qualified, report the remaining unknowns.
+`ALL_DECLARATIONS` remains bounded by the execution grant. Strict execution
+rejects when that grant cannot establish completeness. A presentation prefix
+does not enumerate the whole inventory; page the retained result when needed.
 
 ## 3. Discover a declaration when the name is uncertain
 
