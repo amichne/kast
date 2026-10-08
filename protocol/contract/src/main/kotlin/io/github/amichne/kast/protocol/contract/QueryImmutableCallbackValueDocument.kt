@@ -69,6 +69,7 @@ private fun ImpactValueSiteReferenceDocument.validImmutableSite(): Boolean {
 
 private fun ImpactCompilerTransferDocument.validImmutableTransfer(owner: ImpactDeclarationReferenceDocument): Boolean =
     source != target &&
+        admitsEvidence() &&
         source.enclosing == owner &&
         target.enclosing == owner &&
         source.validImmutableSite() &&

@@ -31,6 +31,7 @@ internal fun valueFlowStorageBytes(
             .addBytes(
                 transfers.fold(0L) { sum, edge ->
                     sum.addBytes(VALUE_RECORD_OVERHEAD)
+                        .addBytes(edge.evidence.retainedBytes)
                         .addBytes(edge.source.retainedBytes)
                         .addBytes(edge.target.retainedBytes)
                 }

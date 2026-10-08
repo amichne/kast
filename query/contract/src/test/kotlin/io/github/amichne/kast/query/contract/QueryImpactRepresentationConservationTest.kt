@@ -82,7 +82,7 @@ class QueryImpactRepresentationConservationTest {
     }
 
     private class Fixture {
-        val base = QueryImpactLedgerTest.Fixture()
+        val base = QueryImpactLedgerFixture()
         private val identity =
             ContractModelIdentity(id("representation"), ModelVersion.parse(1).value(), id("review:913"))
         val state = RepresentationDomain.admit(identity, listOf(id("A"), id("B"))).value().state(id("A")).value()

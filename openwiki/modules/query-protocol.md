@@ -117,6 +117,8 @@ sources:
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactFinding.kt
   - id: openwiki-source-9fcd90db4b894268639790f3
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt
+  - id: openwiki-source-305db76ab141797a5afa2665
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRelationStorage.kt
   - id: openwiki-source-8f4d7aa8b32709ae3dfa417b
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRequestedSite.kt
   - id: openwiki-source-ceaa6e4a1cc8af84eede173b
@@ -131,6 +133,8 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingProjection.kt
   - id: openwiki-source-37ab3b1971d180b6eee551f9
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingTerminalProjection.kt
+  - id: openwiki-source-26ee87f940d3d4435a19eb9b
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactModelEvidenceProjection.kt
   - id: openwiki-source-0f6f5a60fd62343e10a988ad
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactPeerSourceEvidence.kt
   - id: openwiki-source-3c2b2f675cf9e1f0d4b1d01c
@@ -171,16 +175,18 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt
   - id: openwiki-source-1263068512b14f5d3a0bde82
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactRetentionTest.kt
+  - id: openwiki-source-aafa836937e73d591f7fe586
+    resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryImpactBranchProjectionTest.kt
   - id: openwiki-source-8bba742d3ecbc32c906815e6
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt
   - id: openwiki-source-711e20b0c3995766bf099120
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryValuePathOutputAdmission.kt
   - id: openwiki-source-680008eb9e24b45cf91f6d9d
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
-generated: { by: "codex", at: "2026-10-03T17:08:58.136Z" }
+generated: { by: "codex", at: "2026-10-08T03:03:28.717Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-08T01:13:49.481Z
+    at: 2026-10-08T03:03:28.717Z
 ---
 
 # Query protocol
@@ -397,3 +403,11 @@ The source may name a bounded, ordered requested-site universe independently of 
 Native admission shares the source's aggregate work and checkpoint-storage grants. Its site byte grant is remaining checkpoint capacity, independently of encoded output bytes. The source and final ledger retain these proofs through the existing storage visitor and checkpoint owner.
 
 The ledger derives one finite outcome per requested site from original paths. Reached links preserve original ordinals and row IDs alongside any separate exact site and domain exclusions. An unmatched site retains a required `REQUESTED_SITE_RELATIONSHIP` obligation. `SITE_ACCOUNTING` presents those outcomes and native admission receipts through the existing retained witness window and byte fitter; it performs no new flow traversal or site revalidation. These local contracts require separate installed qualification.
+
+Compiler path steps retain their transfer evidence through model applications,
+path history, ledger retention and value-path paging. Public projection preserves
+the direct or normal branch-result variant, exact try and branch anchors, typed
+alternative and normal-completion condition. A compact finding still expands
+the original path with that proof. Transfer evidence is charged by the existing
+retained-storage visitor; byte and work exhaustion retain the existing typed
+qualifications and continuation owners.

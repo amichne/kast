@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:dcb35e8634f23a6ed952558243b6caab232d8b8fbcbf662c1e41757411ac116d",
+  "pageVersion": "sha256:b46422fbf038b20137eb27ea6fdff64a1fa1667420437d9f970d2b12d935bda7",
   "claims": [
     {
       "id": "claim_009e763fdd49491b8ddc72813e392412",
@@ -46,7 +46,7 @@
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowNative.kt",
-          "version": "repo-file-v1:sha256:9bde3120be954e7050a3f46c707c2e733fa8b52b732d17945c667df2c5104adb"
+          "version": "repo-file-v1:sha256:63d5c96996077c15e3d06db245ac6136ffee56e69e0e7914a0969ecec37d41c7"
         }
       ]
     },
@@ -126,7 +126,7 @@
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt",
-          "version": "repo-file-v1:sha256:96658d367997d4a865013cda3c3e11f7e9506b10b638e2b73eeb7e288bccac96"
+          "version": "repo-file-v1:sha256:c01b75752197561c48888fcc7cd2ed31f3f44d7400f2ecd05688e3df7a8f1748"
         }
       ]
     },
@@ -139,7 +139,7 @@
           "version": "repo-file-v1:sha256:3f6e89e49855108e682e65d0f3a0def2cd8f3b82c57f60c826cba471f66d054a"
         },
         {
-          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt#L130-L151",
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt#L135-L156",
           "version": "repo-lines-v1:sha256:b549f7448349e17615d6d5320cf7a300cd42e81ee77cce41d82d04db20f55066:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyNzI4MmEzMzY1N2ZjNmIxOTE0MmFmMGE0ZjdhNzg5ZGY0YWRkYzQ5YmUzZGFkODljYzAxNzM1YWI4MTgwZTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIzMWNlMDBiMjZkMTlhMTg0M2JhY2Y4YTBmZTJiZDE5OWE1YjkyMTA2NTViNTdiNGZiNThkODQ4N2ZlMjY2NWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc3MTRlMzY4ZWU4NWZmMWE2NjJlYmViMzAyNThjNmQyOTJjNTI2MGFjYWFmNmUwM2E0OTJiZDU5ZWU2ODZhMWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk0YzE1NGM2OWRiMjRhNDExNmI3Y2VmNDMxY2IyODg5ZTkyMzhkYmQxOTljNDI0NmIwZDhhNjhiZGNmMjA1MGMifQ"
         },
         {
@@ -147,10 +147,32 @@
           "version": "repo-file-v1:sha256:d355abfe98fab7dc5cb8a4e88c158576d3cffb500127a442f43e29945a73e8b2"
         }
       ]
+    },
+    {
+      "id": "claim_f91f3a14d54c4ee1912832f709882875",
+      "statement": "Normal try/catch results require exact final-expression ownership and anchors plus valid K2 source/result types; their typed branch proof composes for nesting without transferring try values to catch fallbacks, while abrupt, Unit/Nothing and finally crossing cases retain finite qualifications including explicit return bypasses and bounded counters.",
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowNative.kt",
+          "version": "repo-file-v1:sha256:63d5c96996077c15e3d06db245ac6136ffee56e69e0e7914a0969ecec37d41c7"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeTryBranchResult.kt",
+          "version": "repo-file-v1:sha256:cf6e602041a0b561c513f6c0f6d14438448b440d36d8039f6c6f891f58f242fb"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/ReturnFinallyBoundary.kt",
+          "version": "repo-file-v1:sha256:029294a28579c8f6d310b3d15d0ff350ac61a9326d6ed043141cfa14c7b6f401"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/TryBranchResultPosition.kt",
+          "version": "repo-file-v1:sha256:87a49b50be02dbfeb02aae3a3c41d96dd05bd7a573bb2ac3c531e9208f38895e"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-08T01:13:49.481Z"
+    "at": "2026-10-08T03:03:28.717Z"
   }
 }

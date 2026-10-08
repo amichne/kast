@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test
 class QueryImpactFindingTest {
     @Test
     fun `finding view preserves original identities for distinct routes to the same destination`() {
-        val fixture = QueryImpactLedgerTest.Fixture()
+        val fixture = QueryImpactLedgerFixture()
         val ledger = fixture.ledger(fixture.paths).value()
         val view = QueryImpactWitnessView.create(ledger, QueryImpactWitnessSection.FINDINGS, 0, 2).value()
         val findings = view.entries.map { (it.evidence as QueryImpactWitnessEntry.Finding).finding }
@@ -26,7 +26,7 @@ class QueryImpactFindingTest {
 
     @Test
     fun `selected finding ordinal remains the original path ordinal`() {
-        val fixture = QueryImpactLedgerTest.Fixture()
+        val fixture = QueryImpactLedgerFixture()
         val ledger = fixture.ledger(fixture.paths).value()
         val view = QueryImpactWitnessView.create(ledger, QueryImpactWitnessSection.FINDINGS, 1, 2).value()
         val record = view.entries.single()
@@ -40,7 +40,7 @@ class QueryImpactFindingTest {
 
     @Test
     fun `finding construction refuses an ordinal outside the original ledger`() {
-        val fixture = QueryImpactLedgerTest.Fixture()
+        val fixture = QueryImpactLedgerFixture()
         val ledger = fixture.ledger(fixture.paths).value()
 
         assertEquals(

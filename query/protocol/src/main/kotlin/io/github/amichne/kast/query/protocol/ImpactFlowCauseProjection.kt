@@ -5,6 +5,8 @@ import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 
 internal fun ValueFlowUnsupportedCause.impactDocument(): ImpactFlowUnsupportedDocument =
     when (this) {
+        ValueFlowUnsupportedCause.FINALLY_UNSUPPORTED -> ImpactFlowUnsupportedDocument.FINALLY_UNSUPPORTED
+        ValueFlowUnsupportedCause.ABRUPT_COMPLETION -> ImpactFlowUnsupportedDocument.ABRUPT_COMPLETION
         ValueFlowUnsupportedCause.EXTERNAL_CALL -> ImpactFlowUnsupportedDocument.EXTERNAL_CALL
         ValueFlowUnsupportedCause.UNMODELED_CALL -> ImpactFlowUnsupportedDocument.UNMODELED_CALL
         ValueFlowUnsupportedCause.MUTABLE_CONTROL_FLOW -> ImpactFlowUnsupportedDocument.MUTABLE_CONTROL_FLOW

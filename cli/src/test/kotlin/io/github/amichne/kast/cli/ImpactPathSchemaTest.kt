@@ -17,7 +17,9 @@ import io.github.amichne.kast.protocol.contract.ImpactBoundaryRequiredDocument
 import io.github.amichne.kast.protocol.contract.ImpactBoundaryRuleDocument
 import io.github.amichne.kast.protocol.contract.ImpactBoundaryTerminalDocument
 import io.github.amichne.kast.protocol.contract.ImpactBoundaryUnresolvedDocument
+import io.github.amichne.kast.protocol.contract.ImpactBranchCompletionDocument
 import io.github.amichne.kast.protocol.contract.ImpactCallablePositionDocument
+import io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument
 import io.github.amichne.kast.protocol.contract.ImpactConsumerOutcomeDocument
 import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactEvidenceRevisionDocument
@@ -48,6 +50,9 @@ import io.github.amichne.kast.protocol.contract.ImpactScopeExclusionDocument
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
 import io.github.amichne.kast.protocol.contract.ImpactSiteAdmissionDocument
 import io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument
+import io.github.amichne.kast.protocol.contract.ImpactTransferEvidenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactTransferKindDocument
+import io.github.amichne.kast.protocol.contract.ImpactTryBranchAlternativeDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
@@ -70,6 +75,113 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class ImpactPathSchemaTest {
+    @Test
+    fun `transfer schema requires closed normal completion evidence and preserves exact branch anchors`() {
+        val document = generatedRequestSchema(ImpactCompilerTransferDocument.serializer())
+        assertEquals(setOf("source", "target", "kind", "evidence"), requiredFields(document))
+        val schema =
+            SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12).getSchema(document.toString())
+        val f = Fixture()
+        val target =
+            ImpactValueSiteReferenceDocument(
+                f.declaration,
+                ImpactSourceRangeDocument(offset(5), offset(90)),
+                ImpactValueRoleDocument.ExpressionResult,
+            )
+        val branchRange = ImpactSourceRangeDocument(offset(8), offset(15))
+        for (alternative in
+            listOf(ImpactTryBranchAlternativeDocument.TryBody, ImpactTryBranchAlternativeDocument.CatchBody(2))) {
+            val transfer =
+                ImpactCompilerTransferDocument(
+                    f.site,
+                    target,
+                    ImpactTransferKindDocument.BRANCH_ALTERNATIVE,
+                    ImpactTransferEvidenceDocument.NormalBranchResult(
+                        target.range,
+                        branchRange,
+                        alternative,
+                        ImpactBranchCompletionDocument.NORMAL_COMPLETION,
+                    ),
+                )
+            assertTrue(transfer.admitsEvidence())
+            val raw = Json.encodeToString(ImpactCompilerTransferDocument.serializer(), transfer)
+            val proof = Json.parseToJsonElement(raw).jsonObject.getValue("evidence").jsonObject
+            assertEquals("NORMAL_BRANCH_RESULT", proof.getValue("type").jsonPrimitive.content)
+            assertEquals("NORMAL_COMPLETION", proof.getValue("condition").jsonPrimitive.content)
+            assertEquals("8", proof.getValue("branch_range").jsonObject.getValue("start").jsonPrimitive.content)
+            assertTrue(schema.validate(raw, InputFormat.JSON).isEmpty(), raw)
+            for (malformed in
+                listOf(
+                    raw.replace("\"condition\":\"NORMAL_COMPLETION\"", "\"condition\":\"EXCEPTION_ENTRY\""),
+                    raw.replace("\"condition\":\"NORMAL_COMPLETION\"", "\"unknown\":true"),
+                    raw.replace("\"type\":\"NORMAL_BRANCH_RESULT\"", "\"type\":\"ASSUMED\""),
+                    raw.replace("\"type\":\"NORMAL_BRANCH_RESULT\",", ""),
+                )) assertTrue(schema.validate(malformed, InputFormat.JSON).isNotEmpty(), malformed)
+        }
+    }
+
+    @Test
+    fun `branch transfer admission rejects a source outside its originating branch`() {
+        val f = Fixture()
+        val target =
+            ImpactValueSiteReferenceDocument(
+                f.declaration,
+                ImpactSourceRangeDocument(offset(5), offset(90)),
+                ImpactValueRoleDocument.ExpressionResult,
+            )
+        for (alternative in
+            listOf(ImpactTryBranchAlternativeDocument.TryBody, ImpactTryBranchAlternativeDocument.CatchBody(2))) {
+            val otherBranch =
+                ImpactTransferEvidenceDocument.NormalBranchResult(
+                    target.range,
+                    ImpactSourceRangeDocument(offset(30), offset(40)),
+                    alternative,
+                    ImpactBranchCompletionDocument.NORMAL_COMPLETION,
+                )
+            assertTrue(
+                !ImpactCompilerTransferDocument(
+                        f.site,
+                        target,
+                        ImpactTransferKindDocument.BRANCH_ALTERNATIVE,
+                        otherBranch,
+                    )
+                    .admitsEvidence()
+            )
+        }
+    }
+
+    @Test
+    fun `direct transfer schema requires explicit evidence discriminator`() {
+        val schema =
+            SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
+                .getSchema(generatedRequestSchema(ImpactCompilerTransferDocument.serializer()).toString())
+        val f = Fixture()
+        val target =
+            ImpactValueSiteReferenceDocument(
+                f.declaration,
+                ImpactSourceRangeDocument(offset(5), offset(90)),
+                ImpactValueRoleDocument.ExpressionResult,
+            )
+        val direct =
+            Json.encodeToString(
+                ImpactCompilerTransferDocument.serializer(),
+                ImpactCompilerTransferDocument(f.site, target, ImpactTransferKindDocument.BRANCH_ALTERNATIVE),
+            )
+        assertEquals(
+            "DIRECT",
+            Json.parseToJsonElement(direct)
+                .jsonObject
+                .getValue("evidence")
+                .jsonObject
+                .getValue("type")
+                .jsonPrimitive
+                .content,
+        )
+        assertTrue(
+            schema.validate(direct.replace(",\"evidence\":{\"type\":\"DIRECT\"}", ""), InputFormat.JSON).isNotEmpty()
+        )
+    }
+
     @Test
     fun `path schema closes terminal evidence variants and preserves all required discriminator shapes`() {
         val document = generatedRequestSchema(ImpactPathDocument.serializer())

@@ -34,7 +34,7 @@ internal class QueryImpactPeerTestFixture(
     root: String = "/peer",
     generation: Long = 19,
 ) {
-    val server = QueryImpactLedgerTest.Fixture()
+    val server = QueryImpactLedgerFixture()
     val peerLease =
         SemanticReadLease(
             CanonicalWorkspaceRoot.fromCanonicalPath(Path.of(root)).peerValue(),

@@ -117,7 +117,7 @@ internal class CallbackEvidenceReadmission(private val endpoints: CallbackEndpoi
     fun transfer(previous: ValueTransfer): CallbackReadmission<ValueTransfer> =
         site(previous.source).then { source ->
             site(previous.target).then { target ->
-                when (val admitted = ValueTransfer.fromCompiler(source, target, previous.kind)) {
+                when (val admitted = ValueTransfer.fromCompiler(source, target, previous.kind, previous.evidence)) {
                     is Refinement.Refined -> admitted
                     is Refinement.Rejected ->
                         Refinement.Rejected(CallbackSummaryReadmissionFailure.Transfer(admitted.failure))
