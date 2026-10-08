@@ -12,8 +12,14 @@ import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignatureFailure
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.LocalDeclarationAddress
+import io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure
+import io.github.amichne.kast.symbol.contract.LocalPropertyMutability
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.localIdentityAdmitted
+import io.github.amichne.kast.workspace.intellij.read.localIdentityRejected
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.javaInterop.callableSymbol
@@ -23,11 +29,15 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaKotlinPropertySymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaLocalVariableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolLocation
 import org.jetbrains.kotlin.analysis.api.symbols.KaTypeAliasSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
+import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtProperty
 
 internal sealed interface IntellijCompilerSymbolLookupResult {
     data class Found(val evidence: CompilerGroundedSymbolEvidence) : IntellijCompilerSymbolLookupResult
@@ -89,7 +99,7 @@ internal class IntellijKotlinCompilerSymbolLookup(
                                 is PsiMember -> declaration.callableSymbol
                                 else -> null
                             }
-                        symbol?.toCompilerProjection(this, observation) ?: compilerProjectionRejected()
+                        symbol?.toCompilerProjection(this, observation, key.file) ?: compilerProjectionRejected()
                     }
             ) {
                 is IntellijCompilerSymbolProjectionResult.Projected -> result.projection
@@ -119,13 +129,13 @@ internal class IntellijKotlinCompilerSymbolLookup(
     }
 }
 
-private data class IntellijCompilerSymbolProjection(
+internal data class IntellijCompilerSymbolProjection(
     val kind: CompilerSymbolKind,
-    val qualifiedIdentity: String,
+    val qualifiedIdentity: String?,
     val signature: CanonicalCompilerSignature,
 )
 
-private sealed interface IntellijCompilerSymbolProjectionResult {
+internal sealed interface IntellijCompilerSymbolProjectionResult {
     data class Projected(val projection: IntellijCompilerSymbolProjection) : IntellijCompilerSymbolProjectionResult
 
     data class Rejected(val reason: IntellijSymbolSelectorRejection) : IntellijCompilerSymbolProjectionResult
@@ -138,13 +148,89 @@ private sealed interface IntellijCompilerSymbolProjectionResult {
  * identity. Rejection is the closed [IntellijSymbolSelectorRejection.COMPILER_IDENTITY_UNAVAILABLE] state. Raw K2
  * values remain inside the analysis-session receiver.
  */
-private fun KaSymbol.toCompilerProjection(
+internal fun KaSymbol.toCompilerProjection(
     session: KaSession,
     observation: IntellijReadObservation,
+    file: SymbolDiscoveryFileIdentity,
+    depth: Int = 0,
+): IntellijCompilerSymbolProjectionResult {
+    if (depth > LocalDeclarationAddress.MAX_OWNER_DEPTH)
+        return localProjectionRejected(LocalDeclarationProjectionFailure.OwnerDepthExceeded, observation)
+    if (location == KaSymbolLocation.LOCAL) return localCompilerProjection(session, observation, file, depth)
+    return qualifiedCompilerProjection(session, observation, file, depth)
+}
+
+private fun KaSymbol.localCompilerProjection(
+    session: KaSession,
+    observation: IntellijReadObservation,
+    file: SymbolDiscoveryFileIdentity,
+    depth: Int,
+): IntellijCompilerSymbolProjectionResult {
+    if (!hasSupportedLocalDeclaration())
+        return localProjectionRejected(LocalDeclarationProjectionFailure.UnsupportedDeclaration, observation)
+    when (val proof = localDeclarationCompilerTypeProof()) {
+        is Refinement.Refined -> Unit
+        is Refinement.Rejected -> return localProjectionRejected(proof.failure, observation)
+    }
+    val address =
+        when (val admitted = localAddress(session, observation, file, depth)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return localProjectionRejected(admitted.failure, observation)
+        }
+    val result = localSignatureProjection(address)
+    when (result) {
+        is IntellijCompilerSymbolProjectionResult.Projected -> observation.localIdentityAdmitted()
+        is IntellijCompilerSymbolProjectionResult.Rejected ->
+            return localProjectionRejected(LocalDeclarationProjectionFailure.SignatureUnavailable, observation)
+    }
+    return result
+}
+
+private fun KaSymbol.hasSupportedLocalDeclaration(): Boolean {
+    val declaration = psi
+    return (this is KaNamedFunctionSymbol && declaration is KtNamedFunction && declaration.name != null) ||
+        (this is KaLocalVariableSymbol && declaration is KtProperty && declaration.isLocal)
+}
+
+private fun KaSymbol.localSignatureProjection(
+    address: LocalDeclarationAddress
+): IntellijCompilerSymbolProjectionResult =
+    when (this) {
+        is KaNamedFunctionSymbol ->
+            projected(
+                CompilerSymbolKind.FUNCTION,
+                null,
+                CanonicalCompilerSignature.localFunction(
+                    address,
+                    receiverParameter?.returnType?.toString(),
+                    contextReceivers.map { it.type.toString() },
+                    valueParameters.map { it.returnType.toString() },
+                    typeParameters.size,
+                    returnType.toString(),
+                ),
+            )
+        is KaLocalVariableSymbol ->
+            projected(
+                CompilerSymbolKind.PROPERTY,
+                null,
+                CanonicalCompilerSignature.localProperty(
+                    address,
+                    returnType.toString(),
+                    if (isVal) LocalPropertyMutability.VAL else LocalPropertyMutability.VAR,
+                ),
+            )
+        else -> compilerProjectionRejected()
+    }
+
+private fun KaSymbol.qualifiedCompilerProjection(
+    session: KaSession,
+    observation: IntellijReadObservation,
+    file: SymbolDiscoveryFileIdentity,
+    depth: Int,
 ): IntellijCompilerSymbolProjectionResult {
     return when (this) {
         is KaValueParameterSymbol ->
-            generatedPrimaryConstructorProperty?.toCompilerProjection(session, observation)
+            generatedPrimaryConstructorProperty?.toCompilerProjection(session, observation, file, depth)
                 ?: compilerProjectionRejected()
         is KaConstructorSymbol -> {
             val owner = containingClassId?.asSingleFqName()?.asString() ?: return compilerProjectionRejected()
@@ -162,19 +248,7 @@ private fun KaSymbol.toCompilerProjection(
                     functionSignature(callable),
                 )
             }
-        is KaKotlinPropertySymbol ->
-            compilerCallableIdentity(session).projectCallable(observation) { callable ->
-                projected(
-                    CompilerSymbolKind.PROPERTY,
-                    callable,
-                    CanonicalCompilerSignature.property(
-                        rawQualifiedIdentity = callable,
-                        rawReceiverType = receiverParameter?.returnType?.toString(),
-                        rawContextReceiverTypes = contextReceivers.map { it.type.toString() },
-                        rawReturnType = returnType.toString(),
-                    ),
-                )
-            }
+        is KaKotlinPropertySymbol -> compilerPropertyProjection(session, observation)
         is KaTypeAliasSymbol -> {
             val className = classId?.asSingleFqName()?.asString() ?: return compilerProjectionRejected()
             projected(
@@ -194,6 +268,23 @@ private fun KaSymbol.toCompilerProjection(
         else -> compilerProjectionRejected()
     }
 }
+
+private fun KaKotlinPropertySymbol.compilerPropertyProjection(
+    session: KaSession,
+    observation: IntellijReadObservation,
+): IntellijCompilerSymbolProjectionResult =
+    compilerCallableIdentity(session).projectCallable(observation) { callable ->
+        projected(
+            CompilerSymbolKind.PROPERTY,
+            callable,
+            CanonicalCompilerSignature.property(
+                rawQualifiedIdentity = callable,
+                rawReceiverType = receiverParameter?.returnType?.toString(),
+                rawContextReceiverTypes = contextReceivers.map { it.type.toString() },
+                rawReturnType = returnType.toString(),
+            ),
+        )
+    }
 
 private inline fun IntellijCallableIdentity.projectCallable(
     observation: IntellijReadObservation,
@@ -228,7 +319,7 @@ private fun KaFunctionSymbol.functionSignature(
 
 private fun projected(
     kind: CompilerSymbolKind,
-    qualifiedIdentity: String,
+    qualifiedIdentity: String?,
     signature: Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure>,
 ): IntellijCompilerSymbolProjectionResult =
     when (signature) {
@@ -258,3 +349,26 @@ private fun IntellijExactDeclarationLookupRejection.toSymbolSelectorRejection():
         IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION ->
             IntellijSymbolSelectorRejection.UNSUPPORTED_DECLARATION
     }
+
+internal fun localProjectionRejected(
+    failure: LocalDeclarationProjectionFailure,
+    observation: IntellijReadObservation,
+): IntellijCompilerSymbolProjectionResult.Rejected {
+    observation.localIdentityRejected(failure)
+    return IntellijCompilerSymbolProjectionResult.Rejected(
+        when (failure) {
+            LocalDeclarationProjectionFailure.WorkLimitReached,
+            LocalDeclarationProjectionFailure.OwnerDepthExceeded -> IntellijSymbolSelectorRejection.WORK_LIMIT_REACHED
+            LocalDeclarationProjectionFailure.CompilerTypeError,
+            LocalDeclarationProjectionFailure.CompilerTypeUnsupported,
+            LocalDeclarationProjectionFailure.UnsupportedDeclaration,
+            LocalDeclarationProjectionFailure.SignatureUnavailable,
+            LocalDeclarationProjectionFailure.SourceUnavailable,
+            LocalDeclarationProjectionFailure.OwnerUnavailable,
+            LocalDeclarationProjectionFailure.CompilerOwnerUnavailable,
+            LocalDeclarationProjectionFailure.LexicalAncestryUnavailable,
+            is LocalDeclarationProjectionFailure.InvalidAddress ->
+                IntellijSymbolSelectorRejection.COMPILER_IDENTITY_UNAVAILABLE
+        }
+    )
+}

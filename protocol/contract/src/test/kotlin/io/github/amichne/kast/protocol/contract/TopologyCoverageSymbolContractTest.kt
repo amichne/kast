@@ -57,6 +57,53 @@ class TopologyCoverageSymbolContractTest {
         )
     }
 
+    @Test
+    fun `local topology endpoints admit source-bound identity and reject contradictory anchors`() {
+        val address =
+            LocalDeclarationAddressDocument.create(
+                    LocalDeclarationFileDocument.Workspace(text("/workspace/Seed.kt")),
+                    LocalDeclarationKindDocument.PROPERTY,
+                    range(20, 40),
+                    text("canonical-signature-sha256-v1|${"a".repeat(64)}"),
+                    range(0, 100),
+                    BoundedProtocolList.create(listOf(range(10, 90))).refined(),
+                )
+                .refined()
+        val evidence =
+            CompilerSymbolEvidenceDocument.fromSignature(
+                    CompilerSignatureDocument.LocalProperty(
+                        address,
+                        text("kotlin.Int"),
+                        LocalPropertyMutabilityDocument.VAL,
+                    )
+                )
+                .refined()
+        val node = TopologyCoverageNode(evidence.identity, text("/workspace/Seed.kt"), range(20, 40))
+        val file = fileEvidence().copy(path = node.file)
+        assertTrue(
+            TopologyCoverageSymbol.create(
+                node,
+                file,
+                text("local"),
+                TopologyCoverageQualifiedIdentity.Unavailable,
+                TopologyCoverageSymbolKind.PROPERTY,
+                evidence,
+            ) is Refinement.Refined
+        )
+        assertEquals(
+            TopologyCoverageSymbolFailure.LOCAL_ADDRESS_MISMATCH,
+            TopologyCoverageSymbol.create(
+                    node.copy(range = range(21, 40)),
+                    file,
+                    text("local"),
+                    TopologyCoverageQualifiedIdentity.Unavailable,
+                    TopologyCoverageSymbolKind.PROPERTY,
+                    evidence,
+                )
+                .rejected(),
+        )
+    }
+
     private fun fileEvidence(): TopologyCoverageFileEvidence =
         TopologyCoverageFileEvidence(
             workspace =

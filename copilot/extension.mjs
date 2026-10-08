@@ -1,5 +1,5 @@
 // Generated contract version; owned by packaging/generate-public-query.py.
-const PUBLIC_TOOL_CONTRACT_VERSION = 6;
+const PUBLIC_TOOL_CONTRACT_VERSION = 7;
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";

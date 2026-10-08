@@ -75,7 +75,7 @@ code_sources:
   - RelationFact
 - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2SymbolIdentity.kt
   symbols:
-  - sourceBoundCallableIdentity
+  - compilerProjection
 - path: traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPlan.kt
   symbols:
   - TraversalPlan
@@ -171,6 +171,8 @@ sources:
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueBoundary.kt
   - id: openwiki-source-d3f0d7e24d35ed4b47aff3d5
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueSite.kt
+  - id: openwiki-source-4b4060f7f0e374ebf0169089
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijLocalRelationProjection.kt
   - id: openwiki-source-b237fe55f86308ccb96d0596
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowCompilerAdapter.kt
   - id: openwiki-source-eeb2af1b330e389cae564042
@@ -195,25 +197,55 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperations.kt
   - id: openwiki-source-5ea9f19dac1745ee97dffee2
     resource: repo://runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperationsTest.kt
+  - id: openwiki-source-db97665220b9cbe46d4c2faf
+    resource: repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijLocalSourceAddress.kt
   - id: openwiki-source-d16ec0b0b90b8cd04743a4f3
     resource: repo://source/service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt
+  - id: openwiki-source-2ac0113cfae0e2e0d35800d0
+    resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIndexedDiscoveryAdmission.kt
+  - id: openwiki-source-1efdb151b89a7379b20e3aca
+    resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijLocalDeclarationAddressProjection.kt
+  - id: openwiki-source-fa61902bcb0bcf62e8d3fbdd
+    resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt
+  - id: openwiki-source-47595b965d6fbf5dec3e362a
+    resource: repo://symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/LocalSupplementFileAdmissionTest.kt
+  - id: openwiki-source-28447af1539aec4c335506e8
+    resource: repo://symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/MixedLocalDeclarationDiscoveryTest.kt
   - id: openwiki-source-ca4cb79efb8948231564ac6f
     resource: repo://symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolExactService.kt
   - id: openwiki-source-738d50046b5f0d1312b7fcb7
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt
+  - id: openwiki-source-a077dfdc9a774644621e06cc
+    resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijLocalIdentityObservation.kt
   - id: openwiki-source-76dc60162dca56e35a6ed9ac
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt
   - id: openwiki-source-08d8bbce5989f3afa7c532a7
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-8d15fa1e67cdc054e05e2796
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedValueFlowDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-08T03:03:28.717Z" }
+generated: { by: "codex", at: "2026-10-08T03:09:54.978Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-08T03:03:28.717Z
+    at: 2026-10-08T03:09:54.978Z
 ---
 
 # Semantic read domains
+
+Local `val`, `var`, and named functions use the symbol contract's admitted local
+declaration address. Symbol, relation and source adapters keep independent
+module-owned K2 projections into that same pure contract. Exact compiler owner
+identity, file/range and bounded lexical anchors distinguish shadowed bindings;
+the relation adapter no longer uses an ad hoc local-function string. Discovery
+applies cheap scope, kind and name constraints before capacity accounting and
+includes eligible descendants of excluded containers. Library-inclusive local
+supplementation uses the existing bounded collector with source ownership and
+duplicate admission before capacity.
+
+Finite local projection failures retain bounded observation counters for missing
+owners, invalid addresses, unsupported compiler types and work exhaustion,
+without recording names or source payloads. Local mutable identity does not
+establish assignment flow. Actual compiler binding and projection parity still
+require native qualification against the exact candidate.
 
 Scoped declaration enumeration preserves every declared source root for ownership
 checks, but seeds its frontier only from roots admitted by the captured IDE source

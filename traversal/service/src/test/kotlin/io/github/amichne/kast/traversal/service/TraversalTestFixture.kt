@@ -394,10 +394,12 @@ private fun functionSignature(qualifiedIdentity: String): CanonicalCompilerSigna
         )
         .refined()
 
-private fun CanonicalCompilerSignature.qualifiedIdentity(): String =
+private fun CanonicalCompilerSignature.qualifiedIdentity(): String? =
     when (this) {
         is CanonicalCompilerSignature.Function -> qualifiedIdentity.value
         is CanonicalCompilerSignature.Property -> qualifiedIdentity.value
         is CanonicalCompilerSignature.TypeAlias -> qualifiedIdentity.value
         is CanonicalCompilerSignature.ClassLike -> qualifiedIdentity.value
+        is CanonicalCompilerSignature.LocalFunction,
+        is CanonicalCompilerSignature.LocalProperty -> null
     }

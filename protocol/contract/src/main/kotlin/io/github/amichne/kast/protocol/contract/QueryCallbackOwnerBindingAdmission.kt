@@ -167,7 +167,7 @@ private fun admitNestedMapping(
     )
         return Refinement.Rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
     val signature =
-        bound.callable.compilerTarget.compilerEvidence.signature as? CompilerSignatureDocument.Function
+        bound.callable.compilerTarget.compilerEvidence.signature as? CompilerCallableSignatureDocument
             ?: return Refinement.Rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
     if (bound.position.value !in signature.valueParameters.values.indices)
         return Refinement.Rejected(QueryCallbackDocumentFailure.PARAMETER_POSITION_MISMATCH)

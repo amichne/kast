@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:442d3daf94fc00576b6a600d308bc8bd695ba9fdcc468cb35a4b557d03320b3b",
+  "pageVersion": "sha256:503d936b0a66a2ef127ad17742fd537ad5128fb5d990c3863a4e77d6d0af40dc",
   "claims": [
     {
       "id": "claim_d5f49799d6a64a78a95f34b3ba0fa09a",
@@ -162,7 +162,7 @@
     },
     {
       "id": "claim_9631e8c5a90e442f94b16206c07b3094",
-      "statement": "Public contract version 6 and generated Pi/Copilot catalog admission require compatible versions before registration, preserving required branch evidence.",
+      "statement": "Public contract version7 and generated Pi/Copilot catalog admission require compatible versions before registration, preserving required branch evidence and local addresses.",
       "evidence": [
         {
           "resource": "repo://copilot/extension.mjs#L67-L74",
@@ -170,7 +170,7 @@
         },
         {
           "resource": "repo://pi/extension.ts#L1-L2",
-          "version": "repo-lines-v1:sha256:2794208572c7bd8ee990eef3c287426f0b1c04e1702c2a8523e8450c7b724b64:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTUwMzVmMGQ4MzdmZGQ5MjdhZWUxNjUwYjgxMWJjZWU1OGY1ZTdiZTkyYTU2NDU1ZDAwMzAwNjI3Y2NkNTU0NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODYyZTZlMzAwNDk1OWYxNDA3NTUzZGU2OTAwODEyZDBlMDQzMjdlNjljNjZhNDhhZWNjYmRjNmJlMTBhOTIwYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDE4Y2I2ODJhYTVlMTlhMTZjZjRhNjRjMjFlMmFjNzRhNTgzNmU5ZDJiYjM4NzBkN2M3NDk0Y2E3NDgzYTgyZiJ9"
+          "version": "repo-lines-v1:sha256:ad426cfccb1957354ef6119b0a2e4d4cfbf64958342b6f9fbce6625341f24bdc:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTUwMzVmMGQ4MzdmZGQ5MjdhZWUxNjUwYjgxMWJjZWU1OGY1ZTdiZTkyYTU2NDU1ZDAwMzAwNjI3Y2NkNTU0NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjA0YzhjMzY1NmUwNTg4NzdjNzk5OGIzYTYxODZhMzQ3Y2RlZjcyMDdhNTg2YjcwNTY0OTcyNGUwNWU2ZjMwZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDE4Y2I2ODJhYTVlMTlhMTZjZjRhNjRjMjFlMmFjNzRhNTgzNmU5ZDJiYjM4NzBkN2M3NDk0Y2E3NDgzYTgyZiJ9"
         },
         {
           "resource": "repo://pi/extension.ts#L79-L86",
@@ -178,13 +178,31 @@
         },
         {
           "resource": "repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt#L1-L6",
-          "version": "repo-lines-v1:sha256:52dc8fec4bcccbffe93cbd0407b08c0f8024505d5a3265d46297987f69d16d35:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjk2NGRhNmQ1NGE3MDE1ZDllM2QxOWNhNDYxNjVjYWNmZjBmZDFjZTMzZmMyODBjOThkMGFmZGQzZDk2MDI4NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTFhNzA3ZDYxMWE2NWFlZWNlZmQzYWQ0MGIwZWFiMjUwMjk5OTBkMDkxNmUyNjQ3ODQwMjVlNjA1M2I3MjE2NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTAxZThlNjk1ZWU1NmIzZjJlNTlkYWY0ZWUwMTUzMWQ3ZGQ5NDk0ZWUyN2RkNWFjN2U2MTk4Mzg5NzE3YTM4ZSJ9"
+          "version": "repo-lines-v1:sha256:ce19c2976b0cc2827014c223032756de824bd09ae2cefadc68f4063c8c13b8ce:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjk2NGRhNmQ1NGE3MDE1ZDllM2QxOWNhNDYxNjVjYWNmZjBmZDFjZTMzZmMyODBjOThkMGFmZGQzZDk2MDI4NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2EzZjE5ZDI3MjU1YmJlYWZhZDA5YWRmOWVhMDM2NDg5ODY3MTBiN2ViZGUwNmFkNWRiMmIxOGQ0MzJlZTY3NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTAxZThlNjk1ZWU1NmIzZjJlNTlkYWY0ZWUwMTUzMWQ3ZGQ5NDk0ZWUyN2RkNWFjN2U2MTk4Mzg5NzE3YTM4ZSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_b68046bde934492a9f670c786d3184a4",
+      "statement": "LOCAL_FUNCTION and LOCAL_PROPERTY public signatures retain required compiler local addresses, callable or typed mutability facts; closed discriminator and address/signature consistency admission rejects malformed data before domain construction.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/LocalDeclarationAddressDocuments.kt",
+          "version": "repo-file-v1:sha256:b10b21f688158a402e8a0ee7c6ada85ed86893ad206e9ac35d4481271bfb6304"
+        },
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SymbolProtocolModels.kt",
+          "version": "repo-file-v1:sha256:04970a9a591f7455f8a99434ea08a0f33c21154fb94fd05c75abbf5cfc264079"
+        },
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalSymbolDocuments.kt",
+          "version": "repo-file-v1:sha256:4f7d294a146c7b59f4ce3890a4b49c494d7d4ff02d6ea3642f9ee0c966560ea3"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-08T03:03:28.717Z"
+    "at": "2026-10-08T03:09:54.978Z"
   }
 }

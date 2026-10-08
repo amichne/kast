@@ -1,7 +1,7 @@
 package io.github.amichne.kast.relation.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerCallableSignature
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 
@@ -58,7 +58,7 @@ private constructor(
                     return Refinement.Rejected(ValueSiteRevalidationRequestFailure.ARGUMENT_OUTSIDE_INVOCATION)
                 val signature = role.expectedCallable.signature
                 if (
-                    signature !is CanonicalCompilerSignature.Function ||
+                    signature !is CanonicalCompilerCallableSignature ||
                         role.position.value !in signature.valueParameters.indices
                 )
                     return Refinement.Rejected(ValueSiteRevalidationRequestFailure.ARGUMENT_POSITION_UNAVAILABLE)

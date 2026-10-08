@@ -196,51 +196,16 @@ internal class IntellijNativeDiscoveryQuery(
         return collector.finish()
     }
 
-    /** Scoped file enumeration ends native callbacks before name/kind admission or PSI projection. */
-    fun discoverDeclarations(
-        compiledScope: CompiledIntellijSearchScope,
-        request: SymbolDiscoveryRequest,
-        process:
-            (
-                observe: () -> Boolean,
-                qualify: (SymbolDiscoveryQualification) -> Unit,
-                accept: (NavigationItem) -> Boolean,
-            ) -> Boolean,
-    ): IntellijNativeDiscoveryExecution {
-        val target = request.target
-        if (
-            target !is SymbolDiscoveryTarget.All &&
-                !(target is SymbolDiscoveryTarget.Name && target.match == SymbolDiscoveryMatch.FUZZY)
-        )
-            return IntellijNativeDiscoveryExecution.Rejected(IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT)
-        return discoverIndexed(
-            compiledScope = compiledScope,
-            request = request,
-            contributor = IntellijReadContributor.SCOPED_DECLARATIONS,
-            process = process,
-        )
-    }
-
-    fun discoverExactName(
-        compiledScope: CompiledIntellijSearchScope,
-        request: SymbolDiscoveryRequest,
-        process: (String, (NavigationItem) -> Boolean) -> Boolean,
-    ): IntellijNativeDiscoveryExecution {
-        val target =
-            request.target as? SymbolDiscoveryTarget.Name
-                ?: return IntellijNativeDiscoveryExecution.Rejected(IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT)
-        if (target.match != SymbolDiscoveryMatch.EXACT_NAME)
-            return IntellijNativeDiscoveryExecution.Rejected(IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT)
-        return discoverIndexed(compiledScope, request, IntellijReadContributor.EXACT_INDEX) { _, _, accept ->
-            process(target.pattern.value, accept)
-        }
-    }
-
-    private fun discoverIndexed(
+    internal fun discoverIndexed(
         compiledScope: CompiledIntellijSearchScope,
         request: SymbolDiscoveryRequest,
         contributor: IntellijReadContributor,
-        process: (() -> Boolean, (SymbolDiscoveryQualification) -> Unit, (NavigationItem) -> Boolean) -> Boolean,
+        process:
+            (
+                () -> Boolean,
+                (SymbolDiscoveryQualification) -> Unit,
+                (IntellijDiscoveryDeclarationInput) -> Boolean,
+            ) -> Boolean,
     ): IntellijNativeDiscoveryExecution {
         when (environmentState()) {
             IntellijDiscoveryEnvironmentState.DUMB ->
@@ -252,79 +217,8 @@ internal class IntellijNativeDiscoveryQuery(
         val collector = collector(compiledScope, request)
         collector.contributor = contributor
         if (compiledScope.population == IntellijScopePopulation.KNOWN_EMPTY) return collector.finish()
-        val pending = ArrayList<NavigationItem>()
         try {
-            var reachedLimit = false
-            val target = request.target
-            val fuzzy = (target as? SymbolDiscoveryTarget.Name)?.takeIf { it.match == SymbolDiscoveryMatch.FUZZY }
-            val capacity =
-                minOf(
-                        request.budget.resources.workUnitLimit.value,
-                        limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value.toLong(),
-                    )
-                    .toInt()
-            val ranked = fuzzy?.let {
-                BoundedLexicalCandidates(it.pattern, minOf(capacity, request.budget.resources.resultLimit.value))
-            }
-            val complete =
-                process(collector::observe, collector::qualify) { item ->
-                    if (!collector.observe()) return@process false
-                    if (fuzzy != null) {
-                        observation.count(IntellijReadCounter.NAMES_VISITED, contributor)
-                        val name = item.name ?: return@process true
-                        if (fuzzy.pattern.relevance(name) == SymbolNameRelevance.UNMATCHED) return@process true
-                        observation.count(IntellijReadCounter.NAMES_MATCHED, contributor)
-                    }
-                    // Scoped enumeration has left native callbacks; package PSI is safe here.
-                    if (
-                        collector.admit(item, contributor == IntellijReadContributor.SCOPED_DECLARATIONS) !=
-                            IntellijDiscoveryItemAdmission.ADMITTED
-                    )
-                        return@process !collector.halted
-                    if (ranked != null) {
-                        ranked.accept(item).observe(observation, contributor)
-                    } else {
-                        if (pending.size >= capacity) {
-                            reachedLimit = true
-                            return@process false
-                        }
-                        pending += item
-                    }
-                    observation.count(IntellijReadCounter.CANDIDATES_COLLECTED, collector.contributor)
-                    true
-                }
-            if (ranked != null) {
-                pending += ranked.values()
-                if (ranked.truncated) {
-                    collector.qualify(
-                        if (request.budget.resources.resultLimit.value <= capacity)
-                            SymbolDiscoveryQualification.RESULT_LIMIT_REACHED
-                        else SymbolDiscoveryQualification.WORK_LIMIT_REACHED
-                    )
-                }
-            }
-            if (reachedLimit) {
-                observation.terminated(
-                    if (pending.size == limits[ReadLimitParameter.DISCOVERY_CANDIDATES].value)
-                        IntellijReadTermination.CANDIDATE_CAP
-                    else IntellijReadTermination.WORK_LIMIT,
-                    collector.contributor,
-                )
-                collector.qualify(SymbolDiscoveryQualification.WORK_LIMIT_REACHED)
-            } else if (!complete && !collector.halted) {
-                collector.qualify(SymbolDiscoveryQualification.PROVIDER_FAILURE)
-            }
-            for (item in pending) {
-                if (
-                    target is SymbolDiscoveryTarget.Name &&
-                        target.match == SymbolDiscoveryMatch.EXACT_NAME &&
-                        item.name != target.pattern.value
-                ) {
-                    collector.qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
-                    continue
-                }
-                if (!collector.accept(item)) break
-            }
+            IntellijIndexedDiscoveryAdmission(collector, request, limits, observation, contributor).collect(process)
         } catch (cancelled: ProcessCanceledException) {
             throw cancelled
         } catch (cancelled: CancellationException) {
@@ -372,7 +266,7 @@ internal fun IntellijNativeDiscoveryQuery.discoverAll(
     process: ((NavigationItem) -> Boolean) -> Boolean,
 ): IntellijNativeDiscoveryExecution = discoverDeclarations(compiledScope, request) { _, _, accept -> process(accept) }
 
-private fun LexicalCandidateRetention.observe(
+internal fun LexicalCandidateRetention.observe(
     observation: IntellijReadObservation,
     contributor: IntellijReadContributor,
 ) {

@@ -83,8 +83,29 @@ private fun KaSession.constructorEvidence(
                 return ConstructorEvidence.Unresolved(IntellijReadTermination.DISCOVERY_SOURCE_UNAVAILABLE)
         }
     val compiler =
-        when (val projected = owner.compilerProjection()) {
+        when (val projected = owner.compilerProjection(this, detached)) {
             is IntellijCompilerProjectionResult.Projected -> projected.projection
+            is IntellijCompilerProjectionResult.LocalRejected ->
+                return ConstructorEvidence.Unresolved(
+                    when (projected.failure) {
+                        io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure.WorkLimitReached,
+                        io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure.OwnerDepthExceeded ->
+                            IntellijReadTermination.WORK_LIMIT
+                        io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure.CompilerTypeError,
+                        io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure
+                            .CompilerTypeUnsupported,
+                        io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure.UnsupportedDeclaration,
+                        io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure.SignatureUnavailable,
+                        io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure.SourceUnavailable,
+                        io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure.OwnerUnavailable,
+                        io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure
+                            .CompilerOwnerUnavailable,
+                        io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure
+                            .LexicalAncestryUnavailable,
+                        is io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure.InvalidAddress ->
+                            IntellijReadTermination.EXACT_REFINEMENT_UNAVAILABLE
+                    }
+                )
             IntellijCompilerProjectionResult.Unsupported ->
                 return ConstructorEvidence.Unresolved(IntellijReadTermination.EXACT_REFINEMENT_UNAVAILABLE)
         }

@@ -101,10 +101,16 @@ sources:
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactPeerProofDocuments.kt
   - id: openwiki-source-aa500efdcfbb4a93d17c95ed
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactSiteAccountingDocuments.kt
+  - id: openwiki-source-9f733e1910323dc2c685d8ec
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/LocalDeclarationAddressDocuments.kt
   - id: openwiki-source-1363c35728458151b90e82c5
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryExpansionScopeDocument.kt
+  - id: openwiki-source-cfe1fb1d0ffdfe32b65ec05c
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SymbolProtocolModels.kt
   - id: openwiki-source-e8708d938df772dd92d2daf2
     resource: repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt
+  - id: openwiki-source-bf3ab75a4bb34b3c2053ce19
+    resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalSymbolDocuments.kt
   - id: openwiki-source-25796dce45aaa5a543a07570
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryCompleteMembership.kt
   - id: openwiki-source-a184ae82a49703816522523e
@@ -119,10 +125,10 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt
   - id: openwiki-source-ff3a32a34def3fbe81d63b1c
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt
-generated: { by: "codex", at: "2026-10-08T03:03:28.717Z" }
+generated: { by: "codex", at: "2026-10-08T03:09:54.978Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-08T03:03:28.717Z
+    at: 2026-10-08T03:09:54.978Z
 ---
 
 # Public intent tools
@@ -298,6 +304,14 @@ the `NORMAL_COMPLETION` condition. Raw admission rejects inconsistent transfer
 roles, owners, ranges or catch indexes. This evidence describes the supported
 static transfer, without asserting runtime path feasibility.
 
-Public contract version 6 requires this evidence and matching generated Pi and
+Public contract version 7 requires this evidence and matching generated Pi and
 Copilot adapter versions. Catalog admission rejects incompatible versions before
 tool registration; clients cannot silently discard the branch proof.
+
+Local declarations use closed `LOCAL_FUNCTION` or `LOCAL_PROPERTY` signatures
+with required declaration addresses. The address retains a compiler-confirmed
+kind, containing declaration identity and range, exact file and declaration
+range, and bounded lexical ownership ranges. Function signatures retain callable
+facts; property signatures retain type and `VAL` or `VAR` mutability. Unknown
+variants, missing discriminators and inconsistent address/signature facts reject
+before domain construction. Names remain presentation and search constraints.

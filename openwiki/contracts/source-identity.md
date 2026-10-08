@@ -60,15 +60,36 @@ code_sources:
 sources:
   - id: openwiki-source-d16ec0b0b90b8cd04743a4f3
     resource: repo://source/service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt
+  - id: openwiki-source-d932b255353af72bc963a5f0
+    resource: repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt
+  - id: openwiki-source-436e0d50dd1efa48daac0182
+    resource: repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactRevalidation.kt
+  - id: openwiki-source-a3cdc2cd949e8a87b5cc630c
+    resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactRevalidationCapture.kt
+  - id: openwiki-source-d3e7e4c127d3b87501a5acd5
+    resource: repo://symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt
   - id: openwiki-source-096cb7b190932815f87b4a1d
     resource: repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt
-generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+generated: { by: "codex", at: "2026-10-08T03:09:54.978Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-08T01:13:49.481Z
+    at: 2026-10-08T03:09:54.978Z
 ---
 
 # Source and workspace identity
+
+Local `val`, `var`, and named functions carry a compiler-admitted declaration
+address with exact file/range, containing compiler declaration and bounded
+lexical ownership anchors. A local address establishes positive identity without
+fabricating a qualified name. Exact selectors retain this address through reads,
+references and composition.
+
+Local reacquisition requires `ORIGINAL_DOCUMENT` content proof for the whole
+owning file, saved and committed PSI, and fresh compiler confirmation. An edited,
+moved, shadowed or replaced declaration requires rediscovery; an old local
+reference never rebinds by name. Qualified declaration reacquisition keeps its
+existing supported policy. Mutable variable identity does not prove assignment
+flow, and deferred execution remains independently qualified.
 
 A source read is not identified by path text alone. The contract combines:
 

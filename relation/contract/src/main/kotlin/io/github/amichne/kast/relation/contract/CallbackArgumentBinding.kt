@@ -1,7 +1,7 @@
 package io.github.amichne.kast.relation.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerCallableSignature
 import java.util.Collections
 
 /** Formal identity is the mapped callable and parameter position, never the argument's lexical position. */
@@ -29,7 +29,7 @@ private constructor(
                     !invocation.callable.range.containsValueRange(parameter.range) ->
                     Refinement.Rejected(CallbackInvocationFlowFailure.PARAMETER_OUTSIDE_CALLABLE)
                 position.value !in
-                    (invocation.callable.signature as CanonicalCompilerSignature.Function).valueParameters.indices ->
+                    (invocation.callable.signature as CanonicalCompilerCallableSignature).valueParameters.indices ->
                     Refinement.Rejected(CallbackInvocationFlowFailure.INVALID_PARAMETER_POSITION)
                 else -> Refinement.Refined(CallbackArgumentBinding(invocation, invocationOwner, position, parameter))
             }

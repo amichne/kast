@@ -14,3 +14,7 @@ icon: "braces"
 | `source` | Inspect bounded committed source, when requested. |
 
 Request `SOURCE` for source context. A matching name, path, or reconstructed token does not prove identity. See the [query item schema](/reference/models/query-item) and [scoped example](/reference/walkthrough#1-find-a-declaration-and-inspect-its-source).
+
+Local `val`, `var`, and named functions use `LOCAL_PROPERTY` or `LOCAL_FUNCTION` signatures. Their addresses retain the exact file and declaration range, compiler identity and range of the containing declaration, and bounded lexical ownership ranges. Function signatures retain callable facts; property signatures retain type and `VAL` or `VAR` mutability. Same-named declarations in different scopes remain distinct.
+
+Pass the returned reference unchanged to exact reads and relations. Local references can be reacquired only while their owning file content is unchanged, with fresh compiler confirmation. After editing or moving a local declaration, discover it again. Local variable identity does not establish assignment flow, and local function identity does not establish execution of a deferred body.
