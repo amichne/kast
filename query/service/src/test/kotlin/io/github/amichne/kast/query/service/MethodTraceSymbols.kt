@@ -146,6 +146,7 @@ internal fun traceService(fixture: QueryServiceTest, relations: RelationOperatio
         relations,
         unexpectedQueryTraversal(),
         queryTestTraversalCeiling(),
+        clock = QueryNanoClock { 0L },
     )
 
 internal fun traceFact(read: RelationRequest, start: Int) =

@@ -6,6 +6,10 @@ issued reference, run TRACE, then follow completion or recovery evidence.
 The [user tutorial](../public/search.mdx) and [agent skill](../../agent-tools/skills/kast/SKILL.md)
 teach that same path. Advanced query forms remain available for specific questions.
 
+The [matched work-reduction report](query-trace-work-reduction.md) records the
+before/after dispatch, charged-work, preparation, duplicate-output, and control
+observations, with exact source and harness pins.
+
 ## Evidence from the photographs
 
 The supplied terminal photographs report Kast 0.8.0 and IntelliJ IDEA 2026.2 in
