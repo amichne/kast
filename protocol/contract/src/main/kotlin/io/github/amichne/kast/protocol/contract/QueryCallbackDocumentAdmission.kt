@@ -54,6 +54,7 @@ private fun QueryCallbackObservationDocument.admitObservedFlow(
     return when (val binding = flow.binding) {
         is QueryCallbackBindingDocument.Default -> admitDefaultFlow(flow, binding)
         is QueryCallbackBindingDocument.Direct -> admitDirectFlow(flow, binding)
+        is QueryCallbackBindingDocument.DependencyContract -> admitDependencyContractFlow(flow, binding)
         is QueryCallbackBindingDocument.Unavailable -> binding.admitUnavailable(flow)
         is QueryCallbackBindingDocument.Bound ->
             when (val admitted = admitBinding(flow, binding)) {
@@ -103,6 +104,7 @@ private fun QueryCallbackFlowDocument.Observed.admitForwardingScan(): Refinement
             when (binding) {
                 is QueryCallbackBindingDocument.Bound,
                 is QueryCallbackBindingDocument.Default -> admitExhaustedGraphScan()
+                is QueryCallbackBindingDocument.DependencyContract,
                 is QueryCallbackBindingDocument.Direct,
                 is QueryCallbackBindingDocument.Unavailable -> rejected(QueryCallbackDocumentFailure.INVALID_SCAN_PROOF)
             }
@@ -285,3 +287,42 @@ private fun QueryCallbackObservationDocument.admitImmutableFlow(
         Refinement.Rejected(QueryCallbackDocumentFailure.FLOW_BODY_MISMATCH)
     else Refinement.Refined(Unit)
 }
+
+private fun QueryCallbackObservationDocument.admitDependencyContractFlow(
+    flow: QueryCallbackFlowDocument.Observed,
+    binding: QueryCallbackBindingDocument.DependencyContract,
+): Refinement<Unit, QueryCallbackDocumentFailure> {
+    val owner =
+        when (val admitted = binding.owner.admitOwner()) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return admitted
+        }
+    if (
+        binding.basis != flow.basis ||
+            !binding.occurrence.contains(flow.body.occurrence) ||
+            !owner.contains(binding.occurrence)
+    )
+        return rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
+    if (!lexicalOwner.declaration.contains(owner) || !binding.validDependencyContractTarget())
+        return rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
+    if (flow.scan != QueryCallbackInvocationScanDocument.EXHAUSTIVE || flow.invocations.values.isNotEmpty())
+        return rejected(QueryCallbackDocumentFailure.INVALID_SCAN_PROOF)
+    if (
+        binding.owner is QueryCallbackBodyDocument.Anonymous &&
+            QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION !in flow.obligations.values
+    )
+        return rejected(QueryCallbackDocumentFailure.MISSING_OBLIGATION)
+    return Refinement.Refined(Unit)
+}
+
+internal fun QueryCallbackBindingDocument.DependencyContract.validDependencyContractTarget(): Boolean {
+    val signature = target.compilerEvidence.signature as? CompilerSignatureDocument.Function ?: return false
+    return target.compilerEvidence.signature.supports(target.kind) &&
+        target.file.value.startsWith("jar://") &&
+        target.file.value.endsWith(".class") &&
+        position.value in signature.valueParameters.values.indices &&
+        classDigest.value.length == SHA256_HEX_LENGTH &&
+        classDigest.value.all { it in '0'..'9' || it in 'a'..'f' }
+}
+
+private const val SHA256_HEX_LENGTH = 64

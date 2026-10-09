@@ -8,6 +8,57 @@ import org.junit.jupiter.api.Test
 
 class LocalDeclarationIdentityTest {
     @Test
+    fun `anonymous objects retain distinct compiler owners and reject invalid type or address facts`() {
+        val first = address(20, 40, ownerName = "sample.first", kind = LocalDeclarationKind.ANONYMOUS_OBJECT)
+        val second = address(20, 40, ownerName = "sample.second", kind = LocalDeclarationKind.ANONYMOUS_OBJECT)
+        val a = CanonicalCompilerSignature.anonymousObject(first, listOf("sample.Collector<kotlin.String>")).value()
+        val b = CanonicalCompilerSignature.anonymousObject(second, listOf("sample.Collector<kotlin.String>")).value()
+        assertNotEquals(
+            CompilerSymbolIdentity.fromCanonicalSignature(a),
+            CompilerSymbolIdentity.fromCanonicalSignature(b),
+        )
+        assertEquals(a, CanonicalCompilerSignature.restoreCanonicalEncoding(a.canonicalEncoding().value).value())
+        assertEquals(
+            ExactRevalidationPolicy.ORIGINAL_DOCUMENT,
+            ExactRevalidationPolicy.CURRENT_DECLARATION.forDeclaration(a),
+        )
+        assertEquals(
+            CanonicalCompilerSignatureFailure.LOCAL_ADDRESS_KIND_MISMATCH,
+            (CanonicalCompilerSignature.anonymousObject(address(20, 40), listOf("sample.Collector"))
+                    as Refinement.Rejected)
+                .failure,
+        )
+        for (types in listOf(emptyList(), listOf(" "), listOf("sample.Collector\u0000"))) {
+            assertEquals(
+                CanonicalCompilerSignatureFailure.INVALID_SUPERTYPE,
+                (CanonicalCompilerSignature.anonymousObject(first, types) as Refinement.Rejected).failure,
+            )
+        }
+        val member =
+            LocalDeclarationAddress.create(
+                    first.file,
+                    LocalDeclarationKind.FUNCTION,
+                    range(25, 35),
+                    CompilerSymbolIdentity.fromCanonicalSignature(a),
+                    first.range,
+                    emptyList(),
+                )
+                .value()
+        val emit =
+            CanonicalCompilerSignature.localFunction(
+                    member,
+                    null,
+                    emptyList(),
+                    listOf("kotlin.String"),
+                    0,
+                    "kotlin.Unit",
+                )
+                .value()
+        assertEquals(CompilerSymbolIdentity.fromCanonicalSignature(a), member.ownerIdentity)
+        assertEquals(emit, CanonicalCompilerSignature.restoreCanonicalEncoding(emit.canonicalEncoding().value).value())
+    }
+
+    @Test
     fun `local compiler owner identity rejects noncanonical or malformed digests`() {
         val file = LocalDeclarationAddress.restoreFile("workspace", "/workspace/Probe.kt").value()
         for (raw in

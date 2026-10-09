@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:3a2707a120f61ca10f176ba366103eaa5a974394ad62f93b2362f3919c12ac46",
+  "pageVersion": "sha256:22eb322bc21adc2785f86e943b27b1f1e9fc79d8ab874b7b258d96dbec7c2ce2",
   "claims": [
     {
       "id": "claim_0f0af9dddde2411188f2130d7debe0f5",
@@ -130,7 +130,7 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt",
-          "version": "repo-file-v1:sha256:2c0c20f400ae197cd9ca00d526d9a2fc28cb1e12221876f85aa2826d0fd6e814"
+          "version": "repo-file-v1:sha256:3abd74a2e83b4311efa1e223de27fdfd02fbcf8f3a6a6cfd7cb95e8dde845fb3"
         },
         {
           "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt",
@@ -168,7 +168,7 @@
       "evidence": [
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt",
-          "version": "repo-file-v1:sha256:ddd11804540f1adfa45b6416c1795a9ead10e18235e35ad9e081c8aebabb0c11"
+          "version": "repo-file-v1:sha256:874cccea13d428076a03a5258031530e782b4d266159eae78220fa3846f7f317"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt",
@@ -176,7 +176,7 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt",
-          "version": "repo-file-v1:sha256:2c0c20f400ae197cd9ca00d526d9a2fc28cb1e12221876f85aa2826d0fd6e814"
+          "version": "repo-file-v1:sha256:3abd74a2e83b4311efa1e223de27fdfd02fbcf8f3a6a6cfd7cb95e8dde845fb3"
         }
       ]
     },
@@ -225,10 +225,24 @@
           "version": "repo-file-v1:sha256:c018e3c815295ea33e695ffa3126c8bd6c6123f84f3cb9c95bc11025a6df5238"
         }
       ]
+    },
+    {
+      "id": "claim_07821511d953474fa7f0d0d7d50405be",
+      "statement": "Declared dependency callback reads record bounded read, admitted and rejected counters without payloads at the binary-contract boundary; these are runtime observations separate from retained compiler contract evidence.",
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt",
+          "version": "repo-file-v1:sha256:f601b692e468d394df98101a636552a06d2548223ef0088f03a7782e2f62e53e"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt",
+          "version": "repo-file-v1:sha256:2853b3b1d3781ba618252bb542bdafe141942f4e35eedd0886ca25b4e155ec54"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-08T01:13:49.481Z"
+    "at": "2026-10-09T02:50:46.064Z"
   }
 }

@@ -153,6 +153,17 @@ enum class QueryCallbackFlowFailureDocument {
     DUPLICATE_OWNER_BINDING,
     INVALID_SCAN_PROOF,
     INVALID_FORWARDING_PATH,
+    INVALID_DEPENDENCY_CONTRACT,
+}
+
+@Serializable
+enum class QueryCallbackDependencyContractProvenanceDocument {
+    KOTLIN_BINARY_CONTRACT
+}
+
+@Serializable
+enum class QueryCallbackDependencyInvocationKindDocument {
+    EXACTLY_ONCE
 }
 
 sealed interface QueryCallbackBodyDocument {
@@ -196,6 +207,17 @@ sealed interface QueryCallbackBindingDocument {
         val basis: ImpactSemanticBasisDocument,
         val occurrence: RelationOccurrenceDocument,
         val owner: QueryCallbackBodyDocument,
+    ) : QueryCallbackBindingDocument
+
+    data class DependencyContract(
+        val basis: ImpactSemanticBasisDocument,
+        val occurrence: RelationOccurrenceDocument,
+        val owner: QueryCallbackBodyDocument,
+        val target: QueryExcludedCompilerTargetDocument,
+        val position: ProtocolOffset,
+        val classDigest: ProtocolText,
+        val provenance: QueryCallbackDependencyContractProvenanceDocument,
+        val invocationKind: QueryCallbackDependencyInvocationKindDocument,
     ) : QueryCallbackBindingDocument
 
     data class Unavailable(val cause: QueryCallbackFlowCauseDocument) : QueryCallbackBindingDocument

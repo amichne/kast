@@ -38,6 +38,8 @@ object CanonicalCallbackSchemaDocuments {
                 "callbackBody" to QueryCallbackBodyWireDocument.serializer(),
                 "callbackCallable" to QueryCallbackCallableWireDocument.serializer(),
                 "callbackBinding" to QueryCallbackBindingWireDocument.serializer(),
+                "callbackCompilerTarget" to
+                    io.github.amichne.kast.protocol.wire.QueryExcludedCompilerTargetWireDocument.serializer(),
                 "callbackInvocation" to QueryCallbackInvocationWireDocument.serializer(),
                 "callbackFormal" to QueryCallbackParameterIdentityWireDocument.serializer(),
                 "callbackForwardingEvidence" to QueryCallbackForwardingEvidenceWireDocument.serializer(),

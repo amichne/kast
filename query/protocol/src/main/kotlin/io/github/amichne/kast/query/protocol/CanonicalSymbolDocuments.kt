@@ -102,6 +102,11 @@ internal fun CanonicalCompilerSignature.protocolDocument(): CompilerSignatureDoc
                     LocalPropertyMutability.VAR -> LocalPropertyMutabilityDocument.VAR
                 },
             )
+        is CanonicalCompilerSignature.AnonymousObject ->
+            CompilerSignatureDocument.AnonymousObject(
+                address.protocolDocument() ?: return null,
+                supertypes.protocolTypes() ?: return null,
+            )
         is CanonicalCompilerSignature.Function -> protocolFunction()
         is CanonicalCompilerSignature.Property -> protocolProperty()
         is CanonicalCompilerSignature.TypeAlias ->
@@ -193,6 +198,8 @@ private fun LocalDeclarationAddress.protocolDocument(): LocalDeclarationAddressD
             when (kind) {
                 io.github.amichne.kast.symbol.contract.LocalDeclarationKind.FUNCTION ->
                     LocalDeclarationKindDocument.FUNCTION
+                io.github.amichne.kast.symbol.contract.LocalDeclarationKind.ANONYMOUS_OBJECT ->
+                    LocalDeclarationKindDocument.ANONYMOUS_OBJECT
                 io.github.amichne.kast.symbol.contract.LocalDeclarationKind.PROPERTY ->
                     LocalDeclarationKindDocument.PROPERTY
             },

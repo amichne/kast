@@ -94,6 +94,8 @@ internal class CallbackEvidenceReadmission(private val endpoints: CallbackEndpoi
                     )
                     .callback()
                     .then { Refinement.Refined(CallbackBindingEvidence.Direct(it)) }
+            is CallbackBindingEvidence.DependencyContract ->
+                Refinement.Rejected(CallbackSummaryReadmissionFailure.DependencyContractNeedsFreshRead)
             is CallbackBindingEvidence.Unavailable -> Refinement.Refined(previous)
         }
 

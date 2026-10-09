@@ -45,6 +45,10 @@ private data class SelectedCallbackArgument(
 )
 
 private sealed interface SelectedCallbackCall {
+    data class DeclaredContracts(
+        val bindings: List<io.github.amichne.kast.relation.contract.CallbackDependencyContract>
+    ) : SelectedCallbackCall
+
     data object NoCallbackParameters : SelectedCallbackCall
 
     data class Mapped(val function: KtNamedFunction, val arguments: List<SelectedCallbackArgument>) :
@@ -75,6 +79,7 @@ internal class IntellijSelectedCallbackSupplies(
                 is Refinement.Refined ->
                     when (val selectedCall = selected.value) {
                         SelectedCallbackCall.NoCallbackParameters -> return SelectedCallbackSuppliesRead.NotRequired
+                        is SelectedCallbackCall.DeclaredContracts -> return SelectedCallbackSuppliesRead.NotRequired
                         is SelectedCallbackCall.Mapped -> selectedCall
                     }
             }
@@ -231,7 +236,7 @@ internal class IntellijSelectedCallbackSupplies(
         val function =
             symbol.psi as? KtNamedFunction ?: return Refinement.Rejected(CallbackInvocationFlowCause.EXTERNAL_CALLABLE)
         if (function.containingFile.virtualFile?.let { context.scope.nativeScope.contains(it) } != true)
-            return Refinement.Rejected(CallbackInvocationFlowCause.OUTSIDE_DOMAIN)
+            return declaredContracts(call, resolved.valueArgumentMapping.keys.toList(), callbackParameters.size)
         val arguments = mutableListOf<SelectedCallbackArgument>()
         for ((index, parameter) in callbackParameters) {
             val values = resolved.valueArgumentMapping.filter { (_, mapped) -> mapped.symbol == parameter }.keys
@@ -241,6 +246,24 @@ internal class IntellijSelectedCallbackSupplies(
             }
         }
         return Refinement.Refined(SelectedCallbackCall.Mapped(function, arguments))
+    }
+
+    /** Literal callback observations own these proofs; no dependency body supplier record is required. */
+    private fun declaredContracts(
+        call: KtCallElement,
+        expressions: List<KtExpression>,
+        expected: Int,
+    ): Refinement<SelectedCallbackCall, CallbackInvocationFlowCause> {
+        val literals = expressions.filterIsInstance<org.jetbrains.kotlin.psi.KtLambdaExpression>()
+        if (literals.size != expected) return Refinement.Rejected(CallbackInvocationFlowCause.OUTSIDE_DOMAIN)
+        val bindings = mutableListOf<io.github.amichne.kast.relation.contract.CallbackDependencyContract>()
+        for (literal in literals) {
+            when (val read = readCallbackDependencyContract(context, call, literal)) {
+                is CallbackBindingPreparation.DependencyContract -> bindings += read.binding
+                else -> return Refinement.Rejected(CallbackInvocationFlowCause.OUTSIDE_DOMAIN)
+            }
+        }
+        return Refinement.Refined(SelectedCallbackCall.DeclaredContracts(bindings))
     }
 
     private fun argument(

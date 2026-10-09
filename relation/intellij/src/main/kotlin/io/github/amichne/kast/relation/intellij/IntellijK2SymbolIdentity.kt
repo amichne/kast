@@ -16,6 +16,8 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.symbol.contract.fromCanonicalSignature
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import org.jetbrains.kotlin.analysis.api.KaSession
+import org.jetbrains.kotlin.analysis.api.components.containingSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaAnonymousObjectSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
@@ -62,7 +64,8 @@ internal fun KaSymbol.compilerProjection(
 ): IntellijCompilerProjectionResult {
     if (depth > LocalDeclarationAddress.MAX_OWNER_DEPTH)
         return IntellijCompilerProjectionResult.LocalRejected(LocalDeclarationProjectionFailure.OwnerDepthExceeded)
-    if (location == KaSymbolLocation.LOCAL) return localRelationProjection(session, file, depth, observation)
+    if (location == KaSymbolLocation.LOCAL || with(session) { containingSymbol is KaAnonymousObjectSymbol })
+        return localRelationProjection(session, file, depth, observation)
     return when (this) {
         is KaValueParameterSymbol ->
             generatedPrimaryConstructorProperty?.compilerProjection(session, file, depth, observation)
@@ -87,8 +90,7 @@ internal fun KaSymbol.compilerProjection(
             )
         }
         is KaClassLikeSymbol -> {
-            // Anonymous object literals have no stable classId. A source range alone cannot be reused as an exact
-            // relation endpoint, so the provider must report incomplete coverage for these candidates.
+            // Anonymous objects use the compiler-owned local projection above. Named classes require a classId.
             val className = classId?.asSingleFqName()?.asString() ?: return IntellijCompilerProjectionResult.Unsupported
             projected(
                 CompilerSymbolKind.CLASSLIKE,

@@ -98,7 +98,8 @@ private fun CanonicalCompilerSignature.supportsSourceLessCallable(kind: Compiler
         is CanonicalCompilerSignature.LocalFunction,
         is CanonicalCompilerSignature.LocalProperty -> false
         is CanonicalCompilerSignature.TypeAlias,
-        is CanonicalCompilerSignature.ClassLike -> false
+        is CanonicalCompilerSignature.ClassLike,
+        is CanonicalCompilerSignature.AnonymousObject -> false
     }
 
 enum class SourceLessCallableDisposition {

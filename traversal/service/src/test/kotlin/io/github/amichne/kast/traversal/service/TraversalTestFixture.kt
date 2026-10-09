@@ -400,6 +400,7 @@ private fun CanonicalCompilerSignature.qualifiedIdentity(): String? =
         is CanonicalCompilerSignature.Property -> qualifiedIdentity.value
         is CanonicalCompilerSignature.TypeAlias -> qualifiedIdentity.value
         is CanonicalCompilerSignature.ClassLike -> qualifiedIdentity.value
+        is CanonicalCompilerSignature.AnonymousObject,
         is CanonicalCompilerSignature.LocalFunction,
         is CanonicalCompilerSignature.LocalProperty -> null
     }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:660e0fe77a3d4371140e496e1afeac4487e8503cbed1a5a2ff702465b6880401",
+  "pageVersion": "sha256:e11e6a90d9f15b97564c3ed9e0546e1c5b36eae53438f5d05132b46314440da6",
   "claims": [
     {
       "id": "claim_07361b0d848e4ee7895255b78a26d60b",
@@ -46,7 +46,7 @@
         },
         {
           "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/HostedRequiredPolicyExchangeTest.kt",
-          "version": "repo-file-v1:sha256:1bc674ddac85e827aee47a29008f03f1914327512fa7e65a74ac1f496a41da02"
+          "version": "repo-file-v1:sha256:86e5c7f80f74a6c4814f67f2935ad9d3bb20a30cc4f58b8cf7c6de3ef71882c1"
         }
       ]
     },
@@ -59,8 +59,8 @@
           "version": "repo-file-v1:sha256:630c9a7e3a62ab0be5718e60b2d0c681621f21517eaec6dc9011bf1d791e13c8"
         },
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt#L75-L155",
-          "version": "repo-lines-v1:sha256:bc3c1fc21b2d791ccf4931c8356be3ffa7206e28009e6969ff2a445ca7adfe3c:eyJzZWxlY3RlZExpbmVDb3VudCI6ODEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJhYzNhYTAwOWQzNzUzMjZiYmVkN2MzOTc3ZTI2MmY0MTljNTQ1ZjQ2YmUxYTdjZGVhNmIzYWFjZDYxZjY5OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlhYjMyY2FlYjVjYmMwMTNlZDUxMTBmNDcyMjJjNTRhMGFkM2JlZmY1MjRlYWE1Y2FiYTUxY2JkMGZmZmQxNzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzZTZlMjQ4MzhhNTIxMzQxNzA1OTIxOGEwN2UzNWUyZjFjNmNkZTk0Mjg3NDZhZGNlOWVhNmI4ZTFmN2Y2M2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhjYzkwZTE0YmU2MzM2Y2NhZTlmNzIwMmQ0MzA4YzUwN2M5OGE4YzUxNjc0ZTMzNjJhOTBlNzVjY2E1Zjg4OTQifQ"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt",
+          "version": "repo-file-v1:sha256:486ff609fe8d54369e8491dd2d86562966f0e5ce2b90b028053266c25173d72c"
         }
       ]
     },
@@ -92,7 +92,7 @@
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt",
-          "version": "repo-file-v1:sha256:9afd0f3b9e72e04757a249491a2ef6583c24160713b23508e53d2e182cc3a9cd"
+          "version": "repo-file-v1:sha256:486ff609fe8d54369e8491dd2d86562966f0e5ce2b90b028053266c25173d72c"
         }
       ]
     },
@@ -109,6 +109,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-08T01:13:49.481Z"
+    "at": "2026-10-09T02:50:46.064Z"
   }
 }

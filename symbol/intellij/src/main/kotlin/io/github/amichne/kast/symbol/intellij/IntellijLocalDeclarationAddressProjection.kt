@@ -20,6 +20,7 @@ import io.github.amichne.kast.symbol.contract.fromCanonicalSignature
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.components.containingSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaAnonymousObjectSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaLocalVariableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
@@ -79,7 +80,7 @@ private fun KaSymbol.namedLocalCompilerOwner(
     with(session) {
         var owner = containingSymbol
         var traversed = 0
-        while (owner != null && owner !is KaConstructorSymbol && (owner.psi as? KtNamedDeclaration)?.name == null) {
+        while (owner != null && !owner.isLocalDeclarationOwner()) {
             if (++traversed > LocalDeclarationAddress.MAX_OWNER_DEPTH)
                 return Refinement.Rejected(LocalDeclarationProjectionFailure.OwnerDepthExceeded)
             owner = owner.containingSymbol
@@ -103,6 +104,7 @@ private fun KaSymbol.createLocalCompilerAddress(
         }
     val kind =
         when (this) {
+            is KaAnonymousObjectSymbol -> LocalDeclarationKind.ANONYMOUS_OBJECT
             is KaNamedFunctionSymbol -> LocalDeclarationKind.FUNCTION
             is KaLocalVariableSymbol -> LocalDeclarationKind.PROPERTY
             else -> return Refinement.Rejected(LocalDeclarationProjectionFailure.CompilerOwnerUnavailable)
@@ -160,3 +162,6 @@ private fun KaSymbol.localOwnerSignature(
                 else LocalDeclarationProjectionFailure.CompilerOwnerUnavailable
             )
     }
+
+private fun KaSymbol.isLocalDeclarationOwner(): Boolean =
+    this is KaConstructorSymbol || this is KaAnonymousObjectSymbol || (psi as? KtNamedDeclaration)?.name != null

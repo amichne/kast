@@ -228,6 +228,8 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt
   - id: openwiki-source-711e20b0c3995766bf099120
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryValuePathOutputAdmission.kt
+  - id: openwiki-source-83fc669045de1f95291d1bb5
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt
   - id: openwiki-source-680008eb9e24b45cf91f6d9d
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
   - id: openwiki-source-9ddb39fa2f594fe2e1edaa19
@@ -246,12 +248,14 @@ sources:
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
   - id: openwiki-source-738d50046b5f0d1312b7fcb7
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt
+  - id: openwiki-source-76dc60162dca56e35a6ed9ac
+    resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt
   - id: openwiki-source-63abd5c24e7d947c619c1a6e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadValueSiteCounterTest.kt
-generated: { by: "codex", at: "2026-10-03T17:08:58.136Z" }
+generated: { by: "codex", at: "2026-10-09T02:50:46.064Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-08T01:13:49.481Z
+    at: 2026-10-09T02:50:46.064Z
 ---
 
 # Existing-IDE semantic query
@@ -822,3 +826,9 @@ Each hosted read initializes both value-site revalidation attempts and rejection
 Guarded peer-site acquisition precedes source impact admission. The existing application registry passively selects an already registered exact peer; the query does not open, import or trust a root. One child `HostedQueryService` read revalidates the target under its own authority, uses single evaluation and final freshness validation, and returns a completed receipt. The parent's original accounting owner debits the child's aggregate work and whole wall time once. Source admission reserves the retained peer payload before native source work. Resume and retained presentation do not repeat peer acquisition.
 
 `PEER_SITE_ADMISSION` and explicit `PEER_SITE_READS_STARTED`, `PEER_SITE_READS_COMPLETED` and `PEER_SITE_READS_REJECTED` counters observe this boundary. A completed child receipt is historical target evidence; later source publication does not create a shared atomic epoch or investigate target flow.
+
+Declared dependency callback reads add bounded read, admitted and rejected
+counters at the K2 binary-contract boundary. The counters carry no source
+payload or dependency body. They are runtime observations; the retained declared
+contract supplies compiler evidence separately. Missing counters in an older
+record do not establish zero work.

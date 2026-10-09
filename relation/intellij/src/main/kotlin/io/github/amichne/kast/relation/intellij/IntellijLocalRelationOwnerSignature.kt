@@ -10,6 +10,8 @@ import io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import org.jetbrains.kotlin.analysis.api.KaSession
+import org.jetbrains.kotlin.analysis.api.components.containingSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaAnonymousObjectSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaKotlinPropertySymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
@@ -26,7 +28,7 @@ internal fun KaSymbol.localRelationOwnerSignature(
 ): Refinement<CanonicalCompilerSignature, LocalDeclarationProjectionFailure> {
     if (depth > LocalDeclarationAddress.MAX_OWNER_DEPTH)
         return Refinement.Rejected(LocalDeclarationProjectionFailure.OwnerDepthExceeded)
-    if (location == KaSymbolLocation.LOCAL)
+    if (location == KaSymbolLocation.LOCAL || with(session) { containingSymbol is KaAnonymousObjectSymbol })
         return compilerProjection(session, file, depth, observation).ownerSignature()
     return when (this) {
         is KaNamedFunctionSymbol -> localOwnerIdentity(session, observation).mapOwnerSignature { functionSignature(it) }

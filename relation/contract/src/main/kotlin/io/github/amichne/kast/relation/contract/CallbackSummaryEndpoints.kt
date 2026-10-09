@@ -39,6 +39,7 @@ internal class CallbackSummaryEndpoints private constructor() {
         when (value) {
             is CallbackBindingEvidence.Bound -> call(value.binding.invocation)
             is CallbackBindingEvidence.Default -> values += value.binding.parameter.callable
+            is CallbackBindingEvidence.DependencyContract,
             is CallbackBindingEvidence.Direct,
             is CallbackBindingEvidence.Unavailable -> Unit
         }
@@ -67,6 +68,11 @@ internal class CallbackSummaryEndpoints private constructor() {
                     CallbackBodySupply.Unsupported -> Unit
                 }
                 when (val binding = owner.binding) {
+                    is CallbackBindingEvidence.DependencyContract -> {
+                        add(binding.binding.occurrence.file)
+                        add(binding.binding.owner.file)
+                        add(binding.binding.target.file)
+                    }
                     is CallbackBindingEvidence.Direct -> {
                         add(binding.binding.occurrence.file)
                         add(binding.binding.owner.file)

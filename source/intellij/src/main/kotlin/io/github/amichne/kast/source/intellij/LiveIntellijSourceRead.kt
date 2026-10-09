@@ -1179,12 +1179,7 @@ private fun exactDeclaration(
     var current: PsiElement? = leaf
     while (current != null) {
         val declaration = current as? KtNamedDeclaration
-        if (
-            declaration != null &&
-                declaration.name == selector.name.value &&
-                declaration.textRange.startOffset == selector.range.startInclusive &&
-                declaration.textRange.endOffset == selector.range.endExclusive
-        ) {
+        if (declaration != null && declaration.matchesExactSource(selector)) {
             matches += declaration
         }
         current = current.parent
@@ -1215,10 +1210,8 @@ private fun exactCandidateDeclaration(
         val declaration = current as? KtNamedDeclaration
         if (
             declaration != null &&
-                declaration.name == candidate.name.value &&
-                declaration.textRange.startOffset == location.offset.value &&
-                declaration.matches(candidate.kind) &&
-                declaration.matchesCompilerKinds(selector.selection.constraints)
+                declaration.matchesSourceCandidateLocation(candidate.name.value, location.offset.value) &&
+                declaration.matchesSourceCandidateKind(selector)
         ) {
             matches += declaration
         }
@@ -1288,3 +1281,6 @@ private fun KtNamedDeclaration.localSourceTarget(document: LiveSourceDocument): 
 
 private fun regionRejected(reason: IntellijSourceReadRejection): IntellijSourceRegionAccessResult.Rejected =
     IntellijSourceRegionAccessResult.Rejected(reason)
+
+private fun KtNamedDeclaration.matchesSourceCandidateKind(selector: CandidateSelector.Declaration): Boolean =
+    matches(selector.selection.candidate.kind) && matchesCompilerKinds(selector.selection.constraints)

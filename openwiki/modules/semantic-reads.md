@@ -173,10 +173,14 @@ sources:
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueBoundary.kt
   - id: openwiki-source-d3f0d7e24d35ed4b47aff3d5
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueSite.kt
+  - id: openwiki-source-83fc669045de1f95291d1bb5
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt
   - id: openwiki-source-69183833f8b6d3564d4f3405
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijLocalRelationOwnerSignature.kt
   - id: openwiki-source-4b4060f7f0e374ebf0169089
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijLocalRelationProjection.kt
+  - id: openwiki-source-1fe2efeabc6d3df3eafeb9cc
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijSelectedCallbackSupplies.kt
   - id: openwiki-source-b237fe55f86308ccb96d0596
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowCompilerAdapter.kt
   - id: openwiki-source-eeb2af1b330e389cae564042
@@ -207,6 +211,10 @@ sources:
     resource: repo://runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperationsTest.kt
   - id: openwiki-source-db97665220b9cbe46d4c2faf
     resource: repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijLocalSourceAddress.kt
+  - id: openwiki-source-c49b75ae0217840059d27d21
+    resource: repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/LiveIntellijSourceRead.kt
+  - id: openwiki-source-b26cd272fe4de3788232851a
+    resource: repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/SourceCompilerDeclarationName.kt
   - id: openwiki-source-56940b0178b2713b872235da
     resource: repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/SourceLocalOwnerCallableIdentity.kt
   - id: openwiki-source-e3b377f6d0b52a5f1c51e30e
@@ -235,10 +243,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-8d15fa1e67cdc054e05e2796
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedValueFlowDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-08T04:02:52.014Z" }
+generated: { by: "codex", at: "2026-10-09T02:50:46.064Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-08T04:02:52.014Z
+    at: 2026-10-09T02:50:46.064Z
 ---
 
 # Semantic read domains
@@ -696,3 +704,18 @@ an explicit return bypass; internal paths may still be useful. Bounded counters
 record candidate admission and finite type, abrupt-completion and finally
 rejections without source payloads. This supported static model does not prove
 runtime path feasibility.
+
+### Anonymous objects and declared binary callback contracts
+
+Module-owned K2 projections preserve an anonymous object's exact local address,
+actual superclass proof and containing owner. Members belong to that anonymous
+object rather than its enclosing named function. Source restoration recognizes
+the reserved object label only for object literals, then checks exact anchors and
+compiler identity.
+
+Binary callback admission reads the resolved library function's declared
+calls-in-place effect, mapped function parameter and actual class digest. Only
+a single matching EXACTLY_ONCE effect is admitted. Dependency bodies are not
+analyzed. Read, admission and rejection counters make that boundary observable;
+the evidence establishes the supported compiler-static rule rather than runtime
+activation. Stored callbacks and unsupported mappings retain finite failures.

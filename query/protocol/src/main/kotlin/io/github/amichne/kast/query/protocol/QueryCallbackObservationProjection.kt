@@ -164,6 +164,30 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
         return QueryCallbackCallableDocument(declaration, target)
     }
 
+    private fun dependencyTarget(value: CompilerGroundedSymbolEvidence): QueryExcludedCompilerTargetDocument? {
+        val signature = value.signature.protocolDocument() ?: return null
+        val evidence =
+            CompilerSymbolEvidenceDocument.restore(
+                    ProtocolText.parse(value.compilerIdentity.value).callbackValue() ?: return null,
+                    signature,
+                )
+                .callbackValue() ?: return null
+        val range =
+            SourceRangeDocument.create(
+                    ProtocolOffset.parse(value.range.startInclusive).callbackValue() ?: return null,
+                    ProtocolOffset.parse(value.range.endExclusive).callbackValue() ?: return null,
+                )
+                .callbackValue() ?: return null
+        return QueryExcludedCompilerTargetDocument.create(
+                ProtocolText.parse(value.file.stableValue).callbackValue() ?: return null,
+                range,
+                ProtocolText.parse(value.name.value).callbackValue() ?: return null,
+                value.kind.protocolKind(),
+                evidence,
+            )
+            .callbackValue()
+    }
+
     fun anonymous(value: RelationCallableBody.Anonymous): QueryCallbackBodyDocument.Anonymous? {
         return QueryCallbackBodyDocument.Anonymous(
             occurrence(
@@ -301,6 +325,7 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
                     parameter(value.binding.parameter) ?: return null,
                     occurrence(value.binding.defaultValue) ?: return null,
                 )
+            is CallbackBindingEvidence.DependencyContract -> dependencyContract(value.binding)
             is CallbackBindingEvidence.Direct ->
                 QueryCallbackBindingDocument.Direct(
                     value.binding.basis.impactDocument().callbackValue() ?: return null,
@@ -309,6 +334,21 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
                 )
         }
     }
+
+    private fun dependencyContract(
+        value: io.github.amichne.kast.relation.contract.CallbackDependencyContract
+    ): QueryCallbackBindingDocument? =
+        QueryCallbackBindingDocument.DependencyContract(
+            value.basis.impactDocument().callbackValue() ?: return null,
+            occurrence(value.occurrence) ?: return null,
+            body(value.owner) ?: return null,
+            dependencyTarget(value.target) ?: return null,
+            ProtocolOffset.parse(value.position.value).callbackValue() ?: return null,
+            ProtocolText.parse(value.classDigest.value).callbackValue() ?: return null,
+            io.github.amichne.kast.protocol.contract.QueryCallbackDependencyContractProvenanceDocument
+                .KOTLIN_BINARY_CONTRACT,
+            io.github.amichne.kast.protocol.contract.QueryCallbackDependencyInvocationKindDocument.EXACTLY_ONCE,
+        )
 
     fun bound(value: CallbackArgumentBinding): QueryCallbackBindingDocument.Bound? {
         return QueryCallbackBindingDocument.Bound(

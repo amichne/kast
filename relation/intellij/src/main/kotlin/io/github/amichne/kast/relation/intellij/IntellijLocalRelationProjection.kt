@@ -15,6 +15,7 @@ import io.github.amichne.kast.symbol.contract.LocalPropertyMutability
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import org.jetbrains.kotlin.analysis.api.KaSession
+import org.jetbrains.kotlin.analysis.api.symbols.KaAnonymousObjectSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaLocalVariableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
@@ -58,6 +59,7 @@ internal fun KaSymbol.localRelationProjection(
 
 private fun KaSymbol.hasSupportedLocalDeclaration(): Boolean =
     when (this) {
+        is KaAnonymousObjectSymbol -> (psi as? org.jetbrains.kotlin.psi.KtObjectDeclaration)?.isObjectLiteral() == true
         is KaNamedFunctionSymbol -> psi is KtNamedFunction && (psi as KtNamedFunction).name != null
         is KaLocalVariableSymbol -> psi is KtProperty && (psi as KtProperty).isLocal
         else -> false
@@ -85,6 +87,12 @@ private fun KaSymbol.localRelationFile(
 
 private fun KaSymbol.localRelationSignature(address: LocalDeclarationAddress): IntellijCompilerProjectionResult =
     when (this) {
+        is KaAnonymousObjectSymbol ->
+            projected(
+                CompilerSymbolKind.CLASSLIKE,
+                null,
+                CanonicalCompilerSignature.anonymousObject(address, superTypes.map { it.toString() }),
+            )
         is KaNamedFunctionSymbol ->
             projected(
                 CompilerSymbolKind.FUNCTION,

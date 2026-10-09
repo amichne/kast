@@ -1,0 +1,75 @@
+enum class PinStage { PROFILE, HOST, PROJECT, ARTIFACTS, MODEL, SOURCE, PUBLICATION }
+enum class PinOutcome { READY, UNREADY, REJECTED }
+data class Profile(val home: String,val config: String,val system: String,val plugins: String)
+data class ClassResource(val name: String,val sha256: String,val url: String)
+data class NativeRoot(val module: String,val path: String,val test: Boolean)
+data class Model(val smart: Boolean,val saved: Boolean,val committed: Boolean,val gradleProjectCount: Int,val sourceRoots: List<NativeRoot>)
+data class SourceHash(val file: String,val diskSha256: String,val psiSha256: String)
+data class NativePin(val type: String="TRACE_NATIVE_PIN",val outcome: PinOutcome,val pid: Long,val processStart: String,val version: String,val ideaBuild: String,val javaHome: String,val profile: Profile,val model: Model,val classes: List<ClassResource>,val sources: List<SourceHash>)
+data class PinFailure(val type: String="TRACE_PIN_REJECTED",val stage: PinStage,val failureClass: String)
+run {
+    val owned = java.nio.file.Path.of("__OWNED_ROOT__")
+    val base = owned.resolve("fixture")
+    var stage = PinStage.PROFILE
+    val gson = com.google.gson.Gson()
+    fun hash(bytes: ByteArray) = java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+    try {
+        val profile = Profile(System.getProperty("user.home"),com.intellij.openapi.application.PathManager.getConfigPath(),com.intellij.openapi.application.PathManager.getSystemPath(),com.intellij.openapi.application.PathManager.getPluginsPath())
+        check(profile.home == owned.resolve("h").toString())
+        stage = PinStage.HOST
+        check(ProcessHandle.current().pid() == __OWNED_PID__L)
+        val plugin = com.intellij.ide.plugins.PluginManagerCore.getPlugin(com.intellij.openapi.extensions.PluginId.getId("io.github.amichne.kast.ide-hosted"))!!
+        val loader = plugin.pluginClassLoader!!
+        stage = PinStage.PROJECT
+        val project = com.intellij.openapi.project.ProjectManager.getInstance().openProjects.single { it.basePath == base.toString() }
+        stage = PinStage.ARTIFACTS
+        val classes = listOf(
+            "io.github.amichne.kast.source.intellij.SourceCompilerDeclarationNameKt",
+            "io.github.amichne.kast.source.intellij.LiveIntellijSourceReadKt",
+            "io.github.amichne.kast.source.intellij.IntellijSourceCompilerProjectionKt",
+            "io.github.amichne.kast.query.protocol.CallbackProjection",
+            "io.github.amichne.kast.relation.contract.CallbackDependencyContract",
+            "io.github.amichne.kast.relation.intellij.IntellijSelectedCallbackSupplies",
+            "io.github.amichne.kast.relation.intellij.IntellijCallbackDependencyContractKt",
+            "io.github.amichne.kast.relation.intellij.IntellijCallbackBindingReader",
+            "io.github.amichne.kast.relation.intellij.IntellijCallbackFlowRead",
+            "io.github.amichne.kast.relation.intellij.IntellijK2SymbolIdentityKt",
+            "io.github.amichne.kast.relation.intellij.IntellijLocalRelationProjectionKt",
+            "io.github.amichne.kast.relation.intellij.IntellijNamedCallbackObservationEmitter",
+            "io.github.amichne.kast.query.service.QueryTraceTasksKt",
+            "io.github.amichne.kast.runtime.hosted.HostedCanonicalQueryKt",
+            "io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadDiagnostics"
+        ).map { name ->
+            val resource = loader.getResource(name.replace('.','/')+".class")!!
+            ClassResource(name,hash(resource.openStream().use { it.readBytes() }),resource.toString())
+        }
+        stage = PinStage.MODEL
+        val gradlePlugin = com.intellij.ide.plugins.PluginManagerCore.getPlugin(com.intellij.openapi.extensions.PluginId.getId("org.jetbrains.plugins.gradle"))!!
+        val cacheType = gradlePlugin.pluginClassLoader!!.loadClass("org.jetbrains.plugins.gradle.service.project.data.ExternalProjectDataCache")
+        val cache = cacheType.getMethod("getInstance",com.intellij.openapi.project.Project::class.java).invoke(null,project)
+        val imported = cacheType.getMethod("getRootExternalProject",String::class.java).invoke(cache,base.toString())
+        val model = com.intellij.openapi.application.ReadAction.compute<Model,RuntimeException> {
+            val roots = com.intellij.openapi.module.ModuleManager.getInstance(project).modules.flatMap { module ->
+                com.intellij.openapi.roots.ModuleRootManager.getInstance(module).contentEntries.flatMap { entry -> entry.sourceFolders.map { folder -> NativeRoot(module.name,folder.url,folder.isTestSource) } }
+            }
+            Model(!com.intellij.openapi.project.DumbService.isDumb(project),com.intellij.openapi.fileEditor.FileDocumentManager.getInstance().unsavedDocuments.isEmpty(),!com.intellij.psi.PsiDocumentManager.getInstance(project).hasUncommitedDocuments(),if (imported == null) 0 else 1,roots)
+        }
+        stage = PinStage.SOURCE
+        val sources = com.intellij.openapi.application.ReadAction.compute<List<SourceHash>,RuntimeException> {
+            java.nio.file.Files.walk(base.resolve("src")).use { paths ->
+                paths.filter { it.toString().endsWith(".kt") }.sorted().map { path ->
+                    val vf = com.intellij.openapi.vfs.LocalFileSystem.getInstance().findFileByNioFile(path)!!
+                    val psi = com.intellij.psi.PsiManager.getInstance(project).findFile(vf)!!
+                    SourceHash(base.relativize(path).toString(),hash(java.nio.file.Files.readAllBytes(path)),hash(psi.text.toByteArray(Charsets.UTF_8)))
+                }.toList()
+            }
+        }
+        check(sources.all { it.diskSha256 == it.psiSha256 })
+        stage = PinStage.PUBLICATION
+        val outcome = if (model.smart && model.saved && model.committed && model.gradleProjectCount > 0 && model.sourceRoots.any { it.path.endsWith("/src/main/kotlin") } && model.sourceRoots.any { it.path.endsWith("/src/test/kotlin") }) PinOutcome.READY else PinOutcome.UNREADY
+        val result = NativePin(outcome=outcome,pid=ProcessHandle.current().pid(),processStart=ProcessHandle.current().info().startInstant().get().toString(),version=plugin.version,ideaBuild=com.intellij.openapi.application.ApplicationInfo.getInstance().build.asString(),javaHome=System.getProperty("java.home"),profile=profile,model=model,classes=classes,sources=sources)
+        java.nio.file.Files.writeString(owned.resolve("__PHASE__-native-pin.json"),gson.toJson(result))
+    } catch (failure: Throwable) {
+        java.nio.file.Files.writeString(owned.resolve("native-pin-rejection.json"),gson.toJson(PinFailure(stage=stage,failureClass=failure.javaClass.name)))
+    }
+}

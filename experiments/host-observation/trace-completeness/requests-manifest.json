@@ -1,0 +1,667 @@
+{
+  "type": "TRACE_REQUESTS_MANIFEST",
+  "fixtureManifestSha256": "3111951fa903d4983d9af6f131e9c54cd39d008b487b307e45c64b634e3a3dd1",
+  "inputSchemaSha256": "500bfa79a6b263f30730e54e91234504417130f302a1e7126c632ed8a6fede39",
+  "configSha256": "70d9058fe87fa61e10d38ca09e857c565ba54ae3f012f9bb12bedcf91f06bd3e",
+  "requests": [
+    {
+      "label": "A.TRACE",
+      "payload": {
+        "request": {
+          "source": {
+            "declarationName": "Attributes",
+            "scope": {
+              "packageName": "fixture.attributes",
+              "sourceSetNames": [
+                "main",
+                "test"
+              ],
+              "includeSubpackages": false,
+              "type": "PACKAGE"
+            },
+            "declarationKinds": [
+              "CLASS"
+            ],
+            "type": "SEARCH_DECLARATIONS"
+          },
+          "steps": [
+            {
+              "expansionScope": {
+                "sourceSets": [
+                  "main",
+                  "test"
+                ],
+                "sourcePolicy": "PRODUCTION_AND_TEST",
+                "generatedSources": "EXCLUDE",
+                "directory": "src",
+                "type": "SOURCE_DOMAIN"
+              },
+              "type": "TRACE"
+            }
+          ],
+          "executionBudget": {
+            "maxElapsedMs": 15000,
+            "maxResults": 100,
+            "maxWorkUnits": 100000,
+            "maxReturnedBytes": 524288
+          },
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          },
+          "retention": "RETAIN",
+          "completion": {
+            "type": "COMPLETE_ONLY",
+            "model": "COMPILER_RESOLVED_STATIC_V1"
+          },
+          "type": "RUN"
+        },
+        "verbose": true
+      }
+    },
+    {
+      "label": "B.TRACE",
+      "payload": {
+        "request": {
+          "source": {
+            "declarationName": "FlowCollector",
+            "scope": {
+              "packageName": "fixture.flow",
+              "sourceSetNames": [
+                "main",
+                "test"
+              ],
+              "includeSubpackages": false,
+              "type": "PACKAGE"
+            },
+            "declarationKinds": [
+              "CLASS"
+            ],
+            "type": "SEARCH_DECLARATIONS"
+          },
+          "steps": [
+            {
+              "expansionScope": {
+                "sourceSets": [
+                  "main",
+                  "test"
+                ],
+                "sourcePolicy": "PRODUCTION_AND_TEST",
+                "generatedSources": "EXCLUDE",
+                "directory": "src",
+                "type": "SOURCE_DOMAIN"
+              },
+              "type": "TRACE"
+            }
+          ],
+          "executionBudget": {
+            "maxElapsedMs": 15000,
+            "maxResults": 100,
+            "maxWorkUnits": 100000,
+            "maxReturnedBytes": 524288
+          },
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          },
+          "retention": "RETAIN",
+          "completion": {
+            "type": "COMPLETE_ONLY",
+            "model": "COMPILER_RESOLVED_STATIC_V1"
+          },
+          "type": "RUN"
+        },
+        "verbose": true
+      }
+    },
+    {
+      "label": "A.IMPLEMENTATIONS",
+      "payload": {
+        "request": {
+          "source": {
+            "declarationName": "Attributes",
+            "scope": {
+              "packageName": "fixture.attributes",
+              "sourceSetNames": [
+                "main",
+                "test"
+              ],
+              "includeSubpackages": false,
+              "type": "PACKAGE"
+            },
+            "declarationKinds": [
+              "CLASS"
+            ],
+            "type": "SEARCH_DECLARATIONS"
+          },
+          "steps": [
+            {
+              "relation": "IMPLEMENTATIONS",
+              "expansionScope": {
+                "sourceSets": [
+                  "main",
+                  "test"
+                ],
+                "sourcePolicy": "PRODUCTION_AND_TEST",
+                "generatedSources": "EXCLUDE",
+                "directory": "src",
+                "type": "SOURCE_DOMAIN"
+              },
+              "type": "EXPAND_RELATION"
+            },
+            {
+              "type": "DISTINCT_SYMBOLS"
+            }
+          ],
+          "executionBudget": {
+            "maxElapsedMs": 15000,
+            "maxResults": 100,
+            "maxWorkUnits": 100000,
+            "maxReturnedBytes": 524288
+          },
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          },
+          "retention": "RETAIN",
+          "completion": {
+            "type": "COMPLETE_ONLY",
+            "model": "COMPILER_RESOLVED_STATIC_V1"
+          },
+          "type": "RUN"
+        },
+        "verbose": true
+      }
+    },
+    {
+      "label": "B.IMPLEMENTATIONS",
+      "payload": {
+        "request": {
+          "source": {
+            "declarationName": "FlowCollector",
+            "scope": {
+              "packageName": "fixture.flow",
+              "sourceSetNames": [
+                "main",
+                "test"
+              ],
+              "includeSubpackages": false,
+              "type": "PACKAGE"
+            },
+            "declarationKinds": [
+              "CLASS"
+            ],
+            "type": "SEARCH_DECLARATIONS"
+          },
+          "steps": [
+            {
+              "relation": "IMPLEMENTATIONS",
+              "expansionScope": {
+                "sourceSets": [
+                  "main",
+                  "test"
+                ],
+                "sourcePolicy": "PRODUCTION_AND_TEST",
+                "generatedSources": "EXCLUDE",
+                "directory": "src",
+                "type": "SOURCE_DOMAIN"
+              },
+              "type": "EXPAND_RELATION"
+            },
+            {
+              "type": "DISTINCT_SYMBOLS"
+            }
+          ],
+          "executionBudget": {
+            "maxElapsedMs": 15000,
+            "maxResults": 100,
+            "maxWorkUnits": 100000,
+            "maxReturnedBytes": 524288
+          },
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          },
+          "retention": "RETAIN",
+          "completion": {
+            "type": "COMPLETE_ONLY",
+            "model": "COMPILER_RESOLVED_STATIC_V1"
+          },
+          "type": "RUN"
+        },
+        "verbose": true
+      }
+    },
+    {
+      "label": "B.OVERRIDES",
+      "payload": {
+        "request": {
+          "source": {
+            "file": "src/main/kotlin/fixture/flow/FlowCollector.kt",
+            "offset": 990,
+            "type": "AT_LOCATION"
+          },
+          "steps": [
+            {
+              "relation": "OVERRIDES",
+              "expansionScope": {
+                "sourceSets": [
+                  "main",
+                  "test"
+                ],
+                "sourcePolicy": "PRODUCTION_AND_TEST",
+                "generatedSources": "EXCLUDE",
+                "directory": "src",
+                "type": "SOURCE_DOMAIN"
+              },
+              "type": "EXPAND_RELATION"
+            },
+            {
+              "type": "DISTINCT_SYMBOLS"
+            }
+          ],
+          "executionBudget": {
+            "maxElapsedMs": 15000,
+            "maxResults": 100,
+            "maxWorkUnits": 100000,
+            "maxReturnedBytes": 524288
+          },
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          },
+          "retention": "RETAIN",
+          "completion": {
+            "type": "COMPLETE_ONLY",
+            "model": "COMPILER_RESOLVED_STATIC_V1"
+          },
+          "type": "RUN"
+        },
+        "verbose": true
+      }
+    },
+    {
+      "label": "A.library.CALLEES",
+      "payload": {
+        "request": {
+          "source": {
+            "declarationName": "take",
+            "scope": {
+              "packageName": "fixture.attributes",
+              "sourceSetNames": [
+                "main",
+                "test"
+              ],
+              "includeSubpackages": false,
+              "type": "PACKAGE"
+            },
+            "declarationKinds": [
+              "FUNCTION"
+            ],
+            "type": "SEARCH_DECLARATIONS"
+          },
+          "steps": [
+            {
+              "relation": "CALLEES",
+              "expansionScope": {
+                "sourceSets": [
+                  "main",
+                  "test"
+                ],
+                "sourcePolicy": "PRODUCTION_AND_TEST",
+                "generatedSources": "EXCLUDE",
+                "directory": "src/main/kotlin/fixture/attributes",
+                "type": "SOURCE_DOMAIN"
+              },
+              "type": "EXPAND_RELATION"
+            }
+          ],
+          "executionBudget": {
+            "maxElapsedMs": 15000,
+            "maxResults": 100,
+            "maxWorkUnits": 100000,
+            "maxReturnedBytes": 524288
+          },
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          },
+          "retention": "RETAIN",
+          "completion": {
+            "type": "COMPLETE_ONLY",
+            "model": "COMPILER_RESOLVED_STATIC_V1"
+          },
+          "type": "RUN"
+        },
+        "verbose": true
+      }
+    },
+    {
+      "label": "A.helper.CALLEES",
+      "payload": {
+        "request": {
+          "source": {
+            "declarationName": "helperRemoval",
+            "scope": {
+              "packageName": "fixture.attributes",
+              "sourceSetNames": [
+                "main",
+                "test"
+              ],
+              "includeSubpackages": false,
+              "type": "PACKAGE"
+            },
+            "declarationKinds": [
+              "FUNCTION"
+            ],
+            "type": "SEARCH_DECLARATIONS"
+          },
+          "steps": [
+            {
+              "relation": "CALLEES",
+              "expansionScope": {
+                "sourceSets": [
+                  "main",
+                  "test"
+                ],
+                "sourcePolicy": "PRODUCTION_AND_TEST",
+                "generatedSources": "EXCLUDE",
+                "directory": "src/main/kotlin/fixture/attributes",
+                "type": "SOURCE_DOMAIN"
+              },
+              "type": "EXPAND_RELATION"
+            }
+          ],
+          "executionBudget": {
+            "maxElapsedMs": 15000,
+            "maxResults": 100,
+            "maxWorkUnits": 100000,
+            "maxReturnedBytes": 524288
+          },
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          },
+          "retention": "RETAIN",
+          "completion": {
+            "type": "COMPLETE_ONLY",
+            "model": "COMPILER_RESOLVED_STATIC_V1"
+          },
+          "type": "RUN"
+        },
+        "verbose": true
+      }
+    },
+    {
+      "label": "B.named.CALLERS",
+      "payload": {
+        "request": {
+          "source": {
+            "declarationName": "consume",
+            "scope": {
+              "packageName": "fixture.flow",
+              "sourceSetNames": [
+                "main",
+                "test"
+              ],
+              "includeSubpackages": false,
+              "type": "PACKAGE"
+            },
+            "declarationKinds": [
+              "FUNCTION"
+            ],
+            "type": "SEARCH_DECLARATIONS"
+          },
+          "steps": [
+            {
+              "relation": "CALLERS",
+              "expansionScope": {
+                "sourceSets": [
+                  "main",
+                  "test"
+                ],
+                "sourcePolicy": "PRODUCTION_AND_TEST",
+                "generatedSources": "EXCLUDE",
+                "directory": "src/main/kotlin/fixture/flow",
+                "type": "SOURCE_DOMAIN"
+              },
+              "type": "EXPAND_RELATION"
+            }
+          ],
+          "executionBudget": {
+            "maxElapsedMs": 15000,
+            "maxResults": 100,
+            "maxWorkUnits": 100000,
+            "maxReturnedBytes": 524288
+          },
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          },
+          "retention": "RETAIN",
+          "completion": {
+            "type": "COMPLETE_ONLY",
+            "model": "COMPILER_RESOLVED_STATIC_V1"
+          },
+          "type": "RUN"
+        },
+        "verbose": true
+      }
+    },
+    {
+      "label": "N.stored.CALLEES",
+      "payload": {
+        "request": {
+          "source": {
+            "declarationName": "storedControl",
+            "scope": {
+              "packageName": "fixture.shadow",
+              "sourceSetNames": [
+                "main",
+                "test"
+              ],
+              "includeSubpackages": false,
+              "type": "PACKAGE"
+            },
+            "declarationKinds": [
+              "FUNCTION"
+            ],
+            "type": "SEARCH_DECLARATIONS"
+          },
+          "steps": [
+            {
+              "relation": "CALLEES",
+              "expansionScope": {
+                "sourceSets": [
+                  "main",
+                  "test"
+                ],
+                "sourcePolicy": "PRODUCTION_AND_TEST",
+                "generatedSources": "EXCLUDE",
+                "directory": "src/main/kotlin/fixture/shadow",
+                "type": "SOURCE_DOMAIN"
+              },
+              "type": "EXPAND_RELATION"
+            }
+          ],
+          "executionBudget": {
+            "maxElapsedMs": 15000,
+            "maxResults": 100,
+            "maxWorkUnits": 100000,
+            "maxReturnedBytes": 524288
+          },
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          },
+          "retention": "RETAIN",
+          "completion": {
+            "type": "COMPLETE_ONLY",
+            "model": "COMPILER_RESOLVED_STATIC_V1"
+          },
+          "type": "RUN"
+        },
+        "verbose": true
+      }
+    },
+    {
+      "label": "N.conditional.CALLEES",
+      "payload": {
+        "request": {
+          "source": {
+            "declarationName": "conditionalControl",
+            "scope": {
+              "packageName": "fixture.shadow",
+              "sourceSetNames": [
+                "main",
+                "test"
+              ],
+              "includeSubpackages": false,
+              "type": "PACKAGE"
+            },
+            "declarationKinds": [
+              "FUNCTION"
+            ],
+            "type": "SEARCH_DECLARATIONS"
+          },
+          "steps": [
+            {
+              "relation": "CALLEES",
+              "expansionScope": {
+                "sourceSets": [
+                  "main",
+                  "test"
+                ],
+                "sourcePolicy": "PRODUCTION_AND_TEST",
+                "generatedSources": "EXCLUDE",
+                "directory": "src/main/kotlin/fixture/shadow",
+                "type": "SOURCE_DOMAIN"
+              },
+              "type": "EXPAND_RELATION"
+            }
+          ],
+          "executionBudget": {
+            "maxElapsedMs": 15000,
+            "maxResults": 100,
+            "maxWorkUnits": 100000,
+            "maxReturnedBytes": 524288
+          },
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          },
+          "retention": "RETAIN",
+          "completion": {
+            "type": "COMPLETE_ONLY",
+            "model": "COMPILER_RESOLVED_STATIC_V1"
+          },
+          "type": "RUN"
+        },
+        "verbose": true
+      }
+    },
+    {
+      "label": "N.spring.IMPLEMENTATIONS",
+      "payload": {
+        "request": {
+          "source": {
+            "declarationName": "ArticleRepository",
+            "scope": {
+              "packageName": "fixture.spring",
+              "sourceSetNames": [
+                "main",
+                "test"
+              ],
+              "includeSubpackages": false,
+              "type": "PACKAGE"
+            },
+            "declarationKinds": [
+              "CLASS"
+            ],
+            "type": "SEARCH_DECLARATIONS"
+          },
+          "steps": [
+            {
+              "relation": "IMPLEMENTATIONS",
+              "expansionScope": {
+                "sourceSets": [
+                  "main",
+                  "test"
+                ],
+                "sourcePolicy": "PRODUCTION_AND_TEST",
+                "generatedSources": "EXCLUDE",
+                "directory": "src",
+                "type": "SOURCE_DOMAIN"
+              },
+              "type": "EXPAND_RELATION"
+            },
+            {
+              "type": "DISTINCT_SYMBOLS"
+            }
+          ],
+          "executionBudget": {
+            "maxElapsedMs": 15000,
+            "maxResults": 100,
+            "maxWorkUnits": 100000,
+            "maxReturnedBytes": 524288
+          },
+          "output": {
+            "type": "SYMBOLS",
+            "fields": [
+              "NAME",
+              "LOCATION",
+              "SIGNATURE"
+            ]
+          },
+          "retention": "RETAIN",
+          "completion": {
+            "type": "COMPLETE_ONLY",
+            "model": "COMPILER_RESOLVED_STATIC_V1"
+          },
+          "type": "RUN"
+        },
+        "verbose": true
+      }
+    }
+  ]
+}

@@ -6,6 +6,11 @@ import java.nio.charset.StandardCharsets
 internal fun CanonicalCompilerSignature.encodeCanonicalSignature(): String = buildString {
     appendCanonicalField(CANONICAL_SIGNATURE_VERSION)
     when (val signature = this@encodeCanonicalSignature) {
+        is CanonicalCompilerSignature.AnonymousObject -> {
+            appendCanonicalField("anonymous-object-v1")
+            appendLocalAddress(signature.address)
+            appendCanonicalFields(signature.supertypes.map(CanonicalCompilerType::value))
+        }
         is CanonicalCompilerSignature.LocalFunction -> {
             appendCanonicalField("local-function-v1")
             appendLocalAddress(signature.address)
@@ -241,4 +246,15 @@ internal fun restoreLocalProperty(
         LocalPropertyMutability.entries.singleOrNull { it.name == rawMutability }
             ?: return Refinement.Rejected(CanonicalCompilerSignatureFailure.INVALID_CANONICAL_ENCODING)
     return CanonicalCompilerSignature.localProperty(address, result, mutability)
+}
+
+internal fun restoreAnonymousObject(
+    cursor: CanonicalFieldCursor
+): Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure> {
+    val address =
+        cursor.nextLocalAddress()
+            ?: return Refinement.Rejected(CanonicalCompilerSignatureFailure.INVALID_CANONICAL_ENCODING)
+    val supertypes =
+        cursor.nextValues() ?: return Refinement.Rejected(CanonicalCompilerSignatureFailure.INVALID_CANONICAL_ENCODING)
+    return CanonicalCompilerSignature.anonymousObject(address, supertypes)
 }

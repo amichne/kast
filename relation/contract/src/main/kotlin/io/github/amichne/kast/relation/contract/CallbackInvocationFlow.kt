@@ -32,6 +32,8 @@ sealed interface CallbackBindingEvidence {
 
     data class Direct(val binding: CallbackDirectInvocationBinding) : CallbackBindingEvidence
 
+    data class DependencyContract(val binding: CallbackDependencyContract) : CallbackBindingEvidence
+
     data class Unavailable(val cause: CallbackInvocationFlowCause) : CallbackBindingEvidence
 }
 
@@ -55,6 +57,7 @@ private constructor(
             .addBytes(
                 when (binding) {
                     is CallbackBindingEvidence.Bound -> valueSiteStorageBytes(binding.binding.invocation.resultSite())
+                    is CallbackBindingEvidence.DependencyContract,
                     is CallbackBindingEvidence.Default,
                     is CallbackBindingEvidence.Direct,
                     is CallbackBindingEvidence.Unavailable -> 256L
@@ -165,6 +168,7 @@ enum class CallbackInvocationFlowFailure {
     DUPLICATE_OWNER_BINDING,
     INVALID_SCAN_PROOF,
     INVALID_FORWARDING_PATH,
+    INVALID_DEPENDENCY_CONTRACT,
 }
 
 sealed interface CallbackInvocationFlowRead {

@@ -98,6 +98,7 @@ internal fun admitCallbackForwardingEvidence(
                     when (binding) {
                         is CallbackBindingEvidence.Bound -> binding.binding.formalIdentity()
                         is CallbackBindingEvidence.Default -> Refinement.Refined(binding.binding.parameter)
+                        is CallbackBindingEvidence.DependencyContract,
                         is CallbackBindingEvidence.Direct,
                         is CallbackBindingEvidence.Unavailable ->
                             Refinement.Rejected(CallbackInvocationFlowFailure.UNBOUND_INVOCATION)

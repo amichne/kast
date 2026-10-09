@@ -70,6 +70,13 @@ internal class IntellijCallbackOwnerBindingReader(private val context: IntellijC
         obligations: Set<CallbackInvocationFlowCause>,
     ): Refinement<CallbackBodyBinding, CallbackInvocationFlowFailure> =
         when (read) {
+            is CallbackBindingPreparation.DependencyContract ->
+                CallbackBodyBinding.fromCompiler(
+                    body,
+                    supply,
+                    CallbackBindingEvidence.DependencyContract(read.binding),
+                    obligations,
+                )
             is CallbackBindingPreparation.Direct ->
                 CallbackBodyBinding.fromCompiler(
                     body,

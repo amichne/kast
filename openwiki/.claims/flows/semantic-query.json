@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:9822a19cf4ad53297d94b79d71588a12eaee502181b68943d9063e6af6aad3fc",
+  "pageVersion": "sha256:665e64dab9aaadd4038a0ad7d7353a117474734b25f87e1fe5b8e38a27eca621",
   "claims": [
     {
       "id": "claim_028d251874414d8da5da1449de9e8ce4",
@@ -28,7 +28,7 @@
       "evidence": [
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt",
-          "version": "repo-file-v1:sha256:b54dd6c0a274aa68280608e30ba8995a5f40535db3f8d3d03e637077e0f559fa"
+          "version": "repo-file-v1:sha256:8f144454f104fd444ef8f8be2a256b30e437652a6d4dceaed38933faaed65c34"
         }
       ]
     },
@@ -56,11 +56,11 @@
       "evidence": [
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRetainedGraph.kt",
-          "version": "repo-file-v1:sha256:ba54580c95e2c7d1a008eedebc90ceed68fe9a8ae2ce21c7020506ad5df583ff"
+          "version": "repo-file-v1:sha256:2694fa7235d06fce3e1fe563c7d207b56c857f4afd24820105ab159240bd6b76"
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt",
-          "version": "repo-file-v1:sha256:b54dd6c0a274aa68280608e30ba8995a5f40535db3f8d3d03e637077e0f559fa"
+          "version": "repo-file-v1:sha256:8f144454f104fd444ef8f8be2a256b30e437652a6d4dceaed38933faaed65c34"
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactCapacity.kt",
@@ -132,7 +132,7 @@
       "evidence": [
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRetainedGraph.kt",
-          "version": "repo-file-v1:sha256:ba54580c95e2c7d1a008eedebc90ceed68fe9a8ae2ce21c7020506ad5df583ff"
+          "version": "repo-file-v1:sha256:2694fa7235d06fce3e1fe563c7d207b56c857f4afd24820105ab159240bd6b76"
         },
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactWitness.kt",
@@ -151,6 +151,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-05T19:11:53.820Z"
+    "at": "2026-10-09T02:50:46.064Z"
   }
 }

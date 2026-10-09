@@ -140,7 +140,7 @@ internal fun findExactDeclarationAncestor(
             return liveRejected(IntellijExactDeclarationLookupRejection.STALE_LOCATION)
         }
         val named = element as? PsiNamedElement
-        if (named != null && named.name == key.name.value) {
+        if (named != null && named.compilerDeclarationName() == key.name.value) {
             val range =
                 named.textRange ?: return liveRejected(IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION)
             if (range.startOffset != key.offset.value) {
@@ -151,7 +151,7 @@ internal fun findExactDeclarationAncestor(
                     file = key.file,
                     rawStartInclusive = range.startOffset,
                     rawEndExclusive = range.endOffset,
-                    rawName = named.name.orEmpty(),
+                    rawName = named.compilerDeclarationName(),
                     rawQualifiedIdentity = (named as? PsiQualifiedNamedElement)?.qualifiedName,
                     rawRuntimeType = named.javaClass.name,
                 )
@@ -277,3 +277,9 @@ internal fun IntellijExactDeclarationLookupRejection.toPublicRejection(): Intell
         IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION ->
             IntellijExactSelectorRejection.UNSUPPORTED_DECLARATION
     }
+
+private fun com.intellij.psi.PsiNamedElement.compilerDeclarationName(): String =
+    name
+        ?: if (this is org.jetbrains.kotlin.psi.KtObjectDeclaration && isObjectLiteral())
+            io.github.amichne.kast.symbol.contract.ANONYMOUS_OBJECT_DECLARATION_NAME
+        else ""

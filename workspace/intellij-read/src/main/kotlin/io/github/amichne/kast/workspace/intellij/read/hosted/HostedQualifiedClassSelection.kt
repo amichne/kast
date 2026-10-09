@@ -30,6 +30,7 @@ private constructor(
                     when (val classLike = signature.value) {
                         is CanonicalCompilerSignature.ClassLike ->
                             Refinement.Refined(HostedQualifiedClassSelection(root, classLike))
+                        is CanonicalCompilerSignature.AnonymousObject,
                         is CanonicalCompilerSignature.LocalFunction,
                         is CanonicalCompilerSignature.LocalProperty,
                         is CanonicalCompilerSignature.Function,

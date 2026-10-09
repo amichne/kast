@@ -22,9 +22,11 @@ import io.github.amichne.kast.workspace.intellij.read.localIdentityAdmitted
 import io.github.amichne.kast.workspace.intellij.read.localIdentityRejected
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.analysis.api.components.containingSymbol
 import org.jetbrains.kotlin.analysis.api.javaInterop.callableSymbol
 import org.jetbrains.kotlin.analysis.api.javaInterop.namedClassSymbol
 import org.jetbrains.kotlin.analysis.api.projectStructure.kaModule
+import org.jetbrains.kotlin.analysis.api.symbols.KaAnonymousObjectSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
@@ -114,7 +116,7 @@ internal class IntellijKotlinCompilerSymbolLookup(
                     file = key.file,
                     rawStartInclusive = live.evidence.range.startInclusive,
                     rawEndExclusive = live.evidence.range.endExclusive,
-                    rawName = declaration.name.orEmpty(),
+                    rawName = declaration.compilerDeclarationName(),
                     rawQualifiedIdentity = projection.qualifiedIdentity,
                     kind = projection.kind,
                     signature = projection.signature,
@@ -156,7 +158,8 @@ internal fun KaSymbol.toCompilerProjection(
 ): IntellijCompilerSymbolProjectionResult {
     if (depth > LocalDeclarationAddress.MAX_OWNER_DEPTH)
         return localProjectionRejected(LocalDeclarationProjectionFailure.OwnerDepthExceeded, observation)
-    if (location == KaSymbolLocation.LOCAL) return localCompilerProjection(session, observation, file, depth)
+    if (location == KaSymbolLocation.LOCAL || with(session) { containingSymbol is KaAnonymousObjectSymbol })
+        return localCompilerProjection(session, observation, file, depth)
     return qualifiedCompilerProjection(session, observation, file, depth)
 }
 
@@ -188,7 +191,9 @@ private fun KaSymbol.localCompilerProjection(
 
 private fun KaSymbol.hasSupportedLocalDeclaration(): Boolean {
     val declaration = psi
-    return (this is KaNamedFunctionSymbol && declaration is KtNamedFunction && declaration.name != null) ||
+    return (this is KaAnonymousObjectSymbol &&
+        (declaration as? org.jetbrains.kotlin.psi.KtObjectDeclaration)?.isObjectLiteral() == true) ||
+        (this is KaNamedFunctionSymbol && declaration is KtNamedFunction && declaration.name != null) ||
         (this is KaLocalVariableSymbol && declaration is KtProperty && declaration.isLocal)
 }
 
@@ -196,6 +201,12 @@ private fun KaSymbol.localSignatureProjection(
     address: LocalDeclarationAddress
 ): IntellijCompilerSymbolProjectionResult =
     when (this) {
+        is KaAnonymousObjectSymbol ->
+            projected(
+                CompilerSymbolKind.CLASSLIKE,
+                null,
+                CanonicalCompilerSignature.anonymousObject(address, superTypes.map { it.toString() }),
+            )
         is KaNamedFunctionSymbol ->
             projected(
                 CompilerSymbolKind.FUNCTION,
@@ -372,3 +383,9 @@ internal fun localProjectionRejected(
         }
     )
 }
+
+private fun com.intellij.psi.PsiNamedElement.compilerDeclarationName(): String =
+    name
+        ?: if (this is org.jetbrains.kotlin.psi.KtObjectDeclaration && isObjectLiteral())
+            io.github.amichne.kast.symbol.contract.ANONYMOUS_OBJECT_DECLARATION_NAME
+        else ""

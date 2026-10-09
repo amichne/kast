@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:61f5fc29f2cdafc2be7c231136adfce74387e5bd4915489084a1c14f80bed8f7",
+  "pageVersion": "sha256:f18102a8cdcb39772cc3cb9a59ddaecb5c1e057f15f76a258a42d5b96be760c1",
   "claims": [
     {
       "id": "claim_009e763fdd49491b8ddc72813e392412",
@@ -126,7 +126,7 @@
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt",
-          "version": "repo-file-v1:sha256:4cb977fe57f2d25cee9276b3d12aec5cdd5017d94eb1c0ce5629c78434f3c055"
+          "version": "repo-file-v1:sha256:2853b3b1d3781ba618252bb542bdafe141942f4e35eedd0886ca25b4e155ec54"
         }
       ]
     },
@@ -139,7 +139,7 @@
           "version": "repo-file-v1:sha256:3f6e89e49855108e682e65d0f3a0def2cd8f3b82c57f60c826cba471f66d054a"
         },
         {
-          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt#L147-L168",
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt#L154-L175",
           "version": "repo-lines-v1:sha256:b549f7448349e17615d6d5320cf7a300cd42e81ee77cce41d82d04db20f55066:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyNzI4MmEzMzY1N2ZjNmIxOTE0MmFmMGE0ZjdhNzg5ZGY0YWRkYzQ5YmUzZGFkODljYzAxNzM1YWI4MTgwZTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIzMWNlMDBiMjZkMTlhMTg0M2JhY2Y4YTBmZTJiZDE5OWE1YjkyMTA2NTViNTdiNGZiNThkODQ4N2ZlMjY2NWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc3MTRlMzY4ZWU4NWZmMWE2NjJlYmViMzAyNThjNmQyOTJjNTI2MGFjYWFmNmUwM2E0OTJiZDU5ZWU2ODZhMWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk0YzE1NGM2OWRiMjRhNDExNmI3Y2VmNDMxY2IyODg5ZTkyMzhkYmQxOTljNDI0NmIwZDhhNjhiZGNmMjA1MGMifQ"
         },
         {
@@ -162,7 +162,7 @@
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/ReturnFinallyBoundary.kt",
-          "version": "repo-file-v1:sha256:029294a28579c8f6d310b3d15d0ff350ac61a9326d6ed043141cfa14c7b6f401"
+          "version": "repo-file-v1:sha256:baa74d885f35b1bf4686dacca12261bd74e40dc80785cd464174adff81f526ab"
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/TryBranchResultPosition.kt",
@@ -176,15 +176,15 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijLocalRelationProjection.kt",
-          "version": "repo-file-v1:sha256:5c677e1d45c22954bb37efa32a0b0bfd8b7ccf60c4c4b5489b6ba75906f787e3"
+          "version": "repo-file-v1:sha256:2990f04a46c96ca6c53a465dd4435806682a69534dbafb027c801e09cfbca1b1"
         },
         {
           "resource": "repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijLocalSourceAddress.kt",
-          "version": "repo-file-v1:sha256:dd90fd330c03d8f73b84202061d6439ed3823e528c30e3d1508e5c15a7935d92"
+          "version": "repo-file-v1:sha256:a6a8cb53ddaa1a060e5d759034b9fafebe9f2dbe789a2fecaf4f7622c24e48b3"
         },
         {
           "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijLocalDeclarationAddressProjection.kt",
-          "version": "repo-file-v1:sha256:500fc8ef14e63433a64e8290586563ea20caa266dfbfa21d324764ffcab1a783"
+          "version": "repo-file-v1:sha256:b5dc31e0ec271f07b126f5082018109731c125c5e7502e139f9cf36bd82022e1"
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijLocalIdentityObservation.kt",
@@ -198,7 +198,7 @@
       "evidence": [
         {
           "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIndexedDiscoveryAdmission.kt",
-          "version": "repo-file-v1:sha256:fb54355a5eab8ab8f33159223d4ebe9cd6c86c873218da54a5f9095cb2e3336d"
+          "version": "repo-file-v1:sha256:4290a72fabb901d2792e36e5cc3b9579841eab359183013e54c62a4d0a30f34b"
         },
         {
           "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt",
@@ -220,7 +220,7 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijLocalRelationOwnerSignature.kt",
-          "version": "repo-file-v1:sha256:24e7b0d295847a22c436fd5e85b14c6af0e483bc3822672ddbc51cc508d1aab0"
+          "version": "repo-file-v1:sha256:12e3581e5fc2a51154f7de3f81ab834f20e2af656bd0b97e97bb10603fb8bff4"
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/RelationLocalOwnerCallableIdentity.kt",
@@ -239,10 +239,42 @@
           "version": "repo-file-v1:sha256:c0175f8f0c4bab460eda7fa7dc8702d11e93888e1914d46142fdb2c0c45544eb"
         }
       ]
+    },
+    {
+      "id": "claim_1856f1f5b8c542cfbb8b8d0a7a8f0560",
+      "statement": "Native symbol, relation and source projections preserve anonymous objects and their members with local ownership and compiler superclass facts; source restoration checks exact anchors and compiler identity after recognizing the reserved object label.",
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijLocalRelationProjection.kt",
+          "version": "repo-file-v1:sha256:2990f04a46c96ca6c53a465dd4435806682a69534dbafb027c801e09cfbca1b1"
+        },
+        {
+          "resource": "repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/LiveIntellijSourceRead.kt",
+          "version": "repo-file-v1:sha256:b2d7831effcfdb9c1d5bd92dce48fbcfa2dff2773e64dc90cdf7c0163d930e21"
+        },
+        {
+          "resource": "repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/SourceCompilerDeclarationName.kt",
+          "version": "repo-file-v1:sha256:6d930d9bd54e0111f9fda593c5af8d1c0abd6c7e2c1f57ffd105f635158063a1"
+        }
+      ]
+    },
+    {
+      "id": "claim_ef9f3d90ccfd453498921829894b7509",
+      "statement": "Native binary callback contract admission reads actual compiler-resolved library contracts and mapped parameters, admits one matching EXACTLY_ONCE effect with a bounded class digest, and records finite read, admitted and rejected counters without analyzing dependency bodies or proving runtime activation.",
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt",
+          "version": "repo-file-v1:sha256:f601b692e468d394df98101a636552a06d2548223ef0088f03a7782e2f62e53e"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijSelectedCallbackSupplies.kt",
+          "version": "repo-file-v1:sha256:5773c79abd35c82a2b372dca078b0dee2a9b30238520f1a8059a2e8ff2d57ebc"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-08T04:02:52.014Z"
+    "at": "2026-10-09T02:50:46.064Z"
   }
 }
