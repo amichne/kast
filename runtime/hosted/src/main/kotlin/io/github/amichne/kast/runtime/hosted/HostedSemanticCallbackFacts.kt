@@ -274,9 +274,15 @@ internal class HostedCallbackFactCache(
                 is Refinement.Rejected ->
                     return HostedCallbackPartition.Rejected(HostedCallbackPartitionFailure.Inventory(admitted.failure))
             }
-        return when (
-            val admitted = SemanticDependencySnapshot.fromCompiler(captured.authority, inventory, captured.inputs)
-        ) {
+        val inputs =
+            when (val admitted = captured.inputs.narrow(closure)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected ->
+                    return HostedCallbackPartition.Rejected(
+                        HostedCallbackPartitionFailure.ResolutionInputs(admitted.failure)
+                    )
+            }
+        return when (val admitted = SemanticDependencySnapshot.fromCompiler(captured.authority, inventory, inputs)) {
             is Refinement.Refined ->
                 HostedCallbackPartition.Available(admitted.value.also { partitions[source.root.module] = it })
             is Refinement.Rejected ->
@@ -324,5 +330,8 @@ internal sealed interface HostedCallbackPartitionFailure {
         HostedCallbackPartitionFailure
 
     data class Snapshot(val cause: io.github.amichne.kast.topology.contract.SemanticSnapshotAdmissionFailure) :
+        HostedCallbackPartitionFailure
+
+    data class ResolutionInputs(val cause: io.github.amichne.kast.topology.contract.SemanticResolutionInputFailure) :
         HostedCallbackPartitionFailure
 }

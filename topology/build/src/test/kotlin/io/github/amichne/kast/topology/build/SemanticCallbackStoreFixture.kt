@@ -37,6 +37,7 @@ import io.github.amichne.kast.topology.contract.SemanticDependencyInventory
 import io.github.amichne.kast.topology.contract.SemanticDependencySnapshot
 import io.github.amichne.kast.topology.contract.SemanticDependencySource
 import io.github.amichne.kast.topology.contract.SemanticModuleDependencies
+import io.github.amichne.kast.topology.contract.SemanticResolutionInputInventory
 import io.github.amichne.kast.topology.contract.SemanticResolutionInputs
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.ImportedWorkspaceModelState
@@ -171,7 +172,13 @@ abstract class SemanticCallbackStoreFixture {
         return SemanticDependencySnapshot.fromCompiler(
                 authority,
                 inventory,
-                SemanticResolutionInputs(external, external, external),
+                SemanticResolutionInputInventory.fromCompiler(
+                        inventory.closure,
+                        inventory.closure.modules.associateWith {
+                            SemanticResolutionInputs(external, external, external)
+                        },
+                    )
+                    .value(),
             )
             .value()
     }

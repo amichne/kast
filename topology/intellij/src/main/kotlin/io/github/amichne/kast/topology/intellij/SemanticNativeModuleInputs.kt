@@ -14,7 +14,9 @@ import io.github.amichne.kast.topology.contract.SemanticDependencyClosure
 import io.github.amichne.kast.topology.contract.SemanticDependencyInventory
 import io.github.amichne.kast.topology.contract.SemanticDependencySnapshot
 import io.github.amichne.kast.topology.contract.SemanticDependencySource
+import io.github.amichne.kast.topology.contract.SemanticResolutionInputInventory
 import io.github.amichne.kast.topology.contract.SemanticResolutionInputs
+import io.github.amichne.kast.topology.contract.SemanticSnapshotAdmissionFailure
 import io.github.amichne.kast.workspace.contract.LiveSemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.ModelOwnedSourceRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceModuleIdentity
@@ -37,20 +39,21 @@ internal class SemanticNativeModuleInputs(
 ) {
     private val files = SemanticNativeFiles(project, limits, budget)
     private val configuration = SemanticNativeConfiguration(project, limits, budget, files)
-    private val sdkDigest = SemanticInputDigest()
-    private val compilerDigest = SemanticInputDigest()
-    private val classpathDigest = SemanticInputDigest()
 
     fun snapshot(
         authority: LiveSemanticReadAuthority,
         modules: Map<WorkspaceModuleIdentity, Module>,
     ): SemanticCapture<SemanticDependencySnapshot> {
         val completed = mutableListOf<CompleteSemanticModuleSources>()
-        for (identity in closure.modules.sortedBy { it.value }) when (
-            val captured = module(identity, modules.getValue(identity))
-        ) {
-            is Refinement.Refined -> completed += captured.value
-            is Refinement.Rejected -> return captured
+        val resolutionInputs = linkedMapOf<WorkspaceModuleIdentity, SemanticResolutionInputs>()
+        for (identity in closure.modules.sortedBy { it.value }) {
+            when (val captured = module(identity, modules.getValue(identity))) {
+                is Refinement.Refined -> {
+                    completed += captured.value.sources
+                    resolutionInputs[identity] = captured.value.inputs
+                }
+                is Refinement.Rejected -> return captured
+            }
         }
         val inventory =
             when (val admitted = SemanticDependencyInventory.admit(closure, completed)) {
@@ -58,17 +61,35 @@ internal class SemanticNativeModuleInputs(
                 is Refinement.Rejected ->
                     return captureRejected(SemanticDependencyCaptureFailure.SOURCE_INVENTORY_REJECTED)
             }
-        val inputs = SemanticResolutionInputs(sdkDigest.finish(), compilerDigest.finish(), classpathDigest.finish())
+        val inputs =
+            when (val admitted = SemanticResolutionInputInventory.fromCompiler(closure, resolutionInputs)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected ->
+                    return captureRejected(SemanticDependencyCaptureFailure.RESOLUTION_INPUT_INVENTORY_REJECTED)
+            }
         return when (val snapshot = SemanticDependencySnapshot.fromCompiler(authority, inventory, inputs)) {
             is Refinement.Refined -> snapshot
-            is Refinement.Rejected -> captureRejected(SemanticDependencyCaptureFailure.AUTHORITY_MOVED)
+            is Refinement.Rejected ->
+                captureRejected(
+                    when (snapshot.failure) {
+                        SemanticSnapshotAdmissionFailure.WorkspaceMismatch ->
+                            SemanticDependencyCaptureFailure.MODEL_ROOT_MISMATCH
+                        SemanticSnapshotAdmissionFailure.ResolutionInputDomainMismatch ->
+                            SemanticDependencyCaptureFailure.RESOLUTION_INPUT_INVENTORY_REJECTED
+                        is SemanticSnapshotAdmissionFailure.Authority ->
+                            SemanticDependencyCaptureFailure.AUTHORITY_MOVED
+                    }
+                )
         }
     }
 
     private fun module(
         identity: WorkspaceModuleIdentity,
         module: Module,
-    ): SemanticCapture<CompleteSemanticModuleSources> {
+    ): SemanticCapture<NativeModuleInputs> {
+        val sdkDigest = SemanticInputDigest()
+        val compilerDigest = SemanticInputDigest()
+        val classpathDigest = SemanticInputDigest()
         val arguments =
             when (val captured = configuration.arguments(module, compilerDigest)) {
                 is Refinement.Refined -> captured.value
@@ -80,25 +101,35 @@ internal class SemanticNativeModuleInputs(
         }
         val manager = ModuleRootManager.getInstance(module)
         val roots =
-            when (val captured = roots(identity, manager)) {
+            when (val captured = roots(identity, manager, compilerDigest)) {
                 is Refinement.Refined -> captured.value
                 is Refinement.Rejected -> return captured
             }
-        when (val captured = sdk(identity, manager, arguments)) {
+        when (val captured = sdk(identity, manager, arguments, sdkDigest)) {
             is Refinement.Rejected -> return captured
             is Refinement.Refined -> Unit
         }
-        when (val captured = classpath(identity, manager, arguments)) {
+        when (val captured = classpath(identity, manager, arguments, classpathDigest)) {
             is Refinement.Rejected -> return captured
             is Refinement.Refined -> Unit
         }
-        return sources(identity, roots)
+        return when (val captured = sources(identity, roots)) {
+            is Refinement.Rejected -> captured
+            is Refinement.Refined ->
+                Refinement.Refined(
+                    NativeModuleInputs(
+                        captured.value,
+                        SemanticResolutionInputs(sdkDigest.finish(), compilerDigest.finish(), classpathDigest.finish()),
+                    )
+                )
+        }
     }
 
     private fun sdk(
         identity: WorkspaceModuleIdentity,
         manager: ModuleRootManager,
         arguments: K2JVMCompilerArguments,
+        sdkDigest: SemanticInputDigest,
     ): SemanticCapture<Unit> {
         val sdk =
             manager.sdk ?: return captureRejected(SemanticDependencyCaptureFailure.COMPILER_CONFIGURATION_UNAVAILABLE)
@@ -124,6 +155,7 @@ internal class SemanticNativeModuleInputs(
         identity: WorkspaceModuleIdentity,
         manager: ModuleRootManager,
         arguments: K2JVMCompilerArguments,
+        classpathDigest: SemanticInputDigest,
     ): SemanticCapture<Unit> {
         classpathDigest.text("MODULE")
         classpathDigest.text(identity.value)
@@ -164,6 +196,7 @@ internal class SemanticNativeModuleInputs(
     private fun roots(
         identity: WorkspaceModuleIdentity,
         manager: ModuleRootManager,
+        compilerDigest: SemanticInputDigest,
     ): SemanticCapture<NativeSourceRoots> {
         val admitted =
             closure.sourceRoots.filter { it.module == identity }.mapTo(linkedSetOf()) { Path.of(it.sourceRoot.value) }
@@ -254,3 +287,5 @@ internal class SemanticNativeModuleInputs(
 }
 
 private class NativeSourceRoots(val inventory: CompleteSemanticSourceRoots, val directories: Map<Path, VirtualFile>)
+
+private class NativeModuleInputs(val sources: CompleteSemanticModuleSources, val inputs: SemanticResolutionInputs)

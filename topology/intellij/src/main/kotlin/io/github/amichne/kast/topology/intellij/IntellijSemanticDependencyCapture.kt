@@ -38,6 +38,7 @@ enum class SemanticDependencyCaptureFailure {
     SOURCE_ROOT_INVENTORY_MISMATCH,
     SOURCE_MODULE_INVENTORY_REJECTED,
     SOURCE_INVENTORY_REJECTED,
+    RESOLUTION_INPUT_INVENTORY_REJECTED,
     COMPILER_CONFIGURATION_UNAVAILABLE,
     COMPILER_DISTRIBUTION_UNMODELED,
     COMPILER_PLUGIN_INPUTS_UNMODELED,
@@ -224,6 +225,8 @@ internal fun SemanticDependencyCaptureFailure.termination(): IntellijReadTermina
             IntellijReadTermination.SEMANTIC_INPUT_SOURCE_MODULE_INVENTORY_REJECTED
         SemanticDependencyCaptureFailure.SOURCE_INVENTORY_REJECTED ->
             IntellijReadTermination.SEMANTIC_INPUT_SOURCE_INVENTORY_REJECTED
+        SemanticDependencyCaptureFailure.RESOLUTION_INPUT_INVENTORY_REJECTED ->
+            IntellijReadTermination.SEMANTIC_INPUT_RESOLUTION_INVENTORY_REJECTED
         SemanticDependencyCaptureFailure.COMPILER_CONFIGURATION_UNAVAILABLE ->
             IntellijReadTermination.SEMANTIC_INPUT_COMPILER_CONFIGURATION_UNAVAILABLE
         SemanticDependencyCaptureFailure.COMPILER_DISTRIBUTION_UNMODELED ->
