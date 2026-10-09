@@ -4,6 +4,7 @@ import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.util.Processor
 import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationProviderLocator
 import io.github.amichne.kast.relation.contract.RelationProviderState
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
@@ -19,7 +20,7 @@ internal class IntellijReferenceInventory(
     private val observation: IntellijReadObservation,
 ) {
     fun prepare(subject: PsiNamedElement): RelationInventoryPreparation {
-        observation.phase(IntellijReadPhase.REFERENCE_INVENTORY)
+        observation.phase(referenceInventoryPhase(scope.request.meaning))
         val inventory = IntellijRelationInventory<RelationProviderLocator.Reference>(collector, limits, observation)
         val exhausted =
             ReferencesSearch.search(subject, scope.nativeScope, false)
@@ -48,3 +49,11 @@ internal class IntellijReferenceInventory(
         return inventory.finish(exhausted, RelationProviderState::references)
     }
 }
+
+internal fun referenceInventoryPhase(meaning: RelationMeaning): IntellijReadPhase =
+    when (meaning) {
+        RelationMeaning.References -> IntellijReadPhase.REFERENCE_INVENTORY
+        RelationMeaning.Callers -> IntellijReadPhase.CALLER_REFERENCE_INVENTORY
+        RelationMeaning.TypeUses -> IntellijReadPhase.TYPE_USE_REFERENCE_INVENTORY
+        else -> error("Only reference-backed relation plans enter reference inventory")
+    }

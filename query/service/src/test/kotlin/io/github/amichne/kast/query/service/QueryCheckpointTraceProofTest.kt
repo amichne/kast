@@ -120,8 +120,8 @@ class QueryCheckpointTraceProofTest {
             mapOf(
                 stage to
                     linkedMapOf(
-                        CanonicalSymbolId.from(selector) to row,
-                        CanonicalSymbolId.from(second.selector) to second,
+                        QueryIdentityRowKey.Declaration(CanonicalSymbolId.from(selector)) to row,
+                        QueryIdentityRowKey.Declaration(CanonicalSymbolId.from(second.selector)) to second,
                     )
             ),
             QueryJoinSnapshot(emptyMap()),

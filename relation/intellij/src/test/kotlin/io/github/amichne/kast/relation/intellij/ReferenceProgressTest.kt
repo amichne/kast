@@ -69,6 +69,7 @@ class ReferenceProgressTest {
         assertEquals(61, observed.map { it.occurrence.range }.distinct().size)
         assertEquals(locators.map { it.range }.toSet(), observed.map { it.occurrence.range }.toSet())
         assertEquals(0, observation.replayedPrefix)
+        assertEquals(1, observation.nativeInventories, "Continuation pages consume the original inventory")
     }
 
     private fun locators(request: RelationRequest): List<RelationProviderLocator.Reference> =
@@ -135,11 +136,13 @@ class ReferenceProgressTest {
 
     private class PrefixObservation : IntellijReadObservation {
         var replayedPrefix = 0
+        var nativeInventories = 0
 
         override fun terminated(reason: IntellijReadTermination, contributor: IntellijReadContributor) = Unit
 
         override fun count(counter: IntellijReadCounter, contributor: IntellijReadContributor, amount: Int) {
             if (counter == IntellijReadCounter.RELATION_REPLAYED_PREFIX) replayedPrefix += amount
+            if (counter == IntellijReadCounter.NATIVE_RELATION_INVENTORIES_STARTED) nativeInventories += amount
         }
     }
 

@@ -31,6 +31,31 @@ the signature and location before selecting a returned `ref`.
 Use the existing `runByName` example when no scope is known. A qualified name or
 signature is not a `declarationName`; put a package in `scope.packageName`.
 
+## Trace the selected declaration
+
+Use `traceAffectedUses` after selecting one exact declaration. Replace its
+illustrative `symbolRefs` value with the unchanged issued `ref`. This separates
+seed selection from tracing; a broad search for `execute` can match overrides
+and unrelated methods as well as the intended interface method.
+
+Keep the example's `WORKSPACE` expansion when clients outside the seed's module
+matter. TRACE covers references, implementations or overrides, direct callers,
+and one further caller layer. It groups declarations and preserves occurrence
+evidence. Each scoped downstream callable is expanded once after its incoming
+paths are gathered. Arbitrary depth controls and steps after TRACE are rejected.
+
+Keep `COMPLETE_ONLY` for a complete static answer.
+Use the admitted execution budget as the timing authority. The example requests
+30,000 ms for TRACE; the short default grant can stop a native search earlier.
+The host can reduce that request. If completion is unproven,
+inspect the rejection's retained preview and result reference when available.
+Follow an issued execution continuation with `RESUME`; use `READ_RESULT` to
+present retained proof. These actions have distinct capabilities. A preview
+does not prove completeness. `PROGRESSIVE` also waits for TRACE's final grouping
+before emitting ordinary symbol rows, so an empty page can still have pending
+work. Native cancellation before inventory drainage cannot issue a resumable
+inventory. Increasing a requested timeout cannot remove the host ceiling.
+
 ## 2. Inventory a public API or a naming family
 
 Question: “Which public functions starting with `create` are in this module?”

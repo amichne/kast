@@ -32,6 +32,7 @@ internal class IntellijK2RelationSearch(
     private val limits: ReadLimits = ReadLimits.Default,
     private val summaries: io.github.amichne.kast.relation.contract.CallbackSummaryCachePort =
         io.github.amichne.kast.relation.contract.CallbackSummaryCachePort.Disabled,
+    private val inventories: IntellijReferenceInventoryReuse = IntellijReferenceInventoryReuse.Disabled,
 ) {
     /**
      * Proof transition: `(RelationRequest, exact K2 subject, IntellijRelationCollector) ->
@@ -90,6 +91,7 @@ internal class IntellijK2RelationSearch(
                     limits = limits,
                     observation = observation,
                     cancellationCheck = cancellationCheck,
+                    inventories = inventories,
                 )
                 .references(
                     request = request,

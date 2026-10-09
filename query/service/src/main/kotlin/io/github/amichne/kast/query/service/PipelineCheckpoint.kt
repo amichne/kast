@@ -13,7 +13,6 @@ import io.github.amichne.kast.query.contract.QueryOutputSyntax
 import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.query.contract.QueryWalkArrival
-import io.github.amichne.kast.symbol.contract.CanonicalSymbolId
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
@@ -36,7 +35,7 @@ internal data class PipelineCheckpoint(
     override val plan: AdmittedQueryPlan,
     override val lease: SemanticReadAuthority,
     val tasks: List<PipelineTask>,
-    val identityRows: Map<ExactQueryStage, Map<CanonicalSymbolId, QuerySymbol>>,
+    val identityRows: Map<ExactQueryStage, Map<QueryIdentityRowKey, QuerySymbol>>,
     val joinState: QueryJoinSnapshot,
     val limitations: Set<QueryLimitation>,
     val emittedCount: io.github.amichne.kast.query.contract.QueryCount,
@@ -221,7 +220,7 @@ private fun boundaryTasks(plan: AdmittedQueryPlan): List<PipelineTask> =
 
 private fun boundaryTasks(stage: ExactQueryStage): List<PipelineTask> =
     when (stage) {
-        is ExactQueryStage.Trace -> boundaryTasks(stage.next)
+        is ExactQueryStage.Trace -> listOf(PipelineTask.FlushDistinct(traceUseStage(stage))) + boundaryTasks(stage.next)
         is ExactQueryStage.ProjectBinding -> boundaryTasks(stage.next)
         is ExactQueryStage.Concat -> listOf(PipelineTask.Feed(stage)) + boundaryTasks(stage.next)
         is ExactQueryStage.Set -> listOf(PipelineTask.FlushSet(stage)) + boundaryTasks(stage.next)

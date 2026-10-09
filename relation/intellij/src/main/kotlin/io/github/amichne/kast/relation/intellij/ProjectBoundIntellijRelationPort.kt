@@ -27,6 +27,7 @@ object ProjectBoundIntellijRelationPort {
             io.github.amichne.kast.relation.contract.CallbackSummaryCachePreparationPort.Disabled,
     ): RelationCompilerPort {
         val compiledModel = WorkspaceSearchScopeModelCompilation.Compiled(model)
+        val inventories = IntellijReferenceInventoryReuse.Recent(limits)
         return RelationCompilerPort { request ->
             val scope = request.subject.scope
             if (
@@ -43,6 +44,7 @@ object ProjectBoundIntellijRelationPort {
                     observation,
                     limits,
                     summaries,
+                    inventories,
                 )
             query.read(project, authority, request, compiledModel)
         }

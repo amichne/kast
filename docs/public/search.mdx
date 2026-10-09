@@ -5,7 +5,8 @@ icon: "search"
 keywords: ["query_symbols", "Kotlin", "compiler references", "relations"]
 ---
 
-Start with a declaration name and its module or directory. Your [connected agent](/agent-harnesses) writes the query.
+Resolve one declaration, keep its exact reference, then trace its affected uses.
+Your [connected agent](/agent-harnesses) writes the query.
 
 ## 1. Find a declaration and inspect its source
 
@@ -63,29 +64,61 @@ numbers. Recompute them from the current file after edits.
 | Coverage | Reports whether the requested search finished. |
 | Exact reference | Carries the selected identity into the next request. |
 
-## 2. Find callers or implementations
+## 2. Trace the selected declaration
 
-For a function:
-
-```text wrap
-Use the exact reference we just selected to find its callers. Show each caller's location and the call site, and report the search scope and any limitations.
-```
-
-For an interface or base type:
+For a function, interface method, or type:
 
 ```text wrap
-Use the selected type's exact reference to find its implementations. Show each declaration once, with its signature and location. Report whether the search finished.
+Use the exact Kast reference we selected to TRACE affected uses across the workspace. Show signatures, locations, occurrence evidence, and completion. Keep the result for follow-up reads.
 ```
 
-Discovery scope does not automatically restrict relationship destinations. Use `expansionScope` to restrict the relationship search domain. Use a later filter to restrict returned rows. See [Query forms](/reference/api#apply-only-the-steps-you-need).
+The agent passes the issued reference unchanged. Replace this placeholder with
+the `ref` from the preceding response:
 
-## 3. Trace callers to a chosen depth
-
-```text wrap
-From the selected function, trace callers up to two hops. Show the hop depth and call-site evidence. Continue if Kast reports resumable work; otherwise explain any unvisited work or terminal limit.
+```json
+{
+  "request": {
+    "type": "RUN",
+    "source": {"type": "SYMBOL_REFS", "symbolRefs": ["<issued ref>"]},
+    "steps": [{"type": "TRACE", "expansionScope": {"type": "WORKSPACE"}}],
+    "output": {"type": "SYMBOLS", "fields": ["NAME", "LOCATION", "SIGNATURE"]},
+    "retention": "RETAIN",
+    "executionBudget": {"maxElapsedMs": 30000}
+  }
+}
 ```
 
-Depth bounds the requested graph. Coverage reports unfinished work within that bound. Follow reported progress even on a zero-row page.
+TRACE covers references, implementations or overrides, direct callers, and one
+further caller layer. A type trace also covers its direct functions and
+properties. Kast groups declarations while retaining occurrence evidence.
+The topology is fixed; TRACE must be the final step and requires `SYMBOLS` output.
+
+This example requests 30 seconds for the trace. The host can admit less;
+read the returned execution budget. The elapsed grant is shared by all branches.
+
+Discovery scope selects the seed. `WORKSPACE` lets the trace reach clients in
+other modules. Choose `SOURCE_DOMAIN` only when the question excludes those
+destinations. `RETAINED_SEED` restricts expansion to the selected capability's
+scope. A later filter cannot reduce native search work. See [Query forms](/reference/api#apply-only-the-steps-you-need).
+
+## 3. Read completion and follow recovery
+
+The default `COMPLETE_ONLY` policy requires a complete compiler-static answer.
+If proof is incomplete, Kast returns `COMPLETION_UNPROVEN` with its finite cause
+and recovery evidence when available. A retained preview contains established
+facts; it does not prove completion. Use an issued execution continuation with
+`RESUME`. Use a retained result reference with `READ_RESULT` to inspect proof or
+page a completed answer. A result cursor cannot resume execution.
+
+Choose `PROGRESSIVE` only for an investigation that permits incomplete evidence.
+TRACE gathers incoming paths before its final grouping, so ordinary symbol pages
+can be empty while work remains. Follow the returned progress. If a native search
+is cancelled before its inventory finishes, that unfinished search cannot resume.
+A larger requested timeout does not remove host ceilings.
+
+For a question about only direct callers or implementations, use one
+`EXPAND_RELATION`. For a graph with a requested depth, use `WALK` and inspect its
+hop evidence. These forms are available in [Query forms](/reference/api).
 
 Invocations inside lambdas preserve separate ownership. Static callback paths do not prove runtime execution. See [Callback evidence](/reference/callbacks).
 

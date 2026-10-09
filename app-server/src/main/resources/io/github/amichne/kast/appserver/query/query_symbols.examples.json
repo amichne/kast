@@ -699,28 +699,22 @@
       }
     },
     "traceAffectedUses": {
-      "summary": "Trace an interface method, its overrides, direct callers, adapter callers and occurrence evidence under one shared grant.",
+      "summary": "Trace one previously selected exact declaration and its affected uses in the workspace under one shared grant.",
       "value": {
         "request": {
           "type": "RUN",
           "source": {
-            "type": "SEARCH_DECLARATIONS",
-            "declarationName": "execute",
-            "declarationKinds": [
-              "FUNCTION"
-            ],
-            "scope": {
-              "type": "PACKAGE",
-              "packageName": "example.cache",
-              "includeSubpackages": false,
-              "sourceSetNames": [
-                "main"
-              ]
-            }
+            "type": "SYMBOL_REFS",
+            "symbolRefs": [
+              "<exact-ref-returned-by-Kast>"
+            ]
           },
           "steps": [
             {
-              "type": "TRACE"
+              "type": "TRACE",
+              "expansionScope": {
+                "type": "WORKSPACE"
+              }
             }
           ],
           "output": {
@@ -731,7 +725,14 @@
               "SIGNATURE"
             ]
           },
-          "retention": "RETAIN"
+          "retention": "RETAIN",
+          "completion": {
+            "type": "COMPLETE_ONLY",
+            "model": "COMPILER_RESOLVED_STATIC_V1"
+          },
+          "executionBudget": {
+            "maxElapsedMs": 30000
+          }
         }
       }
     }

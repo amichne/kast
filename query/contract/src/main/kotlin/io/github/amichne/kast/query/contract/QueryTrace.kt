@@ -10,4 +10,6 @@ enum class QueryTracePhase {
 enum class QueryGroupingEvidence {
     FIRST_ARRIVAL,
     ALL_ARRIVALS,
+    /** Merge arrivals only when the complete scoped read capability is identical. */
+    ALL_SCOPED_ARRIVALS,
 }
