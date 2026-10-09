@@ -38,6 +38,18 @@ private constructor(
 ) {
     val files: List<SemanticDependencySource> = Collections.unmodifiableList(files.sortedBy { it.path })
 
+    /** Preserve the issuing graph and exact module before a read-scoped owner retains this completion. */
+    fun admitOwner(
+        expectedGraph: SemanticModuleDependencies,
+        expectedModule: WorkspaceModuleIdentity,
+    ): Refinement<CompleteSemanticModuleSources, SemanticInventoryFailure> =
+        when {
+            graph !== expectedGraph -> Refinement.Rejected(SemanticInventoryFailure.DependencyGraphMismatch)
+            module != expectedModule ->
+                Refinement.Rejected(SemanticInventoryFailure.ModuleCoverage(setOf(expectedModule), setOf(module)))
+            else -> Refinement.Refined(this)
+        }
+
     companion object {
         /** Called after bounded native enumeration exhausts all admitted source roots for this module. */
         fun fromCompiler(

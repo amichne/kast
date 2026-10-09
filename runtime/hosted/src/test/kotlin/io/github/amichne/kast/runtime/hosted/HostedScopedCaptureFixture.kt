@@ -131,6 +131,6 @@ internal abstract class HostedScopedCaptureFixture : HostedSemanticFactFixture()
                 parent
             },
             counts,
-            capture,
+            HostedCallbackDependencyCapture(capture),
         )
 }

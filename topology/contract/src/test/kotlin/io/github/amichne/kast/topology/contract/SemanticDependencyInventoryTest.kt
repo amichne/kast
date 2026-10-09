@@ -46,6 +46,26 @@ class SemanticDependencyInventoryTest {
             .refined()
 
     @Test
+    fun `module completion admission preserves its exact graph and module owner`() {
+        val completed = completed("entry")
+        org.junit.jupiter.api.Assertions.assertSame(completed, completed.admitOwner(graph, entry).refined())
+        assertEquals(
+            Refinement.Rejected(SemanticInventoryFailure.ModuleCoverage(setOf(library), setOf(entry))),
+            completed.admitOwner(graph, library),
+        )
+        val equalGraph =
+            SemanticModuleDependencies.fromCompiler(
+                    model,
+                    mapOf(entry to setOf(library), library to emptySet(), independent to emptySet()),
+                )
+                .refined()
+        assertEquals(
+            Refinement.Rejected(SemanticInventoryFailure.DependencyGraphMismatch),
+            completed.admitOwner(equalGraph, entry),
+        )
+    }
+
+    @Test
     fun `missing module inventory cannot establish an empty dependency closure`() {
         val closure = graph.closure(setOf(entry)).refined()
         val result = SemanticDependencyInventory.admit(closure, listOf(completed("entry")))

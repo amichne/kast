@@ -114,17 +114,18 @@ private class HostedCallbackFactPreparation(
                 is Refinement.Rejected -> return CallbackSummaryCachePort.Disabled
             }
         val accounting = HostedCallbackCaptureAllowance(allowance)
-        return HostedCallbackFactCache(
-            HostedReadCallbackPartitions(context.model, attempts, accounting, currentBudget, context.observation) {
-                roots,
-                budget ->
-                when (
-                    val result =
-                        IntellijSemanticDependencyCapture(context.limits, context.observation)
-                            .capture(
-                                project,
-                                context.authority,
-                                context.model,
+        val nativeRead =
+            IntellijSemanticDependencyCapture(context.limits, context.observation)
+                .openRead(project, context.authority, context.model)
+        val capture =
+            object : HostedCallbackDependencyCapture {
+                override fun capture(
+                    roots: Set<WorkspaceModuleIdentity>,
+                    budget: ResourceBudget,
+                ): Refinement<SemanticDependencySnapshot, SemanticDependencyCaptureFailure> =
+                    when (
+                        val result =
+                            nativeRead.capture(
                                 roots,
                                 budget,
                                 onCost = {
@@ -132,11 +133,22 @@ private class HostedCallbackFactPreparation(
                                     charge(measuredWork(it.workUnits))
                                 },
                             )
-                ) {
-                    is SemanticDependencyCapture.Captured -> Refinement.Refined(result.snapshot)
-                    is SemanticDependencyCapture.Unavailable -> Refinement.Rejected(result.cause)
-                }
-            },
+                    ) {
+                        is SemanticDependencyCapture.Captured -> Refinement.Refined(result.snapshot)
+                        is SemanticDependencyCapture.Unavailable -> Refinement.Rejected(result.cause)
+                    }
+
+                override fun finishNativeRead() = nativeRead.finishNativeRead()
+            }
+        return HostedCallbackFactCache(
+            HostedReadCallbackPartitions(
+                context.model,
+                attempts,
+                accounting,
+                currentBudget,
+                context.observation,
+                capture,
+            ),
             store,
             context.observation,
         )

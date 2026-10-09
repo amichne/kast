@@ -12,6 +12,15 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 
+internal fun interface HostedCallbackDependencyCapture {
+    fun capture(
+        roots: Set<WorkspaceModuleIdentity>,
+        budget: ResourceBudget,
+    ): Refinement<SemanticDependencySnapshot, SemanticDependencyCaptureFailure>
+
+    fun finishNativeRead() = Unit
+}
+
 /** All successful snapshots and projections are owned by one exact native attempt; failures are scoped by universe. */
 internal class HostedReadCallbackPartitions(
     private val model: WorkspaceSearchScopeModel,
@@ -19,11 +28,7 @@ internal class HostedReadCallbackPartitions(
     private val allowance: HostedCallbackCaptureAllowance,
     private val currentBudget: () -> Refinement<ResourceBudget, PositiveLimitFailure>,
     private val observation: IntellijReadObservation,
-    private val capture:
-        (Set<WorkspaceModuleIdentity>, ResourceBudget) -> Refinement<
-                SemanticDependencySnapshot,
-                SemanticDependencyCaptureFailure,
-            >,
+    private val capture: HostedCallbackDependencyCapture,
 ) : HostedCallbackDependencyPartitions {
     private val modules = model.sourceRoots.mapTo(linkedSetOf(), ModelOwnedSourceRoot::module)
     private val captured = linkedMapOf<HostedCallbackDependencyUniverse, HostedCapturedCallbackPartitions>()
@@ -119,7 +124,7 @@ internal class HostedReadCallbackPartitions(
                 is Refinement.Rejected ->
                     return Refinement.Rejected(HostedCallbackPartitionFailure.PreparationBudget(admitted.failure))
             }
-        return when (val admitted = attempts.capture(universe) { capture(roots, budget) }) {
+        return when (val admitted = attempts.capture(universe) { capture.capture(roots, budget) }) {
             is Refinement.Refined -> {
                 if (
                     admitted.value.inventory.closure.roots != roots ||
@@ -136,8 +141,10 @@ internal class HostedReadCallbackPartitions(
 
     @Synchronized
     override fun finishNativeRead() {
+        if (lifetime == Lifetime.CLOSED) return
         lifetime = Lifetime.CLOSED
         captured.clear()
+        capture.finishNativeRead()
     }
 
     private enum class Lifetime {

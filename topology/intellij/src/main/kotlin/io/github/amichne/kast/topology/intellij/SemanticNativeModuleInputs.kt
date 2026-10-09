@@ -11,13 +11,8 @@ import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.topology.contract.CompleteSemanticModuleSources
 import io.github.amichne.kast.topology.contract.SemanticDependencyClosure
-import io.github.amichne.kast.topology.contract.SemanticDependencyInventory
-import io.github.amichne.kast.topology.contract.SemanticDependencySnapshot
 import io.github.amichne.kast.topology.contract.SemanticDependencySource
-import io.github.amichne.kast.topology.contract.SemanticResolutionInputInventory
 import io.github.amichne.kast.topology.contract.SemanticResolutionInputs
-import io.github.amichne.kast.topology.contract.SemanticSnapshotAdmissionFailure
-import io.github.amichne.kast.workspace.contract.LiveSemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.ModelOwnedSourceRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceModuleIdentity
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
@@ -36,54 +31,12 @@ internal class SemanticNativeModuleInputs(
     private val closure: SemanticDependencyClosure,
     private val limits: ReadLimits,
     private val budget: DependencyCaptureBudget,
+    private val memo: SemanticNativeFileMemo,
 ) {
-    private val files = SemanticNativeFiles(project, limits, budget)
+    private val files = SemanticNativeFiles(project, limits, budget, memo)
     private val configuration = SemanticNativeConfiguration(project, limits, budget, files)
 
-    fun snapshot(
-        authority: LiveSemanticReadAuthority,
-        modules: Map<WorkspaceModuleIdentity, Module>,
-    ): SemanticCapture<SemanticDependencySnapshot> {
-        val completed = mutableListOf<CompleteSemanticModuleSources>()
-        val resolutionInputs = linkedMapOf<WorkspaceModuleIdentity, SemanticResolutionInputs>()
-        for (identity in closure.modules.sortedBy { it.value }) {
-            when (val captured = module(identity, modules.getValue(identity))) {
-                is Refinement.Refined -> {
-                    completed += captured.value.sources
-                    resolutionInputs[identity] = captured.value.inputs
-                }
-                is Refinement.Rejected -> return captured
-            }
-        }
-        val inventory =
-            when (val admitted = SemanticDependencyInventory.admit(closure, completed)) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected ->
-                    return captureRejected(SemanticDependencyCaptureFailure.SOURCE_INVENTORY_REJECTED)
-            }
-        val inputs =
-            when (val admitted = SemanticResolutionInputInventory.fromCompiler(closure, resolutionInputs)) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected ->
-                    return captureRejected(SemanticDependencyCaptureFailure.RESOLUTION_INPUT_INVENTORY_REJECTED)
-            }
-        return when (val snapshot = SemanticDependencySnapshot.fromCompiler(authority, inventory, inputs)) {
-            is Refinement.Refined -> snapshot
-            is Refinement.Rejected ->
-                captureRejected(
-                    when (snapshot.failure) {
-                        SemanticSnapshotAdmissionFailure.WorkspaceMismatch ->
-                            SemanticDependencyCaptureFailure.MODEL_ROOT_MISMATCH
-                        SemanticSnapshotAdmissionFailure.ResolutionInputDomainMismatch ->
-                            SemanticDependencyCaptureFailure.RESOLUTION_INPUT_INVENTORY_REJECTED
-                        is SemanticSnapshotAdmissionFailure.Authority ->
-                            SemanticDependencyCaptureFailure.AUTHORITY_MOVED
-                    }
-                )
-        }
-    }
-
-    private fun module(
+    fun module(
         identity: WorkspaceModuleIdentity,
         module: Module,
     ): SemanticCapture<NativeModuleInputs> {
@@ -287,5 +240,3 @@ internal class SemanticNativeModuleInputs(
 }
 
 private class NativeSourceRoots(val inventory: CompleteSemanticSourceRoots, val directories: Map<Path, VirtualFile>)
-
-private class NativeModuleInputs(val sources: CompleteSemanticModuleSources, val inputs: SemanticResolutionInputs)

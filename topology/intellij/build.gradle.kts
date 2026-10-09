@@ -60,6 +60,7 @@ dependencies {
     implementation(project(":workspace:contract"))
     implementation(project(":workspace:intellij-read"))
     implementation(project(":symbol:contract"))
+    testImplementation(testFixtures(project(":workspace:contract")))
 
     topologyIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaPlatformBuild@zip") {
         isTransitive = false

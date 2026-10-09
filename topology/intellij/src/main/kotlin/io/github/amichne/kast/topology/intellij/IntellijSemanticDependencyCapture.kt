@@ -1,7 +1,6 @@
 package io.github.amichne.kast.topology.intellij
 
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
@@ -16,18 +15,15 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase
-import io.github.amichne.kast.workspace.intellij.read.IntellijReadStage
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
-import io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFailure
 import io.github.amichne.kast.workspace.intellij.read.call
-import java.io.IOException
 import java.nio.ByteBuffer
 import java.security.MessageDigest
 import java.util.HexFormat
-import kotlinx.coroutines.CancellationException
 
 /** Cache eligibility rejection preserves the ordinary fresh semantic analysis path. */
 enum class SemanticDependencyCaptureFailure {
+    READ_CAPTURE_ENDED,
     PROJECT_UNAVAILABLE,
     AUTHORITY_MOVED,
     MODULE_UNAVAILABLE,
@@ -89,12 +85,54 @@ class IntellijSemanticDependencyCapture(
     private val limits: ReadLimits = ReadLimits.Default,
     private val observation: IntellijReadObservation = IntellijReadObservation.None,
 ) {
-    /** Caller must keep the same native read action through fact admission and use. */
-    // Native platform extensions may throw unchecked exceptions; retain bounded stage evidence at this effect boundary.
+    /** Opened and closed inside one synchronous native attempt; graph carriers never survive closure. */
+    fun openRead(project: Project, authority: LiveSemanticReadAuthority, model: WorkspaceSearchScopeModel): Read {
+        ApplicationManager.getApplication().assertReadAccessAllowed()
+        return Read(project, authority, model)
+    }
+
+    inner class Read
+    internal constructor(
+        internal val project: Project,
+        internal val authority: LiveSemanticReadAuthority,
+        internal val model: WorkspaceSearchScopeModel,
+    ) {
+        internal val inputs = SemanticDependencyReadInputs<SemanticNativeModuleGraph>(authority, model) { it.graph }
+        internal val files = SemanticNativeFileMemo(limits)
+
+        fun capture(
+            roots: Set<WorkspaceModuleIdentity>,
+            budget: ResourceBudget,
+            onCost: (SemanticDependencyCaptureCost) -> Unit,
+        ): SemanticDependencyCapture = captureRead(this, roots, budget, onCost)
+
+        fun finishNativeRead() {
+            inputs.finishNativeRead()
+            files.finishNativeRead()
+        }
+    }
+
+    /** Standalone callers receive a fresh scope, always closed before returning. */
     fun capture(
         project: Project,
         authority: LiveSemanticReadAuthority,
         model: WorkspaceSearchScopeModel,
+        roots: Set<WorkspaceModuleIdentity>,
+        budget: ResourceBudget,
+        onCost: (SemanticDependencyCaptureCost) -> Unit,
+    ): SemanticDependencyCapture {
+        val read = openRead(project, authority, model)
+        return try {
+            read.capture(roots, budget, onCost)
+        } finally {
+            read.finishNativeRead()
+        }
+    }
+
+    /** Caller must keep the same native read action through fact admission and use. */
+    // Native platform extensions may throw unchecked exceptions; retain bounded stage evidence at this effect boundary.
+    private fun captureRead(
+        read: Read,
         roots: Set<WorkspaceModuleIdentity>,
         budget: ResourceBudget,
         onCost: (SemanticDependencyCaptureCost) -> Unit,
@@ -104,7 +142,7 @@ class IntellijSemanticDependencyCapture(
         val accounting = DependencyCaptureBudget(budget, System::nanoTime, ProgressManager::checkCanceled, observation)
         return observation.call(IntellijReadCall.SEMANTIC_DEPENDENCY_CAPTURE) {
             observeDependencyCaptureCost(accounting, onCost) {
-                val result = captureObserved(project, authority, model, roots, accounting)
+                val result = observeSemanticInputCapture(limits, observation) { captureInRead(read, roots, accounting) }
                 when (result) {
                     is Refinement.Refined -> SemanticDependencyCapture.Captured(result.value, accounting.cost())
                     is Refinement.Rejected -> {
@@ -116,67 +154,37 @@ class IntellijSemanticDependencyCapture(
         }
     }
 
-    @Suppress("TooGenericExceptionCaught")
-    private fun captureObserved(
-        project: Project,
-        authority: LiveSemanticReadAuthority,
-        model: WorkspaceSearchScopeModel,
-        roots: Set<WorkspaceModuleIdentity>,
-        accounting: DependencyCaptureBudget,
-    ): SemanticCapture<SemanticDependencySnapshot> {
-        return try {
-            captureInRead(project, authority, model, roots, accounting)
-        } catch (cancelled: ProcessCanceledException) {
-            throw cancelled
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (_: IOException) {
-            Refinement.Rejected(SemanticDependencyCaptureFailure.INPUT_UNAVAILABLE)
-        } catch (failure: LinkageError) {
-            observation.unexpected(
-                IntellijReadUnexpectedFailure.capture(
-                    IntellijReadStage.SEMANTIC_DEPENDENCY_PREPARATION,
-                    failure,
-                    limits,
-                )
-            )
-            Refinement.Rejected(SemanticDependencyCaptureFailure.COMPILER_CONFIGURATION_UNAVAILABLE)
-        } catch (failure: RuntimeException) {
-            observation.unexpected(
-                IntellijReadUnexpectedFailure.capture(
-                    IntellijReadStage.SEMANTIC_DEPENDENCY_PREPARATION,
-                    failure,
-                    limits,
-                )
-            )
-            Refinement.Rejected(SemanticDependencyCaptureFailure.INPUT_UNAVAILABLE)
-        }
-    }
-
     private fun captureInRead(
-        project: Project,
-        authority: LiveSemanticReadAuthority,
-        model: WorkspaceSearchScopeModel,
+        read: Read,
         roots: Set<WorkspaceModuleIdentity>,
         budget: DependencyCaptureBudget,
     ): SemanticCapture<SemanticDependencySnapshot> {
+        when (val active = read.inputs.admitRead()) {
+            is Refinement.Rejected -> return active
+            is Refinement.Refined -> Unit
+        }
+        val project = read.project
+        val authority = read.authority
+        val model = read.model
         if (project.isDisposed || DumbService.isDumb(project))
             return rejected(SemanticDependencyCaptureFailure.PROJECT_UNAVAILABLE)
         if (authority.workspaceRoot != model.workspaceRoot || project.basePath != model.workspaceRoot.value)
             return rejected(SemanticDependencyCaptureFailure.MODEL_ROOT_MISMATCH)
-        if (authority.withCurrentOwner { Unit } is Refinement.Rejected)
-            return rejected(SemanticDependencyCaptureFailure.AUTHORITY_MOVED)
-        val modules =
-            when (val observed = SemanticNativeModuleGraphCapture(limits, budget).capture(project, model)) {
-                is Refinement.Refined -> observed.value
-                is Refinement.Rejected -> return observed
-            }
-        val closure =
-            when (val admitted = modules.graph.closure(roots)) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return rejected(SemanticDependencyCaptureFailure.DEPENDENCY_CLOSURE_REJECTED)
-            }
-        return SemanticNativeModuleInputs(project, model, closure, limits, budget).snapshot(authority, modules.selected)
+        return read.inputs.snapshot(
+            roots,
+            budget,
+            captureGraph = {
+                observeSemanticInputCapture(limits, observation) {
+                    SemanticNativeModuleGraphCapture(limits, budget).capture(project, model)
+                }
+            },
+            captureModule = { modules, closure, identity ->
+                observeSemanticInputCapture(limits, observation) {
+                    SemanticNativeModuleInputs(project, model, closure, limits, budget, read.files)
+                        .module(identity, modules.selected.getValue(identity))
+                }
+            },
+        )
     }
 }
 
@@ -208,14 +216,22 @@ internal class DependencyCaptureBudget(
     private val started = nanoTime()
     private var work = 0L
 
-    fun step(): Refinement<Unit, SemanticDependencyCaptureFailure> {
+    fun current(): Refinement<Unit, SemanticDependencyCaptureFailure> {
         checkCanceled()
         if (work >= budget.workUnitLimit.value) return rejected(SemanticDependencyCaptureFailure.WORK_EXHAUSTED)
         if ((nanoTime() - started) / NANOS_PER_MILLISECOND >= budget.elapsedTimeLimit.value)
             return rejected(SemanticDependencyCaptureFailure.TIME_EXHAUSTED)
-        work += 1
         return Refinement.Refined(Unit)
     }
+
+    fun step(): Refinement<Unit, SemanticDependencyCaptureFailure> =
+        when (val admitted = current()) {
+            is Refinement.Rejected -> admitted
+            is Refinement.Refined -> {
+                work += 1
+                admitted
+            }
+        }
 
     fun cost() = SemanticDependencyCaptureCost(work, (nanoTime() - started).coerceAtLeast(0))
 }
@@ -224,6 +240,7 @@ private fun rejected(cause: SemanticDependencyCaptureFailure) = Refinement.Rejec
 
 internal fun SemanticDependencyCaptureFailure.termination(): IntellijReadTermination =
     when (this) {
+        SemanticDependencyCaptureFailure.READ_CAPTURE_ENDED -> IntellijReadTermination.SEMANTIC_INPUT_READ_CAPTURE_ENDED
         SemanticDependencyCaptureFailure.PROJECT_UNAVAILABLE ->
             IntellijReadTermination.SEMANTIC_INPUT_PROJECT_UNAVAILABLE
         SemanticDependencyCaptureFailure.AUTHORITY_MOVED -> IntellijReadTermination.SEMANTIC_INPUT_AUTHORITY_MOVED
