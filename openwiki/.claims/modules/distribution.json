@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:427e9fce9ec20783aac1c5afe9d7714257080bd4da501be23037f9cad565c4f2",
+  "pageVersion": "sha256:86d9ff81121ac1b663f373660c773b1f151990c2aa0813df840f293fd22c7939",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -323,7 +323,7 @@
           "version": "repo-file-v1:sha256:17671041a287674f57740f9150e7bb5e0634cb143d6c46b5b57aa7e3890a5ba9"
         },
         {
-          "resource": "repo://.github/scripts/release/build_candidate.py#L232-L266",
+          "resource": "repo://.github/scripts/release/build_candidate.py#L234-L268",
           "version": "repo-lines-v1:sha256:a3f1a02609f0f5d8b745c4575d15e5f0581bb6c68d51d2b2e50a71585f40a137:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY5MGJiY2IwNjI5ODM4ZjEyOGM1NzViYWEzYjdkN2QzN2Q4MjZjNWI3Njg3MGQ2Yzk0YmU1ZjQ5NDkzNTUzODciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFjMWE4MjQyNmE4MTA5YzNjMzlkZDg2ZTMzNGViMmFkNTY0ZWFlMDlmNGNiYmIzMTg3MjhkMmQxM2ExMDUzZGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlmNDI0MzM4MTk4NmQwYmZhMzZkNGRhNjEyYzhmNTM4YjhiYjU0MGM1YjRhZTViYmNjZWZlNTRlNzNkZGM3OGMifQ"
         },
         {
@@ -337,8 +337,8 @@
       "statement": "Successful main CI automatically promotes retained candidate bytes to the developer channel without rebuilding; the publisher verifies producer and digest provenance, requires exact retries, and preserves latest when main has advanced.",
       "evidence": [
         {
-          "resource": "repo://.github/scripts/release/build_candidate.py#L312-L364",
-          "version": "repo-lines-v1:sha256:4a6b9400d3043a504718ca26e161cc1ab3e236fa13ab100632e0e536c64d9df4:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY4YWJlZjE4NjBlZWMyMzAzYTAyODg3NzNiZmU5ZGY1MDg3ZGI2MDRmZTJiOTAwZjBkOGU3MjJhYTBhMjFlOTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzNDBlZmU5ZjQyNTdjNzNjZWVkM2NkNTM0NGUyYTgzMTEwY2JhNGZiZTY2ZWZlNzUyNTk3MWZmMDg2ODhjOTUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM5MzY5YmFlMjkzYzNiMGY2YWYzODE4YzJkMzhkMTYwNzc5NTJmN2I2YWQ0MDRhZDQ1ZDFlMzU5NzQ1YmI1YzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRiYTA2MGU2ZDNiMWVjMGU5YWVlZTBiODIzYWU2ZTQ3OWFiNDlmNzBkZTJmMTQ5ZmFlZTAyOWYyZjlmZmQ2ZDYifQ"
+          "resource": "repo://.github/scripts/release/build_candidate.py#L314-L367",
+          "version": "repo-lines-v1:sha256:6d70a793aae1b804edc31547dab228414aabdbe62a69a01068ac78090f0fdf5e:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY4YWJlZjE4NjBlZWMyMzAzYTAyODg3NzNiZmU5ZGY1MDg3ZGI2MDRmZTJiOTAwZjBkOGU3MjJhYTBhMjFlOTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzNDBlZmU5ZjQyNTdjNzNjZWVkM2NkNTM0NGUyYTgzMTEwY2JhNGZiZTY2ZWZlNzUyNTk3MWZmMDg2ODhjOTUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM5MzY5YmFlMjkzYzNiMGY2YWYzODE4YzJkMzhkMTYwNzc5NTJmN2I2YWQ0MDRhZDQ1ZDFlMzU5NzQ1YmI1YzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRiYTA2MGU2ZDNiMWVjMGU5YWVlZTBiODIzYWU2ZTQ3OWFiNDlmNzBkZTJmMTQ5ZmFlZTAyOWYyZjlmZmQ2ZDYifQ"
         },
         {
           "resource": "repo://.github/scripts/release/publish-developer.sh",
@@ -373,8 +373,8 @@
       "statement": "Candidate versions use the CI run number within the installer's 32-bit semantic-version range, while the identity record retains the full run ID and producer attempt.",
       "evidence": [
         {
-          "resource": "repo://.github/scripts/release/build_candidate.py#L121-L161",
-          "version": "repo-lines-v1:sha256:b3f5fca2b4f6ad923c50a08f0bc3aab0f2aea8b0a05c3c49196ab2252df0c532:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4ZTg3Nzg1MTlkZTdlMjFjZWFiYzViMjI2ZjMwMDM2NzA3YTNjMDk2ODg4MGE5MjA5MTk0NjVlZDA4MjQ1MzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNjMzA3NGUxNWY1YjM5ZTQ4ZGQxMTVmNjUxN2Q2ZWUzMjY5ZmQxYTllYjA1ZDQxOWRmNmMzNzY5YjI4ZTcwMGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczN2RlNmEwOTU3ZTNmODJkZGUyZTg4YWJlYjc4OWE3NmE2ZWU5MGRkYzFlODFkYWE4MTE4ZDEzMTc1NDU5NDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYzMmNlMjUxNmY2YTkwODZkMjRjZGU0YzY0Yjg4NTBiMzY4MTIyMjc5YzE2OGU3ZDk3Y2ZkM2JjODRjNjk2ZTcifQ"
+          "resource": "repo://.github/scripts/release/build_candidate.py#L121-L163",
+          "version": "repo-lines-v1:sha256:f75d6ff2626eba0dd5d9846c8dfa19e66d0ec80d6e0dc24a341feea8dd15e776:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4ZTg3Nzg1MTlkZTdlMjFjZWFiYzViMjI2ZjMwMDM2NzA3YTNjMDk2ODg4MGE5MjA5MTk0NjVlZDA4MjQ1MzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNjMzA3NGUxNWY1YjM5ZTQ4ZGQxMTVmNjUxN2Q2ZWUzMjY5ZmQxYTllYjA1ZDQxOWRmNmMzNzY5YjI4ZTcwMGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczN2RlNmEwOTU3ZTNmODJkZGUyZTg4YWJlYjc4OWE3NmE2ZWU5MGRkYzFlODFkYWE4MTE4ZDEzMTc1NDU5NDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYzMmNlMjUxNmY2YTkwODZkMjRjZGU0YzY0Yjg4NTBiMzY4MTIyMjc5YzE2OGU3ZDk3Y2ZkM2JjODRjNjk2ZTcifQ"
         },
         {
           "resource": "repo://.github/workflows/ci.yml#L157-L172",
@@ -389,6 +389,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-09T14:55:15.920Z"
+    "at": "2026-10-09T15:05:31.379Z"
   }
 }

@@ -176,6 +176,16 @@ class PayloadAdmissionTest(unittest.TestCase):
         self.assertEqual(2, tree.call_count)
         download.assert_called_once_with(REPOSITORY, asdict(main), MERGED, destination)
 
+    def test_boolean_attempt_in_promotion_rejects_before_external_observation(self):
+        promotion = Path(self.temporary.name) / "promotion.json"
+        malformed = candidate.Promotion(1, REPOSITORY, BUILD, MERGED, TREE, VERSION, 123, True, 456, 1,
+                                        candidate.legacy.digest(self.bundle / "candidate.json"))
+        promotion.write_text(json.dumps(asdict(malformed)))
+        with patch.object(candidate, "observe") as observe, self.assertRaises(candidate.Rejected) as rejection:
+            candidate.verify_publication(REPOSITORY, BUILD, VERSION, self.bundle, promotion)
+        observe.assert_not_called()
+        self.assertEqual(candidate.Failure.INVALID_RECORD, rejection.exception.failure)
+
     def test_failed_main_never_downloads_or_writes_a_promotion(self):
         with patch.object(candidate, "observe", return_value=asdict(replace(Run(), conclusion="failure"))), \
                 patch.object(candidate, "download") as download, self.assertRaises(candidate.Rejected):
@@ -233,106 +243,6 @@ class EffectBoundaryTest(unittest.TestCase):
             with self.subTest(observed=observed), patch.object(candidate, "observe", return_value={"object": {"sha": observed}}):
                 self.assertEqual(expected, candidate.current_main(REPOSITORY, MERGED))
 
-
-
-@dataclass(frozen=True)
-class ScriptedCall:
-    argv: tuple[str, ...]
-    stdout: str = ""
-    exitCode: int = 0
-
-
-class PublisherBoundaryTest(unittest.TestCase):
-    setUp = PayloadAdmissionTest.setUp
-
-    def publish(self, *, current=True, damaged=False, existing=True):
-        import base64
-        import os
-        root = Path(self.temporary.name).resolve()
-        record = root / "promotion.json"
-        promotion = candidate.Promotion(1, REPOSITORY, BUILD, MERGED, TREE, VERSION, 123, 1, 456, 1,
-                                         candidate.legacy.digest(self.bundle / "candidate.json"))
-        record.write_text(json.dumps(asdict(promotion), indent=2) + "\n")
-        tag = f"developer-v{VERSION}"
-        view = ("release", "view", tag, "--repo", REPOSITORY)
-        main = replace(Run(), id=456, event="push", head_sha=MERGED, head_branch="main")
-        expected = [
-            ScriptedCall(("api", f"repos/{REPOSITORY}/actions/runs/456"), json.dumps(asdict(main))),
-            ScriptedCall(("api", f"repos/{REPOSITORY}/actions/runs/123"), json.dumps(asdict(Run()))),
-            ScriptedCall(("api", f"repos/{REPOSITORY}/git/commits/{MERGED}"), json.dumps({"sha": MERGED, "tree": {"sha": TREE}})),
-            ScriptedCall(("api", f"repos/{REPOSITORY}/git/commits/{BUILD}"), json.dumps({"sha": BUILD, "tree": {"sha": TREE}})),
-            ScriptedCall(view, "{}", 0 if existing else 1),
-        ]
-        payload = self.bundle / "payload"
-        names = (f"kast-control-v{VERSION}-macos-aarch64.tar.gz", f"kast-ide-hosted-v{VERSION}-idea-262.zip",
-                 *(f"kast-{name}-v{VERSION}.zip" for name in ("skill", "plugin", "marketplace")),
-                 f"kast-host-release-v{VERSION}.json", "host-installation.py", f"kast-hosted-catalog-v{VERSION}.json",
-                 f"kast-module-knowledge-v{VERSION}.json", f"kast-sbom-v{VERSION}.cdx.json")
-        files = [path for name in names for path in (payload / name, payload / (name + ".sha256"))]
-        files.extend((self.bundle / "candidate.json", record))
-        if not existing:
-            expected.append(ScriptedCall(("release", "create", tag, *(str(path) for path in files),
-                "--repo", REPOSITORY, "--target", BUILD, "--prerelease", "--latest=false", "--title", f"Kast developer {VERSION}",
-                "--notes", f"Tested developer build from {BUILD}, promoted after main {MERGED}. Candidate and promotion records, SBOM and checksums are included.")))
-        inventory = "\n".join(sorted(f"{path.name}\tsha256:{candidate.legacy.digest(path)}" for path in files))
-        expected.extend((ScriptedCall(view + ("--json", "targetCommitish", "--jq", ".targetCommitish"), BUILD),
-                         ScriptedCall(view + ("--json", "assets", "--jq", ".assets[] | [.name, .digest] | @tsv"),
-                                      "tampered" if damaged else inventory)))
-        if not damaged:
-            expected.append(ScriptedCall(("api", f"repos/{REPOSITORY}/git/ref/heads/main"),
-                                         json.dumps({"object": {"sha": MERGED if current else BUILD}})))
-            if current:
-                pointer = base64.b64encode(f"{tag} {VERSION} {BUILD}\n".encode()).decode()
-                expected.extend((
-                    ScriptedCall(("api", f"repos/{REPOSITORY}/git/ref/heads/developer-latest"), "{}"),
-                    ScriptedCall(("api", f"repos/{REPOSITORY}/contents/latest.txt?ref=developer-latest", "--jq", ".sha"), "e" * 40),
-                    ScriptedCall(("api", "--method", "PUT", f"repos/{REPOSITORY}/contents/latest.txt", "-f",
-                                  f"message=chore(distribution): point developer latest to {tag}", "-f", f"content={pointer}",
-                                  "-f", "branch=developer-latest", "-f", "sha=" + "e" * 40), "{}"),
-                    ScriptedCall(view + ("--json", "tagName,targetCommitish,url,assets"), "{}"),
-                ))
-        script = root / "gh"
-        script.write_text(f'''#!{sys.executable}
-import json, pathlib, sys
-root = pathlib.Path({str(root)!r})
-calls = json.loads((root / "calls.json").read_text())
-index = int((root / "index").read_text())
-if index >= len(calls) or sys.argv[1:] != calls[index]["argv"]:
-    (root / "violation").write_text(str(sys.argv[1:]))
-    raise SystemExit(99)
-(root / "index").write_text(str(index + 1))
-print(calls[index]["stdout"])
-raise SystemExit(calls[index]["exitCode"])
-''')
-        script.chmod(0o755)
-        (root / "calls.json").write_text(json.dumps([asdict(item) for item in expected]))
-        (root / "index").write_text("0")
-        environment = os.environ | {"PATH": str(root) + os.pathsep + os.environ["PATH"],
-                                     "GH_TOKEN": "fixture", "GITHUB_REPOSITORY": REPOSITORY}
-        result = subprocess.run(["bash", str(candidate.ROOT / ".github/scripts/release/publish-developer.sh"),
-                                 "--version", VERSION, "--commit", BUILD, "--assets-directory", str(payload),
-                                 "--promotion-record", str(record)], env=environment, capture_output=True, text=True, timeout=30)
-        self.assertFalse((root / "violation").exists(), (root / "violation").read_text() if (root / "violation").exists() else result.stderr)
-        self.assertEqual(len(expected), int((root / "index").read_text()), result.stdout + result.stderr)
-        return result
-
-    def test_existing_publication_retries_without_rebuilding_or_reuploading(self):
-        result = self.publish()
-        self.assertEqual(0, result.returncode, result.stderr)
-
-    def test_fresh_publication_verifies_uploaded_digests_before_advancing_latest(self):
-        result = self.publish(existing=False)
-        self.assertEqual(0, result.returncode, result.stderr)
-
-    def test_delayed_publication_preserves_the_latest_pointer(self):
-        result = self.publish(current=False)
-        self.assertEqual(0, result.returncode, result.stderr)
-        self.assertIn("latest retained", result.stdout)
-
-    def test_wrong_remote_digest_blocks_the_pointer(self):
-        result = self.publish(damaged=True)
-        self.assertNotEqual(0, result.returncode)
-        self.assertIn("developer assets differ", result.stderr)
 
 
 if __name__ == "__main__":

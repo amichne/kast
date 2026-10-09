@@ -156,7 +156,9 @@ def refine(candidate: Candidate, run: dict, repository: str, tree: str) -> Admit
     """Pure admission: a successful producer and equal source tree retain build identity."""
     if (not isinstance(run, dict) or not isinstance(run.get("repository"), dict)
             or run["repository"].get("full_name") != repository
-            or run.get("path") != WORKFLOW or run.get("id") != candidate.runId
+            or run.get("path") != WORKFLOW or not positive(run.get("id"))
+            or not positive(run.get("run_number")) or not positive(run.get("run_attempt"))
+            or run.get("id") != candidate.runId
             or run.get("run_number") != candidate.runNumber
             or run.get("run_attempt") != candidate.runAttempt
             or run.get("event") != candidate.event or run.get("head_sha") != candidate.sourceRevision
@@ -345,6 +347,7 @@ def verify_publication(repository: str, revision: str, version: str, bundle: Pat
             or promotion.buildRevision != revision or candidate.sourceRevision != revision
             or promotion.version != version or candidate.version != version
             or promotion.sourceTree != candidate.sourceTree
+            or not positive(promotion.buildRunId) or not positive(promotion.buildRunAttempt)
             or promotion.buildRunId != candidate.runId or promotion.buildRunAttempt != candidate.runAttempt
             or promotion.candidateSha256 != legacy.digest(bundle / "candidate.json")
             or not positive(promotion.mainRunId) or not positive(promotion.mainRunAttempt)):
