@@ -150,6 +150,19 @@ class StaticCallbackQualificationTest(unittest.TestCase):
             with self.subTest(mutation=mutation), self.assertRaises(AssertionError):
                 q.native_callback_counters(call({}, diagnostics), LIVE)
 
+    def test_counter_contract_admits_only_declared_integer_versions(self):
+        for version in (6, 7, 8, 9):
+            receipt = self.diagnostic()
+            receipt['schemaVersion'] = version
+            with self.subTest(version=version):
+                self.assertEqual(dict.fromkeys(q.STATIC_COUNTERS, 0),
+                                 q.native_callback_counters(call({}, [receipt]), LIVE))
+        for version in (5, 10, 6.0, '9', True, None):
+            receipt = self.diagnostic()
+            receipt['schemaVersion'] = version
+            with self.subTest(version=version), self.assertRaises(AssertionError):
+                q.native_callback_counters(call({}, [receipt]), LIVE)
+
     def test_semantic_fact_counters_require_explicit_native_observations(self):
         receipt = self.diagnostic()
         receipt['counters'] = [dict(counter=name, contributor='NONE', count=0) for name in q.SEMANTIC_FACT_COUNTERS]
