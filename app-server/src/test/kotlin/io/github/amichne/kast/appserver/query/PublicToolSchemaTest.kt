@@ -285,7 +285,7 @@ class PublicToolSchemaTest {
         val result =
             (QueryResultReference.parse("result:v1:00000000-0000-0000-0000-000000000000") as Refinement.Refined).value
         val continuation =
-            (QueryExecutionContinuation.Pipeline.parse("query:v1:00000000-0000-0000-0000-000000000000")
+            (QueryExecutionContinuation.Output.parse("query-output:v1:00000000-0000-0000-0000-000000000000")
                     as Refinement.Refined)
                 .value
         val emptyFields = (BoundedProtocolList.create(emptyList<PublicToolFields>()) as Refinement.Refined).value

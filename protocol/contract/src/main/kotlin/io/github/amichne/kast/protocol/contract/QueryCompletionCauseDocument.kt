@@ -46,4 +46,11 @@ sealed interface QueryCompletionCauseDocument {
         override val reason
             get() = QueryCompletionUnprovenReason.INVESTIGATION_UNPROVEN
     }
+
+    @Serializable
+    @SerialName("RETENTION_UNAVAILABLE")
+    data class RetentionUnavailable(val failure: QueryCompletionRetentionFailure) : QueryCompletionCauseDocument {
+        override val reason
+            get() = QueryCompletionUnprovenReason.RETENTION_UNAVAILABLE
+    }
 }

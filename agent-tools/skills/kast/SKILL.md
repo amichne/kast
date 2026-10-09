@@ -38,11 +38,11 @@ invalidation, or forced synchronization to manufacture readiness.
    uses, apply one terminal `TRACE` with `SYMBOLS` output. Use `WORKSPACE` for
    clients across modules. Choose `SOURCE_DOMAIN` only when the question excludes
    other destinations. The seed's discovery scope does not restrict expansion.
-3. Keep the default `COMPLETE_ONLY` policy. Read completion and coverage before
+3. Require the fixed `COMPLETE_ONLY` verdict. Read completion and coverage before
    answering. Use the trace example's elapsed grant and read the admitted budget.
-   On `COMPLETION_UNPROVEN`, inspect its recovery evidence and follow
-   an issued execution continuation. Use `PROGRESSIVE` only when the user wants
-   a qualified investigation. A larger requested timeout cannot remove host limits.
+   On `COMPLETION_UNPROVEN`, inspect its retained recovery evidence with
+   `READ_RESULT`. A historical semantic checkpoint grants no execution.
+   `RESUME` presents already-produced output. A larger requested timeout cannot remove host limits.
 
 TRACE owns references, implementations or overrides, direct callers, and one
 further caller layer. Its topology is fixed. Do not reconstruct that flow with

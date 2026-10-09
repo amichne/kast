@@ -30,58 +30,60 @@ import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.symbol.contract.SymbolExactRejection
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 
 internal class AutomaticSymbolQueryEvidenceTest : AutomaticSymbolQueryCase() {
     @Test
-    fun `accumulated failures beyond a protocol collection drain in order without losing terminal limitations`() =
-        runTest {
-            val script = failureScript()
-            val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
-            val result =
-                protocol.executeAutomatically(
-                    request,
-                    fixture.authority,
-                    budget,
-                    policy(retainedBytes = 128_000_000),
-                ) as OperationOutcome.Qualified
-            val payload = result.evidence.payload
-            assertEquals(11, payload.invocation!!.accumulatedRowCount)
-            assertEquals(11, payload.items.values.size)
-            assertEquals(100, payload.failures.values.size)
-            assertEquals(1100, payload.evidenceWindow!!.total.value)
-            val reference = (payload.retention as QueryResultRetention.Retained).reference
-            val last =
-                readEvidence(protocol, reference, 11, payload.evidenceWindow!!.nextCursor) as OperationOutcome.Qualified
-            assertEquals(0, last.evidence.payload.items.values.size)
-            assertEquals(1000, last.evidence.payload.failures.values.size)
-            assertEquals(QueryEvidenceWindowKind.FINAL, last.evidence.payload.evidenceWindow!!.type)
-            assertNull(last.evidence.payload.nextCursor)
-            assertNull(last.evidence.payload.evidenceWindow!!.nextCursor)
-            assertEquals(result.qualification.limitations, last.qualification.limitations)
-            assertEquals(listOf(QueryLimitationDocument.RELATION_INCOMPLETE), last.qualification.limitations)
-            assertEquals(expectedFailures(), payload.failures.values + last.evidence.payload.failures.values)
-            val replay =
-                readEvidence(protocol, reference, 11, payload.evidenceWindow!!.nextCursor) as OperationOutcome.Qualified
-            assertEquals(last, replay)
-            val invalid = readEvidence(protocol, reference, 0, QueryEvidenceCursor.parse(1101).refined())
-            assertEquals(
-                OperationOutcome.Rejected(
-                    QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.EVIDENCE_CURSOR_OUT_OF_RANGE)
-                ),
-                invalid,
+    fun `rejected accumulated failures drain in order without losing original terminal limitations`() = runTest {
+        val script = failureScript()
+        val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
+        val rejection =
+            completionRejection(
+                protocol.execute(request, fixture.authority, budget, policy(retainedBytes = 128_000_000))
             )
-            script.assertDrained()
-        }
+        val evidence = retainedEvidence(rejection)
+        assertEquals(11, evidence.preview.values.size)
+        assertEquals(
+            listOf(QueryLimitationDocument.RELATION_INCOMPLETE),
+            originalCoverage(rejection).limitations.values,
+        )
+        val first = readEvidence(protocol, evidence.result, 11, null) as OperationOutcome.Qualified
+        assertEquals(0, first.evidence.payload.items.values.size)
+        assertEquals(1000, first.evidence.payload.failures.values.size)
+        assertEquals(1100, first.evidence.payload.evidenceWindow!!.total.value)
+        val last =
+            readEvidence(protocol, evidence.result, 11, first.evidence.payload.evidenceWindow!!.nextCursor)
+                as OperationOutcome.Qualified
+        assertEquals(0, last.evidence.payload.items.values.size)
+        assertEquals(100, last.evidence.payload.failures.values.size)
+        assertEquals(QueryEvidenceWindowKind.FINAL, last.evidence.payload.evidenceWindow!!.type)
+        assertNull(last.evidence.payload.nextCursor)
+        assertNull(last.evidence.payload.evidenceWindow!!.nextCursor)
+        assertEquals(first.qualification.limitations, last.qualification.limitations)
+        assertEquals(expectedFailures(), first.evidence.payload.failures.values + last.evidence.payload.failures.values)
+        val interpretation =
+            last.evidence.payload.interpretation
+                as io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument.EvidenceOnly
+        assertEquals(rejection.originalCoverage, interpretation.originalCoverage)
+        val replay = readEvidence(protocol, evidence.result, 11, first.evidence.payload.evidenceWindow!!.nextCursor)
+        assertEquals(last, replay)
+        val invalid = readEvidence(protocol, evidence.result, 0, QueryEvidenceCursor.parse(1101).refined())
+        assertEquals(
+            OperationOutcome.Rejected(
+                QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.EVIDENCE_CURSOR_OUT_OF_RANGE)
+            ),
+            invalid,
+        )
+        script.assertDrained()
+    }
 
     @Test
     fun `large complete observation sequence remains complete through independent row and evidence reads`() = runTest {
         val script = observationScript()
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
         val result =
-            protocol.executeAutomatically(
+            protocol.execute(
                 request,
                 fixture.authority,
                 budget,
@@ -117,31 +119,35 @@ internal class AutomaticSymbolQueryEvidenceTest : AutomaticSymbolQueryCase() {
     }
 
     @Test
-    fun `evidence retention failure remains an explicit partial result without a reference`() = runTest {
-        val script =
-            Script(
-                listOf(listOf(row)),
-                terminal = true,
-                resultForPage = { rows, _ ->
-                    QueryResult(
-                        QueryRows.Symbols.of(rows),
-                        List(100) { QueryItemFailure.PredicateUnproven(fixture.selector) },
-                    )
-                },
+    fun `evidence retention failure preserves rejected original coverage and explicit unavailable evidence`() =
+        runTest {
+            val script =
+                Script(
+                    listOf(listOf(row)),
+                    terminal = true,
+                    resultForPage = { rows, _ ->
+                        QueryResult(
+                            QueryRows.Symbols.of(rows),
+                            List(100) { QueryItemFailure.PredicateUnproven(fixture.selector) },
+                        )
+                    },
+                )
+            val protocol =
+                CanonicalQueryProtocol(script.operations, fixture.references, QueryStateStore(maximumBytes = 4096))
+            val rejection = completionRejection(protocol.execute(request, fixture.authority, budget, policy(1)))
+            assertEquals(1, originalCoverage(rejection).knownMinimum.value)
+            assertEquals(
+                listOf(QueryLimitationDocument.RELATION_INCOMPLETE),
+                originalCoverage(rejection).limitations.values,
             )
-        val protocol =
-            CanonicalQueryProtocol(script.operations, fixture.references, QueryStateStore(maximumBytes = 4096))
-        val result =
-            protocol.executeAutomatically(request, fixture.authority, budget, policy(1)) as OperationOutcome.Qualified
-        assertEquals(QueryResultRetention.CapacityExceeded, result.evidence.payload.retention)
-        assertEquals(1, result.evidence.payload.failures.values.size)
-        assertEquals(100, result.evidence.payload.evidenceWindow!!.total.value)
-        assertInstanceOf(
-            io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument.RetentionUnavailable::class.java,
-            result.qualification.progress,
-        )
-        script.assertDrained()
-    }
+            assertEquals(
+                io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument.Unavailable(
+                    io.github.amichne.kast.protocol.contract.QueryCompletionRetentionFailure.CAPACITY_EXCEEDED
+                ),
+                rejection.evidence,
+            )
+            script.assertDrained()
+        }
 
     private suspend fun readEvidence(
         protocol: CanonicalQueryProtocol,
@@ -149,7 +155,7 @@ internal class AutomaticSymbolQueryEvidenceTest : AutomaticSymbolQueryCase() {
         rowCursor: Int,
         evidenceCursor: QueryEvidenceCursor?,
     ): QueryPublishedPage =
-        protocol.execute(
+        protocol.executePage(
             QueryRunRequest.ReadResult.symbols(
                 reference,
                 QueryResultCursor.parse(rowCursor).refined(),

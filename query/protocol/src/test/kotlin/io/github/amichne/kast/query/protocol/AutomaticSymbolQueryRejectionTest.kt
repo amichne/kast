@@ -40,9 +40,9 @@ internal class AutomaticSymbolQueryRejectionTest : AutomaticSymbolQueryCase() {
                     QueryReferenceRejectionReason.STALE_GENERATION,
                 )
             )
-        assertEquals(expected, protocol.execute(request, lease, budget))
+        assertEquals(expected, protocol.executePage(request, lease, budget))
 
-        assertEquals(expected, protocol.executeAutomatically(request, lease, budget, policy()))
+        assertEquals(expected, protocol.execute(request, lease, budget, policy()))
 
         assertEquals(0, calls)
     }
@@ -72,9 +72,9 @@ internal class AutomaticSymbolQueryRejectionTest : AutomaticSymbolQueryCase() {
             OperationOutcome.Rejected(
                 QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.RESULT_UNAVAILABLE)
             )
-        assertEquals(expected, protocol.execute(input, fixture.authority, budget))
+        assertEquals(expected, protocol.executePage(input, fixture.authority, budget))
 
-        assertEquals(expected, protocol.executeAutomatically(input, fixture.authority, budget, policy()))
+        assertEquals(expected, protocol.execute(input, fixture.authority, budget, policy()))
 
         assertEquals(0, calls)
         assertEquals(0L, state.retentionMeasurements().retainedBytes.value)
@@ -98,7 +98,7 @@ internal class AutomaticSymbolQueryRejectionTest : AutomaticSymbolQueryCase() {
             OperationOutcome.Rejected(
                 QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.REFERENCE_STALE)
             ),
-            protocol.executeAutomatically(request, fixture.authority, budget, policy()),
+            protocol.execute(request, fixture.authority, budget, policy()),
         )
 
         assertEquals(1, calls)
@@ -109,16 +109,18 @@ internal class AutomaticSymbolQueryRejectionTest : AutomaticSymbolQueryCase() {
         val script = Script(listOf(emptyList(), listOf(row)), staleAfterFirst = true)
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
 
-        val outcome =
-            protocol.executeAutomatically(request, fixture.authority, budget, policy()) as OperationOutcome.Qualified
-
-        assertEquals(0, outcome.evidence.payload.items.values.size)
-        assertEquals(QueryInvocationStop.INVALID_STATE, outcome.evidence.payload.invocation!!.stop)
+        val rejection = completionRejection(protocol.execute(request, fixture.authority, budget, policy()))
+        assertEquals(0, retainedEvidence(rejection).preview.values.size)
+        assertEquals(QueryInvocationStop.INVALID_STATE, rejection.stop)
         assertEquals(
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.REFERENCE_STALE),
-            outcome.evidence.payload.invocation!!.failure,
+            rejection.originalFailure,
         )
-        assertNull(outcome.qualification.progress.continuationToken)
+        val read =
+            protocol.executePage(retainedEvidence(rejection).readRequest(), fixture.authority, budget)
+                as OperationOutcome.Qualified
+        assertEquals(0, read.evidence.payload.items.values.size)
+        assertNull(read.qualification.progress.continuationToken)
         script.assertDrained()
     }
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:d01e4cacb70b7cd31fe8894dcfec0cf829320da758f60905dba7a0320938226d",
+  "pageVersion": "sha256:026f36bfdc4bc455718a07428920de34cfe00c234d7be14e887a19b6d9cb764d",
   "claims": [
     {
       "id": "claim_028d251874414d8da5da1449de9e8ce4",
@@ -99,12 +99,12 @@
       "statement": "Before impact finalization, only a qualified resumable empty evidence-only snapshot is admitted for retention; its exact existing checkpoint retains unfinished execution, while original investigation ordinals and witness sections require a finalized ledger.",
       "evidence": [
         {
-          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultRetentionSource.kt#L18-L81",
-          "version": "repo-lines-v1:sha256:fe37925ea4facf1ff73f0696f9f1db3820ca9ac5dc7c290f9f2f5f9fd5858cee:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVlOGE2YmI5YzBjYmEyY2YyOGQ5ZTg0ZGJhZTBhMGU5MjI4MDJiMGUxMDdjMDMzMjBjZjkyMzliZWI3MmExNTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJiZTkzNmU1N2E5N2JkNDE0N2FjMjEzM2E1MDU5YjE4YmIyMDY1MTA1NDg4ODNiNjMxOTM2ZTExYTZiYTdlMzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultRetentionSource.kt",
+          "version": "repo-file-v1:sha256:18d95a614270b5263f1867ef38c582021267448c9ae158e0aa202b166f2980f8"
         },
         {
-          "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt#L24-L73",
-          "version": "repo-lines-v1:sha256:dae70d29fbbfe5194d08d63334e2247669fdeef0a5eab6bb37ad2cc7c77a2a51:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4NzVkNGFhYTdmZmM3MjQwZTBkOGRkYTMzZDlhZDVjMmRiMjJjNjI2NTg4NTc1OGI2NGNiZTVlNWRiNmM4NzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2YTJmYjA1ZDEzNGNiZmQxZmRiYTlhZDJiMzQ5ZTVjODEzZTRhZjE2YTg1ZGUxMTE5ZDk0NzE4MWZlM2JjNzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0MDU4OTk5MTY3ZjE5N2EyM2NjZjY0NjQyMTM3NDI4MzQxZWU3YzgwODdhNmY4N2M3YmFlZjBiZjE3YTBhNjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRmODcyNDA2ZTY1ZTY1ZDdkMDcxZWVkMzRlMjhkZjU1YjlmZmRlZWNlZDNmNjhkYmFkMzZjYTkxYTFiYjdkYjYifQ"
+          "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt",
+          "version": "repo-file-v1:sha256:c3129f33c901a8e05e7dc7874b97a5719bd644ce1340538331b2505751d8138b"
         }
       ]
     },
@@ -147,10 +147,28 @@
           "version": "repo-file-v1:sha256:27b6221ce46d68e9d3e522538b214ae4b35af0aaf2e096c40afe97a07590b256"
         }
       ]
+    },
+    {
+      "id": "claim_f3a57d4641204f9bb9f110632f60ec59",
+      "statement": "Public RUN has one complete-only compiler-static execution path with bounded internal semantic checkpoints under the remaining original grant; public RESUME presents produced output only. Retained completion rejection reads preserve the original question, qualifications and historical progress as evidence-only data.",
+      "evidence": [
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/AutomaticSymbolQueryRunner.kt",
+          "version": "repo-file-v1:sha256:d0bee3b4677b42599aaafecbe4ab5b8cdb5782bc908daf224c9d2cec56b37567"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt",
+          "version": "repo-file-v1:sha256:9a63296cee5ad42f57a4bbdd3a92848dc91d2bc35258b105f71a1ea043442d9f"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidenceRead.kt",
+          "version": "repo-file-v1:sha256:568129b66d2ea0a9d0b242951cea3bf0abdbc8974e1daff974b301e6b2cd8b5b"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-09T14:48:51.708Z"
+    "at": "2026-10-09T14:26:30.997Z"
   }
 }

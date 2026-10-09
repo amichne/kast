@@ -2,13 +2,13 @@ package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
 import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
 import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.protocol.contract.QueryStaticModelDocument
 import io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument
 import io.github.amichne.kast.query.contract.QueryRetainedResult
 
@@ -19,7 +19,6 @@ internal fun completionEvidenceRead(
     original: QueryRetainedResult,
     state: QueryStateStore,
 ): QueryPublishedPage {
-    val policy = request.completion as? QueryCompletionPolicyDocument.CompleteOnly ?: return page
     val failure =
         when (val proof = completionProof(original)) {
             is Refinement.Refined -> return page
@@ -56,7 +55,7 @@ internal fun completionEvidenceRead(
                 envelope.payload.copy(
                     interpretation =
                         QueryResultInterpretationDocument.EvidenceOnly(
-                            policy.model,
+                            QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1,
                             failure.protocolCompletionCause(),
                             originalCoverage,
                         )

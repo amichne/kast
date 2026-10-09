@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:4be5653d1cbe0fe7ad3956e1e4b04dcc453b0ce9cb9ec45ceef336b3114804da",
+  "pageVersion": "sha256:3ef98a09ffcfccfc9691320341b85567c48ea4b5a9662283025c5e08f2bb4f0c",
   "claims": [
     {
       "id": "claim_d5f49799d6a64a78a95f34b3ba0fa09a",
       "statement": "The authored tools.schema.json generates Kotlin DTOs, per-tool admission and strict Responses schemas, examples and App Server registrations; check mode rejects any stale generated artifact.",
       "evidence": [
         {
-          "resource": "repo://packaging/generate-public-query.py#L490-L528",
+          "resource": "repo://packaging/generate-public-query.py#L488-L526",
           "version": "repo-lines-v1:sha256:94373d8b7b4e73d1639969c94e24a12d62e722e0a8f9a0f572aa9df8cc095e6c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExMDFhMmQ5YjhlZmRkODg2MTQ1Zjk4ZTg0Nzg0Mzc0OWY5ZWEyN2U5Mzg0NmIwNDg2Mjk5MDUzYmQ4YmIxNGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmNDRkZTQ0ZDdiMzUzYzFmZDRkMjljMTRhMDQwMmUwMDJlYTgzNTNlZGM1ZjdhZjM0NzUxZDY3NTJjNDE4ZDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJlZjEzMjY1NjFlMjFiNDdjZDdmYWFiNzc3MzJlMDU2NjljYzJjY2YxNDlkYzNmZjI0YjUzZDhiYTM2YTVlMjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIxMzVjYzI2Zjk3ZGMxY2RkNmM3NGVlZThhZjI0NTI3YzVhODYzMzVlZmU1Y2RiODA4N2Y0NDQyNzBhNzBkMmYifQ"
         }
       ]
@@ -56,17 +56,21 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt",
-          "version": "repo-file-v1:sha256:3abd74a2e83b4311efa1e223de27fdfd02fbcf8f3a6a6cfd7cb95e8dde845fb3"
+          "version": "repo-file-v1:sha256:bd1aa4b9f1c8f021c9de1f5572de95fb980bcb52f90ea474801ebb048e9adddb"
         }
       ]
     },
     {
       "id": "claim_e4889d68d7e34ff9b4f78a7e306069fb",
-      "statement": "Public relation and walk expansionScope controls and IMPACT.domain share one closed scope union; relation defaults to workspace, walk defaults to the retained seed scope, and an explicit source domain lowers independently to the existing canonical expansion owner.",
+      "statement": "Public relation and walk expansionScope controls and IMPACT.domain share one closed scope union; relation defaults to workspace, exhaustive walk defaults to workspace and explicit depth-bound walk defaults to the retained seed scope, and an explicit source domain lowers independently to the existing canonical expansion owner.",
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolExpansionScopeMapping.kt",
           "version": "repo-file-v1:sha256:203977373ad95f414ba56ce5ac32298ada0017e8d3a3def2fa658a7229f4e4e7"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt",
+          "version": "repo-file-v1:sha256:cea9833965310229b055eae4303785c21cfac914c8b78d87a045aaa3807813df"
         },
         {
           "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolExpansionScopeContractTest.kt",
@@ -92,11 +96,11 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt",
-          "version": "repo-file-v1:sha256:3abd74a2e83b4311efa1e223de27fdfd02fbcf8f3a6a6cfd7cb95e8dde845fb3"
+          "version": "repo-file-v1:sha256:bd1aa4b9f1c8f021c9de1f5572de95fb980bcb52f90ea474801ebb048e9adddb"
         },
         {
           "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt",
-          "version": "repo-file-v1:sha256:3e145bb38d2f7359a559e5f3142c439b2a2579b2713cf3a8db6a7428a2fa86a1"
+          "version": "repo-file-v1:sha256:5839d5e08a672bcd82e80a839506f10061aac0c1b663c019544f79ca3ff0f53b"
         }
       ]
     },
@@ -105,8 +109,8 @@
       "statement": "A retained qualified empty pending impact snapshot preserves its upstream checkpoint; READ_RESULT returns qualified evidence-only paths and rejects witness output with RESULT_FIELD_UNAVAILABLE without semantic execution or checkpoint consumption.",
       "evidence": [
         {
-          "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt#L24-L73",
-          "version": "repo-lines-v1:sha256:dae70d29fbbfe5194d08d63334e2247669fdeef0a5eab6bb37ad2cc7c77a2a51:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4NzVkNGFhYTdmZmM3MjQwZTBkOGRkYTMzZDlhZDVjMmRiMjJjNjI2NTg4NTc1OGI2NGNiZTVlNWRiNmM4NzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2YTJmYjA1ZDEzNGNiZmQxZmRiYTlhZDJiMzQ5ZTVjODEzZTRhZjE2YTg1ZGUxMTE5ZDk0NzE4MWZlM2JjNzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0MDU4OTk5MTY3ZjE5N2EyM2NjZjY0NjQyMTM3NDI4MzQxZWU3YzgwODdhNmY4N2M3YmFlZjBiZjE3YTBhNjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRmODcyNDA2ZTY1ZTY1ZDdkMDcxZWVkMzRlMjhkZjU1YjlmZmRlZWNlZDNmNjhkYmFkMzZjYTkxYTFiYjdkYjYifQ"
+          "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt",
+          "version": "repo-file-v1:sha256:c3129f33c901a8e05e7dc7874b97a5719bd644ce1340538331b2505751d8138b"
         }
       ]
     },
@@ -162,19 +166,19 @@
     },
     {
       "id": "claim_9631e8c5a90e442f94b16206c07b3094",
-      "statement": "Public contract version12 and generated Pi/Copilot catalog admission require compatible versions before registration, preserving required branch evidence and local addresses.",
+      "statement": "Public contract version13 and generated Pi/Copilot catalog admission require compatible versions before registration, preserving required branch evidence and local addresses.",
       "evidence": [
         {
           "resource": "repo://copilot/extension.mjs",
-          "version": "repo-file-v1:sha256:b53e9966108334cb6b6191e7a864086b0b01afaa6995c05bcbffa25e1bb1c86e"
+          "version": "repo-file-v1:sha256:e39346c2e34e494d527c7fcaa4f0ad94c9a5d15a3f8f22ace82af8331dba63d6"
         },
         {
           "resource": "repo://pi/extension.ts",
-          "version": "repo-file-v1:sha256:32a30b74dd55633626065c49ebc7a6436a8f97eb314c874f206b302bcb09242f"
+          "version": "repo-file-v1:sha256:4796cf9684ded6bd91211af3d96c74fdaf5a00b1cc221122243685c7255b01e7"
         },
         {
           "resource": "repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt",
-          "version": "repo-file-v1:sha256:587762fa32a4c0ea29b602aea5f56e918d2d7966b940dd0be76bb5633cf1336b"
+          "version": "repo-file-v1:sha256:ba2c064d055c4f897fc05ce53deac8e5d7fe6cbd4121184e9b8793cf80b20a18"
         }
       ]
     },
@@ -188,7 +192,7 @@
         },
         {
           "resource": "repo://copilot/extension.mjs",
-          "version": "repo-file-v1:sha256:b53e9966108334cb6b6191e7a864086b0b01afaa6995c05bcbffa25e1bb1c86e"
+          "version": "repo-file-v1:sha256:e39346c2e34e494d527c7fcaa4f0ad94c9a5d15a3f8f22ace82af8331dba63d6"
         },
         {
           "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt",
@@ -196,7 +200,7 @@
         },
         {
           "resource": "repo://pi/extension.ts",
-          "version": "repo-file-v1:sha256:32a30b74dd55633626065c49ebc7a6436a8f97eb314c874f206b302bcb09242f"
+          "version": "repo-file-v1:sha256:4796cf9684ded6bd91211af3d96c74fdaf5a00b1cc221122243685c7255b01e7"
         }
       ]
     },
@@ -253,10 +257,36 @@
           "version": "repo-file-v1:sha256:79e71fda4c06945ff4a5b411d50f086c552e6020cfe80256b14fbd9e9edcfc34"
         }
       ]
+    },
+    {
+      "id": "claim_bb4e6bb53de848e986d2a9548a9ea541",
+      "statement": "RUN has no completion input selector and the sole public query executor requires complete compiler-static proof; unproven answers retain typed rejection evidence and original qualifications. Public RESUME admits output continuations only; semantic page checkpoints are internal. Required storage failure preserves complete enumeration and reports RETENTION_UNAVAILABLE with the actual storage cause.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDocuments.kt",
+          "version": "repo-file-v1:sha256:3585dacfb9d78dbed44c7e5d36ae483e42a79d9fea1f5b5f682204eefeb40bf3"
+        },
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt",
+          "version": "repo-file-v1:sha256:299bafc211f1c017ce15997a66867902b36006796142ddad238d52bae1017e73"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt",
+          "version": "repo-file-v1:sha256:9a63296cee5ad42f57a4bbdd3a92848dc91d2bc35258b105f71a1ea043442d9f"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidenceRead.kt",
+          "version": "repo-file-v1:sha256:568129b66d2ea0a9d0b242951cea3bf0abdbc8974e1daff974b301e6b2cd8b5b"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt",
+          "version": "repo-file-v1:sha256:bf4c44397d1bd05505517f3cf2b48f6cca3a1f087728160ecff14f28484ff5b6"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-09T14:48:51.708Z"
+    "at": "2026-10-09T14:26:30.997Z"
   }
 }

@@ -21,6 +21,40 @@ import org.junit.jupiter.api.Test
 
 class QueryCompletionWireTest {
     @Test
+    fun `retention rejection retains independently completed coverage in wire output`() {
+        for (failure in QueryCompletionRetentionFailure.entries) {
+            val rejection =
+                QueryRunRejection.CompletionUnproven(
+                    QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1,
+                    io.github.amichne.kast.protocol.contract.QueryCompletionCauseDocument.RetentionUnavailable(failure),
+                    QueryCompletionCoverageDocument.Complete,
+                    QueryInvocationStop.RETENTION_FAILED,
+                    QueryCompletionEvidenceDocument.Unavailable(failure),
+                )
+            val encoded =
+                CanonicalQuerySerializers.rejection.encode(rejection, WireValueRole.REJECTION)
+                    as WireValueEncoding.Encoded
+            val detail = encoded.value.jsonObject.getValue("detail").jsonObject
+            val cause = detail.getValue("cause").jsonObject
+            assertEquals(setOf("type", "failure"), cause.keys)
+            assertEquals("RETENTION_UNAVAILABLE", cause.getValue("type").jsonPrimitive.content)
+            assertEquals(failure.name, cause.getValue("failure").jsonPrimitive.content)
+            assertEquals(
+                "COMPLETE",
+                detail.getValue("originalCoverage").jsonObject.getValue("type").jsonPrimitive.content,
+            )
+            assertEquals("RETENTION_FAILED", detail.getValue("stop").jsonPrimitive.content)
+            assertEquals(failure.name, detail.getValue("evidence").jsonObject.getValue("cause").jsonPrimitive.content)
+            assertEquals(
+                rejection,
+                (CanonicalQuerySerializers.rejection.decode(encoded.value, WireValueRole.REJECTION)
+                        as WireDecoding.Decoded)
+                    .value,
+            )
+        }
+    }
+
+    @Test
     fun `completion rejection retains exact coverage resource cause and evidence only progress`() {
         val rejection =
             QueryRunRejection.CompletionUnproven(

@@ -882,30 +882,6 @@
         },
         "executionBudget": {
           "$ref": "#/$defs/ExecutionBudget"
-        },
-        "completion": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/CompletionPolicy"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": {
-            "type": "COMPLETE_ONLY",
-            "model": "COMPILER_RESOLVED_STATIC_V1"
-          },
-          "description": "Omission or null selects COMPLETE_ONLY within COMPILER_RESOLVED_STATIC_V1. Request PROGRESSIVE explicitly for qualified investigation. Unsupported or unproven strict answers reject with typed evidence.",
-          "examples": [
-            {
-              "type": "COMPLETE_ONLY",
-              "model": "COMPILER_RESOLVED_STATIC_V1"
-            },
-            {
-              "type": "PROGRESSIVE"
-            }
-          ]
         }
       },
       "required": [
@@ -937,7 +913,7 @@
         "continuation"
       ],
       "additionalProperties": false,
-      "description": "Continue the saved query execution without resending or rediscovering its completed prefix."
+      "description": "Read the remaining output of a completed query through its issued output continuation."
     },
     "ReadResultAction": {
       "type": "object",
@@ -974,11 +950,11 @@
     },
     "ExecutionContinuation": {
       "type": "string",
-      "pattern": "^(?:query|query-output):v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-      "minLength": 45,
+      "pattern": "^query-output:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "minLength": 52,
       "maxLength": 52,
-      "x-kotlin-type": "QueryExecutionContinuation",
-      "description": "Issued execution continuation for an unfinished query pipeline or retained transport output. Copy verbatim. A retained-result reference cannot resume execution."
+      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.QueryExecutionContinuation.Output",
+      "description": "Issued continuation for remaining output of a completed query. Pipeline execution continuations are internal."
     },
     "BindingName": {
       "type": "string",
@@ -5213,59 +5189,6 @@
       "additionalProperties": false,
       "description": "Read the exact source range of an issued callback, occurrence, or declaration candidate. The existing source owner validates authority and freshness; this does not execute a query."
     },
-    "CompletionPolicy": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/ProgressiveCompletion"
-        },
-        {
-          "$ref": "#/$defs/CompleteOnlyCompletion"
-        }
-      ],
-      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument"
-    },
-    "ProgressiveCompletion": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "PROGRESSIVE"
-          ],
-          "default": "PROGRESSIVE"
-        }
-      },
-      "required": [
-        "type"
-      ],
-      "additionalProperties": false,
-      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive"
-    },
-    "CompleteOnlyCompletion": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "COMPLETE_ONLY"
-          ],
-          "default": "COMPLETE_ONLY"
-        },
-        "model": {
-          "type": "string",
-          "enum": [
-            "COMPILER_RESOLVED_STATIC_V1"
-          ],
-          "default": "COMPILER_RESOLVED_STATIC_V1"
-        }
-      },
-      "required": [
-        "type",
-        "model"
-      ],
-      "additionalProperties": false,
-      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.CompleteOnly"
-    },
     "Trace": {
       "type": "object",
       "description": "Terminal affected-use trace. Groups exact declarations while retaining every compiler-proven connection and reference occurrence. Includes seed references, implementations or overrides, direct callable callers, and one further caller layer. Every branch shares the execution grant and expansion scope; incomplete branches remain qualified.",
@@ -5312,7 +5235,7 @@
   "tools": [
     {
       "name": "query_symbols",
-      "description": "Run, resume, and read compiler-grounded Kotlin queries in the bound workspace. Start with request {\"type\":\"RUN\",\"source\":{\"type\":\"SEARCH_DECLARATIONS\",\"declarationName\":\"Order\",\"declarationKinds\":[\"CLASS\"],\"scope\":{\"type\":\"DIRECTORY\",\"relativeDirectoryPath\":\"orders\",\"sourceSetNames\":[\"main\"]}}}. Select by signature and location, then pass the unchanged issued ref in source {\"type\":\"SYMBOL_REFS\",\"symbolRefs\":[\"<issued ref>\"]}. To trace affected uses, add steps [{\"type\":\"TRACE\",\"expansionScope\":{\"type\":\"WORKSPACE\"}}] and SYMBOLS output. TRACE covers references, implementations or overrides, direct callers, and one further caller layer; its topology is fixed. Discovery scope selects the seed; expansionScope selects relation destinations. SOURCE_DOMAIN restricts native destinations before enumeration. Completion defaults to COMPLETE_ONLY within COMPILER_RESOLVED_STATIC_V1. Preserve typed rejection and recovery evidence when completion is unproven. PROGRESSIVE is an explicit qualified investigation; empty or partial pages do not prove absence. Use RESUME only with an issued execution continuation, READ_RESULT only with a retained result reference and its cursor, and READ_SOURCE only with an issued candidateSelector as candidateRef. These capabilities are distinct. Set retention RETAIN for later presentation. Budgets share one admitted grant and remain subject to host ceilings. The schema also defines one-hop EXPAND_RELATION, graph walk with WALK, predicates, retained composition, joins, and value IMPACT; choose them only for those specific questions.",
+      "description": "Run, resume, and read compiler-grounded Kotlin queries in the bound workspace. Start with request {\"type\":\"RUN\",\"source\":{\"type\":\"SEARCH_DECLARATIONS\",\"declarationName\":\"Order\",\"declarationKinds\":[\"CLASS\"],\"scope\":{\"type\":\"DIRECTORY\",\"relativeDirectoryPath\":\"orders\",\"sourceSetNames\":[\"main\"]}}}. Select by signature and location, then pass the unchanged issued ref in source {\"type\":\"SYMBOL_REFS\",\"symbolRefs\":[\"<issued ref>\"]}. To trace affected uses, add steps [{\"type\":\"TRACE\",\"expansionScope\":{\"type\":\"WORKSPACE\"}}] and SYMBOLS output. TRACE covers references, implementations or overrides, direct callers, and one further caller layer; its topology is fixed. Discovery scope selects the seed; expansionScope selects relation destinations. SOURCE_DOMAIN restricts native destinations before enumeration. Every run requires COMPLETE_ONLY within COMPILER_RESOLVED_STATIC_V1. Preserve typed rejection and recovery evidence when completion is unproven. Use RESUME only with an issued output continuation, READ_RESULT only with a retained result reference and its cursor, and READ_SOURCE only with an issued candidateSelector as candidateRef. These capabilities are distinct. Set retention RETAIN for later presentation. Budgets share one admitted grant and remain subject to host ceilings. The schema also defines one-hop EXPAND_RELATION, graph walk with WALK, predicates, retained composition, joins, and value IMPACT; choose them only for those specific questions.",
       "deferLoading": false,
       "schema": {
         "type": "object",
@@ -5730,7 +5653,7 @@
           "value": {
             "request": {
               "type": "RESUME",
-              "continuation": "query:v1:00000000-0000-0000-0000-000000000000",
+              "continuation": "query-output:v1:00000000-0000-0000-0000-000000000000",
               "executionBudget": {
                 "maxResults": 50
               }
@@ -5819,10 +5742,7 @@
               "output": {
                 "type": "VALUE_PATHS"
               },
-              "retention": "RETAIN",
-              "completion": {
-                "type": "PROGRESSIVE"
-              }
+              "retention": "RETAIN"
             }
           }
         },
@@ -5966,10 +5886,7 @@
               "output": {
                 "type": "VALUE_PATHS"
               },
-              "retention": "RETAIN",
-              "completion": {
-                "type": "PROGRESSIVE"
-              }
+              "retention": "RETAIN"
             }
           }
         },
@@ -6024,11 +5941,7 @@
                 "type": "IMPACT_WITNESS",
                 "section": "FINDINGS"
               },
-              "retention": "RETAIN",
-              "completion": {
-                "type": "COMPLETE_ONLY",
-                "model": "COMPILER_RESOLVED_STATIC_V1"
-              }
+              "retention": "RETAIN"
             }
           }
         },
@@ -6060,10 +5973,6 @@
                 ]
               },
               "retention": "RETAIN",
-              "completion": {
-                "type": "COMPLETE_ONLY",
-                "model": "COMPILER_RESOLVED_STATIC_V1"
-              },
               "executionBudget": {
                 "maxElapsedMs": 30000
               }
@@ -6410,10 +6319,6 @@
             "main",
             "test"
           ]
-        },
-        "completion": {
-          "type": "COMPLETE_ONLY",
-          "model": "COMPILER_RESOLVED_STATIC_V1"
         }
       }
     },
@@ -6658,5 +6563,5 @@
       ]
     }
   ],
-  "contractVersion": 12
+  "contractVersion": 13
 }

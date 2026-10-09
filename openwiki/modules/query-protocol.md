@@ -147,12 +147,16 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt
   - id: openwiki-source-002f330ed788c0424c569827
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackObservationProjection.kt
+  - id: openwiki-source-5dda452804594b5fecb6a416
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidenceRead.kt
   - id: openwiki-source-c754dabd913ffc31ab2c0d99
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactPeerSelection.kt
   - id: openwiki-source-473a965ca24f2431cb51317a
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceAcquisition.kt
   - id: openwiki-source-da029c0f3804840096380efa
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceAdmission.kt
+  - id: openwiki-source-47abb721c1c0711f6358e68d
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt
   - id: openwiki-source-b51014e0385264d1b67f03cd
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt
   - id: openwiki-source-5b77364ace1f31662c87a941
@@ -169,6 +173,8 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultRetentionSource.kt
   - id: openwiki-source-4bf64022307aff9f9f531f9b
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
+  - id: openwiki-source-de9b31520f4c271ee9bb12cc
+    resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CompleteOnlyQueryTest.kt
   - id: openwiki-source-06ad73bc218ddc2ffa485553
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt
   - id: openwiki-source-89a23fbeb799d9605ab4e1dc
@@ -199,10 +205,10 @@ sources:
     resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisition.kt
   - id: openwiki-source-614907c76c5e46269ec7d42b
     resource: repo://symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisitionBudgetTest.kt
-generated: { by: "codex", at: "2026-10-09T02:50:46.064Z" }
+generated: { by: "codex", at: "2026-10-09T14:15:56.247Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-09T14:48:51.708Z
+    at: 2026-10-09T14:26:30.997Z
 ---
 
 # Query protocol
@@ -227,6 +233,8 @@ projects complete, qualified, or rejected results and retained presentations.
 The other read protocols use the same reference
 and evidence vocabulary around their domain operations. The existing-IDE host uses this boundary; historical published-evidence tests exercise the same contracts without granting a production publication owner.
 
+`CanonicalQueryProtocol.execute` is the sole public query executor. Every RUN requires complete-only compiler-static proof and has no completion selector. The raw evaluator page entry is internal. Incomplete execution, missing evidence and unproven graph obligations return typed rejection; retained reads carry the original verdict, question and qualifications as evidence-only data. Required storage failure preserves completed enumeration with the finite `RETENTION_UNAVAILABLE` cause. Public semantic checkpoint tokens reject without provider work.
+
 Diagnostic progress retains the requested path alongside file inventory and analyzed files. The CLI derives discovered, analyzed, skipped, and exhaustive coverage from that progress, and labels the result as IDE file diagnostics.
 
 `QueryReferenceAuthority` separates reference issuance and restoration from
@@ -236,7 +244,7 @@ root, host, epoch, version, and content view must match it. Restoration does not
 open an IDE or prove a declaration is current. Native read adapters must still
 revalidate scope, location, compiler evidence, and content.
 
-Run admission reacquires exact references from the source and `concat` steps through one bounded request capability. An invalid composed token reports its step and position. Retained symbol and binding result sources restore immutable, basis-bound rows with their original qualification, including an empty result, without rediscovery. Issued row IDs can select a subset of one owning result; unknown or foreign row IDs reject, and a proper subset records incomplete selection. `intersect` and `difference` accept retained symbol right operands; plan admission rejects `difference` when the right input lacks complete coverage, has failures, or retains producer progress. Canonical admission refines bounded binding names and restores each join right input from a retained result. Invalid row-kind transitions, unknown projected bindings, and incompatible output modes reject before domain effects. `concat` appends inputs; a following `distinct_symbols` retains the first row for each canonical identity. An inner join projects a typed pair of named symbol or proven occurrence cells. `project_binding` selects one named cell before symbol stages continue, including when the input is a selected retained binding result. The binding-row document checks equal canonical symbol IDs and verifies each occurrence fact against its cell symbol connections; wire decoding rejects forged pairs. Retained results distinguish symbol, occurrence, traversal, and binding rows and preserve column names even when no rows match. Reference occurrences retain compiler-confirmed targets separately from declaration ownership. Declaration-only composition requires a proven declaration cell; file-scoped imports cannot become declaration or call graph endpoints. Binding rows cannot serve as symbol join right inputs; read-result requires the matching output kind while preserving row IDs and evidence. A resume action supplies only the issued continuation and optional new grant; `QueryStateStore` restores the admitted plan, authority and pending work. Old tokens and completed stages are not reacquired on each page. A read-result action uses a distinct result reference and optional presentation cursor to page retained rows without invoking semantic providers.
+Run admission reacquires exact references from the source and `concat` steps through one bounded request capability. An invalid composed token reports its step and position. Retained symbol and binding result sources restore immutable, basis-bound rows with their original qualification, including an empty result, without rediscovery. Issued row IDs can select a subset of one owning result; unknown or foreign row IDs reject, and a proper subset records incomplete selection. `intersect` and `difference` accept retained symbol right operands; plan admission rejects `difference` when the right input lacks complete coverage, has failures, or retains producer progress. Canonical admission refines bounded binding names and restores each join right input from a retained result. Invalid row-kind transitions, unknown projected bindings, and incompatible output modes reject before domain effects. `concat` appends inputs; a following `distinct_symbols` retains the first row for each canonical identity. An inner join projects a typed pair of named symbol or proven occurrence cells. `project_binding` selects one named cell before symbol stages continue, including when the input is a selected retained binding result. The binding-row document checks equal canonical symbol IDs and verifies each occurrence fact against its cell symbol connections; wire decoding rejects forged pairs. Retained results distinguish symbol, occurrence, traversal, and binding rows and preserve column names even when no rows match. Reference occurrences retain compiler-confirmed targets separately from declaration ownership. Declaration-only composition requires a proven declaration cell; file-scoped imports cannot become declaration or call graph endpoints. Binding rows cannot serve as symbol join right inputs; read-result requires the matching output kind while preserving row IDs and evidence. Public RESUME supplies only issued output continuation. The internal runner follows semantic checkpoints under the remaining original grant; `QueryStateStore` restores the admitted plan, authority and pending work. Old tokens and completed stages are not reacquired on each page. A read-result action uses a distinct result reference and optional presentation cursor to page retained rows without invoking semantic providers.
 
 Selector documents retain directory, package, declaration-kind, and exact Gradle
 source-set constraints for source-owned declaration candidates and exact symbols.
@@ -271,7 +279,7 @@ facts remain separate from incomplete enumeration. Query walk
 projection retains cumulative progress, independent reference occurrences, historical omissions, and page-local partial node expansions;
 a bounded-fan-out remainder is explicitly unexamined rather than silently absent. Traversal checkpoints carry complete omission objects, including provider, measured or unmeasured meaning, bounded sample, and remediation, through later pages. Query filters, retained inputs, set stages, and joins preserve producer observation provenance independently of emitted rows.
 
-Query qualification owns mandatory closed execution progress: resumable with an upstream checkpoint or retained-output checkpoint, or terminal-incomplete with a finite reason. A retained-output checkpoint reports the original upstream coverage, preserving terminal reasons without asserting that an interrupted scan can resume. An admitted upstream checkpoint permits resumption even when the page emits no rows; retained-output fitting can require an increased allowance. `QueryRunResult` separately reports retention outcome and an optional result presentation cursor. This cursor cannot resume execution; CLI compatibility fields for execution progress are derived from qualification. Wire decoding rejects missing progress and noncanonical checkpoint families.
+Internal query-page qualification owns mandatory closed execution progress: resumable with an upstream checkpoint or retained-output checkpoint, or terminal-incomplete with a finite reason. A retained-output checkpoint reports the original upstream coverage, preserving terminal reasons without asserting that an interrupted scan can resume. An admitted upstream checkpoint permits resumption even when the page emits no rows; retained-output fitting can require an increased allowance. `QueryRunResult` separately reports retention outcome and an optional result presentation cursor. This cursor cannot resume execution; Verbose CLI fields for execution progress are derived from qualification. Wire decoding rejects missing progress and noncanonical checkpoint families.
 
 Source qualifications own closed resumable or terminal-incomplete progress. Native
 source checkpoints and hosted retained-output checkpoints are separate variants;

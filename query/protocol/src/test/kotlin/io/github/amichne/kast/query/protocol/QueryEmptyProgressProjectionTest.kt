@@ -74,7 +74,7 @@ class QueryEmptyProgressProjectionTest {
     fun `zero output advancing producer checkpoint resumes with the same execution allowance`() = runTest {
         val fixture = EmptyProgressFixture()
         val first =
-            fixture.protocol.execute(fixture.request(), fixture.lease, fixture.budget) as OperationOutcome.Qualified
+            fixture.protocol.executePage(fixture.request(), fixture.lease, fixture.budget) as OperationOutcome.Qualified
         assertTrue(first.evidence.payload.items.values.isEmpty())
         val progress =
             assertInstanceOf(QueryQualifiedProgressDocument.Resumable::class.java, first.qualification.progress)
@@ -82,24 +82,24 @@ class QueryEmptyProgressProjectionTest {
         assertEquals(ReadResumeActionDocument.RESUME, progress.nextAction)
         assertInstanceOf(
             OperationOutcome.Complete::class.java,
-            fixture.protocol.execute(QueryRunRequest.Resume(checkpoint.token), fixture.lease, fixture.budget),
+            fixture.protocol.executePage(QueryRunRequest.Resume(checkpoint.token), fixture.lease, fixture.budget),
         )
         assertEquals(listOf(null, 956), fixture.positions)
         assertEquals(listOf(512L, 512L), fixture.workGrants)
     }
 
     @Test
-    fun `retained zero row presentation preserves the usable upstream action`() = runTest {
+    fun `retained zero row evidence preserves historical upstream action without issuing a resume`() = runTest {
         val fixture = EmptyProgressFixture()
         val first =
-            fixture.protocol.execute(
+            fixture.protocol.executePage(
                 fixture.request().copy(retention = QueryRetentionModeDocument.RETAIN),
                 fixture.lease,
                 fixture.budget,
             ) as OperationOutcome.Qualified
         val reference = (first.evidence.payload.retention as QueryResultRetention.Retained).reference
         val presentation =
-            fixture.protocol.execute(
+            fixture.protocol.executePage(
                 QueryRunRequest.ReadResult.symbols(
                     reference,
                     output = QueryOutputDocument.Symbols(bounded(emptyList())),
@@ -107,7 +107,17 @@ class QueryEmptyProgressProjectionTest {
                 fixture.lease,
                 fixture.budget,
             ) as OperationOutcome.Qualified
-        val progress = presentation.qualification.progress as QueryQualifiedProgressDocument.Resumable
+        assertInstanceOf(
+            QueryQualifiedProgressDocument.TerminalIncomplete::class.java,
+            presentation.qualification.progress,
+        )
+        val interpretation =
+            presentation.evidence.payload.interpretation
+                as io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument.EvidenceOnly
+        val original =
+            interpretation.originalCoverage
+                as io.github.amichne.kast.protocol.contract.QueryCompletionCoverageDocument.Qualified
+        val progress = original.progress as QueryQualifiedProgressDocument.Resumable
         assertInstanceOf(QueryCheckpointDocument.Upstream::class.java, progress.checkpoint)
         assertEquals(ReadResumeActionDocument.RESUME, progress.nextAction)
         assertEquals(first.qualification.progress, progress)
@@ -158,7 +168,6 @@ private class EmptyProgressFixture {
             bounded(emptyList()),
             QueryOutputDocument.Symbols(bounded(emptyList())),
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun discover(request: SymbolDiscoveryRequest): SymbolDiscoveryResult {

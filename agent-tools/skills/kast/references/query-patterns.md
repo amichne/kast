@@ -6,11 +6,11 @@ Look up an example by its key under `examples`, then adapt its project-specific
 name, package, path, source sets, and budget to the user's task. Discover the
 installed schema before sending it.
 
-Execution defaults to `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`.
+Execution requires `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`.
 Supported questions run to exhaustion under the admitted grant, then return a
 bounded presentation of the proven answer. Unproven answers reject with typed
-evidence. Request `completion: {"type":"PROGRESSIVE"}` explicitly when a
-qualified investigation is useful; never treat its sample as a complete answer.
+evidence. RUN has no completion selector. Never treat retained partial proof as
+a complete answer.
 
 Exact-ref placeholders and all-zero UUID handles in these examples are
 illustrative values for contract validation. They were never issued by Kast.
@@ -44,17 +44,14 @@ and one further caller layer. It groups declarations and preserves occurrence
 evidence. Each scoped downstream callable is expanded once after its incoming
 paths are gathered. Arbitrary depth controls and steps after TRACE are rejected.
 
-Keep `COMPLETE_ONLY` for a complete static answer.
+Read the fixed `COMPLETE_ONLY` verdict before answering.
 Use the admitted execution budget as the timing authority. The example requests
 30,000 ms for TRACE; the short default grant can stop a native search earlier.
 The host can reduce that request. If completion is unproven,
 inspect the rejection's retained preview and result reference when available.
-Follow an issued execution continuation with `RESUME`; use `READ_RESULT` to
-present retained proof. These actions have distinct capabilities. A preview
-does not prove completeness. `PROGRESSIVE` also waits for TRACE's final grouping
-before emitting ordinary symbol rows, so an empty page can still have pending
-work. Native cancellation before inventory drainage cannot issue a resumable
-inventory. Increasing a requested timeout cannot remove the host ceiling.
+Use `READ_RESULT` to present retained proof. `RESUME` presents only already-produced
+output. A historical semantic checkpoint grants no execution. A preview does
+not prove completeness. Increasing a requested timeout cannot remove the host ceiling.
 
 ## 2. Inventory a public API or a naming family
 
@@ -94,8 +91,8 @@ rejected. Search the single word `Disable` in the narrowest known scope, then
 inspect its context. Imports, file-level comments and unsupported nearest owners
 produce qualification rather than invented declaration refs. Each owner is
 refined once and carries one exemplar from this search; it does not enumerate
-every text occurrence. A stopped indexed search has terminal incomplete coverage;
-only detached work retained by the interpreter can issue an execution continuation.
+every text occurrence. A stopped indexed search leaves completion unproven. Retained proof keeps that
+qualification; it does not authorize more execution.
 
 ## 4. Identify the declaration containing a position
 
@@ -178,13 +175,13 @@ use the installed schema for reviewed `models` and their `declarations`.
 Empty models supply no representation or boundary meaning and can leave
 obligations unresolved. Static paths do not prove runtime execution.
 
-The example explicitly selects `PROGRESSIVE` and retains `VALUE_PATHS`.
+The example retains `VALUE_PATHS` under the fixed complete-only policy.
 After retention issues a result reference, use `readImpactProducers` or
 `readImpactFindings` to inspect the original investigation. A finding links its
 original path: present `VALUE_PATHS` with its `pathOrdinal` as `cursor` and
 `executionBudget.maxResults: 1`. Retain terminal qualifications and obligations.
 An unfinished evidence-only ledger can reject witness fields as
-`RESULT_FIELD_UNAVAILABLE`; follow its issued execution continuation.
+`RESULT_FIELD_UNAVAILABLE`; preserve that finite rejection.
 
 Use `representationImpactRequestedSite` only with current exact site identity,
 range, and role claims. Native admission revalidates them. Then use

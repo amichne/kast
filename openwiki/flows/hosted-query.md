@@ -214,6 +214,10 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
   - id: openwiki-source-584136874e8bed46fcb3def2
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt
+  - id: openwiki-source-5dda452804594b5fecb6a416
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidenceRead.kt
+  - id: openwiki-source-47abb721c1c0711f6358e68d
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt
   - id: openwiki-source-b51014e0385264d1b67f03cd
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt
   - id: openwiki-source-4e38a945b050af72c2343f02
@@ -252,10 +256,10 @@ sources:
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt
   - id: openwiki-source-63abd5c24e7d947c619c1a6e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadValueSiteCounterTest.kt
-generated: { by: "codex", at: "2026-10-09T02:50:46.064Z" }
+generated: { by: "codex", at: "2026-10-09T14:22:02.194Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-09T14:48:51.708Z
+    at: 2026-10-09T14:22:02.194Z
 ---
 
 # Existing-IDE semantic query
@@ -658,7 +662,9 @@ installed K2 execution remains a separate qualification boundary.
 
 Decoded execution reports also retain their dimension rules: elapsed limits admit deadline clamps; result and byte limits admit transport clamps; work limits admit only the operator ceiling. Every result amount remains within the integer domain. Invalid dimension evidence is rejected by the report decoder before a report value is exposed.
 
-Query qualification owns mandatory closed execution progress: resumable with an upstream checkpoint or retained-output checkpoint, or terminal-incomplete with a finite reason. A retained-output checkpoint reports the original upstream coverage, preserving terminal reasons without asserting that an interrupted scan can resume. An upstream page that advances retained work can resume under the same grant even when downstream filtering emits no rows. `QueryRunResult` separately reports retention outcome and an optional result presentation cursor. That cursor pages immutable retained rows; it is not an execution continuation. CLI compatibility fields for execution progress are derived from qualification. Wire decoding rejects missing progress and noncanonical checkpoint families.
+Hosted RUN enters the sole complete-only query executor. Internal page continuations drain under one admitted budget; public RESUME accepts only already-produced output. Missing completion proof returns a typed rejection with retained proven facts, the original question, coverage and historical progress. Retained reads preserve that verdict as evidence-only data without provider work. Required storage failure has the finite `RETENTION_UNAVAILABLE` cause and preserves completed enumeration separately.
+
+Internal query-page qualification owns mandatory closed execution progress: resumable with an upstream checkpoint or retained-output checkpoint, or terminal-incomplete with a finite reason. A retained-output checkpoint reports the original upstream coverage, preserving terminal reasons without asserting that an interrupted scan can resume. An upstream page that advances retained work can resume under the same grant even when downstream filtering emits no rows. `QueryRunResult` separately reports retention outcome and an optional result presentation cursor. That cursor pages immutable retained rows; it is not an execution continuation. Verbose CLI fields for execution progress are derived from qualification. Wire decoding rejects missing progress and noncanonical checkpoint families.
 
 Source qualifications own closed resumable, retention-unavailable, or terminal-incomplete progress. Native
 source checkpoints and hosted retained-output checkpoints are separate variants;

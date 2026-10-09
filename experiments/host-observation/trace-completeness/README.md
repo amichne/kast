@@ -11,14 +11,17 @@ The fixture contains selected upstream source and authored controls. Read
 [NOTICE.md](NOTICE.md) for revisions, adaptations and licenses,
 [ORACLE.md](ORACLE.md) for expected results, and the
 [execution plan](../TRACE_COMPLETENESS_PLAN.md) for scope and acceptance gates.
-The fixture and eleven RUN requests retain their original r1 manifests and
-SHA-256 digests. Their historical physical path is provenance; request paths are
-relative to the selected fixture root.
+The fixture retains its original r1 manifest and SHA-256 digest. The eleven
+active RUN requests use the current fixed-policy contract without a completion
+selector. Their request manifest and digest bind those exact arguments. The
+implementation record retains the historical r1 request digest and native
+results; it does not qualify these updated requests. Request paths are relative
+to the selected fixture root.
 
 ## Prepare a private run
 
 Allocate a new path beneath an owned temporary parent. `prepare` rejects an
-existing root and copies only the frozen fixture and manifests:
+existing root and copies only the fixture and active manifests:
 
 ```sh
 python3 experiments/host-observation/trace-completeness/run.py prepare \
@@ -65,7 +68,7 @@ python3 experiments/host-observation/trace-completeness/verify.py \
   --owned-root "$trace_owned_root"
 ```
 
-The runner executes the frozen requests, reads retained pages, validates actual
+The runner executes the active manifest requests, reads retained pages, validates actual
 public documents against the generated contract, and records bounded native
 diagnostics. It allows at most 128 calls, 32 MiB of captured process receipts,
 4 MiB stdout and 2 MiB stderr per call, 90 seconds per child, 32 page calls per

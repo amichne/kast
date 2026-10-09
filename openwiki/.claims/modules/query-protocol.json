@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:2489ed376032ee413871d90f53cbfef98240903b770c7e9bf1cff567f8999cb0",
+  "pageVersion": "sha256:5954f6fa3ee3b7df1ca3a461506979ed17d7876d065948ecd01ce5c7b4a1c0a7",
   "claims": [
     {
       "id": "claim_b9727187adfc4e2c9be8e3a620b37051",
       "statement": "Canonical query protocol separates new run, checkpoint/output continuation, and retained result presentation under the supplied semantic authority; read-result projects retained rows instead of executing a new semantic query.",
       "evidence": [
         {
-          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt#L91-L159",
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt#L86-L154",
           "version": "repo-lines-v1:sha256:a75e76b4ea41a36b21659455fcbf1bc4417bf297a50783a35bce2b83086fbd79:eyJzZWxlY3RlZExpbmVDb3VudCI6NjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3ZmViZjc5ODNhYzBiYjg0Yjg5YmU1OTk5NjI4YjhmN2MyOGQyYzdiMmY0MzY2NDgyZmNmNThjMTVlZTNjOWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5M2Q4ZGFlMmFkZjc5YjU1Y2Q0NjFjMWRiN2ViZDhkOTA1OThmY2FiOWM4ZmU0NzVkNDlhMTI2NjVmYzg2M2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMzMzU2MzgyOGFlM2I3YzQwOTYwNWY0YjUxYzgyOGE3NDQzNjJkMWYwZWEwM2I0NjMzNmViZmUzYjMwNjI5MDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUwZjI5M2JiZGI4ZmJiOTY4MDA3M2U1OTI2OTU2NzBhM2E3MDVjNDVkYjlhMjUzNTZlOTgyNDhlNTk3N2QwYjYifQ"
         }
       ]
@@ -17,7 +17,7 @@
       "statement": "Continuation acquisition has explicit in-use, unavailable, mismatch and capacity failures; publication preparation retains the claim only when the owning publication boundary prepares it, otherwise finally releases it.",
       "evidence": [
         {
-          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt#L122-L159",
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt#L117-L154",
           "version": "repo-lines-v1:sha256:82533b2a217ae61850792b95a166e552a10dbea67d995831c5d41d33b10037e0:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0NDZmM2EzNDBhM2Q0MWEyNTI2OTc5OGFhZWE3YjNkYzAyZGY3MzI2YWU0NDQ1Y2NiMGQ0NzgxNjI4ZjRhOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5M2Q4ZGFlMmFkZjc5YjU1Y2Q0NjFjMWRiN2ViZDhkOTA1OThmY2FiOWM4ZmU0NzVkNDlhMTI2NjVmYzg2M2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2MDAzOGFlOGRlZDJiNDRhMzUxM2I0OGMzNTc1NjVjMDc5YjZkZWIxMDcxMzFlNWQwOWY1NzczMmJmY2I0ZDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUwZjI5M2JiZGI4ZmJiOTY4MDA3M2U1OTI2OTU2NzBhM2E3MDVjNDVkYjlhMjUzNTZlOTgyNDhlNTk3N2QwYjYifQ"
         },
         {
@@ -94,15 +94,15 @@
       "evidence": [
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt",
-          "version": "repo-file-v1:sha256:4c1e70002f9c4f5bbd9842dbccc3b5926f3d038c7421f05b9a1b65c8b9626e57"
+          "version": "repo-file-v1:sha256:6d0514e9c041ef423282519608db13a1e236bcb93d0daa6cb5e2121144e60052"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt",
-          "version": "repo-file-v1:sha256:3abd74a2e83b4311efa1e223de27fdfd02fbcf8f3a6a6cfd7cb95e8dde845fb3"
+          "version": "repo-file-v1:sha256:bd1aa4b9f1c8f021c9de1f5572de95fb980bcb52f90ea474801ebb048e9adddb"
         },
         {
           "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/OriginalImpactRetentionTest.kt",
-          "version": "repo-file-v1:sha256:f9e93346a086550b24c5c1eb6eaca941da1c5064981d9bc96d3adabdc3848a41"
+          "version": "repo-file-v1:sha256:540f0354d6c229825d3cb0e829dfea79f55fba90cb5a7e04a8dca80599c04baf"
         }
       ]
     },
@@ -134,7 +134,7 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt",
-          "version": "repo-file-v1:sha256:2ea8279a4405516e2e2b2aab484ca1a5e9ac6d81c5f6e9957e5513186b1602e9"
+          "version": "repo-file-v1:sha256:bcb7e77c4f3d047641eedfb238f82982e705e0097c6097e18cb8f4397a91429c"
         }
       ]
     },
@@ -156,11 +156,11 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt",
-          "version": "repo-file-v1:sha256:3abd74a2e83b4311efa1e223de27fdfd02fbcf8f3a6a6cfd7cb95e8dde845fb3"
+          "version": "repo-file-v1:sha256:bd1aa4b9f1c8f021c9de1f5572de95fb980bcb52f90ea474801ebb048e9adddb"
         },
         {
           "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt",
-          "version": "repo-file-v1:sha256:3e145bb38d2f7359a559e5f3142c439b2a2579b2713cf3a8db6a7428a2fa86a1"
+          "version": "repo-file-v1:sha256:5839d5e08a672bcd82e80a839506f10061aac0c1b663c019544f79ca3ff0f53b"
         }
       ]
     },
@@ -195,8 +195,8 @@
       "statement": "READ_RESULT presents pending impact paths as qualified evidence-only output and returns RESULT_FIELD_UNAVAILABLE for pending witness output without semantic execution or consumption of the original checkpoint.",
       "evidence": [
         {
-          "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt#L24-L73",
-          "version": "repo-lines-v1:sha256:dae70d29fbbfe5194d08d63334e2247669fdeef0a5eab6bb37ad2cc7c77a2a51:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4NzVkNGFhYTdmZmM3MjQwZTBkOGRkYTMzZDlhZDVjMmRiMjJjNjI2NTg4NTc1OGI2NGNiZTVlNWRiNmM4NzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2YTJmYjA1ZDEzNGNiZmQxZmRiYTlhZDJiMzQ5ZTVjODEzZTRhZjE2YTg1ZGUxMTE5ZDk0NzE4MWZlM2JjNzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0MDU4OTk5MTY3ZjE5N2EyM2NjZjY0NjQyMTM3NDI4MzQxZWU3YzgwODdhNmY4N2M3YmFlZjBiZjE3YTBhNjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRmODcyNDA2ZTY1ZTY1ZDdkMDcxZWVkMzRlMjhkZjU1YjlmZmRlZWNlZDNmNjhkYmFkMzZjYTkxYTFiYjdkYjYifQ"
+          "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt",
+          "version": "repo-file-v1:sha256:c3129f33c901a8e05e7dc7874b97a5719bd644ce1340538331b2505751d8138b"
         }
       ]
     },
@@ -240,7 +240,7 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt",
-          "version": "repo-file-v1:sha256:3abd74a2e83b4311efa1e223de27fdfd02fbcf8f3a6a6cfd7cb95e8dde845fb3"
+          "version": "repo-file-v1:sha256:bd1aa4b9f1c8f021c9de1f5572de95fb980bcb52f90ea474801ebb048e9adddb"
         }
       ]
     },
@@ -319,10 +319,32 @@
           "version": "repo-file-v1:sha256:714cd05d0abcecdc1c7bf548fc5b78bc1c4e3947b95fe15b6da19be396366e51"
         }
       ]
+    },
+    {
+      "id": "claim_414bdacbbc51458c8c25f6f5ff692fed",
+      "statement": "CanonicalQueryProtocol.execute is the sole public query executor, requiring complete-only compiler-static proof for every RUN without a completion input selector; raw semantic page execution is internal. Public semantic checkpoint tokens reject without provider work, retained rejection reads preserve original qualifications, and required storage failure preserves completed enumeration with RETENTION_UNAVAILABLE.",
+      "evidence": [
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt",
+          "version": "repo-file-v1:sha256:9a63296cee5ad42f57a4bbdd3a92848dc91d2bc35258b105f71a1ea043442d9f"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidenceRead.kt",
+          "version": "repo-file-v1:sha256:568129b66d2ea0a9d0b242951cea3bf0abdbc8974e1daff974b301e6b2cd8b5b"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt",
+          "version": "repo-file-v1:sha256:bf4c44397d1bd05505517f3cf2b48f6cca3a1f087728160ecff14f28484ff5b6"
+        },
+        {
+          "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CompleteOnlyQueryTest.kt",
+          "version": "repo-file-v1:sha256:bf4974b5b46ba83a80ba472d2b66bfc4f27eb702407f1199b369d1584e8c57cf"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-09T14:48:51.708Z"
+    "at": "2026-10-09T14:26:30.997Z"
   }
 }

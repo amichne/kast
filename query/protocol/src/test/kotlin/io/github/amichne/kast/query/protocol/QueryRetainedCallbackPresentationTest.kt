@@ -58,15 +58,22 @@ class QueryRetainedCallbackPresentationTest {
         val issued = issueCallbackEvidence(units)
         val protocol = callbackProtocol()
         val first =
-            protocol.execute(
+            protocol.executePage(
                 QueryRunRequest.ReadResult.symbols(
                     issued.reference,
                     output = QueryOutputDocument.Symbols(bounded(emptyList())),
                 ),
                 fixture.authority,
                 budget,
-            ) as OperationOutcome.Complete
+            ) as OperationOutcome.Qualified
         assertEquals(0, first.evidence.payload.items.values.size)
+        val interpretation =
+            first.evidence.payload.interpretation
+                as io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument.EvidenceOnly
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.QueryCompletionCoverageDocument.Complete,
+            interpretation.originalCoverage,
+        )
         assertEquals(3, first.evidence.payload.evidenceWindow!!.total.value)
         assertNull(first.evidence.payload.evidenceWindow!!.nextCursor)
         val projected = first.evidence.payload.relationObservations.values.flatMap { it.callbackObservations.values }
@@ -77,14 +84,14 @@ class QueryRetainedCallbackPresentationTest {
             projected.map { it.callbackBody.range.startInclusive.value },
         )
         val replay =
-            protocol.execute(
+            protocol.executePage(
                 QueryRunRequest.ReadResult.symbols(
                     issued.reference,
                     output = QueryOutputDocument.Symbols(bounded(emptyList())),
                 ),
                 fixture.authority,
                 budget,
-            ) as OperationOutcome.Complete
+            ) as OperationOutcome.Qualified
         assertEquals(first.evidence.payload.relationObservations, replay.evidence.payload.relationObservations)
         assertNull(first.evidence.payload.nextCursor)
     }
@@ -99,14 +106,14 @@ class QueryRetainedCallbackPresentationTest {
         val issued = issueCallbackEvidence(units)
         val result =
             callbackProtocol()
-                .execute(
+                .executePage(
                     QueryRunRequest.ReadResult.symbols(
                         issued.reference,
                         output = QueryOutputDocument.Symbols(bounded(emptyList())),
                     ),
                     fixture.authority,
                     budget,
-                ) as OperationOutcome.Complete
+                ) as OperationOutcome.Qualified
         assertEquals(0, result.evidence.payload.items.values.size)
         assertEquals(3, result.evidence.payload.evidenceWindow!!.total.value)
         assertNull(result.evidence.payload.evidenceWindow!!.nextCursor)
@@ -129,7 +136,7 @@ class QueryRetainedCallbackPresentationTest {
         val pageBudget = budget.copy(resources = budget.resources.copy(resultLimit = ResultLimit.parse(1).refined()))
         for (offset in 1..3) {
             val page =
-                protocol.execute(
+                protocol.executePage(
                     QueryRunRequest.ReadResult.symbols(
                         retained.reference,
                         output = QueryOutputDocument.Symbols(bounded(emptyList())),
@@ -137,7 +144,7 @@ class QueryRetainedCallbackPresentationTest {
                     ),
                     fixture.authority,
                     pageBudget,
-                ) as OperationOutcome.Complete
+                ) as OperationOutcome.Qualified
             assertEquals(0, page.evidence.payload.items.values.size)
             assertNull(page.evidence.payload.nextCursor)
             val item = page.evidence.payload.relationObservations.values.single().callableObservations.values.single()
@@ -302,7 +309,6 @@ class QueryRetainedCallbackPresentationTest {
             bounded(emptyList()),
             output,
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun <Value> bounded(values: List<Value>) = BoundedProtocolList.create(values).refined()

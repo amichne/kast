@@ -22,64 +22,80 @@ import org.junit.jupiter.api.Test
 
 internal class AutomaticSymbolQueryLimitsTest : AutomaticSymbolQueryCase() {
     @Test
-    fun `aggregate work stop preserves a valid continuation and proven rows`() = runTest {
+    fun `aggregate work stop rejects completion while preserving proven rows and internal continuation`() = runTest {
         val script = Script(listOf(listOf(row), listOf(row)))
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
         val limited = budget.copy(resources = budget.resources.copy(workUnitLimit = WorkUnitLimit.parse(8).refined()))
-        val result =
-            protocol.executeAutomatically(request, fixture.authority, limited, policy()) as OperationOutcome.Qualified
+        val rejection = completionRejection(protocol.execute(request, fixture.authority, limited, policy()))
         assertEquals(1, script.calls)
-        assertEquals(1, result.evidence.payload.items.values.size)
-        assertEquals(QueryInvocationStop.WORK_LIMIT, result.evidence.payload.invocation!!.stop)
+        assertEquals(1, retainedEvidence(rejection).preview.values.size)
+        assertEquals(QueryInvocationStop.WORK_LIMIT, rejection.stop)
+        val progress = originalCoverage(rejection).progress as QueryQualifiedProgressDocument.Resumable
+        val rejectedResume =
+            protocol.execute(QueryRunRequest.Resume(progress.continuationToken!!), fixture.authority, budget, policy())
+                as OperationOutcome.Rejected
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.QueryRunRejection.ExecutionRejected(
+                io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument.REQUEST_REJECTED
+            ),
+            rejectedResume.reason,
+        )
+        assertEquals(1, script.calls)
+        val read =
+            protocol.executePage(retainedEvidence(rejection).readRequest(), fixture.authority, budget)
+                as OperationOutcome.Qualified
+        assertEquals(1, read.evidence.payload.items.values.size)
+        assertNull(read.qualification.progress.continuationToken)
         val resumed =
-            protocol.execute(
-                QueryRunRequest.Resume(result.qualification.progress.continuationToken!!),
-                fixture.authority,
-                budget,
-            )
+            protocol.executePage(QueryRunRequest.Resume(progress.continuationToken!!), fixture.authority, budget)
         assertInstanceOf(OperationOutcome.Complete::class.java, resumed)
         script.assertDrained()
     }
 
     @Test
-    fun `cooperative cancellation returns accumulated rows and a still valid continuation`() = runTest {
+    fun `cooperative cancellation rejects completion and preserves historical continuation`() = runTest {
         val script = Script(listOf(listOf(row), listOf(row)))
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
-        val result =
-            protocol.executeAutomatically(
-                request,
-                fixture.authority,
-                budget,
-                policy(cancelled = { script.calls == 1 }),
-            ) as OperationOutcome.Qualified
+        val rejection =
+            completionRejection(
+                protocol.execute(request, fixture.authority, budget, policy(cancelled = { script.calls == 1 }))
+            )
         assertEquals(1, script.calls)
-        assertEquals(1, result.evidence.payload.items.values.size)
-        assertEquals(QueryInvocationStop.CANCELLED, result.evidence.payload.invocation!!.stop)
-        assertNotNull(result.qualification.progress.continuationToken)
-        protocol.execute(
-            QueryRunRequest.Resume(result.qualification.progress.continuationToken!!),
-            fixture.authority,
-            budget,
-        )
+        assertEquals(1, retainedEvidence(rejection).preview.values.size)
+        assertEquals(QueryInvocationStop.CANCELLED, rejection.stop)
+        val progress = originalCoverage(rejection).progress as QueryQualifiedProgressDocument.Resumable
+        assertNotNull(progress.continuationToken)
+        val read =
+            protocol.executePage(retainedEvidence(rejection).readRequest(), fixture.authority, budget)
+                as OperationOutcome.Qualified
+        assertEquals(1, read.evidence.payload.items.values.size)
+        assertEquals(1, script.calls)
+        protocol.executePage(QueryRunRequest.Resume(progress.continuationToken!!), fixture.authority, budget)
         script.assertDrained()
     }
 
     @Test
-    fun `elapsed allowance is invocation wide and cannot be renewed by a resume`() = runTest {
+    fun `elapsed allowance rejects completion without renewing public execution`() = runTest {
         var now = 0L
         val script = Script(listOf(listOf(row), listOf(row)), afterPage = { now = 1_000_000_000L })
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
-        val result =
-            protocol.executeAutomatically(request, fixture.authority, budget, policy(nanoTime = { now }))
-                as OperationOutcome.Qualified
+        val rejection =
+            completionRejection(protocol.execute(request, fixture.authority, budget, policy(nanoTime = { now })))
         assertEquals(1, script.calls)
-        assertEquals(QueryInvocationStop.TIME_LIMIT, result.evidence.payload.invocation!!.stop)
-        assertNotNull(result.qualification.progress.continuationToken)
-        protocol.execute(
-            QueryRunRequest.Resume(result.qualification.progress.continuationToken!!),
-            fixture.authority,
-            budget,
+        assertEquals(QueryInvocationStop.TIME_LIMIT, rejection.stop)
+        val progress = originalCoverage(rejection).progress as QueryQualifiedProgressDocument.Resumable
+        assertNotNull(progress.continuationToken)
+        val rejectedResume =
+            protocol.execute(QueryRunRequest.Resume(progress.continuationToken!!), fixture.authority, budget, policy())
+                as OperationOutcome.Rejected
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.QueryRunRejection.ExecutionRejected(
+                io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument.REQUEST_REJECTED
+            ),
+            rejectedResume.reason,
         )
+        assertEquals(1, script.calls)
+        protocol.executePage(QueryRunRequest.Resume(progress.continuationToken!!), fixture.authority, budget)
         script.assertDrained()
     }
 
@@ -88,7 +104,7 @@ internal class AutomaticSymbolQueryLimitsTest : AutomaticSymbolQueryCase() {
         var now = 0L
         val script = Script(listOf(listOf(row), listOf(row)), afterPage = { now = 900_000_000L })
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
-        val result = protocol.executeAutomatically(request, fixture.authority, budget, policy(nanoTime = { now }))
+        val result = protocol.execute(request, fixture.authority, budget, policy(nanoTime = { now }))
         assertInstanceOf(OperationOutcome.Complete::class.java, result)
         assertEquals(listOf(1000L, 100L), script.timeGrants)
         script.assertDrained()
@@ -99,15 +115,17 @@ internal class AutomaticSymbolQueryLimitsTest : AutomaticSymbolQueryCase() {
         val script = Script(listOf(listOf(row), List(100) { row }))
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
         val result =
-            protocol.executeAutomatically(
+            protocol.execute(
                 request,
                 fixture.authority,
                 budget.copy(resources = budget.resources.copy(resultLimit = ResultLimit.parse(100).refined())),
                 policy(retainedBytes = 50_000),
-            ) as OperationOutcome.Qualified
-        assertEquals(QueryInvocationStop.RETAINED_BYTES_LIMIT, result.evidence.payload.invocation!!.stop)
-        assertEquals(1, result.evidence.payload.invocation!!.accumulatedRowCount)
-        assertNull(result.qualification.progress.continuationToken)
+            )
+        val rejection = completionRejection(result)
+        assertEquals(QueryInvocationStop.RETAINED_BYTES_LIMIT, rejection.stop)
+        assertEquals(1, originalCoverage(rejection).knownMinimum.value)
+        assertEquals(1, retainedEvidence(rejection).preview.values.size)
+        assertNull(originalCoverage(rejection).progress.continuationToken)
         script.assertDrained()
     }
 
@@ -120,7 +138,7 @@ internal class AutomaticSymbolQueryLimitsTest : AutomaticSymbolQueryCase() {
         }
         val protocol = CanonicalQueryProtocol(operations, fixture.references)
         try {
-            protocol.executeAutomatically(request, fixture.authority, budget, policy())
+            protocol.execute(request, fixture.authority, budget, policy())
             fail<Unit>("Expected hard cancellation")
         } catch (_: kotlinx.coroutines.CancellationException) {
             assertEquals(1, calls)
@@ -142,7 +160,8 @@ internal class AutomaticSymbolQueryLimitsTest : AutomaticSymbolQueryCase() {
         val accumulated =
             AutomaticSymbolQueryRunner(store, fixture.authority, policy()) { action, remaining ->
                     calls++
-                    val original = protocol.execute(action, fixture.authority, remaining) as OperationOutcome.Qualified
+                    val original =
+                        protocol.executePage(action, fixture.authority, remaining) as OperationOutcome.Qualified
                     val progress = original.qualification.progress as QueryQualifiedProgressDocument.Resumable
                     QueryInvocationPage(
                         OperationOutcome.Qualified(
@@ -161,10 +180,10 @@ internal class AutomaticSymbolQueryLimitsTest : AutomaticSymbolQueryCase() {
                 .refined()
         assertEquals(1, calls)
         assertEquals(QueryInvocationStop.BUDGET_INCREASE_REQUIRED, accumulated.stop)
-        val presented = present(store, accumulated) as OperationOutcome.Qualified
+        val rejection = completionRejection(present(store, accumulated))
         assertEquals(
             ReadResumeActionDocument.INCREASE_EXECUTION_BUDGET,
-            (presented.qualification.progress as QueryQualifiedProgressDocument.Resumable).nextAction,
+            (originalCoverage(rejection).progress as QueryQualifiedProgressDocument.Resumable).nextAction,
         )
 
         assertInstanceOf(
@@ -174,7 +193,7 @@ internal class AutomaticSymbolQueryLimitsTest : AutomaticSymbolQueryCase() {
         val next =
             (accumulated.execution as QueryExecutionResult.Qualified).continuation as QueryContinuationState.Resumable
         val issued = store.retainedCheckpoint(request, next.checkpoint) as QueryCheckpointIssuance.Issued
-        protocol.execute(QueryRunRequest.Resume(issued.token), fixture.authority, budget)
+        protocol.executePage(QueryRunRequest.Resume(issued.token), fixture.authority, budget)
         script.assertDrained()
     }
 

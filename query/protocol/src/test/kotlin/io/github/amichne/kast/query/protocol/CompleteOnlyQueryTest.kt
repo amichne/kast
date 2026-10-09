@@ -3,9 +3,7 @@ package io.github.amichne.kast.query.protocol
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.QueryCompletionCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
-import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionUnprovenReason
-import io.github.amichne.kast.protocol.contract.QueryCompletionUnsupportedReason
 import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
@@ -21,20 +19,17 @@ import org.junit.jupiter.api.Test
 
 internal class CompleteOnlyQueryTest : AutomaticSymbolQueryCase() {
     private val completeOnly
-        get() =
-            request.copy(
-                completion =
-                    QueryCompletionPolicyDocument.CompleteOnly(QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1)
-            )
+        get() = request
 
     @Test
     fun `complete only succeeds after automatic exhaustion and retains original question policy`() = runTest {
         val script = Script(listOf(listOf(row), listOf(row)))
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
-        val result =
-            protocol.executeAutomatically(completeOnly, fixture.authority, budget, policy())
-                as OperationOutcome.Complete
-        assertEquals(completeOnly.completion, result.evidence.payload.question.completion)
+        val result = protocol.execute(completeOnly, fixture.authority, budget, policy()) as OperationOutcome.Complete
+        assertEquals(
+            QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1,
+            result.evidence.payload.question.completion.model,
+        )
         script.assertDrained()
     }
 
@@ -42,9 +37,7 @@ internal class CompleteOnlyQueryTest : AutomaticSymbolQueryCase() {
     fun `incomplete execution rejects with retrievable original evidence and qualification`() = runTest {
         val script = Script(listOf(listOf(row)), terminal = true)
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
-        val result =
-            protocol.executeAutomatically(completeOnly, fixture.authority, budget, policy())
-                as OperationOutcome.Rejected
+        val result = protocol.execute(completeOnly, fixture.authority, budget, policy()) as OperationOutcome.Rejected
         val rejection = assertInstanceOf(QueryRunRejection.CompletionUnproven::class.java, result.reason)
         assertEquals(QueryCompletionUnprovenReason.INCOMPLETE_EXECUTION, rejection.reason)
         val original =
@@ -73,14 +66,17 @@ internal class CompleteOnlyQueryTest : AutomaticSymbolQueryCase() {
         val next = retained.readRequest()
         assertEquals(QueryRunRequest.ReadResult.symbols(retained.result, output = output), next)
         val read =
-            protocol.execute(
+            protocol.executePage(
                 next,
                 fixture.authority,
                 budget,
             )
         val qualified = read as OperationOutcome.Qualified
         assertEquals(1, qualified.evidence.payload.items.values.size)
-        assertEquals(completeOnly.completion, qualified.evidence.payload.question.completion)
+        assertEquals(
+            QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1,
+            qualified.evidence.payload.question.completion.model,
+        )
         script.assertDrained()
     }
 
@@ -95,7 +91,7 @@ internal class CompleteOnlyQueryTest : AutomaticSymbolQueryCase() {
         val baselineScript = Script(listOf(listOf(row, row)), terminal = true)
         val baseline =
             CanonicalQueryProtocol(baselineScript.operations, fixture.references)
-                .executeAutomatically(completeOnly, fixture.authority, budget, policy()) as OperationOutcome.Rejected
+                .execute(completeOnly, fixture.authority, budget, policy()) as OperationOutcome.Rejected
         val original = baseline.reason as QueryRunRejection.CompletionUnproven
         val originalRetained = original.evidence as QueryCompletionEvidenceDocument.Retained
         val oneRow =
@@ -109,7 +105,7 @@ internal class CompleteOnlyQueryTest : AutomaticSymbolQueryCase() {
         val script = Script(listOf(listOf(row, row)), terminal = true)
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
         val fitted =
-            protocol.executeAutomatically(
+            protocol.execute(
                 completeOnly,
                 fixture.authority,
                 budget,
@@ -125,7 +121,7 @@ internal class CompleteOnlyQueryTest : AutomaticSymbolQueryCase() {
         assertTrue(encodedBytes(fitted) <= grant)
         assertEquals(1, evidence.preview.values.size)
         assertEquals(original.originalCoverage, reason.originalCoverage)
-        val read = protocol.execute(evidence.readRequest(), fixture.authority, budget) as OperationOutcome.Qualified
+        val read = protocol.executePage(evidence.readRequest(), fixture.authority, budget) as OperationOutcome.Qualified
         assertEquals(2, read.evidence.payload.items.values.size)
         baselineScript.assertDrained()
         script.assertDrained()
@@ -137,7 +133,7 @@ internal class CompleteOnlyQueryTest : AutomaticSymbolQueryCase() {
         var attempts = 0
         val rejected =
             CanonicalQueryProtocol(script.operations, fixture.references)
-                .executeAutomatically(
+                .execute(
                     completeOnly,
                     fixture.authority,
                     budget,
@@ -161,7 +157,7 @@ internal class CompleteOnlyQueryTest : AutomaticSymbolQueryCase() {
         val script = Script(listOf(listOf(row), listOf(row)), afterPage = { interrupted = true })
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
         val outcome =
-            protocol.executeAutomatically(completeOnly, fixture.authority, budget, policy(cancelled = { interrupted }))
+            protocol.execute(completeOnly, fixture.authority, budget, policy(cancelled = { interrupted }))
                 as OperationOutcome.Rejected
         val rejection = assertInstanceOf(QueryRunRejection.CompletionUnproven::class.java, outcome.reason)
         val original =
@@ -175,16 +171,19 @@ internal class CompleteOnlyQueryTest : AutomaticSymbolQueryCase() {
             io.github.amichne.kast.protocol.contract.QueryCompletionPolicyProgressDocument.EvidenceOnly,
             rejection.policyProgress,
         )
+        assertEquals(1, script.calls)
         val resume =
-            protocol.execute(QueryRunRequest.Resume(progress.checkpoint.token), fixture.authority, budget)
+            protocol.execute(QueryRunRequest.Resume(progress.checkpoint.token), fixture.authority, budget, policy())
                 as OperationOutcome.Rejected
         assertEquals(
-            QueryCompletionUnsupportedReason.AUTOMATIC_EXECUTION_REQUIRED,
-            (resume.reason as QueryRunRejection.CompletionUnsupported).reason,
+            QueryRunRejection.ExecutionRejected(
+                io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument.REQUEST_REJECTED
+            ),
+            resume.reason,
         )
         val handle = (rejection.evidence as QueryCompletionEvidenceDocument.Retained).result
         val read =
-            protocol.execute(QueryRunRequest.ReadResult.symbols(handle, output = output), fixture.authority, budget)
+            protocol.executePage(QueryRunRequest.ReadResult.symbols(handle, output = output), fixture.authority, budget)
                 as OperationOutcome.Qualified
         assertInstanceOf(
             io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument.TerminalIncomplete::class.java,
@@ -195,20 +194,5 @@ internal class CompleteOnlyQueryTest : AutomaticSymbolQueryCase() {
                 as io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument.EvidenceOnly
         assertEquals(original, interpretation.originalCoverage)
         assertEquals(1, script.calls)
-    }
-
-    @Test
-    fun `direct page execution cannot bypass automatic completion policy`() = runTest {
-        val script = Script(listOf(listOf(row)))
-        val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
-        val outcome = protocol.execute(completeOnly, fixture.authority, budget) as OperationOutcome.Rejected
-        assertEquals(
-            QueryRunRejection.CompletionUnsupported(
-                QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1,
-                QueryCompletionUnsupportedReason.AUTOMATIC_EXECUTION_REQUIRED,
-            ),
-            outcome.reason,
-        )
-        assertEquals(0, script.calls)
     }
 }

@@ -9,7 +9,6 @@ import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryBindingNameDocument
-import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive
 import io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionBudgetDocument
@@ -93,10 +92,10 @@ class QueryRetainedRowAdmissionTest {
             )
         val smallBudget = budget.copy(resources = budget.resources.copy(resultLimit = ResultLimit.parse(1).refined()))
         val request = requestAt(QueryResultCursor.Start)
-        val first = protocol.execute(request, fixture.authority, smallBudget) as OperationOutcome.Complete
-        val replay = protocol.execute(request, fixture.authority, smallBudget) as OperationOutcome.Complete
+        val first = protocol.executePage(request, fixture.authority, smallBudget) as OperationOutcome.Complete
+        val replay = protocol.executePage(request, fixture.authority, smallBudget) as OperationOutcome.Complete
         val last =
-            protocol.execute(requestAt(QueryResultCursor.parse(1).refined()), fixture.authority, smallBudget)
+            protocol.executePage(requestAt(QueryResultCursor.parse(1).refined()), fixture.authority, smallBudget)
                 as OperationOutcome.Complete
         assertEquals(1, first.evidence.payload.items.values.size)
         assertEquals(first.evidence.payload, replay.evidence.payload)
@@ -128,14 +127,14 @@ class QueryRetainedRowAdmissionTest {
                 store,
             )
         val page =
-            protocol.execute(QueryRunRequest.ReadResult.bindingRows(issued.reference), fixture.authority, budget)
+            protocol.executePage(QueryRunRequest.ReadResult.bindingRows(issued.reference), fixture.authority, budget)
                 as OperationOutcome.Complete
         val pairs = page.evidence.payload.items.values.map { it as QueryResultItemDocument.BindingRow }
         assertEquals(2, pairs.size)
         assertEquals(issued.rowIds, pairs.map { it.rowId })
         assertEquals(listOf("left", "right"), listOf(pairs.first().left.name.value, pairs.first().right.name.value))
         val wrong =
-            protocol.execute(
+            protocol.executePage(
                 QueryRunRequest.ReadResult.symbols(issued.reference, output = output),
                 fixture.authority,
                 budget,
@@ -168,7 +167,10 @@ class QueryRetainedRowAdmissionTest {
                             listOf(QueryStepDocument.ProjectBinding(QueryBindingNameDocument.parse("right").refined()))
                         )
                 )
-        assertInstanceOf(OperationOutcome.Complete::class.java, protocol.execute(request, fixture.authority, budget))
+        assertInstanceOf(
+            OperationOutcome.Complete::class.java,
+            protocol.executePage(request, fixture.authority, budget),
+        )
         assertEquals(1, requireNotNull(selected).bindingRows.size)
         assertEquals(
             listOf(QueryLimitation.ROW_SELECTION_INCOMPLETE),
@@ -198,7 +200,7 @@ class QueryRetainedRowAdmissionTest {
                 store,
             )
         val first =
-            protocol.execute(
+            protocol.executePage(
                 run(QueryFromDocument.Symbols(discovery())).copy(retention = QueryRetentionModeDocument.RETAIN),
                 fixture.authority,
                 budget,
@@ -206,7 +208,7 @@ class QueryRetainedRowAdmissionTest {
         val retained = first.evidence.payload.retention as QueryResultRetention.Retained
         val item = first.evidence.payload.items.values[1] as QueryResultItemDocument.ExactSymbol
         val source = QueryFromDocument.Result(retained.reference, bounded(listOf(requireNotNull(item.rowId))))
-        protocol.execute(run(source), fixture.authority, budget)
+        protocol.executePage(run(source), fixture.authority, budget)
         assertEquals(listOf(other.selector), requireNotNull(selected).symbols.map(QuerySymbol::selector))
     }
 
@@ -224,7 +226,10 @@ class QueryRetainedRowAdmissionTest {
                 store,
             )
         val request = run(QueryFromDocument.Result(issued.reference, bounded(listOf(issued.rowIds[1]))))
-        assertInstanceOf(OperationOutcome.Complete::class.java, protocol.execute(request, fixture.authority, budget))
+        assertInstanceOf(
+            OperationOutcome.Complete::class.java,
+            protocol.executePage(request, fixture.authority, budget),
+        )
         val admitted = requireNotNull(selected)
         assertEquals(listOf(other.selector), admitted.symbols.map(QuerySymbol::selector))
         assertEquals(
@@ -244,7 +249,7 @@ class QueryRetainedRowAdmissionTest {
                 store,
             )
         val request = run(QueryFromDocument.Result(issued.reference, bounded(listOf(unknown))))
-        val rejection = protocol.execute(request, fixture.authority, budget) as OperationOutcome.Rejected
+        val rejection = protocol.executePage(request, fixture.authority, budget) as OperationOutcome.Rejected
         assertEquals(
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.RESULT_ROW_UNAVAILABLE),
             rejection.reason,
@@ -263,7 +268,7 @@ class QueryRetainedRowAdmissionTest {
                 store,
             )
         val source = QueryFromDocument.Result(first.reference, bounded(listOf(second.rowIds.first())))
-        val rejection = protocol.execute(run(source), fixture.authority, budget) as OperationOutcome.Rejected
+        val rejection = protocol.executePage(run(source), fixture.authority, budget) as OperationOutcome.Rejected
         assertEquals(
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.RESULT_ROW_UNAVAILABLE),
             rejection.reason,
@@ -285,8 +290,8 @@ class QueryRetainedRowAdmissionTest {
                 store,
             )
         val request = QueryRunRequest.ReadResult.symbols(issued.reference, output = output)
-        val first = protocol.execute(request, fixture.authority, budget) as OperationOutcome.Complete
-        val second = protocol.execute(request, fixture.authority, budget) as OperationOutcome.Complete
+        val first = protocol.executePage(request, fixture.authority, budget) as OperationOutcome.Complete
+        val second = protocol.executePage(request, fixture.authority, budget) as OperationOutcome.Complete
         val firstIds = first.evidence.payload.items.values.map { (it as QueryResultItemDocument.ExactSymbol).rowId }
         val secondIds = second.evidence.payload.items.values.map { (it as QueryResultItemDocument.ExactSymbol).rowId }
         assertEquals(issued.rowIds, firstIds)
@@ -308,7 +313,7 @@ class QueryRetainedRowAdmissionTest {
                 store,
             )
         val request = run(source).copy(steps = bounded(listOf(QueryStepDocument.Difference(right))))
-        val rejection = protocol.execute(request, fixture.authority, budget) as OperationOutcome.Rejected
+        val rejection = protocol.executePage(request, fixture.authority, budget) as OperationOutcome.Rejected
         assertEquals(
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.RIGHT_INPUT_INCOMPLETE),
             rejection.reason,
@@ -348,8 +353,7 @@ class QueryRetainedRowAdmissionTest {
         )
     }
 
-    private fun run(from: QueryFromDocument) =
-        QueryRunRequest.Run(from, bounded(emptyList()), output, execution, completion = Progressive)
+    private fun run(from: QueryFromDocument) = QueryRunRequest.Run(from, bounded(emptyList()), output, execution)
 
     private fun discovery() =
         QueryDiscoveryDocument(

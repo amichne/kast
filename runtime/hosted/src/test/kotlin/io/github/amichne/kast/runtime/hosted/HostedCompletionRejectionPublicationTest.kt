@@ -14,7 +14,6 @@ import io.github.amichne.kast.protocol.contract.AdmittedQueryRunRejection
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
-import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionRetentionFailure
 import io.github.amichne.kast.protocol.contract.QueryExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionDocument
@@ -28,7 +27,6 @@ import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
-import io.github.amichne.kast.protocol.contract.QueryStaticModelDocument
 import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireDecoding
@@ -56,6 +54,7 @@ import io.github.amichne.kast.query.protocol.QueryPublicationPageCharge
 import io.github.amichne.kast.query.protocol.QueryPublishedPage
 import io.github.amichne.kast.query.protocol.QueryStateStore
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
+import io.github.amichne.kast.query.protocol.executeQueryPage
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadRejectedPublication
 import kotlinx.coroutines.test.runTest
@@ -255,8 +254,6 @@ class HostedCompletionRejectionPublicationTest {
                 bounded(emptyList()),
                 output,
                 QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-                completion =
-                    QueryCompletionPolicyDocument.CompleteOnly(QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1),
             )
         private val budget =
             QueryBudget(
@@ -313,7 +310,7 @@ class HostedCompletionRejectionPublicationTest {
 
         suspend fun run(): OperationOutcome.Rejected<QueryRunRejection> {
             val result =
-                protocol.executeAutomatically(
+                protocol.execute(
                     request,
                     fixture.authority,
                     budget,
@@ -348,7 +345,7 @@ class HostedCompletionRejectionPublicationTest {
                     fixture.references,
                     store,
                 )
-                .execute(
+                .executeQueryPage(
                     QueryRunRequest.ReadResult.symbols(reference, output = output),
                     fixture.authority,
                     budget,

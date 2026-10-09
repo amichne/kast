@@ -198,8 +198,7 @@ internal class AutomaticServiceRowQueryTest : AutomaticSymbolQueryCase() {
             budget.copy(resources = budget.resources.copy(resultLimit = ResultLimit.parse(limit).refined()))
 
         suspend fun drain(): List<QueryResultItemDocument> {
-            val result =
-                protocol.executeAutomatically(input, fixture.authority, grant, policy(1, retainedBytes = 128_000_000))
+            val result = protocol.execute(input, fixture.authority, grant, policy(1, retainedBytes = 128_000_000))
             assertInstanceOf(OperationOutcome.Complete::class.java, result, "$output: $result")
             val payload = (result as OperationOutcome.Complete).evidence.payload
             val beforeReads = nativeCalls
@@ -225,7 +224,7 @@ internal class AutomaticServiceRowQueryTest : AutomaticSymbolQueryCase() {
             val reference = (payload.retention as? QueryResultRetention.Retained)?.reference
             while (cursor != null) {
                 val read = readRequest(requireNotNull(reference), cursor)
-                val tail = protocol.execute(read, fixture.authority, grant) as OperationOutcome.Complete
+                val tail = protocol.executePage(read, fixture.authority, grant) as OperationOutcome.Complete
                 items += tail.evidence.payload.items.values
                 cursor = tail.evidence.payload.nextCursor
             }

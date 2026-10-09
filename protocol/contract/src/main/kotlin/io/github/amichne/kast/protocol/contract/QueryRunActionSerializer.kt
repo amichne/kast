@@ -53,10 +53,7 @@ private fun QueryRunRequest.Run.hasCanonicalRequestSyntax(): Boolean {
         QueryOutputDocument.TraversalRecords -> true
         QueryOutputDocument.BindingRows -> true
         QueryOutputDocument.ValuePaths -> true
-        is QueryOutputDocument.ImpactWitness ->
-            from is QueryFromDocument.Impact &&
-                steps.values.isEmpty() &&
-                completion is QueryCompletionPolicyDocument.CompleteOnly
+        is QueryOutputDocument.ImpactWitness -> from is QueryFromDocument.Impact && steps.values.isEmpty()
     }
 }
 

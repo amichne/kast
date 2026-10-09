@@ -13,7 +13,6 @@ import io.github.amichne.kast.protocol.contract.ImpactWitnessSectionDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.QueryCompletionCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
-import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionKindDocument
@@ -34,7 +33,6 @@ import io.github.amichne.kast.protocol.contract.QueryRetentionModeDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryRunResult
-import io.github.amichne.kast.protocol.contract.QueryStaticModelDocument
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import io.github.amichne.kast.query.contract.QueryByteLimit
@@ -102,7 +100,7 @@ internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
                 val retained = result.retention as QueryResultRetention.Retained
                 val calls = case.reads
                 val read =
-                    case.protocol.execute(
+                    case.protocol.executePage(
                         QueryRunRequest.ReadResult.impactWitness(retained.reference, section),
                         fixture.authority,
                         case.allowance.copy(
@@ -146,7 +144,7 @@ internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
         assertEquals(listOf(ImpactRequiredObligationDocument.NATIVE_FLOW), unresolved.required.values)
         val retained = assertInstanceOf(QueryCompletionEvidenceDocument.Retained::class.java, failure.evidence)
         val read =
-            case.protocol.execute(
+            case.protocol.executePage(
                 QueryRunRequest.ReadResult.valuePaths(retained.result),
                 fixture.authority,
                 case.allowance.copy(
@@ -176,7 +174,7 @@ internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
         )
         val retained = assertInstanceOf(QueryCompletionEvidenceDocument.Retained::class.java, failure.evidence)
         val read =
-            case.protocol.execute(
+            case.protocol.executePage(
                 QueryRunRequest.ReadResult.valuePaths(retained.result),
                 fixture.authority,
                 case.allowance.copy(
@@ -255,8 +253,6 @@ internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
                 QueryOutputDocument.ValuePaths,
                 QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
                 retention = QueryRetentionModeDocument.RETAIN,
-                completion =
-                    QueryCompletionPolicyDocument.CompleteOnly(QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1),
             )
 
         private fun service(presentation: QueryPresentationExecution) =
@@ -367,7 +363,7 @@ internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
             QueryPresentationExecution.evaluateAndFit(
                 evaluate = { presentation ->
                     protocol = protocol(presentation)
-                    protocol.executeAutomatically(
+                    protocol.execute(
                         requested,
                         fixture.authority,
                         allowance,
@@ -395,7 +391,7 @@ internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
             val result = complete.evidence.payload as QueryRunResult
             val reference = (result.retention as QueryResultRetention.Retained).reference
             val read =
-                protocol.execute(
+                protocol.executePage(
                     QueryRunRequest.ReadResult.valuePaths(reference),
                     fixture.authority,
                     allowance.copy(resources = allowance.resources.copy(resultLimit = ResultLimit.parse(20).refined())),
@@ -409,7 +405,7 @@ internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
 
         suspend fun assertAlternateSection(reference: QueryResultReference) {
             val other =
-                protocol.execute(
+                protocol.executePage(
                     QueryRunRequest.ReadResult.impactWitness(
                         reference,
                         ImpactWitnessSectionDocument.PRODUCERS,
