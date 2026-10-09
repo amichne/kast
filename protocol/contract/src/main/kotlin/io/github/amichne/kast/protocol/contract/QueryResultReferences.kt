@@ -112,6 +112,4 @@ sealed interface QueryResultRetention {
     @Serializable
     @SerialName("retained")
     data class Retained(val reference: QueryResultReference) : QueryResultRetention
-
-    @Serializable @SerialName("capacity_exceeded") data object CapacityExceeded : QueryResultRetention
 }

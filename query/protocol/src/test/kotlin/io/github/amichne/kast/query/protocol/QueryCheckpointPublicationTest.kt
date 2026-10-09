@@ -169,7 +169,9 @@ class QueryCheckpointPublicationTest {
         lateinit var preparedPage: QueryPublishedPage
         val protocol =
             CanonicalQueryProtocol(
-                QueryOperations { complete() },
+                QueryOperations {
+                    complete().observedWork(io.github.amichne.kast.query.contract.QueryWorkCount.parse(1).refined())
+                },
                 CanonicalQueryReferences(),
                 store,
                 QueryExecutionPublication { _, claim, page ->
@@ -179,10 +181,11 @@ class QueryCheckpointPublicationTest {
                 },
             )
         val page =
-            protocol.executePage(
+            protocol.execute(
                 request().copy(retention = io.github.amichne.kast.protocol.contract.QueryRetentionModeDocument.RETAIN),
                 lease,
                 budget,
+                retainedQueryTestPolicy(budget),
             ) as OperationOutcome.Complete
         val reference =
             (page.evidence.payload.retention as io.github.amichne.kast.protocol.contract.QueryResultRetention.Retained)
@@ -192,10 +195,11 @@ class QueryCheckpointPublicationTest {
         assertInstanceOf(QueryResultRestoration.Restored::class.java, store.restoreResult(reference, lease))
 
         val rejected =
-            protocol.executePage(
+            protocol.execute(
                 request().copy(retention = io.github.amichne.kast.protocol.contract.QueryRetentionModeDocument.RETAIN),
                 lease,
                 budget,
+                retainedQueryTestPolicy(budget),
             ) as OperationOutcome.Complete
         val rejectedReference =
             (rejected.evidence.payload.retention

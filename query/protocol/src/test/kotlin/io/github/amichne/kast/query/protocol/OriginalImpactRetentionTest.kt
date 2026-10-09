@@ -18,18 +18,13 @@ import io.github.amichne.kast.protocol.contract.QueryImpactFlowDocument
 import io.github.amichne.kast.protocol.contract.QueryImpactProducerDocument
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
-import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryQuestionDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
-import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.QueryRetentionModeDocument
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryRunResult
-import io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument
-import io.github.amichne.kast.protocol.contract.presentationPrefix
-import io.github.amichne.kast.protocol.contract.presentationSuffix
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryContinuationState
@@ -63,80 +58,51 @@ import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
-import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 
 /** Starting facts are detached contract evidence; these tests establish no native compiler behavior. */
 class OriginalImpactRetentionTest {
     @Test
-    fun `zero emitted rows retain original investigated paths for qualified reads without replay`() = runTest {
+    fun `original investigated paths remain readable even when execution emitted no rows`() = runTest {
         val fixture = Fixture()
-        val initial = fixture.publish(emptyList())
-        val reference = (initial.evidence.payload.retention as QueryResultRetention.Retained).reference
+        val issued = fixture.issueOriginal(emptyList())
         val restored =
-            fixture.store.restoreResult(reference, fixture.symbols.authority) as QueryResultRestoration.Restored
+            fixture.store.restoreResult(issued.reference, fixture.symbols.authority) as QueryResultRestoration.Restored
         assertEquals(3, restored.result.rowCount)
-        assertEquals(emptyList<QueryResultItemDocument>(), initial.evidence.payload.items.values)
-        assertEquals(QueryResultCursor.Start, initial.evidence.payload.nextCursor)
-        val page = fixture.read(reference)
+        val page = fixture.read(issued.reference)
         assertEquals(fixture.ledger.paths.map { it.impactDocument().value() }, page.evidence.payload.paths())
-        assertEquals(restored.rowIds, page.evidence.payload.items.values.map { it.rowId })
+        assertEquals(issued.rowIds, page.evidence.payload.items.values.map { it.rowId })
         fixture.assertOriginalEvidence(page.evidence.payload)
     }
 
     @Test
-    fun `initial prefix keeps original row identities across repeated retained reads`() = runTest {
+    fun `original row identities survive repeated reads and cursor selection`() = runTest {
         val fixture = Fixture()
-        val initial = fixture.publish(listOf(0))
-        val reference = (initial.evidence.payload.retention as QueryResultRetention.Retained).reference
-        assertEquals(QueryResultCursor.parse(1).value(), initial.evidence.payload.nextCursor)
-        val first = fixture.read(reference)
-        val again = fixture.read(reference)
-        assertEquals(
-            first.evidence.payload.items.values.map { it.rowId },
-            again.evidence.payload.items.values.map { it.rowId },
-        )
-        assertEquals(first.evidence.payload.items.values[0].rowId, initial.evidence.payload.items.values.single().rowId)
-        fixture.assertOriginalEvidence(first.evidence.payload)
-    }
-
-    @Test
-    fun `nonprefix initial selection uses original ordinals rather than compact row positions`() = runTest {
-        val fixture = Fixture()
-        val initial = fixture.publish(listOf(2, 0))
-        val reference = (initial.evidence.payload.retention as QueryResultRetention.Retained).reference
-        assertNull(initial.evidence.payload.nextCursor)
-        val prefix = initial.evidence.payload.presentationPrefix(1).value()
-        assertNull(prefix.nextCursor)
-        assertEquals(listOf(initial.evidence.payload.items.values[0].rowId), prefix.items.values.map { it.rowId })
-        val fittedSuffix = initial.evidence.payload.presentationSuffix(1).value()
-        assertNull(fittedSuffix.nextCursor)
-        assertEquals(listOf(initial.evidence.payload.items.values[1].rowId), fittedSuffix.items.values.map { it.rowId })
-        val all = fixture.read(reference)
-        val originalIds = all.evidence.payload.items.values.map { it.rowId }
-        assertEquals(listOf(originalIds[2], originalIds[0]), initial.evidence.payload.items.values.map { it.rowId })
-        assertNotEquals(originalIds[0], originalIds[2])
-        val suffix = fixture.read(reference, 2)
-        assertEquals(listOf(originalIds[2]), suffix.evidence.payload.items.values.map { it.rowId })
+        val issued = fixture.issueOriginal(listOf(0))
+        val first = fixture.read(issued.reference)
+        val repeated = fixture.read(issued.reference)
+        assertEquals(first.evidence.payload, repeated.evidence.payload)
+        assertEquals(issued.rowIds, first.evidence.payload.items.values.map { it.rowId })
+        val suffix = fixture.read(issued.reference, 2)
+        assertEquals(listOf(issued.rowIds[2]), suffix.evidence.payload.items.values.map { it.rowId })
         assertEquals(listOf(fixture.ledger.paths[2].impactDocument().value()), suffix.evidence.payload.paths())
+        fixture.assertOriginalEvidence(first.evidence.payload)
     }
 
     @Test
     fun `generic selected result capture preserves only the explicit selection`() = runTest {
         val fixture = Fixture()
-        val original = fixture.publish(listOf(0, 1, 2)).evidence.payload
-        val originalReference = (original.retention as QueryResultRetention.Retained).reference
-        val source =
-            QueryFromDocument.Result(originalReference, bounded(listOf(requireNotNull(original.items.values[2].rowId))))
-        val selected = fixture.publish(listOf(2), source).evidence.payload
-        val reference = (selected.retention as QueryResultRetention.Retained).reference
+        val original = fixture.issueOriginal(listOf(0, 1, 2))
+        val source = QueryFromDocument.Result(original.reference, bounded(listOf(original.rowIds[2])))
+        val selected = fixture.issueSelected(source)
         val restored =
-            fixture.store.restoreResult(reference, fixture.symbols.authority) as QueryResultRestoration.Restored
+            fixture.store.restoreResult(selected.reference, fixture.symbols.authority)
+                as QueryResultRestoration.Restored
         assertEquals(1, restored.result.rowCount)
-        val read = fixture.read(reference).evidence.payload
+        val read = fixture.read(selected.reference).evidence.payload
         assertEquals(listOf(fixture.ledger.paths[2].impactDocument().value()), read.paths())
-        assertEquals(selected.items.values.single().rowId, read.items.values.single().rowId)
+        assertEquals(selected.rowIds, read.items.values.map { it.rowId })
         assertEquals(source, read.question.from)
         assertNull(read.nextCursor)
         val accounting = read.impactAccounting as ImpactAccountingDocument.Investigated
@@ -153,7 +119,6 @@ class OriginalImpactRetentionTest {
         val ledger = ledger()
         private val rows = QueryRows.ValuePaths.fromInvestigation(ledger).value()
         private val request = request()
-        private val projection = QueryOutcomeProjection(symbols.references, store)
         private var semanticExecutions = 0
         private val protocol =
             CanonicalQueryProtocol(
@@ -165,19 +130,24 @@ class OriginalImpactRetentionTest {
                 store,
             )
 
-        fun publish(
-            indices: List<Int>,
-            from: QueryFromDocument = request.from,
-        ): OperationOutcome.Qualified<QueryRunResult, QueryRunQualification> {
-            val execution = execution(indices)
-            val projected = projection.projectExecution(request.copy(from = from), symbols.authority, execution)
-            assertInstanceOf(OperationOutcome.Qualified::class.java, projected)
-            val qualified = projected as OperationOutcome.Qualified<QueryRunResult, QueryRunQualification>
-            assertEquals(
-                QueryQualifiedProgressDocument.TerminalIncomplete(QueryTerminalReasonDocument.OUTPUT_ITEM_TOO_LARGE),
-                qualified.qualification.progress,
-            )
-            return qualified
+        fun issueOriginal(indices: List<Int>): QueryResultIssuance.Issued {
+            val snapshot =
+                io.github.amichne.kast.query.contract.QueryRetainedResult.captureInvestigation(
+                        symbols.authority,
+                        execution(indices),
+                    )
+                    .value()
+            return store.issueResult(request, snapshot) as QueryResultIssuance.Issued
+        }
+
+        fun issueSelected(from: QueryFromDocument.Result): QueryResultIssuance.Issued {
+            val snapshot =
+                io.github.amichne.kast.query.contract.QueryRetainedResult.capture(
+                        symbols.authority,
+                        execution(listOf(2)),
+                    )
+                    .value()
+            return store.issueResult(request.copy(from = from), snapshot) as QueryResultIssuance.Issued
         }
 
         fun execution(indices: List<Int>) =

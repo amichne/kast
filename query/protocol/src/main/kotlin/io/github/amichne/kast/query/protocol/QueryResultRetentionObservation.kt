@@ -3,12 +3,6 @@ package io.github.amichne.kast.query.protocol
 import io.github.amichne.kast.query.contract.QueryRetainedResultFailure
 
 /** Finite effect receipts contain no source, paths, handles, or arbitrary reason strings. */
-enum class QueryResultRetentionScope {
-    PRESENTED,
-    PENDING_IMPACT,
-    ORIGINAL_INVESTIGATION,
-}
-
 enum class QueryResultRetentionIssue {
     ISSUED,
     UNAVAILABLE,
@@ -16,9 +10,9 @@ enum class QueryResultRetentionIssue {
 }
 
 sealed interface QueryResultRetentionEvidence {
-    data class CaptureStarted(val scope: QueryResultRetentionScope) : QueryResultRetentionEvidence
+    data object CaptureStarted : QueryResultRetentionEvidence
 
-    data class Captured(val scope: QueryResultRetentionScope) : QueryResultRetentionEvidence
+    data object Captured : QueryResultRetentionEvidence
 
     data class CaptureRejected(val cause: QueryRetainedResultFailure) : QueryResultRetentionEvidence
 

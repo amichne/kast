@@ -28,6 +28,7 @@ import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument
 import io.github.amichne.kast.query.contract.QueryContinuationState
 import io.github.amichne.kast.query.contract.QueryExecutionResult
+import io.github.amichne.kast.query.contract.QueryImpactExecutionFailure
 import io.github.amichne.kast.query.contract.QueryImpactWitnessView
 import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QueryRows
@@ -166,7 +167,7 @@ internal class QueryInvocationProjection(
         ): QueryPublishedPage =
             when (val retained = retain()) {
                 is Refinement.Refined ->
-                    when (retained.value) {
+                    when (val issued = retained.value) {
                         QueryResultIssuance.CapacityExceeded,
                         QueryResultIssuance.Unavailable ->
                             rejectCompletion(
@@ -184,14 +185,14 @@ internal class QueryInvocationProjection(
                                     }
                                 }
                             }
-                        else -> present(evidence, retained.value, window)
+                        is QueryResultIssuance.Issued -> present(evidence, issued, window)
                     }
                 is Refinement.Rejected -> OperationOutcome.Rejected(retained.failure)
             }
 
         private fun present(
             evidence: QueryProjectedEvidence,
-            issuance: QueryResultIssuance?,
+            issuance: QueryResultIssuance.Issued?,
             evidenceWindow: QueryEvidenceWindowDocument,
         ): QueryPublishedPage {
             val preview =
@@ -211,8 +212,7 @@ internal class QueryInvocationProjection(
                 authority.resultEnvelope(
                     lease = lease,
                     question = QueryQuestionDocument.from(request),
-                    presented =
-                        PresentedQueryRows(preview.items, preview.retention, QueryPresentedWindowSelection.NotRetained),
+                    presented = PresentedQueryRows(preview.items, preview.retention),
                     evidence = presentationEvidence,
                     presentationWindow = preview.window,
                     presentationOrigin = QueryKnownMinimum.parse(count).required(),
@@ -232,7 +232,7 @@ internal class QueryInvocationProjection(
                 policy.previewBytes(accumulated.items) > policy.previewBytesLimit.value
 
         private fun retain(): Refinement<QueryResultIssuance, QueryRunRejection> {
-            observation.observe(QueryResultRetentionEvidence.CaptureStarted(QueryResultRetentionScope.PRESENTED))
+            observation.observe(QueryResultRetentionEvidence.CaptureStarted)
             val snapshot =
                 when (
                     val captured =
@@ -246,9 +246,18 @@ internal class QueryInvocationProjection(
                         else QueryRetainedResult.capture(lease, execution)
                 ) {
                     is Refinement.Refined -> captured.value
-                    is Refinement.Rejected -> return contractFailure()
+                    is Refinement.Rejected -> {
+                        observation.observe(QueryResultRetentionEvidence.CaptureRejected(captured.failure))
+                        return if (request.from is QueryFromDocument.Impact)
+                            Refinement.Rejected(
+                                QueryRunRejection.ImpactExecutionRejected(
+                                    QueryImpactExecutionFailure.Selection(captured.failure).executionDocument()
+                                )
+                            )
+                        else contractFailure()
+                    }
                 }
-            observation.observe(QueryResultRetentionEvidence.Captured(QueryResultRetentionScope.PRESENTED))
+            observation.observe(QueryResultRetentionEvidence.Captured)
             val checkpoint =
                 ((progress as? QueryQualifiedProgressDocument.Resumable)?.checkpoint
                         as? QueryCheckpointDocument.Upstream)
@@ -294,13 +303,13 @@ internal class QueryInvocationProjection(
             }
         }
 
-        private fun preview(issuance: QueryResultIssuance?): Refinement<InvocationPreview, QueryRunRejection> {
+        private fun preview(issuance: QueryResultIssuance.Issued?): Refinement<InvocationPreview, QueryRunRejection> {
             val originalFailure =
                 when (val admitted = optionalOriginalFailure(accumulated.failure)) {
                     is Refinement.Refined -> admitted.value
                     is Refinement.Rejected -> return Refinement.Rejected(admitted.failure)
                 }
-            val retained = issuance as? QueryResultIssuance.Issued
+            val retained = issuance
             val candidates =
                 when (val identified = previewCandidates(retained)) {
                     is Refinement.Refined -> identified.value
@@ -313,7 +322,8 @@ internal class QueryInvocationProjection(
             val rows = candidates.take(end)
             val bytes = policy.previewBytes(rows)
             if (bytes !in 2..policy.previewBytesLimit.value) return contractFailure()
-            val retention = previewRetention(issuance)
+            val retention =
+                issuance?.let { QueryResultRetention.Retained(it.reference) } ?: QueryResultRetention.NotRequested
             val window = retained?.let { issued ->
                 QueryRetainedPresentationWindow.create(
                         issued.reference,
@@ -329,9 +339,7 @@ internal class QueryInvocationProjection(
                         preview =
                             if (end == count) QueryPreviewDocument.Inline(end, bytes)
                             else QueryPreviewDocument.Prefix(end, bytes),
-                        stop =
-                            if (retention == QueryResultRetention.CapacityExceeded) QueryInvocationStop.RETENTION_FAILED
-                            else accumulated.stop,
+                        stop = accumulated.stop,
                         failure = originalFailure,
                     )
                     .required()

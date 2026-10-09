@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:3ef98a09ffcfccfc9691320341b85567c48ea4b5a9662283025c5e08f2bb4f0c",
+  "pageVersion": "sha256:9463cd678b62774abdda5c66c9be42e69209af593abadffe534044c0adbd141f",
   "claims": [
     {
       "id": "claim_d5f49799d6a64a78a95f34b3ba0fa09a",
@@ -38,7 +38,7 @@
       "evidence": [
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt",
-          "version": "repo-file-v1:sha256:69e1e71c1e5263328f330378ed4c3a9c2b90e4c675ae62cf5850d1cfd5485d6c"
+          "version": "repo-file-v1:sha256:5485446c78e3c179bf221f262b01907eece061aee7a0752c56400c0298451d57"
         }
       ]
     },
@@ -110,7 +110,7 @@
       "evidence": [
         {
           "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt",
-          "version": "repo-file-v1:sha256:c3129f33c901a8e05e7dc7874b97a5719bd644ce1340538331b2505751d8138b"
+          "version": "repo-file-v1:sha256:d23b0e45db2bfe8dd606c91ff52dcdb2d40d4d791f4e4414ef305c20c70b5e5b"
         }
       ]
     },
@@ -166,19 +166,19 @@
     },
     {
       "id": "claim_9631e8c5a90e442f94b16206c07b3094",
-      "statement": "Public contract version13 and generated Pi/Copilot catalog admission require compatible versions before registration, preserving required branch evidence and local addresses.",
+      "statement": "Public contract version14 and generated Pi/Copilot catalog admission require compatible versions before registration, preserving required branch evidence and local addresses.",
       "evidence": [
         {
           "resource": "repo://copilot/extension.mjs",
-          "version": "repo-file-v1:sha256:e39346c2e34e494d527c7fcaa4f0ad94c9a5d15a3f8f22ace82af8331dba63d6"
+          "version": "repo-file-v1:sha256:80473b22b4748e3a23f2f135293cbdf0295830f2c20b14b2e7e000e9dd37fff8"
         },
         {
           "resource": "repo://pi/extension.ts",
-          "version": "repo-file-v1:sha256:4796cf9684ded6bd91211af3d96c74fdaf5a00b1cc221122243685c7255b01e7"
+          "version": "repo-file-v1:sha256:0a94c048c920c44425f817fe8e1f02db47df1f0150fa352d48d843d98c336975"
         },
         {
           "resource": "repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt",
-          "version": "repo-file-v1:sha256:ba2c064d055c4f897fc05ce53deac8e5d7fe6cbd4121184e9b8793cf80b20a18"
+          "version": "repo-file-v1:sha256:a683e4c1e010a74b32c33bbc10a72e2f38e42fc944380c070a641092e933096f"
         }
       ]
     },
@@ -188,11 +188,11 @@
       "evidence": [
         {
           "resource": "repo://cli/src/test/js/harness-adapters.test.mjs",
-          "version": "repo-file-v1:sha256:f071440987eb12772df22e94f5064beefb34b9c2f7e47beaac6af4de3491f314"
+          "version": "repo-file-v1:sha256:23f3b65560b5b7076589b8a8e4c1b0aa4588f019f1e9338a574002c11a82eeac"
         },
         {
           "resource": "repo://copilot/extension.mjs",
-          "version": "repo-file-v1:sha256:e39346c2e34e494d527c7fcaa4f0ad94c9a5d15a3f8f22ace82af8331dba63d6"
+          "version": "repo-file-v1:sha256:80473b22b4748e3a23f2f135293cbdf0295830f2c20b14b2e7e000e9dd37fff8"
         },
         {
           "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt",
@@ -200,7 +200,7 @@
         },
         {
           "resource": "repo://pi/extension.ts",
-          "version": "repo-file-v1:sha256:4796cf9684ded6bd91211af3d96c74fdaf5a00b1cc221122243685c7255b01e7"
+          "version": "repo-file-v1:sha256:0a94c048c920c44425f817fe8e1f02db47df1f0150fa352d48d843d98c336975"
         }
       ]
     },
@@ -272,7 +272,7 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt",
-          "version": "repo-file-v1:sha256:9a63296cee5ad42f57a4bbdd3a92848dc91d2bc35258b105f71a1ea043442d9f"
+          "version": "repo-file-v1:sha256:90a9f73d789e5ab379f04ee15db525a1e1d3f9d783d1b1023292707fa782da3b"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidenceRead.kt",
@@ -280,13 +280,31 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt",
-          "version": "repo-file-v1:sha256:bf4c44397d1bd05505517f3cf2b48f6cca3a1f087728160ecff14f28484ff5b6"
+          "version": "repo-file-v1:sha256:e6f788df208a5c43692b732f634d1286139da3f802abd915b4429f9b3181fc0a"
+        }
+      ]
+    },
+    {
+      "id": "claim_31a0291d73df40e9a8a6f5bd9b1985e2",
+      "statement": "Query retention success has only not_requested and retained with an issued reference. Required storage failure preserves original coverage in typed completion rejection with the finite RETENTION_UNAVAILABLE cause, and no capacity-exceeded success variant remains.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionCauseDocument.kt",
+          "version": "repo-file-v1:sha256:93cc7f431827711dc4646c3750cbe80ac39dd33eb6d12879e5fffaf25550e767"
+        },
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt",
+          "version": "repo-file-v1:sha256:fcfe9fdddff542a6a55d64ce2abe99184d43be86dc09bf5235a0305c42108b42"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt",
+          "version": "repo-file-v1:sha256:e6f788df208a5c43692b732f634d1286139da3f802abd915b4429f9b3181fc0a"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-09T14:26:30.997Z"
+    "at": "2026-10-09T15:03:18.986Z"
   }
 }

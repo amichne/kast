@@ -3,7 +3,6 @@ package io.github.amichne.kast.runtime.hosted
 import io.github.amichne.kast.query.contract.QueryRetainedResultFailure
 import io.github.amichne.kast.query.protocol.QueryResultRetentionEvidence
 import io.github.amichne.kast.query.protocol.QueryResultRetentionIssue
-import io.github.amichne.kast.query.protocol.QueryResultRetentionScope
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
@@ -13,25 +12,19 @@ import org.junit.jupiter.api.Test
 
 class HostedQueryResultRetentionObservationTest {
     @Test
-    fun `pending and original capture success retain distinct scope counters and existing retention phase`() {
+    fun `the sole capture owner retains bounded started and captured counters`() {
         val observation = Observation()
         val adapter = hostedQueryResultRetentionObservation(observation)
-        for (scope in QueryResultRetentionScope.entries) {
-            adapter.observe(QueryResultRetentionEvidence.CaptureStarted(scope))
-            adapter.observe(QueryResultRetentionEvidence.Captured(scope))
-        }
+        adapter.observe(QueryResultRetentionEvidence.CaptureStarted)
+        adapter.observe(QueryResultRetentionEvidence.Captured)
         assertEquals(
             listOf(
-                IntellijReadCounter.QUERY_RETENTION_PRESENTED_CAPTURE_STARTED,
-                IntellijReadCounter.QUERY_RETENTION_PRESENTED_CAPTURED,
-                IntellijReadCounter.QUERY_RETENTION_PENDING_IMPACT_CAPTURE_STARTED,
-                IntellijReadCounter.QUERY_RETENTION_PENDING_IMPACT_CAPTURED,
-                IntellijReadCounter.QUERY_RETENTION_ORIGINAL_CAPTURE_STARTED,
-                IntellijReadCounter.QUERY_RETENTION_ORIGINAL_CAPTURED,
+                IntellijReadCounter.QUERY_RETENTION_CAPTURE_STARTED,
+                IntellijReadCounter.QUERY_RETENTION_CAPTURED,
             ),
             observation.counters,
         )
-        assertEquals(List(6) { IntellijReadPhase.RETENTION }, observation.phases)
+        assertEquals(List(2) { IntellijReadPhase.RETENTION }, observation.phases)
     }
 
     @Test

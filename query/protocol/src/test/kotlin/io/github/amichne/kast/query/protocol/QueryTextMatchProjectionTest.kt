@@ -71,14 +71,20 @@ class QueryTextMatchProjectionTest {
                     executions++
                     check(executions == 1) { "Retained presentation must not execute semantic discovery" }
                     QueryExecutionResult.Complete.create(
-                        QueryResult(QueryRows.Symbols.of(listOf(row)), emptyList()),
-                        QueryCoverage.Complete(QueryCount.parse(1).refined()),
-                    )
+                            QueryResult(QueryRows.Symbols.of(listOf(row)), emptyList()),
+                            QueryCoverage.Complete(QueryCount.parse(1).refined()),
+                        )
+                        .observedWork(io.github.amichne.kast.query.contract.QueryWorkCount.parse(1).refined())
                 },
                 fixture.references,
             )
         val first =
-            protocol.executePage(retainedTextRequest(output), fixture.authority, budget()) as OperationOutcome.Complete
+            protocol.execute(
+                retainedTextRequest(output),
+                fixture.authority,
+                budget(),
+                retainedQueryTestPolicy(budget()),
+            ) as OperationOutcome.Complete
         val reference = (first.evidence.payload.retention as QueryResultRetention.Retained).reference
         val read =
             protocol.executePage(

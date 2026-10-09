@@ -185,7 +185,9 @@ class QueryRetainedRowAdmissionTest {
             CanonicalQueryProtocol(
                 QueryOperations { request ->
                     when (val plan = request.plan) {
-                        is AdmittedQueryPlan.Symbols -> completeRows()
+                        is AdmittedQueryPlan.Symbols ->
+                            completeRows()
+                                .observedWork(io.github.amichne.kast.query.contract.QueryWorkCount.parse(1).refined())
                         is AdmittedQueryPlan.Retained -> {
                             selected = plan.source as QueryRetainedResult.Symbols
                             emptyExecution()
@@ -200,10 +202,11 @@ class QueryRetainedRowAdmissionTest {
                 store,
             )
         val first =
-            protocol.executePage(
+            protocol.execute(
                 run(QueryFromDocument.Symbols(discovery())).copy(retention = QueryRetentionModeDocument.RETAIN),
                 fixture.authority,
                 budget,
+                retainedQueryTestPolicy(budget),
             ) as OperationOutcome.Complete
         val retained = first.evidence.payload.retention as QueryResultRetention.Retained
         val item = first.evidence.payload.items.values[1] as QueryResultItemDocument.ExactSymbol
@@ -361,13 +364,13 @@ class QueryRetainedRowAdmissionTest {
             QueryScopeDocument(bounded(listOf(ProtocolText.parse("main").refined())), null, null),
             bounded(listOf(QueryDeclarationKindDocument.CLASS)),
         )
-
-    private fun emptyExecution() =
-        QueryExecutionResult.Complete.create(
-            QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
-            QueryCoverage.Complete(QueryCount.parse(0).refined()),
-        )
 }
+
+private fun emptyExecution() =
+    QueryExecutionResult.Complete.create(
+        QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
+        QueryCoverage.Complete(QueryCount.parse(0).refined()),
+    )
 
 private fun <Value> bounded(values: List<Value>) = BoundedProtocolList.create(values).refined()
 

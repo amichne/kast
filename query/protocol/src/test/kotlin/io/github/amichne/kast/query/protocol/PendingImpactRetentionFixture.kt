@@ -74,7 +74,7 @@ internal class PendingImpactRetentionFixture {
         }
     val store = QueryStateStore(clock = { 0 })
     val observed = mutableListOf<QueryResultRetentionEvidence>()
-    val projection = QueryOutcomeProjection(symbols.references, store, QueryResultRetentionObservation(observed::add))
+    val projection = QueryOutcomeProjection(symbols.references, store)
     val request =
         QueryRunRequest.Run(
             from =
