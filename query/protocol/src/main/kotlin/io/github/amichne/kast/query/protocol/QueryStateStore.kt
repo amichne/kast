@@ -213,7 +213,6 @@ class QueryStateStore(
         result: QueryRetainedResult,
         protectedCheckpoint: QueryExecutionContinuation.Pipeline? = null,
         publicationOwner: QueryExecutionClaim? = null,
-        evidenceMode: QueryRetainedEvidenceMode = QueryRetainedEvidenceMode.WHOLE,
     ): QueryResultIssuance {
         if (lifetime == Lifetime.RETIRED || publicationOwner != null && !owns(publicationOwner))
             return QueryResultIssuance.Unavailable
@@ -231,8 +230,7 @@ class QueryStateStore(
                 is Refinement.Rejected -> error("A generated result reference must satisfy its syntax")
             }
         val rowIds = java.util.Collections.unmodifiableList(List(rowCount) { generatedRowReference() })
-        entries[Key.Result(reference)] =
-            Entry.Result(normalized, result, rowIds, evidenceMode, clock(), bytes, publicationOwner)
+        entries[Key.Result(reference)] = Entry.Result(normalized, result, rowIds, clock(), bytes, publicationOwner)
         retainedBytes()
         return QueryResultIssuance.Issued(reference, rowIds)
     }
@@ -250,7 +248,7 @@ class QueryStateStore(
         if (!entries.inputAvailable(key, publicationOwner, transientClaims, clock(), ttlMillis))
             return QueryResultRestoration.Unavailable
         if (entry.lease != lease) return QueryResultRestoration.StaleBasis
-        return QueryResultRestoration.Restored(entry.request, entry.result, entry.rowIds, entry.evidenceMode)
+        return QueryResultRestoration.Restored(entry.request, entry.result, entry.rowIds)
     }
 
     @Synchronized

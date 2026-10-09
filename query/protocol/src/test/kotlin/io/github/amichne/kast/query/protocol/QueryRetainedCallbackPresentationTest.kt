@@ -67,6 +67,8 @@ class QueryRetainedCallbackPresentationTest {
                 budget,
             ) as OperationOutcome.Complete
         assertEquals(0, first.evidence.payload.items.values.size)
+        assertEquals(3, first.evidence.payload.evidenceWindow!!.total.value)
+        assertNull(first.evidence.payload.evidenceWindow!!.nextCursor)
         val projected = first.evidence.payload.relationObservations.values.flatMap { it.callbackObservations.values }
         assertEquals(listOf(1, 2, 3), projected.map { it.occurrence.range.startInclusive.value })
         assertEquals(3, projected.map { it.occurrence.candidateSelector }.distinct().size)
@@ -106,6 +108,8 @@ class QueryRetainedCallbackPresentationTest {
                     budget,
                 ) as OperationOutcome.Complete
         assertEquals(0, result.evidence.payload.items.values.size)
+        assertEquals(3, result.evidence.payload.evidenceWindow!!.total.value)
+        assertNull(result.evidence.payload.evidenceWindow!!.nextCursor)
         val projected = result.evidence.payload.relationObservations.values.flatMap { it.callableObservations.values }
         assertEquals(listOf(1, 2, 3), projected.map { it.occurrence.range.startInclusive.value })
         assertEquals(3, projected.map { it.occurrence.candidateSelector }.distinct().size)
@@ -119,7 +123,7 @@ class QueryRetainedCallbackPresentationTest {
     @Test
     fun `zero row evidence continuations preserve exact callable occurrence authority`() = runTest {
         val units = callableObservation().evidenceUnits()
-        val paged = issueCallbackEvidence(units, QueryRetainedEvidenceMode.PAGED)
+        val retained = issueCallbackEvidence(units)
         val protocol = callbackProtocol()
         var evidenceCursor: io.github.amichne.kast.protocol.contract.QueryEvidenceCursor? = null
         val pageBudget = budget.copy(resources = budget.resources.copy(resultLimit = ResultLimit.parse(1).refined()))
@@ -127,7 +131,7 @@ class QueryRetainedCallbackPresentationTest {
             val page =
                 protocol.execute(
                     QueryRunRequest.ReadResult.symbols(
-                        paged.reference,
+                        retained.reference,
                         output = QueryOutputDocument.Symbols(bounded(emptyList())),
                         evidenceCursor = evidenceCursor,
                     ),
@@ -261,8 +265,7 @@ class QueryRetainedCallbackPresentationTest {
     }
 
     private fun issueCallbackEvidence(
-        units: List<io.github.amichne.kast.query.contract.QueryRelationObservation>,
-        evidenceMode: QueryRetainedEvidenceMode = QueryRetainedEvidenceMode.WHOLE,
+        units: List<io.github.amichne.kast.query.contract.QueryRelationObservation>
     ): QueryResultIssuance.Issued {
         val execution =
             QueryExecutionResult.Complete.create(
@@ -276,7 +279,6 @@ class QueryRetainedCallbackPresentationTest {
         return store.issueResult(
             run(QueryOutputDocument.Symbols(bounded(emptyList()))),
             QueryRetainedResult.capture(fixture.authority, execution).refined(),
-            evidenceMode = evidenceMode,
         ) as QueryResultIssuance.Issued
     }
 
