@@ -29,8 +29,8 @@ enum class PublicToolIdentity(
             " with a retained result reference and its cursor, and READ_SOURCE only with an issued candidateSel" +
             "ector as candidateRef. These capabilities are distinct. Set retention RETAIN for later presentatio" +
             "n. Budgets share one admitted grant and remain subject to host ceilings. The schema also defines o" +
-            "ne-hop EXPAND_RELATION, WALK, predicates, retained composition, joins, and value IMPACT; choose th" +
-            "em only for those specific questions.",
+            "ne-hop EXPAND_RELATION, graph walk with WALK, predicates, retained composition, joins, and value I" +
+            "MPACT; choose them only for those specific questions.",
         HostedToolLoading.EAGER,
     ),
     CHECK_DIAGNOSTICS("check_diagnostics", CanonicalOperation.DIAGNOSTIC_CHECK,
