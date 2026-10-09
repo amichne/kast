@@ -15,6 +15,7 @@ internal class HostedReadDiagnostics(
     private val clock: () -> Long,
     private val limits: ReadLimits = ReadLimits.Default,
     private val publishPhase: (HostedNativePhaseEntry) -> Unit = {},
+    private val publishCall: (HostedReadCallStarted) -> Unit = {},
     private val publish: (HostedReadDiagnosticReceipt) -> Unit,
 ) : IntellijReadObservation {
     private val started = clock()
@@ -24,6 +25,15 @@ internal class HostedReadDiagnostics(
     private var phaseStarted = 0L
     private val stages = linkedMapOf<HostedQueryStage, Long>()
     private val counters = initialHostedReadCounters()
+    private val calls =
+        HostedReadCallAccounting(::elapsed, limits[ReadLimitParameter.DIAGNOSTIC_COUNT].value.toLong()) {
+            call,
+            parent,
+            entered ->
+            publishCall(HostedReadCallStarted(readId.toString(), call, parent, entered))
+        }
+
+    override fun enterCall(call: IntellijReadCall): IntellijReadCallScope = calls.enter(call)
 
     private val gauges = linkedMapOf<IntellijReadGauge, IntellijReadGaugeValue>()
     private val terminations = linkedSetOf<Pair<IntellijReadTermination, IntellijReadContributor>>()
@@ -128,6 +138,7 @@ internal class HostedReadDiagnostics(
                 nativePhase,
                 phaseDurations.map { HostedNativePhaseDuration(it.key, it.value) },
                 gauges.map { HostedNativeGauge(it.key, it.value) },
+                calls.finish(),
             )
         )
     }
@@ -214,6 +225,7 @@ internal data class HostedReadDiagnosticReceipt(
     val nativePhase: HostedNativePhaseState = HostedNativePhaseState.NotEntered,
     val nativePhaseDurations: List<HostedNativePhaseDuration> = emptyList(),
     val gauges: List<HostedNativeGauge> = emptyList(),
+    val nativeCalls: List<HostedReadCallCount> = emptyList(),
 )
 
 /** A completed read transaction and its evaluator's semantic classification are distinct facts. */
@@ -236,12 +248,16 @@ internal fun hostedReadDiagnostics(limits: ReadLimits = ReadLimits.Default): Hos
             Logger.getInstance(HostedReadDiagnostics::class.java)
                 .info("kast_semantic_phase " + diagnosticOutcomeJson.encodeToString(phase))
         },
+        publishCall = { call ->
+            Logger.getInstance(HostedReadDiagnostics::class.java)
+                .info("kast_native_call " + diagnosticOutcomeJson.encodeToString(call))
+        },
     )
 
 internal fun HostedReadDiagnosticReceipt.encode(): String =
     diagnosticOutcomeJson.encodeToString(
         HostedReadDiagnosticDocument(
-            schemaVersion = 6,
+            schemaVersion = 7,
             limits =
                 limits.values.map {
                     HostedLimitDocument(it.parameter.name, it.value, it.parameter.unit.name, it.source.name)
@@ -267,6 +283,7 @@ internal fun HostedReadDiagnosticReceipt.encode(): String =
             nativePhase = nativePhase,
             nativePhaseDurations = nativePhaseDurations,
             counters = counters,
+            nativeCalls = nativeCalls,
             gauges = gauges,
             terminations = terminations,
             outcome =
@@ -303,6 +320,8 @@ private data class HostedReadDiagnosticDocument(
     val semanticEntry: HostedEntryDocument,
     val semanticBudget: HostedSemanticBudgetObservation,
     val counters: List<HostedNativeCount>,
+    val nativeCalls: List<HostedReadCallCount>,
+    val nativeCallVocabulary: List<IntellijReadCall> = IntellijReadCall.entries,
     val gauges: List<HostedNativeGauge>,
     val terminations: List<HostedNativeTermination>,
     val outcome: HostedDiagnosticOutcomeDocument,

@@ -985,6 +985,72 @@ def stable_semantics(responses):
                 referenceObservations=references, discoveryUniverses=universes, discoveryCompletion=discovery_progress)
 
 
+class NativeCallMeasurementFailure(str, Enum):
+    MISSING = 'NATIVE_CALL_COUNTS_UNAVAILABLE'
+    INVALID = 'NATIVE_CALL_COUNTS_INVALID'
+    SATURATED = 'NATIVE_CALL_COUNTS_SATURATED'
+    UNFINISHED = 'NATIVE_CALL_COUNTS_UNFINISHED'
+    INTERRUPTED = 'NATIVE_CALL_COUNTS_INTERRUPTED'
+
+
+@dataclass(frozen=True)
+class ObservedNativeCallCounts:
+    counts: dict[str, int]
+
+
+@dataclass(frozen=True)
+class UnavailableNativeCallCounts:
+    failure: NativeCallMeasurementFailure
+
+
+def native_call_counts(receipt):
+    """Exact invocations at declared boundaries; no estimate of opaque executor work or time weights."""
+    vocabulary, rows = receipt.get('nativeCallVocabulary'), receipt.get('nativeCalls')
+    def rejected(reason=NativeCallMeasurementFailure.INVALID):
+        return UnavailableNativeCallCounts(reason)
+    if vocabulary is None or rows is None: return rejected(NativeCallMeasurementFailure.MISSING)
+    if (not isinstance(vocabulary, list) or not vocabulary or len(vocabulary) > 128 or
+            any(not isinstance(name, str) or not name or len(name) > 80 for name in vocabulary) or
+            len(set(vocabulary)) != len(vocabulary) or not isinstance(rows, list) or
+            len(rows) > len(vocabulary) * (len(vocabulary) + 1)): return rejected()
+    declared, roots, seen, totals = set(vocabulary), set(), set(), {name: 0 for name in vocabulary}
+    qualities = set()
+    required = {'call', 'parent', 'entered', 'returned', 'cancelled', 'failed', 'unfinished',
+                'qualification', 'firstEntry', 'durationNanos'}
+    for row in rows:
+        if not isinstance(row, dict) or set(row) != required: return rejected()
+        kind, parent = row['call'], row['parent']
+        if not isinstance(kind, str) or kind not in declared or not isinstance(parent, dict): return rejected()
+        if parent == {'type': 'root'}:
+            parent_key = 'ROOT'
+            roots.add(kind)
+        elif set(parent) == {'type', 'call'} and parent['type'] == 'call' and isinstance(parent['call'], str) and parent['call'] in declared:
+            parent_key = parent['call']
+        else: return rejected()
+        key = (kind, parent_key)
+        if key in seen: return rejected()
+        seen.add(key)
+        if any(type(row[field]) is not int or row[field] < 0 for field in
+               ('entered', 'returned', 'cancelled', 'failed', 'unfinished', 'durationNanos')): return rejected()
+        if row['qualification'] not in ('EXACT', 'SATURATED'): return rejected()
+        entry = row['firstEntry']
+        if row['entered'] == 0:
+            if entry != {'type': 'not-entered'}: return rejected()
+        elif (not isinstance(entry, dict) or set(entry) != {'type', 'nanos'} or entry['type'] != 'entered' or
+              type(entry['nanos']) is not int or entry['nanos'] < 0): return rejected()
+        if row['qualification'] == 'SATURATED': qualities.add(NativeCallMeasurementFailure.SATURATED)
+        elif row['entered'] != sum(row[field] for field in ('returned', 'cancelled', 'failed', 'unfinished')):
+            return rejected()
+        if row['unfinished']: qualities.add(NativeCallMeasurementFailure.UNFINISHED)
+        if row['cancelled'] or row['failed']: qualities.add(NativeCallMeasurementFailure.INTERRUPTED)
+        totals[kind] += row['entered']
+    if roots != declared: return rejected()
+    for reason in (NativeCallMeasurementFailure.SATURATED, NativeCallMeasurementFailure.UNFINISHED,
+                   NativeCallMeasurementFailure.INTERRUPTED):
+        if reason in qualities: return rejected(reason)
+    return ObservedNativeCallCounts(totals)
+
+
 def finish_trial(workload, repetition, warmup, calls, total_nanos, first_usable, profile=WorkloadProfile.RELIABILITY_FIXTURE):
     unavailable, responses = [], [c.response for c in calls if c.response is not None]
     semantic = None
@@ -1054,6 +1120,13 @@ def finish_trial(workload, repetition, warmup, calls, total_nanos, first_usable,
                 if ceiling is not None and count['count'] >= ceiling: unavailable.append('COUNTER_SATURATED')
                 key = count['counter'] + '/' + count['contributor']
                 counters[key] = counters.get(key, 0) + count['count']
+            if receipt.get('schemaVersion', 0) >= 7:
+                native = native_call_counts(receipt)
+                if isinstance(native, UnavailableNativeCallCounts): unavailable.append(native.failure.value)
+                else:
+                    for kind, count in native.counts.items():
+                        key = 'NATIVE_CALLS/' + kind
+                        counters[key] = counters.get(key, 0) + count
             # Per-call vectors are kept separate. Stage and phase clocks overlap; never add them together.
             phases.append(receipt['nativePhaseDurations'])
             stages.append(receipt['stages'])

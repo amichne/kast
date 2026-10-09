@@ -12,7 +12,7 @@ import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import org.jetbrains.kotlin.analysis.api.analyze
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaFunctionType
 import org.jetbrains.kotlin.psi.KtCallElement
@@ -83,7 +83,7 @@ internal class IntellijSelectedCallbackSupplies(
                         is SelectedCallbackCall.Mapped -> selectedCall
                     }
             }
-        if (returnsCallable(mapped.function)) return deferredFactory(call, lexicalOwner)
+        if (returnsCallable(mapped.function, context.observation)) return deferredFactory(call, lexicalOwner)
         val invocation =
             when (val admitted = invocation(call, lexicalOwner, mapped.function)) {
                 is Refinement.Refined -> admitted.value
@@ -221,7 +221,7 @@ internal class IntellijSelectedCallbackSupplies(
     }
 
     private fun map(call: KtCallElement): Refinement<SelectedCallbackCall, CallbackInvocationFlowCause> =
-        analyze(call) { selectedCall(call) }
+        context.observation.observedAnalyze(call) { selectedCall(call) }
 
     private fun org.jetbrains.kotlin.analysis.api.KaSession.selectedCall(
         call: KtCallElement

@@ -3,12 +3,10 @@
 package io.github.amichne.kast.relation.intellij
 
 import com.intellij.psi.PsiReference
-import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PsiTreeUtil
-import com.intellij.util.Processor
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
-import org.jetbrains.kotlin.analysis.api.analyze
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtImportDirective
@@ -38,7 +36,7 @@ internal fun callbackFactoryCalls(
         if (call.calleeExpression?.textRange?.contains(reference.element.textRange) != true)
             return Refinement.Rejected(CallbackInvocationFlowCause.PARAMETER_ESCAPES)
         val exact =
-            analyze(call) {
+            context.observation.observedAnalyze(call) {
                 val symbol = call.resolveCall()?.signature?.symbol as? KaNamedFunctionSymbol
                 symbol?.psi?.originalElement == function.originalElement
             }
@@ -57,8 +55,7 @@ private class CallbackFactoryReferenceCollector(
     private var outcome: Refinement<Unit, CallbackInvocationFlowCause> = Refinement.Refined(Unit)
 
     fun collect(function: KtNamedFunction): Refinement<List<PsiReference>, CallbackInvocationFlowCause> {
-        val exhausted =
-            ReferencesSearch.search(function, context.scope.nativeScope, false).forEach(Processor(::process))
+        val exhausted = context.observation.forEachReference(function, context.scope.nativeScope, false, ::process)
         return when (val admitted = outcome) {
             is Refinement.Rejected -> admitted
             is Refinement.Refined ->

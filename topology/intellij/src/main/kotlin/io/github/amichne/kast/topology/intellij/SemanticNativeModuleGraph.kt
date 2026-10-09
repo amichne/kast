@@ -11,6 +11,8 @@ import io.github.amichne.kast.topology.contract.SemanticModuleDependencies
 import io.github.amichne.kast.workspace.contract.ModelOwnedSourceRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceModuleIdentity
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
+import io.github.amichne.kast.workspace.intellij.read.call
 import org.jetbrains.kotlin.idea.facet.KotlinFacet
 
 internal class SemanticNativeModuleGraph(
@@ -44,7 +46,8 @@ internal class SemanticNativeModuleGraphCapture(
         project: Project,
         model: WorkspaceSearchScopeModel,
     ): SemanticCapture<Map<WorkspaceModuleIdentity, Module>> {
-        val modules = ModuleManager.getInstance(project).modules
+        val modules =
+            budget.observation.call(IntellijReadCall.MODULE_INVENTORY) { ModuleManager.getInstance(project).modules }
         if (modules.size > limits[ReadLimitParameter.MODEL_MODULES].value)
             return captureRejected(SemanticDependencyCaptureFailure.CAPACITY_EXCEEDED)
         val byName = modules.groupBy(Module::getName)
@@ -67,12 +70,21 @@ internal class SemanticNativeModuleGraphCapture(
             is Refinement.Rejected -> return spent
             is Refinement.Refined -> Unit
         }
-        val names = ModuleRootManager.getInstance(module).dependencies.mapTo(linkedSetOf(), Module::getName)
-        KotlinFacet.get(module)?.configuration?.settings?.let { settings ->
-            names += settings.additionalVisibleModuleNames
-            names += settings.dependsOnModuleNames
-            names += settings.implementedModuleNames
-        }
+        val names =
+            budget.observation
+                .call(IntellijReadCall.MODULE_DEPENDENCIES) {
+                    ModuleRootManager.getInstance(module).dependencies
+                }
+                .mapTo(linkedSetOf(), Module::getName)
+        budget.observation
+            .call(IntellijReadCall.KOTLIN_FACET) { KotlinFacet.get(module) }
+            ?.configuration
+            ?.settings
+            ?.let { settings ->
+                names += settings.additionalVisibleModuleNames
+                names += settings.dependsOnModuleNames
+                names += settings.implementedModuleNames
+            }
         if (names.size > limits[ReadLimitParameter.MODEL_MODULES].value)
             return captureRejected(SemanticDependencyCaptureFailure.CAPACITY_EXCEEDED)
         val dependencies = linkedSetOf<WorkspaceModuleIdentity>()

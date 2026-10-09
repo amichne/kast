@@ -1,8 +1,6 @@
 package io.github.amichne.kast.relation.intellij
 
 import com.intellij.psi.PsiNamedElement
-import com.intellij.psi.search.searches.DefinitionsScopedSearch
-import com.intellij.util.Processor
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.relation.contract.RelationProviderLocator
 import io.github.amichne.kast.relation.contract.RelationProviderState
@@ -22,32 +20,29 @@ internal class IntellijDefinitionInventory(
         observation.phase(IntellijReadPhase.DEFINITION_INVENTORY)
         val inventory = IntellijRelationInventory<RelationProviderLocator.Definition>(collector, limits, observation)
         val exhausted =
-            DefinitionsScopedSearch.search(subject, scope.nativeScope, false)
-                .forEach(
-                    Processor { provider ->
-                        cancellationCheck()
-                        when (scope.admitProviderSite(provider.containingFile?.virtualFile)) {
-                            RelationProviderScopeAdmission.ADMITTED ->
-                                if (
-                                    collector.admitProviderCandidate() !=
-                                        IntellijRelationProviderEnumerationAdmission.READY
-                                )
-                                    false
-                                else inventory.append(locators.definition(provider))
-                            RelationProviderScopeAdmission.SOURCE_DOMAIN_EXCLUDED,
-                            RelationProviderScopeAdmission.LIBRARY_POLICY_EXCLUDED -> {
-                                observation.count(
-                                    io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter.SCOPE_FILTERED
-                                )
-                                true
-                            }
-                            RelationProviderScopeAdmission.UNAVAILABLE ->
-                                collector.blockPartition(
-                                    io.github.amichne.kast.relation.contract.RelationLimitation.PROVIDER_INCOMPLETE
-                                )
-                        }
-                    }
+            observation.forEachDefinition(subject, scope.nativeScope) { provider ->
+                if (
+                    collector.admitProviderCallback(cancellationCheck) !=
+                        IntellijRelationProviderEnumerationAdmission.READY
                 )
+                    return@forEachDefinition false
+                when (scope.admitProviderSite(provider.containingFile?.virtualFile)) {
+                    RelationProviderScopeAdmission.ADMITTED ->
+                        collector.admitProviderCandidate() == IntellijRelationProviderEnumerationAdmission.READY &&
+                            inventory.append(locators.definition(provider))
+                    RelationProviderScopeAdmission.SOURCE_DOMAIN_EXCLUDED,
+                    RelationProviderScopeAdmission.LIBRARY_POLICY_EXCLUDED -> {
+                        observation.count(
+                            io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter.SCOPE_FILTERED
+                        )
+                        true
+                    }
+                    RelationProviderScopeAdmission.UNAVAILABLE ->
+                        collector.blockPartition(
+                            io.github.amichne.kast.relation.contract.RelationLimitation.PROVIDER_INCOMPLETE
+                        )
+                }
+            }
         return inventory.finish(exhausted, RelationProviderState::definitions)
     }
 }

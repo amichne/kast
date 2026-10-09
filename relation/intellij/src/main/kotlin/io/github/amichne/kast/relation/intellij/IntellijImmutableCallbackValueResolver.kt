@@ -141,7 +141,7 @@ internal class IntellijImmutableCallbackValueResolver(
                     .filterNot { it is KtInvokeFunctionReference }
                     .singleOrNull() ?: return rejected(CallbackInvocationFlowCause.UNRESOLVED_PARAMETER_REFERENCE)
             val declaration =
-                when (val resolved = resolveLocalValueReference(reference)) {
+                when (val resolved = resolveLocalValueReference(reference, context.observation)) {
                     is NativeLocalValueReferenceResolution.Resolved -> resolved.declaration
                     NativeLocalValueReferenceResolution.Unresolved ->
                         return rejected(CallbackInvocationFlowCause.UNRESOLVED_PARAMETER_REFERENCE)

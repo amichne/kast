@@ -20,6 +20,8 @@ import io.github.amichne.kast.workspace.contract.ModelOwnedSourceRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceModuleIdentity
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
 import io.github.amichne.kast.workspace.contract.WorkspaceSourcePath
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
+import io.github.amichne.kast.workspace.intellij.read.call
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -110,7 +112,12 @@ internal class SemanticNativeModuleInputs(
         sdkDigest.text(sdk.name)
         sdkDigest.text(sdk.sdkType.name)
         sdkDigest.text(version)
-        return files.roots(sdk.rootProvider.getFiles(OrderRootType.CLASSES).toList(), sdkDigest)
+        return files.roots(
+            budget.observation
+                .call(IntellijReadCall.SDK_CLASS_ROOTS) { sdk.rootProvider.getFiles(OrderRootType.CLASSES) }
+                .toList(),
+            sdkDigest,
+        )
     }
 
     private fun classpath(
@@ -121,7 +128,15 @@ internal class SemanticNativeModuleInputs(
         classpathDigest.text("MODULE")
         classpathDigest.text(identity.value)
         when (
-            val hashed = files.roots(manager.orderEntries().recursively().classes().roots.toList(), classpathDigest)
+            val hashed =
+                files.roots(
+                    budget.observation
+                        .call(IntellijReadCall.RECURSIVE_CLASSPATH_ROOTS) {
+                            manager.orderEntries().recursively().classes().roots
+                        }
+                        .toList(),
+                    classpathDigest,
+                )
         ) {
             is Refinement.Rejected -> return hashed
             is Refinement.Refined -> Unit
@@ -139,8 +154,9 @@ internal class SemanticNativeModuleInputs(
             if (!Path.of(path).isAbsolute)
                 return captureRejected(SemanticDependencyCaptureFailure.INPUT_PROVIDER_UNSUPPORTED)
             roots +=
-                LocalFileSystem.getInstance().findFileByPath(path)
-                    ?: return captureRejected(SemanticDependencyCaptureFailure.INPUT_UNAVAILABLE)
+                budget.observation.call(IntellijReadCall.VFS_FIND_FILE) {
+                    LocalFileSystem.getInstance().findFileByPath(path)
+                } ?: return captureRejected(SemanticDependencyCaptureFailure.INPUT_UNAVAILABLE)
         }
         return files.roots(roots, classpathDigest)
     }
@@ -151,7 +167,10 @@ internal class SemanticNativeModuleInputs(
     ): SemanticCapture<NativeSourceRoots> {
         val admitted =
             closure.sourceRoots.filter { it.module == identity }.mapTo(linkedSetOf()) { Path.of(it.sourceRoot.value) }
-        val native = manager.sourceRoots.mapTo(linkedSetOf()) { Path.of(it.path) }
+        val native =
+            budget.observation
+                .call(IntellijReadCall.MODULE_SOURCE_ROOTS) { manager.sourceRoots }
+                .mapTo(linkedSetOf()) { Path.of(it.path) }
         if (!admitted.containsAll(native))
             return captureRejected(SemanticDependencyCaptureFailure.SOURCE_ROOT_INVENTORY_MISMATCH)
         val directories = linkedMapOf<Path, VirtualFile>()
@@ -161,7 +180,10 @@ internal class SemanticNativeModuleInputs(
                 is Refinement.Rejected -> return spent
                 is Refinement.Refined -> Unit
             }
-            val file = LocalFileSystem.getInstance().findFileByPath(path.toString())
+            val file =
+                budget.observation.call(IntellijReadCall.VFS_FIND_FILE) {
+                    LocalFileSystem.getInstance().findFileByPath(path.toString())
+                }
             val presence = presence(path, file)
             observations[path] = presence
             if (presence == SemanticSourceRootPresence.DIRECTORY) directories[path] = checkNotNull(file)

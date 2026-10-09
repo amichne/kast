@@ -21,7 +21,7 @@ import io.github.amichne.kast.relation.contract.ValueTransferKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
-import org.jetbrains.kotlin.analysis.api.analyze
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaErrorType
 import org.jetbrains.kotlin.psi.KtBlockExpression
@@ -228,7 +228,7 @@ internal class IntellijValueFlowNative(
 
     private fun branchResult(branch: KtExpression) {
         val carriesValue =
-            analyze(branch) {
+            observation.observedAnalyze(branch) {
                 when (val type = branch.expressionType) {
                     null,
                     is KaErrorType -> false

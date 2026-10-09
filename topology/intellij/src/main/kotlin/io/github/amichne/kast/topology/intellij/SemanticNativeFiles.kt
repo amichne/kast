@@ -8,6 +8,9 @@ import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.call
 import java.security.MessageDigest
 
 internal typealias SemanticCapture<Value> = Refinement<Value, SemanticDependencyCaptureFailure>
@@ -41,6 +44,7 @@ internal class SemanticNativeFiles(
 
     private fun tree(root: VirtualFile): SemanticCapture<WorkspaceSourceContentHash> {
         trees[root.url]?.let {
+            budget.observation.count(IntellijReadCounter.DEPENDENCY_TREE_MEMO_HITS)
             return Refinement.Refined(it)
         }
         val digest = SemanticInputDigest()
@@ -75,6 +79,7 @@ internal class SemanticNativeFiles(
             if (++count > limits[ReadLimitParameter.DISCOVERY_FILES].value)
                 return captureRejected(SemanticDependencyCaptureFailure.CAPACITY_EXCEEDED)
             val file = pending.removeLast()
+            budget.observation.count(IntellijReadCounter.DEPENDENCY_TREE_ENTRIES_VISITED)
             when (val admitted = validate(file)) {
                 is Refinement.Rejected -> return admitted
                 is Refinement.Refined -> Unit
@@ -96,7 +101,7 @@ internal class SemanticNativeFiles(
         }
 
     private fun children(file: VirtualFile, pending: ArrayDeque<VirtualFile>, count: Int): SemanticCapture<Unit> {
-        val children = file.children
+        val children = budget.observation.call(IntellijReadCall.VFS_CHILDREN) { file.children }
         if (children.size.toLong() + pending.size + count > limits[ReadLimitParameter.DISCOVERY_FILES].value)
             return captureRejected(SemanticDependencyCaptureFailure.CAPACITY_EXCEEDED)
         pending.addAll(children.sortedByDescending { it.url })
@@ -108,35 +113,58 @@ internal class SemanticNativeFiles(
         consume: (VirtualFile) -> SemanticCapture<Unit>,
     ): SemanticCapture<Unit> {
         val documents = FileDocumentManager.getInstance()
-        if (documents.isFileModified(file))
+        if (budget.observation.call(IntellijReadCall.DOCUMENT_DIRTY_CHECK) { documents.isFileModified(file) })
             return captureRejected(SemanticDependencyCaptureFailure.SOURCE_DOCUMENT_DIRTY)
-        val document = documents.getCachedDocument(file)
-        if (document != null && !PsiDocumentManager.getInstance(project).isCommitted(document))
+        val document =
+            budget.observation.call(IntellijReadCall.DOCUMENT_CACHE_LOOKUP) { documents.getCachedDocument(file) }
+        if (
+            document != null &&
+                !budget.observation.call(IntellijReadCall.DOCUMENT_COMMIT_CHECK) {
+                    PsiDocumentManager.getInstance(project).isCommitted(document)
+                }
+        )
             return captureRejected(SemanticDependencyCaptureFailure.SOURCE_DOCUMENT_UNCOMMITTED)
         return consume(file)
     }
 
     fun hash(file: VirtualFile): SemanticCapture<WorkspaceSourceContentHash> {
         hashes[file.url]?.let {
+            budget.observation.count(IntellijReadCounter.DEPENDENCY_HASH_MEMO_HITS)
             return Refinement.Refined(it)
         }
         if (hashes.size >= limits[ReadLimitParameter.DISCOVERY_FILES].value)
             return captureRejected(SemanticDependencyCaptureFailure.CAPACITY_EXCEEDED)
-        val digest = MessageDigest.getInstance("SHA-256")
-        file.inputStream.use { input ->
-            val buffer = ByteArray(FILE_CHUNK_BYTES)
-            while (true) {
-                when (val spent = budget.step()) {
-                    is Refinement.Rejected -> return spent
-                    is Refinement.Refined -> Unit
-                }
-                val size = input.read(buffer)
-                if (size < 0) break
-                digest.update(buffer, 0, size)
-            }
+        return when (
+            val hashed =
+                budget.observation
+                    .call(IntellijReadCall.VFS_OPEN_STREAM) { file.inputStream }
+                    .use { input -> hashSemanticInput(input, budget) }
+        ) {
+            is Refinement.Rejected -> hashed
+            is Refinement.Refined -> hashed.also { hashes[file.url] = it.value }
         }
-        return Refinement.Refined(parsedDigest(digest).also { hashes[file.url] = it })
     }
+}
+
+/** Actual read calls (including EOF) and returned bytes survive partial capture and rejection. */
+internal fun hashSemanticInput(
+    input: java.io.InputStream,
+    budget: DependencyCaptureBudget,
+): SemanticCapture<WorkspaceSourceContentHash> {
+    val digest = MessageDigest.getInstance("SHA-256")
+    val buffer = ByteArray(FILE_CHUNK_BYTES)
+    while (true) {
+        when (val spent = budget.step()) {
+            is Refinement.Rejected -> return spent
+            is Refinement.Refined -> Unit
+        }
+        val size = budget.observation.call(IntellijReadCall.FILE_STREAM_READ) { input.read(buffer) }
+        if (size < 0) break
+        budget.observation.count(IntellijReadCounter.DEPENDENCY_HASH_BYTES_READ, amount = size)
+        digest.update(buffer, 0, size)
+    }
+    budget.observation.count(IntellijReadCounter.DEPENDENCY_HASHES_COMPLETED)
+    return Refinement.Refined(parsedDigest(digest))
 }
 
 private const val FILE_CHUNK_BYTES = 8192

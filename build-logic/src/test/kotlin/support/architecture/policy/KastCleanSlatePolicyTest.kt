@@ -136,6 +136,7 @@ class KastCleanSlatePolicyTest {
                     ModuleId.WORKSPACE_INTELLIJ_READ,
                     ModuleId.RUNTIME_HOSTED,
                 ),
+                ForbiddenEffect.NATIVE_RELATION_SEARCH to setOf(ModuleId.RELATION_INTELLIJ),
                 ForbiddenEffect.PROJECT_FILE_INDEX_AUTHORITY to
                     setOf(ModuleId.WORKSPACE_INTELLIJ_READ),
                 ForbiddenEffect.PROJECT_READ_EPOCH_AUTHORITY to

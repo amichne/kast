@@ -15,7 +15,8 @@ import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import org.jetbrains.kotlin.analysis.api.analyze
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaFunctionType
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -93,7 +94,7 @@ internal class IntellijCallbackFactoryReturn(
 
         fun read(): Refinement<List<ImmutableCallbackValue>, CallbackInvocationFlowCause> {
             val transparent =
-                when (val found = nativeTransparentReturnedParameter(mapped.function)) {
+                when (val found = nativeTransparentReturnedParameter(mapped.function, context.observation)) {
                     NativeTransparentReturnedParameter.Unresolved ->
                         return rejected(CallbackInvocationFlowCause.UNRESOLVED_PARAMETER_REFERENCE)
                     NativeTransparentReturnedParameter.NotTransparent -> null
@@ -183,7 +184,7 @@ internal class IntellijCallbackFactoryReturn(
             captures: List<CallbackFactoryCapture>,
         ): Refinement<List<ImmutableCallbackValue>, CallbackInvocationFlowCause> {
             val returns =
-                when (val found = callbackFactoryReturns(mapped.function, context::permit)) {
+                when (val found = callbackFactoryReturns(mapped.function, context::permit, context.observation)) {
                     is Refinement.Refined -> found.value
                     is Refinement.Rejected -> return found
                 }
@@ -304,7 +305,7 @@ internal class IntellijCallbackFactoryReturn(
     }
 
     private fun map(call: KtCallExpression): Refinement<NativeFactoryCall, CallbackInvocationFlowCause> =
-        analyze(call) { mapFactory(call) }
+        context.observation.observedAnalyze(call) { mapFactory(call) }
 
     private fun org.jetbrains.kotlin.analysis.api.KaSession.mapFactory(
         call: KtCallExpression
@@ -339,8 +340,8 @@ internal class IntellijCallbackFactoryReturn(
     private fun rejected(cause: CallbackInvocationFlowCause) = Refinement.Rejected(cause)
 }
 
-internal fun returnsCallable(function: KtNamedFunction): Boolean =
-    analyze(function) { function.symbol.returnType is KaFunctionType }
+internal fun returnsCallable(function: KtNamedFunction, observation: IntellijReadObservation): Boolean =
+    observation.observedAnalyze(function) { function.symbol.returnType is KaFunctionType }
 
 private const val MAXIMUM_FACTORY_DEPTH = 64
 

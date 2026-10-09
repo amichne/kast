@@ -16,8 +16,10 @@ import io.github.amichne.kast.relation.contract.RelationProviderItemDescriptor
 import io.github.amichne.kast.relation.contract.RelationProviderLocator
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.call
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtCallElement
 
@@ -209,7 +211,7 @@ internal class IntellijRelationLocators(
         val leaf = leaf(locator) ?: return unavailable()
         for (element in generateSequence(leaf) { it.parent }) {
             cancellationCheck()
-            for (reference in element.references) {
+            for (reference in observation.call(IntellijReadCall.PSI_REFERENCES) { element.references }) {
                 if (
                     providerItemDescriptor(
                         reference.element,
@@ -258,14 +260,22 @@ internal class IntellijRelationLocators(
         if (!providerFile.isValid || !scope.nativeScope.contains(providerFile)) return null
         val file = locator.file.restoreFile() ?: return null
         if (!file.isValid) return null
-        val psi = PsiManager.getInstance(project).findFile(file) ?: return null
-        return psi.findElementAt(locator.range.startInclusive)
+        val psi =
+            observation.call(IntellijReadCall.PSI_FIND_FILE) { PsiManager.getInstance(project).findFile(file) }
+                ?: return null
+        return observation.call(IntellijReadCall.PSI_FIND_ELEMENT) { psi.findElementAt(locator.range.startInclusive) }
     }
 
     private fun SymbolDiscoveryFileIdentity.restoreFile(): VirtualFile? =
         when (this) {
-            is SymbolDiscoveryFileIdentity.Workspace -> LocalFileSystem.getInstance().findFileByPath(path.value)
-            is SymbolDiscoveryFileIdentity.External -> VirtualFileManager.getInstance().findFileByUrl(url.value)
+            is SymbolDiscoveryFileIdentity.Workspace ->
+                observation.call(IntellijReadCall.VFS_FIND_FILE) {
+                    LocalFileSystem.getInstance().findFileByPath(path.value)
+                }
+            is SymbolDiscoveryFileIdentity.External ->
+                observation.call(IntellijReadCall.VFS_FIND_FILE) {
+                    VirtualFileManager.getInstance().findFileByUrl(url.value)
+                }
         }
 
     private data class DetachedSite(

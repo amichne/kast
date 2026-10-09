@@ -11,8 +11,8 @@ import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.KaSession
-import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.components.containingSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
@@ -22,24 +22,28 @@ internal fun confirmClassConstruction(
     workspaceRoot: CanonicalWorkspaceRoot,
     observation: IntellijReadObservation,
 ): IntellijK2TargetConfirmation =
-    analyze(admitted.reference.element) {
+    observation.observedAnalyze(admitted.reference.element) {
         if (nativeSymbol(admitted.selectedClass) !is KaClassSymbol)
-            return@analyze unresolvedConstruction(IntellijReadTermination.K2_UNRESOLVED_SYMBOL, observation)
+            return@observedAnalyze unresolvedConstruction(IntellijReadTermination.K2_UNRESOLVED_SYMBOL, observation)
         val resolved =
             admitted.reference.resolveToSymbol()
-                ?: return@analyze unresolvedConstruction(IntellijReadTermination.K2_UNRESOLVED_SYMBOL, observation)
+                ?: return@observedAnalyze unresolvedConstruction(
+                    IntellijReadTermination.K2_UNRESOLVED_SYMBOL,
+                    observation,
+                )
         val constructor =
-            resolved as? KaConstructorSymbol ?: return@analyze IntellijK2TargetConfirmation.DIFFERENT_SYMBOL
+            resolved as? KaConstructorSymbol ?: return@observedAnalyze IntellijK2TargetConfirmation.DIFFERENT_SYMBOL
         val owner =
             constructor.containingSymbol as? KaClassSymbol
-                ?: return@analyze unresolvedConstruction(
+                ?: return@observedAnalyze unresolvedConstruction(
                     IntellijReadTermination.K2_CALLABLE_CONTAINER_UNSUPPORTED,
                     observation,
                 )
         val evidence =
             when (val result = constructorEvidence(owner, workspaceRoot)) {
                 is ConstructorEvidence.Proven -> result.evidence
-                is ConstructorEvidence.Unresolved -> return@analyze unresolvedConstruction(result.reason, observation)
+                is ConstructorEvidence.Unresolved ->
+                    return@observedAnalyze unresolvedConstruction(result.reason, observation)
             }
         when (
             io.github.amichne.kast.relation.contract.RelationConfirmedReferenceTarget.fromCompiler(

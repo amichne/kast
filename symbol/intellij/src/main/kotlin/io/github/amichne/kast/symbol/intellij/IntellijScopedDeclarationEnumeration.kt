@@ -15,6 +15,10 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.call
 import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.kotlin.idea.stubindex.KotlinExactPackagesIndex
 import org.jetbrains.kotlin.psi.KtFile
@@ -82,6 +86,7 @@ internal fun collectScopedKotlinDeclarations(
             workLimit = fileLimit,
             observe = callbacks.observe,
             qualify = callbacks.qualify,
+            observation = callbacks.observation,
             localSourceOnly = localOnly,
         )
     val packageConstraint = request.constraints.packageName
@@ -89,16 +94,21 @@ internal fun collectScopedKotlinDeclarations(
         if (packageConstraint?.containment == SymbolDiscoveryContainment.DIRECT) {
             // Exact package membership is authoritative index evidence before file capacity; no package PSI in
             // callbacks.
-            StubIndex.getInstance().processElements(
-                KotlinExactPackagesIndex.NAME,
-                packageConstraint.packageName.value,
-                project,
-                scope.nativeScope,
-                KtFile::class.java,
-            ) { file ->
-                files.accept(file.virtualFile)
+            callbacks.observation.call(IntellijReadCall.EXACT_PACKAGE_INDEX) {
+                StubIndex.getInstance().processElements(
+                    KotlinExactPackagesIndex.NAME,
+                    packageConstraint.packageName.value,
+                    project,
+                    scope.nativeScope,
+                    KtFile::class.java,
+                ) { file ->
+                    files.accept(file.virtualFile)
+                }
             }
-        } else FileTypeIndex.processFiles(KotlinFileType.INSTANCE, files::accept, scope.nativeScope)
+        } else
+            callbacks.observation.call(IntellijReadCall.SCOPED_FILE_INDEX) {
+                FileTypeIndex.processFiles(KotlinFileType.INSTANCE, files::accept, scope.nativeScope)
+            }
     if (!complete && files.stop == ScopedFileCollectionStop.NONE)
         callbacks.qualify(SymbolDiscoveryQualification.PROVIDER_FAILURE)
     // Native callbacks have ended before any PSI package inspection or declaration traversal.
@@ -109,6 +119,7 @@ internal fun collectScopedKotlinDeclarations(
             kinds = request.requestedDeclarationKinds(),
             observe = callbacks.observe,
             qualify = callbacks.qualify,
+            observation = callbacks.observation,
             accept = callbacks.accept,
             localOnly = localOnly,
         )
@@ -128,27 +139,30 @@ internal class ScopedKotlinFileCollection(
     private val observe: () -> Boolean,
     private val qualify: (SymbolDiscoveryQualification) -> Unit,
     private val localSourceOnly: Boolean = false,
+    private val observation: IntellijReadObservation = IntellijReadObservation.None,
 ) {
     val values = ArrayList<VirtualFile>()
     var stop = ScopedFileCollectionStop.NONE
         private set
 
     fun accept(file: VirtualFile): Boolean =
-        when {
-            !observe() -> {
-                stop = ScopedFileCollectionStop.TIME_OR_ENVIRONMENT
-                false
-            }
-            !scope.nativeScope.contains(file) -> true
-            localSourceOnly && !admittedLocalSource(file) -> true
-            values.size.toLong() >= workLimit.value -> {
-                stop = ScopedFileCollectionStop.WORK_LIMIT
-                qualify(SymbolDiscoveryQualification.WORK_LIMIT_REACHED)
-                false
-            }
-            else -> {
-                values += file
-                true
+        observation.call(IntellijReadCall.SCOPED_FILE_CALLBACK) {
+            when {
+                !observe() -> {
+                    stop = ScopedFileCollectionStop.TIME_OR_ENVIRONMENT
+                    false
+                }
+                !scope.nativeScope.contains(file) -> true
+                localSourceOnly && !admittedLocalSource(file) -> true
+                values.size.toLong() >= workLimit.value -> {
+                    stop = ScopedFileCollectionStop.WORK_LIMIT
+                    qualify(SymbolDiscoveryQualification.WORK_LIMIT_REACHED)
+                    false
+                }
+                else -> {
+                    values += file
+                    true
+                }
             }
         }
 
@@ -169,10 +183,11 @@ internal class ScopedKotlinDeclarationVisitor(
     private val qualify: (SymbolDiscoveryQualification) -> Unit,
     private val accept: (NavigationItem) -> Boolean,
     private val localOnly: Boolean = false,
+    private val observation: IntellijReadObservation = IntellijReadObservation.None,
 ) {
     fun read(file: VirtualFile): Boolean {
         if (!observe()) return false
-        val ktFile = manager.findFile(file) as? KtFile
+        val ktFile = observation.call(IntellijReadCall.PSI_FIND_FILE) { manager.findFile(file) } as? KtFile
         if (ktFile == null) {
             qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
             return true
@@ -180,7 +195,8 @@ internal class ScopedKotlinDeclarationVisitor(
         return when (
             constraints.packageName.admitPackage { IntellijPackageEvidence.Known(ktFile.packageFqName.asString()) }
         ) {
-            IntellijDiscoveryItemAdmission.ADMITTED -> visit(ktFile)
+            IntellijDiscoveryItemAdmission.ADMITTED ->
+                observation.call(IntellijReadCall.DECLARATION_PSI_SCAN) { visit(ktFile) }
             IntellijDiscoveryItemAdmission.FILTERED -> true
             IntellijDiscoveryItemAdmission.UNSUPPORTED -> {
                 qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
@@ -193,6 +209,7 @@ internal class ScopedKotlinDeclarationVisitor(
         var current = file.firstChild
         while (current != null) {
             if (!observe()) return false
+            observation.count(IntellijReadCounter.DECLARATION_PSI_NODES_VISITED)
             if (current is KtNamedDeclaration && !admit(current)) return false
             current = current.firstChild ?: nextSiblingWithin(current, file)
         }
@@ -229,4 +246,5 @@ internal data class ScopedDeclarationCallbacks(
     val observe: () -> Boolean,
     val qualify: (SymbolDiscoveryQualification) -> Unit,
     val accept: (NavigationItem) -> Boolean,
+    val observation: IntellijReadObservation = IntellijReadObservation.None,
 )

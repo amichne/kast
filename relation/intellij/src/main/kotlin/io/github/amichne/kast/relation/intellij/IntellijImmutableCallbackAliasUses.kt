@@ -1,8 +1,6 @@
 package io.github.amichne.kast.relation.intellij
 
 import com.intellij.psi.search.LocalSearchScope
-import com.intellij.psi.search.searches.ReferencesSearch
-import com.intellij.util.Processor
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowFailure
@@ -29,23 +27,20 @@ internal fun ImmutableCallbackEnumeration.property(
             is Refinement.Rejected -> return obligation(admitted.failure)
         }
     var matched = false
-    ReferencesSearch.search(parent, LocalSearchScope(owner.declaration))
-        .forEach(
-            Processor { reference ->
-                if (stopped) return@Processor false
-                if (admitLocalReference() is Refinement.Rejected) return@Processor false
-                if (
-                    localReference(
-                        reference,
-                        parent,
-                        ImmutableCallbackPending(item.expression, bound, item.visited),
-                        endpoint,
-                    ) == LocalBindingReferenceConfirmation.EXACT_BINDING
-                )
-                    matched = true
-                !stopped
-            }
+    context.observation.forEachReference(parent, LocalSearchScope(owner.declaration)) { reference ->
+        if (stopped) return@forEachReference false
+        if (admitLocalReference() is Refinement.Rejected) return@forEachReference false
+        if (
+            localReference(
+                reference,
+                parent,
+                ImmutableCallbackPending(item.expression, bound, item.visited),
+                endpoint,
+            ) == LocalBindingReferenceConfirmation.EXACT_BINDING
         )
+            matched = true
+        !stopped
+    }
     if (!matched && !stopped) retain(ImmutableCallbackInvocationUse.Unused(bound))
 
     return Refinement.Refined(Unit)
@@ -89,7 +84,7 @@ internal fun ImmutableCallbackEnumeration.localReference(
         obligations += CallbackInvocationFlowCause.UNRESOLVED_PARAMETER_REFERENCE
         return LocalBindingReferenceConfirmation.UNRESOLVED
     }
-    when (val confirmed = confirmLocalBindingReference(native, property)) {
+    when (val confirmed = confirmLocalBindingReference(native, property, context.observation)) {
         LocalBindingReferenceConfirmation.OTHER_BINDING -> return confirmed
         LocalBindingReferenceConfirmation.UNRESOLVED -> {
             obligations += CallbackInvocationFlowCause.UNRESOLVED_PARAMETER_REFERENCE

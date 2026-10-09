@@ -88,7 +88,8 @@ private class NativeCallbackInvocationFlow(
                 is Refinement.Rejected -> CallbackInvocationFlowRead.ContractRejected(read.failure)
             }
         }
-        if (!returnsCallable(value.function)) return IntellijCallbackFlowRead(context, value, body, summaries).read()
+        if (!returnsCallable(value.function, context.observation))
+            return IntellijCallbackFlowRead(context, value, body, summaries).read()
         val expression =
             expression()
                 ?: return CallbackInvocationFlowRead.Unavailable(

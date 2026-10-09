@@ -11,7 +11,8 @@ import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
-import org.jetbrains.kotlin.analysis.api.analyze
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtExpression
@@ -35,7 +36,7 @@ internal fun nativeValueArgument(
         return Refinement.Rejected(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
     }
     val detached =
-        when (val result = nativeArgumentBinding(call, expression)) {
+        when (val result = nativeArgumentBinding(call, expression, projection.observation)) {
             is Refinement.Refined -> result.value
             is Refinement.Rejected -> {
                 return Refinement.Rejected(
@@ -102,25 +103,27 @@ private fun nativeArgumentEndpoint(
 internal fun nativeArgumentBinding(
     call: KtCallElement,
     expression: KtExpression,
+    observation: IntellijReadObservation,
 ): Refinement<NativeArgument, NativeArgumentBindingFailure> =
-    analyze(call) {
+    observation.observedAnalyze(call) {
         val resolved =
-            call.resolveCall() ?: return@analyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
+            call.resolveCall()
+                ?: return@observedAnalyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
         val callable =
             resolved.signature.symbol as? KaNamedFunctionSymbol
-                ?: return@analyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
+                ?: return@observedAnalyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
         val parameter =
             resolved.valueArgumentMapping[expression]?.symbol
-                ?: return@analyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
+                ?: return@observedAnalyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
         val position =
             when (val admitted = ValueArgumentPosition.parse(callable.valueParameters.indexOf(parameter))) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected ->
-                    return@analyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
+                    return@observedAnalyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
             }
         val declaration =
             callable.psi as? PsiNamedElement
-                ?: return@analyze Refinement.Rejected(NativeArgumentBindingFailure.EXTERNAL_CALL)
+                ?: return@observedAnalyze Refinement.Rejected(NativeArgumentBindingFailure.EXTERNAL_CALL)
         Refinement.Refined(NativeArgument(declaration, position))
     }
 

@@ -9,8 +9,8 @@ import io.github.amichne.kast.relation.contract.ValueTransferEvidence
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.KaSession
-import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaErrorType
 import org.jetbrains.kotlin.analysis.api.types.KaType
@@ -28,7 +28,7 @@ internal object NativeTryBranchResult {
         observation: IntellijReadObservation,
     ): Refinement<ValueTransferEvidence.NormalBranchResult, ValueFlowUnsupportedCause> {
         observation.count(IntellijReadCounter.VALUE_FLOW_BRANCH_RESULT_CANDIDATES)
-        when (val condition = completion(expression, position)) {
+        when (val condition = completion(expression, position, observation)) {
             Completion.VALUE -> Unit
             Completion.ABRUPT,
             Completion.LIMIT,
@@ -54,12 +54,16 @@ internal object NativeTryBranchResult {
         }
     }
 
-    private fun completion(expression: KtExpression, position: TryBranchResultPosition.Result): Completion =
+    private fun completion(
+        expression: KtExpression,
+        position: TryBranchResultPosition.Result,
+        observation: IntellijReadObservation,
+    ): Completion =
         when {
             position.enclosing.finallyBlock != null -> Completion.FINALLY
             expression.isAbruptExit() -> Completion.ABRUPT
             else ->
-                analyze(position.enclosing) {
+                observation.observedAnalyze(position.enclosing) {
                     val sourceType = expression.expressionType
                     val targetType = position.enclosing.expressionType
                     if (sourceType == null || targetType == null) Completion.UNAVAILABLE

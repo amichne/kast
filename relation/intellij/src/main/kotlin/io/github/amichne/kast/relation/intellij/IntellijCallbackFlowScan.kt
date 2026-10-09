@@ -160,7 +160,9 @@ internal class IntellijCallbackFlowScan(
                 .filterIsInstance<KtReference>()
                 .filterNot { it is KtInvokeFunctionReference }
                 .singleOrNull()
-        val resolved = reference?.let(::resolveLocalValueReference) ?: NativeLocalValueReferenceResolution.Unresolved
+        val resolved =
+            reference?.let { resolveLocalValueReference(it, context.observation) }
+                ?: NativeLocalValueReferenceResolution.Unresolved
         when (resolved) {
             NativeLocalValueReferenceResolution.Unresolved ->
                 obligations += CallbackInvocationFlowCause.UNRESOLVED_PARAMETER_REFERENCE

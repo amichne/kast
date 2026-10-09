@@ -5,7 +5,8 @@ package io.github.amichne.kast.relation.intellij
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueRole
-import org.jetbrains.kotlin.analysis.api.analyze
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtBlockExpression
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
@@ -26,7 +27,7 @@ internal fun nativeTransparentWrapperReturn(
     val parameter =
         callable.valueParameters.getOrNull(argument.position.value)
             ?: return Refinement.Rejected(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
-    return when (val returned = nativeTransparentReturnedParameter(callable)) {
+    return when (val returned = nativeTransparentReturnedParameter(callable, projection.observation)) {
         NativeTransparentReturnedParameter.NotTransparent ->
             Refinement.Rejected(ValueFlowUnsupportedCause.UNMODELED_CALL)
         NativeTransparentReturnedParameter.Unresolved ->
@@ -46,7 +47,10 @@ internal sealed interface NativeTransparentReturnedParameter {
 }
 
 /** One syntactic return and an exact compiler formal target; branches and local aliases require separate proofs. */
-internal fun nativeTransparentReturnedParameter(callable: KtNamedFunction): NativeTransparentReturnedParameter {
+internal fun nativeTransparentReturnedParameter(
+    callable: KtNamedFunction,
+    observation: IntellijReadObservation,
+): NativeTransparentReturnedParameter {
     var expression =
         when (val body = callable.bodyExpression) {
             is KtBlockExpression -> (body.statements.singleOrNull() as? KtReturnExpression)?.returnedExpression
@@ -56,7 +60,7 @@ internal fun nativeTransparentReturnedParameter(callable: KtNamedFunction): Nati
         expression.expression ?: return NativeTransparentReturnedParameter.Unresolved
     val read = expression as? KtNameReferenceExpression ?: return NativeTransparentReturnedParameter.NotTransparent
     val declaration =
-        analyze(read) {
+        observation.observedAnalyze(read) {
             val reference = read.references.filterIsInstance<KtReference>().singleOrNull()
             reference?.resolveToSymbol()?.psi
         } ?: return NativeTransparentReturnedParameter.Unresolved

@@ -264,6 +264,7 @@ private object ModuleRoleBoundaries {
             ModuleRoleConvention.INTELLIJ_READ,
             inwardRoles,
             safeReadCosts,
+            allowedScopedEffects = setOf(ForbiddenEffect.NATIVE_RELATION_SEARCH),
             allowedEffects = setOf(
                 ForbiddenEffect.INTELLIJ_PLATFORM,
                 ForbiddenEffect.TOPOLOGY_SOURCE_ROOT_VFS_SYNCHRONIZATION,

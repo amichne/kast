@@ -12,7 +12,7 @@ import io.github.amichne.kast.relation.contract.RelationOccurrence
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.relation.contract.ValueTransfer
-import org.jetbrains.kotlin.analysis.api.analyze
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.types.KaFunctionType
 import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
@@ -54,7 +54,7 @@ internal class IntellijCallbackForwardingReader(private val context: IntellijCal
             argument.getArgumentExpression()
                 ?: return unavailable(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
         val mapped =
-            when (val admitted = nativeArgumentBinding(call, argumentExpression)) {
+            when (val admitted = nativeArgumentBinding(call, argumentExpression, context.observation)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected ->
                     return unavailable(
@@ -101,7 +101,7 @@ internal class IntellijCallbackForwardingReader(private val context: IntellijCal
         val parameter =
             function.valueParameters.getOrNull(mapped.position.value)
                 ?: return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
-        if (!analyze(parameter) { parameter.symbol.returnType is KaFunctionType })
+        if (!context.observation.observedAnalyze(parameter) { parameter.symbol.returnType is KaFunctionType })
             return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
         val targetParameter =
             context.occurrence(parameter)

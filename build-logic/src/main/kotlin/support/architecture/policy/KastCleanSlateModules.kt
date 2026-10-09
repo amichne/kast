@@ -190,6 +190,9 @@ internal object KastCleanSlateModules {
             ModuleId.WORKSPACE_CONTRACT,
             ModuleId.WORKSPACE_INTELLIJ_READ,
             effects = setOf(ForbiddenEffect.INTELLIJ_PLATFORM),
+            scopedEffects = mapOf(ForbiddenEffect.NATIVE_RELATION_SEARCH to setOf(
+                JvmClassName("io/github/amichne/kast/relation/intellij/ObservedRelationSearchKt"),
+            )),
         ),
         target(
             ModuleId.TRAVERSAL_SERVICE,
