@@ -14,36 +14,23 @@ enum class PublicToolIdentity(
     val loading: HostedToolLoading,
 ) {
     QUERY_SYMBOLS("query_symbols", CanonicalOperation.QUERY_RUN,
-        "Run, resume, and read one compositional compiler-grounded Kotlin symbol query. For exact name sear" +
-            "ch, use {\"request\":{\"type\":\"RUN\",\"source\":{\"type\":\"SEARCH_DECLARATIONS\",\"declarationN" +
-            "ame\":\"Order\"}}}; source is directly inside request. For remembered words, use source {\"type\":" +
-            "\"SEARCH_TEXT\",\"word\":\"launchd\",\"scope\":{\"type\":\"DIRECTORY\",\"relativeDirectoryPath\":" +
-            "\"app-server\"}} to receive exact containing-declaration refs and bounded lexical matches. This wo" +
-            "rd mode is case-sensitive and excludes regex and qualified literals. For one-hop references, add " +
-            "\"steps\":[{\"type\":\"WALK\",\"relation\":\"REFERENCES\",\"maximumDepth\":1}] inside RUN. To keep" +
-            " the result, set request.retention to RETAIN; then page its returned reference with request.type R" +
-            "EAD_RESULT and request.result. Resume execution with request.type RESUME and its exact continuatio" +
-            "n. Apply structured predicates, relation expansion, walk, set composition, and retained binding pr" +
-            "ojection and joins. Join preserves both named output cells and occurrence evidence; anti-join requ" +
-            "ires complete right coverage. Choose symbol, occurrence, traversal record, or binding row output. " +
-            "Retained results preserve qualification and omissions; execution continuation and result presentat" +
-            "ion cursor remain distinct. Discovery observations preserve the declared universe, phase counts, c" +
-            "overage and unfinished input. Reference occurrence rows retain compiler target identity and explic" +
-            "it declaration-owned, file-scoped or unavailable ownership. A published execution page replays ide" +
-            "mpotently; concurrent use of one checkpoint is rejected with continuation-in-use until its owner p" +
-            "ublishes or drains. Set steps[].expansionScope to WORKSPACE, RETAINED_SEED, or SOURCE_DOMAIN to co" +
-            "ntrol native relation destinations separately from source discovery and output predicates. Inspect" +
-            " a callback occurrence, anonymous callable body, or proof declaration with request {\"type\":\"REA" +
-            "D_SOURCE\",\"candidateRef\":\"<exact issued candidate reference>\"}; this returns the existing sou" +
-            "rce.read document for that exact range, preserving freshness and authority failures. Completion de" +
-            "faults to COMPLETE_ONLY within COMPILER_RESOLVED_STATIC_V1; supported row families execute automat" +
-            "ically to exhaustion under one grant. Request completion {\"type\":\"PROGRESSIVE\"} explicitly for" +
-            " qualified investigation. Unproven or unsupported strict answers reject with retained evidence whe" +
-            "n admitted; presentation prefixes never establish completeness. For IMPACT, strict VALUE_PATHS com" +
-            "pletes the original ledger; strict IMPACT_WITNESS presents a retained section after that proof. WA" +
-            "LK without maximumDepth exhausts the reachable static graph with WORKSPACE expansion. Explicit max" +
-            "imumDepth chooses bounded reach and defaults to RETAINED_SEED; explicit expansionScope is preserve" +
-            "d.",
+        "Run, resume, and read compiler-grounded Kotlin queries in the bound workspace. Start with request " +
+            "{\"type\":\"RUN\",\"source\":{\"type\":\"SEARCH_DECLARATIONS\",\"declarationName\":\"Order\",\"dec" +
+            "larationKinds\":[\"CLASS\"],\"scope\":{\"type\":\"DIRECTORY\",\"relativeDirectoryPath\":\"orders\"" +
+            ",\"sourceSetNames\":[\"main\"]}}}. Select by signature and location, then pass the unchanged issue" +
+            "d ref in source {\"type\":\"SYMBOL_REFS\",\"symbolRefs\":[\"<issued ref>\"]}. To trace affected us" +
+            "es, add steps [{\"type\":\"TRACE\",\"expansionScope\":{\"type\":\"WORKSPACE\"}}] and SYMBOLS outpu" +
+            "t. TRACE covers references, implementations or overrides, direct callers, and one further caller l" +
+            "ayer; its topology is fixed. Discovery scope selects the seed; expansionScope selects relation des" +
+            "tinations. SOURCE_DOMAIN restricts native destinations before enumeration. Completion defaults to " +
+            "COMPLETE_ONLY within COMPILER_RESOLVED_STATIC_V1. Preserve typed rejection and recovery evidence w" +
+            "hen completion is unproven. PROGRESSIVE is an explicit qualified investigation; empty or partial p" +
+            "ages do not prove absence. Use RESUME only with an issued execution continuation, READ_RESULT only" +
+            " with a retained result reference and its cursor, and READ_SOURCE only with an issued candidateSel" +
+            "ector as candidateRef. These capabilities are distinct. Set retention RETAIN for later presentatio" +
+            "n. Budgets share one admitted grant and remain subject to host ceilings. The schema also defines o" +
+            "ne-hop EXPAND_RELATION, WALK, predicates, retained composition, joins, and value IMPACT; choose th" +
+            "em only for those specific questions.",
         HostedToolLoading.EAGER,
     ),
     CHECK_DIAGNOSTICS("check_diagnostics", CanonicalOperation.DIAGNOSTIC_CHECK,

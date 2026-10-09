@@ -28,14 +28,33 @@ installed operation own that preparation. Report a finite preparation blocker
 with its operation identity; do not orchestrate IDE opening, repair, cache
 invalidation, or forced synchronization to manufacture readiness.
 
-## Choose the smallest useful query
+## Follow the query and trace path
+
+1. Resolve the seed with `SEARCH_DECLARATIONS`. Apply the known simple name,
+   declaration kind, directory or package, and source sets before discovery.
+   Select by `LOCATION` and `SIGNATURE`; do not trace all same-name matches.
+   If the declaration position is already known, use `AT_LOCATION` within it.
+2. Pass that declaration's unchanged issued `ref` in `SYMBOL_REFS`. For affected
+   uses, apply one terminal `TRACE` with `SYMBOLS` output. Use `WORKSPACE` for
+   clients across modules. Choose `SOURCE_DOMAIN` only when the question excludes
+   other destinations. The seed's discovery scope does not restrict expansion.
+3. Keep the default `COMPLETE_ONLY` policy. Read completion and coverage before
+   answering. Use the trace example's elapsed grant and read the admitted budget.
+   On `COMPLETION_UNPROVEN`, inspect its recovery evidence and follow
+   an issued execution continuation. Use `PROGRESSIVE` only when the user wants
+   a qualified investigation. A larger requested timeout cannot remove host limits.
+
+TRACE owns references, implementations or overrides, direct callers, and one
+further caller layer. Its topology is fixed. Do not reconstruct that flow with
+parallel branch queries, repeated TRACE calls, or an unbounded WALK. A narrow
+one-hop question can use one `EXPAND_RELATION`; a requested graph depth can use
+`WALK`.
 
 Read [query-patterns.md](references/query-patterns.md) when choosing a source,
 relation, traversal, or retained composition. The exact argument documents live
 in generated [query-examples.json](references/query-examples.json).
 
-Apply known simple name, declaration kind, directory or package, and exact Gradle
-source-set constraints in the source. Request only fields the task needs.
+Request only fields the task needs.
 `SIGNATURE` distinguishes overloads; `SOURCE` reads a bounded committed source
 window. Scope on discovery does not constrain later relation destinations.
 

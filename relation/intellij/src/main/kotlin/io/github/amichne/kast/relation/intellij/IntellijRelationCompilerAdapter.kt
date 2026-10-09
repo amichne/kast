@@ -44,6 +44,7 @@ internal class IntellijRelationCompilerQuery(
     private val limits: ReadLimits = ReadLimits.Default,
     private val summaries: io.github.amichne.kast.relation.contract.CallbackSummaryCachePreparationPort =
         io.github.amichne.kast.relation.contract.CallbackSummaryCachePreparationPort.Disabled,
+    private val inventories: IntellijReferenceInventoryReuse = IntellijReferenceInventoryReuse.Disabled,
 ) {
     private fun prepareSummaries(
         request: RelationRequest,
@@ -169,6 +170,7 @@ internal class IntellijRelationCompilerQuery(
                             observation = observation,
                             limits = limits,
                             summaries = preparedSummaries,
+                            inventories = inventories,
                         )
                         .read(request, subject.plan(request), collector)
                 finish(collector.finish(termination), namedCache)

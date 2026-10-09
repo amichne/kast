@@ -3,6 +3,7 @@ package io.github.amichne.kast.query.service
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.contract.ExactQueryStage
 import io.github.amichne.kast.query.contract.QueryExecutionRejection
+import io.github.amichne.kast.query.contract.QueryGroupingEvidence
 import io.github.amichne.kast.query.contract.QuerySetOperator
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.query.contract.QuerySymbolSource
@@ -10,6 +11,16 @@ import io.github.amichne.kast.query.contract.QueryTextMatchFailure
 import io.github.amichne.kast.query.contract.merge
 import io.github.amichne.kast.symbol.contract.CanonicalSymbolId
 import io.github.amichne.kast.symbol.contract.SymbolDescription
+import io.github.amichne.kast.symbol.contract.SymbolSelectorFingerprint
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
+
+/** Declaration equality is sufficient for output; native work also retains the complete read capability. */
+internal sealed interface QueryIdentityRowKey {
+    data class Declaration(val id: CanonicalSymbolId) : QueryIdentityRowKey
+
+    data class ReadCapability(val lease: SemanticReadAuthority, val fingerprint: SymbolSelectorFingerprint) :
+        QueryIdentityRowKey
+}
 
 internal enum class QueryIdentityRowFailure {
     CONFLICTING_DESCRIPTION,
@@ -30,7 +41,7 @@ private fun QueryTextMatchFailure.identityFailure(): QueryIdentityRowFailure =
     }
 
 /** Request-local grouping of proven rows; the query evaluator still owns task order and budgets. */
-internal class QueryIdentityRows(restored: Map<ExactQueryStage, Map<CanonicalSymbolId, QuerySymbol>>) {
+internal class QueryIdentityRows(restored: Map<ExactQueryStage, Map<QueryIdentityRowKey, QuerySymbol>>) {
     private val rows = restored.mapValues { (_, values) -> LinkedHashMap(values) }.toMutableMap()
     private val rightRows = mutableMapOf<ExactQueryStage.Set, Map<CanonicalSymbolId, QuerySymbol>>()
 
@@ -39,9 +50,16 @@ internal class QueryIdentityRows(restored: Map<ExactQueryStage, Map<CanonicalSym
         incoming: QuerySymbol,
     ): Refinement<Unit, QueryIdentityRowFailure> {
         val distinctRows = rows.getOrPut(stage) { linkedMapOf() }
-        val id = CanonicalSymbolId.from(incoming.selector)
+        val id =
+            when (stage.evidence) {
+                QueryGroupingEvidence.ALL_SCOPED_ARRIVALS ->
+                    QueryIdentityRowKey.ReadCapability(incoming.selector.lease, incoming.selector.fingerprint)
+                QueryGroupingEvidence.FIRST_ARRIVAL,
+                QueryGroupingEvidence.ALL_ARRIVALS ->
+                    QueryIdentityRowKey.Declaration(CanonicalSymbolId.from(incoming.selector))
+            }
         val first = distinctRows.putIfAbsent(id, incoming) ?: return Refinement.Refined(Unit)
-        if (stage.evidence == io.github.amichne.kast.query.contract.QueryGroupingEvidence.ALL_ARRIVALS) {
+        if (stage.evidence != QueryGroupingEvidence.FIRST_ARRIVAL) {
             return when (val merged = mergeRows(first, incoming)) {
                 is Refinement.Refined -> {
                     distinctRows[id] = merged.value
@@ -81,7 +99,8 @@ internal class QueryIdentityRows(restored: Map<ExactQueryStage, Map<CanonicalSym
                     incoming.takeIf { id !in right }?.let { Refinement.Refined(it) } ?: return Refinement.Refined(Unit)
             }
         return when (selected) {
-            is Refinement.Refined -> mergeInto(rows.getOrPut(stage) { linkedMapOf() }, selected.value)
+            is Refinement.Refined ->
+                mergeInto(rows.getOrPut(stage) { linkedMapOf() }, QueryIdentityRowKey.Declaration(id), selected.value)
             is Refinement.Rejected -> selected
         }
     }
@@ -92,7 +111,7 @@ internal class QueryIdentityRows(restored: Map<ExactQueryStage, Map<CanonicalSym
         return Refinement.Refined(aggregated.values.toList())
     }
 
-    fun snapshot(): Map<ExactQueryStage, Map<CanonicalSymbolId, QuerySymbol>> = rows.mapValues { (_, values) ->
+    fun snapshot(): Map<ExactQueryStage, Map<QueryIdentityRowKey, QuerySymbol>> = rows.mapValues { (_, values) ->
         values.toMap()
     }
 
@@ -104,7 +123,7 @@ internal class QueryIdentityRows(restored: Map<ExactQueryStage, Map<CanonicalSym
         }
         val grouped = linkedMapOf<CanonicalSymbolId, QuerySymbol>()
         for (row in stage.right.symbols) {
-            when (val merged = mergeInto(grouped, row)) {
+            when (val merged = mergeInto(grouped, CanonicalSymbolId.from(row.selector), row)) {
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return merged
             }
@@ -113,11 +132,11 @@ internal class QueryIdentityRows(restored: Map<ExactQueryStage, Map<CanonicalSym
         return Refinement.Refined(grouped)
     }
 
-    private fun mergeInto(
-        destination: MutableMap<CanonicalSymbolId, QuerySymbol>,
+    private fun <Key> mergeInto(
+        destination: MutableMap<Key, QuerySymbol>,
+        id: Key,
         incoming: QuerySymbol,
     ): Refinement<Unit, QueryIdentityRowFailure> {
-        val id = CanonicalSymbolId.from(incoming.selector)
         val previous = destination[id]
         val merged =
             if (previous == null) {

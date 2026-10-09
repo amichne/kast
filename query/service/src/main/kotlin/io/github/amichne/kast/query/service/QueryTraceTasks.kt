@@ -1,6 +1,7 @@
 package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.query.contract.ExactQueryStage
+import io.github.amichne.kast.query.contract.QueryGroupingEvidence
 import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.query.contract.QueryTracePhase
 import io.github.amichne.kast.relation.contract.RelationMeaning
@@ -16,6 +17,7 @@ internal fun traceTasks(symbol: QuerySymbol, stage: ExactQueryStage.Trace): List
     when (stage.phase) {
         QueryTracePhase.SEED -> {
             related(RelationMeaning.References, uses)
+            if (symbol.isCallable()) related(RelationMeaning.Callers, uses)
             val implementations = ExactQueryStage.Trace(QueryTracePhase.IMPLEMENTATION, stage.expansion, stage.next)
             when (symbol.description.kind) {
                 CompilerSymbolKind.CLASSLIKE -> {
@@ -27,16 +29,22 @@ internal fun traceTasks(symbol: QuerySymbol, stage: ExactQueryStage.Trace): List
                 CompilerSymbolKind.CONSTRUCTOR,
                 CompilerSymbolKind.TYPE_ALIAS -> Unit
             }
-            if (symbol.isCallable()) related(RelationMeaning.Callers, uses)
         }
         QueryTracePhase.IMPLEMENTATION -> {
             related(RelationMeaning.References, uses)
             if (symbol.isCallable()) related(RelationMeaning.Callers, uses)
         }
-        QueryTracePhase.USE -> if (symbol.isCallable()) related(RelationMeaning.Callers, stage.next)
+        QueryTracePhase.USE -> if (symbol.isCallable()) tasks += PipelineTask.Symbol(symbol, traceUseStage(stage))
     }
     return tasks
 }
+
+/** Collect all upstream arrival evidence before spending one downstream caller read per exact capability. */
+internal fun traceUseStage(stage: ExactQueryStage.Trace): ExactQueryStage.Distinct =
+    ExactQueryStage.Distinct(
+        ExactQueryStage.Related(RelationMeaning.Callers, stage.next, stage.expansion),
+        QueryGroupingEvidence.ALL_SCOPED_ARRIVALS,
+    )
 
 private fun QuerySymbol.isCallable(): Boolean =
     when (description.kind) {
