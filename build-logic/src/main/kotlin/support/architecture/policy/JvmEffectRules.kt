@@ -62,6 +62,9 @@ internal object EffectRules {
         ) {
             add(ForbiddenEffect.INTELLIJ_PLATFORM)
         }
+        if (owner in setOf("com/intellij/psi/search/searches/ReferencesSearch", "com/intellij/psi/search/searches/DefinitionsScopedSearch") && name == "search") {
+            add(ForbiddenEffect.NATIVE_RELATION_SEARCH)
+        }
         if (owner == "com/intellij/openapi/roots/ProjectFileIndex") {
             add(ForbiddenEffect.PROJECT_FILE_INDEX_AUTHORITY)
         }

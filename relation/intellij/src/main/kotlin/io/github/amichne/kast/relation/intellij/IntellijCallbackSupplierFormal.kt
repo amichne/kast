@@ -12,7 +12,7 @@ import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueTransfer
 import io.github.amichne.kast.relation.contract.ValueTransferKind
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import org.jetbrains.kotlin.analysis.api.analyze
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.types.KaFunctionType
 import org.jetbrains.kotlin.idea.references.KtInvokeFunctionReference
 import org.jetbrains.kotlin.idea.references.KtReference
@@ -111,7 +111,10 @@ internal class IntellijCallbackSupplierFormal(private val context: IntellijCallb
         val function =
             PsiTreeUtil.getParentOfType(parameter, KtNamedFunction::class.java, false)
                 ?: return rejected(CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY)
-        if (function.name == null || !analyze(parameter) { parameter.symbol.returnType is KaFunctionType })
+        if (
+            function.name == null ||
+                !context.observation.observedAnalyze(parameter) { parameter.symbol.returnType is KaFunctionType }
+        )
             return rejected(CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY)
         val endpoint =
             when (val admitted = context.target(function)) {
@@ -176,7 +179,7 @@ internal class IntellijCallbackSupplierFormal(private val context: IntellijCallb
                 .filterIsInstance<KtReference>()
                 .filterNot { it is KtInvokeFunctionReference }
                 .singleOrNull() ?: return rejected(CallbackInvocationFlowCause.UNRESOLVED_PARAMETER_REFERENCE)
-        return when (val resolved = resolveLocalValueReference(reference)) {
+        return when (val resolved = resolveLocalValueReference(reference, context.observation)) {
             is NativeLocalValueReferenceResolution.Resolved -> Refinement.Refined(resolved.declaration)
             NativeLocalValueReferenceResolution.Unresolved ->
                 rejected(CallbackInvocationFlowCause.UNRESOLVED_PARAMETER_REFERENCE)

@@ -19,7 +19,7 @@ import io.github.amichne.kast.relation.contract.SourceLessCallableDisposition
 import io.github.amichne.kast.relation.contract.SourceLessCallableModuleKind
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
-import org.jetbrains.kotlin.analysis.api.analyze
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.psi.KtArrayAccessExpression
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -111,10 +111,10 @@ internal class IntellijFactoryBodyCalls(private val context: IntellijCallbackFlo
         val occurrence =
             context.occurrence(call.valueInvocationExpression())
                 ?: return rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
-        return analyze(call) {
+        return context.observation.observedAnalyze(call) {
             val symbol =
                 call.resolveCall()?.signature?.symbol
-                    ?: return@analyze rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+                    ?: return@observedAnalyze rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
             val proof =
                 when {
                     symbol is KaNamedFunctionSymbol && confirmsBuiltinFunctionInvoke(symbol) ->

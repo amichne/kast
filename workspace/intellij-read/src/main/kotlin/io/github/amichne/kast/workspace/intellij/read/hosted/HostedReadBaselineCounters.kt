@@ -6,6 +6,15 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 /** Explicit zero observations distinguish current capabilities from absent older-runtime evidence. */
 internal fun initialHostedReadCounters(): LinkedHashMap<Pair<IntellijReadCounter, IntellijReadContributor>, Long> =
     linkedMapOf<Pair<IntellijReadCounter, IntellijReadContributor>, Long>().apply {
+        listOf(
+                IntellijReadCounter.DEPENDENCY_TREE_ENTRIES_VISITED,
+                IntellijReadCounter.DEPENDENCY_HASH_BYTES_READ,
+                IntellijReadCounter.DEPENDENCY_HASHES_COMPLETED,
+                IntellijReadCounter.DEPENDENCY_HASH_MEMO_HITS,
+                IntellijReadCounter.DEPENDENCY_TREE_MEMO_HITS,
+                IntellijReadCounter.DECLARATION_PSI_NODES_VISITED,
+            )
+            .forEach { this[it to IntellijReadContributor.NONE] = 0L }
         // Explicit zeros prove page observation capability even when a workload never enters that provider.
         this[IntellijReadCounter.NATIVE_DISCOVERY_PAGES to IntellijReadContributor.NONE] = 0L
         this[IntellijReadCounter.NATIVE_RELATION_PAGES to IntellijReadContributor.NONE] = 0L

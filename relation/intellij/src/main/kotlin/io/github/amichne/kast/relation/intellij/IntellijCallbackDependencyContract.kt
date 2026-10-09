@@ -12,8 +12,8 @@ import io.github.amichne.kast.relation.contract.DependencyClassDigest
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import java.security.MessageDigest
-import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.contracts.description.KaContractCallsInPlaceContractEffectDeclaration
 import org.jetbrains.kotlin.analysis.api.contracts.description.KaContractInvocationKind
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
@@ -48,7 +48,7 @@ private fun dependencyContract(
         is Refinement.Rejected -> return CallbackBindingPreparation.Unavailable(permit.failure)
     }
     val native =
-        analyze(call) { binaryContract(context, call, expression) }
+        context.observation.observedAnalyze(call) { binaryContract(context, call, expression) }
             ?: return CallbackBindingPreparation.Unavailable(CallbackInvocationFlowCause.OUTSIDE_DOMAIN)
     val occurrence =
         context.occurrence(call.valueInvocationExpression())

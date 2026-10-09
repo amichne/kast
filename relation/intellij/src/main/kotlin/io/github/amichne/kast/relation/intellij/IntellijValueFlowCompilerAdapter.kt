@@ -34,8 +34,8 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadStage
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFailure
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import kotlinx.coroutines.CancellationException
-import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.types.KaErrorType
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
@@ -49,7 +49,7 @@ sealed interface ValueSiteResolution {
 
 /** Native one-hop adapter. Query owns work scheduling, publication and continuation state. */
 class IntellijValueFlowCompilerAdapter(
-    private val observation: IntellijReadObservation = IntellijReadObservation.None,
+    internal val observation: IntellijReadObservation = IntellijReadObservation.None,
     private val limits: ReadLimits = ReadLimits.Default,
 ) {
     suspend fun seed(
@@ -132,7 +132,7 @@ class IntellijValueFlowCompilerAdapter(
         }
         if (expression is KtNamedDeclaration) return ValueSiteResolution.Rejected(ValueFlowRejection.UNSUPPORTED_SEED)
         val nativeType =
-            analyze(expression) {
+            observation.observedAnalyze(expression) {
                 val type = expression.expressionType
                 if (type == null || type is KaErrorType) NativeValueType.UNRESOLVED else NativeValueType.RESOLVED
             }

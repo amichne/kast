@@ -6,8 +6,8 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.KaSession
-import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaFunctionType
 import org.jetbrains.kotlin.psi.KtFunction
@@ -29,7 +29,7 @@ internal fun refineCallOwnership(
             is ContainingDeclaration.Deferred -> {
                 val literal = lexical.boundary as? KtFunction
                 if (literal == null) Refinement.Rejected(CallOwnershipFailure.UnsupportedBoundary)
-                else analyze(literal) { refineInlineOwner(lexical) }
+                else observation.observedAnalyze(literal) { refineInlineOwner(lexical) }
             }
         }
     when (result) {

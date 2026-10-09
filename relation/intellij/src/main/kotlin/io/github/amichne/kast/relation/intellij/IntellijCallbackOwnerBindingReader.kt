@@ -13,7 +13,7 @@ import io.github.amichne.kast.relation.contract.RelationCallableBody
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
-import org.jetbrains.kotlin.analysis.api.analyze
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.types.KaFunctionType
 import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtExpression
@@ -143,7 +143,7 @@ internal class IntellijCallbackOwnerBindingReader(private val context: IntellijC
         obligations: MutableSet<CallbackInvocationFlowCause>,
     ): Refinement<CallbackArgumentBinding, CallbackInvocationFlowCause> {
         val mapped =
-            when (val result = nativeArgumentBinding(call, expression)) {
+            when (val result = nativeArgumentBinding(call, expression, context.observation)) {
                 is Refinement.Refined -> result.value
                 is Refinement.Rejected -> return Refinement.Rejected(result.failure.flowCause())
             }
@@ -174,7 +174,11 @@ internal class IntellijCallbackOwnerBindingReader(private val context: IntellijC
         val nativeParameter =
             function.valueParameters.getOrNull(mapped.position.value)
                 ?: return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
-        if (!analyze(nativeParameter) { nativeParameter.symbol.returnType is KaFunctionType })
+        if (
+            !context.observation.observedAnalyze(nativeParameter) {
+                nativeParameter.symbol.returnType is KaFunctionType
+            }
+        )
             return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
         val parameter =
             context.occurrence(nativeParameter)

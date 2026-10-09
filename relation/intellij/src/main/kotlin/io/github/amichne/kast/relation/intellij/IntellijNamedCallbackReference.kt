@@ -12,7 +12,7 @@ import io.github.amichne.kast.relation.contract.ImmutableCallbackValueOrigin
 import io.github.amichne.kast.relation.contract.NamedCallbackReference
 import io.github.amichne.kast.relation.contract.NamedCallbackReferenceFlow
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import org.jetbrains.kotlin.analysis.api.analyze
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.resolution.KaExplicitReceiverValue
 import org.jetbrains.kotlin.analysis.api.resolution.KaImplicitReceiverValue
 import org.jetbrains.kotlin.analysis.api.resolution.KaReceiverValue
@@ -98,7 +98,7 @@ internal class IntellijNamedCallbackReference(
     ): NamedCallbackReferenceFlow {
         if (prepared.origin is PreparedCallbackOrigin.Default)
             return immutableFlow(IntellijImmutableCallbackFlowReader(context, summaries).readDefault(prepared, origin))
-        if (returnsCallable(prepared.function))
+        if (returnsCallable(prepared.function, context.observation))
             return immutableFlow(
                 IntellijImmutableCallbackFlowReader(context, summaries).read(expression, lexicalOwner, origin)
             )
@@ -154,24 +154,32 @@ internal class IntellijNamedCallbackReference(
     private fun nativeReference(
         expression: KtCallableReferenceExpression
     ): Refinement<NativeReference, CallbackInvocationFlowCause> =
-        analyze(expression) {
+        context.observation.observedAnalyze(expression) {
             val call =
                 expression.resolveCall()
-                    ?: return@analyze Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+                    ?: return@observedAnalyze Refinement.Rejected(
+                        CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING
+                    )
             val symbol =
                 call.signature.symbol as? KaNamedFunctionSymbol
-                    ?: return@analyze Refinement.Rejected(CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY)
+                    ?: return@observedAnalyze Refinement.Rejected(
+                        CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY
+                    )
             val declaration =
                 symbol.psi as? KtNamedFunction
-                    ?: return@analyze Refinement.Rejected(CallbackInvocationFlowCause.EXTERNAL_CALLABLE)
+                    ?: return@observedAnalyze Refinement.Rejected(CallbackInvocationFlowCause.EXTERNAL_CALLABLE)
             if (call.contextArguments.isNotEmpty())
-                return@analyze Refinement.Rejected(CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY)
+                return@observedAnalyze Refinement.Rejected(CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY)
             val dispatch =
                 receiver(call.dispatchReceiver, symbol.containingDeclaration is KaClassSymbol)
-                    ?: return@analyze Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+                    ?: return@observedAnalyze Refinement.Rejected(
+                        CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING
+                    )
             val extension =
                 receiver(call.extensionReceiver, symbol.receiverParameter != null)
-                    ?: return@analyze Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+                    ?: return@observedAnalyze Refinement.Rejected(
+                        CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING
+                    )
             Refinement.Refined(NativeReference(declaration, CallbackReferenceReceivers(dispatch, extension)))
         }
 

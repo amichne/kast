@@ -21,7 +21,7 @@ import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
-import org.jetbrains.kotlin.analysis.api.analyze
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -165,14 +165,14 @@ internal class IntellijCallbackFlowContext(
             }
         val range = range(literal) ?: return null
         val signature =
-            analyze(literal) {
+            observation.observedAnalyze(literal) {
                 val symbol =
                     when (literal) {
                         is KtFunctionLiteral -> literal.symbol
                         is KtNamedFunction -> literal.symbol
                         else -> null
                     }
-                        as? KaFunctionSymbol ?: return@analyze null
+                        as? KaFunctionSymbol ?: return@observedAnalyze null
                 when (
                     val parsed =
                         CanonicalCompilerSignature.function(
@@ -240,8 +240,8 @@ internal class IntellijCallbackFlowContext(
     }
 
     fun confirmsFunctionInvoke(call: KtCallExpression): Boolean =
-        analyze(call) {
-            val symbol = call.resolveCall()?.signature?.symbol as? KaNamedFunctionSymbol ?: return@analyze false
+        observation.observedAnalyze(call) {
+            val symbol = call.resolveCall()?.signature?.symbol as? KaNamedFunctionSymbol ?: return@observedAnalyze false
             confirmsBuiltinFunctionInvoke(symbol)
         }
 }

@@ -71,6 +71,12 @@ internal class IntellijRelationCollector(
             is Refinement.Rejected -> error("Admitted time and monotone elapsed measurement cannot be negative")
         }
 
+    /** Every native callback checks elapsed admission before even an excluded site's PSI is inspected. */
+    fun admitProviderCallback(cancellationCheck: () -> Unit): IntellijRelationProviderEnumerationAdmission {
+        cancellationCheck()
+        return admitProviderEnumeration()
+    }
+
     /** Bounds native materialization before a canonical provider order can be established. */
     fun admitProviderEnumeration(): IntellijRelationProviderEnumerationAdmission =
         when (allowance.admitEnumeration(state, request.budget.resources)) {

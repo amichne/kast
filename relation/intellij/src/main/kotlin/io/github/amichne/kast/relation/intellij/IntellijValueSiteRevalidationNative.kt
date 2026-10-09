@@ -23,7 +23,7 @@ import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadStage
-import org.jetbrains.kotlin.analysis.api.analyze
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.types.KaErrorType
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtExpression
@@ -109,7 +109,8 @@ internal class IntellijValueSiteRevalidationNative(
             NativeValueOwnership.UNAVAILABLE -> return nativeSiteRejected(ValueFlowRejection.OWNER_UNAVAILABLE)
         }
         return when (
-            val result = nativeRole(element, request.role, prepared, RelationEndpoint.subject(request.enclosing))
+            val result =
+                nativeRole(element, request.role, prepared, RelationEndpoint.subject(request.enclosing), observation)
         ) {
             is Refinement.Refined -> result
             is Refinement.Rejected -> Refinement.Rejected(NativeSiteFailure.Unsupported(result.failure))
@@ -148,39 +149,55 @@ private fun nativeRole(
     claim: ValueSiteRoleClaim,
     prepared: IntellijValueFlowCompilerAdapter.Prepared.Ready,
     enclosing: RelationEndpoint,
+    observation: IntellijReadObservation,
 ): Refinement<ValueRole, ValueFlowUnsupportedCause> =
     when (claim) {
-        ValueSiteRoleClaim.ExpressionResult -> expressionRole(element)
-        ValueSiteRoleClaim.LocalBinding -> localBindingRole(element)
-        ValueSiteRoleClaim.PropertyAssignment -> propertyRole(element)
-        ValueSiteRoleClaim.LocalRead -> localReadRole(element)
-        ValueSiteRoleClaim.Return -> returnRole(element)
+        ValueSiteRoleClaim.ExpressionResult -> expressionRole(element, observation)
+        ValueSiteRoleClaim.LocalBinding -> localBindingRole(element, observation)
+        ValueSiteRoleClaim.PropertyAssignment -> propertyRole(element, observation)
+        ValueSiteRoleClaim.LocalRead -> localReadRole(element, observation)
+        ValueSiteRoleClaim.Return -> returnRole(element, observation)
         is ValueSiteRoleClaim.Argument -> argumentRole(element, enclosing, prepared)
     }
 
-private fun expressionRole(element: PsiElement): Refinement<ValueRole, ValueFlowUnsupportedCause> =
-    if (element is KtExpression && element !is KtNamedDeclaration && element.hasNativeType())
+private fun expressionRole(
+    element: PsiElement,
+    observation: IntellijReadObservation,
+): Refinement<ValueRole, ValueFlowUnsupportedCause> =
+    if (element is KtExpression && element !is KtNamedDeclaration && element.hasNativeType(observation))
         Refinement.Refined(ValueRole.ExpressionResult)
     else roleRejected()
 
-private fun localBindingRole(element: PsiElement): Refinement<ValueRole, ValueFlowUnsupportedCause> =
-    if (element is KtProperty && element.isLocal && element.hasNativeDeclaration())
+private fun localBindingRole(
+    element: PsiElement,
+    observation: IntellijReadObservation,
+): Refinement<ValueRole, ValueFlowUnsupportedCause> =
+    if (element is KtProperty && element.isLocal && element.hasNativeDeclaration(observation))
         Refinement.Refined(ValueRole.LocalBinding)
     else roleRejected()
 
-private fun propertyRole(element: PsiElement): Refinement<ValueRole, ValueFlowUnsupportedCause> {
+private fun propertyRole(
+    element: PsiElement,
+    observation: IntellijReadObservation,
+): Refinement<ValueRole, ValueFlowUnsupportedCause> {
     val property = element as? KtProperty ?: return roleRejected()
-    return if (!property.isLocal && property.initializer != null && property.hasNativeDeclaration())
+    return if (!property.isLocal && property.initializer != null && property.hasNativeDeclaration(observation))
         Refinement.Refined(ValueRole.PropertyAssignment)
     else roleRejected()
 }
 
-private fun localReadRole(element: PsiElement): Refinement<ValueRole, ValueFlowUnsupportedCause> =
-    if (element is KtExpression && element.hasNativeLocalReference()) Refinement.Refined(ValueRole.LocalRead)
+private fun localReadRole(
+    element: PsiElement,
+    observation: IntellijReadObservation,
+): Refinement<ValueRole, ValueFlowUnsupportedCause> =
+    if (element is KtExpression && element.hasNativeLocalReference(observation)) Refinement.Refined(ValueRole.LocalRead)
     else roleRejected()
 
-private fun returnRole(element: PsiElement): Refinement<ValueRole, ValueFlowUnsupportedCause> =
-    if (element is KtExpression && element.hasNativeType() && element.isReturnedExpression())
+private fun returnRole(
+    element: PsiElement,
+    observation: IntellijReadObservation,
+): Refinement<ValueRole, ValueFlowUnsupportedCause> =
+    if (element is KtExpression && element.hasNativeType(observation) && element.isReturnedExpression())
         Refinement.Refined(ValueRole.Return)
     else roleRejected()
 
@@ -206,17 +223,18 @@ private fun nativeSiteRejected(cause: ValueFlowRejection): Refinement.Rejected<N
 private const val ARGUMENT_SITE_WORK = 3L
 private const val EXPRESSION_SITE_WORK = 2L
 
-private fun KtExpression.hasNativeType(): Boolean =
-    analyze(this) {
+private fun KtExpression.hasNativeType(observation: IntellijReadObservation): Boolean =
+    observation.observedAnalyze(this) {
         val type = expressionType
         type != null && type !is KaErrorType
     }
 
-private fun KtProperty.hasNativeDeclaration(): Boolean = analyze(this) { symbol.psi === this@hasNativeDeclaration }
+private fun KtProperty.hasNativeDeclaration(observation: IntellijReadObservation): Boolean =
+    observation.observedAnalyze(this) { symbol.psi === this@hasNativeDeclaration }
 
-private fun KtExpression.hasNativeLocalReference(): Boolean {
+private fun KtExpression.hasNativeLocalReference(observation: IntellijReadObservation): Boolean {
     val reference = references.filterIsInstance<KtReference>().singleOrNull() ?: return false
-    return analyze(this) { (reference.resolveToSymbol()?.psi as? KtProperty)?.isLocal == true }
+    return observation.observedAnalyze(this) { (reference.resolveToSymbol()?.psi as? KtProperty)?.isLocal == true }
 }
 
 private fun KtExpression.isReturnedExpression(): Boolean =

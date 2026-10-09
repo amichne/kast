@@ -56,12 +56,16 @@ internal class HostedQueryExecutor(
         completion: HostedReadCompletionPolicy = HostedReadCompletionPolicy.HOST_CONTAINMENT,
         computation: suspend (HostedQueryProgress) -> Value,
     ): HostedExecution<Value> {
-        val diagnostic = diagnostics(limits)?.also { it.stage(HostedQueryStage.REQUEST_ADMISSION) }
+        // Export is optional; request-owned work accounting exists even when diagnostics are not exported.
+        val diagnostic =
+            requestDiagnostics(limits).also {
+                it.stage(HostedQueryStage.REQUEST_ADMISSION)
+            }
         val permit =
             when (val admission = lifetime.begin(endpoint, limits)) {
                 is HostedQueryAdmission.Admitted -> admission.permit
                 is HostedQueryAdmission.Rejected -> {
-                    diagnostic?.finish(HostedDiagnosticOutcome.Rejected(admission.failure))
+                    diagnostic.finish(HostedDiagnosticOutcome.Rejected(admission.failure))
                     return HostedExecution.Rejected(admission.failure)
                 }
             }
@@ -118,7 +122,7 @@ internal class HostedQueryExecutor(
         val evaluation = (completed as? HostedExecution.Completed)?.let { outcome(it.value) }
         val final = progress.publishAccepted(completed, evaluation)
         // Even a service cancelled before the coroutine starts emits a terminal receipt.
-        diagnostic?.finish(
+        diagnostic.finish(
             when (final) {
                 is HostedExecution.Rejected -> HostedDiagnosticOutcome.Rejected(final.failure)
                 is HostedExecution.Completed -> requireNotNull(evaluation)
@@ -126,6 +130,9 @@ internal class HostedQueryExecutor(
         )
         return final
     }
+
+    private fun requestDiagnostics(limits: ReadLimits): HostedReadDiagnostics =
+        diagnostics(limits) ?: HostedReadDiagnostics(clock, limits, publish = {})
 
     fun retire() {
         lifetime.retire()

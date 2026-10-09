@@ -3,16 +3,14 @@
 package io.github.amichne.kast.relation.intellij
 
 import com.intellij.psi.PsiReference
-import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PsiTreeUtil
-import com.intellij.util.Processor
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.CallbackArgumentBinding
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackParameterIdentity
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import org.jetbrains.kotlin.analysis.api.analyze
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtExpression
@@ -97,15 +95,18 @@ internal class IntellijCallbackSupplierCalls(
         parameter: KtParameter,
         formal: CallbackParameterIdentity,
     ): NativeSupplierArgument =
-        analyze(call) {
-            val resolved = call.resolveCall() ?: return@analyze NativeSupplierArgument.Unavailable
+        context.observation.observedAnalyze(call) {
+            val resolved = call.resolveCall() ?: return@observedAnalyze NativeSupplierArgument.Unavailable
             val callable =
-                resolved.signature.symbol as? KaNamedFunctionSymbol ?: return@analyze NativeSupplierArgument.Unavailable
+                resolved.signature.symbol as? KaNamedFunctionSymbol
+                    ?: return@observedAnalyze NativeSupplierArgument.Unavailable
             if (callable.psi?.originalElement != function.originalElement)
-                return@analyze NativeSupplierArgument.Different
+                return@observedAnalyze NativeSupplierArgument.Different
             val values =
                 resolved.valueArgumentMapping
-                    .filter { (_, mapped) -> callable.valueParameters.indexOf(mapped.symbol) == formal.position.value }
+                    .filter { (_, mapped) ->
+                        callable.valueParameters.indexOf(mapped.symbol) == formal.position.value
+                    }
                     .keys
             when (values.size) {
                 0 ->
@@ -198,7 +199,7 @@ private class References(
     private var completion: Refinement<Unit, CallbackInvocationFlowCause> = Refinement.Refined(Unit)
 
     fun read(function: KtNamedFunction): Refinement<List<PsiReference>, CallbackInvocationFlowCause> {
-        val exhausted = ReferencesSearch.search(function, context.scope.nativeScope, false).forEach(Processor(::visit))
+        val exhausted = context.observation.forEachReference(function, context.scope.nativeScope, false, ::visit)
         when (val completed = completion) {
             is Refinement.Rejected -> return completed
             is Refinement.Refined -> Unit

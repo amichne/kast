@@ -19,18 +19,21 @@ import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
+import io.github.amichne.kast.workspace.intellij.read.call
 import io.github.amichne.kast.workspace.intellij.read.localIdentityAdmitted
 import io.github.amichne.kast.workspace.intellij.read.localIdentityRejected
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import java.nio.file.Path
 import org.jetbrains.kotlin.analysis.api.KaSession
-import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.javaInterop.callableSymbol
 import org.jetbrains.kotlin.analysis.api.javaInterop.namedClassSymbol
 import org.jetbrains.kotlin.analysis.api.projectStructure.kaModule
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
@@ -39,7 +42,7 @@ import org.jetbrains.kotlin.psi.KtNamedDeclaration
 internal class IntellijK2RelationProjection(
     private val project: com.intellij.openapi.project.Project,
     private val workspaceRoot: CanonicalWorkspaceRoot,
-    private val observation: IntellijReadObservation = IntellijReadObservation.None,
+    val observation: IntellijReadObservation = IntellijReadObservation.None,
 ) {
     fun callOwner(lexical: ContainingDeclaration): Refinement<ContainingDeclaration.Found, CallOwnershipFailure> =
         refineCallOwnership(lexical, observation)
@@ -55,18 +58,12 @@ internal class IntellijK2RelationProjection(
         scope: CompiledRelationScope,
         subject: RelationEndpoint,
     ): IntellijRelationSubjectLookup {
-        val file =
-            when (val identity = subject.file) {
-                is SymbolDiscoveryFileIdentity.Workspace ->
-                    LocalFileSystem.getInstance().findFileByNioFile(Path.of(identity.path.value))
-                is SymbolDiscoveryFileIdentity.External ->
-                    VirtualFileManager.getInstance().findFileByUrl(identity.url.value)
-            } ?: return rejected(IntellijRelationSubjectFailure.STALE_SELECTOR)
+        val file = subjectFile(subject.file) ?: return rejected(IntellijRelationSubjectFailure.STALE_SELECTOR)
         if (!scope.nativeScope.contains(file)) {
             return rejected(IntellijRelationSubjectFailure.OUTSIDE_SCOPE)
         }
         val psiFile =
-            PsiManager.getInstance(project).findFile(file)
+            observation.call(IntellijReadCall.PSI_FIND_FILE) { PsiManager.getInstance(project).findFile(file) }
                 ?: return rejected(IntellijRelationSubjectFailure.STALE_SELECTOR)
         when (subject.constraints.packageName.admitPackage { psiFile.relationPackageEvidence() }) {
             IntellijRelationPackageAdmission.ADMITTED -> Unit
@@ -76,7 +73,11 @@ internal class IntellijK2RelationProjection(
                 return rejected(IntellijRelationSubjectFailure.UNSUPPORTED_SUBJECT)
         }
         val candidates =
-            generateSequence(psiFile.findElementAt(subject.range.startInclusive)) {
+            generateSequence(
+                    observation.call(IntellijReadCall.PSI_FIND_ELEMENT) {
+                        psiFile.findElementAt(subject.range.startInclusive)
+                    }
+                ) {
                     it.parent
                 }
                 .filterIsInstance<PsiNamedElement>()
@@ -105,6 +106,18 @@ internal class IntellijK2RelationProjection(
         }
     }
 
+    private fun subjectFile(identity: SymbolDiscoveryFileIdentity): VirtualFile? =
+        when (identity) {
+            is SymbolDiscoveryFileIdentity.Workspace ->
+                observation.call(IntellijReadCall.VFS_FIND_FILE) {
+                    LocalFileSystem.getInstance().findFileByNioFile(Path.of(identity.path.value))
+                }
+            is SymbolDiscoveryFileIdentity.External ->
+                observation.call(IntellijReadCall.VFS_FIND_FILE) {
+                    VirtualFileManager.getInstance().findFileByUrl(identity.url.value)
+                }
+        }
+
     /**
      * Proof transition: `KtNamedDeclaration -> IntellijRelationDeclarationProjection`.
      *
@@ -122,7 +135,7 @@ internal class IntellijK2RelationProjection(
         val projection =
             when (
                 val result =
-                    analyze(declaration.kaModule(null)) {
+                    observation.observedAnalyze(declaration.kaModule(null)) {
                         nativeSymbol(declaration)?.compilerProjection(this, detached, observation = observation)
                             ?: IntellijCompilerProjectionResult.Unsupported
                     }
@@ -210,72 +223,84 @@ internal class IntellijK2RelationProjection(
         candidate: PsiNamedElement,
         relation: IntellijDefinitionRelation,
     ): IntellijK2DefinitionConfirmation =
-        analyze(candidate.kaModule(null)) {
-            val subjectSymbol = nativeSymbol(subject)
-            val candidateSymbol = nativeSymbol(candidate)
-            when (relation) {
-                IntellijDefinitionRelation.INHERITORS -> {
-                    val parent =
-                        subjectSymbol as? KaClassSymbol ?: return@analyze IntellijK2DefinitionConfirmation.UNSUPPORTED
-                    val child =
-                        candidateSymbol as? KaClassSymbol ?: return@analyze IntellijK2DefinitionConfirmation.UNSUPPORTED
-                    if (child.isDirectSubClassOf(parent)) confirmed() else different()
-                }
-                IntellijDefinitionRelation.OVERRIDES -> {
-                    val parent =
-                        subjectSymbol as? KaCallableSymbol
-                            ?: return@analyze IntellijK2DefinitionConfirmation.UNSUPPORTED
-                    val child =
-                        candidateSymbol as? KaCallableSymbol
-                            ?: return@analyze IntellijK2DefinitionConfirmation.UNSUPPORTED
-                    if (
-                        child.directlyOverriddenSymbols.any {
-                            it.compareIdentity(parent, this) == IntellijSymbolIdentityComparison.SAME
-                        }
-                    ) {
-                        confirmed()
-                    } else {
-                        different()
-                    }
-                }
-                IntellijDefinitionRelation.IMPLEMENTATIONS ->
-                    when {
-                        subjectSymbol is KaClassSymbol && candidateSymbol is KaClassSymbol ->
-                            if (
-                                candidateSymbol.modality != KaSymbolModality.ABSTRACT &&
-                                    candidateSymbol.isSubClassOf(subjectSymbol)
-                            )
-                                confirmed()
-                            else different()
-                        subjectSymbol is KaCallableSymbol && candidateSymbol is KaCallableSymbol ->
-                            if (
-                                candidateSymbol.modality != KaSymbolModality.ABSTRACT &&
-                                    candidateSymbol.allOverriddenSymbols.any {
-                                        it.compareIdentity(subjectSymbol, this) == IntellijSymbolIdentityComparison.SAME
-                                    }
-                            )
-                                confirmed()
-                            else different()
-                        else -> IntellijK2DefinitionConfirmation.UNSUPPORTED
-                    }
+        observation.observedAnalyze(candidate.kaModule(null)) {
+            confirmDefinitionInSession(subject, candidate, relation)
+        }
+
+    private fun KaSession.confirmDefinitionInSession(
+        subject: PsiNamedElement,
+        candidate: PsiNamedElement,
+        relation: IntellijDefinitionRelation,
+    ): IntellijK2DefinitionConfirmation {
+        val subjectSymbol = nativeSymbol(subject)
+        val candidateSymbol = nativeSymbol(candidate)
+        return when (relation) {
+            IntellijDefinitionRelation.INHERITORS -> confirmInheritor(subjectSymbol, candidateSymbol)
+            IntellijDefinitionRelation.OVERRIDES -> confirmOverride(subjectSymbol, candidateSymbol)
+            IntellijDefinitionRelation.IMPLEMENTATIONS -> confirmImplementation(subjectSymbol, candidateSymbol)
+        }
+    }
+
+    private fun KaSession.confirmInheritor(
+        parentSymbol: KaSymbol?,
+        childSymbol: KaSymbol?,
+    ): IntellijK2DefinitionConfirmation {
+        val parent = parentSymbol as? KaClassSymbol ?: return IntellijK2DefinitionConfirmation.UNSUPPORTED
+        val child = childSymbol as? KaClassSymbol ?: return IntellijK2DefinitionConfirmation.UNSUPPORTED
+        return if (child.isDirectSubClassOf(parent)) confirmed() else different()
+    }
+
+    private fun KaSession.confirmOverride(
+        parentSymbol: KaSymbol?,
+        childSymbol: KaSymbol?,
+    ): IntellijK2DefinitionConfirmation {
+        val parent = parentSymbol as? KaCallableSymbol ?: return IntellijK2DefinitionConfirmation.UNSUPPORTED
+        val child = childSymbol as? KaCallableSymbol ?: return IntellijK2DefinitionConfirmation.UNSUPPORTED
+        return if (
+            child.directlyOverriddenSymbols.any {
+                it.compareIdentity(parent, this) == IntellijSymbolIdentityComparison.SAME
             }
+        )
+            confirmed()
+        else different()
+    }
+
+    private fun KaSession.confirmImplementation(
+        subject: KaSymbol?,
+        candidate: KaSymbol?,
+    ): IntellijK2DefinitionConfirmation =
+        when {
+            subject is KaClassSymbol && candidate is KaClassSymbol ->
+                if (candidate.modality != KaSymbolModality.ABSTRACT && candidate.isSubClassOf(subject)) confirmed()
+                else different()
+            subject is KaCallableSymbol && candidate is KaCallableSymbol ->
+                if (
+                    candidate.modality != KaSymbolModality.ABSTRACT &&
+                        candidate.allOverriddenSymbols.any {
+                            it.compareIdentity(subject, this) == IntellijSymbolIdentityComparison.SAME
+                        }
+                )
+                    confirmed()
+                else different()
+            else -> IntellijK2DefinitionConfirmation.UNSUPPORTED
         }
 
     /** Resolves one Kotlin call/reference target to a source declaration through K2. */
     fun resolve(reference: KtReference): IntellijK2ResolvedDeclaration =
-        analyze(reference.element) {
+        observation
+            .observedAnalyze(reference.element) {
                 val symbol = reference.resolveToSymbol()
                 if (symbol == null) {
                     val invocation = resolvedFunctionValueInvocation(reference)
                     if (invocation == null) {
                         IntellijInvokeCallRefinement.UNRESOLVED.observe(observation)
-                        return@analyze IntellijK2ResolvedDeclaration.Unresolved
+                        return@observedAnalyze IntellijK2ResolvedDeclaration.Unresolved
                     }
                     IntellijInvokeCallRefinement.CONFIRMED.observe(observation)
-                    return@analyze functionValueInvocation(reference, invocation)
+                    return@observedAnalyze functionValueInvocation(reference, invocation)
                 }
                 val parameterInvocation = resolvedParameterInvocation(reference, symbol)
-                if (parameterInvocation != null) return@analyze parameterInvocation
+                if (parameterInvocation != null) return@observedAnalyze parameterInvocation
                 val psi = symbol.psi
                 val declaration = psi as? PsiNamedElement
                 when {

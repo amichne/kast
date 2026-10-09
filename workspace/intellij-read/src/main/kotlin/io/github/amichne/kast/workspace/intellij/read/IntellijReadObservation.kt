@@ -1,10 +1,13 @@
 package io.github.amichne.kast.workspace.intellij.read
 
-import io.github.amichne.kast.kernel.ReadLimitParameter
-import io.github.amichne.kast.kernel.ReadLimits
-
 /** Bounded vocabulary at the native effect boundary. No names, paths, references, or PSI. */
 enum class IntellijReadCounter {
+    DEPENDENCY_TREE_ENTRIES_VISITED,
+    DEPENDENCY_HASH_BYTES_READ,
+    DEPENDENCY_HASHES_COMPLETED,
+    DEPENDENCY_HASH_MEMO_HITS,
+    DEPENDENCY_TREE_MEMO_HITS,
+    DECLARATION_PSI_NODES_VISITED,
     /** Detached native discovery/relation page returns, including qualified pages; never public call counts. */
     NATIVE_DISCOVERY_PAGES,
     NATIVE_RELATION_PAGES,
@@ -336,43 +339,10 @@ enum class IntellijReadPhase {
     CANCELLATION_DRAINAGE,
 }
 
-enum class IntellijReadUnexpectedKind {
-    RUNTIME,
-    LINKAGE,
-}
-
-data class IntellijReadUnexpectedFailure
-private constructor(
-    val stage: IntellijReadStage,
-    val kind: IntellijReadUnexpectedKind,
-    val exceptionType: String,
-    val adapterFrames: List<String>,
-) {
-    companion object {
-        fun capture(
-            stage: IntellijReadStage,
-            failure: Throwable,
-            limits: ReadLimits = ReadLimits.Default,
-        ): IntellijReadUnexpectedFailure =
-            IntellijReadUnexpectedFailure(
-                stage,
-                if (failure is LinkageError) IntellijReadUnexpectedKind.LINKAGE else IntellijReadUnexpectedKind.RUNTIME,
-                failure.javaClass.name.take(limits[ReadLimitParameter.DIAGNOSTIC_TEXT_CHARACTERS].value),
-                failure.stackTrace
-                    .asSequence()
-                    .filter { it.className.startsWith("io.github.amichne.kast.") }
-                    .take(limits[ReadLimitParameter.DIAGNOSTIC_FRAMES].value)
-                    .map {
-                        "${it.className}.${it.methodName}:${it.lineNumber}"
-                            .take(limits[ReadLimitParameter.DIAGNOSTIC_TEXT_CHARACTERS].value)
-                    }
-                    .toList(),
-            )
-    }
-}
-
 /** Request-local diagnostic capability; owners choose whether to observe. */
 interface IntellijReadObservation {
+    fun enterCall(call: IntellijReadCall): IntellijReadCallScope = IntellijReadCallScope.None
+
     fun phase(value: IntellijReadPhase) {}
 
     fun unexpected(failure: IntellijReadUnexpectedFailure) {}

@@ -5,7 +5,8 @@ package io.github.amichne.kast.relation.intellij
 import com.intellij.psi.PsiElement
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
-import org.jetbrains.kotlin.analysis.api.analyze
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtReturnExpression
@@ -14,6 +15,7 @@ import org.jetbrains.kotlin.psi.KtReturnExpression
 internal fun callbackFactoryReturns(
     function: KtNamedFunction,
     permit: () -> Refinement<Unit, CallbackInvocationFlowCause>,
+    observation: IntellijReadObservation,
 ): Refinement<List<KtExpression>, CallbackInvocationFlowCause> {
     val body = function.bodyExpression ?: return rejected(CallbackInvocationFlowCause.EXTERNAL_CALLABLE)
     if (!function.hasBlockBody()) return Refinement.Refined(listOf(body))
@@ -27,7 +29,7 @@ internal fun callbackFactoryReturns(
         }
         val element = pending.removeFirst()
         if (element is KtReturnExpression) {
-            when (val collected = collectReturn(element, function, results)) {
+            when (val collected = collectReturn(element, function, results, observation)) {
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return collected
             }
@@ -42,9 +44,10 @@ private fun collectReturn(
     element: KtReturnExpression,
     function: KtNamedFunction,
     results: MutableList<KtExpression>,
+    observation: IntellijReadObservation,
 ): Refinement<Unit, CallbackInvocationFlowCause> {
     val target =
-        analyze(element) { element.resolveSymbol()?.psi }
+        observation.observedAnalyze(element) { element.resolveSymbol()?.psi }
             ?: return rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
     if (target.originalElement != function.originalElement) return Refinement.Refined(Unit)
     return when (val expression = factoryReturnedExpression(element, function)) {

@@ -20,8 +20,8 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.localIdentityAdmitted
 import io.github.amichne.kast.workspace.intellij.read.localIdentityRejected
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.KaSession
-import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.components.containingSymbol
 import org.jetbrains.kotlin.analysis.api.javaInterop.callableSymbol
 import org.jetbrains.kotlin.analysis.api.javaInterop.namedClassSymbol
@@ -93,7 +93,7 @@ internal class IntellijKotlinCompilerSymbolLookup(
         val projection =
             when (
                 val result =
-                    analyze(declaration.kaModule(null)) {
+                    observation.observedAnalyze(declaration.kaModule(null)) {
                         val symbol =
                             when (declaration) {
                                 is KtNamedDeclaration -> declaration.symbol

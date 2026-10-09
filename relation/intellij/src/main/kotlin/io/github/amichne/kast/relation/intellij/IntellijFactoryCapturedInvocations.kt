@@ -2,8 +2,6 @@ package io.github.amichne.kast.relation.intellij
 
 import com.intellij.psi.PsiElement
 import com.intellij.psi.search.LocalSearchScope
-import com.intellij.psi.search.searches.ReferencesSearch
-import com.intellij.util.Processor
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackParameterInvocation
@@ -98,7 +96,7 @@ internal class IntellijFactoryCapturedInvocations(
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return permit
             }
-            when (val resolved = resolveLocalValueReference(reference)) {
+            when (val resolved = resolveLocalValueReference(reference, context.observation)) {
                 NativeLocalValueReferenceResolution.Unresolved ->
                     return rejected(CallbackInvocationFlowCause.UNRESOLVED_PARAMETER_REFERENCE)
                 is NativeLocalValueReferenceResolution.Resolved ->
@@ -194,13 +192,10 @@ internal class IntellijFactoryCapturedInvocations(
         val references = mutableListOf<KtReference>()
         var outcome: Refinement<Unit, CallbackInvocationFlowCause> = Refinement.Refined(Unit)
         val exhausted =
-            ReferencesSearch.search(declaration, LocalSearchScope(function))
-                .forEach(
-                    Processor { reference ->
-                        outcome = retainReference(reference, references)
-                        outcome is Refinement.Refined
-                    }
-                )
+            context.observation.forEachReference(declaration, LocalSearchScope(function)) { reference ->
+                outcome = retainReference(reference, references)
+                outcome is Refinement.Refined
+            }
         return when (val read = outcome) {
             is Refinement.Rejected -> read
             is Refinement.Refined ->

@@ -44,9 +44,14 @@ internal fun IntellijNativeDiscoveryQuery.discoverNative(
                     project,
                     scope,
                     request,
-                    ScopedDeclarationCallbacks(observe, qualify) {
-                        accept(IntellijDiscoveryDeclarationInput.Scoped(it))
-                    },
+                    ScopedDeclarationCallbacks(
+                        observe,
+                        qualify,
+                        observation = observation,
+                        accept = {
+                            accept(IntellijDiscoveryDeclarationInput.Scoped(it))
+                        },
+                    ),
                     limits,
                     localOnly = scope.scope.libraryPolicy() == SymbolLibraryPolicy.INCLUDE,
                 )
@@ -58,7 +63,7 @@ internal fun IntellijNativeDiscoveryQuery.discoverNative(
                 project = project,
                 scope = scope,
                 request = request,
-                callbacks = ScopedDeclarationCallbacks(observe, qualify, accept),
+                callbacks = ScopedDeclarationCallbacks(observe, qualify, accept, observation),
                 limits = limits,
             )
         }
@@ -73,9 +78,14 @@ internal fun IntellijNativeDiscoveryQuery.discoverNative(
                     project,
                     scope,
                     request,
-                    ScopedDeclarationCallbacks(observe, qualify) {
-                        accept(IntellijDiscoveryDeclarationInput.Scoped(it))
-                    },
+                    ScopedDeclarationCallbacks(
+                        observe,
+                        qualify,
+                        observation = observation,
+                        accept = {
+                            accept(IntellijDiscoveryDeclarationInput.Scoped(it))
+                        },
+                    ),
                     limits,
                     localOnly = true,
                 )

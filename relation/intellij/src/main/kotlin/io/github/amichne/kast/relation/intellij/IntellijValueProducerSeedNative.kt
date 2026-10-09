@@ -22,7 +22,7 @@ import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadStage
-import org.jetbrains.kotlin.analysis.api.analyze
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaErrorType
 import org.jetbrains.kotlin.psi.KtCallElement
@@ -136,21 +136,21 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
         callable: IntellijValueFlowCompilerAdapter.Prepared.Ready,
         expected: SymbolSelector,
     ): Refinement<RevalidatedRelationEndpoint, ValueProducerSeedRejection> =
-        analyze(expression.expression) {
+        adapter.observation.observedAnalyze(expression.expression) {
             val type = expression.expression.expressionType
             if (type == null || type is KaErrorType)
-                return@analyze Refinement.Rejected(ValueProducerSeedRejection.UNRESOLVED_INVOCATION)
+                return@observedAnalyze Refinement.Rejected(ValueProducerSeedRejection.UNRESOLVED_INVOCATION)
             val resolved =
                 expression.call.resolveCall()
-                    ?: return@analyze Refinement.Rejected(ValueProducerSeedRejection.UNRESOLVED_INVOCATION)
+                    ?: return@observedAnalyze Refinement.Rejected(ValueProducerSeedRejection.UNRESOLVED_INVOCATION)
             val symbol =
                 resolved.signature.symbol as? KaNamedFunctionSymbol
-                    ?: return@analyze Refinement.Rejected(ValueProducerSeedRejection.UNSUPPORTED_INVOCATION)
+                    ?: return@observedAnalyze Refinement.Rejected(ValueProducerSeedRejection.UNSUPPORTED_INVOCATION)
             val declaration =
                 symbol.psi as? PsiNamedElement
-                    ?: return@analyze Refinement.Rejected(ValueProducerSeedRejection.UNSUPPORTED_INVOCATION)
+                    ?: return@observedAnalyze Refinement.Rejected(ValueProducerSeedRejection.UNSUPPORTED_INVOCATION)
             if (declaration !== callable.owner)
-                return@analyze Refinement.Rejected(ValueProducerSeedRejection.CALLABLE_MISMATCH)
+                return@observedAnalyze Refinement.Rejected(ValueProducerSeedRejection.CALLABLE_MISMATCH)
             projectDeclaration(enclosing, declaration, expected, ValueProducerSeedRejection.CALLABLE_MISMATCH)
         }
 

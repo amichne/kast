@@ -11,6 +11,8 @@ import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.WorkspaceModuleIdentity
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
+import io.github.amichne.kast.workspace.intellij.read.call
 import java.nio.file.Files
 import java.nio.file.Path
 import org.jetbrains.kotlin.cli.common.arguments.K2JVMCompilerArguments
@@ -26,7 +28,9 @@ internal class SemanticNativeConfiguration(
     private val files: SemanticNativeFiles,
 ) {
     fun arguments(module: Module, digest: SemanticInputDigest): SemanticCapture<K2JVMCompilerArguments> {
-        val settings = KotlinFacet.get(module)?.configuration?.settings ?: return configurationUnavailable()
+        val settings =
+            budget.observation.call(IntellijReadCall.KOTLIN_FACET) { KotlinFacet.get(module) }?.configuration?.settings
+                ?: return configurationUnavailable()
         if (settings.useProjectSettings || settings.isHmppEnabled) return configurationUnavailable()
         val arguments = settings.mergedCompilerArguments as? K2JVMCompilerArguments ?: return configurationUnavailable()
         when (
@@ -151,8 +155,9 @@ internal class SemanticNativeConfiguration(
             return captureRejected(SemanticDependencyCaptureFailure.COMPILER_PLUGIN_INPUTS_UNMODELED)
         if (!raw.isAbsolute) return captureRejected(SemanticDependencyCaptureFailure.INPUT_PROVIDER_UNSUPPORTED)
         val file =
-            LocalFileSystem.getInstance().findFileByPath(path)
-                ?: return captureRejected(SemanticDependencyCaptureFailure.INPUT_UNAVAILABLE)
+            budget.observation.call(IntellijReadCall.VFS_FIND_FILE) {
+                LocalFileSystem.getInstance().findFileByPath(path)
+            } ?: return captureRejected(SemanticDependencyCaptureFailure.INPUT_UNAVAILABLE)
         if (file.isDirectory) return captureRejected(SemanticDependencyCaptureFailure.COMPILER_PLUGIN_INPUTS_UNMODELED)
         val hash =
             when (val observed = files.hash(file)) {

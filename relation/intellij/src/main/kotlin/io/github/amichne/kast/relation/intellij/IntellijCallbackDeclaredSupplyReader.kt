@@ -8,7 +8,7 @@ import io.github.amichne.kast.relation.contract.CallbackDirectInvocationBinding
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackParameterIdentity
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
-import org.jetbrains.kotlin.analysis.api.analyze
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.types.KaFunctionType
 import org.jetbrains.kotlin.psi.KtNamedFunction
 
@@ -30,7 +30,7 @@ internal class IntellijCallbackDeclaredSupplyReader(private val context: Intelli
             is Refinement.Refined -> Unit
             is Refinement.Rejected -> return unavailable(allowed.failure)
         }
-        if (!analyze(supply.parameter) { supply.parameter.symbol.returnType is KaFunctionType })
+        if (!defaultIsCallable(supply.parameter))
             return unavailable(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
         val endpoint =
             when (val admitted = context.target(function)) {
@@ -86,6 +86,9 @@ internal class IntellijCallbackDeclaredSupplyReader(private val context: Intelli
             is Refinement.Rejected -> CallbackBindingPreparation.ContractRejected(admitted.failure)
         }
     }
+
+    private fun defaultIsCallable(parameter: org.jetbrains.kotlin.psi.KtParameter): Boolean =
+        context.observation.observedAnalyze(parameter) { parameter.symbol.returnType is KaFunctionType }
 
     private fun unavailable(cause: CallbackInvocationFlowCause) = CallbackBindingPreparation.Unavailable(cause)
 }

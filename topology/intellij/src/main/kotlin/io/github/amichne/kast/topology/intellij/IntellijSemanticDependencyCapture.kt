@@ -13,11 +13,13 @@ import io.github.amichne.kast.workspace.contract.LiveSemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceModuleIdentity
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceContentHash
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadStage
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFailure
+import io.github.amichne.kast.workspace.intellij.read.call
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.security.MessageDigest
@@ -71,7 +73,6 @@ class IntellijSemanticDependencyCapture(
 ) {
     /** Caller must keep the same native read action through fact admission and use. */
     // Native platform extensions may throw unchecked exceptions; retain bounded stage evidence at this effect boundary.
-    @Suppress("TooGenericExceptionCaught")
     fun capture(
         project: Project,
         authority: LiveSemanticReadAuthority,
@@ -82,43 +83,55 @@ class IntellijSemanticDependencyCapture(
     ): SemanticDependencyCapture {
         ApplicationManager.getApplication().assertReadAccessAllowed()
         observation.phase(IntellijReadPhase.SEMANTIC_DEPENDENCY_PREPARATION)
-        val accounting = DependencyCaptureBudget(budget, System::nanoTime, ProgressManager::checkCanceled)
-        return observeDependencyCaptureCost(accounting, onCost) {
-            val result =
-                try {
-                    captureInRead(project, authority, model, roots, accounting)
-                } catch (cancelled: ProcessCanceledException) {
-                    throw cancelled
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (_: IOException) {
-                    Refinement.Rejected(SemanticDependencyCaptureFailure.INPUT_UNAVAILABLE)
-                } catch (failure: LinkageError) {
-                    observation.unexpected(
-                        IntellijReadUnexpectedFailure.capture(
-                            IntellijReadStage.SEMANTIC_DEPENDENCY_PREPARATION,
-                            failure,
-                            limits,
-                        )
-                    )
-                    Refinement.Rejected(SemanticDependencyCaptureFailure.COMPILER_CONFIGURATION_UNAVAILABLE)
-                } catch (failure: RuntimeException) {
-                    observation.unexpected(
-                        IntellijReadUnexpectedFailure.capture(
-                            IntellijReadStage.SEMANTIC_DEPENDENCY_PREPARATION,
-                            failure,
-                            limits,
-                        )
-                    )
-                    Refinement.Rejected(SemanticDependencyCaptureFailure.INPUT_UNAVAILABLE)
-                }
-            when (result) {
-                is Refinement.Refined -> SemanticDependencyCapture.Captured(result.value, accounting.cost())
-                is Refinement.Rejected -> {
-                    observation.terminated(result.failure.termination())
-                    SemanticDependencyCapture.Unavailable(result.failure, accounting.cost())
+        val accounting = DependencyCaptureBudget(budget, System::nanoTime, ProgressManager::checkCanceled, observation)
+        return observation.call(IntellijReadCall.SEMANTIC_DEPENDENCY_CAPTURE) {
+            observeDependencyCaptureCost(accounting, onCost) {
+                val result = captureObserved(project, authority, model, roots, accounting)
+                when (result) {
+                    is Refinement.Refined -> SemanticDependencyCapture.Captured(result.value, accounting.cost())
+                    is Refinement.Rejected -> {
+                        observation.terminated(result.failure.termination())
+                        SemanticDependencyCapture.Unavailable(result.failure, accounting.cost())
+                    }
                 }
             }
+        }
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    private fun captureObserved(
+        project: Project,
+        authority: LiveSemanticReadAuthority,
+        model: WorkspaceSearchScopeModel,
+        roots: Set<WorkspaceModuleIdentity>,
+        accounting: DependencyCaptureBudget,
+    ): SemanticCapture<SemanticDependencySnapshot> {
+        return try {
+            captureInRead(project, authority, model, roots, accounting)
+        } catch (cancelled: ProcessCanceledException) {
+            throw cancelled
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: IOException) {
+            Refinement.Rejected(SemanticDependencyCaptureFailure.INPUT_UNAVAILABLE)
+        } catch (failure: LinkageError) {
+            observation.unexpected(
+                IntellijReadUnexpectedFailure.capture(
+                    IntellijReadStage.SEMANTIC_DEPENDENCY_PREPARATION,
+                    failure,
+                    limits,
+                )
+            )
+            Refinement.Rejected(SemanticDependencyCaptureFailure.COMPILER_CONFIGURATION_UNAVAILABLE)
+        } catch (failure: RuntimeException) {
+            observation.unexpected(
+                IntellijReadUnexpectedFailure.capture(
+                    IntellijReadStage.SEMANTIC_DEPENDENCY_PREPARATION,
+                    failure,
+                    limits,
+                )
+            )
+            Refinement.Rejected(SemanticDependencyCaptureFailure.INPUT_UNAVAILABLE)
         }
     }
 
@@ -172,6 +185,7 @@ internal class DependencyCaptureBudget(
     private val budget: ResourceBudget,
     private val nanoTime: () -> Long,
     private val checkCanceled: () -> Unit,
+    val observation: IntellijReadObservation = IntellijReadObservation.None,
 ) {
     private val started = nanoTime()
     private var work = 0L

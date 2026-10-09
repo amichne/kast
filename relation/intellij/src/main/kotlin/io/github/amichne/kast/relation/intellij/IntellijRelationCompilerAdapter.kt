@@ -9,10 +9,12 @@ import io.github.amichne.kast.relation.contract.RelationCompilerRejection
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadStage
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFailure
+import io.github.amichne.kast.workspace.intellij.read.call
 import kotlinx.coroutines.CancellationException
 
 internal sealed interface IntellijRelationLeaseAdmission {
@@ -115,65 +117,19 @@ internal class IntellijRelationCompilerQuery(
         val allowance = IntellijRelationAllowance(System::nanoTime)
         return try {
             readAction {
-                val preparedSummaries = prepareSummaries(request, allowance)
-                val scope =
-                    when (val compilation = scopeCompiler.compile(project, request, modelCompilation)) {
-                        is IntellijRelationScopeCompilation.Compiled -> compilation.scope
-                        is IntellijRelationScopeCompilation.Rejected ->
-                            return@readAction RelationCompilation.Rejected(RelationCompilerRejection.SCOPE_REJECTED)
-                    }
-                val subjectScope =
-                    when (
-                        val compilation =
-                            scopeCompiler.compile(
-                                project,
-                                request,
-                                modelCompilation,
-                                request.subject.scope,
-                                request.subject.constraints,
-                            )
-                    ) {
-                        is IntellijRelationScopeCompilation.Compiled -> compilation.scope
-                        is IntellijRelationScopeCompilation.Rejected ->
-                            return@readAction RelationCompilation.Rejected(RelationCompilerRejection.SCOPE_REJECTED)
-                    }
-                val projection =
-                    IntellijK2RelationProjection(
-                        project,
-                        request.subject.lease.workspaceRoot,
-                        observation,
+                observation.call(IntellijReadCall.RELATION_READ_ATTEMPT) {
+                    admitThenPrepareRelation(
+                        admit = { admitRead(project, request, modelCompilation) },
+                        prepare = {
+                            observation.call(IntellijReadCall.CALLBACK_FACT_PREPARATION) {
+                                prepareSummaries(request, allowance)
+                            }
+                        },
+                        evaluate = { admitted, prepared ->
+                            evaluateRead(project, request, allowance, admitted, prepared)
+                        },
                     )
-                val subject =
-                    when (val lookup = projection.subject(subjectScope, request.subject)) {
-                        is IntellijRelationSubjectLookup.Found -> lookup
-                        is IntellijRelationSubjectLookup.Rejected ->
-                            return@readAction RelationCompilation.Rejected(lookup.reason.compilerRejection())
-                    }
-                val namedCache = preparedSummaries.namedRelations
-                when (val reused = readNamedPartition(namedCache, request, projection, scope, allowance)) {
-                    io.github.amichne.kast.relation.contract.NamedRelationCacheLookup.Miss -> Unit
-                    is io.github.amichne.kast.relation.contract.NamedRelationCacheLookup.Found ->
-                        return@readAction reused.complete
                 }
-                val collector =
-                    IntellijRelationCollector(
-                        request,
-                        observation = observation,
-                        limits = limits,
-                        allowance = allowance,
-                    )
-                val termination =
-                    IntellijK2RelationSearch(
-                            project,
-                            scope,
-                            projection,
-                            observation = observation,
-                            limits = limits,
-                            summaries = preparedSummaries,
-                            inventories = inventories,
-                        )
-                        .read(request, subject.plan(request), collector)
-                finish(collector.finish(termination), namedCache)
             }
         } catch (cancelled: ProcessCanceledException) {
             throw cancelled
@@ -186,6 +142,102 @@ internal class IntellijRelationCompilerQuery(
             observation.unexpected(IntellijReadUnexpectedFailure.capture(IntellijReadStage.RELATION, failure, limits))
             RelationCompilation.Rejected(RelationCompilerRejection.WORKSPACE_INDEX_UNAVAILABLE)
         }
+    }
+
+    private class AdmittedRelationRead(
+        val scope: CompiledRelationScope,
+        val projection: IntellijK2RelationProjection,
+        val subject: IntellijRelationSubjectLookup.Found,
+    )
+
+    private fun admitRead(
+        project: Project,
+        request: RelationRequest,
+        modelCompilation: WorkspaceSearchScopeModelCompilation,
+    ): io.github.amichne.kast.kernel.Refinement<AdmittedRelationRead, RelationCompilerRejection> {
+        val scope =
+            when (
+                val compilation =
+                    observation.call(IntellijReadCall.RELATION_SCOPE_COMPILE) {
+                        scopeCompiler.compile(project, request, modelCompilation)
+                    }
+            ) {
+                is IntellijRelationScopeCompilation.Compiled -> compilation.scope
+                is IntellijRelationScopeCompilation.Rejected ->
+                    return io.github.amichne.kast.kernel.Refinement.Rejected(RelationCompilerRejection.SCOPE_REJECTED)
+            }
+        val subjectScope =
+            when (
+                val compilation =
+                    observation.call(IntellijReadCall.RELATION_SCOPE_COMPILE) {
+                        scopeCompiler.compile(
+                            project,
+                            request,
+                            modelCompilation,
+                            request.subject.scope,
+                            request.subject.constraints,
+                        )
+                    }
+            ) {
+                is IntellijRelationScopeCompilation.Compiled -> compilation.scope
+                is IntellijRelationScopeCompilation.Rejected ->
+                    return io.github.amichne.kast.kernel.Refinement.Rejected(RelationCompilerRejection.SCOPE_REJECTED)
+            }
+        val projection =
+            IntellijK2RelationProjection(
+                project,
+                request.subject.lease.workspaceRoot,
+                observation,
+            )
+        val subject =
+            when (
+                val lookup =
+                    observation.call(IntellijReadCall.RELATION_SUBJECT_RESTORE) {
+                        projection.subject(subjectScope, request.subject)
+                    }
+            ) {
+                is IntellijRelationSubjectLookup.Found -> lookup
+                is IntellijRelationSubjectLookup.Rejected ->
+                    return io.github.amichne.kast.kernel.Refinement.Rejected(lookup.reason.compilerRejection())
+            }
+
+        return io.github.amichne.kast.kernel.Refinement.Refined(AdmittedRelationRead(scope, projection, subject))
+    }
+
+    private fun evaluateRead(
+        project: Project,
+        request: RelationRequest,
+        allowance: IntellijRelationAllowance,
+        admitted: AdmittedRelationRead,
+        preparedSummaries: io.github.amichne.kast.relation.contract.CallbackSummaryCachePort,
+    ): RelationCompilation {
+        val scope = admitted.scope
+        val projection = admitted.projection
+        val subject = admitted.subject
+        val namedCache = preparedSummaries.namedRelations
+        when (val reused = readNamedPartition(namedCache, request, projection, scope, allowance)) {
+            io.github.amichne.kast.relation.contract.NamedRelationCacheLookup.Miss -> Unit
+            is io.github.amichne.kast.relation.contract.NamedRelationCacheLookup.Found -> return reused.complete
+        }
+        val collector =
+            IntellijRelationCollector(
+                request,
+                observation = observation,
+                limits = limits,
+                allowance = allowance,
+            )
+        val termination =
+            IntellijK2RelationSearch(
+                    project,
+                    scope,
+                    projection,
+                    observation = observation,
+                    limits = limits,
+                    summaries = preparedSummaries,
+                    inventories = inventories,
+                )
+                .read(request, subject.plan(request), collector)
+        return finish(collector.finish(termination), namedCache)
     }
 }
 

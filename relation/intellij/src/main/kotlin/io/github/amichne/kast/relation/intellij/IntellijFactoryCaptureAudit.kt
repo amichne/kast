@@ -6,7 +6,7 @@ import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.ImmutableCallbackValue
 import io.github.amichne.kast.relation.contract.ImmutableCallbackValueOrigin
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
-import org.jetbrains.kotlin.analysis.api.analyze
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaVariableSymbol
@@ -93,7 +93,7 @@ internal class IntellijFactoryCaptureAudit(private val context: IntellijCallback
         range: ExactDeclarationTextRange,
     ): Refinement<NativeCaptureAlias, CallbackInvocationFlowCause> {
         val local =
-            when (val resolved = resolveLocalValueReference(reference)) {
+            when (val resolved = resolveLocalValueReference(reference, context.observation)) {
                 is NativeLocalValueReferenceResolution.Resolved -> resolved.declaration as? KtProperty
                 NativeLocalValueReferenceResolution.Unresolved -> null
             }
@@ -122,7 +122,7 @@ internal class IntellijFactoryCaptureAudit(private val context: IntellijCallback
         function: KtNamedFunction,
         range: ExactDeclarationTextRange,
     ): NativeCaptureReference =
-        analyze(reference.element) {
+        context.observation.observedAnalyze(reference.element) {
             when (val symbol = reference.resolveToSymbol()) {
                 is KaNamedFunctionSymbol -> named(symbol.psi as? KtNamedFunction, function, range)
                 is KaClassLikeSymbol ->

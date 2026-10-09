@@ -6,8 +6,6 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReference
 import com.intellij.psi.search.LocalSearchScope
-import com.intellij.psi.search.searches.ReferencesSearch
-import com.intellij.util.Processor
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.LocalBindingReferenceScan
 import io.github.amichne.kast.relation.contract.LocalReferenceKey
@@ -22,7 +20,7 @@ import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
-import org.jetbrains.kotlin.analysis.api.analyze
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtProperty
 
@@ -40,7 +38,7 @@ internal class IntellijLocalBindingReads(
                 request,
                 scope.request,
                 { visit ->
-                    ReferencesSearch.search(property, LocalSearchScope(owner)).forEach(Processor { visit(it) })
+                    observation.forEachReference(property, LocalSearchScope(owner), process = visit)
                 },
                 { reference ->
                     val elementRange = nativeRange(reference.element)
@@ -58,7 +56,7 @@ internal class IntellijLocalBindingReads(
                     if (native == null)
                         LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
                     else {
-                        when (confirmLocalBindingReference(native, property)) {
+                        when (confirmLocalBindingReference(native, property, observation)) {
                             LocalBindingReferenceConfirmation.UNRESOLVED ->
                                 LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
                             LocalBindingReferenceConfirmation.OTHER_BINDING -> LocalReferenceResolution.OtherBinding
@@ -122,8 +120,9 @@ internal enum class LocalBindingReferenceConfirmation {
 internal fun confirmLocalBindingReference(
     reference: KtReference,
     property: KtProperty,
+    observation: IntellijReadObservation,
 ): LocalBindingReferenceConfirmation {
-    return when (val resolution = resolveLocalValueReference(reference)) {
+    return when (val resolution = resolveLocalValueReference(reference, observation)) {
         NativeLocalValueReferenceResolution.Unresolved -> LocalBindingReferenceConfirmation.UNRESOLVED
         is NativeLocalValueReferenceResolution.Resolved ->
             if (resolution.declaration === property) LocalBindingReferenceConfirmation.EXACT_BINDING
@@ -138,9 +137,12 @@ internal sealed interface NativeLocalValueReferenceResolution {
 }
 
 /** Shared native observation, including formal references; consumers retain their own ownership and role checks. */
-internal fun resolveLocalValueReference(reference: KtReference): NativeLocalValueReferenceResolution {
+internal fun resolveLocalValueReference(
+    reference: KtReference,
+    observation: IntellijReadObservation,
+): NativeLocalValueReferenceResolution {
     val declaration =
-        analyze(reference.element) { reference.resolveToSymbol()?.psi }
+        observation.observedAnalyze(reference.element) { reference.resolveToSymbol()?.psi }
             ?: return NativeLocalValueReferenceResolution.Unresolved
     return NativeLocalValueReferenceResolution.Resolved(declaration)
 }

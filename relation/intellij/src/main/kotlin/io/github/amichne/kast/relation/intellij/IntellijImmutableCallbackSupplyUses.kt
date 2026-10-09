@@ -41,7 +41,7 @@ internal fun ImmutableCallbackEnumeration.prepared(
     val argument =
         prepared.origin as? PreparedCallbackOrigin.Argument
             ?: return obligation(CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY)
-    if (returnsCallable(prepared.function)) return factoryArgument(item, argument, endpoint)
+    if (returnsCallable(prepared.function, context.observation)) return factoryArgument(item, argument, endpoint)
     val site =
         context.site(
             value,
@@ -116,7 +116,7 @@ internal fun ImmutableCallbackEnumeration.returned(
     owner: ContainingDeclaration.Found,
 ): Refinement<Unit, CallbackInvocationFlowFailure> {
     val factory = owner.declaration as? KtNamedFunction
-    if (factory == null || !returnsCallable(factory)) {
+    if (factory == null || !returnsCallable(factory, context.observation)) {
         obligations += CallbackInvocationFlowCause.RETURNED_CALLBACK
         return Refinement.Refined(Unit)
     }

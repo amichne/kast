@@ -14,7 +14,7 @@ import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import org.jetbrains.kotlin.analysis.api.analyze
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.types.KaFunctionType
 import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtFunction
@@ -118,7 +118,7 @@ internal class IntellijCallbackBindingReader(
             is Refinement.Rejected -> return unavailable(allowed.failure)
         }
         val mapped =
-            when (val result = nativeArgumentBinding(call, argument.expression)) {
+            when (val result = nativeArgumentBinding(call, argument.expression, context.observation)) {
                 is Refinement.Refined -> result.value
                 is Refinement.Rejected -> return unavailable(result.failure.flowCause())
             }
@@ -150,7 +150,7 @@ internal class IntellijCallbackBindingReader(
         val parameter =
             function.valueParameters.getOrNull(mapped.position.value)
                 ?: return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
-        if (!analyze(parameter) { parameter.symbol.returnType is KaFunctionType })
+        if (!context.observation.observedAnalyze(parameter) { parameter.symbol.returnType is KaFunctionType })
             return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
         return Refinement.Refined(MappedCallbackTarget(function, parameter, endpoint))
     }
