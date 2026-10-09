@@ -210,61 +210,7 @@ private fun RelationRequest.inventoryForInvocation(
         return RelationInventoryPreparation.Unavailable
     }
     return when (val selected = position) {
-        RelationReadPosition.Start -> {
-            when (val reused = inventories.find(this, collector)) {
-                ReferenceInventoryLookup.Miss -> Unit
-                ReferenceInventoryLookup.Unavailable -> {
-                    observation.count(
-                        IntellijReadCounter.RELATION_INVENTORY_REUSE_REJECTED,
-                        meaning.inventoryContributor(),
-                    )
-                    observation.count(IntellijReadCounter.RELATION_INVENTORY_UNAVAILABLE)
-                    return RelationInventoryPreparation.Unavailable
-                }
-                is ReferenceInventoryLookup.Found -> {
-                    observation.count(IntellijReadCounter.RELATION_INVENTORIES_REUSED, meaning.inventoryContributor())
-                    return RelationInventoryPreparation.Prepared(reused.state)
-                }
-            }
-            val started = clockNanoseconds()
-            val contributor = meaning.inventoryContributor()
-            observation.count(IntellijReadCounter.NATIVE_RELATION_INVENTORIES_STARTED, contributor)
-            var outcome = IntellijReadCounter.NATIVE_RELATION_INVENTORIES_INTERRUPTED
-            try {
-                prepare().also {
-                    if (it is RelationInventoryPreparation.Prepared) {
-                        when (inventories.remember(this, it.state)) {
-                            ReferenceInventoryRetention.DISABLED -> Unit
-                            ReferenceInventoryRetention.RETAINED ->
-                                observation.count(IntellijReadCounter.RELATION_INVENTORY_REUSE_RETAINED, contributor)
-                            ReferenceInventoryRetention.CAPACITY_EXCEEDED ->
-                                observation.count(
-                                    IntellijReadCounter.RELATION_INVENTORY_REUSE_CAPACITY_EXCEEDED,
-                                    contributor,
-                                )
-                            ReferenceInventoryRetention.PROVIDER_INELIGIBLE,
-                            ReferenceInventoryRetention.CURSOR_ALREADY_ADVANCED ->
-                                observation.count(IntellijReadCounter.RELATION_INVENTORY_REUSE_INELIGIBLE, contributor)
-                        }
-                    }
-                    outcome =
-                        when (it) {
-                            is RelationInventoryPreparation.Prepared ->
-                                IntellijReadCounter.NATIVE_RELATION_INVENTORIES_PREPARED
-                            RelationInventoryPreparation.Unavailable ->
-                                IntellijReadCounter.NATIVE_RELATION_INVENTORIES_INCOMPLETE
-                        }
-                }
-            } finally {
-                observation.count(outcome, contributor)
-                observeRelationElapsed(
-                    IntellijReadGauge.RELATION_PREPARATION_NANOS,
-                    started,
-                    clockNanoseconds,
-                    observation,
-                )
-            }
-        }
+        RelationReadPosition.Start -> prepareInventory(collector, prepare, observation, clockNanoseconds, inventories)
         is RelationReadPosition.Resume -> RelationInventoryPreparation.Prepared(selected.continuation.providerState)
     }.also { prepared ->
         when (prepared) {
@@ -272,6 +218,69 @@ private fun RelationRequest.inventoryForInvocation(
             RelationInventoryPreparation.Unavailable ->
                 observation.count(IntellijReadCounter.RELATION_INVENTORY_UNAVAILABLE)
         }
+    }
+}
+
+private fun RelationRequest.prepareInventory(
+    collector: IntellijRelationCollector,
+    prepare: () -> RelationInventoryPreparation,
+    observation: IntellijReadObservation,
+    clockNanoseconds: () -> Long,
+    inventories: IntellijReferenceInventoryReuse,
+): RelationInventoryPreparation =
+    when (val reused = inventories.find(this, collector)) {
+        ReferenceInventoryLookup.Miss -> prepareNativeInventory(prepare, observation, clockNanoseconds, inventories)
+        ReferenceInventoryLookup.Unavailable -> {
+            observation.count(IntellijReadCounter.RELATION_INVENTORY_REUSE_REJECTED, meaning.inventoryContributor())
+            RelationInventoryPreparation.Unavailable
+        }
+        is ReferenceInventoryLookup.Found -> {
+            observation.count(IntellijReadCounter.RELATION_INVENTORIES_REUSED, meaning.inventoryContributor())
+            RelationInventoryPreparation.Prepared(reused.state)
+        }
+    }
+
+private fun RelationRequest.prepareNativeInventory(
+    prepare: () -> RelationInventoryPreparation,
+    observation: IntellijReadObservation,
+    clockNanoseconds: () -> Long,
+    inventories: IntellijReferenceInventoryReuse,
+): RelationInventoryPreparation {
+    val started = clockNanoseconds()
+    val contributor = meaning.inventoryContributor()
+    observation.count(IntellijReadCounter.NATIVE_RELATION_INVENTORIES_STARTED, contributor)
+    var outcome = IntellijReadCounter.NATIVE_RELATION_INVENTORIES_INTERRUPTED
+    try {
+        return prepare().also {
+            if (it is RelationInventoryPreparation.Prepared) {
+                inventories.remember(this, it.state).observe(observation, contributor)
+            }
+            outcome =
+                when (it) {
+                    is RelationInventoryPreparation.Prepared -> IntellijReadCounter.NATIVE_RELATION_INVENTORIES_PREPARED
+                    RelationInventoryPreparation.Unavailable ->
+                        IntellijReadCounter.NATIVE_RELATION_INVENTORIES_INCOMPLETE
+                }
+        }
+    } finally {
+        observation.count(outcome, contributor)
+        observeRelationElapsed(IntellijReadGauge.RELATION_PREPARATION_NANOS, started, clockNanoseconds, observation)
+    }
+}
+
+private fun ReferenceInventoryRetention.observe(
+    observation: IntellijReadObservation,
+    contributor: IntellijReadContributor,
+) {
+    when (this) {
+        ReferenceInventoryRetention.DISABLED -> Unit
+        ReferenceInventoryRetention.RETAINED ->
+            observation.count(IntellijReadCounter.RELATION_INVENTORY_REUSE_RETAINED, contributor)
+        ReferenceInventoryRetention.CAPACITY_EXCEEDED ->
+            observation.count(IntellijReadCounter.RELATION_INVENTORY_REUSE_CAPACITY_EXCEEDED, contributor)
+        ReferenceInventoryRetention.PROVIDER_INELIGIBLE,
+        ReferenceInventoryRetention.CURSOR_ALREADY_ADVANCED ->
+            observation.count(IntellijReadCounter.RELATION_INVENTORY_REUSE_INELIGIBLE, contributor)
     }
 }
 

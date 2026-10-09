@@ -22,42 +22,50 @@ class RelationInventoryObservationTest {
                 RelationMeaning.Callers to IntellijReadContributor.RELATION_CALLERS,
             )) {
             for (prepared in listOf(true, false)) {
-                val observation = Counts()
-                val request = RelationReadTest().request(meaning)
-                val collector = IntellijRelationCollector(request, { 0L }, observation)
-                val result =
-                    readRelationInventory(
-                        request,
-                        collector,
-                        {
-                            if (prepared) {
-                                val state = RelationProviderState.references(emptyList())
-                                assertTrue(collector.retainProviderState(state, preparedPartition = true))
-                                RelationInventoryPreparation.Prepared(state)
-                            } else RelationInventoryPreparation.Unavailable
-                        },
-                        { _, _ -> error("Empty inventory must not confirm a locator") },
-                        {},
-                        observation,
-                        { 0L },
-                    )
-                assertEquals(if (prepared) ProviderTermination.TERMINAL else ProviderTermination.HALTED, result)
-                assertEquals(
-                    1,
-                    observation.values[IntellijReadCounter.NATIVE_RELATION_INVENTORIES_STARTED to contributor],
-                )
-                assertEquals(
-                    1,
-                    observation.values[
-                            (if (prepared) IntellijReadCounter.NATIVE_RELATION_INVENTORIES_PREPARED
-                            else IntellijReadCounter.NATIVE_RELATION_INVENTORIES_INCOMPLETE) to contributor],
-                )
-                assertEquals(
-                    null,
-                    observation.values[IntellijReadCounter.NATIVE_RELATION_INVENTORIES_INTERRUPTED to contributor],
-                )
+                assertInventoryOutcome(meaning, contributor, prepared)
             }
         }
+    }
+
+    private fun assertInventoryOutcome(
+        meaning: RelationMeaning,
+        contributor: IntellijReadContributor,
+        prepared: Boolean,
+    ) {
+        val observation = Counts()
+        val request = RelationReadTest().request(meaning)
+        val collector = IntellijRelationCollector(request, { 0L }, observation)
+        val result =
+            readRelationInventory(
+                request,
+                collector,
+                {
+                    if (prepared) {
+                        val state = RelationProviderState.references(emptyList())
+                        assertTrue(collector.retainProviderState(state, preparedPartition = true))
+                        RelationInventoryPreparation.Prepared(state)
+                    } else RelationInventoryPreparation.Unavailable
+                },
+                { _, _ -> error("Empty inventory must not confirm a locator") },
+                {},
+                observation,
+                { 0L },
+            )
+        assertEquals(if (prepared) ProviderTermination.TERMINAL else ProviderTermination.HALTED, result)
+        assertEquals(
+            1,
+            observation.values[IntellijReadCounter.NATIVE_RELATION_INVENTORIES_STARTED to contributor],
+        )
+        assertEquals(
+            1,
+            observation.values[
+                    (if (prepared) IntellijReadCounter.NATIVE_RELATION_INVENTORIES_PREPARED
+                    else IntellijReadCounter.NATIVE_RELATION_INVENTORIES_INCOMPLETE) to contributor],
+        )
+        assertEquals(
+            null,
+            observation.values[IntellijReadCounter.NATIVE_RELATION_INVENTORIES_INTERRUPTED to contributor],
+        )
     }
 
     @Test

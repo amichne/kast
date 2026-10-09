@@ -116,7 +116,7 @@ and continuation consumption without prefix replay.
 Run the focused selectors with the project toolchain:
 
 ```sh
-mise exec -- ./gradlew :query:service:test --tests '*QueryTrace*' --tests '*QueryCheckpointTraceProofTest' :relation:intellij:test --tests '*RelationInventoryObservationTest' --tests '*ReferenceInventoryReuseTest' --tests '*ReferenceProgressTest'
+mise exec -- ./gradlew :query:service:test --tests '*QueryTrace*' --tests '*QueryMethodTraceTest' --tests '*QueryCheckpointTraceProofTest' :relation:intellij:test --tests '*RelationInventoryObservationTest' --tests '*ReferenceInventoryReuseTest' --tests '*ReferenceProgressTest'
 ```
 
 Affected suites and guards:
