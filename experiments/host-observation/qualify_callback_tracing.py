@@ -51,6 +51,14 @@ POLICY_EVIDENCE_COUNTERS = (
 )
 
 
+class NativeDiagnosticCounterVersion(Enum):
+    """Versions with the same bounded counter contract; additional fields are not qualified here."""
+    NAMED_FACTS = 6
+    NATIVE_CALLS = 7
+    FIRST_CALLBACK = 8
+    READ_ACTIONS = 9
+
+
 @dataclass(frozen=True)
 class SourceFingerprint:
     commit: str
@@ -1217,7 +1225,8 @@ def retained_static_result(reference, budget, invoke):
 def native_scoped_counters(call, live, required):
     assert len(call.diagnostics) == 1, 'native receipt missing or ambiguous'
     receipt = call.diagnostics[0]
-    assert receipt['schemaVersion'] == 6, 'native diagnostic version unsupported'
+    version = receipt['schemaVersion']
+    assert type(version) is int and version in {item.value for item in NativeDiagnosticCounterVersion}, 'native diagnostic version unsupported'
     correlation = receipt['correlation']
     assert correlation.get('type') == 'bound' and correlation.get('host') == live['host'] and correlation.get('epoch') == live['epoch'], 'native receipt basis mismatch'
     ceilings = [limit['value'] for limit in receipt['limits'] if limit['parameter'] == 'DIAGNOSTIC_COUNT']
