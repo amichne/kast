@@ -12,6 +12,7 @@ internal class HostedReadDiagnostics(
     private val clock: () -> Long,
     private val limits: ReadLimits = ReadLimits.Default,
     private val publishPhase: (HostedNativePhaseEntry) -> Unit = {},
+    private val publishAdmission: (HostedReadActionStarted) -> Unit = {},
     private val publishCall: (HostedReadCallStarted) -> Unit = {},
     private val publish: (HostedReadDiagnosticReceipt) -> Unit,
 ) : IntellijReadObservation {
@@ -32,6 +33,17 @@ internal class HostedReadDiagnostics(
 
     private val searches =
         HostedReadSearchAccounting(::elapsed, limits[ReadLimitParameter.DIAGNOSTIC_COUNT].value.toLong(), calls::enter)
+
+    private val readActions =
+        HostedReadActionAccounting(::elapsed, limits[ReadLimitParameter.DIAGNOSTIC_COUNT].value.toLong()) {
+            kind,
+            mode,
+            at ->
+            publishAdmission(HostedReadActionStarted(readId.toString(), kind, mode, at))
+        }
+
+    override fun submitReadAction(kind: IntellijReadActionKind, mode: IntellijReadActionMode): IntellijReadActionScope =
+        readActions.submit(kind, mode)
 
     override fun enterSearch(search: IntellijReadSearch): IntellijReadSearchScope = searches.enter(search)
 
@@ -142,6 +154,7 @@ internal class HostedReadDiagnostics(
                 gauges.map { HostedNativeGauge(it.key, it.value) },
                 calls.finish(),
                 searches.finish(),
+                readActions.finish(),
             )
         )
     }
@@ -230,6 +243,7 @@ internal data class HostedReadDiagnosticReceipt(
     val gauges: List<HostedNativeGauge> = emptyList(),
     val nativeCalls: List<HostedReadCallCount> = emptyList(),
     val nativeSearches: List<HostedReadSearchCount> = emptyList(),
+    val readActions: List<HostedReadActionCount> = emptyList(),
 )
 
 /** A completed read transaction and its evaluator's semantic classification are distinct facts. */
