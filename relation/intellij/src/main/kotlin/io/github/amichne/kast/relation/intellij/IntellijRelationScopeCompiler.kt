@@ -1,5 +1,6 @@
 package io.github.amichne.kast.relation.intellij
 
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.search.DelegatingGlobalSearchScope
@@ -188,6 +189,15 @@ internal class IntellijRelationScopeCompiler(private val fileAdmission: (Path) -
                 RelationModelScope(
                     GlobalSearchScope.allScope(project),
                     pathPolicy,
+                    readableRoots.filter { root ->
+                        when (pathPolicy) {
+                            is RelationPathPolicy.ExactFile ->
+                                matchesDirectory(pathPolicy.file, model.workspaceRoot.value, constraints)
+                            is RelationPathPolicy.SourceRoots ->
+                                mayContainRequestedDirectory(root, model.workspaceRoot.value, constraints)
+                        }
+                    },
+                    constraints,
                     libraryPolicy,
                     libraryMembership = libraryScope::contains,
                     sourceMembership = { file ->
@@ -255,11 +265,16 @@ internal sealed interface RelationPathPolicy {
 private class RelationModelScope(
     base: GlobalSearchScope,
     private val paths: RelationPathPolicy,
+    sourceRoots: List<ModelOwnedSourceRoot>,
+    constraints: SymbolDiscoveryConstraints,
     private val libraries: SymbolLibraryPolicy,
     private val libraryMembership: (VirtualFile) -> Boolean,
     private val sourceMembership: (VirtualFile) -> Boolean,
     private val fileAdmission: (Path) -> Boolean,
-) : DelegatingGlobalSearchScope(base, paths) {
+) : DelegatingGlobalSearchScope(base, paths, sourceRoots, constraints, libraries) {
+    // Native-name lookup is an adapter boundary; each entry retains its proven model ownership and source kind.
+    private val moduleRootsByNativeName = sourceRoots.groupBy { it.module.value }
+
     override fun contains(file: VirtualFile): Boolean {
         if (!super.contains(file)) return false
         if (libraries == SymbolLibraryPolicy.INCLUDE && libraryMembership(file)) return true
@@ -272,6 +287,20 @@ private class RelationModelScope(
     }
 
     override fun isSearchInLibraries(): Boolean = libraries == SymbolLibraryPolicy.INCLUDE
+
+    // Imported model identities originate at Module.name. Do not enumerate live modules or resolve new owners here.
+    override fun isSearchInModuleContent(module: Module): Boolean {
+        if (module.isDisposed || module.project !== project) return false
+        val name = module.name.trim()
+        return moduleRootsByNativeName.containsKey(name)
+    }
+
+    override fun isSearchInModuleContent(module: Module, testSources: Boolean): Boolean {
+        if (module.isDisposed || module.project !== project) return false
+        val name = module.name.trim()
+        val kind = if (testSources) WorkspaceSourceRootKind.TEST else WorkspaceSourceRootKind.PRODUCTION
+        return moduleRootsByNativeName[name].orEmpty().any { it.sourceKind == kind }
+    }
 }
 
 internal fun relationNativePath(file: VirtualFile): IntellijRelationNativePath =
@@ -312,5 +341,20 @@ private fun matchesDirectory(path: Path, root: String, constraints: SymbolDiscov
     return when (restriction.containment) {
         SymbolDiscoveryContainment.DIRECT -> path.parent == requested
         SymbolDiscoveryContainment.DESCENDANTS -> path.startsWith(requested)
+    }
+}
+
+/** Cheap directory intersection retains containing roots and eligible descendants before native enumeration. */
+private fun mayContainRequestedDirectory(
+    root: ModelOwnedSourceRoot,
+    workspace: String,
+    constraints: SymbolDiscoveryConstraints,
+): Boolean {
+    val restriction = constraints.directory ?: return true
+    val requested = Path.of(workspace).resolve(restriction.directory.value).normalize()
+    val source = Path.of(root.sourceRoot.value)
+    return when (restriction.containment) {
+        SymbolDiscoveryContainment.DIRECT -> requested.startsWith(source)
+        SymbolDiscoveryContainment.DESCENDANTS -> requested.startsWith(source) || source.startsWith(requested)
     }
 }
