@@ -77,7 +77,7 @@ class HostedReadDiagnosticsTest {
                 val document =
                     kotlinx.serialization.json.Json.parseToJsonElement(receipts.single().encode())
                         as kotlinx.serialization.json.JsonObject
-                assertEquals(kotlinx.serialization.json.JsonPrimitive(7), document.getValue("schemaVersion"))
+                assertEquals(kotlinx.serialization.json.JsonPrimitive(9), document.getValue("schemaVersion"))
                 val outcome = document.getValue("outcome") as kotlinx.serialization.json.JsonObject
                 assertEquals(setOf("type", "outcome"), outcome.keys)
                 assertEquals(kotlinx.serialization.json.JsonPrimitive("evaluated"), outcome.getValue("type"))

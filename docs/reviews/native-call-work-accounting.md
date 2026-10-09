@@ -37,6 +37,16 @@ The guard establishes confinement for these two declared APIs. It does not claim
 
 Sources: [observed searches](../../relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/ObservedRelationSearch.kt), [effect classification](../../build-logic/src/main/kotlin/support/architecture/policy/JvmEffectRules.kt), [module policy](../../build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt).
 
+## Relation admission follow-up
+
+Private diagnostic schema 9 adds fixed reference/definition search rows and one relation read-action row. Each search invocation records its delay to the first callback, before cancellation or scope classification. Empty, cancelled, failed, and unfinished searches retain separate outcomes. Scope classification records the existing admitted, source-excluded, library-excluded, or unavailable decision before candidate capacity and compiler confirmation.
+
+The relation read-action scope records submission and each native attempt independently. Initial admission, retry admission, return dispatch, acquisition after caller completion, and native drainage after caller completion remain separate elapsed observations. The scope carries no native objects or thread-local parent stack across suspension. A sealed receipt preserves unfinished work when later drainage arrives.
+
+These waits include coroutine scheduling and acquisition. They do not isolate a platform mutex, hidden smart-mode wait, or freshness queue before this adapter. Production-rule tests use controlled clock and callback observations; they do not prove native cancellation or improved latency. The qualification helper accepts only declared integer schema versions for its unchanged bounded counter slice. It does not qualify the added fields merely by accepting that version.
+
+Sources: [search accounting](../../workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadSearchAccounting.kt), [read-action accounting](../../workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadActionAccounting.kt), [scope decisions](../../relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/RelationProviderScopeObservation.kt).
+
 ## First justified avoidance of work
 
 The baseline relation adapter prepared optional callback facts before compiling scope and restoring the subject. The revised adapter admits scope and subject first. Preparation still executes inside the same native read action after admission.
@@ -97,8 +107,8 @@ Tests: [accounting](../../workspace/intellij-read/src/test/kotlin/io/github/amic
 
 The accounting foundation and the two local avoidance rules are reviewable. Complete per-operation coverage is not yet proven.
 
-1. Extend the declared inventory through document saves, EDT scheduling, VFS refresh, read-action acquisition, primary indexes, fuzzy contributors, source and diagnostic adapters, and traversal dispatch. In particular, readiness work before the hosted executor cannot be inferred from its semantic receipt. Preserve explicit operation ownership across that earlier lifecycle.
-2. Distinguish a submitted native effect from its asynchronous completion. The synchronous wrapper must not span coroutine suspension or transfer its parent stack across threads.
+1. Extend the declared inventory through document saves, EDT scheduling, VFS refresh, read-action acquisition outside the relation adapter, primary indexes, fuzzy contributors, source and diagnostic adapters, and traversal dispatch. In particular, readiness work before the hosted executor cannot be inferred from its semantic receipt. Preserve explicit operation ownership across that earlier lifecycle.
+2. Apply the relation adapter's explicit submission/attempt ownership to other asynchronous native effects. The synchronous wrapper must not span coroutine suspension or transfer its parent stack across threads.
 3. Capture matched installed IntelliJ receipts using the existing host-observation replay harness. Use an instrumented baseline with the same call vocabulary as the candidate; legacy receipts cannot supply missing call counts. Pin source and artifact identity, fixture, request, cache regime, budgets, and concurrency. Compare full semantic results and continuation coverage before admitting a reduction in declared call counts.
 4. Retain native search internals as opaque until stronger evidence exposes them. One observed search invocation is not a bound on native CPU work or a guarantee of cooperative cancellation.
 5. Use each newly covered boundary to justify another avoidance rule. Require no increase in other measured dimensions and preserve semantic qualifications. Do not infer zero work from missing evidence.

@@ -32,6 +32,11 @@ enum class IntellijReadCounter {
     LEXICAL_CANDIDATES_DROPPED,
     CANDIDATES_COLLECTED,
     SCOPE_FILTERED,
+    /** Provider-site membership decisions, not compiler confirmation or semantic completeness. */
+    RELATION_PROVIDER_SCOPE_ADMITTED,
+    RELATION_PROVIDER_SCOPE_SOURCE_EXCLUDED,
+    RELATION_PROVIDER_SCOPE_LIBRARY_EXCLUDED,
+    RELATION_PROVIDER_SCOPE_UNAVAILABLE,
     CANDIDATES_PROJECTED,
     COMPILER_REFINEMENTS,
     COMPILER_REFINEMENTS_REJECTED,
@@ -352,6 +357,18 @@ enum class IntellijReadPhase {
 /** Request-local diagnostic capability; owners choose whether to observe. */
 interface IntellijReadObservation {
     fun enterCall(call: IntellijReadCall): IntellijReadCallScope = IntellijReadCallScope.None
+
+    fun submitReadAction(kind: IntellijReadActionKind, mode: IntellijReadActionMode): IntellijReadActionScope =
+        IntellijReadActionScope.None
+
+    fun enterSearch(search: IntellijReadSearch): IntellijReadSearchScope {
+        val call = enterCall(search.call)
+        return object : IntellijReadSearchScope {
+            override fun callbackEntered() = Unit
+
+            override fun finish(outcome: IntellijReadCallOutcome) = call.finish(outcome)
+        }
+    }
 
     fun phase(value: IntellijReadPhase) {}
 
