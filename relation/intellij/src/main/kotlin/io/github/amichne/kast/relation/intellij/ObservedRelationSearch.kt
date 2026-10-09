@@ -23,7 +23,10 @@ internal fun IntellijReadObservation.forEachReference(
         ReferencesSearch.search(subject, scope, ignoreAccessScope)
             .forEach(
                 Processor { reference ->
-                    call(IntellijReadCall.REFERENCE_CALLBACK) { process(reference) }
+                    call(IntellijReadCall.REFERENCE_CALLBACK) {
+                        com.intellij.openapi.progress.ProgressManager.checkCanceled()
+                        process(reference)
+                    }
                 }
             )
     }
@@ -37,7 +40,10 @@ internal fun IntellijReadObservation.forEachDefinition(
         DefinitionsScopedSearch.search(subject, scope, false)
             .forEach(
                 Processor { provider ->
-                    call(IntellijReadCall.DEFINITION_CALLBACK) { process(provider) }
+                    call(IntellijReadCall.DEFINITION_CALLBACK) {
+                        com.intellij.openapi.progress.ProgressManager.checkCanceled()
+                        process(provider)
+                    }
                 }
             )
     }

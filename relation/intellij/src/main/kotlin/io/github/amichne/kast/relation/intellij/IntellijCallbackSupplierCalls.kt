@@ -208,8 +208,16 @@ private class References(
         return Refinement.Refined(references)
     }
 
-    private fun visit(reference: PsiReference): Boolean =
-        when (context.scope.admitProviderSite(reference.element.containingFile?.virtualFile)) {
+    private fun visit(reference: PsiReference): Boolean {
+        val site =
+            when (val admitted = context.providerSite { reference.element.containingFile?.virtualFile }) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> {
+                    completion = admitted
+                    return false
+                }
+            }
+        return when (site) {
             RelationProviderScopeAdmission.SOURCE_DOMAIN_EXCLUDED,
             RelationProviderScopeAdmission.LIBRARY_POLICY_EXCLUDED -> true
             RelationProviderScopeAdmission.UNAVAILABLE -> {
@@ -218,6 +226,7 @@ private class References(
             }
             RelationProviderScopeAdmission.ADMITTED -> retain(reference)
         }
+    }
 
     private fun retain(reference: PsiReference): Boolean {
         completion =

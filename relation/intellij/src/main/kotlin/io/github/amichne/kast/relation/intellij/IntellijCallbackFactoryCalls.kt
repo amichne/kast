@@ -65,7 +65,12 @@ private class CallbackFactoryReferenceCollector(
     }
 
     private fun process(reference: PsiReference): Boolean {
-        when (context.scope.admitProviderSite(reference.element.containingFile?.virtualFile)) {
+        val site =
+            when (val admitted = context.providerSite { reference.element.containingFile?.virtualFile }) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return reject(admitted.failure)
+            }
+        when (site) {
             RelationProviderScopeAdmission.SOURCE_DOMAIN_EXCLUDED,
             RelationProviderScopeAdmission.LIBRARY_POLICY_EXCLUDED -> return true
             RelationProviderScopeAdmission.UNAVAILABLE -> return reject(CallbackInvocationFlowCause.OUTSIDE_DOMAIN)
