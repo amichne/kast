@@ -124,7 +124,7 @@ For a question about only direct callers or implementations, use one
 `EXPAND_RELATION`. For a graph with a requested depth, use `WALK` and inspect its
 hop evidence. These forms are available in [Query forms](/reference/api).
 
-If `WALK.maximumDepth` and `relationScope` are omitted or null, `WALK` traverses
+If `WALK.maximumDepth` and `WALK.expansionScope` are omitted or null, `WALK` traverses
 the reachable graph across the workspace to exhaustion. A narrow discovery
 scope does not narrow those destinations. Set the requested depth or destination
 scope explicitly when the question requires that bound. Keep `COMPLETE_ONLY`:

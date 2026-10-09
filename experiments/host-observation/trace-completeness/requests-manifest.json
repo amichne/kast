@@ -1,7 +1,7 @@
 {
   "type": "TRACE_REQUESTS_MANIFEST",
   "fixtureManifestSha256": "3111951fa903d4983d9af6f131e9c54cd39d008b487b307e45c64b634e3a3dd1",
-  "inputSchemaSha256": "f8d211ef4481855e7537c2e37e3dac38ad181ab26eb9eb0a22ee6d1701b4f88e",
+  "inputSchemaSha256": "c883078b57ff0b764cb5ca3f7d74c12bd79af49e1a3139cd0ded2a1d7bdf5076",
   "requests": [
     {
       "label": "A.TRACE",
