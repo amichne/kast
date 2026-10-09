@@ -47,7 +47,8 @@ internal class AutomaticBindingCapacityTest : AutomaticSymbolQueryCase() {
         val recording = QueryInvocationExecution(script.operations)
         val page =
             recording.page(budget) {
-                CanonicalQueryProtocol(recording, fixture.references, state).execute(input, fixture.authority, budget)
+                CanonicalQueryProtocol(recording, fixture.references, state)
+                    .executePage(input, fixture.authority, budget)
             }
         val admitted = SymbolInvocationPage.admit(page, input).required()
         val snapshot = QueryRetainedResult.capture(fixture.authority, admitted.execution).required()
@@ -83,7 +84,7 @@ internal class AutomaticBindingCapacityTest : AutomaticSymbolQueryCase() {
         val input = bindingRequest(state)
         val result =
             CanonicalQueryProtocol(script.operations, fixture.references, state)
-                .executeAutomatically(input, fixture.authority, budget, policy(cancelled = { true }))
+                .execute(input, fixture.authority, budget, policy(cancelled = { true }))
         assertEquals(
             OperationOutcome.Rejected(
                 QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.INVOCATION_CANCELLED)

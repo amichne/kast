@@ -36,10 +36,10 @@ class ImpactSiteAccountingPresentationTest {
                     f.symbols.references,
                     f.store,
                 )
-            val page = f.readWitness(protocol, ImpactWitnessSectionDocument.SITE_ACCOUNTING).evidence.payload
+            val page = f.readQualifiedWitness(protocol, ImpactWitnessSectionDocument.SITE_ACCOUNTING).evidence.payload
             val expanded =
                 protocol
-                    .execute(QueryRunRequest.ReadResult.valuePaths(f.reference), f.symbols.authority, f.budget)
+                    .executePage(QueryRunRequest.ReadResult.valuePaths(f.reference), f.symbols.authority, f.budget)
                     .payload()
             val accounting = page.siteAccounting()
             val reached = accounting[0].outcome as ImpactSiteOutcomeDocument.Reached
@@ -69,10 +69,10 @@ class ImpactSiteAccountingPresentationTest {
                 f.symbols.references,
                 f.store,
             )
-        val whole = f.readWitness(protocol, ImpactWitnessSectionDocument.SITE_ACCOUNTING).evidence.payload
+        val whole = f.readQualifiedWitness(protocol, ImpactWitnessSectionDocument.SITE_ACCOUNTING).evidence.payload
         val first = whole.presentationPrefix(1).value()
         val next =
-            f.readWitness(protocol, ImpactWitnessSectionDocument.SITE_ACCOUNTING, first.nextCursor!!.value)
+            f.readQualifiedWitness(protocol, ImpactWitnessSectionDocument.SITE_ACCOUNTING, first.nextCursor!!.value)
                 .evidence
                 .payload
         assertEquals(whole.items.values, first.items.values + next.items.values)

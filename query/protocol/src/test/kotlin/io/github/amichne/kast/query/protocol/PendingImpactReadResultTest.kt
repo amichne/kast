@@ -41,19 +41,13 @@ class PendingImpactReadResultTest {
                     f.store,
                 )
             val budget = QueryBudget(f.symbols.budget.resources, QueryByteLimit.parse(1_000_000).value())
-            val page = protocol.execute(QueryRunRequest.ReadResult.valuePaths(reference), f.symbols.authority, budget)
+            val page =
+                protocol.executePage(QueryRunRequest.ReadResult.valuePaths(reference), f.symbols.authority, budget)
             assertInstanceOf(OperationOutcome.Qualified::class.java, page)
             val qualified = page as OperationOutcome.Qualified<QueryRunResult, QueryRunQualification>
-            assertEquals(emptyList<Any>(), qualified.evidence.payload.items.values)
-            assertEquals(initial.evidence.payload.impactAccounting, qualified.evidence.payload.impactAccounting)
-            assertInstanceOf(
-                ImpactAccountingDocument.EvidenceOnly::class.java,
-                qualified.evidence.payload.impactAccounting,
-            )
-            assertEquals(QueryQuestionDocument.from(f.request), qualified.evidence.payload.question)
-            assertEquals(initial.qualification.progress, qualified.qualification.progress)
+            assertPendingEvidence(f, initial, qualified)
             val findings =
-                protocol.execute(
+                protocol.executePage(
                     QueryRunRequest.ReadResult.impactWitness(reference, ImpactWitnessSectionDocument.FINDINGS),
                     f.symbols.authority,
                     budget,
@@ -72,6 +66,31 @@ class PendingImpactReadResultTest {
             assertSame(f.checkpoint, restored.checkpoint)
             assertEquals(0, executions)
         }
+
+    private fun assertPendingEvidence(
+        fixture: PendingImpactRetentionFixture,
+        initial: OperationOutcome.Qualified<QueryRunResult, QueryRunQualification>,
+        retained: OperationOutcome.Qualified<QueryRunResult, QueryRunQualification>,
+    ) {
+        assertEquals(emptyList<Any>(), retained.evidence.payload.items.values)
+        assertEquals(initial.evidence.payload.impactAccounting, retained.evidence.payload.impactAccounting)
+        assertInstanceOf(
+            ImpactAccountingDocument.EvidenceOnly::class.java,
+            retained.evidence.payload.impactAccounting,
+        )
+        assertEquals(QueryQuestionDocument.from(fixture.request), retained.evidence.payload.question)
+        assertInstanceOf(
+            QueryQualifiedProgressDocument.TerminalIncomplete::class.java,
+            retained.qualification.progress,
+        )
+        val interpretation =
+            retained.evidence.payload.interpretation
+                as io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument.EvidenceOnly
+        val original =
+            interpretation.originalCoverage
+                as io.github.amichne.kast.protocol.contract.QueryCompletionCoverageDocument.Qualified
+        assertEquals(initial.qualification.progress, original.progress)
+    }
 }
 
 private fun <T> io.github.amichne.kast.kernel.Refinement<T, *>.value(): T =

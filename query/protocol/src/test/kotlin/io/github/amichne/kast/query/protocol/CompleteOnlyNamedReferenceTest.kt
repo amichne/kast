@@ -47,7 +47,7 @@ internal class CompleteOnlyNamedReferenceTest : CompleteOnlyCallbackQueryCase() 
                 },
             )
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
-        val result = protocol.executeAutomatically(strict, fixture.authority, budget, policy())
+        val result = protocol.execute(strict, fixture.authority, budget, policy())
         assertTrue(result is OperationOutcome.Complete)
         script.assertDrained()
     }
@@ -66,8 +66,7 @@ internal class CompleteOnlyNamedReferenceTest : CompleteOnlyCallbackQueryCase() 
                 },
             )
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
-        val result =
-            protocol.executeAutomatically(strict, fixture.authority, budget, policy()) as OperationOutcome.Rejected
+        val result = protocol.execute(strict, fixture.authority, budget, policy()) as OperationOutcome.Rejected
         val rejected = result.reason as QueryRunRejection.CompletionUnproven
         assertEquals(
             io.github.amichne.kast.protocol.contract.QueryCallbackGraphCauseDocument.Unavailable(

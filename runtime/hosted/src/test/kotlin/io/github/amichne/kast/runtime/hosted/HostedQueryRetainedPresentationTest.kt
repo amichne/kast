@@ -53,6 +53,7 @@ import io.github.amichne.kast.query.contract.QuerySymbol
 import io.github.amichne.kast.query.protocol.CanonicalQueryProtocol
 import io.github.amichne.kast.query.protocol.QueryStateStore
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
+import io.github.amichne.kast.query.protocol.executeQueryPage
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -199,14 +200,14 @@ class HostedQueryRetainedPresentationTest {
         val request = fixture.request
         val output = fixture.output
         val budget = fixture.budget
-        val initial = protocol.execute(request, owner.authority, budget) as OperationOutcome.Complete
+        val initial = protocol.executeQueryPage(request, owner.authority, budget) as OperationOutcome.Complete
         val originalIds =
             initial.evidence.payload.items.values.map { (it as QueryResultItemDocument.ExactSymbol).rowId }
         val retained = initial.evidence.payload.retention as QueryResultRetention.Retained
         assertEquals(0, initial.evidence.payload.presentationWindow?.start?.value)
         assertEquals(150, initial.evidence.payload.presentationWindow?.resultEnd?.value)
         val finalPage =
-            protocol.execute(
+            protocol.executeQueryPage(
                 QueryRunRequest.ReadResult.symbols(retained.reference, cursor(100), output),
                 owner.authority,
                 budget,
@@ -220,7 +221,7 @@ class HostedQueryRetainedPresentationTest {
         val prefix = (fitted.semantic as OperationOutcome.Complete).evidence.payload as QueryRunResult
         assertEquals(105, prefix.nextCursor?.value)
         val tail =
-            protocol.execute(
+            protocol.executeQueryPage(
                 QueryRunRequest.ReadResult.symbols(retained.reference, requireNotNull(prefix.nextCursor), output),
                 owner.authority,
                 budget,
@@ -286,7 +287,6 @@ class HostedQueryRetainedPresentationTest {
             output,
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
             retention = QueryRetentionModeDocument.RETAIN,
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun retainedBudget() =

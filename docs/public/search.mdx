@@ -103,18 +103,17 @@ scope. A later filter cannot reduce native search work. See [Query forms](/refer
 
 ## 3. Read completion and follow recovery
 
-The default `COMPLETE_ONLY` policy requires a complete compiler-static answer.
+The fixed `COMPLETE_ONLY` policy requires a complete compiler-static answer.
 If proof is incomplete, Kast returns `COMPLETION_UNPROVEN` with its finite cause
 and recovery evidence when available. A retained preview contains established
-facts; it does not prove completion. Use an issued execution continuation with
-`RESUME`. Use a retained result reference with `READ_RESULT` to inspect proof or
-page a completed answer. A result cursor cannot resume execution.
+facts; it does not prove completion. Use the retained result reference with
+`READ_RESULT` to inspect proof or page a completed answer. `RESUME` accepts only
+issued output continuations. Semantic page continuation belongs to the internal
+runner. A historical checkpoint and a result cursor cannot authorize execution.
 
-Choose `PROGRESSIVE` only for an investigation that permits incomplete evidence.
-TRACE gathers incoming paths before its final grouping, so ordinary symbol pages
-can be empty while work remains. Follow the returned progress. If a native search
-is cancelled before its inventory finishes, that unfinished search cannot resume.
-A larger requested timeout does not remove host ceilings.
+TRACE gathers incoming paths before its final grouping. Budget exhaustion still
+returns a completion rejection with any retained proof. A larger requested
+timeout does not remove host ceilings.
 
 For a question about only direct callers or implementations, use one
 `EXPAND_RELATION`. For a graph with a requested depth, use `WALK` and inspect its

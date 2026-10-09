@@ -224,12 +224,6 @@ class AtLocation:
 
 
 @dataclass(frozen=True)
-class CompleteOnlyPolicy:
-    type: str = field(default='COMPLETE_ONLY', init=False)
-    model: str = field(default='COMPILER_RESOLVED_STATIC_V1', init=False)
-
-
-@dataclass(frozen=True)
 class OccurrencesOutput:
     type: str = field(default='OCCURRENCES', init=False)
 
@@ -254,7 +248,6 @@ class StaticRunRequest:
     output: OccurrencesOutput | SymbolsOutput
     retention: StaticRetention
     executionBudget: Budget
-    completion: CompleteOnlyPolicy = field(default_factory=CompleteOnlyPolicy)
     type: str = field(default='RUN', init=False)
 
 

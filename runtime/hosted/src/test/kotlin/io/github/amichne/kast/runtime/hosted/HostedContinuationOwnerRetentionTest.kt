@@ -29,6 +29,7 @@ import io.github.amichne.kast.query.protocol.CanonicalQueryReferences
 import io.github.amichne.kast.query.protocol.QueryCheckpointIssuance
 import io.github.amichne.kast.query.protocol.QueryCheckpointRestoration
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
+import io.github.amichne.kast.query.protocol.executeQueryPage
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -92,7 +93,7 @@ class HostedContinuationOwnerRetentionTest {
                     CanonicalQueryReferences(),
                     next.queryState,
                 )
-                .execute(
+                .executeQueryPage(
                     QueryRunRequest.Resume(token),
                     next.lease,
                     QueryBudget(fixture.budget.resources, QueryByteLimit.parse(100_000).value()),
@@ -167,7 +168,7 @@ class HostedContinuationOwnerRetentionTest {
                 },
                 CanonicalQueryReferences(),
             )
-            .execute(
+            .executeQueryPage(
                 queryRequest,
                 fixture.authority,
                 QueryBudget(fixture.budget.resources, QueryByteLimit.parse(100_000).value()),

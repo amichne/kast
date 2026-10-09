@@ -71,7 +71,7 @@ class QueryOutputOwnershipTest {
                     QueryExecutionPublicationResult.PREPARED
                 },
             )
-        protocol.execute(QueryRunRequest.Resume(issued.token), lease, budget)
+        protocol.executePage(QueryRunRequest.Resume(issued.token), lease, budget)
         now = 1_000_001L
         assertEquals(
             QueryPublicationCommit.Rejected(QueryPublicationFailure.EXPIRED),
@@ -96,7 +96,8 @@ class QueryOutputOwnershipTest {
                 CanonicalQueryReferences(),
                 store,
             )
-        val result = protocol.execute(QueryRunRequest.Resume(issued.token), lease, budget) as OperationOutcome.Rejected
+        val result =
+            protocol.executePage(QueryRunRequest.Resume(issued.token), lease, budget) as OperationOutcome.Rejected
         assertEquals(
             io.github.amichne.kast.protocol.contract.QueryRunRejection.ExecutionRejected(
                 io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument.CONTINUATION_CAPACITY_EXCEEDED
@@ -113,7 +114,7 @@ class QueryOutputOwnershipTest {
         val initial = (store.acquireInitial(lease) as QueryInitialAcquisition.Acquired).claim
         val page =
             CanonicalQueryProtocol(QueryOperations { complete() }, CanonicalQueryReferences())
-                .execute(request(), lease, budget)
+                .executePage(request(), lease, budget)
         val issued =
             store.issueOutput(request(), lease, page, initial, QueryRetentionByteCount.parse(512).refined())
                 as QueryOutputIssuance.Issued
@@ -150,7 +151,7 @@ class QueryOutputOwnershipTest {
         val initial = (store.acquireInitial(lease) as QueryInitialAcquisition.Acquired).claim
         val page =
             CanonicalQueryProtocol(QueryOperations { complete() }, CanonicalQueryReferences())
-                .execute(request(), lease, budget)
+                .executePage(request(), lease, budget)
         val issued =
             store.issueOutput(request(), lease, page, initial, QueryRetentionByteCount.parse(512).refined())
                 as QueryOutputIssuance.Issued
@@ -165,8 +166,8 @@ class QueryOutputOwnershipTest {
                 CanonicalQueryReferences(),
                 store,
             )
-        val first = protocol.execute(QueryRunRequest.Resume(issued.token), lease, budget)
-        val replay = protocol.execute(QueryRunRequest.Resume(issued.token), lease, budget)
+        val first = protocol.executePage(QueryRunRequest.Resume(issued.token), lease, budget)
+        val replay = protocol.executePage(QueryRunRequest.Resume(issued.token), lease, budget)
         assertEquals(first, replay)
         assertEquals(page, replay)
         assertEquals(0, calls)
@@ -184,7 +185,7 @@ class QueryOutputOwnershipTest {
         val initial = (store.acquireInitial(lease) as QueryInitialAcquisition.Acquired).claim
         val page =
             CanonicalQueryProtocol(QueryOperations { complete() }, CanonicalQueryReferences())
-                .execute(request(), lease, budget)
+                .executePage(request(), lease, budget)
         val issued =
             store.issueOutput(request(), lease, page, initial, QueryRetentionByteCount.parse(512).refined())
                 as QueryOutputIssuance.Issued
@@ -211,7 +212,7 @@ class QueryOutputOwnershipTest {
                 },
                 CanonicalQueryReferences(),
             )
-            .execute(request(), authority, budget)
+            .executePage(request(), authority, budget)
         return retained
     }
 
@@ -233,7 +234,6 @@ class QueryOutputOwnershipTest {
             bounded(emptyList()),
             QueryOutputDocument.Symbols(bounded(emptyList())),
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun text(value: String) = ProtocolText.parse(value).refined()

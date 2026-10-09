@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:0f082c708207d9121107cc7187b127a626676fd7d796cbf10f4924323884f22b",
+  "pageVersion": "sha256:9ad4980cb05a0024a4ad4b418751d1cb841e78460927c4465d7609eca47672a5",
   "claims": [
     {
       "id": "claim_0f0af9dddde2411188f2130d7debe0f5",
@@ -66,7 +66,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt#L50-L187",
-          "version": "repo-lines-v1:sha256:b8165e0d4458bc97ca245be9b5c17698c3b78c9aacc6342ff596f42fdc21d435:eyJzZWxlY3RlZExpbmVDb3VudCI6MTM4LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI1Y2QzMDVkYzBiZDEyMTQ5MTk3ZWU5YzJhZTAwYTg2NDZjMDIxZmNlMjgyY2IxYzA2NDBkNTViYWFhOGM2NzBkIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJhY2M0ODI5MzQyNzc1MTQzYWYxZTYwZTk2MjFmMDk1N2IwYzkwM2NiNzBlNTkwMzhmMTI5N2ZmODE0M2ZmNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxOWU3NjM1NWNmMTE5OTQ4MGMzZjk5ODM2YjE0ODZjODQxZDg5MWZhYWQ5MDRjNjA4ZTA5MzAyMmQzNzU3YWVlIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI5NDJhZDk3NWI2NTQwOTE0ODdlMmI4NTlhOWVkZTMzYmIxOTc4NGVjMzQzNzc1MWY4OGQyOTRkNzViNmU0YTlkIn0"
+          "version": "repo-lines-v1:sha256:f9a0784beaae2ce8a915c184399623132191d48be227ee5b827ba2e9b936c439:eyJzZWxlY3RlZExpbmVDb3VudCI6MTM4LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI1Y2QzMDVkYzBiZDEyMTQ5MTk3ZWU5YzJhZTAwYTg2NDZjMDIxZmNlMjgyY2IxYzA2NDBkNTViYWFhOGM2NzBkIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJhY2M0ODI5MzQyNzc1MTQzYWYxZTYwZTk2MjFmMDk1N2IwYzkwM2NiNzBlNTkwMzhmMTI5N2ZmODE0M2ZmNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxOWU3NjM1NWNmMTE5OTQ4MGMzZjk5ODM2YjE0ODZjODQxZDg5MWZhYWQ5MDRjNjA4ZTA5MzAyMmQzNzU3YWVlIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI5NDJhZDk3NWI2NTQwOTE0ODdlMmI4NTlhOWVkZTMzYmIxOTc4NGVjMzQzNzc1MWY4OGQyOTRkNzViNmU0YTlkIn0"
         }
       ]
     },
@@ -102,7 +102,7 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt#L50-L187",
-          "version": "repo-lines-v1:sha256:b8165e0d4458bc97ca245be9b5c17698c3b78c9aacc6342ff596f42fdc21d435:eyJzZWxlY3RlZExpbmVDb3VudCI6MTM4LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI1Y2QzMDVkYzBiZDEyMTQ5MTk3ZWU5YzJhZTAwYTg2NDZjMDIxZmNlMjgyY2IxYzA2NDBkNTViYWFhOGM2NzBkIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJhY2M0ODI5MzQyNzc1MTQzYWYxZTYwZTk2MjFmMDk1N2IwYzkwM2NiNzBlNTkwMzhmMTI5N2ZmODE0M2ZmNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxOWU3NjM1NWNmMTE5OTQ4MGMzZjk5ODM2YjE0ODZjODQxZDg5MWZhYWQ5MDRjNjA4ZTA5MzAyMmQzNzU3YWVlIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI5NDJhZDk3NWI2NTQwOTE0ODdlMmI4NTlhOWVkZTMzYmIxOTc4NGVjMzQzNzc1MWY4OGQyOTRkNzViNmU0YTlkIn0"
+          "version": "repo-lines-v1:sha256:f9a0784beaae2ce8a915c184399623132191d48be227ee5b827ba2e9b936c439:eyJzZWxlY3RlZExpbmVDb3VudCI6MTM4LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI1Y2QzMDVkYzBiZDEyMTQ5MTk3ZWU5YzJhZTAwYTg2NDZjMDIxZmNlMjgyY2IxYzA2NDBkNTViYWFhOGM2NzBkIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJhY2M0ODI5MzQyNzc1MTQzYWYxZTYwZTk2MjFmMDk1N2IwYzkwM2NiNzBlNTkwMzhmMTI5N2ZmODE0M2ZmNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxOWU3NjM1NWNmMTE5OTQ4MGMzZjk5ODM2YjE0ODZjODQxZDg5MWZhYWQ5MDRjNjA4ZTA5MzAyMmQzNzU3YWVlIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI5NDJhZDk3NWI2NTQwOTE0ODdlMmI4NTlhOWVkZTMzYmIxOTc4NGVjMzQzNzc1MWY4OGQyOTRkNzViNmU0YTlkIn0"
         }
       ]
     },
@@ -122,7 +122,7 @@
       "evidence": [
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt",
-          "version": "repo-file-v1:sha256:4c1e70002f9c4f5bbd9842dbccc3b5926f3d038c7421f05b9a1b65c8b9626e57"
+          "version": "repo-file-v1:sha256:6d0514e9c041ef423282519608db13a1e236bcb93d0daa6cb5e2121144e60052"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProjectedEvidence.kt",
@@ -130,11 +130,11 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt",
-          "version": "repo-file-v1:sha256:3abd74a2e83b4311efa1e223de27fdfd02fbcf8f3a6a6cfd7cb95e8dde845fb3"
+          "version": "repo-file-v1:sha256:bd1aa4b9f1c8f021c9de1f5572de95fb980bcb52f90ea474801ebb048e9adddb"
         },
         {
           "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt",
-          "version": "repo-file-v1:sha256:3e145bb38d2f7359a559e5f3142c439b2a2579b2713cf3a8db6a7428a2fa86a1"
+          "version": "repo-file-v1:sha256:5839d5e08a672bcd82e80a839506f10061aac0c1b663c019544f79ca3ff0f53b"
         }
       ]
     },
@@ -168,7 +168,7 @@
       "evidence": [
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt",
-          "version": "repo-file-v1:sha256:874cccea13d428076a03a5258031530e782b4d266159eae78220fa3846f7f317"
+          "version": "repo-file-v1:sha256:9a63296cee5ad42f57a4bbdd3a92848dc91d2bc35258b105f71a1ea043442d9f"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt",
@@ -176,7 +176,7 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt",
-          "version": "repo-file-v1:sha256:3abd74a2e83b4311efa1e223de27fdfd02fbcf8f3a6a6cfd7cb95e8dde845fb3"
+          "version": "repo-file-v1:sha256:bd1aa4b9f1c8f021c9de1f5572de95fb980bcb52f90ea474801ebb048e9adddb"
         }
       ]
     },
@@ -200,7 +200,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt",
-          "version": "repo-file-v1:sha256:2ea8279a4405516e2e2b2aab484ca1a5e9ac6d81c5f6e9957e5513186b1602e9"
+          "version": "repo-file-v1:sha256:bcb7e77c4f3d047641eedfb238f82982e705e0097c6097e18cb8f4397a91429c"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerSiteAdmissions.kt",
@@ -239,10 +239,32 @@
           "version": "repo-file-v1:sha256:75dce5cb3943dba817ee40afbaac1d563921e631611fa748aea06b1d8ad0a929"
         }
       ]
+    },
+    {
+      "id": "claim_4881a9db639f49ec97db2b2d13db7945",
+      "statement": "Hosted RUN uses the sole complete-only query executor and its internal bounded semantic continuations; public RESUME accepts produced output only. Completion rejection preserves retained proven facts, original coverage and historical progress, and required storage failure preserves completed enumeration with a finite RETENTION_UNAVAILABLE cause.",
+      "evidence": [
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt",
+          "version": "repo-file-v1:sha256:9a63296cee5ad42f57a4bbdd3a92848dc91d2bc35258b105f71a1ea043442d9f"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidenceRead.kt",
+          "version": "repo-file-v1:sha256:568129b66d2ea0a9d0b242951cea3bf0abdbc8974e1daff974b301e6b2cd8b5b"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt",
+          "version": "repo-file-v1:sha256:bf4c44397d1bd05505517f3cf2b48f6cca3a1f087728160ecff14f28484ff5b6"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt",
+          "version": "repo-file-v1:sha256:bcb7e77c4f3d047641eedfb238f82982e705e0097c6097e18cb8f4397a91429c"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-09T14:48:51.708Z"
+    "at": "2026-10-09T14:22:02.194Z"
   }
 }

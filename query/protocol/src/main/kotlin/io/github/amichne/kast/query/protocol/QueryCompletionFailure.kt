@@ -4,13 +4,10 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ImpactRequiredObligationDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackGraphFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionCauseDocument
-import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument
+import io.github.amichne.kast.protocol.contract.QueryCompletionRetentionFailure
 import io.github.amichne.kast.protocol.contract.QueryCompletionUnprovenReason
-import io.github.amichne.kast.protocol.contract.QueryCompletionUnsupportedReason
 import io.github.amichne.kast.protocol.contract.QueryImpactRequiredObligationsDocument
 import io.github.amichne.kast.protocol.contract.QueryInvestigationCompletionFailureDocument
-import io.github.amichne.kast.protocol.contract.QueryRunRejection
-import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.query.contract.QueryCoverage
 import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryResult
@@ -24,6 +21,10 @@ internal sealed interface QueryCompletionFailure {
 
     data object Incomplete : QueryCompletionFailure {
         override val reason = QueryCompletionUnprovenReason.INCOMPLETE_EXECUTION
+    }
+
+    data class Retention(val failure: QueryCompletionRetentionFailure) : QueryCompletionFailure {
+        override val reason = QueryCompletionUnprovenReason.RETENTION_UNAVAILABLE
     }
 
     data object Item : QueryCompletionFailure {
@@ -76,29 +77,10 @@ internal fun completionProof(result: QueryRetainedResult): Refinement<Unit, Quer
         else -> callbackProof(result.relationObservations, result.walkObservations)
     }
 
-internal enum class PageAdmission {
-    PUBLIC,
-    AUTOMATIC_INVOCATION,
-}
-
-internal fun completionAdmission(
-    request: QueryRunRequest.Run,
-    admission: PageAdmission,
-): Refinement<Unit, QueryRunRejection> {
-    val completion = request.completion
-    return if (admission == PageAdmission.PUBLIC && completion is QueryCompletionPolicyDocument.CompleteOnly)
-        Refinement.Rejected(
-            QueryRunRejection.CompletionUnsupported(
-                completion.model,
-                QueryCompletionUnsupportedReason.AUTOMATIC_EXECUTION_REQUIRED,
-            )
-        )
-    else Refinement.Refined(Unit)
-}
-
 internal fun QueryCompletionFailure.protocolCompletionCause(): QueryCompletionCauseDocument =
     when (this) {
         QueryCompletionFailure.Incomplete -> QueryCompletionCauseDocument.IncompleteExecution
+        is QueryCompletionFailure.Retention -> QueryCompletionCauseDocument.RetentionUnavailable(failure)
         QueryCompletionFailure.Item -> QueryCompletionCauseDocument.ItemFailure
         QueryCompletionFailure.Omitted -> QueryCompletionCauseDocument.OmittedEvidence
         is QueryCompletionFailure.Investigation -> QueryCompletionCauseDocument.InvestigationUnproven(failure)

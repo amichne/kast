@@ -59,7 +59,7 @@ internal class QueryRetainedForwardingGraphTest : CompleteOnlyCallbackQueryCase(
                     store,
                 )
             val retained =
-                protocol.execute(
+                protocol.executePage(
                     QueryRunRequest.ReadResult.symbols(issued.reference, output = output),
                     fixture.authority,
                     budget,
@@ -82,7 +82,7 @@ internal class QueryRetainedForwardingGraphTest : CompleteOnlyCallbackQueryCase(
             assertEquals(fixture.authority, site.lease)
             assertEquals(142, site.startInclusive.value)
             val replay =
-                protocol.execute(
+                protocol.executePage(
                     QueryRunRequest.ReadResult.symbols(issued.reference, output = output),
                     fixture.authority,
                     budget,
@@ -116,13 +116,12 @@ internal class QueryRetainedForwardingGraphTest : CompleteOnlyCallbackQueryCase(
                 },
             )
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
-        val rejected =
-            protocol.executeAutomatically(strict, fixture.authority, budget, policy()) as OperationOutcome.Rejected
+        val rejected = protocol.execute(strict, fixture.authority, budget, policy()) as OperationOutcome.Rejected
         val failure = rejected.reason as QueryRunRejection.CompletionUnproven
         val handle = (failure.evidence as QueryCompletionEvidenceDocument.Retained).result
         script.assertDrained()
         val read =
-            protocol.execute(QueryRunRequest.ReadResult.symbols(handle, output = output), fixture.authority, budget)
+            protocol.executePage(QueryRunRequest.ReadResult.symbols(handle, output = output), fixture.authority, budget)
                 as OperationOutcome.Qualified
         val flow =
             read.evidence.payload.relationObservations.values.single().callbackObservations.values.single().flow

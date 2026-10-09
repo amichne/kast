@@ -93,8 +93,8 @@ class QueryCheckpointPublicationTest {
                 store,
             )
         val resume = QueryRunRequest.Resume(issued.token)
-        val first = protocol.execute(resume, lease, budget)
-        val replay = protocol.execute(resume, lease, budget)
+        val first = protocol.executePage(resume, lease, budget)
+        val replay = protocol.executePage(resume, lease, budget)
         assertEquals(first, replay)
         assertEquals(1, calls)
     }
@@ -118,9 +118,9 @@ class QueryCheckpointPublicationTest {
                 store,
             )
         val resume = QueryRunRequest.Resume(issued.token)
-        val first = async { protocol.execute(resume, lease, budget) }
+        val first = async { protocol.executePage(resume, lease, budget) }
         entered.await()
-        val concurrent = async { protocol.execute(resume, lease, budget) }
+        val concurrent = async { protocol.executePage(resume, lease, budget) }
         testScheduler.runCurrent()
         release.complete(Unit)
         val published = first.await()
@@ -130,7 +130,7 @@ class QueryCheckpointPublicationTest {
             ),
             (concurrent.await() as OperationOutcome.Rejected).reason,
         )
-        assertEquals(published, protocol.execute(resume, lease, budget))
+        assertEquals(published, protocol.executePage(resume, lease, budget))
         assertEquals(1, calls)
     }
 
@@ -154,11 +154,11 @@ class QueryCheckpointPublicationTest {
                 store,
             )
         val resume = QueryRunRequest.Resume(issued.token)
-        val attempt = launch { protocol.execute(resume, lease, budget) }
+        val attempt = launch { protocol.executePage(resume, lease, budget) }
         entered.await()
         attempt.cancel()
         attempt.join()
-        assertInstanceOf(OperationOutcome.Complete::class.java, protocol.execute(resume, lease, budget))
+        assertInstanceOf(OperationOutcome.Complete::class.java, protocol.executePage(resume, lease, budget))
         assertEquals(2, calls)
     }
 
@@ -179,7 +179,7 @@ class QueryCheckpointPublicationTest {
                 },
             )
         val page =
-            protocol.execute(
+            protocol.executePage(
                 request().copy(retention = io.github.amichne.kast.protocol.contract.QueryRetentionModeDocument.RETAIN),
                 lease,
                 budget,
@@ -192,7 +192,7 @@ class QueryCheckpointPublicationTest {
         assertInstanceOf(QueryResultRestoration.Restored::class.java, store.restoreResult(reference, lease))
 
         val rejected =
-            protocol.execute(
+            protocol.executePage(
                 request().copy(retention = io.github.amichne.kast.protocol.contract.QueryRetentionModeDocument.RETAIN),
                 lease,
                 budget,
@@ -237,9 +237,9 @@ class QueryCheckpointPublicationTest {
                 CanonicalQueryReferences(),
                 grantStore,
             )
-        val page = protocol.execute(requested, lease, grant)
+        val page = protocol.executePage(requested, lease, grant)
         assertInstanceOf(OperationOutcome.Complete::class.java, page)
-        assertEquals(page, protocol.execute(requested, lease, grant))
+        assertEquals(page, protocol.executePage(requested, lease, grant))
         assertEquals(1, executions)
         assertEquals(QueryCheckpointRestoration.Unavailable, grantStore.restoreCheckpoint(grantIssued.token, lease))
         assertEquals(QueryCheckpointIssuance.Unavailable, grantStore.retainedCheckpoint(request(), retained))
@@ -259,7 +259,7 @@ class QueryCheckpointPublicationTest {
                 },
                 CanonicalQueryReferences(),
             )
-            .execute(request(), authority, budget)
+            .executePage(request(), authority, budget)
         return retained
     }
 
@@ -281,7 +281,6 @@ class QueryCheckpointPublicationTest {
             bounded(emptyList()),
             QueryOutputDocument.Symbols(bounded(emptyList())),
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun text(value: String) = ProtocolText.parse(value).refined()

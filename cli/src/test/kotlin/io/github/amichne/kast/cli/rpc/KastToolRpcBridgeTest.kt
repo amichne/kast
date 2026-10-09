@@ -200,7 +200,7 @@ class KastToolRpcBridgeTest {
             )
         val bridge = KastToolRpcBridge(session)
         val catalog = assertInstanceOf(ToolRpcReply.Catalog::class.java, bridge.catalog()).catalog
-        assertEquals(12, catalog.schemaVersion)
+        assertEquals(13, catalog.schemaVersion)
         assertEquals(listOf("add_declaration", "health_check", "query_symbols"), catalog.tools.map { it.name })
         assertEquals(
             listOf(ToolRpcToolEffect.WRITE, ToolRpcToolEffect.READ, ToolRpcToolEffect.READ),
@@ -299,7 +299,7 @@ class KastToolRpcBridgeTest {
             assertEquals(expectedType, encoded.getValue("type").jsonPrimitive.content)
             if (reply is ToolRpcReply.Catalog) {
                 val catalog = encoded.getValue("catalog").jsonObject
-                assertEquals("12", catalog.getValue("schemaVersion").jsonPrimitive.content)
+                assertEquals("13", catalog.getValue("schemaVersion").jsonPrimitive.content)
                 assertEquals(0, catalog.getValue("tools").jsonArray.size)
             } else if (reply is ToolRpcReply.Rejected) {
                 assertEquals("OUT_OF_SCOPE", encoded.getValue("failure").jsonPrimitive.content)

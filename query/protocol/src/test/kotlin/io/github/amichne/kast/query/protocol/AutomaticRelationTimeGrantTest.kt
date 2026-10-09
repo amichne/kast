@@ -84,7 +84,7 @@ internal class AutomaticRelationTimeGrantTest : AutomaticSymbolQueryCase() {
             )
         val result =
             CanonicalQueryProtocol(service, fixture.references)
-                .executeAutomatically(
+                .execute(
                     request.copy(steps = bounded(listOf(QueryStepDocument.Related(RelationKindDocument.CALLERS)))),
                     fixture.authority,
                     budget,

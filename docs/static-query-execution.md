@@ -43,10 +43,10 @@ point to retained rows and independent evidence pages. Reading a retained result
 does not run the semantic query again. An exhausted upstream prefix cannot become
 complete merely because its preview fits.
 
-Omitted or null public completion selects `COMPLETE_ONLY` with
-`COMPILER_RESOLVED_STATIC_V1` on the original question. Canonical requests and
-retained questions encode this policy explicitly. `PROGRESSIVE` is an explicit
-investigation choice; strict execution never falls back to it.
+Complete-only execution within `COMPILER_RESOLVED_STATIC_V1` is the sole public
+query policy. RUN has no completion selector. The retained original question
+records the fixed model. Public RESUME accepts only already-produced output;
+semantic page continuation belongs to the internal runner.
 Unproven completion is a closed rejection variant. Investigation failures distinguish
 missing original evidence, incomplete original path selection, and unresolved required
 obligations. Mutable flow, cyclic path expansion, unsupported transfers, and exhausted

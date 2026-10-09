@@ -185,7 +185,7 @@ class HostedRejectedPublicationEffectTest {
                         ) as Refinement.Refined)
                         .value,
                     io.github.amichne.kast.protocol.contract.QueryOutputDocument.Occurrences,
-                    io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Default,
+                    io.github.amichne.kast.protocol.contract.QueryCompletionDocument(),
                 ),
             )
         )

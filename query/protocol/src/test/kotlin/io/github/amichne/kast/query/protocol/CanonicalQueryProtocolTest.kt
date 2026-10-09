@@ -60,10 +60,10 @@ class CanonicalQueryProtocolTest {
                 ),
                 bounded(listOf(QueryDeclarationKindDocument.FUNCTION)),
             )
-        assertTrue(protocol.execute(request().copy(from = source), lease, budget) is OperationOutcome.Complete)
+        assertTrue(protocol.executePage(request().copy(from = source), lease, budget) is OperationOutcome.Complete)
         for (invalid in listOf("AppServerAction.Disable", "restart lifecycle", "launchd|restart", " launchd")) {
             assertTrue(
-                protocol.execute(request().copy(from = source.copy(word = text(invalid))), lease, budget)
+                protocol.executePage(request().copy(from = source.copy(word = text(invalid))), lease, budget)
                     is OperationOutcome.Rejected
             )
         }
@@ -72,7 +72,7 @@ class CanonicalQueryProtocolTest {
                 declarationKinds =
                     bounded(listOf(QueryDeclarationKindDocument.FUNCTION, QueryDeclarationKindDocument.FUNCTION))
             )
-        assertTrue(protocol.execute(request().copy(from = duplicates), lease, budget) is OperationOutcome.Rejected)
+        assertTrue(protocol.executePage(request().copy(from = duplicates), lease, budget) is OperationOutcome.Rejected)
         assertEquals(1, calls)
     }
 
@@ -96,11 +96,11 @@ class CanonicalQueryProtocolTest {
         val input =
             request()
                 .copy(from = QueryFromDocument.Location(text("src/Subject.kt"), ProtocolOffset.parse(12).refined()))
-        assertTrue(protocol.execute(input, lease, budget) is OperationOutcome.Complete)
+        assertTrue(protocol.executePage(input, lease, budget) is OperationOutcome.Complete)
         assertTrue(observed)
         val escaped =
             request().copy(from = QueryFromDocument.Location(text("../Subject.kt"), ProtocolOffset.parse(12).refined()))
-        assertTrue(protocol.execute(escaped, lease, budget) is OperationOutcome.Rejected)
+        assertTrue(protocol.executePage(escaped, lease, budget) is OperationOutcome.Rejected)
     }
 
     @Test
@@ -162,7 +162,7 @@ class CanonicalQueryProtocolTest {
                 },
                 CanonicalQueryReferences(),
             )
-        val result = protocol.execute(request(), lease, budget)
+        val result = protocol.executePage(request(), lease, budget)
         assertEquals(EvidenceBasis.Published(lease.generation), (result as OperationOutcome.Complete).evidence.basis)
     }
 
@@ -184,7 +184,7 @@ class CanonicalQueryProtocolTest {
                 },
                 CanonicalQueryReferences(),
             )
-        assertTrue(protocol.execute(request(), lease, budget) is OperationOutcome.Qualified)
+        assertTrue(protocol.executePage(request(), lease, budget) is OperationOutcome.Qualified)
         val rejected =
             CanonicalQueryProtocol(
                     QueryOperations {
@@ -192,7 +192,7 @@ class CanonicalQueryProtocolTest {
                     },
                     CanonicalQueryReferences(),
                 )
-                .execute(request(), lease, budget)
+                .executePage(request(), lease, budget)
         assertTrue(rejected is OperationOutcome.Rejected)
     }
 
@@ -393,7 +393,6 @@ class CanonicalQueryProtocolTest {
             bounded(emptyList()),
             QueryOutputDocument.Symbols(bounded(emptyList())),
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun text(value: String) = ProtocolText.parse(value).refined()

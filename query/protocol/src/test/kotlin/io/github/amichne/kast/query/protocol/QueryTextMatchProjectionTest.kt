@@ -78,10 +78,10 @@ class QueryTextMatchProjectionTest {
                 fixture.references,
             )
         val first =
-            protocol.execute(retainedTextRequest(output), fixture.authority, budget()) as OperationOutcome.Complete
+            protocol.executePage(retainedTextRequest(output), fixture.authority, budget()) as OperationOutcome.Complete
         val reference = (first.evidence.payload.retention as QueryResultRetention.Retained).reference
         val read =
-            protocol.execute(
+            protocol.executePage(
                 QueryRunRequest.ReadResult.symbols(reference, output = output),
                 fixture.authority,
                 budget(),
@@ -108,7 +108,6 @@ class QueryTextMatchProjectionTest {
             output,
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
             retention = QueryRetentionModeDocument.RETAIN,
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun budget() =

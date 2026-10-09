@@ -1,8 +1,7 @@
 {
   "type": "TRACE_REQUESTS_MANIFEST",
   "fixtureManifestSha256": "3111951fa903d4983d9af6f131e9c54cd39d008b487b307e45c64b634e3a3dd1",
-  "inputSchemaSha256": "500bfa79a6b263f30730e54e91234504417130f302a1e7126c632ed8a6fede39",
-  "configSha256": "70d9058fe87fa61e10d38ca09e857c565ba54ae3f012f9bb12bedcf91f06bd3e",
+  "inputSchemaSha256": "9ce0fae4596119e80e1d4657e60caf40a95624e8f4d14ef6962ac1866320dc1c",
   "requests": [
     {
       "label": "A.TRACE",
@@ -54,10 +53,6 @@
             ]
           },
           "retention": "RETAIN",
-          "completion": {
-            "type": "COMPLETE_ONLY",
-            "model": "COMPILER_RESOLVED_STATIC_V1"
-          },
           "type": "RUN"
         },
         "verbose": true
@@ -113,10 +108,6 @@
             ]
           },
           "retention": "RETAIN",
-          "completion": {
-            "type": "COMPLETE_ONLY",
-            "model": "COMPILER_RESOLVED_STATIC_V1"
-          },
           "type": "RUN"
         },
         "verbose": true
@@ -176,10 +167,6 @@
             ]
           },
           "retention": "RETAIN",
-          "completion": {
-            "type": "COMPLETE_ONLY",
-            "model": "COMPILER_RESOLVED_STATIC_V1"
-          },
           "type": "RUN"
         },
         "verbose": true
@@ -239,10 +226,6 @@
             ]
           },
           "retention": "RETAIN",
-          "completion": {
-            "type": "COMPLETE_ONLY",
-            "model": "COMPILER_RESOLVED_STATIC_V1"
-          },
           "type": "RUN"
         },
         "verbose": true
@@ -291,10 +274,6 @@
             ]
           },
           "retention": "RETAIN",
-          "completion": {
-            "type": "COMPLETE_ONLY",
-            "model": "COMPILER_RESOLVED_STATIC_V1"
-          },
           "type": "RUN"
         },
         "verbose": true
@@ -351,10 +330,6 @@
             ]
           },
           "retention": "RETAIN",
-          "completion": {
-            "type": "COMPLETE_ONLY",
-            "model": "COMPILER_RESOLVED_STATIC_V1"
-          },
           "type": "RUN"
         },
         "verbose": true
@@ -411,10 +386,6 @@
             ]
           },
           "retention": "RETAIN",
-          "completion": {
-            "type": "COMPLETE_ONLY",
-            "model": "COMPILER_RESOLVED_STATIC_V1"
-          },
           "type": "RUN"
         },
         "verbose": true
@@ -471,10 +442,6 @@
             ]
           },
           "retention": "RETAIN",
-          "completion": {
-            "type": "COMPLETE_ONLY",
-            "model": "COMPILER_RESOLVED_STATIC_V1"
-          },
           "type": "RUN"
         },
         "verbose": true
@@ -531,10 +498,6 @@
             ]
           },
           "retention": "RETAIN",
-          "completion": {
-            "type": "COMPLETE_ONLY",
-            "model": "COMPILER_RESOLVED_STATIC_V1"
-          },
           "type": "RUN"
         },
         "verbose": true
@@ -591,10 +554,6 @@
             ]
           },
           "retention": "RETAIN",
-          "completion": {
-            "type": "COMPLETE_ONLY",
-            "model": "COMPILER_RESOLVED_STATIC_V1"
-          },
           "type": "RUN"
         },
         "verbose": true
@@ -654,10 +613,6 @@
             ]
           },
           "retention": "RETAIN",
-          "completion": {
-            "type": "COMPLETE_ONLY",
-            "model": "COMPILER_RESOLVED_STATIC_V1"
-          },
           "type": "RUN"
         },
         "verbose": true

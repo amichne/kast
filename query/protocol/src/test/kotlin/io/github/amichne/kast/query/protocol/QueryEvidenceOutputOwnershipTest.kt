@@ -94,7 +94,7 @@ class QueryEvidenceOutputOwnershipTest {
             )
 
         suspend fun issueInitial(): QueryExecutionContinuation.Output {
-            val initial = protocol.execute(request(), lease, budget) as OperationOutcome.Complete
+            val initial = protocol.executePage(request(), lease, budget) as OperationOutcome.Complete
             val page =
                 initial.copy(
                     evidence =
@@ -107,7 +107,7 @@ class QueryEvidenceOutputOwnershipTest {
 
         suspend fun advance(token: QueryExecutionContinuation.Output): QueryExecutionContinuation.Output {
             val request = QueryRunRequest.Resume(token)
-            val semantic = protocol.execute(request, lease, budget) as OperationOutcome.Complete
+            val semantic = protocol.executePage(request, lease, budget) as OperationOutcome.Complete
             val page = semantic.evidence.payload
             assertEquals(0, page.items.values.size)
             val suffix =
@@ -121,7 +121,8 @@ class QueryEvidenceOutputOwnershipTest {
         }
 
         suspend fun finish(token: QueryExecutionContinuation.Output) {
-            val semantic = protocol.execute(QueryRunRequest.Resume(token), lease, budget) as OperationOutcome.Complete
+            val semantic =
+                protocol.executePage(QueryRunRequest.Resume(token), lease, budget) as OperationOutcome.Complete
             assertEquals(0, semantic.evidence.payload.items.values.size)
             emitted += semantic.evidence.payload.failures.values
             publish(semantic)
@@ -156,7 +157,6 @@ class QueryEvidenceOutputOwnershipTest {
             bounded(emptyList()),
             QueryOutputDocument.Symbols(bounded(emptyList())),
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun text(value: String) = ProtocolText.parse(value).refined()
