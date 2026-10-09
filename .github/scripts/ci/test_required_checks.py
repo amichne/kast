@@ -14,10 +14,10 @@ from required_checks import Verdict, inspect, main
 def docs_only_results():
     return {
         "scope": {"result": "success", "outputs": {
-            "product": "skip", "portable": "skip", "documentation": "run", "gate_graph": "skip",
+            "product": "run", "portable": "run", "documentation": "run", "gate_graph": "skip",
         }},
-        "kotlin": {"result": "skipped"},
-        "portable": {"result": "skipped"},
+        "kotlin": {"result": "success"},
+        "portable": {"result": "success"},
         "documentation": {"result": "success"},
     }
 
@@ -34,6 +34,7 @@ class RequiredChecksTest(unittest.TestCase):
     def test_full_plan_requires_all_jobs_to_succeed(self):
         needs = docs_only_results()
         needs["scope"]["outputs"] = dict.fromkeys(("product", "portable", "documentation", "gate_graph"), "run")
+        needs["kotlin"]["result"] = "skipped"
         self.assertEqual(Verdict.CHECK_FAILED, inspect(needs))
         needs["kotlin"]["result"] = needs["portable"]["result"] = "success"
         self.assertEqual(Verdict.COMPLETE, inspect(needs))
@@ -56,7 +57,7 @@ class RequiredChecksTest(unittest.TestCase):
         self.assertEqual(Verdict.INVALID_SELECTION, inspect(needs))
 
     def test_incomplete_or_contradictory_plans_reject(self):
-        for changes in ({"gate_graph": None}, {"gate_graph": "run"}, {"documentation": "skip"}):
+        for changes in ({"gate_graph": None}, {"product": "skip"}, {"portable": "skip"}):
             needs = docs_only_results()
             needs["scope"]["outputs"].update(changes)
             with self.subTest(changes=changes):

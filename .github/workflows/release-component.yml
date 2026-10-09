@@ -59,13 +59,15 @@ jobs:
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: graalvm
-          java-version: 25
+          java-version: 25.0.2
       - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
         with:
           validate-wrappers: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           gradle-home-cache-includes: |
             caches
             notifications
+            native-build-tools
             kast/workspace-intellij-read-idea-distributions
             kast/symbol-intellij-idea-distributions
             kast/topology-intellij-kotlin-plugin
@@ -73,7 +75,8 @@ jobs:
         env:
           RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
         run: |
-          common=(--no-daemon --max-workers=2 -Dorg.gradle.jvmargs=-Xmx5g "-PkastSourceRevision=$GITHUB_SHA")
+          mkdir -p build/reports/native
+          common=(-PkastNativeBuildMetrics=true --no-daemon --max-workers=2 -Dorg.gradle.jvmargs=-Xmx5g "-PkastSourceRevision=$GITHUB_SHA")
           guards=(spotlessCheck verifyKastArchitecture verifyJsonContracts verifyKnowledgeBase)
           case "$RELEASE_COMPONENT" in
             control)
@@ -111,3 +114,11 @@ jobs:
           bash .github/scripts/release/publish-component.sh --component "$RELEASE_COMPONENT"
           --version "$RELEASE_VERSION" --commit "$GITHUB_SHA"
           --assets-directory "build/release/${RELEASE_COMPONENT}-v${RELEASE_VERSION}"
+      - name: Retain build reports
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: component-reports-${{ inputs.component }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: build/reports/
+          if-no-files-found: warn
+          retention-days: 14

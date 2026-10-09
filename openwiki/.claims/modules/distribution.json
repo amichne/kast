@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:4527c1d543e86b428b5694e8601c7afd3ebee73059571c41bdb704719a0999b9",
+  "pageVersion": "sha256:63d2d7c1bf26f52fdf04e2bb6ca4c497f16378daa76b9b26cb22443e9d7de634",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -313,10 +313,64 @@
           "version": "repo-file-v1:sha256:ae8b873726b5ecd29ba9174969dcdb21514eae1c77ad3cd9951127b9236193fc"
         }
       ]
+    },
+    {
+      "id": "claim_447f107d597641368d051439eee9c019",
+      "statement": "Every PR runs product and portable checks and retains one complete versioned candidate; main reuses same-repository PR bytes only after successful producer admission and equality of the complete source trees.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/ci/required_checks.py",
+          "version": "repo-file-v1:sha256:17671041a287674f57740f9150e7bb5e0634cb143d6c46b5b57aa7e3890a5ba9"
+        },
+        {
+          "resource": "repo://.github/scripts/release/build_candidate.py#L229-L263",
+          "version": "repo-lines-v1:sha256:a3f1a02609f0f5d8b745c4575d15e5f0581bb6c68d51d2b2e50a71585f40a137:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY5MGJiY2IwNjI5ODM4ZjEyOGM1NzViYWEzYjdkN2QzN2Q4MjZjNWI3Njg3MGQ2Yzk0YmU1ZjQ5NDkzNTUzODciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFjMWE4MjQyNmE4MTA5YzNjMzlkZDg2ZTMzNGViMmFkNTY0ZWFlMDlmNGNiYmIzMTg3MjhkMmQxM2ExMDUzZGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlmNDI0MzM4MTk4NmQwYmZhMzZkNGRhNjEyYzhmNTM4YjhiYjU0MGM1YjRhZTViYmNjZWZlNTRlNzNkZGM3OGMifQ"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml",
+          "version": "repo-file-v1:sha256:00633fa3aacc674f1083a13d1e9b8f5e8ffccb6d81c61cc23ca0a11744ca4934"
+        }
+      ]
+    },
+    {
+      "id": "claim_d407483e65e045288fecd3b152e7e6a3",
+      "statement": "Successful main CI automatically promotes retained candidate bytes to the developer channel without rebuilding; the publisher verifies producer and digest provenance, requires exact retries, and preserves latest when main has advanced.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/release/build_candidate.py#L294-L363",
+          "version": "repo-lines-v1:sha256:a91f722ff5486aa23ccfb7866cb820af5b63175ceffd106989dffde9dcedae6e:eyJzZWxlY3RlZExpbmVDb3VudCI6NzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI4MWE4YzgwMjkzNmIxYWZjNTQyZGIxOTY3ZDYyYmM4N2Y5OGM1MmQyNzU5ZWY1MjNhNmE5YTM1ODBjOTcyMDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc3ZDBjYjIxMWMwMTFiMTk5MDAwMTExNjM1YjJiODJjOGI0OWZhYTc3MGM1NWUzZmQwNjY3MWY0OGVmMjEwMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkwMGMwNmU2ODZhYmJmYmMwYWIyNGQyYjIyMTNlYjU2OTNmZDNmZjNlNjQxZjkxNTNhYzQ2Zjc3YmFkYWJiZmUifQ"
+        },
+        {
+          "resource": "repo://.github/scripts/release/publish-developer.sh",
+          "version": "repo-file-v1:sha256:6359f1013310332479b79685805c57d3eb86cc5e144c05e2c26be148f8cb0499"
+        },
+        {
+          "resource": "repo://.github/workflows/developer-release.yml",
+          "version": "repo-file-v1:sha256:48e57cda0de68acb42da668f96a0e0c4f1879cb55d44cb54cfbe1ebf5a651dee"
+        }
+      ]
+    },
+    {
+      "id": "claim_5f7d796cedca49cca3847f961bb82235",
+      "statement": "CI pins GraalVM and retains Gradle task outputs, native reachability metadata, encrypted configuration-cache state where a secret is available, and bounded build/native metrics for matched comparisons without changing optimization.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/ci/build_execution.py",
+          "version": "repo-file-v1:sha256:0a03e166df92557b9de822f5a682334b5bbec1d1582aba64314f694ddf96fe93"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml#L104-L150",
+          "version": "repo-lines-v1:sha256:aebc7be25326a0a28882a99bff3dc587b3ba2400267e5b3cc23ad480e99c8ced:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1OTRjZmRjNjRjMzAyZDQ0MDE1NDE5ZjdiMDJiYmJkYjMxNDk2OTJlNWY1OTBjN2Q3MDU3ZjYzYWMyZjdkOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OGJmMzg0ZmQyMGNkZjkwZGQ5OTVhZWZkZjI2NWRjNDNjZWViY2Q0NjdjYzU5NTlkZDdkMjMxNTkxMTE3NDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRlNGNiZGE4MTE5YjBiNmVmMTI3ZGVhZjlkNjEyODJlODQ0MjEwZTk1MzY1OThjZDc0Y2IwOGJjNTcyNGZmYmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIyZmUzYjc4Y2ZlOWMwYmUzMjFhODNmNzc2MjUwMDdjODJjOTgyNDRhOThkZDNhZGJlYzhlZGE3NTU0ZmM2OTkifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/build.gradle.kts#L60-L69",
+          "version": "repo-lines-v1:sha256:4c50b499168d0b433385a80d4300a31eeaa3d60ed70b0f130f1fc4b88eca881f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzM2U1NWRkZDFkOTkxNzk2M2Y4MjlkMWQ3YjM0Zjc5ZWVhMjIwMTg4OWI2MDUzOTdhNWFlYjI4NjRkY2Q5MjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI5MjViZjc2MGUyNjQ3MGE1MzJmMmVmOGZkOTI2NGM4YjY0ZTNjOTE0YTc1YTM0NGQ5YWU2ZTdlNWM2ZTc1OTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-08T02:31:16.815Z"
+    "at": "2026-10-09T14:48:51.708Z"
   }
 }

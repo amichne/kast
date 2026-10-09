@@ -78,7 +78,7 @@ jobs:
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: graalvm
-          java-version: 25
+          java-version: 25.0.2
 
       - name: Install host protocol test dependencies for a missing candidate
         if: steps.ci_candidate.outputs.candidate == 'MISSING'
@@ -89,9 +89,11 @@ jobs:
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
         with:
           validate-wrappers: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           gradle-home-cache-includes: |
             caches
             notifications
+            native-build-tools
             kast/workspace-intellij-read-idea-distributions
             kast/symbol-intellij-idea-distributions
             kast/topology-intellij-kotlin-plugin

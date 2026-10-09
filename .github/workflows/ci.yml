@@ -3,12 +3,14 @@ name: CI
 on:
   pull_request:
   workflow_dispatch:
+  merge_group:
   push:
     branches:
       - main
 
 permissions:
   contents: read
+  actions: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -38,6 +40,7 @@ jobs:
           python3 .github/scripts/ci/test_validation_scope.py
           python3 .github/scripts/ci/test_required_checks.py
           python3 .github/scripts/ci/test_verify_checks.py
+          python3 .github/scripts/release/test_build_candidate.py
 
       - name: Select checks
         id: scope
@@ -82,14 +85,26 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
+      - name: Reuse tested merged PR candidate
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: reuse
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          python3 .github/scripts/release/build_candidate.py reuse
+          --repository "$GITHUB_REPOSITORY" --revision "$GITHUB_SHA"
+          --bundle build/candidate --github-output "$GITHUB_OUTPUT"
+
       - name: Set up GraalVM Java 25
+        if: steps.reuse.outputs.candidate != 'REUSED'
         id: jdk25
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: graalvm
-          java-version: 25
+          java-version: 25.0.2
 
       - name: Set up Python
+        if: steps.reuse.outputs.candidate != 'REUSED'
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version-file: ".python-version"
@@ -97,71 +112,56 @@ jobs:
           cache-dependency-path: experiments/host-observation/requirements-test.txt
 
       - name: Install host protocol test dependencies
+        if: steps.reuse.outputs.candidate != 'REUSED'
         run: python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt
 
       - name: Set up Gradle
+        if: steps.reuse.outputs.candidate != 'REUSED'
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
         with:
           validate-wrappers: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           # Save task outputs for later runs of this PR; fork PRs only restore trusted caches.
           cache-read-only: ${{ !((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || github.ref == 'refs/heads/main') }}
           # caches includes caches/build-cache-1, Gradle's local task-output cache.
           gradle-home-cache-includes: |
             caches
             notifications
+            native-build-tools
             kast/workspace-intellij-read-idea-distributions
             kast/symbol-intellij-idea-distributions
             kast/topology-intellij-kotlin-plugin
 
-      - name: Resolve next patch release candidate
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        id: candidate_version
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: >-
-          python3 distribution/release/resolve_version.py
-          --repository "$GITHUB_REPOSITORY"
-          --bump patch
-
-      - name: Build and verify product
+      - name: Run candidate preflight
+        if: steps.reuse.outputs.candidate != 'REUSED'
         env:
           GH_TOKEN: ${{ github.token }}
           KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
-          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           GATE_GRAPH: ${{ needs.scope.outputs.gate_graph }}
-        run: |
-          git checkout --detach "$CANDIDATE_SHA"
-          if [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/heads/main ]]; then
-            python3 .github/scripts/ci/verify-checks.py --gate-graph "$GATE_GRAPH" --preflight-only
-          else
-            python3 .github/scripts/ci/verify-checks.py --gate-graph "$GATE_GRAPH"
-          fi
+        run: python3 .github/scripts/ci/verify-checks.py --preflight-only --gate-graph "$GATE_GRAPH"
 
-      - name: Build exact patch release candidate
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Build and test one immutable candidate
+        if: steps.reuse.outputs.candidate != 'REUSED'
         env:
           GH_TOKEN: ${{ github.token }}
           KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
-          RELEASE_VERSION: ${{ steps.candidate_version.outputs.version }}
-        run: bash .github/scripts/ci/verify.sh --version "$RELEASE_VERSION"
+        run: bash .github/scripts/ci/verify.sh --version "0.0.$GITHUB_RUN_ID"
 
-      - name: Admit exact patch release candidate
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Seal tested candidate identity
+        if: steps.reuse.outputs.candidate != 'REUSED'
         env:
-          RELEASE_VERSION: ${{ steps.candidate_version.outputs.version }}
+          CHECKOUT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: >-
-          python3 .github/scripts/release/ci-candidate.py validate
-          --repository "$GITHUB_REPOSITORY"
-          --version "$RELEASE_VERSION"
-          --source-revision "$GITHUB_SHA"
-          --directory "build/release/v${RELEASE_VERSION}"
+          python3 .github/scripts/release/build_candidate.py seal
+          --repository "$GITHUB_REPOSITORY" --revision "$CHECKOUT_SHA"
+          --run-id "$GITHUB_RUN_ID" --run-attempt "$GITHUB_RUN_ATTEMPT"
+          --event "$GITHUB_EVENT_NAME" --bundle build/candidate
 
-      - name: Retain exact patch release candidate
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Retain immutable build candidate
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: ci-release-candidate-v${{ steps.candidate_version.outputs.version }}-${{ github.sha }}
-          path: build/release/v${{ steps.candidate_version.outputs.version }}/
+          name: ci-build-candidate-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: build/candidate/
           if-no-files-found: error
           compression-level: 0
           retention-days: 30
@@ -170,7 +170,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: ci-reports-${{ github.event.pull_request.head.sha || github.sha }}
+          name: ci-reports-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
           path: |
             build/reports/
             **/build/test-results/

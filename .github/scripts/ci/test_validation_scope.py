@@ -12,14 +12,14 @@ from unittest.mock import patch
 
 from validation_scope import ALL_CHECKS, Check, Reason, Selection, classify_paths, main, select
 
-DOCS = frozenset({Check.DOCUMENTATION})
+DOCS = frozenset({Check.DOCUMENTATION, Check.PRODUCT, Check.PORTABLE})
 PRODUCT = frozenset({Check.PRODUCT, Check.PORTABLE})
 PAGE = "docs/public/reference/api.mdx"
 SOURCE = "cli/src/main/kotlin/Management.kt"
 
 
 class ValidationScopeTest(unittest.TestCase):
-    def test_independent_pages_and_navigation_require_only_documentation(self):
+    def test_pages_and_navigation_retain_a_product_candidate(self):
         self.assertEqual(DOCS, classify_paths((PAGE, "docs/public/concepts/architecture.mdx", "docs/public/docs.json")))
 
     def test_product_linked_docs_keep_product_and_portable_checks(self):
@@ -86,7 +86,7 @@ class ValidationScopeTest(unittest.TestCase):
                     patch("validation_scope.select", return_value=Selection(DOCS, Reason.CHANGED_INPUTS)) as choose:
                 main()
             choose.assert_called_once_with("push", "a" * 40, "b" * 40)
-            self.assertEqual("product=skip\nportable=skip\ndocumentation=run\ngate_graph=skip\n", output.read_text())
+            self.assertEqual("product=run\nportable=run\ndocumentation=run\ngate_graph=skip\n", output.read_text())
 
 
 class ExactDiffTest(unittest.TestCase):
@@ -114,7 +114,7 @@ class ExactDiffTest(unittest.TestCase):
         self.git("commit", "-qm", message)
         return self.git("rev-parse", "HEAD")
 
-    def test_docs_only_push_skips_product_for_the_whole_range(self):
+    def test_docs_only_push_retains_a_product_candidate_for_the_whole_range(self):
         self.write(PAGE, "# Revised API\n")
         self.commit("first page edit")
         self.write("docs/public/reference/other.mdx", "# Other\n")

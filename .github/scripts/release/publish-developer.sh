@@ -6,11 +6,13 @@ fail() { echo "publish-developer: $*" >&2; exit 1; }
 version=""
 commit=""
 assets_directory=""
+promotion_record=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --version) [[ $# -ge 2 ]] || fail "--version requires a value"; version="$2"; shift 2 ;;
     --commit) [[ $# -ge 2 ]] || fail "--commit requires a value"; commit="$2"; shift 2 ;;
     --assets-directory) [[ $# -ge 2 ]] || fail "--assets-directory requires a value"; assets_directory="$2"; shift 2 ;;
+    --promotion-record) [[ $# -ge 2 ]] || fail "--promotion-record requires a value"; promotion_record="$2"; shift 2 ;;
     *) fail "unknown argument: $1" ;;
   esac
 done
@@ -24,6 +26,12 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
 cd "$root"
 assets_directory="$(cd "$assets_directory" && pwd -P)"
 repository="${GITHUB_REPOSITORY:-amichne/kast}"
+[[ -f "$promotion_record" ]] || fail "verified promotion record is required"
+promotion_record="$(cd "$(dirname "$promotion_record")" && pwd -P)/$(basename "$promotion_record")"
+bundle="$(dirname "$assets_directory")"
+merged_commit="$(python3 .github/scripts/release/build_candidate.py verify-publication \
+  --repository "$repository" --revision "$commit" --version "$version" \
+  --bundle "$bundle" --promotion-record "$promotion_record")"
 python3 .github/scripts/release/ci-candidate.py validate \
   --repository "$repository" --version "$version" \
   --source-revision "$commit" --directory "$assets_directory"
@@ -44,23 +52,31 @@ host_installer="$assets_directory/host-installation.py"
 assets=("$control" "$control.sha256" "$plugin" "$plugin.sha256"
   "$skill" "$skill.sha256" "$agent_plugin" "$agent_plugin.sha256" "$marketplace" "$marketplace.sha256"
   "$host_record" "$host_record.sha256" "$host_installer" "$host_installer.sha256"
-  "$catalog" "$catalog.sha256" "$knowledge" "$knowledge.sha256" "$sbom" "$sbom.sha256")
+  "$catalog" "$catalog.sha256" "$knowledge" "$knowledge.sha256" "$sbom" "$sbom.sha256"
+  "$bundle/candidate.json" "$promotion_record")
 
-if gh release view "$tag" --repo "$repository" >/dev/null 2>&1; then
-  published_commit="$(gh release view "$tag" --repo "$repository" --json targetCommitish --jq .targetCommitish)"
-  [[ "$published_commit" == "$commit" ]] || fail "existing developer release targets a different source"
-  expected_assets="$(for asset in "${assets[@]}"; do
-    printf '%s\tsha256:%s\n' "$(basename "$asset")" "$(shasum -a 256 "$asset" | cut -d ' ' -f 1)"
-  done | sort)"
-  published_assets="$(gh release view "$tag" --repo "$repository" --json assets \
-    --jq '.assets[] | [.name, .digest] | @tsv' | sort)"
-  [[ "$published_assets" == "$expected_assets" ]] || fail "existing developer assets differ from verified candidate"
-else
+if ! gh release view "$tag" --repo "$repository" >/dev/null 2>&1; then
   gh release create "$tag" "${assets[@]}" --repo "$repository" --target "$commit" \
     --prerelease --latest=false --title "Kast developer $version" \
-    --notes "Exact-source developer build from $commit. The SBOM and checksums are included."
+    --notes "Tested developer build from $commit, promoted after main $merged_commit. Candidate and promotion records, SBOM and checksums are included."
 fi
+published_commit="$(gh release view "$tag" --repo "$repository" --json targetCommitish --jq .targetCommitish)"
+[[ "$published_commit" == "$commit" ]] || fail "developer release targets a different source"
+expected_assets="$(for asset in "${assets[@]}"; do
+  printf '%s\tsha256:%s\n' "$(basename "$asset")" "$(shasum -a 256 "$asset" | cut -d ' ' -f 1)"
+done | sort)"
+published_assets="$(gh release view "$tag" --repo "$repository" --json assets \
+  --jq '.assets[] | [.name, .digest] | @tsv' | sort)"
+[[ "$published_assets" == "$expected_assets" ]] || fail "developer assets differ from verified candidate"
 
+# Serialized publisher jobs cannot rewind latest when a delayed run finishes after main advances.
+main_state="$(python3 .github/scripts/release/build_candidate.py current-main \
+  --repository "$repository" --revision "$merged_commit")"
+if [[ "$main_state" == SUPERSEDED ]]; then
+  printf '%s\n' 'publish-developer: immutable build published; latest retained because main advanced'
+  exit 0
+fi
+[[ "$main_state" == CURRENT ]] || fail "main admission is incomplete"
 pointer_branch=developer-latest
 if ! gh api "repos/$repository/git/ref/heads/$pointer_branch" >/dev/null 2>&1; then
   gh api --method POST "repos/$repository/git/refs" \
