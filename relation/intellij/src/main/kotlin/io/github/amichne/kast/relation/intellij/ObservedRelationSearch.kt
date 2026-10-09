@@ -8,7 +8,9 @@ import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.util.Processor
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadSearch
 import io.github.amichne.kast.workspace.intellij.read.call
+import io.github.amichne.kast.workspace.intellij.read.search
 
 /**
  * Counts the executed lazy query and every callback, including excluded sites. Native executor internals are opaque.
@@ -19,10 +21,11 @@ internal fun IntellijReadObservation.forEachReference(
     ignoreAccessScope: Boolean = false,
     process: (PsiReference) -> Boolean,
 ): Boolean =
-    call(IntellijReadCall.REFERENCE_SEARCH) {
+    search(IntellijReadSearch.REFERENCES) { search ->
         ReferencesSearch.search(subject, scope, ignoreAccessScope)
             .forEach(
                 Processor { reference ->
+                    search.callbackEntered()
                     call(IntellijReadCall.REFERENCE_CALLBACK) {
                         com.intellij.openapi.progress.ProgressManager.checkCanceled()
                         process(reference)
@@ -36,10 +39,11 @@ internal fun IntellijReadObservation.forEachDefinition(
     scope: SearchScope,
     process: (PsiElement) -> Boolean,
 ): Boolean =
-    call(IntellijReadCall.DEFINITION_SEARCH) {
+    search(IntellijReadSearch.DEFINITIONS) { search ->
         DefinitionsScopedSearch.search(subject, scope, false)
             .forEach(
                 Processor { provider ->
+                    search.callbackEntered()
                     call(IntellijReadCall.DEFINITION_CALLBACK) {
                         com.intellij.openapi.progress.ProgressManager.checkCanceled()
                         process(provider)

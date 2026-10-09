@@ -353,6 +353,15 @@ enum class IntellijReadPhase {
 interface IntellijReadObservation {
     fun enterCall(call: IntellijReadCall): IntellijReadCallScope = IntellijReadCallScope.None
 
+    fun enterSearch(search: IntellijReadSearch): IntellijReadSearchScope {
+        val call = enterCall(search.call)
+        return object : IntellijReadSearchScope {
+            override fun callbackEntered() = Unit
+
+            override fun finish(outcome: IntellijReadCallOutcome) = call.finish(outcome)
+        }
+    }
+
     fun phase(value: IntellijReadPhase) {}
 
     fun unexpected(failure: IntellijReadUnexpectedFailure) {}
