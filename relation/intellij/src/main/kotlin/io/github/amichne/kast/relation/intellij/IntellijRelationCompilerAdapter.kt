@@ -9,12 +9,16 @@ import io.github.amichne.kast.relation.contract.RelationCompilerRejection
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadActionKind
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadActionMode
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadStage
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFailure
+import io.github.amichne.kast.workspace.intellij.read.attempt
 import io.github.amichne.kast.workspace.intellij.read.call
+import io.github.amichne.kast.workspace.intellij.read.observeReadAction
 import kotlinx.coroutines.CancellationException
 
 internal sealed interface IntellijRelationLeaseAdmission {
@@ -121,19 +125,23 @@ internal class IntellijRelationCompilerQuery(
         }
         val allowance = IntellijRelationAllowance(System::nanoTime)
         return try {
-            readAction {
-                observation.call(IntellijReadCall.RELATION_READ_ATTEMPT) {
-                    admitThenPrepareRelation(
-                        admit = { admitRead(project, request, modelCompilation) },
-                        prepare = {
-                            observation.call(IntellijReadCall.CALLBACK_FACT_PREPARATION) {
-                                prepareSummaries(request, allowance)
-                            }
-                        },
-                        evaluate = { admitted, prepared ->
-                            evaluateRead(project, request, allowance, admitted, prepared)
-                        },
-                    )
+            observation.observeReadAction(IntellijReadActionKind.RELATION, IntellijReadActionMode.READ) { admission ->
+                readAction {
+                    admission.attempt {
+                        observation.call(IntellijReadCall.RELATION_READ_ATTEMPT) {
+                            admitThenPrepareRelation(
+                                admit = { admitRead(project, request, modelCompilation) },
+                                prepare = {
+                                    observation.call(IntellijReadCall.CALLBACK_FACT_PREPARATION) {
+                                        prepareSummaries(request, allowance)
+                                    }
+                                },
+                                evaluate = { admitted, prepared ->
+                                    evaluateRead(project, request, allowance, admitted, prepared)
+                                },
+                            )
+                        }
+                    }
                 }
             }
         } catch (cancelled: ProcessCanceledException) {
