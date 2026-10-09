@@ -248,7 +248,6 @@ internal class QueryInvocationProjection(
                     result = snapshot,
                     protectedCheckpoint = checkpoint,
                     publicationOwner = owner,
-                    evidenceMode = QueryRetainedEvidenceMode.PAGED,
                 )
             observation.observe(
                 QueryResultRetentionEvidence.Issuance(

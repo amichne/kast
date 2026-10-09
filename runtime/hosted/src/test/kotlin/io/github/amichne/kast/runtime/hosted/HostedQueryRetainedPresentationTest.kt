@@ -217,7 +217,7 @@ class HostedQueryRetainedPresentationTest {
                 HostedOutputRetention.CapacityExceeded
             }
                 as HostedResponse.Canonical<*, *, *>
-        val prefix = (fitted.semantic as OperationOutcome.Qualified).evidence.payload as QueryRunResult
+        val prefix = (fitted.semantic as OperationOutcome.Complete).evidence.payload as QueryRunResult
         assertEquals(105, prefix.nextCursor?.value)
         val tail =
             protocol.execute(
