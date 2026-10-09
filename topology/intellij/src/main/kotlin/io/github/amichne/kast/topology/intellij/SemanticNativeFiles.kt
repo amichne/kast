@@ -22,9 +22,8 @@ internal class SemanticNativeFiles(
     private val project: Project,
     private val limits: ReadLimits,
     private val budget: DependencyCaptureBudget,
+    private val memo: SemanticNativeFileMemo = SemanticNativeFileMemo(),
 ) {
-    private val hashes = mutableMapOf<String, WorkspaceSourceContentHash>()
-    private val trees = mutableMapOf<String, WorkspaceSourceContentHash>()
 
     fun roots(roots: List<VirtualFile>, digest: SemanticInputDigest): SemanticCapture<Unit> {
         if (roots.isEmpty()) return captureRejected(SemanticDependencyCaptureFailure.COMPILER_CONFIGURATION_UNAVAILABLE)
@@ -42,31 +41,27 @@ internal class SemanticNativeFiles(
         return Refinement.Refined(Unit)
     }
 
-    private fun tree(root: VirtualFile): SemanticCapture<WorkspaceSourceContentHash> {
-        trees[root.url]?.let {
-            budget.observation.count(IntellijReadCounter.DEPENDENCY_TREE_MEMO_HITS)
-            return Refinement.Refined(it)
-        }
-        val digest = SemanticInputDigest()
-        when (
-            val read =
-                walk(root) { file ->
-                    digest.text("FILE")
-                    digest.text(file.url)
-                    when (val hash = hash(file)) {
-                        is Refinement.Refined -> {
-                            digest.text(hash.value.value)
-                            Refinement.Refined(Unit)
+    private fun tree(root: VirtualFile): SemanticCapture<WorkspaceSourceContentHash> =
+        memo.tree(SemanticNativeFileIdentity(root.url), budget) {
+            val digest = SemanticInputDigest()
+            when (
+                val read =
+                    walk(root) { file ->
+                        digest.text("FILE")
+                        digest.text(file.url)
+                        when (val hash = hash(file)) {
+                            is Refinement.Refined -> {
+                                digest.text(hash.value.value)
+                                Refinement.Refined(Unit)
+                            }
+                            is Refinement.Rejected -> hash
                         }
-                        is Refinement.Rejected -> hash
                     }
-                }
-        ) {
-            is Refinement.Refined -> Unit
-            is Refinement.Rejected -> return read
+            ) {
+                is Refinement.Refined -> Refinement.Refined(digest.finish())
+                is Refinement.Rejected -> read
+            }
         }
-        return Refinement.Refined(digest.finish().also { trees[root.url] = it })
-    }
 
     fun walk(root: VirtualFile, consume: (VirtualFile) -> SemanticCapture<Unit>): SemanticCapture<Unit> {
         val pending = ArrayDeque<VirtualFile>().apply { add(root) }
@@ -127,23 +122,12 @@ internal class SemanticNativeFiles(
         return consume(file)
     }
 
-    fun hash(file: VirtualFile): SemanticCapture<WorkspaceSourceContentHash> {
-        hashes[file.url]?.let {
-            budget.observation.count(IntellijReadCounter.DEPENDENCY_HASH_MEMO_HITS)
-            return Refinement.Refined(it)
+    fun hash(file: VirtualFile): SemanticCapture<WorkspaceSourceContentHash> =
+        memo.hash(SemanticNativeFileIdentity(file.url), budget) {
+            budget.observation
+                .call(IntellijReadCall.VFS_OPEN_STREAM) { file.inputStream }
+                .use { input -> hashSemanticInput(input, budget) }
         }
-        if (hashes.size >= limits[ReadLimitParameter.DISCOVERY_FILES].value)
-            return captureRejected(SemanticDependencyCaptureFailure.CAPACITY_EXCEEDED)
-        return when (
-            val hashed =
-                budget.observation
-                    .call(IntellijReadCall.VFS_OPEN_STREAM) { file.inputStream }
-                    .use { input -> hashSemanticInput(input, budget) }
-        ) {
-            is Refinement.Rejected -> hashed
-            is Refinement.Refined -> hashed.also { hashes[file.url] = it.value }
-        }
-    }
 }
 
 /** Actual read calls (including EOF) and returned bytes survive partial capture and rejection. */

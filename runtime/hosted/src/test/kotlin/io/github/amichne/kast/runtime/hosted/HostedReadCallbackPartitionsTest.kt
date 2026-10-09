@@ -21,6 +21,40 @@ import org.junit.jupiter.api.Test
 
 internal class HostedReadCallbackPartitionsTest : HostedScopedCaptureFixture() {
     @Test
+    fun `native capture capability is closed exactly once even when never consumed`() {
+        var finishes = 0
+        val capture =
+            object : HostedCallbackDependencyCapture {
+                override fun capture(
+                    roots: Set<WorkspaceModuleIdentity>,
+                    budget: ResourceBudget,
+                ): Refinement<SemanticDependencySnapshot, SemanticDependencyCaptureFailure> =
+                    throw AssertionError("No consumer requested a capture")
+
+                override fun finishNativeRead() {
+                    finishes++
+                }
+            }
+        val selected =
+            HostedReadCallbackPartitions(
+                model,
+                attempts,
+                allowance,
+                {
+                    parentCalls++
+                    parent
+                },
+                counts,
+                capture,
+            )
+        HostedCallbackFactCache(selected, store, counts).finishNativeRead()
+        selected.finishNativeRead()
+        assertEquals(1, finishes)
+        assertEquals(0, parentCalls)
+        assertEquals(HostedCallbackPartition.Rejected(HostedCallbackPartitionFailure.NativeReadEnded), selected.whole())
+    }
+
+    @Test
     fun `named callee and caller consumers request their distinct authoritative universes`() {
         val script =
             Script(
