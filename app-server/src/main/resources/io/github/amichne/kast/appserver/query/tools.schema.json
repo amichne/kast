@@ -147,7 +147,7 @@
         "declarationName"
       ],
       "additionalProperties": false,
-      "description": "Find declarations and establish exact symbol identities. Source scope restricts discovery only, not later expansion destinations."
+      "description": "Find declarations and establish exact symbol identities. Exact-name discovery uses name indexes and a supplemental declaration scan in the admitted scope to prove completeness. Apply known directory, package, source-set and declaration-kind constraints before discovery. Source scope restricts discovery only, not later expansion destinations."
     },
     "AllSource": {
       "type": "object",
@@ -594,7 +594,7 @@
         "relation"
       ],
       "additionalProperties": false,
-      "description": "Traverse the reachable compiler-confirmed relation graph to exhaustion by default. Explicit maximumDepth selects a bounded question. Resource grants may pause evaluation without shortening the question; frontier, progress and qualifications remain retained."
+      "description": "Traverse the reachable compiler-confirmed relation graph to exhaustion by default. Omitted or null maximumDepth with omitted or null relationScope traverses the workspace, even when seed discovery was narrow. Explicit maximumDepth selects a bounded question. Apply destination scope before enumeration; later output filters do not reduce native search work. Resource grants do not shorten the requested question; incomplete proof rejects the fixed COMPLETE_ONLY verdict."
     },
     "DistinctSymbols": {
       "type": "object",
