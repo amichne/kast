@@ -9,6 +9,7 @@ import io.github.amichne.kast.topology.contract.SemanticDependencyInventory
 import io.github.amichne.kast.topology.contract.SemanticDependencySnapshot
 import io.github.amichne.kast.topology.contract.SemanticDependencySource
 import io.github.amichne.kast.topology.contract.SemanticModuleDependencies
+import io.github.amichne.kast.topology.contract.SemanticResolutionInputInventory
 import io.github.amichne.kast.topology.contract.SemanticResolutionInputs
 import io.github.amichne.kast.workspace.contract.ImportedWorkspaceModelState
 import io.github.amichne.kast.workspace.contract.LiveSemanticReadAuthority
@@ -91,7 +92,13 @@ class SemanticCallbackSupplierStoreTest : SemanticCallbackStoreFixture() {
             SemanticDependencySnapshot.fromCompiler(
                     authority,
                     narrowInventory,
-                    SemanticResolutionInputs(hash, hash, hash),
+                    SemanticResolutionInputInventory.fromCompiler(
+                            narrowInventory.closure,
+                            narrowInventory.closure.modules.associateWith {
+                                SemanticResolutionInputs(hash, hash, hash)
+                            },
+                        )
+                        .value(),
                 )
                 .value()
         val inventory = suppliers(authority)
@@ -145,7 +152,11 @@ class SemanticCallbackSupplierStoreTest : SemanticCallbackStoreFixture() {
             return SemanticDependencySnapshot.fromCompiler(
                     authority,
                     inventory,
-                    SemanticResolutionInputs(hash, hash, hash),
+                    SemanticResolutionInputInventory.fromCompiler(
+                            inventory.closure,
+                            inventory.closure.modules.associateWith { SemanticResolutionInputs(hash, hash, hash) },
+                        )
+                        .value(),
                 )
                 .value()
         }
