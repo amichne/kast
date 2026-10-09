@@ -166,7 +166,14 @@ internal class IntellijRelationCompilerQuery(
                     AdmittedRelationScopes.compile(request, observation) { selected, constraints ->
                         when (
                             val compilation =
-                                scopeCompiler.compile(project, request, modelCompilation, selected, constraints)
+                                scopeCompiler.compile(
+                                    project,
+                                    request,
+                                    modelCompilation,
+                                    selected,
+                                    constraints,
+                                    observation,
+                                )
                         ) {
                             is IntellijRelationScopeCompilation.Compiled ->
                                 io.github.amichne.kast.kernel.Refinement.Refined(compilation.scope)

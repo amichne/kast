@@ -19,6 +19,7 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelFailur
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import io.github.amichne.kast.workspace.intellij.read.IntellijProjectSourceMembership
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import java.nio.file.Path
 
 internal sealed interface IntellijRelationScopeFailure {
@@ -71,6 +72,7 @@ internal constructor(
     private val sourceDomain: RelationSourceDomainMembership,
     private val libraryMembership: (VirtualFile) -> Boolean,
     private val libraries: SymbolLibraryPolicy,
+    private val observation: IntellijReadObservation,
 ) {
     /** Membership is decided before native candidate capacity or locator detachment. */
     fun admitProviderSite(file: VirtualFile?): RelationProviderScopeAdmission =
@@ -81,7 +83,7 @@ internal constructor(
                 if (libraries == SymbolLibraryPolicy.EXCLUDE) RelationProviderScopeAdmission.LIBRARY_POLICY_EXCLUDED
                 else RelationProviderScopeAdmission.UNAVAILABLE
             else -> sourceDomain.classifyExcluded(relationNativePath(file))
-        }
+        }.observed(observation)
 }
 
 internal enum class RelationProviderScopeAdmission {
@@ -132,6 +134,7 @@ internal class IntellijRelationScopeCompiler(private val fileAdmission: (Path) -
         modelCompilation: WorkspaceSearchScopeModelCompilation,
         selectedScope: SymbolSearchScope = request.searchScope,
         constraints: SymbolDiscoveryConstraints = request.searchConstraints,
+        observation: IntellijReadObservation = IntellijReadObservation.None,
     ): IntellijRelationScopeCompilation {
         val model =
             when (modelCompilation) {
@@ -204,6 +207,7 @@ internal class IntellijRelationScopeCompiler(private val fileAdmission: (Path) -
                 ),
                 libraryScope::contains,
                 libraryPolicy,
+                observation,
             )
         )
     }
