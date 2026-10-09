@@ -47,8 +47,8 @@ class SemanticDependencySnapshotTest {
 
     @Test
     fun `unchanged dependencies gain explicit current proof without reviving previous authority`() {
-        val prior = SemanticDependencySnapshot.fromCompiler(owner.admit(), inventory, inputs).value()
-        val current = SemanticDependencySnapshot.fromCompiler(owner.advance(), inventory, inputs).value()
+        val prior = snapshot(owner.admit(), inventory, inputs).value()
+        val current = snapshot(owner.advance(), inventory, inputs).value()
         val proof = current.reuseFrom(prior).value()
         assertEquals(prior, proof.previous)
         assertEquals(current, proof.current)
@@ -58,9 +58,9 @@ class SemanticDependencySnapshotTest {
 
     @Test
     fun `unchanged source bytes cannot hide a replaced classpath or compiler option`() {
-        val prior = SemanticDependencySnapshot.fromCompiler(owner.admit(), inventory, inputs).value()
+        val prior = snapshot(owner.admit(), inventory, inputs).value()
         val current =
-            SemanticDependencySnapshot.fromCompiler(
+            snapshot(
                     owner.advance(),
                     inventory,
                     inputs.copy(classpath = hash('d')),
@@ -71,7 +71,7 @@ class SemanticDependencySnapshotTest {
             (current.reuseFrom(prior) as Refinement.Rejected).failure,
         )
         val configuration =
-            SemanticDependencySnapshot.fromCompiler(
+            snapshot(
                     current.authority,
                     inventory,
                     inputs.copy(compilerConfiguration = hash('e')),
@@ -85,9 +85,8 @@ class SemanticDependencySnapshotTest {
 
     @Test
     fun `replaced SDK rejects reuse even when sources classpath and compiler settings match`() {
-        val prior = SemanticDependencySnapshot.fromCompiler(owner.admit(), inventory, inputs).value()
-        val current =
-            SemanticDependencySnapshot.fromCompiler(owner.advance(), inventory, inputs.copy(sdk = hash('f'))).value()
+        val prior = snapshot(owner.admit(), inventory, inputs).value()
+        val current = snapshot(owner.advance(), inventory, inputs.copy(sdk = hash('f'))).value()
         assertEquals(
             Refinement.Rejected(SemanticSnapshotReuseFailure.ResolutionInputsChanged),
             current.reuseFrom(prior),
@@ -96,8 +95,8 @@ class SemanticDependencySnapshotTest {
 
     @Test
     fun `environment movement rejects otherwise identical inventories`() {
-        val prior = SemanticDependencySnapshot.fromCompiler(owner.admit(), inventory, inputs).value()
-        val current = SemanticDependencySnapshot.fromCompiler(owner.advanceEnvironment(), inventory, inputs).value()
+        val prior = snapshot(owner.admit(), inventory, inputs).value()
+        val current = snapshot(owner.advanceEnvironment(), inventory, inputs).value()
         assertInstanceOf(
             SemanticSnapshotReuseFailure.Environment::class.java,
             (current.reuseFrom(prior) as Refinement.Rejected).failure,
@@ -106,16 +105,31 @@ class SemanticDependencySnapshotTest {
 
     @Test
     fun `proof admission rejects retirement or intervening epoch movement`() {
-        val prior = SemanticDependencySnapshot.fromCompiler(owner.admit(), inventory, inputs).value()
-        val current = SemanticDependencySnapshot.fromCompiler(owner.advance(), inventory, inputs).value()
+        val prior = snapshot(owner.admit(), inventory, inputs).value()
+        val current = snapshot(owner.advance(), inventory, inputs).value()
         owner.advance()
         assertInstanceOf(Refinement.Rejected::class.java, current.reuseFrom(prior))
         owner.retire()
         assertInstanceOf(
             Refinement.Rejected::class.java,
-            SemanticDependencySnapshot.fromCompiler(current.authority, inventory, inputs),
+            snapshot(current.authority, inventory, inputs),
         )
     }
+
+    private fun snapshot(
+        authority: io.github.amichne.kast.workspace.contract.LiveSemanticReadAuthority,
+        inventory: SemanticDependencyInventory,
+        inputs: SemanticResolutionInputs,
+    ) =
+        SemanticDependencySnapshot.fromCompiler(
+            authority,
+            inventory,
+            SemanticResolutionInputInventory.fromCompiler(
+                    inventory.closure,
+                    inventory.closure.modules.associateWith { inputs },
+                )
+                .value(),
+        )
 
     private fun hash(digit: Char) = WorkspaceSourceContentHash.parse(digit.toString().repeat(64)).value()
 }

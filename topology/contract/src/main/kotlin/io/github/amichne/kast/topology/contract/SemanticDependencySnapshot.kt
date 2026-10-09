@@ -16,6 +16,8 @@ data class SemanticResolutionInputs(
 sealed interface SemanticSnapshotAdmissionFailure {
     data object WorkspaceMismatch : SemanticSnapshotAdmissionFailure
 
+    data object ResolutionInputDomainMismatch : SemanticSnapshotAdmissionFailure
+
     data class Authority(val cause: LiveSemanticReadFailure) : SemanticSnapshotAdmissionFailure
 }
 
@@ -36,7 +38,7 @@ class SemanticDependencySnapshot
 private constructor(
     val authority: LiveSemanticReadAuthority,
     val inventory: SemanticDependencyInventory,
-    val inputs: SemanticResolutionInputs,
+    val inputs: SemanticResolutionInputInventory,
 ) {
     val retainedBytes: Long =
         inventory.closure.graph.retainedBytes +
@@ -62,7 +64,8 @@ private constructor(
             is Refinement.Rejected ->
                 return Refinement.Rejected(SemanticSnapshotReuseFailure.Environment(environment.failure))
         }
-        if (inputs != previous.inputs) return Refinement.Rejected(SemanticSnapshotReuseFailure.ResolutionInputsChanged)
+        if (inputs.modules != previous.inputs.modules)
+            return Refinement.Rejected(SemanticSnapshotReuseFailure.ResolutionInputsChanged)
         when (val comparison = previous.inventory.compare(inventory)) {
             SemanticInventoryComparison.Unchanged -> Unit
             SemanticInventoryComparison.DomainChanged ->
@@ -80,10 +83,12 @@ private constructor(
         fun fromCompiler(
             authority: LiveSemanticReadAuthority,
             inventory: SemanticDependencyInventory,
-            inputs: SemanticResolutionInputs,
+            inputs: SemanticResolutionInputInventory,
         ): Refinement<SemanticDependencySnapshot, SemanticSnapshotAdmissionFailure> {
             if (inventory.closure.graph.model.workspaceRoot != authority.workspaceRoot)
                 return Refinement.Rejected(SemanticSnapshotAdmissionFailure.WorkspaceMismatch)
+            if (inventory.closure.graph !== inputs.closure.graph || !inventory.closure.sameDomain(inputs.closure))
+                return Refinement.Rejected(SemanticSnapshotAdmissionFailure.ResolutionInputDomainMismatch)
             return when (
                 val guarded = authority.withCurrentOwner { SemanticDependencySnapshot(authority, inventory, inputs) }
             ) {

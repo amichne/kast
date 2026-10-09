@@ -38,6 +38,7 @@ import io.github.amichne.kast.topology.contract.SemanticDependencyInventory
 import io.github.amichne.kast.topology.contract.SemanticDependencySnapshot
 import io.github.amichne.kast.topology.contract.SemanticDependencySource
 import io.github.amichne.kast.topology.contract.SemanticModuleDependencies
+import io.github.amichne.kast.topology.contract.SemanticResolutionInputInventory
 import io.github.amichne.kast.topology.contract.SemanticResolutionInputs
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.ImportedWorkspaceModelState
@@ -107,11 +108,14 @@ abstract class HostedSemanticFactFixture {
 
     protected val counts = Counts()
 
-    protected fun named(authority: LiveSemanticReadAuthority): RelationCompilation.Complete {
+    protected fun named(
+        authority: LiveSemanticReadAuthority,
+        meaning: RelationMeaning = RelationMeaning.Callees,
+    ): RelationCompilation.Complete {
         val request =
             RelationRequest.start(
                 summary(authority).formal.callable,
-                RelationMeaning.Callees,
+                meaning,
                 RelationBudget(
                     ResourceBudget(
                         ResultLimit.parse(8).value(),
@@ -190,7 +194,13 @@ abstract class HostedSemanticFactFixture {
         return SemanticDependencySnapshot.fromCompiler(
                 authority,
                 inventory,
-                SemanticResolutionInputs(external, external, external),
+                SemanticResolutionInputInventory.fromCompiler(
+                        inventory.closure,
+                        inventory.closure.modules.associateWith {
+                            SemanticResolutionInputs(external, external, external)
+                        },
+                    )
+                    .value(),
             )
             .value()
     }
