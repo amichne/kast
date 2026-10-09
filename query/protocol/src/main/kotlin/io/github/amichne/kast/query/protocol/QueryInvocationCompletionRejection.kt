@@ -6,16 +6,15 @@ import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.QueryCompletionCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionLimitationsDocument
-import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
 import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
+import io.github.amichne.kast.protocol.contract.QueryStaticModelDocument
 import io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument
 import io.github.amichne.kast.query.contract.QueryExecutionResult
 
 internal fun rejectInvocationCompletion(
-    completion: QueryCompletionPolicyDocument.CompleteOnly,
     failure: QueryCompletionFailure,
     accumulated: AccumulatedSymbolQuery,
     progress: QueryQualifiedProgressDocument?,
@@ -50,7 +49,7 @@ internal fun rejectInvocationCompletion(
         }
     return OperationOutcome.Rejected(
         QueryRunRejection.CompletionUnproven(
-            completion.model,
+            QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1,
             failure.protocolCompletionCause(),
             coverage,
             accumulated.stop,

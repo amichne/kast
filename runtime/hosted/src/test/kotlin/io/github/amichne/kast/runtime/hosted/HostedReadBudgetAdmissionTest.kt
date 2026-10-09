@@ -147,7 +147,6 @@ class HostedReadBudgetAdmissionTest {
                         QueryExecutionBudgetDocument.INTERACTIVE,
                     ),
                     executionBudget = budget,
-                    completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
                 ),
             ),
             input(

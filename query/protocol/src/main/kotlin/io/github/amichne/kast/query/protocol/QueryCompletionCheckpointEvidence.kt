@@ -3,7 +3,6 @@ package io.github.amichne.kast.query.protocol
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.protocol.contract.MAX_PROTOCOL_ITEMS
-import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
@@ -20,7 +19,6 @@ internal fun completionCheckpointEvidence(
     policy: QueryInvocationPolicy,
     authority: QueryReferenceAuthority,
 ): Refinement<AccumulatedSymbolQuery, QueryRunRejection> {
-    if (request.completion !is QueryCompletionPolicyDocument.CompleteOnly) return Refinement.Refined(accumulated)
     val output = request.output as? QueryOutputDocument.Symbols ?: return Refinement.Refined(accumulated)
     val original = accumulated.execution as? QueryExecutionResult.Qualified ?: return Refinement.Refined(accumulated)
     val rows = original.result.rows as? QueryRows.Symbols ?: return Refinement.Refined(accumulated)

@@ -9,6 +9,7 @@ base.archivesName.set("query-protocol")
 dependencies {
     testImplementation(project(":query:service"))
     testImplementation(project(":protocol:wire"))
+    testFixturesApi(project(":query:contract"))
     testFixturesApi(project(":relation:contract"))
     testFixturesApi(project(":symbol:contract"))
     testFixturesApi(project(":protocol:contract"))

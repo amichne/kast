@@ -1,7 +1,5 @@
 package io.github.amichne.kast.query.protocol
 
-import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument
-import io.github.amichne.kast.protocol.contract.QueryStaticModelDocument
 import io.github.amichne.kast.query.contract.QueryRelationObservation
 import io.github.amichne.kast.relation.contract.CallbackArgumentBinding
 import io.github.amichne.kast.relation.contract.CallbackBindingEvidence
@@ -34,11 +32,7 @@ import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 /** Explicit compiler facts for strict policy tests; does not execute native resolution. */
 internal abstract class CompleteOnlyCallbackQueryCase : AutomaticSymbolQueryCase() {
     protected val strict
-        get() =
-            request.copy(
-                completion =
-                    QueryCompletionPolicyDocument.CompleteOnly(QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1)
-            )
+        get() = request
 
     protected fun walkObservation(): io.github.amichne.kast.query.contract.QueryWalkObservation {
         val relation = observation(false).callbackObservations.single()

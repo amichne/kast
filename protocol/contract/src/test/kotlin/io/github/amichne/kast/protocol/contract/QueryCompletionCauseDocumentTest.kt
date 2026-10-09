@@ -96,12 +96,31 @@ class QueryCompletionCauseDocumentTest {
     }
 
     @Test
+    fun `retention failure preserves each finite storage cause without erasing completion proof`() {
+        for (failure in QueryCompletionRetentionFailure.entries) {
+            val cause = QueryCompletionCauseDocument.RetentionUnavailable(failure)
+            val encoded = Json.encodeToJsonElement(QueryCompletionCauseDocument.serializer(), cause).jsonObject
+            assertEquals(setOf("type", "failure"), encoded.keys)
+            assertEquals("RETENTION_UNAVAILABLE", encoded.getValue("type").jsonPrimitive.content)
+            assertEquals(failure.name, encoded.getValue("failure").jsonPrimitive.content)
+            assertEquals(QueryCompletionUnprovenReason.RETENTION_UNAVAILABLE, cause.reason)
+        }
+        for (failure in listOf(null, "UNKNOWN")) {
+            val encoded = Json.encodeToJsonElement(InvalidRetentionCause.serializer(), InvalidRetentionCause(failure))
+            assertThrows(SerializationException::class.java) {
+                Json.decodeFromJsonElement(QueryCompletionCauseDocument.serializer(), encoded)
+            }
+        }
+    }
+
+    @Test
     fun `completion boundary excludes missing callback detail and unrelated scalar detail`() {
         for (invalid in
             listOf(
                 InvalidCompletionCause("UNKNOWN"),
                 InvalidCompletionCause("CALLBACK_GRAPH_UNPROVEN"),
                 InvalidCompletionCause("INVESTIGATION_UNPROVEN"),
+                InvalidCompletionCause("RETENTION_UNAVAILABLE"),
                 InvalidCompletionCause("INCOMPLETE_EXECUTION", graph),
             )) {
             val encoded = Json.encodeToJsonElement(InvalidCompletionCause.serializer(), invalid)
@@ -117,3 +136,11 @@ private data class InvalidCompletionCause(val type: String, val graphFailure: Qu
 
 @Serializable
 private data class InvalidInvestigationFailure(val type: String, val required: List<ImpactRequiredObligationDocument>)
+
+/** Negative storage-cause fixture omits or supplies an unknown finite detail. */
+@Serializable
+private data class InvalidRetentionCause(
+    val failure: String? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.ALWAYS)
+    val type: String = "RETENTION_UNAVAILABLE",
+)

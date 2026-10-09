@@ -95,7 +95,7 @@ class QueryConcatAdmissionTest {
                     from =
                         QueryFromDocument.References(bounded(listOf(QueryReferenceDocument.ExactSymbol(fixture.exact))))
                 )
-        val completed = protocol.execute(input, fixture.authority, budget) as OperationOutcome.Complete
+        val completed = protocol.executePage(input, fixture.authority, budget) as OperationOutcome.Complete
         assertEquals(1, completed.evidence.payload.items.values.size)
         assertEquals(1, completed.evidence.payload.referenceAcquisitions?.references?.size)
         assertEquals(1, acquisitions)
@@ -125,7 +125,7 @@ class QueryConcatAdmissionTest {
                 CanonicalQueryReferences(),
             )
         val input = request().copy(steps = bounded(listOf(concat(text("NON_ISSUED")))))
-        val rejection = (protocol.execute(input, lease, budget) as OperationOutcome.Rejected).reason
+        val rejection = (protocol.executePage(input, lease, budget) as OperationOutcome.Rejected).reason
         val step = assertInstanceOf(QueryRunRejection.StepReferenceRejected::class.java, rejection)
         assertEquals(0, step.stepPosition.value)
         assertEquals(0, step.referencePosition.value)
@@ -170,11 +170,11 @@ class QueryConcatAdmissionTest {
                 references,
             )
         val input = request().copy(steps = bounded(listOf(concat(fixture.exact))))
-        val first = protocol.execute(input, fixture.authority, budget) as OperationOutcome.Qualified
+        val first = protocol.executePage(input, fixture.authority, budget) as OperationOutcome.Qualified
         val continuation = first.qualification.progress.continuationToken!!
         assertInstanceOf(
             OperationOutcome.Complete::class.java,
-            protocol.execute(QueryRunRequest.Resume(continuation), fixture.authority, budget),
+            protocol.executePage(QueryRunRequest.Resume(continuation), fixture.authority, budget),
         )
         assertEquals(1, acquisitions)
         assertEquals(2, executions)
@@ -216,7 +216,6 @@ class QueryConcatAdmissionTest {
             bounded(emptyList()),
             QueryOutputDocument.Symbols(bounded(emptyList())),
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun concat(reference: ProtocolText) =

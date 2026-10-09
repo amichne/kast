@@ -86,7 +86,7 @@ class QueryContinuationFailureTest {
         val rejected =
             assertInstanceOf(
                 OperationOutcome.Rejected::class.java,
-                protocol.execute(QueryRunRequest.Resume(output.token), lease, budget),
+                protocol.executePage(QueryRunRequest.Resume(output.token), lease, budget),
             )
         val reason = assertInstanceOf(QueryRunRejection.ExecutionRejected::class.java, rejected.reason)
         assertEquals("CONTINUATION_EVICTED", reason.reason.name)
@@ -175,7 +175,7 @@ class QueryContinuationFailureTest {
         val rejected =
             assertInstanceOf(
                 OperationOutcome.Rejected::class.java,
-                protocol.execute(QueryRunRequest.Resume(output.token), lease, budget),
+                protocol.executePage(QueryRunRequest.Resume(output.token), lease, budget),
             )
         assertEquals(
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_EXPIRED),
@@ -207,7 +207,7 @@ class QueryContinuationFailureTest {
         val rejected =
             assertInstanceOf(
                 OperationOutcome.Rejected::class.java,
-                protocol.execute(QueryRunRequest.Resume(output.token), lease, budget),
+                protocol.executePage(QueryRunRequest.Resume(output.token), lease, budget),
             )
         assertEquals(
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_OWNER_RETIRED),
@@ -218,7 +218,7 @@ class QueryContinuationFailureTest {
     private suspend fun page(reference: QueryResultReference? = null): QueryPublishedPage {
         val page =
             CanonicalQueryProtocol(QueryOperations { complete() }, CanonicalQueryReferences())
-                .execute(request(), lease, budget) as OperationOutcome.Complete
+                .executePage(request(), lease, budget) as OperationOutcome.Complete
         return if (reference == null) page
         else
             OperationOutcome.Complete(
@@ -251,7 +251,6 @@ class QueryContinuationFailureTest {
             bounded(emptyList()),
             QueryOutputDocument.Symbols(bounded(emptyList())),
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun text(value: String) = ProtocolText.parse(value).refined()

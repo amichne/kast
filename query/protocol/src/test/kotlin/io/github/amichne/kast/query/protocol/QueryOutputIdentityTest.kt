@@ -65,7 +65,7 @@ class QueryOutputIdentityTest {
         val requests = grants()
         requests.forEach { (low, high) ->
             val firstRequest = request().copy(executionBudget = low)
-            val page = protocol.execute(firstRequest, lease, budget)
+            val page = protocol.executePage(firstRequest, lease, budget)
             val first =
                 store.issueOutput(firstRequest, lease, page, claim, QueryRetentionByteCount.parse(512).refined())
                     as QueryOutputIssuance.Issued
@@ -74,7 +74,7 @@ class QueryOutputIdentityTest {
                 store.commitPublication(claim, page.advertisingOutput(first.token)),
             )
             val secondRequest = request().copy(executionBudget = high)
-            val secondPage = protocol.execute(secondRequest, lease, budget)
+            val secondPage = protocol.executePage(secondRequest, lease, budget)
             val second =
                 store.issueOutput(secondRequest, lease, secondPage, claim, QueryRetentionByteCount.parse(512).refined())
                     as QueryOutputIssuance.Issued
@@ -132,7 +132,6 @@ class QueryOutputIdentityTest {
             bounded(emptyList()),
             QueryOutputDocument.Symbols(bounded(emptyList())),
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun text(value: String) = ProtocolText.parse(value).refined()

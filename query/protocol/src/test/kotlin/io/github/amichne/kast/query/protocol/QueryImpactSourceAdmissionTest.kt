@@ -221,7 +221,7 @@ class QueryImpactSourceAdmissionTest {
                 },
                 references,
             )
-        val result = protocol.execute(request(document()), owner.lease, budget) as OperationOutcome.Rejected
+        val result = protocol.executePage(request(document()), owner.lease, budget) as OperationOutcome.Rejected
         assertEquals(QueryImpactSourceFailureCode.NATIVE_UNAVAILABLE, result.reason.admissionCode())
         assertEquals(0, executions)
     }
@@ -320,7 +320,7 @@ class QueryImpactSourceAdmissionTest {
                 references,
                 producerSeeds = compiler,
             )
-        val result = protocol.execute(request(document()), owner.lease, budget)
+        val result = protocol.executePage(request(document()), owner.lease, budget)
         assertInstanceOf(OperationOutcome.Rejected::class.java, result)
         assertEquals(1, calls)
         assertEquals(1, executions)
@@ -353,7 +353,7 @@ class QueryImpactSourceAdmissionTest {
                 producerSeeds = compiler,
             )
         val exhausted = budget.copy(resources = budget.resources.copy(workUnitLimit = WorkUnitLimit.parse(3).refined()))
-        val result = protocol.execute(request(document()), owner.lease, exhausted) as OperationOutcome.Rejected
+        val result = protocol.executePage(request(document()), owner.lease, exhausted) as OperationOutcome.Rejected
         assertEquals(QueryImpactSourceFailureCode.WORK_LIMIT_REACHED, result.reason.admissionCode())
         assertEquals(1, calls)
         assertEquals(0, executions)
@@ -412,7 +412,6 @@ class QueryImpactSourceAdmissionTest {
             bounded(emptyList()),
             QueryOutputDocument.ValuePaths,
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun token(endpoint: RelationEndpoint.Resolved): ProtocolText =

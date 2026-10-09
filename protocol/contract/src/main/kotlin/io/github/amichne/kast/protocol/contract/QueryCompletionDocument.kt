@@ -20,24 +20,25 @@ enum class QueryStaticModelDocument {
     COMPILER_RESOLVED_STATIC_V1
 }
 
+/** Fixed compiler-static completion proof retained with every admitted question. */
 @Serializable
-@JsonClassDiscriminator("type")
-sealed interface QueryCompletionPolicyDocument {
-    companion object {
-        val Default: CompleteOnly = CompleteOnly(QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1)
-    }
+data class QueryCompletionDocument(
+    @kotlinx.serialization.Required
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.ALWAYS)
+    val type: QueryCompletionTypeDocument = QueryCompletionTypeDocument.COMPLETE_ONLY,
+    @kotlinx.serialization.Required
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.ALWAYS)
+    val model: QueryStaticModelDocument = QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1,
+)
 
-    @Serializable @SerialName("PROGRESSIVE") data object Progressive : QueryCompletionPolicyDocument
-
-    @Serializable
-    @SerialName("COMPLETE_ONLY")
-    data class CompleteOnly(val model: QueryStaticModelDocument) : QueryCompletionPolicyDocument
+@Serializable
+enum class QueryCompletionTypeDocument {
+    COMPLETE_ONLY
 }
 
 @Serializable
 enum class QueryCompletionUnsupportedReason {
-    UNSUPPORTED_OUTPUT,
-    AUTOMATIC_EXECUTION_REQUIRED,
+    UNSUPPORTED_OUTPUT
 }
 
 @Serializable
@@ -47,6 +48,7 @@ enum class QueryCompletionUnprovenReason {
     OMITTED_EVIDENCE,
     CALLBACK_GRAPH_UNPROVEN,
     INVESTIGATION_UNPROVEN,
+    RETENTION_UNAVAILABLE,
 }
 
 @Serializable

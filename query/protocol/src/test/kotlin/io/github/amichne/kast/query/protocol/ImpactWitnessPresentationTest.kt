@@ -40,7 +40,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
-import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
@@ -126,7 +125,7 @@ class ImpactWitnessPresentationTest {
                 )
                 .value()
         assertEquals(emptyList<QueryImpactWitnessRecord>(), (empty.result.rows as QueryRows.ImpactWitness).values)
-        assertNotNull(empty.coverage)
+        assertNull(empty.coverage)
         assertEquals(
             Refinement.Rejected(QueryExecutionRejectionDocument.RESULT_CURSOR_OUT_OF_RANGE),
             RetainedQueryPresentation.create(
@@ -180,7 +179,7 @@ class ImpactWitnessPresentationTest {
                 fixture.store,
             )
         val complete =
-            protocol.execute(
+            protocol.executePage(
                 QueryRunRequest.ReadResult.valuePaths(fixture.reference),
                 fixture.symbols.authority,
                 fixture.budget,

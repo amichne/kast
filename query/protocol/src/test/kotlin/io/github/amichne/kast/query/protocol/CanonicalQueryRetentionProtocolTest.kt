@@ -93,7 +93,7 @@ class CanonicalQueryRetentionProtocolTest {
                 store,
             )
         val first =
-            protocol.execute(request().copy(retention = QueryRetentionModeDocument.RETAIN), lease, budget)
+            protocol.executePage(request().copy(retention = QueryRetentionModeDocument.RETAIN), lease, budget)
                 as OperationOutcome.Qualified
         val reference = (first.evidence.payload.retention as QueryResultRetention.Retained).reference
         val checkpoint = first.qualification.progress.continuationToken as QueryExecutionContinuation.Pipeline
@@ -110,7 +110,7 @@ class CanonicalQueryRetentionProtocolTest {
         assertEquals(QueryCheckpointRestoration.Unavailable, store.restoreCheckpoint(checkpoint, lease))
         repeat(2) {
             val read =
-                protocol.execute(
+                protocol.executePage(
                     QueryRunRequest.ReadResult.symbols(
                         reference,
                         output = QueryOutputDocument.Symbols(bounded(emptyList())),
@@ -139,11 +139,11 @@ class CanonicalQueryRetentionProtocolTest {
                 CanonicalQueryReferences(),
             )
         val first =
-            protocol.execute(request().copy(retention = QueryRetentionModeDocument.RETAIN), lease, budget)
+            protocol.executePage(request().copy(retention = QueryRetentionModeDocument.RETAIN), lease, budget)
                 as OperationOutcome.Complete
         val reference = (first.evidence.payload.retention as QueryResultRetention.Retained).reference
         val read =
-            protocol.execute(
+            protocol.executePage(
                 QueryRunRequest.ReadResult.symbols(
                     reference,
                     output = QueryOutputDocument.Symbols(bounded(emptyList())),
@@ -158,7 +158,7 @@ class CanonicalQueryRetentionProtocolTest {
         assertNull(read.evidence.payload.nextCursor)
         assertEquals(
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.RESULT_STALE_BASIS),
-            (protocol.execute(
+            (protocol.executePage(
                     QueryRunRequest.ReadResult.symbols(
                         reference,
                         output = QueryOutputDocument.Symbols(bounded(emptyList())),
@@ -204,7 +204,7 @@ class CanonicalQueryRetentionProtocolTest {
                 CanonicalQueryReferences(),
                 store,
             )
-        val first = protocol.execute(request(), lease, budget) as OperationOutcome.Qualified
+        val first = protocol.executePage(request(), lease, budget) as OperationOutcome.Qualified
         val token = first.qualification.progress.continuationToken!!
         assertTrue(token.value.length < 64)
         assertEquals(
@@ -214,7 +214,7 @@ class CanonicalQueryRetentionProtocolTest {
         assertCheckpointBinding(protocol, token)
         assertInstanceOf(
             OperationOutcome.Complete::class.java,
-            protocol.execute(
+            protocol.executePage(
                 QueryRunRequest.Resume(token, executionBudget = largerGrant),
                 lease,
                 budget.copy(returnedBytes = QueryByteLimit.parse(20000).refined()),
@@ -227,7 +227,7 @@ class CanonicalQueryRetentionProtocolTest {
         // Resume is token-only: a caller cannot provide a conflicting replacement plan.
         assertEquals(
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_STALE_BASIS),
-            (protocol.execute(
+            (protocol.executePage(
                     QueryRunRequest.Resume(token),
                     SemanticReadLease(root, EvidenceGeneration.parse(8).refined()),
                     budget,
@@ -236,7 +236,7 @@ class CanonicalQueryRetentionProtocolTest {
         )
         assertEquals(
             QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE),
-            (protocol.execute(
+            (protocol.executePage(
                     QueryRunRequest.Resume(
                         QueryExecutionContinuation.Pipeline.parse("query:v1:00000000-0000-0000-0000-000000000002")
                             .refined()
@@ -260,7 +260,6 @@ class CanonicalQueryRetentionProtocolTest {
             bounded(emptyList()),
             QueryOutputDocument.Symbols(bounded(emptyList())),
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun text(value: String) = ProtocolText.parse(value).refined()

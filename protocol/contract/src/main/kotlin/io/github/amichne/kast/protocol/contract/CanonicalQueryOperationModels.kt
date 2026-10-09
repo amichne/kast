@@ -197,8 +197,6 @@ sealed interface QueryRunRequest : OperationRequest {
         @EncodeDefault(EncodeDefault.Mode.NEVER)
         @SerialName("execution_budget")
         override val executionBudget: ExecutionBudgetDocument? = null,
-        @EncodeDefault(EncodeDefault.Mode.ALWAYS)
-        val completion: QueryCompletionPolicyDocument = QueryCompletionPolicyDocument.Default,
     ) : QueryRunRequest
 
     @Serializable

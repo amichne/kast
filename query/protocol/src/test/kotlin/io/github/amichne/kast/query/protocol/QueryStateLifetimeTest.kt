@@ -115,7 +115,7 @@ class QueryStateLifetimeTest {
             )
         for (input in requests) {
             val rejected =
-                assertInstanceOf(OperationOutcome.Rejected::class.java, protocol.execute(input, lease, budget))
+                assertInstanceOf(OperationOutcome.Rejected::class.java, protocol.executePage(input, lease, budget))
             assertEquals(
                 QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.RESULT_UNAVAILABLE),
                 rejected.reason,
@@ -302,14 +302,14 @@ class QueryStateLifetimeTest {
                 },
                 CanonicalQueryReferences(),
             )
-            .execute(request(), lease, budget)
+            .executePage(request(), lease, budget)
         return retained
     }
 
     private suspend fun page(reference: QueryResultReference? = null): QueryPublishedPage {
         val page =
             CanonicalQueryProtocol(QueryOperations { complete() }, CanonicalQueryReferences())
-                .execute(request(), lease, budget) as OperationOutcome.Complete
+                .executePage(request(), lease, budget) as OperationOutcome.Complete
         return if (reference == null) page
         else
             OperationOutcome.Complete(
@@ -337,7 +337,6 @@ class QueryStateLifetimeTest {
             bounded(emptyList()),
             QueryOutputDocument.Symbols(bounded(emptyList())),
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun text(value: String) = ProtocolText.parse(value).refined()

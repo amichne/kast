@@ -28,15 +28,12 @@ import org.junit.jupiter.api.Test
 
 class PublicToolContinuationTest {
     @Test
-    fun `typed pipeline and output continuations retain exact opaque bytes through facade lowering`() {
+    fun `typed output continuations retain exact opaque bytes through facade lowering`() {
         val tokens =
             listOf(
-                (QueryExecutionContinuation.Pipeline.parse("query:v1:00000000-0000-0000-0000-000000000000")
-                        as Refinement.Refined)
-                    .value,
                 (QueryExecutionContinuation.Output.parse("query-output:v1:00000000-0000-0000-0000-000000000000")
                         as Refinement.Refined)
-                    .value,
+                    .value
             )
         tokens.forEach { token ->
             val document = PublicToolQuerySymbols(PublicToolResumeAction(token))
@@ -55,6 +52,21 @@ class PublicToolContinuationTest {
                     .content,
             )
         }
+    }
+
+    @Test
+    fun `public resume rejects pipeline execution continuations`() {
+        val input =
+            Json.encodeToJsonElement(
+                ObsoletePipelineResumeEnvelope.serializer(),
+                ObsoletePipelineResumeEnvelope(
+                    ObsoletePipelineResumeAction("query:v1:00000000-0000-0000-0000-000000000000")
+                ),
+            )
+        assertEquals(
+            Refinement.Rejected(PublicToolInputFailure.SchemaRejected),
+            PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, input),
+        )
     }
 
     @Test
@@ -209,3 +221,13 @@ class PublicToolContinuationTest {
         assertTrue(request.steps.values.isEmpty())
     }
 }
+
+/** Negative fixture retains an internal pipeline token as a rejected public request. */
+@kotlinx.serialization.Serializable
+private data class ObsoletePipelineResumeEnvelope(val request: ObsoletePipelineResumeAction)
+
+@kotlinx.serialization.Serializable
+private data class ObsoletePipelineResumeAction(
+    val continuation: String,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.ALWAYS) val type: String = "RESUME",
+)

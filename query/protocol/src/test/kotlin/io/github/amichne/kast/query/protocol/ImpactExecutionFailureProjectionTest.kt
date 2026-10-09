@@ -46,7 +46,6 @@ class ImpactExecutionFailureProjectionTest {
                 BoundedProtocolList.create(emptyList<QueryStepDocument>()).value(),
                 QueryOutputDocument.ValuePaths,
                 QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-                completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
             )
         val state = QueryStateStore(clock = { error("Rejected execution must not acquire retained state") })
         val projector = QueryOutcomeProjection(symbols.references, state)

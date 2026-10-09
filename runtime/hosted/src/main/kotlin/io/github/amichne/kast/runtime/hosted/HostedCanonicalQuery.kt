@@ -81,7 +81,7 @@ private suspend fun evaluateHostedQuery(
                     presentationOwner,
                     peerAdmissions,
                 )
-                .executeAutomatically(
+                .execute(
                     request.request,
                     context.authority,
                     services.budgets.hostedQueryBudget,

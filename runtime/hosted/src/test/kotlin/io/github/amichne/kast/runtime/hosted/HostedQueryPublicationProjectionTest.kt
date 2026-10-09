@@ -43,6 +43,7 @@ import io.github.amichne.kast.query.protocol.QueryRetentionByteCount
 import io.github.amichne.kast.query.protocol.QueryRetentionMeasurements
 import io.github.amichne.kast.query.protocol.QueryStateStore
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
+import io.github.amichne.kast.query.protocol.executeQueryPage
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedPublicationFailureCause
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryFailure
@@ -108,7 +109,7 @@ class HostedQueryPublicationProjectionTest {
                 },
                 owner.references,
             )
-            .execute(request, owner.authority, budget)
+            .executeQueryPage(request, owner.authority, budget)
         assertEquals(1, captures)
         return checkpoint
     }
@@ -153,7 +154,7 @@ class HostedQueryPublicationProjectionTest {
             )
 
         suspend fun publishOriginal(): PublishedCheckpointPage {
-            val originalPage = protocol.execute(resume, owner.authority, budget)
+            val originalPage = protocol.executeQueryPage(resume, owner.authority, budget)
             assertInstanceOf(OperationOutcome.Complete::class.java, originalPage)
             val original = encodeOriginalGrant(originalPage)
             assertInstanceOf(HostedResponse.Canonical::class.java, original)
@@ -165,7 +166,7 @@ class HostedQueryPublicationProjectionTest {
             val smallerLimit = ResultLimit.parse(1).refined()
             val smallerRequest = resume.copy(executionBudget = ExecutionBudgetDocument(maxResults = smallerLimit))
             val smallerBudget = budget.copy(resources = budget.resources.copy(resultLimit = smallerLimit))
-            val replayedPage = protocol.execute(smallerRequest, owner.authority, smallerBudget)
+            val replayedPage = protocol.executeQueryPage(smallerRequest, owner.authority, smallerBudget)
             assertEquals(original.semantic, replayedPage)
             val beforeFitting = store.retentionMeasurements()
             fitted = null
@@ -192,7 +193,7 @@ class HostedQueryPublicationProjectionTest {
         }
 
         suspend fun assertOriginalReplay(original: PublishedCheckpointPage) {
-            val unchanged = protocol.execute(resume, owner.authority, budget)
+            val unchanged = protocol.executeQueryPage(resume, owner.authority, budget)
             assertEquals(original.semantic, unchanged)
             val replay = encodeOriginalGrant(unchanged)
             assertEquals(original.response.document, replay.document)
@@ -245,7 +246,6 @@ class HostedQueryPublicationProjectionTest {
             bounded(emptyList()),
             QueryOutputDocument.Symbols(bounded(listOf(QuerySymbolFieldDocument.NAME))),
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun complete(owner: RelationPagingFixture) =

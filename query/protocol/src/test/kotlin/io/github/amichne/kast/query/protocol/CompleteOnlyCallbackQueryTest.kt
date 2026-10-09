@@ -35,7 +35,7 @@ internal class CompleteOnlyCallbackQueryTest : CompleteOnlyCallbackQueryCase() {
                 },
             )
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
-        val result = protocol.executeAutomatically(strict, fixture.authority, budget, policy())
+        val result = protocol.execute(strict, fixture.authority, budget, policy())
         assertTrue(result is OperationOutcome.Complete)
         script.assertDrained()
     }
@@ -54,13 +54,12 @@ internal class CompleteOnlyCallbackQueryTest : CompleteOnlyCallbackQueryCase() {
                 },
             )
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
-        val result =
-            protocol.executeAutomatically(strict, fixture.authority, budget, policy()) as OperationOutcome.Rejected
+        val result = protocol.execute(strict, fixture.authority, budget, policy()) as OperationOutcome.Rejected
         val rejected = result.reason as QueryRunRejection.CompletionUnproven
         assertEquals(QueryCompletionCoverageDocument.Complete, rejected.originalCoverage)
         val handle = (rejected.evidence as QueryCompletionEvidenceDocument.Retained).result
         val read =
-            protocol.execute(QueryRunRequest.ReadResult.symbols(handle, output = output), fixture.authority, budget)
+            protocol.executePage(QueryRunRequest.ReadResult.symbols(handle, output = output), fixture.authority, budget)
                 as OperationOutcome.Qualified
         assertTrue(QueryLimitationDocument.STATIC_MODEL_UNPROVEN in read.qualification.limitations)
         val interpretation = read.evidence.payload.interpretation as QueryResultInterpretationDocument.EvidenceOnly
@@ -91,8 +90,7 @@ internal class CompleteOnlyCallbackQueryTest : CompleteOnlyCallbackQueryCase() {
                 },
             )
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
-        val result =
-            protocol.executeAutomatically(strict, fixture.authority, budget, policy()) as OperationOutcome.Rejected
+        val result = protocol.execute(strict, fixture.authority, budget, policy()) as OperationOutcome.Rejected
         val rejection = result.reason as QueryRunRejection.CompletionUnproven
         assertEquals(QueryCompletionUnprovenReason.CALLBACK_GRAPH_UNPROVEN, rejection.reason)
         assertEquals(
@@ -132,8 +130,7 @@ internal class CompleteOnlyCallbackQueryTest : CompleteOnlyCallbackQueryCase() {
                         if (event is QueryResultRetentionEvidence.CaptureStarted) store.retire()
                     },
             )
-        val outcome =
-            protocol.executeAutomatically(strict, fixture.authority, budget, policy()) as OperationOutcome.Rejected
+        val outcome = protocol.execute(strict, fixture.authority, budget, policy()) as OperationOutcome.Rejected
         val rejection = outcome.reason as QueryRunRejection.CompletionUnproven
         assertTrue(rejection.evidence is QueryCompletionEvidenceDocument.Unavailable)
         val projected =
@@ -168,8 +165,7 @@ internal class CompleteOnlyCallbackQueryTest : CompleteOnlyCallbackQueryCase() {
                 },
             )
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
-        val outcome =
-            protocol.executeAutomatically(strict, fixture.authority, budget, policy()) as OperationOutcome.Rejected
+        val outcome = protocol.execute(strict, fixture.authority, budget, policy()) as OperationOutcome.Rejected
         val rejection = outcome.reason as QueryRunRejection.CompletionUnproven
         val cause =
             rejection.callbackGraphFailure?.cause

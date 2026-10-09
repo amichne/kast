@@ -27,6 +27,7 @@ import io.github.amichne.kast.query.contract.QueryPresentationExecution
 import io.github.amichne.kast.query.contract.QueryRelationObservation
 import io.github.amichne.kast.query.protocol.CanonicalQueryProtocol
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
+import io.github.amichne.kast.query.protocol.executeQueryPage
 import io.github.amichne.kast.query.service.QueryNanoClock
 import io.github.amichne.kast.query.service.QueryService
 import io.github.amichne.kast.relation.contract.CallbackArgumentBinding
@@ -82,7 +83,9 @@ class HostedCallbackByteAdmissionTest {
         val response =
             QueryPresentationExecution.evaluateAndFit(
                 evaluate = { owner ->
-                    fixture.protocol(owner).execute(fixture.request(), fixture.symbols.authority, fixture.budget)
+                    fixture
+                        .protocol(owner)
+                        .executeQueryPage(fixture.request(), fixture.symbols.authority, fixture.budget)
                 },
                 fit = { page ->
                     encodeHostedQueryResponse(page, maximumBytes = ReturnedByteLimit.parse(65536).callbackValue())
@@ -119,7 +122,8 @@ class HostedCallbackByteAdmissionTest {
     @Test
     fun `standalone callback evaluation retains its conservative byte guard`() = runTest {
         val fixture = CallbackByteFixture()
-        val result = fixture.protocol(null).execute(fixture.request(), fixture.symbols.authority, fixture.budget)
+        val result =
+            fixture.protocol(null).executeQueryPage(fixture.request(), fixture.symbols.authority, fixture.budget)
         val qualified =
             assertInstanceOf(OperationOutcome.Qualified::class.java, result)
                 as
@@ -143,7 +147,9 @@ class HostedCallbackByteAdmissionTest {
         val response =
             QueryPresentationExecution.evaluateAndFit(
                 evaluate = { owner ->
-                    fixture.protocol(owner).execute(fixture.request(), fixture.symbols.authority, fixture.budget)
+                    fixture
+                        .protocol(owner)
+                        .executeQueryPage(fixture.request(), fixture.symbols.authority, fixture.budget)
                 },
                 fit = { page ->
                     encodeHostedQueryResponse(page, maximumBytes = ReturnedByteLimit.parse(2000).callbackValue())
@@ -290,7 +296,6 @@ private class CallbackByteFixture {
             QueryOutputDocument.Occurrences,
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
             retention = QueryRetentionModeDocument.RETAIN,
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 }
 

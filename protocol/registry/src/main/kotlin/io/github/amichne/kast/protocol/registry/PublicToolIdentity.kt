@@ -3,7 +3,7 @@ package io.github.amichne.kast.protocol.registry
 
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 
-const val PUBLIC_TOOL_CONTRACT_VERSION = 12
+const val PUBLIC_TOOL_CONTRACT_VERSION = 13
 const val PUBLIC_TOOL_NAMESPACE_DESCRIPTION = "Compiler-grounded Kotlin source intelligence from Kast."
 
 /** Closed presentation identities; canonical operations retain effect and budget ownership. */
@@ -22,15 +22,14 @@ enum class PublicToolIdentity(
             "es, add steps [{\"type\":\"TRACE\",\"expansionScope\":{\"type\":\"WORKSPACE\"}}] and SYMBOLS outpu" +
             "t. TRACE covers references, implementations or overrides, direct callers, and one further caller l" +
             "ayer; its topology is fixed. Discovery scope selects the seed; expansionScope selects relation des" +
-            "tinations. SOURCE_DOMAIN restricts native destinations before enumeration. Completion defaults to " +
-            "COMPLETE_ONLY within COMPILER_RESOLVED_STATIC_V1. Preserve typed rejection and recovery evidence w" +
-            "hen completion is unproven. PROGRESSIVE is an explicit qualified investigation; empty or partial p" +
-            "ages do not prove absence. Use RESUME only with an issued execution continuation, READ_RESULT only" +
-            " with a retained result reference and its cursor, and READ_SOURCE only with an issued candidateSel" +
-            "ector as candidateRef. These capabilities are distinct. Set retention RETAIN for later presentatio" +
-            "n. Budgets share one admitted grant and remain subject to host ceilings. The schema also defines o" +
-            "ne-hop EXPAND_RELATION, graph walk with WALK, predicates, retained composition, joins, and value I" +
-            "MPACT; choose them only for those specific questions.",
+            "tinations. SOURCE_DOMAIN restricts native destinations before enumeration. Every run requires COMP" +
+            "LETE_ONLY within COMPILER_RESOLVED_STATIC_V1. Preserve typed rejection and recovery evidence when " +
+            "completion is unproven. Use RESUME only with an issued output continuation, READ_RESULT only with " +
+            "a retained result reference and its cursor, and READ_SOURCE only with an issued candidateSelector " +
+            "as candidateRef. These capabilities are distinct. Set retention RETAIN for later presentation. Bud" +
+            "gets share one admitted grant and remain subject to host ceilings. The schema also defines one-hop" +
+            " EXPAND_RELATION, graph walk with WALK, predicates, retained composition, joins, and value IMPACT;" +
+            " choose them only for those specific questions.",
         HostedToolLoading.EAGER,
     ),
     CHECK_DIAGNOSTICS("check_diagnostics", CanonicalOperation.DIAGNOSTIC_CHECK,

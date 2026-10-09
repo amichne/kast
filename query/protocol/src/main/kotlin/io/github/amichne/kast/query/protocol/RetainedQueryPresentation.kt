@@ -2,7 +2,6 @@ package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
-import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
@@ -114,7 +113,7 @@ private constructor(
             val rowIds =
                 originalWitnessRowIds(restored, retained, view).refinedForQueryOrNull() ?: return contractRejected()
             val coverage =
-                witnessCoverage(retained, start, count.value, maximumResults, restored.request).refinedForQueryOrNull()
+                witnessCoverage(retained, start, count.value, maximumResults).refinedForQueryOrNull()
                     ?: return contractRejected()
             val result = retainedResult(retained, QueryRows.ImpactWitness.of(view))
             return Refinement.Refined(
@@ -177,13 +176,8 @@ private constructor(
             start: Int,
             count: Int,
             maximumResults: ResultLimit,
-            originalRequest: QueryRunRequest.Run,
         ): Refinement<QueryCoverage, QueryExecutionRejectionDocument> {
-            if (
-                originalRequest.completion is QueryCompletionPolicyDocument.CompleteOnly &&
-                    retained.coverage is QueryCoverage.Complete
-            )
-                return Refinement.Refined(retained.coverage)
+            if (retained.coverage is QueryCoverage.Complete) return Refinement.Refined(retained.coverage)
             val known =
                 when (val coverage = retained.coverage) {
                     is QueryCoverage.Complete -> coverage.resultCount

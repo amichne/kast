@@ -74,7 +74,7 @@ class QueryImpactPeerCanonicalRetentionTest {
                 producerSeeds = native,
                 peerSiteAdmissions = listOf(f.proof),
             )
-        val initial = protocol.execute(run, f.source.owner.lease, budget)
+        val initial = protocol.executePage(run, f.source.owner.lease, budget)
         assertTrue(
             initial is OperationOutcome.Qualified,
             "Uninvestigated peer flow must retain an unresolved question: $initial",
@@ -94,7 +94,8 @@ class QueryImpactPeerCanonicalRetentionTest {
                 .values
         assertTrue(ImpactRequiredObligationDocument.BOUNDARY in closure)
         val reference = (payload.retention as QueryResultRetention.Retained).reference
-        val repeated = protocol.execute(QueryRunRequest.ReadResult.valuePaths(reference), f.source.owner.lease, budget)
+        val repeated =
+            protocol.executePage(QueryRunRequest.ReadResult.valuePaths(reference), f.source.owner.lease, budget)
         assertTrue(repeated is OperationOutcome.Qualified)
         val retained = (repeated as OperationOutcome.Qualified).evidence.payload
         assertEquals(payload.question, retained.question)
@@ -117,7 +118,6 @@ class QueryImpactPeerCanonicalRetentionTest {
             QueryOutputDocument.ValuePaths,
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
             retention = QueryRetentionModeDocument.RETAIN,
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
     }
 
@@ -164,7 +164,7 @@ class QueryImpactPeerCanonicalRetentionTest {
         val path = (payload.items.values.single() as QueryResultItemDocument.ValuePath).path
         for (section in listOf(ImpactWitnessSectionDocument.MODELS, ImpactWitnessSectionDocument.NATIVE_READS)) {
             val witnesses =
-                protocol.execute(
+                protocol.executePage(
                     QueryRunRequest.ReadResult.impactWitness(reference, section),
                     f.source.owner.lease,
                     budget,

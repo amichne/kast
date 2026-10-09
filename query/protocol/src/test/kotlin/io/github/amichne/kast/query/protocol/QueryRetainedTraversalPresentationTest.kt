@@ -67,24 +67,7 @@ class QueryRetainedTraversalPresentationTest {
 
     @Test
     fun `retained traversal records retain original depths facts and IDs across presentation pages`() = runTest {
-        val records = (0 until 101).map(::traversalRecord)
-        val rows = records.map {
-            QuerySymbol(
-                SymbolDescription.from(fixture.selector),
-                listOf(it.fact),
-                walkArrival = QueryWalkArrival.Proven.one(it),
-            )
-        }
-        val execution =
-            QueryExecutionResult.Complete.create(
-                QueryResult(QueryRows.Symbols.of(rows), emptyList()),
-                QueryCoverage.Complete(QueryCount.parse(101).refined()),
-            )
-        val issued =
-            store.issueResult(
-                run(QueryOutputDocument.TraversalRecords),
-                QueryRetainedResult.capture(fixture.authority, execution).refined(),
-            ) as QueryResultIssuance.Issued
+        val issued = issueTraversalRecords()
         val protocol =
             CanonicalQueryProtocol(
                 QueryOperations { error("Presentation must not execute traversal") },
@@ -92,10 +75,13 @@ class QueryRetainedTraversalPresentationTest {
                 store,
             )
         val first =
-            protocol.execute(QueryRunRequest.ReadResult.traversalRecords(issued.reference), fixture.authority, budget)
-                as OperationOutcome.Complete
+            protocol.executePage(
+                QueryRunRequest.ReadResult.traversalRecords(issued.reference),
+                fixture.authority,
+                budget,
+            ) as OperationOutcome.Complete
         val last =
-            protocol.execute(
+            protocol.executePage(
                 QueryRunRequest.ReadResult.traversalRecords(
                     issued.reference,
                     requireNotNull(first.evidence.payload.nextCursor),
@@ -115,6 +101,26 @@ class QueryRetainedTraversalPresentationTest {
         )
         assertEquals(101, items.map { it.rowId }.toSet().size)
         assertNull(last.evidence.payload.nextCursor)
+    }
+
+    private fun issueTraversalRecords(): QueryResultIssuance.Issued {
+        val records = (0 until 101).map(::traversalRecord)
+        val rows = records.map {
+            QuerySymbol(
+                SymbolDescription.from(fixture.selector),
+                listOf(it.fact),
+                walkArrival = QueryWalkArrival.Proven.one(it),
+            )
+        }
+        val execution =
+            QueryExecutionResult.Complete.create(
+                QueryResult(QueryRows.Symbols.of(rows), emptyList()),
+                QueryCoverage.Complete(QueryCount.parse(101).refined()),
+            )
+        return store.issueResult(
+            run(QueryOutputDocument.TraversalRecords),
+            QueryRetainedResult.capture(fixture.authority, execution).refined(),
+        ) as QueryResultIssuance.Issued
     }
 
     @Test
@@ -139,7 +145,7 @@ class QueryRetainedTraversalPresentationTest {
                 QueryRetainedResult.capture(fixture.authority, unproven).refined(),
             ) as QueryResultIssuance.Issued
         val rejected =
-            protocol.execute(
+            protocol.executePage(
                 QueryRunRequest.ReadResult.traversalRecords(unavailable.reference),
                 fixture.authority,
                 budget,
@@ -163,7 +169,7 @@ class QueryRetainedTraversalPresentationTest {
                 store,
             )
         val first =
-            protocol.execute(
+            protocol.executePage(
                 QueryRunRequest.ReadResult.symbols(
                     issued.reference,
                     output = QueryOutputDocument.Symbols(bounded(emptyList())),
@@ -172,7 +178,7 @@ class QueryRetainedTraversalPresentationTest {
                 budget,
             ) as OperationOutcome.Complete
         val replay =
-            protocol.execute(
+            protocol.executePage(
                 QueryRunRequest.ReadResult.symbols(
                     issued.reference,
                     output = QueryOutputDocument.Symbols(bounded(emptyList())),
@@ -309,7 +315,6 @@ class QueryRetainedTraversalPresentationTest {
             bounded(emptyList()),
             output,
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun <Value> bounded(values: List<Value>) = BoundedProtocolList.create(values).refined()

@@ -4,14 +4,14 @@ description: "Choose the action, input, steps, and output for a query_symbols re
 icon: "book-open"
 ---
 
-`query_symbols` runs queries, resumes execution, reads retained rows, or reads anchored source. Use the [generated schema](/reference/schemas) for exact variants and [Find and trace code](/search) for agent prompts.
+`query_symbols` runs queries, resumes produced output, reads retained rows, or reads anchored source. Use the [generated schema](/reference/schemas) for exact variants and [Find and trace code](/search) for agent prompts.
 
 ## Choose an action
 
 | Action | Required input | Behavior |
 | --- | --- | --- |
 | `RUN` | `source` | Evaluate optional `steps` in order. Select `output` and optional `retention`. |
-| `RESUME` | Issued `continuation` | Continue saved execution with its original source and steps. |
+| `RESUME` | Issued output `continuation` | Present remaining produced output without semantic execution. |
 | `READ_RESULT` | Issued `result`. Optional `cursor` | Present retained rows without semantic execution. Output must match the retained row type. |
 | `READ_SOURCE` | Issued `candidateRef` | Read an exact anchored occurrence or anonymous body. See [callbacks](/reference/callbacks#read-the-exact-anonymous-source). |
 
@@ -29,7 +29,7 @@ icon: "book-open"
 
 Omitted output selects symbol name and location. `retention: "RETAIN"` keeps results for later use. Pass issued handles unchanged. Placeholders are not valid references.
 
-Completion defaults to `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`. Supported row queries drain issued execution pages under one grant before admitting a complete answer. Unsupported or unproven answers reject with typed evidence. Set `completion: {"type": "PROGRESSIVE"}` explicitly for qualified investigation and manual execution continuation. Compact output remains the default for both policies.
+Every RUN requires complete-only execution within `COMPILER_RESOLVED_STATIC_V1`. The runner drains issued semantic pages under one grant. Unsupported or unproven answers reject with typed evidence. RUN has no completion selector. Compact output remains the default.
 
 ## Start from the right input
 
@@ -134,7 +134,7 @@ Non-final branch expressions do not supply the try result. Explicit returns rema
 
 Native reads establish invocation and site identity. Supplied models define representation and boundary meaning. Unsupported transfers, rejected reads, and unresolved obligations preserve qualifications.
 
-An explicit `PROGRESSIVE` work-limited run can return empty `VALUE_PATHS` with `EVIDENCE_ONLY` accounting and a resumable checkpoint. Before ledger finalization, witnesses return `RESULT_FIELD_UNAVAILABLE`. `RESUME` advances the investigation. Retained reads preserve its checkpoint.
+A work-limited run rejects completion and can retain empty `VALUE_PATHS` with `EVIDENCE_ONLY` accounting. Before ledger finalization, witness reads return `RESULT_FIELD_UNAVAILABLE`. Retained reads preserve the original qualifications and historical checkpoint without advancing semantic work.
 
 Strict value-path completion requires discharged original ledger obligations and every original path. Missing evidence, an incomplete path selection, or unresolved obligations returns `INVESTIGATION_UNPROVEN` with case-specific proof details. Budget rejection retains original accounting when storage permits it. Cyclic path expansion and mutable or unsupported native flow remain unproven.
 

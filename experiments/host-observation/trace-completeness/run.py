@@ -1,4 +1,4 @@
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict
 from enum import Enum
 from pathlib import Path
 import hashlib, json, os, sys, zipfile, io, argparse, shutil
@@ -34,34 +34,6 @@ SCHEMA=next(t['inputSchema'] for t in json.loads((ROOT/'catalog.json').read_text
 VALIDATOR=jsonschema.Draft202012Validator(SCHEMA)
 RESULT_VALIDATOR=shapes.contract_validator('query_symbolsSemanticResult')
 
-@dataclass(frozen=True)
-class ScopedTrace:
-    expansionScope: shapes.SourceDomain
-    type: str=field(default='TRACE',init=False)
-@dataclass(frozen=True)
-class Strict:
-    type: str=field(default='COMPLETE_ONLY',init=False)
-    model: str=field(default='COMPILER_RESOLVED_STATIC_V1',init=False)
-@dataclass(frozen=True)
-class Run:
-    source: shapes.Search|shapes.Location
-    steps: tuple
-    executionBudget: shapes.Budget
-    output: shapes.Output=shapes.Output()
-    retention: str='RETAIN'
-    completion: Strict=Strict()
-    type: str=field(default='RUN',init=False)
-@dataclass(frozen=True)
-class Spec:
-    label: str
-    payload: shapes.Payload
-@dataclass(frozen=True)
-class RequestsManifest:
-    type: str
-    fixtureManifestSha256: str
-    inputSchemaSha256: str
-    configSha256: str
-    requests: tuple[Spec,...]
 @dataclass(frozen=True)
 class Call:
     label: str

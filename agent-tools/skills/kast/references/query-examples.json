@@ -396,7 +396,7 @@
       "value": {
         "request": {
           "type": "RESUME",
-          "continuation": "query:v1:00000000-0000-0000-0000-000000000000",
+          "continuation": "query-output:v1:00000000-0000-0000-0000-000000000000",
           "executionBudget": {
             "maxResults": 50
           }
@@ -485,10 +485,7 @@
           "output": {
             "type": "VALUE_PATHS"
           },
-          "retention": "RETAIN",
-          "completion": {
-            "type": "PROGRESSIVE"
-          }
+          "retention": "RETAIN"
         }
       }
     },
@@ -632,10 +629,7 @@
           "output": {
             "type": "VALUE_PATHS"
           },
-          "retention": "RETAIN",
-          "completion": {
-            "type": "PROGRESSIVE"
-          }
+          "retention": "RETAIN"
         }
       }
     },
@@ -690,11 +684,7 @@
             "type": "IMPACT_WITNESS",
             "section": "FINDINGS"
           },
-          "retention": "RETAIN",
-          "completion": {
-            "type": "COMPLETE_ONLY",
-            "model": "COMPILER_RESOLVED_STATIC_V1"
-          }
+          "retention": "RETAIN"
         }
       }
     },
@@ -726,10 +716,6 @@
             ]
           },
           "retention": "RETAIN",
-          "completion": {
-            "type": "COMPLETE_ONLY",
-            "model": "COMPILER_RESOLVED_STATIC_V1"
-          },
           "executionBudget": {
             "maxElapsedMs": 30000
           }

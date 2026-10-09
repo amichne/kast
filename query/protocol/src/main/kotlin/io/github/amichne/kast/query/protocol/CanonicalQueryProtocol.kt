@@ -18,14 +18,12 @@ class CanonicalQueryProtocol(
     private val retentionObservation: QueryResultRetentionObservation = QueryResultRetentionObservation.None,
     peerSiteAdmissions: List<QueryImpactPeerSiteAdmission> = emptyList(),
 ) {
-    private var pageAdmission = PageAdmission.PUBLIC
-
     private val peerSiteAdmissions = Collections.unmodifiableList(peerSiteAdmissions.toList())
     private val pagePublication = QueryPagePublication(state, publication)
     private val projection = QueryOutcomeProjection(authority, state, retentionObservation)
 
-    /** Shared automatic entry point for independent rows; investigation-ledger outputs retain their own accounting. */
-    suspend fun executeAutomatically(
+    /** Completes one admitted question under one budget; retained reads and output continuation do no semantic work. */
+    suspend fun execute(
         request: QueryRunRequest,
         lease: SemanticReadAuthority,
         budget: QueryBudget,
@@ -35,12 +33,9 @@ class CanonicalQueryProtocol(
             is Refinement.Refined -> Unit
             is Refinement.Rejected -> return OperationOutcome.Rejected(admission.failure)
         }
-        if (request !is QueryRunRequest.Run) return execute(request, lease, budget)
-        if (
-            request.output == QueryOutputDocument.ValuePaths &&
-                request.completion is QueryCompletionPolicyDocument.Progressive
-        )
-            return execute(request, lease, budget)
+        if (request is QueryRunRequest.Resume && request.continuation is QueryExecutionContinuation.Pipeline)
+            return rejected(QueryExecutionRejectionDocument.REQUEST_REJECTED)
+        if (request !is QueryRunRequest.Run) return executePage(request, lease, budget)
         val semanticRequest =
             if (request.output is QueryOutputDocument.ImpactWitness)
                 request.copy(output = QueryOutputDocument.ValuePaths)
@@ -48,20 +43,20 @@ class CanonicalQueryProtocol(
         val recording = QueryInvocationExecution(operations)
         val pages =
             CanonicalQueryProtocol(
-                    operations = recording,
-                    authority = authority,
-                    state = state,
-                    publication = QueryExecutionPublication.Immediate,
-                    producerSeeds = producerSeeds,
-                    retentionObservation = retentionObservation,
-                    peerSiteAdmissions = peerSiteAdmissions,
-                )
-                .also { it.pageAdmission = PageAdmission.AUTOMATIC_INVOCATION }
+                operations = recording,
+                authority = authority,
+                state = state,
+                publication = QueryExecutionPublication.Immediate,
+                producerSeeds = producerSeeds,
+                retentionObservation = retentionObservation,
+                peerSiteAdmissions = peerSiteAdmissions,
+            )
+
         val accumulated =
             when (
                 val execution =
                     AutomaticSymbolQueryRunner(state, lease, policy) { action, remaining ->
-                            recording.page(remaining) { pages.execute(action, lease, remaining) }
+                            recording.page(remaining) { pages.executePage(action, lease, remaining) }
                         }
                         .run(semanticRequest, budget)
             ) {
@@ -80,7 +75,7 @@ class CanonicalQueryProtocol(
         }
     }
 
-    suspend fun execute(
+    internal suspend fun executePage(
         request: QueryRunRequest,
         lease: SemanticReadAuthority,
         budget: QueryBudget,
@@ -162,10 +157,6 @@ class CanonicalQueryProtocol(
         checkpoint: QueryCheckpoint?,
         publicationOwner: QueryExecutionClaim? = null,
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> {
-        when (val admitted = completionAdmission(request, pageAdmission)) {
-            is Refinement.Refined -> Unit
-            is Refinement.Rejected -> return OperationOutcome.Rejected(admitted.failure)
-        }
         val acquired =
             when (
                 val admission =

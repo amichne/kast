@@ -238,14 +238,14 @@ class QueryStateDependencyAdmissionTest {
                 },
                 CanonicalQueryReferences(),
             )
-            .execute(request(), lease, budget)
+            .executePage(request(), lease, budget)
         return retained
     }
 
     private suspend fun page(reference: QueryResultReference? = null): QueryPublishedPage {
         val complete =
             CanonicalQueryProtocol(QueryOperations { complete() }, CanonicalQueryReferences())
-                .execute(request(), lease, budget) as OperationOutcome.Complete
+                .executePage(request(), lease, budget) as OperationOutcome.Complete
         return if (reference == null) complete
         else
             OperationOutcome.Complete(
@@ -273,7 +273,6 @@ class QueryStateDependencyAdmissionTest {
             bounded(emptyList()),
             QueryOutputDocument.Symbols(bounded(emptyList())),
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun bytes() = QueryRetentionByteCount.parse(512).refined()

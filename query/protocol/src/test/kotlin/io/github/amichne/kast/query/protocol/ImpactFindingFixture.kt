@@ -76,19 +76,30 @@ internal class ImpactFindingFixture(withRequestedSites: Boolean = false) {
         protocol: CanonicalQueryProtocol,
         section: ImpactWitnessSectionDocument,
         cursor: Int = 0,
+    ): OperationOutcome.Complete<QueryRunResult> =
+        readWitnessPage(protocol, section, cursor).also {
+            assertInstanceOf(OperationOutcome.Complete::class.java, it, it.toString())
+        } as OperationOutcome.Complete<QueryRunResult>
+
+    suspend fun readQualifiedWitness(
+        protocol: CanonicalQueryProtocol,
+        section: ImpactWitnessSectionDocument,
+        cursor: Int = 0,
     ): OperationOutcome.Qualified<QueryRunResult, QueryRunQualification> =
-        protocol
-            .execute(
-                QueryRunRequest.ReadResult.impactWitness(
-                    reference,
-                    section,
-                    QueryResultCursor.parse(cursor).value(),
-                ),
-                symbols.authority,
-                budget,
-            )
-            .also { assertInstanceOf(OperationOutcome.Qualified::class.java, it, it.toString()) }
-            as OperationOutcome.Qualified<QueryRunResult, QueryRunQualification>
+        readWitnessPage(protocol, section, cursor).also {
+            assertInstanceOf(OperationOutcome.Qualified::class.java, it, it.toString())
+        } as OperationOutcome.Qualified<QueryRunResult, QueryRunQualification>
+
+    private suspend fun readWitnessPage(
+        protocol: CanonicalQueryProtocol,
+        section: ImpactWitnessSectionDocument,
+        cursor: Int,
+    ): QueryPublishedPage =
+        protocol.executePage(
+            QueryRunRequest.ReadResult.impactWitness(reference, section, QueryResultCursor.parse(cursor).value()),
+            symbols.authority,
+            budget,
+        )
 
     private val domain =
         RelationRequest.start(
@@ -241,7 +252,6 @@ internal class ImpactFindingFixture(withRequestedSites: Boolean = false) {
             QueryOutputDocument.ValuePaths,
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
             retention = QueryRetentionModeDocument.RETAIN,
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
     val store = QueryStateStore(clock = { 0 })
     private val execution =

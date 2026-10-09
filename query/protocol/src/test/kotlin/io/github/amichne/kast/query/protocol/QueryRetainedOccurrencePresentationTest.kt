@@ -92,8 +92,10 @@ class QueryRetainedOccurrencePresentationTest {
             (0 until 3).map { cursor ->
                 val pageRequest =
                     QueryRunRequest.ReadResult.occurrences(issued.reference, QueryResultCursor.parse(cursor).refined())
-                val page = protocol.execute(pageRequest, fixture.authority, smallBudget) as OperationOutcome.Complete
-                val replay = protocol.execute(pageRequest, fixture.authority, smallBudget) as OperationOutcome.Complete
+                val page =
+                    protocol.executePage(pageRequest, fixture.authority, smallBudget) as OperationOutcome.Complete
+                val replay =
+                    protocol.executePage(pageRequest, fixture.authority, smallBudget) as OperationOutcome.Complete
                 assertEquals(page.evidence.payload, replay.evidence.payload)
                 assertEquals(1, page.evidence.payload.items.values.size)
                 assertEquals(if (cursor < 2) cursor + 1 else null, page.evidence.payload.nextCursor?.value)
@@ -104,7 +106,7 @@ class QueryRetainedOccurrencePresentationTest {
         assertEquals(listOf(8, 10, 12), items.map { it.occurrence.occurrence.range.startInclusive.value })
         assertFileScopedEvidence(items)
         val empty =
-            protocol.execute(
+            protocol.executePage(
                 QueryRunRequest.ReadResult.occurrences(issued.reference, QueryResultCursor.parse(3).refined()),
                 fixture.authority,
                 smallBudget,
@@ -156,8 +158,8 @@ class QueryRetainedOccurrencePresentationTest {
                 store,
             )
         val request = QueryRunRequest.ReadResult.occurrences(issued.reference)
-        val first = protocol.execute(request, fixture.authority, budget) as OperationOutcome.Complete
-        val replay = protocol.execute(request, fixture.authority, budget) as OperationOutcome.Complete
+        val first = protocol.executePage(request, fixture.authority, budget) as OperationOutcome.Complete
+        val replay = protocol.executePage(request, fixture.authority, budget) as OperationOutcome.Complete
         assertEquals(
             io.github.amichne.kast.protocol.contract.QueryQuestionDocument.from(run()),
             first.evidence.payload.question,
@@ -167,7 +169,7 @@ class QueryRetainedOccurrencePresentationTest {
         assertEquals(100, first.evidence.payload.items.values.size)
         assertEquals(100, first.evidence.payload.nextCursor?.value)
         val last =
-            protocol.execute(
+            protocol.executePage(
                 QueryRunRequest.ReadResult.occurrences(issued.reference, QueryResultCursor.parse(100).refined()),
                 fixture.authority,
                 budget,
@@ -211,7 +213,7 @@ class QueryRetainedOccurrencePresentationTest {
         issued: QueryResultIssuance.Issued,
     ) {
         val wrong =
-            protocol.execute(
+            protocol.executePage(
                 QueryRunRequest.ReadResult.symbols(
                     issued.reference,
                     output = QueryOutputDocument.Symbols(bounded(emptyList())),
@@ -276,7 +278,6 @@ class QueryRetainedOccurrencePresentationTest {
             bounded(emptyList()),
             output,
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun <Value> bounded(values: List<Value>) = BoundedProtocolList.create(values).refined()
@@ -422,7 +423,7 @@ private class ReferenceAdmissionBoundFixture(
                     CanonicalQueryReferences(),
                     retainedStore,
                 )
-                .execute(QueryRunRequest.ReadResult.occurrences(issued.reference), proof.target.lease, budget)
+                .executePage(QueryRunRequest.ReadResult.occurrences(issued.reference), proof.target.lease, budget)
                 as OperationOutcome.Complete
         val encoded = CanonicalOperationWireBindings.queryRun.encodeOutcome(page) as WireEncoding.Encoded
         val row =

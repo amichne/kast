@@ -1,14 +1,15 @@
 package io.github.amichne.kast.appserver.query
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument
+import io.github.amichne.kast.protocol.contract.QueryCompletionDocument
+import io.github.amichne.kast.protocol.contract.QueryQuestionDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
-import io.github.amichne.kast.protocol.contract.QueryStaticModelDocument
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.serializer
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
 
 class PublicToolCompletionPolicyTest {
@@ -25,126 +26,48 @@ class PublicToolCompletionPolicyTest {
                     .value
             )
 
-    private fun input(policy: InvalidPublicCompletionPolicy) =
-        Json.encodeToJsonElement(
-            serializer<InvalidPublicCompletionEnvelope>(),
-            InvalidPublicCompletionEnvelope(InvalidPublicCompletionRun(source, policy)),
-        )
-
     @Test
-    fun `omitted and null policy select complete compiler static execution`() {
-        val omitted = encodePublicTool(PublicToolQuerySymbols(PublicToolRunAction(source)), Json)
-        val explicitNull =
-            Json.encodeToJsonElement(
-                serializer<NullablePublicCompletionEnvelope>(),
-                NullablePublicCompletionEnvelope(NullablePublicCompletionRun(source)),
-            )
-        for (input in listOf(omitted, explicitNull)) {
-            val admitted =
-                PublicToolContract.admit(
-                    PublicToolIdentity.QUERY_SYMBOLS,
-                    input,
-                ) as Refinement.Refined
-            val run = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
-            assertEquals(
-                QueryCompletionPolicyDocument.CompleteOnly(QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1),
-                run.completion,
-            )
-        }
-    }
-
-    @Test
-    fun `progressive execution requires an explicit policy`() {
-        val admitted =
-            PublicToolContract.admit(
-                PublicToolIdentity.QUERY_SYMBOLS,
-                encodePublicTool(
-                    PublicToolQuerySymbols(
-                        PublicToolRunAction(source, completion = QueryCompletionPolicyDocument.Progressive)
-                    ),
-                    Json,
-                ),
-            ) as Refinement.Refined
+    fun `public run has no completion input and retains fixed compiler static proof`() {
+        val input = encodePublicTool(PublicToolQuerySymbols(PublicToolRunAction(source)), Json)
+        assertFalse(input.jsonObject.getValue("request").jsonObject.containsKey("completion"))
+        val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, input) as Refinement.Refined
         val run = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
-        assertEquals(QueryCompletionPolicyDocument.Progressive, run.completion)
+        assertEquals(QueryCompletionDocument(), QueryQuestionDocument.from(run).completion)
     }
 
     @Test
-    fun `actual public run lowers explicit complete only model`() {
-        val admitted =
-            PublicToolContract.admit(
-                PublicToolIdentity.QUERY_SYMBOLS,
-                encodePublicTool(
-                    PublicToolQuerySymbols(
-                        PublicToolRunAction(
-                            PublicToolReferenceSource(
-                                (io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(
-                                        listOf(
-                                            (io.github.amichne.kast.protocol.contract.ProtocolText.parse(
-                                                    "exact:v2:opaque"
-                                                ) as Refinement.Refined)
-                                                .value
-                                        )
-                                    ) as Refinement.Refined)
-                                    .value
-                            ),
-                            completion =
-                                QueryCompletionPolicyDocument.CompleteOnly(
-                                    QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1
-                                ),
-                        )
-                    ),
-                    Json,
-                ),
-            ) as Refinement.Refined
-        val run = (admitted.value.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
-        assertEquals(
-            QueryCompletionPolicyDocument.CompleteOnly(QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1),
-            run.completion,
-        )
-    }
-
-    @Test
-    fun `public boundary rejects unknown policies and models before lowering`() {
+    fun `public run rejects every supplied completion field before lowering`() {
         for (policy in
             listOf(
+                null,
+                InvalidPublicCompletionPolicy("PROGRESSIVE"),
+                InvalidPublicCompletionPolicy("COMPLETE_ONLY", "COMPILER_RESOLVED_STATIC_V1"),
                 InvalidPublicCompletionPolicy("UNKNOWN"),
-                InvalidPublicCompletionPolicy("COMPLETE_ONLY"),
-                InvalidPublicCompletionPolicy("COMPLETE_ONLY", "UNKNOWN"),
-                InvalidPublicCompletionPolicy("PROGRESSIVE", unexpected = true),
             )) {
-            assertTrue(
-                PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, input(policy)) is Refinement.Rejected,
+            val input =
+                Json.encodeToJsonElement(
+                    serializer<ObsoletePublicCompletionEnvelope>(),
+                    ObsoletePublicCompletionEnvelope(ObsoletePublicCompletionRun(source, policy)),
+                )
+            assertEquals(
+                Refinement.Rejected(PublicToolInputFailure.SchemaRejected),
+                PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, input),
                 policy.toString(),
             )
         }
     }
 }
 
+/** Negative fixture deliberately supplies a removed public input field, including explicit null. */
 @kotlinx.serialization.Serializable
-private data class NullablePublicCompletionEnvelope(val request: NullablePublicCompletionRun)
+private data class ObsoletePublicCompletionEnvelope(val request: ObsoletePublicCompletionRun)
 
 @kotlinx.serialization.Serializable
-private data class NullablePublicCompletionRun(
+private data class ObsoletePublicCompletionRun(
     val source: PublicToolSource,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.ALWAYS)
-    val completion: QueryCompletionPolicyDocument? = null,
+    val completion: InvalidPublicCompletionPolicy?,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.ALWAYS) val type: String = "RUN",
 )
 
 @kotlinx.serialization.Serializable
-private data class InvalidPublicCompletionEnvelope(val request: InvalidPublicCompletionRun)
-
-@kotlinx.serialization.Serializable
-private data class InvalidPublicCompletionRun(
-    val source: PublicToolSource,
-    val completion: InvalidPublicCompletionPolicy,
-    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.ALWAYS) val type: String = "RUN",
-)
-
-@kotlinx.serialization.Serializable
-private data class InvalidPublicCompletionPolicy(
-    val type: String,
-    val model: String? = null,
-    val unexpected: Boolean? = null,
-)
+private data class InvalidPublicCompletionPolicy(val type: String, val model: String? = null)

@@ -78,18 +78,24 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/SettledOutputRejection.kt
   - id: openwiki-source-e8970cbf92e81dc4000b50e4
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastInvocationAdmission.kt
+  - id: openwiki-source-2509045e62840b0d3fc02ba6
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDocuments.kt
   - id: openwiki-source-e750eea4b9efa673ce4df938
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactSourceMapping.kt
   - id: openwiki-source-6699d194831006a24f8c790c
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt
   - id: openwiki-source-473526fe1b8c21a06df3f01f
     resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/HostedRequiredPolicyExchangeTest.kt
+  - id: openwiki-source-dfd865ab52ce8eea1b519c4e
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
+  - id: openwiki-source-5dda452804594b5fecb6a416
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidenceRead.kt
   - id: openwiki-source-6fc4d1c9f6659b50cecc0294
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt
-generated: { by: "codex", at: "2026-10-08T01:13:49.481Z" }
+generated: { by: "codex", at: "2026-10-09T14:15:56.247Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-09T02:50:46.064Z
+    at: 2026-10-09T14:15:56.247Z
 ---
 
 # Request dispatch
@@ -133,6 +139,8 @@ successor commit together. Rejection and cancellation discard only the current
 attempt; replay returns the same published page without executing the consumed
 semantic prefix. Publication rejection carries a closed exact cause rather than
 erasing retention, expiry or conflicting-claim evidence as generic staleness.
+
+Public query RUN has no completion selector and enters one complete-only executor. Public RESUME admits only output continuation; semantic checkpoint continuation stays inside the bounded evaluator. A retained evidence read performs no provider work and preserves the original question and completion rejection.
 
 Canonical semantic-read handlers delegate request admission, reference codecs,
 and outcome projection to [`query:protocol`](../modules/query-protocol.md).

@@ -245,14 +245,14 @@ class QueryPublicationAuthorityTest {
                 },
                 CanonicalQueryReferences(),
             )
-            .execute(request(), lease, budget)
+            .executePage(request(), lease, budget)
         return retained
     }
 
     private suspend fun page(reference: QueryResultReference? = null): QueryPublishedPage {
         val page =
             CanonicalQueryProtocol(QueryOperations { complete() }, CanonicalQueryReferences())
-                .execute(request(), lease, budget) as OperationOutcome.Complete
+                .executePage(request(), lease, budget) as OperationOutcome.Complete
         return if (reference == null) page
         else
             OperationOutcome.Complete(
@@ -280,7 +280,6 @@ class QueryPublicationAuthorityTest {
             bounded(emptyList()),
             QueryOutputDocument.Symbols(bounded(emptyList())),
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun text(value: String) = ProtocolText.parse(value).refined()

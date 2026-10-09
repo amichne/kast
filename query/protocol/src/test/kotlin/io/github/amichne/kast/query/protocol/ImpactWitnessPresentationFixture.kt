@@ -15,7 +15,6 @@ import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
-import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.query.contract.QueryBudget
@@ -65,9 +64,9 @@ internal class ImpactWitnessPresentationFixture(resumedBinding: Boolean = false)
         protocol: CanonicalQueryProtocol,
         section: ImpactWitnessSectionDocument,
         cursor: Int = 0,
-    ): OperationOutcome.Qualified<QueryRunResult, QueryRunQualification> =
+    ): OperationOutcome.Complete<QueryRunResult> =
         protocol
-            .execute(
+            .executePage(
                 QueryRunRequest.ReadResult.impactWitness(
                     reference,
                     section,
@@ -76,8 +75,8 @@ internal class ImpactWitnessPresentationFixture(resumedBinding: Boolean = false)
                 symbols.authority,
                 budget,
             )
-            .also { assertInstanceOf(OperationOutcome.Qualified::class.java, it, it.toString()) }
-            as OperationOutcome.Qualified<QueryRunResult, QueryRunQualification>
+            .also { assertInstanceOf(OperationOutcome.Complete::class.java, it, it.toString()) }
+            as OperationOutcome.Complete<QueryRunResult>
 
     private val domain =
         RelationRequest.start(
@@ -191,7 +190,6 @@ internal class ImpactWitnessPresentationFixture(resumedBinding: Boolean = false)
             bounded(emptyList()),
             QueryOutputDocument.ValuePaths,
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
     val store = QueryStateStore(clock = { 0 })
     private val execution =

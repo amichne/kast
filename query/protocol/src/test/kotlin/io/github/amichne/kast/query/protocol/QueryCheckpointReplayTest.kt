@@ -103,7 +103,7 @@ class QueryCheckpointReplayTest {
                 },
                 CanonicalQueryReferences(),
             )
-            .execute(request(), lease, budget)
+            .executePage(request(), lease, budget)
         val first = store.issueCheckpoint(request(), retained) as QueryCheckpointIssuance.Issued
         now = 300_000_000_000L
         val second =
@@ -206,7 +206,7 @@ class QueryCheckpointReplayTest {
                 },
                 CanonicalQueryReferences(),
             )
-            .execute(request(), authority, budget)
+            .executePage(request(), authority, budget)
         return retained
     }
 
@@ -228,7 +228,6 @@ class QueryCheckpointReplayTest {
             bounded(emptyList()),
             QueryOutputDocument.Symbols(bounded(emptyList())),
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun text(value: String) = ProtocolText.parse(value).refined()

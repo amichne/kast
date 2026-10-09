@@ -113,18 +113,19 @@ class QueryImpactSourceRetentionTest {
                 references,
                 producerSeeds = compiler,
             )
-        val first = protocol.execute(run, owner.lease, budget) as OperationOutcome.Qualified
+        val first = protocol.executePage(run, owner.lease, budget) as OperationOutcome.Qualified
         val original = first.evidence.payload
         assertEquals(QueryQuestionDocument.from(run), original.question)
         val continuation = first.qualification.progress.continuationToken as QueryExecutionContinuation.Pipeline
         val resumed =
-            protocol.execute(QueryRunRequest.Resume(continuation), owner.lease, budget) as OperationOutcome.Qualified
+            protocol.executePage(QueryRunRequest.Resume(continuation), owner.lease, budget)
+                as OperationOutcome.Qualified
         assertEquals(original.question, resumed.evidence.payload.question)
         assertEquals(1, seedCalls)
         assertEquals(2, executions)
         val retained = resumed.evidence.payload.retention as QueryResultRetention.Retained
         val read =
-            protocol.execute(QueryRunRequest.ReadResult.valuePaths(retained.reference), owner.lease, budget)
+            protocol.executePage(QueryRunRequest.ReadResult.valuePaths(retained.reference), owner.lease, budget)
                 as OperationOutcome.Qualified
         assertEquals(original.question, read.evidence.payload.question)
         assertEquals(1, seedCalls)
@@ -242,7 +243,6 @@ class QueryImpactSourceRetentionTest {
             bounded(emptyList()),
             QueryOutputDocument.ValuePaths,
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
 
     private fun token(endpoint: RelationEndpoint.Resolved): ProtocolText =

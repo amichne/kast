@@ -27,7 +27,7 @@ internal class AutomaticSymbolQueryReplayTest : AutomaticSymbolQueryCase() {
                     calls++
                     recording.page(remaining) {
                         val page =
-                            pages.execute(
+                            pages.executePage(
                                 if (calls == 3) QueryRunRequest.Resume(first!!) else action,
                                 fixture.authority,
                                 remaining,
@@ -46,7 +46,7 @@ internal class AutomaticSymbolQueryReplayTest : AutomaticSymbolQueryCase() {
             io.github.amichne.kast.query.contract.QueryContinuationState.Terminal::class.java,
             qualified.continuation,
         )
-        pages.execute(QueryRunRequest.Resume(successor!!), fixture.authority, budget)
+        pages.executePage(QueryRunRequest.Resume(successor!!), fixture.authority, budget)
         script.assertDrained()
     }
 

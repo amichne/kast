@@ -1,13 +1,12 @@
 package io.github.amichne.kast.query.protocol
 
-import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.MAX_PROTOCOL_ITEMS
 import io.github.amichne.kast.protocol.contract.QueryCheckpointDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
-import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument
+import io.github.amichne.kast.protocol.contract.QueryCompletionRetentionFailure
 import io.github.amichne.kast.protocol.contract.QueryEvidenceCursor
 import io.github.amichne.kast.protocol.contract.QueryEvidenceWindowDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
@@ -15,9 +14,7 @@ import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryInvocationDocument
 import io.github.amichne.kast.protocol.contract.QueryInvocationStop
 import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
-import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
-import io.github.amichne.kast.protocol.contract.QueryPreparedCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryPreviewDocument
 import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryQuestionDocument
@@ -26,10 +23,8 @@ import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.QueryRetainedPresentationWindow
 import io.github.amichne.kast.protocol.contract.QueryRetentionModeDocument
-import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
-import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument
 import io.github.amichne.kast.query.contract.QueryContinuationState
 import io.github.amichne.kast.query.contract.QueryExecutionResult
@@ -139,24 +134,10 @@ internal class QueryInvocationProjection(
         }
 
         private fun admitCompletion(): Refinement<Unit, QueryPublishedPage> {
-            val completion =
-                request.completion as? QueryCompletionPolicyDocument.CompleteOnly ?: return Refinement.Refined(Unit)
             return when (val proof = completionProof(execution)) {
                 is Refinement.Refined -> proof
                 is Refinement.Rejected ->
-                    Refinement.Rejected(
-                        fitQueryCompletionRejection(
-                            rejectInvocationCompletion(
-                                completion,
-                                proof.failure,
-                                accumulated,
-                                progress,
-                                ::completionEvidence,
-                            ),
-                            policy.inlinePresentation,
-                            ::contractRejected,
-                        )
-                    )
+                    Refinement.Rejected(rejectCompletion(proof.failure, accumulated, ::completionEvidence))
             }
         }
 
@@ -168,12 +149,43 @@ internal class QueryInvocationProjection(
                 }
             }
 
+        private fun rejectCompletion(
+            failure: QueryCompletionFailure,
+            stopped: AccumulatedSymbolQuery,
+            capture: () -> Refinement<QueryCompletionEvidenceDocument, QueryRunRejection>,
+        ): QueryPublishedPage =
+            fitQueryCompletionRejection(
+                rejectInvocationCompletion(failure, stopped, progress, capture),
+                policy.inlinePresentation,
+                ::contractRejected,
+            )
+
         private fun presentRetained(
             evidence: QueryProjectedEvidence,
             window: QueryEvidenceWindowDocument,
         ): QueryPublishedPage =
             when (val retained = retain()) {
-                is Refinement.Refined -> present(evidence, retained.value, window)
+                is Refinement.Refined ->
+                    when (retained.value) {
+                        QueryResultIssuance.CapacityExceeded,
+                        QueryResultIssuance.Unavailable ->
+                            rejectCompletion(
+                                QueryCompletionFailure.Retention(
+                                    if (retained.value == QueryResultIssuance.CapacityExceeded)
+                                        QueryCompletionRetentionFailure.CAPACITY_EXCEEDED
+                                    else QueryCompletionRetentionFailure.UNAVAILABLE
+                                ),
+                                accumulated.copy(stop = QueryInvocationStop.RETENTION_FAILED),
+                            ) {
+                                completionQueryEvidence(retained, QueryQuestionDocument.from(request)) { issued ->
+                                    when (val selected = preview(issued)) {
+                                        is Refinement.Refined -> Refinement.Refined(selected.value.items)
+                                        is Refinement.Rejected -> selected
+                                    }
+                                }
+                            }
+                        else -> present(evidence, retained.value, window)
+                    }
                 is Refinement.Rejected -> OperationOutcome.Rejected(retained.failure)
             }
 
@@ -205,11 +217,10 @@ internal class QueryInvocationProjection(
                     presentationWindow = preview.window,
                     presentationOrigin = QueryKnownMinimum.parse(count).required(),
                 )
-            return coverage(
+            return OperationOutcome.Complete(
                 envelope.copy(
                     payload = envelope.payload.copy(invocation = preview.summary, evidenceWindow = evidenceWindow)
-                ),
-                preview.retention,
+                )
             )
         }
 
@@ -333,28 +344,6 @@ internal class QueryInvocationProjection(
                 )
             )
         }
-
-        private fun coverage(
-            envelope: EvidenceEnvelope<QueryRunResult>,
-            retention: QueryResultRetention,
-        ): QueryPublishedPage {
-            val failed = retention == QueryResultRetention.CapacityExceeded
-            if (execution is QueryExecutionResult.Complete && !failed) return OperationOutcome.Complete(envelope)
-            val limitations =
-                qualified?.coverage?.limitations.orEmpty().map { QueryLimitationDocument.valueOf(it.name) }.toSet() +
-                    if (failed) setOf(QueryLimitationDocument.RETENTION_LIMIT_REACHED) else emptySet()
-            val finalProgress =
-                if (failed) QueryQualifiedProgressDocument.RetentionUnavailable(invocationUpstreamCoverage(progress))
-                else progress ?: return contractRejected()
-            val qualification =
-                QueryRunQualification.create(
-                        QueryKnownMinimum.parse(count).required(),
-                        limitations.sortedBy { it.ordinal },
-                        finalProgress,
-                    )
-                    .required()
-            return OperationOutcome.Qualified(envelope, qualification)
-        }
     }
 
     private data class InvocationPreview(
@@ -387,13 +376,4 @@ private fun emptyInvocationRows(rows: QueryRows): QueryRows =
         is QueryRows.Bindings -> QueryRows.Bindings.of(emptyList(), rows.mode)
         is QueryRows.ValuePaths -> rows.selectRows(emptyList()).required()
         is QueryRows.ImpactWitness -> error("Invocation admitted presentation-only rows")
-    }
-
-private fun invocationUpstreamCoverage(progress: QueryQualifiedProgressDocument?): QueryPreparedCoverageDocument =
-    when (val original = progress) {
-        null -> QueryPreparedCoverageDocument.Complete
-        is QueryQualifiedProgressDocument.Resumable -> QueryPreparedCoverageDocument.Resumable
-        is QueryQualifiedProgressDocument.TerminalIncomplete ->
-            QueryPreparedCoverageDocument.TerminalIncomplete(original.reason)
-        is QueryQualifiedProgressDocument.RetentionUnavailable -> original.upstream
     }

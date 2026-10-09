@@ -21,6 +21,7 @@ import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryPresentationExecution
 import io.github.amichne.kast.query.protocol.CanonicalQueryProtocol
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
+import io.github.amichne.kast.query.protocol.executeQueryPage
 import io.github.amichne.kast.query.service.QueryNanoClock
 import io.github.amichne.kast.query.service.QueryService
 import io.github.amichne.kast.relation.contract.RelationBudget
@@ -70,7 +71,7 @@ class HostedImpactByteAdmissionTest {
         val f = Fixture()
         val response =
             QueryPresentationExecution.evaluateAndFit(
-                evaluate = { owner -> f.protocol(owner).execute(f.request(), f.symbols.authority, f.budget) },
+                evaluate = { owner -> f.protocol(owner).executeQueryPage(f.request(), f.symbols.authority, f.budget) },
                 fit = { page ->
                     encodeHostedQueryResponse(page, maximumBytes = ReturnedByteLimit.parse(10000).value())
                 },
@@ -220,7 +221,6 @@ class HostedImpactByteAdmissionTest {
                 QueryOutputDocument.ValuePaths,
                 QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
                 retention = QueryRetentionModeDocument.RETAIN,
-                completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
             )
     }
 }

@@ -1,17 +1,21 @@
 package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.QueryCompletionCoverageDocument
+import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionKindDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
+import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
@@ -33,6 +37,7 @@ import io.github.amichne.kast.query.contract.QueryTerminalReason
 import io.github.amichne.kast.query.contract.QueryWorkCount
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 
 internal open class AutomaticSymbolQueryCase {
     protected val fixture = RelationPagingFixture.published()
@@ -43,7 +48,6 @@ internal open class AutomaticSymbolQueryCase {
             bounded(emptyList()),
             output,
             QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-            completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
         )
     protected val budget =
         QueryBudget(
@@ -55,6 +59,22 @@ internal open class AutomaticSymbolQueryCase {
             QueryByteLimit.parse(100_000).refined(),
         )
     protected val row = QuerySymbol(SymbolDescription.from(fixture.selector), emptyList())
+
+    protected fun completionRejection(outcome: QueryPublishedPage): QueryRunRejection.CompletionUnproven =
+        assertInstanceOf(
+            QueryRunRejection.CompletionUnproven::class.java,
+            assertInstanceOf(OperationOutcome.Rejected::class.java, outcome).reason,
+        )
+
+    protected fun retainedEvidence(
+        rejection: QueryRunRejection.CompletionUnproven
+    ): QueryCompletionEvidenceDocument.Retained =
+        assertInstanceOf(QueryCompletionEvidenceDocument.Retained::class.java, rejection.evidence)
+
+    protected fun originalCoverage(
+        rejection: QueryRunRejection.CompletionUnproven
+    ): QueryCompletionCoverageDocument.Qualified =
+        assertInstanceOf(QueryCompletionCoverageDocument.Qualified::class.java, rejection.originalCoverage)
 
     protected fun policy(
         rows: Int = 100,

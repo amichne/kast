@@ -8,15 +8,8 @@ Retain results with `retention: "RETAIN"`, then combine their rows by exact symb
 
 ## Require a complete static answer
 
-Set `completion` on a `RUN` request to require completion in the selected compiler
-model:
-
-```json
-{
-  "type": "COMPLETE_ONLY",
-  "model": "COMPILER_RESOLVED_STATIC_V1"
-}
-```
+Every RUN requires a complete answer within `COMPILER_RESOLVED_STATIC_V1`.
+The original question records this fixed model. RUN has no completion selector.
 
 Automatic execution drains symbol, occurrence, traversal, and binding rows under
 one execution budget. A bounded preview can reference retained rows without
@@ -32,8 +25,7 @@ Unsupported outputs receive `COMPLETION_UNSUPPORTED`. An incomplete execution or
 unproven callback graph receives `COMPLETION_UNPROVEN`, preserving the original
 coverage and a retained evidence reference when storage admits it. Use
 `READ_RESULT` with that reference to inspect the proven prefix and its exact
-evidence. Storage failure is explicit in the rejection. Omitting `completion`
-keeps progressive execution and its existing qualifications.
+evidence. Storage failure is explicit in the rejection.
 Retained reads of rejected answers carry `POLICY_REJECTED_EVIDENCE`; inspecting
 their enumeration coverage does not reverse the model rejection. Original
 producer progress remains historical evidence. Policy recovery is `EVIDENCE_ONLY`.
@@ -210,13 +202,13 @@ For explicit source restrictions:
 
 Coverage applies to that domain. This current step does not change the recording's counts.
 
-## Resume work or inspect retained rows
+## Read produced output or retained rows
 
-`RESUME` advances unfinished execution. `READ_RESULT` presents stored rows without semantic work. A result cursor pages those rows. Neither paging nor composition erases original limitations.
+`RESUME` presents remaining produced output. `READ_RESULT` presents stored rows without semantic work. A result cursor pages those rows. Neither paging nor composition erases original limitations.
 
-<Accordion title="Requests: resume execution or read retained rows">
+<Accordion title="Requests: resume output or read retained rows">
   ```json
-  {"request":{"type":"RESUME","continuation":"<issued execution continuation>"}}
+  {"request":{"type":"RESUME","continuation":"<issued output continuation>"}}
   ```
 
   ```json
@@ -230,9 +222,8 @@ Coverage applies to that domain. This current step does not change the recording
   Recorded reads `08-read-a` and `09-read-c` returned ten symbols and one pair with their original result identities.
 </Accordion>
 
-### Observe a resumable result
-
-The recording's `12-bounded-symbols` returns one qualified row with `result-limit-reached` and resumable progress. `13-resume` returns the remaining row with complete coverage. Follow your own result's progress. Row count does not establish resumability.
+Semantic page continuations belong to the internal runner. A completion rejection
+retains proof for inspection; its historical checkpoint grants no execution.
 
 ### Reject an incomplete absence check
 

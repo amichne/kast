@@ -7,7 +7,6 @@ import io.github.amichne.kast.protocol.contract.ImpactAccountingStatusDocument
 import io.github.amichne.kast.protocol.contract.ImpactFindingDocument
 import io.github.amichne.kast.protocol.contract.ImpactWitnessDocument
 import io.github.amichne.kast.protocol.contract.ImpactWitnessSectionDocument
-import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
@@ -44,17 +43,18 @@ class ImpactFindingPresentationTest {
                     )
             )
         val first =
-            protocol.execute(
+            protocol.executePage(
                 QueryRunRequest.ReadResult.impactWitness(fixture.reference, ImpactWitnessSectionDocument.FINDINGS),
                 fixture.symbols.authority,
                 budget,
-            ) as OperationOutcome.Qualified
-        assertTrue(QueryLimitationDocument.RESULT_LIMIT_REACHED in first.qualification.limitations)
+            ) as OperationOutcome.Complete
+        assertEquals(1, first.evidence.payload.items.values.size)
+        assertEquals(1, first.evidence.payload.nextCursor!!.value)
         val original = fixture.readWitness(protocol, ImpactWitnessSectionDocument.FINDINGS).evidence.payload
         val pages =
             (0..1).map { cursor ->
                 protocol
-                    .execute(
+                    .executePage(
                         QueryRunRequest.ReadResult.impactWitness(
                             fixture.reference,
                             ImpactWitnessSectionDocument.FINDINGS,
@@ -188,7 +188,7 @@ class ImpactFindingPresentationTest {
         cursor: Int = 0,
     ): List<QueryResultItemDocument.ValuePath> =
         protocol
-            .execute(
+            .executePage(
                 QueryRunRequest.ReadResult.valuePaths(fixture.reference, QueryResultCursor.parse(cursor).value()),
                 fixture.symbols.authority,
                 fixture.budget,

@@ -262,7 +262,6 @@ class QueryProducerPayloadReleaseTest {
                 bounded(emptyList()),
                 QueryOutputDocument.Symbols(bounded(emptyList())),
                 QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-                completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
             )
         lateinit var checkpoint: QueryCheckpoint
         val page =
@@ -281,7 +280,7 @@ class QueryProducerPayloadReleaseTest {
                     },
                     CanonicalQueryReferences(),
                 )
-                .execute(
+                .executePage(
                     request,
                     lease,
                     QueryBudget(

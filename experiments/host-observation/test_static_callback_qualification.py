@@ -32,12 +32,11 @@ class StaticCallbackQualificationTest(unittest.TestCase):
     def setUp(self):
         self.suite = oracle.load_oracle(HERE / 'static-callback-fixture')
 
-    def test_strict_rooted_request_has_exact_policy_and_workspace_expansion(self):
+    def test_rooted_request_uses_fixed_policy_and_workspace_expansion(self):
         symbol = self.suite.complete_cases[0].supply.supplier
         request = q.static_request(symbol, q.Budget(maxResults=1), self.suite.root)
         encoded = json.loads(json.dumps(request))
-        self.assertEqual('COMPLETE_ONLY', encoded['request']['completion']['type'])
-        self.assertEqual('COMPILER_RESOLVED_STATIC_V1', encoded['request']['completion']['model'])
+        self.assertNotIn('completion', encoded['request'])
         self.assertEqual([{'type': 'EXPAND_RELATION', 'relation': 'CALLEES',
                            'expansionScope': {'type': 'WORKSPACE'}}], encoded['request']['steps'])
         self.assertEqual({'type': 'AT_LOCATION', 'file': 'suppliers/src/main/kotlin/fixture/staticcallbacks/suppliers/Suppliers.kt',

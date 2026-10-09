@@ -4,10 +4,8 @@ import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.protocol.contract.QueryCompletionCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
-import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryInvocationStop
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
-import io.github.amichne.kast.protocol.contract.QueryStaticModelDocument
 import io.github.amichne.kast.query.contract.AdmittedQueryPlan
 import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryCheckpointPartialSymbols
@@ -30,20 +28,15 @@ internal class CompleteOnlyCheckpointRecoveryTest : AutomaticSymbolQueryCase() {
     @Test
     fun `strict work rejection exposes checkpoint proof without execution count inflation or replay`() = runTest {
         val script = BlockingScript()
-        val strict =
-            request.copy(
-                completion =
-                    QueryCompletionPolicyDocument.CompleteOnly(QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1)
-            )
+        val strict = request
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
-        val result =
-            protocol.executeAutomatically(strict, fixture.authority, budget, policy()) as OperationOutcome.Rejected
+        val result = protocol.execute(strict, fixture.authority, budget, policy()) as OperationOutcome.Rejected
         val rejection = result.reason as QueryRunRejection.CompletionUnproven
         assertEquals(QueryInvocationStop.WORK_LIMIT, rejection.stop)
         assertEquals(0, (rejection.originalCoverage as QueryCompletionCoverageDocument.Qualified).knownMinimum.value)
         val retained = rejection.evidence as QueryCompletionEvidenceDocument.Retained
         assertEquals(1, retained.preview.values.size, "Proven terminal group must be recoverable")
-        val read = protocol.execute(retained.readRequest(), fixture.authority, budget) as OperationOutcome.Qualified
+        val read = protocol.executePage(retained.readRequest(), fixture.authority, budget) as OperationOutcome.Qualified
         assertEquals(1, read.evidence.payload.items.values.size)
         assertTrue(
             read.qualification.limitations.contains(
@@ -54,11 +47,11 @@ internal class CompleteOnlyCheckpointRecoveryTest : AutomaticSymbolQueryCase() {
     }
 
     @Test
-    fun `progressive work page keeps hidden grouping facts out of emitted rows`() = runTest {
+    fun `internal work page keeps hidden grouping facts out of emitted rows`() = runTest {
         val script = BlockingScript()
         val result =
             CanonicalQueryProtocol(script.operations, fixture.references)
-                .executeAutomatically(request, fixture.authority, budget, policy()) as OperationOutcome.Qualified
+                .executePage(request, fixture.authority, budget) as OperationOutcome.Qualified
         assertTrue(result.evidence.payload.items.values.isEmpty())
         assertEquals(0, result.qualification.knownMinimum.value)
         script.assertDrained()

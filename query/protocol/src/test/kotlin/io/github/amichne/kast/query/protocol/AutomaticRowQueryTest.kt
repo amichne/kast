@@ -79,7 +79,7 @@ internal class AutomaticRowQueryTest : AutomaticSymbolQueryCase() {
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
         val result =
             protocol
-                .executeAutomatically(
+                .execute(
                     request.copy(output = QueryOutputDocument.Occurrences),
                     fixture.authority,
                     budget,
@@ -90,7 +90,7 @@ internal class AutomaticRowQueryTest : AutomaticSymbolQueryCase() {
         assertEquals(2, result.evidence.payload.invocation!!.accumulatedRowCount)
         val ref = (result.evidence.payload.retention as QueryResultRetention.Retained).reference
         val tail =
-            protocol.execute(
+            protocol.executePage(
                 QueryRunRequest.ReadResult.occurrences(ref, result.evidence.payload.nextCursor!!),
                 fixture.authority,
                 budget,
@@ -117,14 +117,13 @@ internal class AutomaticRowQueryTest : AutomaticSymbolQueryCase() {
         val joinedRequest = bindingRequest(state)
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references, state)
         val result =
-            protocol
-                .executeAutomatically(joinedRequest, fixture.authority, budget, policy(1, retainedBytes = 128_000_000))
-                .also { assertInstanceOf(OperationOutcome.Complete::class.java, it, it.toString()) }
-                as OperationOutcome.Complete
+            protocol.execute(joinedRequest, fixture.authority, budget, policy(1, retainedBytes = 128_000_000)).also {
+                assertInstanceOf(OperationOutcome.Complete::class.java, it, it.toString())
+            } as OperationOutcome.Complete
         assertEquals(2, result.evidence.payload.invocation!!.accumulatedRowCount)
         val reference = (result.evidence.payload.retention as QueryResultRetention.Retained).reference
         val tail =
-            protocol.execute(
+            protocol.executePage(
                 QueryRunRequest.ReadResult.bindingRows(reference, result.evidence.payload.nextCursor!!),
                 fixture.authority,
                 budget,
@@ -154,11 +153,10 @@ internal class AutomaticRowQueryTest : AutomaticSymbolQueryCase() {
         val joinedRequest = bindingRequest(state)
         val result =
             CanonicalQueryProtocol(script.operations, fixture.references, state)
-                .executeAutomatically(joinedRequest, fixture.authority, budget, policy(retainedBytes = 128_000_000))
-                .also { assertInstanceOf(OperationOutcome.Qualified::class.java, it, it.toString()) }
-                as OperationOutcome.Qualified
-        assertEquals(QueryInvocationStop.INVALID_STATE, result.evidence.payload.invocation!!.stop)
-        assertEquals(1, result.evidence.payload.invocation!!.accumulatedRowCount)
+                .execute(joinedRequest, fixture.authority, budget, policy(retainedBytes = 128_000_000))
+        val rejection = completionRejection(result)
+        assertEquals(QueryInvocationStop.INVALID_STATE, rejection.stop)
+        assertEquals(1, retainedEvidence(rejection).preview.values.size)
         script.assertDrained()
     }
 
@@ -205,7 +203,7 @@ internal class AutomaticRowQueryTest : AutomaticSymbolQueryCase() {
             }
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
         val complete =
-            protocol.executeAutomatically(
+            protocol.execute(
                 request.copy(output = QueryOutputDocument.Occurrences),
                 fixture.authority,
                 budget,
@@ -221,11 +219,11 @@ internal class AutomaticRowQueryTest : AutomaticSymbolQueryCase() {
                 QueryResultCursor.parse(2).refined(),
                 evidenceCursor = payload.evidenceWindow!!.nextCursor,
             )
-        val evidence = protocol.execute(read, fixture.authority, budget) as OperationOutcome.Complete
+        val evidence = protocol.executePage(read, fixture.authority, budget) as OperationOutcome.Complete
         assertTrue(evidence.evidence.payload.items.values.isEmpty())
         assertEquals(2, evidence.evidence.payload.relationObservations.values.size)
         assertNull(evidence.evidence.payload.evidenceWindow!!.nextCursor)
-        assertEquals(evidence, protocol.execute(read, fixture.authority, budget))
+        assertEquals(evidence, protocol.executePage(read, fixture.authority, budget))
         script.assertDrained()
     }
 
@@ -245,12 +243,12 @@ internal class AutomaticRowQueryTest : AutomaticSymbolQueryCase() {
             )
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
         val complete =
-            protocol.executeAutomatically(input, fixture.authority, budget, policy(1, retainedBytes = 128_000_000))
+            protocol.execute(input, fixture.authority, budget, policy(1, retainedBytes = 128_000_000))
                 as OperationOutcome.Complete
         assertEquals(2, complete.evidence.payload.invocation!!.accumulatedRowCount)
         val reference = (complete.evidence.payload.retention as QueryResultRetention.Retained).reference
         val read =
-            protocol.execute(
+            protocol.executePage(
                 QueryRunRequest.ReadResult.traversalRecords(reference, complete.evidence.payload.nextCursor!!),
                 fixture.authority,
                 budget,

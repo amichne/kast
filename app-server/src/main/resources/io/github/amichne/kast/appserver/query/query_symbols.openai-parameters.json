@@ -903,17 +903,6 @@
               "type": "null"
             }
           ]
-        },
-        "completion": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/CompletionPolicy"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Omission or null selects COMPLETE_ONLY within COMPILER_RESOLVED_STATIC_V1. Request PROGRESSIVE explicitly for qualified investigation. Unsupported or unproven strict answers reject with typed evidence."
         }
       },
       "required": [
@@ -922,8 +911,7 @@
         "steps",
         "output",
         "retention",
-        "executionBudget",
-        "completion"
+        "executionBudget"
       ],
       "additionalProperties": false,
       "description": "Run a query from the supplied source and ordered steps. Retain the completed result only when requested."
@@ -957,7 +945,7 @@
         "executionBudget"
       ],
       "additionalProperties": false,
-      "description": "Continue the saved query execution without resending or rediscovering its completed prefix."
+      "description": "Read the remaining output of a completed query through its issued output continuation."
     },
     "ReadResultAction": {
       "type": "object",
@@ -1025,8 +1013,8 @@
     },
     "ExecutionContinuation": {
       "type": "string",
-      "pattern": "^(?:query|query-output):v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-      "description": "Issued execution continuation for an unfinished query pipeline or retained transport output. Copy verbatim. A retained-result reference cannot resume execution."
+      "pattern": "^query-output:v1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "description": "Issued continuation for remaining output of a completed query. Pipeline execution continuations are internal."
     },
     "BindingName": {
       "type": "string",
@@ -4840,53 +4828,6 @@
       ],
       "additionalProperties": false,
       "description": "Read the exact source range of an issued callback, occurrence, or declaration candidate. The existing source owner validates authority and freshness; this does not execute a query."
-    },
-    "CompletionPolicy": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/ProgressiveCompletion"
-        },
-        {
-          "$ref": "#/$defs/CompleteOnlyCompletion"
-        }
-      ]
-    },
-    "ProgressiveCompletion": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "PROGRESSIVE"
-          ]
-        }
-      },
-      "required": [
-        "type"
-      ],
-      "additionalProperties": false
-    },
-    "CompleteOnlyCompletion": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "COMPLETE_ONLY"
-          ]
-        },
-        "model": {
-          "type": "string",
-          "enum": [
-            "COMPILER_RESOLVED_STATIC_V1"
-          ]
-        }
-      },
-      "required": [
-        "type",
-        "model"
-      ],
-      "additionalProperties": false
     },
     "Trace": {
       "type": "object",

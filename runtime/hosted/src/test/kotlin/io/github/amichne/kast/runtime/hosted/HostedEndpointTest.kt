@@ -51,7 +51,6 @@ class HostedEndpointTest {
                 bounded(emptyList()),
                 QueryOutputDocument.Symbols(bounded(emptyList())),
                 QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-                completion = io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Progressive,
             )
         val canonical =
             (CanonicalOperationWireBindings.queryRun.encodeRequest(request) as WireEncoding.Encoded).document

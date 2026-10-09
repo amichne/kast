@@ -31,6 +31,7 @@ import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocume
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -75,6 +76,36 @@ class CompletionRecoverySchemaTest {
             val evidence =
                 document.getValue("rejection").jsonObject.getValue("detail").jsonObject.getValue("evidence").jsonObject
             assertEquals(cause.name, evidence.getValue("cause").toString().trim('"'))
+        }
+    }
+
+    @Test
+    fun `storage failure rejects output while preserving completed enumeration in installed schema`() {
+        for (failure in QueryCompletionRetentionFailure.entries) {
+            val rejection =
+                QueryRunRejection.CompletionUnproven(
+                    QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1,
+                    QueryCompletionCauseDocument.RetentionUnavailable(failure),
+                    QueryCompletionCoverageDocument.Complete,
+                    QueryInvocationStop.RETENTION_FAILED,
+                    QueryCompletionEvidenceDocument.Unavailable(failure),
+                )
+            val document =
+                (CanonicalQueryCliDocuments.project(OperationOutcome.Rejected(rejection))
+                        as ProjectedOperationOutcome.Rejected)
+                    .document
+                    .let { Json.parseToJsonElement(it.value).jsonObject }
+            schemas.assertAdmits(CanonicalOperation.QUERY_RUN, document)
+            val detail = document.getValue("rejection").jsonObject.getValue("detail").jsonObject
+            val cause = detail.getValue("cause").jsonObject
+            assertEquals(setOf("type", "failure"), cause.keys)
+            assertEquals("RETENTION_UNAVAILABLE", cause.getValue("type").jsonPrimitive.content)
+            assertEquals(failure.name, cause.getValue("failure").jsonPrimitive.content)
+            assertEquals(
+                "COMPLETE",
+                detail.getValue("originalCoverage").jsonObject.getValue("type").jsonPrimitive.content,
+            )
+            assertEquals("RETENTION_FAILED", detail.getValue("stop").jsonPrimitive.content)
         }
     }
 
