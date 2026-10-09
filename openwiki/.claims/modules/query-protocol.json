@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:12994508ba5d8bb58ee263544666d8c91e67851debef9cda7364277e2b04f149",
+  "pageVersion": "sha256:2489ed376032ee413871d90f53cbfef98240903b770c7e9bf1cff567f8999cb0",
   "claims": [
     {
       "id": "claim_b9727187adfc4e2c9be8e3a620b37051",
@@ -116,7 +116,7 @@
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt",
-          "version": "repo-file-v1:sha256:8f144454f104fd444ef8f8be2a256b30e437652a6d4dceaed38933faaed65c34"
+          "version": "repo-file-v1:sha256:1db0b5bfaacb4c490816b541b72cfc880b65f42eeed2ebabf726176f8484198f"
         }
       ]
     },
@@ -323,6 +323,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-09T02:50:46.064Z"
+    "at": "2026-10-09T14:48:51.708Z"
   }
 }

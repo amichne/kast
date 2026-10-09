@@ -56,7 +56,7 @@ def path_checks(path: str) -> frozenset[Check]:
         path.startswith("docs/public/") and path.endswith(".mdx")
         and not path.startswith("docs/public/images/")
     ):
-        return frozenset({Check.DOCUMENTATION})
+        return PRODUCT_CHECKS | {Check.DOCUMENTATION}
     if (path.startswith("packaging/") or path in {"install.sh", "README.md"}
             or (path.endswith(".kt") and any(
                 source_set in path for source_set in ("/src/main/kotlin/", "/src/test/kotlin/")

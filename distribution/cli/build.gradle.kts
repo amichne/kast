@@ -60,6 +60,12 @@ graalvmNative {
             fallback.set(false)
             buildArgs.add("--no-fallback")
             buildArgs.add("-H:IncludeResources=management/bootstrap-install.sh")
+            if (providers.gradleProperty("kastNativeBuildMetrics").orNull == "true") {
+                val metrics = rootProject.layout.buildDirectory.file("reports/native/build-output.json")
+                buildArgs.add("-H:+UnlockExperimentalVMOptions")
+                buildArgs.add(metrics.map { "-H:BuildOutputJSONFile=${it.asFile.absolutePath}" })
+                buildArgs.add("-H:-UnlockExperimentalVMOptions")
+            }
         }
     }
 }

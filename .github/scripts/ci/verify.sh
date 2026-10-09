@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Manual release candidate build: exact source plus resolved version in, publishable artifacts out.
+# Exact candidate build: exact source plus resolved version in, publishable artifacts out.
 set -euo pipefail
 
 version=""
@@ -32,5 +32,9 @@ if git symbolic-ref -q HEAD >/dev/null; then
 fi
 export JAVA_HOME="${KAST_RELEASE_JDK_25:?Set KAST_RELEASE_JDK_25 to a Java 25 home}"
 unset KAST_RELEASE_JDK_25
-bash .github/scripts/release/build-assets.sh --version "$version" --source-revision "$sha"
+mkdir -p build/reports/native
+python3 .github/scripts/ci/build_execution.py \
+  --report build/reports/ci/build-execution.json \
+  --native-report build/reports/native/build-output.json -- \
+  bash .github/scripts/release/build-assets.sh --version "$version" --source-revision "$sha"
 printf '%s\n' "release-candidate: built v${version} from ${sha}"

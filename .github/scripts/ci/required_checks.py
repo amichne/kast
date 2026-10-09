@@ -17,9 +17,8 @@ def inspect(needs: dict) -> Verdict:
     if scope.get("result") != "success":
         return Verdict.SELECTOR_FAILED
     outputs = scope.get("outputs", {})
-    if (outputs.get("gate_graph") not in {"run", "skip"}
-            or (outputs.get("gate_graph") == "run" and outputs.get("product") != "run")
-            or not any(outputs.get(check) == "run" for check in ("product", "portable", "documentation"))):
+    if (outputs.get("product") != "run" or outputs.get("portable") != "run"
+            or outputs.get("gate_graph") not in {"run", "skip"}):
         return Verdict.INVALID_SELECTION
     for check, job in (("product", "kotlin"), ("portable", "portable"), ("documentation", "documentation")):
         decision = outputs.get(check)

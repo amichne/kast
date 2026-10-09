@@ -33,6 +33,7 @@ def main() -> None:
     run(["python3", "distribution/release/test_ci_candidate.py"], environment)
     run(["python3", "distribution/release/test_verify_environment.py"], environment)
     run(["python3", ".github/scripts/ci/test_routine_gate.py"], environment)
+    run(["python3", ".github/scripts/ci/test_build_execution.py"], environment)
     if args.gate_graph == "run":
         run(["python3", ".github/scripts/ci/routine_gate.py"], environment)
     else:

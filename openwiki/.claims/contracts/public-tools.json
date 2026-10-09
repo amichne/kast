@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e8ed66b5e060f7789d75f6a99b1efd483ddb98a980bb003ffc2753d14168083c",
+  "pageVersion": "sha256:4be5653d1cbe0fe7ad3956e1e4b04dcc453b0ce9cb9ec45ceef336b3114804da",
   "claims": [
     {
       "id": "claim_d5f49799d6a64a78a95f34b3ba0fa09a",
@@ -174,7 +174,7 @@
         },
         {
           "resource": "repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt",
-          "version": "repo-file-v1:sha256:063d63c8ccd3a761e3912b19dd07bdab1854ed7281de196e6b3045179eddb1c8"
+          "version": "repo-file-v1:sha256:587762fa32a4c0ea29b602aea5f56e918d2d7966b940dd0be76bb5633cf1336b"
         }
       ]
     },
@@ -257,6 +257,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-09T02:50:46.064Z"
+    "at": "2026-10-09T14:48:51.708Z"
   }
 }

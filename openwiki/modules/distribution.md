@@ -171,6 +171,18 @@ code_sources:
   - path: build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt
     symbols: [GenerateComponentReleaseTask]
 sources:
+  - id: openwiki-source-3b28c686cbf92ac682eb5142
+    resource: repo://.github/scripts/ci/build_execution.py
+  - id: openwiki-source-27e9613cc8767d52b5cfe287
+    resource: repo://.github/scripts/ci/required_checks.py
+  - id: openwiki-source-8c864abdf1b09fa67b48adbc
+    resource: repo://.github/scripts/release/build_candidate.py
+  - id: openwiki-source-a2d04ca5ecb15353e5b16b35
+    resource: repo://.github/scripts/release/publish-developer.sh
+  - id: openwiki-source-164e2da859b5277df81c7d94
+    resource: repo://.github/workflows/ci.yml
+  - id: openwiki-source-804f227d6f0416062f3436fe
+    resource: repo://.github/workflows/developer-release.yml
   - id: openwiki-source-16803a9d8df1ded50a107e29
     resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt
   - id: openwiki-source-2a9daaac1604f238ef4c63fb
@@ -179,8 +191,12 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationRecovery.kt
   - id: openwiki-source-82001d1847d4403e8e24787a
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt
+  - id: openwiki-source-211f90f77f217ad3273b0d4f
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt
   - id: openwiki-source-8f4d86f42434fcc1ce269879
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
+  - id: openwiki-source-e98296a26c7cb717460f6f68
+    resource: repo://distribution/cli/build.gradle.kts
   - id: openwiki-source-bae14a3ed4bc7ba21f443356
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt
   - id: openwiki-source-6f0b647814adafaaa5d5c5f2
@@ -229,10 +245,10 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-10-08T01:13:49.481Z" }
+generated: { by: "codex", at: "2026-10-09T14:48:51.708Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-08T02:31:16.815Z
+    at: 2026-10-09T15:05:31.379Z
 ---
 
 # Distribution and packaging
@@ -259,18 +275,13 @@ Codex registration requires the explicit `mcp` or `app-server` transport. MCP ow
 
 The public installer renders progress, activation qualifications, and finite failure details for people. `--verbose` retains full child JSON reports and diagnostics. Native upgrades retain the private installation report on disk without printing it by default.
 
-CI selects checks on Linux before allocating product runners. Independent public MDX pages and Mintlify navigation run only documentation validation, for both pull requests and complete before/head push ranges. Installer-linked pages and the generated callable reference retain product, portable, and documentation checks. Conventional Kotlin sources and packaging inputs retain the product and portable checks without Mintlify validation or the separate Gradle graph-membership dry run. Build wiring, unclassified paths, uncertain diffs, and manual CI dispatch retain every check. The stable completion job requires every selected job to succeed and permits only explicitly planned skips. Documentation validation is a reusable workflow with its manual dispatch retained. When product validation is selected, main CI runs preflight checks, then builds and retains one exact next-patch release candidate with the product gate at that version. Full pull-request CI and pre-push fetch the published release catalog anew for each gate invocation, select its highest stable semantic version, and pass that version to the checkout build. Missing release authority rejects without a local-tag or placeholder fallback. Exact release-candidate builds retain their explicitly resolved candidate version. CI retains Gradle profile reports from full pull-request gates and main candidate builds for task timing review. The product job restores Gradle's local task-output cache; main and same-repository pull requests save new entries, while fork pull requests only restore entries. Release reuses the main candidate only when its version and source revision match the requested release, the producing main-push CI run completed successfully, and the asset inventory, checksums, and SBOM source/archive identities validate. An active exact-source main CI run yields `PENDING` when no successful exact candidate is available; the release attempt exits before fallback construction and can be retried after CI completes. Producer state is observed before artifacts so a run completing between observations may supply its candidate without a rebuild. This is conservative observation, not a lock against future runs. A missing candidate follows the existing exact-version build gate only when no active producer was observed; incomplete observations, unsupported workflow states, and invalid candidates reject. Minor and major releases use that build path unless a matching candidate exists. The release workflow retains the admitted candidate before publishing.
+CI selects documentation and graph checks on Linux before allocating product runners. Every PR runs product and portable validation, including documentation-only changes. The completion job requires every selected job to succeed. One product invocation tests and assembles the complete Control/Host pair at `0.0.<CI run number>`. Pre-push retains its published stable-version admission independently.
 
-An explicitly dispatched developer workflow runs only from `main` and builds
-that dispatch's exact commit through the
-same product gate with a unique `0.0.<build>` version. Its read-only build job
-retains the candidate; a separate trusted publication job validates the asset
-inventory, checksums, and SBOM source identity before creating an immutable
-developer prerelease. The public `developer-latest` branch contains a
-mutable pointer to that exact prerelease and source revision. The installer
-accepts `--developer-latest` to resolve the pointer before downloading and
-verifying the versioned control and IDEA plugin assets. Stable release version
-resolution ignores developer tags.
+The candidate's typed identity record retains the exact build commit, Git tree, producer run and attempt, platform, toolchain, and payload digests. Main CI reuses a successful same-repository PR candidate only when the PR head tree equals the merged main tree. Missing or expired records, fork producers, and changed trees require a fresh main candidate. Malformed records, damaged bytes, and incomplete observations reject reuse. Candidate retention is 30 days.
+
+Successful main CI triggers developer publication. Its trusted publication job downloads retained bytes without running Gradle or native-image. A separate promotion record binds the unchanged candidate to the successful main run and merged commit. The publisher rechecks producer success, complete asset inventory, checksums, source identity, and remote file digests. Existing releases must match exactly for retries. A delayed publisher can retain its immutable release but cannot update latest after main advances. The public `developer-latest` branch contains a pointer to the exact prerelease and original build revision. The installer accepts `--developer-latest`; stable version resolution ignores developer tags. Manual publication retries supply the successful current-main CI run ID.
+
+The product job restores Gradle task outputs and native reachability metadata. Main and same-repository PRs save cache entries; forks only restore trusted entries. A repository secret enables encrypted configuration-cache storage and is unavailable to fork PRs. CI pins GraalVM 25.0.2 and retains native analysis/resource metrics, finite build outcome records, and Gradle profile reports for matched comparisons. Native optimization remains unchanged. Stable full and component releases retain explicit versions that affect compiled bytes, so a different version requires another build. The existing stable release path rejects active producers before falling back to exact-version construction.
 
 The public installer reports the selected IDEA product version and build before
 fetching release-line-specific plugin bytes. An absent matching plugin is a

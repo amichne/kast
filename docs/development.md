@@ -154,10 +154,9 @@ packages or the interpreter search path retained by an existing Gradle daemon.
 
 Install the repository's pre-push gate once per Git clone. It preserves other
 hooks and runs `productBuildGate` on a clean checked-out commit before a push.
-Pre-push and routine PR CI fetch the published GitHub release catalog on every
-invocation and build the checkout with the highest stable semantic version. They
-require authenticated `gh` access and fail if the catalog is unavailable or has no
-published stable version. Local tags and a previous gate run cannot supply a fallback:
+Pre-push fetches the published GitHub release catalog on every invocation.
+It builds the checkout with the highest stable semantic version.
+It requires authenticated `gh` access and fails if the catalog is unavailable or has no published stable version. Local tags and a previous gate run cannot supply a fallback:
 
 ```shell
 ./.githooks/install.sh
@@ -170,10 +169,54 @@ the current checkout with that version; it does not download or validate release
 binaries. Exact release-candidate builds continue to pass their intended version
 explicitly.
 
-After a change reaches `main`, publish its tested artifacts before a stable
-release with `gh workflow run developer-release.yml --ref main`. The public
-installer's `--developer-latest` flag selects the immutable build named by the
-channel pointer.
+## CI candidates and developer publication
+
+Every PR builds and tests one complete Control/Host pair, including documentation-only PRs.
+CI fixes the candidate version to `0.0.<CI run number>` before compilation.
+Retries retain that version and record the producer attempt separately.
+The identity record retains the full run ID; the version uses an installer-compatible integer.
+The candidate contains the installable payload and a typed identity record.
+The record retains the build commit, Git tree, toolchain, platform, and every file digest.
+CI retains candidates for 30 days.
+
+After merge, main CI searches successful runs for the merged PR's exact head.
+It reuses a same-repository candidate only when its complete Git tree matches merged `main`.
+The candidate retains its original commit and version.
+Missing or expired candidates, changed trees, and fork producers require a fresh main build.
+Malformed records, damaged payloads, and incomplete observations reject reuse.
+
+Successful main CI triggers developer publication automatically.
+Publication downloads the retained candidate and runs no Gradle or native-image build.
+A separate promotion record binds the build commit to the merged commit and successful main run.
+The immutable developer release contains both records.
+If main advances before publication, the publisher retains the existing latest pointer.
+The public installer's `--developer-latest` flag selects the build named by that pointer.
+
+To retry publication for current main, supply its successful CI run ID:
+
+```shell
+gh workflow run developer-release.yml --ref main -f run_id=<successful-main-CI-run-ID>
+```
+
+The publisher verifies the source and producer again.
+An existing release must retain the same source and exact file digests.
+A failed producer or expired artifact cannot authorize publication.
+Older candidates without the identity record require a fresh main build.
+
+Stable full and component releases retain their explicit semantic versions.
+Those versions currently change compiled Kotlin, the native executable, and plugin metadata.
+A different release version therefore requires a separate build.
+Developer promotion never renames or edits a tested payload.
+
+CI pins GraalVM 25.0.2 and retains Gradle task outputs plus the native reachability-metadata repository.
+The repository secret `GRADLE_ENCRYPTION_KEY` enables encrypted configuration-cache storage.
+Fork workflows do not receive the key.
+Native-image builds retain structured analysis and resource metrics in `build/reports/native/build-output.json`.
+The process adapter records success, process failure, execution refusal, or missing metrics in `build/reports/ci/build-execution.json`.
+Failed builds cannot claim successful native metrics.
+Gradle profiles remain in `build/reports/profile`.
+These reports support comparisons on matched source, toolchain, options, and runner capacity.
+The native-image optimization level remains unchanged.
 
 ```shell
 ./gradlew build
