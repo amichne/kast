@@ -26,6 +26,9 @@ interface CallbackSummaryCachePort {
     /** Called after request retention and supplier-specific semantic admission both succeed. */
     fun admitted(summary: CallbackParameterSummary)
 
+    /** Called inside the native attempt's finally block, including cancellation and preemption. */
+    fun finishNativeRead() = Unit
+
     data object Disabled : CallbackSummaryCachePort {
         override fun find(
             formal: CallbackParameterIdentity,
@@ -43,6 +46,11 @@ fun interface CallbackSummaryCachePreparationPort {
     fun prepare(
         request: RelationRequest,
         remaining: io.github.amichne.kast.kernel.ResourceBudget,
+        currentBudget:
+            () -> io.github.amichne.kast.kernel.Refinement<
+                    io.github.amichne.kast.kernel.ResourceBudget,
+                    io.github.amichne.kast.kernel.PositiveLimitFailure,
+                >,
         charge: (RelationWorkCount) -> Unit,
     ): CallbackSummaryCachePort
 
@@ -50,6 +58,11 @@ fun interface CallbackSummaryCachePreparationPort {
         override fun prepare(
             request: RelationRequest,
             remaining: io.github.amichne.kast.kernel.ResourceBudget,
+            currentBudget:
+                () -> io.github.amichne.kast.kernel.Refinement<
+                        io.github.amichne.kast.kernel.ResourceBudget,
+                        io.github.amichne.kast.kernel.PositiveLimitFailure,
+                    >,
             charge: (RelationWorkCount) -> Unit,
         ) = CallbackSummaryCachePort.Disabled
     }

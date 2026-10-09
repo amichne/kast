@@ -16,7 +16,7 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 
 /** Full workspace supplier universe, including absence; never narrowed to the formal's dependency closure. */
 internal class HostedCallbackSupplierFacts(
-    private val snapshot: SemanticDependencySnapshot,
+    private val snapshot: () -> HostedCallbackPartition,
     private val store: SemanticCallbackFactStore,
     private val observation: IntellijReadObservation,
 ) : CallbackSupplierCachePort {
@@ -24,11 +24,16 @@ internal class HostedCallbackSupplierFacts(
         root: CallbackParameterIdentity,
         domain: RelationScopeFingerprint,
         readmit: (CompleteCallbackSupplierInventory) -> CallbackReadmission<CompleteCallbackSupplierInventory>,
-    ): CallbackSupplierCacheLookup =
-        when (val cached = store.findSuppliers(snapshot, root, domain)) {
+    ): CallbackSupplierCacheLookup {
+        val current =
+            when (val admitted = snapshot()) {
+                is HostedCallbackPartition.Available -> admitted.snapshot
+                is HostedCallbackPartition.Rejected -> return CallbackSupplierCacheLookup.Miss
+            }
+        return when (val cached = store.findSuppliers(current, root, domain)) {
             SemanticCallbackSupplierLookup.Missing -> CallbackSupplierCacheLookup.Miss
             is SemanticCallbackSupplierLookup.Current -> CallbackSupplierCacheLookup.Found(cached.inventory)
-            is SemanticCallbackSupplierLookup.Reusable -> restore(root, domain, readmit(cached.previous))
+            is SemanticCallbackSupplierLookup.Reusable -> restore(current, root, domain, readmit(cached.previous))
             is SemanticCallbackSupplierLookup.Invalidated -> {
                 observation.count(IntellijReadCounter.SEMANTIC_FACT_PARTITIONS_INVALIDATED)
                 observation.count(IntellijReadCounter.SEMANTIC_FACT_SUPPLIER_INVENTORIES_INVALIDATED)
@@ -40,8 +45,10 @@ internal class HostedCallbackSupplierFacts(
                 CallbackSupplierCacheLookup.Miss
             }
         }
+    }
 
     private fun restore(
+        current: SemanticDependencySnapshot,
         root: CallbackParameterIdentity,
         domain: RelationScopeFingerprint,
         restored: CallbackReadmission<CompleteCallbackSupplierInventory>,
@@ -58,7 +65,7 @@ internal class HostedCallbackSupplierFacts(
             observation.count(IntellijReadCounter.SEMANTIC_FACT_DEPENDENCY_REJECTIONS)
             return CallbackSupplierCacheLookup.Miss
         }
-        return when (publish(inventory)) {
+        return when (publish(current, inventory)) {
             SemanticCallbackPublication.Published,
             SemanticCallbackPublication.CapacityExceeded -> CallbackSupplierCacheLookup.Found(inventory)
             is SemanticCallbackPublication.Rejected -> CallbackSupplierCacheLookup.Miss
@@ -66,9 +73,14 @@ internal class HostedCallbackSupplierFacts(
     }
 
     override fun retain(inventory: CompleteCallbackSupplierInventory) {
+        val current =
+            when (val admitted = snapshot()) {
+                is HostedCallbackPartition.Available -> admitted.snapshot
+                is HostedCallbackPartition.Rejected -> return
+            }
         observation.count(IntellijReadCounter.SEMANTIC_FACT_PARTITIONS_EXTRACTED)
         observation.count(IntellijReadCounter.SEMANTIC_FACT_SUPPLIER_INVENTORIES_EXTRACTED)
-        publish(inventory)
+        publish(current, inventory)
     }
 
     override fun admitted(inventory: CompleteCallbackSupplierInventory) {
@@ -76,8 +88,11 @@ internal class HostedCallbackSupplierFacts(
         observation.count(IntellijReadCounter.SEMANTIC_FACT_SUPPLIER_INVENTORIES_REUSED)
     }
 
-    private fun publish(inventory: CompleteCallbackSupplierInventory): SemanticCallbackPublication {
-        val published = store.publishSuppliers(snapshot, inventory)
+    private fun publish(
+        current: SemanticDependencySnapshot,
+        inventory: CompleteCallbackSupplierInventory,
+    ): SemanticCallbackPublication {
+        val published = store.publishSuppliers(current, inventory)
         observation.count(
             when (published) {
                 SemanticCallbackPublication.Published -> IntellijReadCounter.SEMANTIC_FACT_GENERATIONS_PUBLISHED

@@ -13,5 +13,12 @@ internal inline fun <Admission> admitThenPrepareRelation(
 ): RelationCompilation =
     when (val admission = admit()) {
         is Refinement.Rejected -> RelationCompilation.Rejected(admission.failure)
-        is Refinement.Refined -> evaluate(admission.value, prepare())
+        is Refinement.Refined -> {
+            val prepared = prepare()
+            try {
+                evaluate(admission.value, prepared)
+            } finally {
+                prepared.finishNativeRead()
+            }
+        }
     }
