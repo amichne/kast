@@ -87,7 +87,7 @@ class HostedReadCallAccountingTest {
         observation.finish(HostedDiagnosticOutcome.Completed)
         val receipt = receipts.single()
         val encoded = Json.parseToJsonElement(receipt.encode()).jsonObject
-        assertEquals("7", encoded.getValue("schemaVersion").jsonPrimitive.content)
+        assertEquals("8", encoded.getValue("schemaVersion").jsonPrimitive.content)
         val actual =
             encoded
                 .getValue("nativeCalls")
