@@ -38,7 +38,15 @@ internal class IntellijCallbackFlowContext(
     private val projection: IntellijK2RelationProjection,
     private val admitWork: () -> CallbackWorkAdmission,
     val observation: IntellijReadObservation,
+    private val callbackExpiry: () -> CallbackExpiryAdmission,
 ) {
+    fun providerSite(
+        file: () -> com.intellij.openapi.vfs.VirtualFile?
+    ): Refinement<RelationProviderScopeAdmission, CallbackInvocationFlowCause> =
+        admitCallbackProviderSite(com.intellij.openapi.progress.ProgressManager::checkCanceled, callbackExpiry) {
+            scope.admitProviderSite(file())
+        }
+
     fun permit(): Refinement<Unit, CallbackInvocationFlowCause> =
         when (admitWork()) {
             CallbackWorkAdmission.READY -> Refinement.Refined(Unit)

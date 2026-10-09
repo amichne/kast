@@ -20,8 +20,9 @@ internal fun readCallbackInvocationFlow(
     projection: IntellijK2RelationProjection,
     admitWork: () -> CallbackWorkAdmission,
     summaries: CallbackParameterSummaries,
+    callbackExpiry: () -> CallbackExpiryAdmission,
 ): CallbackInvocationFlowRead {
-    val context = IntellijCallbackFlowContext(scope, projection, admitWork, summaries.observation)
+    val context = IntellijCallbackFlowContext(scope, projection, admitWork, summaries.observation, callbackExpiry)
     when (val allowed = context.permit()) {
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> return CallbackInvocationFlowRead.Unavailable(allowed.failure)

@@ -334,6 +334,10 @@ internal class IntellijRelationCollector(
 
     fun admitCallbackWork(): CallbackWorkAdmission = allowance.admitCallbackWork(request.budget.resources)
 
+    fun callbackExpiry(): CallbackExpiryAdmission =
+        if (allowance.elapsedLimitReached(request.budget.resources)) CallbackExpiryAdmission.EXPIRED
+        else CallbackExpiryAdmission.CURRENT
+
     private fun elapsedLimitReached(): Boolean = allowance.elapsedLimitReached(request.budget.resources)
 
     private fun halt(limitation: RelationLimitation): Boolean {

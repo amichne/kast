@@ -20,6 +20,7 @@ internal fun detachCallbackObservation(
     scope: CompiledRelationScope,
     admitWork: () -> CallbackWorkAdmission,
     summaries: CallbackParameterSummaries,
+    callbackExpiry: () -> CallbackExpiryAdmission,
 ): Refinement<RelationCallbackObservation, RelationLimitation> {
     val lexical =
         (ContainingDeclaration.Deferred(immediate).enclosingDeclaration() as? ContainingDeclaration.Found)
@@ -52,7 +53,8 @@ internal fun detachCallbackObservation(
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return admitted
         }
-    val flow = readCallbackInvocationFlow(immediate, ownerEvidence, scope, projection, admitWork, summaries)
+    val flow =
+        readCallbackInvocationFlow(immediate, ownerEvidence, scope, projection, admitWork, summaries, callbackExpiry)
     return when (
         val result =
             RelationCallbackObservation.fromNativeBoundary(
@@ -173,6 +175,7 @@ internal class IntellijCallbackObservationEmitter(
                     scope,
                     collector::admitCallbackWork,
                     summaries,
+                    collector::callbackExpiry,
                 )
         ) {
             is Refinement.Refined -> Refinement.Refined(NativeCallbackObservation.Observed(detached.value))

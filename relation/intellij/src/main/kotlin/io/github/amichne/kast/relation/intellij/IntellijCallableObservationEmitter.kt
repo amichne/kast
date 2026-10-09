@@ -28,7 +28,13 @@ internal class IntellijCallableObservationEmitter(
         io.github.amichne.kast.relation.contract.CallbackSummaryCachePort.Disabled,
 ) {
     private val callableContext =
-        IntellijCallbackFlowContext(scope, projection, collector::admitCallbackWork, observation)
+        IntellijCallbackFlowContext(
+            scope,
+            projection,
+            collector::admitCallbackWork,
+            observation,
+            collector::callbackExpiry,
+        )
 
     private val summaries =
         CallbackParameterSummaries(
