@@ -256,11 +256,6 @@ protected constructor(
         val valuePaths: List<QueryImpactPath>
             get() = rows.values
 
-        fun originalOrdinals(
-            selected: QueryRows.ValuePaths
-        ): Refinement<List<QueryRetainedRowOrdinal>, QueryRetainedResultFailure> =
-            originalInvestigationOrdinals(this, selected)
-
         override val rowCount: Int
             get() = rows.values.size
 

@@ -7,7 +7,6 @@ import io.github.amichne.kast.protocol.contract.QueryCheckpointDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryQuestionDocument
-import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
@@ -15,6 +14,7 @@ import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryOperations
+import io.github.amichne.kast.query.contract.QueryRetainedResult
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -29,7 +29,15 @@ class PendingImpactReadResultTest {
             val initial =
                 f.projection.projectExecution(f.request, f.symbols.authority, f.pending())
                     as OperationOutcome.Qualified<QueryRunResult, QueryRunQualification>
-            val reference = (initial.evidence.payload.retention as QueryResultRetention.Retained).reference
+            val checkpoint =
+                ((initial.qualification.progress as QueryQualifiedProgressDocument.Resumable).checkpoint
+                        as QueryCheckpointDocument.Upstream)
+                    .token
+            val snapshot = QueryRetainedResult.capture(f.symbols.authority, f.pending()).value()
+            val reference =
+                (f.store.issueResult(f.request, snapshot, protectedCheckpoint = checkpoint)
+                        as QueryResultIssuance.Issued)
+                    .reference
             var executions = 0
             val protocol =
                 CanonicalQueryProtocol(

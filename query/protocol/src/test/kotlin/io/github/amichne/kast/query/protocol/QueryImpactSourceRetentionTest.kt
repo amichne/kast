@@ -15,7 +15,6 @@ import io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryExecutionBudgetDocument
-import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryExecutionDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionKindDocument
 import io.github.amichne.kast.protocol.contract.QueryExpansionScopeDocument
@@ -25,10 +24,8 @@ import io.github.amichne.kast.protocol.contract.QueryImpactProducerDocument
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryQuestionDocument
-import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.QueryRetentionModeDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
-import io.github.amichne.kast.protocol.contract.continuationToken
 import io.github.amichne.kast.query.contract.AdmittedQueryPlan
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryByteLimit
@@ -99,35 +96,32 @@ class QueryImpactSourceRetentionTest {
         )
 
     @Test
-    fun `retained impact question and checkpoint keep seed proof without reacquiring it`() = runTest {
+    fun `retained impact question and automatic checkpoint keep seed proof without reacquiring it`() = runTest {
         var seedCalls = 0
         var executions = 0
         val compiler = seedCompiler { assertEquals(0, seedCalls++) }
-        val source = document()
-        val run = request(source).copy(retention = QueryRetentionModeDocument.RETAIN)
+        val run = request(document()).copy(retention = QueryRetentionModeDocument.RETAIN)
         val protocol =
             CanonicalQueryProtocol(
                 QueryOperations { execution ->
                     executionResult(execution, executions++ == 0)
+                        .observedWork(io.github.amichne.kast.query.contract.QueryWorkCount.parse(1).refined())
                 },
                 references,
                 producerSeeds = compiler,
             )
-        val first = protocol.executePage(run, owner.lease, budget) as OperationOutcome.Qualified
-        val original = first.evidence.payload
-        assertEquals(QueryQuestionDocument.from(run), original.question)
-        val continuation = first.qualification.progress.continuationToken as QueryExecutionContinuation.Pipeline
-        val resumed =
-            protocol.executePage(QueryRunRequest.Resume(continuation), owner.lease, budget)
-                as OperationOutcome.Qualified
-        assertEquals(original.question, resumed.evidence.payload.question)
+        val outcome =
+            protocol.execute(run, owner.lease, budget, retainedQueryTestPolicy(budget)) as OperationOutcome.Rejected
+        val rejection = outcome.reason as io.github.amichne.kast.protocol.contract.QueryRunRejection.CompletionUnproven
+        val retained =
+            rejection.evidence as io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument.Retained
+        assertEquals(QueryQuestionDocument.from(run), retained.question)
         assertEquals(1, seedCalls)
         assertEquals(2, executions)
-        val retained = resumed.evidence.payload.retention as QueryResultRetention.Retained
         val read =
-            protocol.executePage(QueryRunRequest.ReadResult.valuePaths(retained.reference), owner.lease, budget)
+            protocol.executePage(QueryRunRequest.ReadResult.valuePaths(retained.result), owner.lease, budget)
                 as OperationOutcome.Qualified
-        assertEquals(original.question, read.evidence.payload.question)
+        assertEquals(retained.question, read.evidence.payload.question)
         assertEquals(1, seedCalls)
         assertEquals(2, executions)
     }

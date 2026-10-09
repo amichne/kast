@@ -20,7 +20,7 @@ class CanonicalQueryProtocol(
 ) {
     private val peerSiteAdmissions = Collections.unmodifiableList(peerSiteAdmissions.toList())
     private val pagePublication = QueryPagePublication(state, publication)
-    private val projection = QueryOutcomeProjection(authority, state, retentionObservation)
+    private val projection = QueryOutcomeProjection(authority, state)
 
     /** Completes one admitted question under one budget; retained reads and output continuation do no semantic work. */
     suspend fun execute(
@@ -48,7 +48,6 @@ class CanonicalQueryProtocol(
                 state = state,
                 publication = QueryExecutionPublication.Immediate,
                 producerSeeds = producerSeeds,
-                retentionObservation = retentionObservation,
                 peerSiteAdmissions = peerSiteAdmissions,
             )
 

@@ -74,17 +74,21 @@ class QueryImpactPeerCanonicalRetentionTest {
                 producerSeeds = native,
                 peerSiteAdmissions = listOf(f.proof),
             )
-        val initial = protocol.executePage(run, f.source.owner.lease, budget)
-        assertTrue(
-            initial is OperationOutcome.Qualified,
-            "Uninvestigated peer flow must retain an unresolved question: $initial",
-        )
-        val payload = (initial as OperationOutcome.Qualified).evidence.payload
-        assertEquals(
-            1,
-            payload.items.values.size,
-            "qualification=${initial.qualification}; accounting=${payload.impactAccounting}",
-        )
+        val initial = protocol.execute(run, f.source.owner.lease, budget, retainedQueryTestPolicy(budget))
+        assertTrue(initial is OperationOutcome.Rejected, "Uninvestigated peer flow must reject completion: $initial")
+        val rejection =
+            (initial as OperationOutcome.Rejected).reason
+                as io.github.amichne.kast.protocol.contract.QueryRunRejection.CompletionUnproven
+        val retainedEvidence =
+            rejection.evidence as io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument.Retained
+        val read =
+            protocol.executePage(
+                QueryRunRequest.ReadResult.valuePaths(retainedEvidence.result),
+                f.source.owner.lease,
+                budget,
+            ) as OperationOutcome.Qualified
+        val payload = read.evidence.payload
+        assertEquals(1, payload.items.values.size)
         val path = (payload.items.values.single() as QueryResultItemDocument.ValuePath).path
         assertTrue(path.terminal is ImpactPathTerminalDocument.UnresolvedPeerContinuation)
         val closure =
@@ -102,7 +106,7 @@ class QueryImpactPeerCanonicalRetentionTest {
         assertEquals(payload.items.values, retained.items.values)
         assertRetainedWitnesses(protocol, f, budget, payload)
         assertEquals(1, attempts.size)
-        assertEquals(listOf(97L, 94L, 93L), native.grants)
+        assertEquals(listOf(96L, 93L, 92L), native.grants)
         assertEquals(listOf(f.source.range(20, 35)), native.positions)
     }
 

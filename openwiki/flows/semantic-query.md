@@ -106,7 +106,6 @@ code_sources:
 - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingProjection.kt
 - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingTerminalProjection.kt
 - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingQualificationTest.kt
-- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultRetentionSource.kt
 sources:
   - id: openwiki-source-25796dce45aaa5a543a07570
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryCompleteMembership.kt
@@ -132,12 +131,14 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingTerminalProjection.kt
   - id: openwiki-source-5dda452804594b5fecb6a416
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidenceRead.kt
-  - id: openwiki-source-d531f9a1f24035c5d61d45d5
-    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultRetentionSource.kt
+  - id: openwiki-source-47abb721c1c0711f6358e68d
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt
   - id: openwiki-source-89a23fbeb799d9605ab4e1dc
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingQualificationTest.kt
   - id: openwiki-source-ff3a32a34def3fbe81d63b1c
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt
+  - id: openwiki-source-1263068512b14f5d3a0bde82
+    resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactRetentionTest.kt
   - id: openwiki-source-8bba742d3ecbc32c906815e6
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt
   - id: openwiki-source-a0bad9b6f38ff3fd5d037242
@@ -152,10 +153,10 @@ sources:
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt
   - id: openwiki-source-22c063698f200893b9da9c83
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoins.kt
-generated: { by: "codex", at: "2026-10-09T14:15:56.247Z" }
+generated: { by: "codex", at: "2026-10-09T14:52:54.878Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-09T14:26:30.997Z
+    at: 2026-10-09T14:52:54.878Z
 ---
 
 # Semantic query
@@ -311,7 +312,7 @@ factors remain. Ordinary pipeline accounting retains its existing policy.
 
 `FINDINGS` is a retained witness projection with one record per original ledger path. Paths sharing a destination remain separate. The admitted ordinal points to the original path object; the retained presentation supplies its existing issued row ID before compact DTO construction. Compact rows keep current representation alternatives and ordered model provenance, finite terminal causes and boundary obligations. Compiler transfer payloads and full model history remain on the linked `VALUE_PATHS` row. The original accounting and unresolved closure accompany every page, so a smaller summary cannot strengthen the investigation or revive a stale basis.
 
-A work stop before impact finalization can retain an empty, qualified evidence-only value-path snapshot. Unfinished routes and cached native reads remain owned by the exact existing execution checkpoint. The snapshot does not establish investigation closure. Only a finalized investigation supplies original path ordinals and witness sections; pending witness reads reject with `RESULT_FIELD_UNAVAILABLE`. Retained presentation leaves the upstream checkpoint available.
+A work stop before impact finalization returns typed completion rejection. The sole invocation projection can retain proven incomplete facts, including an empty value-path snapshot with its original qualified coverage and producer progress. Unfinished routes and cached native reads remain owned by the existing execution checkpoint. Retained reads preserve evidence-only interpretation and establish no investigation closure. Only a finalized ledger supplies original path ordinals and witness sections; pending witness reads reject with `RESULT_FIELD_UNAVAILABLE`. Internal evaluator pages issue no retained results.
 
 Requested targets do not schedule additional value-flow exploration. Finalization passes the independently admitted requested-site universe into the same ledger, which compares exact site identities with original producers, destinations and step endpoints. Each target retains reached original paths, exact same-domain exclusions, or an unproven relationship. The last outcome adds a required relationship obligation to the existing closure. Retained `SITE_ACCOUNTING` derives from these original outcomes without changing path order or creating a second interpreter.
 

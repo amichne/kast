@@ -19,7 +19,6 @@ import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryMatchDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
-import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.QueryRetentionModeDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryScopeDocument
@@ -92,12 +91,16 @@ class QueryEmptyProgressProjectionTest {
     fun `retained zero row evidence preserves historical upstream action without issuing a resume`() = runTest {
         val fixture = EmptyProgressFixture()
         val first =
-            fixture.protocol.executePage(
+            fixture.protocol.execute(
                 fixture.request().copy(retention = QueryRetentionModeDocument.RETAIN),
                 fixture.lease,
                 fixture.budget,
-            ) as OperationOutcome.Qualified
-        val reference = (first.evidence.payload.retention as QueryResultRetention.Retained).reference
+                retainedQueryTestPolicy(fixture.budget),
+            ) as OperationOutcome.Rejected
+        val rejection = first.reason as io.github.amichne.kast.protocol.contract.QueryRunRejection.CompletionUnproven
+        val reference =
+            (rejection.evidence as io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument.Retained)
+                .result
         val presentation =
             fixture.protocol.executePage(
                 QueryRunRequest.ReadResult.symbols(
@@ -120,7 +123,12 @@ class QueryEmptyProgressProjectionTest {
         val progress = original.progress as QueryQualifiedProgressDocument.Resumable
         assertInstanceOf(QueryCheckpointDocument.Upstream::class.java, progress.checkpoint)
         assertEquals(ReadResumeActionDocument.RESUME, progress.nextAction)
-        assertEquals(first.qualification.progress, progress)
+        assertEquals(
+            (rejection.originalCoverage
+                    as io.github.amichne.kast.protocol.contract.QueryCompletionCoverageDocument.Qualified)
+                .progress,
+            progress,
+        )
         assertEquals(listOf(null), fixture.positions)
     }
 

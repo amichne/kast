@@ -27,9 +27,7 @@ import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 internal class QueryOutcomeProjection(
     private val authority: QueryReferenceAuthority,
     private val state: QueryStateStore,
-    private val retentionObservation: QueryResultRetentionObservation = QueryResultRetentionObservation.None,
 ) {
-    private val presentation = QueryResultPresentation(state, retentionObservation)
 
     fun projectExecution(
         request: QueryRunRequest.Run,
@@ -47,7 +45,6 @@ internal class QueryOutcomeProjection(
                     result = result.result,
                     coverage = null,
                     continuationState = null,
-                    retainedExecution = result,
                     publicationOwner = publicationOwner,
                     presentationOrigin = result.coverage.resultCount.value,
                 )
@@ -58,7 +55,6 @@ internal class QueryOutcomeProjection(
                     result = result.result,
                     coverage = result.coverage,
                     continuationState = result.continuation,
-                    retainedExecution = result,
                     publicationOwner = publicationOwner,
                     presentationOrigin = result.coverage.knownMinimum.value,
                 )
@@ -153,8 +149,7 @@ internal class QueryOutcomeProjection(
         coverage: QueryCoverage.Qualified?,
         continuationState: QueryContinuationState?,
         output: QueryOutputDocument = request.output,
-        retainedExecution: QueryExecutionResult? = null,
-        presentedRetention: QueryResultRetention? = null,
+        presentedRetention: QueryResultRetention = QueryResultRetention.NotRequested,
         presentedRowIds: List<QueryResultRowReference>? = null,
         originalPathRowIds: List<QueryResultRowReference>? = null,
         protectedResult: QueryResultReference? = null,
@@ -186,15 +181,10 @@ internal class QueryOutcomeProjection(
         val presented =
             when (
                 val projected =
-                    presentation.present(
-                        request,
-                        lease,
+                    QueryResultPresentation.present(
                         evidence.items,
-                        retainedExecution,
-                        qualification?.progress,
                         presentedRetention,
                         presentedRowIds,
-                        publicationOwner,
                     )
             ) {
                 is Refinement.Refined -> projected.value
@@ -234,12 +224,7 @@ internal class QueryOutcomeProjection(
             when (
                 val admitted =
                     presented.retention.presentationWindow(
-                        window
-                            ?: when (val selection = presented.selection) {
-                                is QueryPresentedWindowSelection.Contiguous -> selection.window
-                                is QueryPresentedWindowSelection.NonContiguous -> selection.window
-                                QueryPresentedWindowSelection.NotRetained -> null
-                            },
+                        window,
                         presented.items.values.size,
                     )
             ) {

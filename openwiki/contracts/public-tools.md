@@ -124,8 +124,12 @@ sources:
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/LocalDeclarationAddressDocuments.kt
   - id: openwiki-source-3a2deddcdbc6513d70de57e5
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackDocumentAdmission.kt
+  - id: openwiki-source-9485a00d6483340e3d906f3e
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionCauseDocument.kt
   - id: openwiki-source-1363c35728458151b90e82c5
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryExpansionScopeDocument.kt
+  - id: openwiki-source-1f01ff8b987dcefdbd6182ee
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt
   - id: openwiki-source-cfe1fb1d0ffdfe32b65ec05c
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SymbolProtocolModels.kt
   - id: openwiki-source-e8708d938df772dd92d2daf2
@@ -154,10 +158,10 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt
   - id: openwiki-source-ff3a32a34def3fbe81d63b1c
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt
-generated: { by: "codex", at: "2026-10-09T14:15:56.247Z" }
+generated: { by: "codex", at: "2026-10-09T15:03:18.986Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-09T14:26:30.997Z
+    at: 2026-10-09T15:03:18.986Z
 ---
 
 # Public intent tools
@@ -343,9 +347,11 @@ the `NORMAL_COMPLETION` condition. Raw admission rejects inconsistent transfer
 roles, owners, ranges or catch indexes. This evidence describes the supported
 static transfer, without asserting runtime path feasibility.
 
-Public contract version 13 requires this evidence and matching generated Pi and
+Public contract version 14 requires this evidence and matching generated Pi and
 Copilot adapter versions. Catalog admission rejects incompatible versions before
 tool registration; clients cannot silently discard the branch proof.
+
+Query retention has two current success shapes: `not_requested` for inline output and `retained` with an issued reference. Required storage failure returns typed completion rejection with original coverage and the finite `RETENTION_UNAVAILABLE` cause. The previous success-shaped capacity outcome has no supported variant.
 
 Pi and Copilot consume `KAST_TOOL_RPC_COMMAND` as their own executable selector
 and remove it from each child environment. Other supplied settings remain

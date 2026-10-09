@@ -12,7 +12,6 @@ import io.github.amichne.kast.protocol.contract.QueryInvocationStop
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
-import io.github.amichne.kast.protocol.contract.QueryRetentionModeDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.ReadResumeActionDocument
@@ -87,7 +86,7 @@ internal class AutomaticSymbolQueryRunner(
         private var pendingProgress: QueryQualifiedProgressDocument.Resumable? = null
 
         suspend fun run(): Refinement<AccumulatedSymbolQuery, QueryRunRejection> {
-            var action: QueryRunRequest = request.copy(retention = QueryRetentionModeDocument.DISCARD)
+            var action: QueryRunRequest = request
             while (true) {
                 when (val transition = step(action)) {
                     is QueryInvocationTransition.Continue -> action = QueryRunRequest.Resume(transition.token)

@@ -4,7 +4,6 @@ import io.github.amichne.kast.query.contract.QueryRetainedResultFailure
 import io.github.amichne.kast.query.protocol.QueryResultRetentionEvidence
 import io.github.amichne.kast.query.protocol.QueryResultRetentionIssue
 import io.github.amichne.kast.query.protocol.QueryResultRetentionObservation
-import io.github.amichne.kast.query.protocol.QueryResultRetentionScope
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase
@@ -18,21 +17,8 @@ internal fun hostedQueryResultRetentionObservation(observation: IntellijReadObse
 
 private fun QueryResultRetentionEvidence.retentionCounter(): IntellijReadCounter =
     when (this) {
-        is QueryResultRetentionEvidence.CaptureStarted ->
-            when (scope) {
-                QueryResultRetentionScope.PRESENTED -> IntellijReadCounter.QUERY_RETENTION_PRESENTED_CAPTURE_STARTED
-                QueryResultRetentionScope.PENDING_IMPACT ->
-                    IntellijReadCounter.QUERY_RETENTION_PENDING_IMPACT_CAPTURE_STARTED
-                QueryResultRetentionScope.ORIGINAL_INVESTIGATION ->
-                    IntellijReadCounter.QUERY_RETENTION_ORIGINAL_CAPTURE_STARTED
-            }
-        is QueryResultRetentionEvidence.Captured ->
-            when (scope) {
-                QueryResultRetentionScope.PRESENTED -> IntellijReadCounter.QUERY_RETENTION_PRESENTED_CAPTURED
-                QueryResultRetentionScope.PENDING_IMPACT -> IntellijReadCounter.QUERY_RETENTION_PENDING_IMPACT_CAPTURED
-                QueryResultRetentionScope.ORIGINAL_INVESTIGATION ->
-                    IntellijReadCounter.QUERY_RETENTION_ORIGINAL_CAPTURED
-            }
+        QueryResultRetentionEvidence.CaptureStarted -> IntellijReadCounter.QUERY_RETENTION_CAPTURE_STARTED
+        QueryResultRetentionEvidence.Captured -> IntellijReadCounter.QUERY_RETENTION_CAPTURED
         is QueryResultRetentionEvidence.CaptureRejected -> cause.retentionCounter()
         is QueryResultRetentionEvidence.Issuance ->
             when (outcome) {

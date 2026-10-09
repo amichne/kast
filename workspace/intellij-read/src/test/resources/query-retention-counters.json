@@ -1,31 +1,11 @@
 [
   {
-    "counter": "QUERY_RETENTION_PRESENTED_CAPTURE_STARTED",
+    "counter": "QUERY_RETENTION_CAPTURE_STARTED",
     "contributor": "NONE",
     "count": 1
   },
   {
-    "counter": "QUERY_RETENTION_PENDING_IMPACT_CAPTURE_STARTED",
-    "contributor": "NONE",
-    "count": 1
-  },
-  {
-    "counter": "QUERY_RETENTION_ORIGINAL_CAPTURE_STARTED",
-    "contributor": "NONE",
-    "count": 1
-  },
-  {
-    "counter": "QUERY_RETENTION_PRESENTED_CAPTURED",
-    "contributor": "NONE",
-    "count": 1
-  },
-  {
-    "counter": "QUERY_RETENTION_PENDING_IMPACT_CAPTURED",
-    "contributor": "NONE",
-    "count": 1
-  },
-  {
-    "counter": "QUERY_RETENTION_ORIGINAL_CAPTURED",
+    "counter": "QUERY_RETENTION_CAPTURED",
     "contributor": "NONE",
     "count": 1
   },

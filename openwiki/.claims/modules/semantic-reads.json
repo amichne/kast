@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:f7c872608f6eaac303d7fdfba351535a3afa4e1eda54ed00bde4805cb031771f",
+  "pageVersion": "sha256:0d1dba85f8f7b529edf151d4921b5132b8fd5546ddcf966f94d751d31f746999",
   "claims": [
     {
       "id": "claim_009e763fdd49491b8ddc72813e392412",
@@ -126,21 +126,21 @@
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt",
-          "version": "repo-file-v1:sha256:75dce5cb3943dba817ee40afbaac1d563921e631611fa748aea06b1d8ad0a929"
+          "version": "repo-file-v1:sha256:e6dcdca2642f8ad6b16b51f2ee0e02fa32bd46efddd57371df97c1ddcca7eb7a"
         }
       ]
     },
     {
       "id": "claim_c05a3da0a7d348c8864f218d995b7733",
-      "statement": "Existing native-read diagnostics encode finite query-retention source, capture-failure and issuance counters in the RETENTION phase; actual success and rejection receipt serialization is golden-tested without source payloads or handles and supplies observation rather than semantic proof.",
+      "statement": "Existing native-read diagnostics encode the sole invocation issuer's capture start and success, finite capture failures and issuance counters in the RETENTION phase; actual success and rejection serialization is golden-tested without payloads or handles and supplies observation rather than semantic proof.",
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt",
-          "version": "repo-file-v1:sha256:3f6e89e49855108e682e65d0f3a0def2cd8f3b82c57f60c826cba471f66d054a"
+          "version": "repo-file-v1:sha256:76fd91792b13102dc04fb78a3bcf3170aea9834851fac0303b21c746464c567b"
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt",
-          "version": "repo-file-v1:sha256:75dce5cb3943dba817ee40afbaac1d563921e631611fa748aea06b1d8ad0a929"
+          "version": "repo-file-v1:sha256:e6dcdca2642f8ad6b16b51f2ee0e02fa32bd46efddd57371df97c1ddcca7eb7a"
         },
         {
           "resource": "repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt",
@@ -275,6 +275,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-09T14:15:56.247Z"
+    "at": "2026-10-09T14:52:54.878Z"
   }
 }

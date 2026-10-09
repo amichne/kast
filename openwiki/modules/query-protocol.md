@@ -104,13 +104,10 @@ code_sources:
 - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingValidation.kt
 - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt
 - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingQualificationTest.kt
-- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultRetentionSource.kt
 - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultRetentionObservation.kt
 sources:
   - id: openwiki-source-368288aea315bf5b4628a899
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingValidation.kt
-  - id: openwiki-source-843b2f72b64738a9d114aff8
-    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryRetainedPresentationWindow.kt
   - id: openwiki-source-2a21ecdc94f78bbee9750c81
     resource: repo://protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract/ImpactFindingAccountingTest.kt
   - id: openwiki-source-927d5002042f13cac9db37f1
@@ -127,6 +124,8 @@ sources:
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteAccounting.kt
   - id: openwiki-source-47b84d48b89b57b3b1609484
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPresentationExecution.kt
+  - id: openwiki-source-a184ae82a49703816522523e
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
   - id: openwiki-source-dfd865ab52ce8eea1b519c4e
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
   - id: openwiki-source-64a145dbb5a4113781750bd9
@@ -161,18 +160,12 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt
   - id: openwiki-source-5b77364ace1f31662c87a941
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryPagePublication.kt
-  - id: openwiki-source-bff1faad340ec1120efffe0b
-    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryPresentedResultIssuance.kt
-  - id: openwiki-source-96ef904abd7028335557559c
-    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryPresentedWindowSelection.kt
   - id: openwiki-source-4e38a945b050af72c2343f02
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProjectedEvidence.kt
-  - id: openwiki-source-2ccdc01e43e3898d9dd2e63f
-    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultPresentation.kt
-  - id: openwiki-source-d531f9a1f24035c5d61d45d5
-    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultRetentionSource.kt
   - id: openwiki-source-4bf64022307aff9f9f531f9b
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
+  - id: openwiki-source-cff355f3dfdd8f6ba0b1f798
+    resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryRetentionProtocolTest.kt
   - id: openwiki-source-de9b31520f4c271ee9bb12cc
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CompleteOnlyQueryTest.kt
   - id: openwiki-source-06ad73bc218ddc2ffa485553
@@ -205,10 +198,10 @@ sources:
     resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisition.kt
   - id: openwiki-source-614907c76c5e46269ec7d42b
     resource: repo://symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisitionBudgetTest.kt
-generated: { by: "codex", at: "2026-10-09T14:15:56.247Z" }
+generated: { by: "codex", at: "2026-10-09T14:52:54.878Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-09T14:26:30.997Z
+    at: 2026-10-09T14:52:54.878Z
 ---
 
 # Query protocol
@@ -375,35 +368,11 @@ The public source-admission boundary retains the supplied source authority. Pure
 
 ## Original impact result retention
 
-An original `IMPACT` producer request with retention enabled captures every path
-from its admitted immutable investigation ledger, independently of the initial
-output selection. An empty initial page caused by output capacity does not turn
-the retained result into an empty path set. Capture preserves the original
-question, semantic basis, coverage, producer progress and ledger accounting.
-Ordinary queries over explicitly selected retained rows keep their selected
-membership; they do not expand back to every path in the original investigation.
+`QueryInvocationProjection` is the sole retained-result capture and issuance owner. An original `IMPACT` request captures the admitted immutable investigation ledger independently of bounded preview selection. Capture preserves the original question, semantic basis, coverage, producer progress and accounting. Queries over explicitly selected retained rows preserve their selected membership.
 
-The existing `QueryStateStore` issues row identities for the full original path
-set. Initial presentation selects those identities by exact ordered path
-evidence and original ordinal, so a reordered selection such as `[2, 0]` retains
-the identities of original rows 2 and 0. A contiguous initial prefix carries the
-original retained result end: zero emitted rows may expose presentation cursor
-0, and a one-row prefix may expose cursor 1. Neither cursor permits semantic
-execution to resume. A noncontiguous selection carries a finite cursor
-qualification through prefix and suffix fitting and cannot imply a contiguous
-next cursor. `READ_RESULT` from cursor 0 can still inspect the full original
-retained result.
+The existing `QueryStateStore` issues identities for every captured row. Initial preview and retained reads carry contiguous windows within that snapshot, with the original result end. Prefix and suffix fitting advance only emitted row positions. Presentation cursors grant no semantic execution. Internal evaluator pages project rows and progress without capturing or issuing retained results.
 
-Retained value-path and witness pages use the existing result reference, store
-and presentation cursor. They project detached ledger evidence without
-reacquiring producers, revalidating models or executing value-flow reads.
-Draining those pages preserves unresolved original obligations and terminal
-execution reasons, including `OUTPUT_ITEM_TOO_LARGE`; presentation does not
-manufacture complete investigation coverage. The production projection, store
-and read-result regressions cover empty initial output, contiguous prefixes,
-reordered selections and ordinary selected-result capture with a semantic
-executor that must remain unused. Those tests establish the retained contract,
-not installed IDE qualification.
+Retained value-path and witness pages project detached ledger evidence without reacquiring producers, revalidating models or executing value-flow reads. Draining pages preserves unresolved original obligations and terminal reasons, including `OUTPUT_ITEM_TOO_LARGE`. Incomplete proof returns typed completion rejection and evidence-only retained reads; presentation cannot manufacture investigation completion. The local snapshot and cursor tests establish retained identity and qualification contracts, not installed IDE qualification.
 
 Impact retained-storage charge uses a request-local visitor over actual shared
 immutable objects, separate from row identity and compiler identity. References
@@ -424,9 +393,9 @@ The compact DTO keeps producer and destination sites, current representation alt
 
 ### Pending and finalized impact retention
 
-`QueryResultRetentionSource` admits finalized investigated accounting for original-ledger capture, independent of the first page selection. It admits evidence-only impact accounting only for an empty qualified result with a resumable checkpoint. That pending snapshot retains the existing checkpoint rather than supplying original investigation ordinals. Terminal or nonempty evidence-only impact output rejects with the exact selection cause `INCONSISTENT_COVERAGE`. Ordinary queries retain their presented membership.
+The final invocation projection captures completed output or proven incomplete facts for typed rejection through one result owner. Finalized accounting retains the original ledger. Captured producer progress preserves the existing checkpoint when unfinished execution exists. Capture failure retains its finite impact selection cause.
 
-Presentation protects the advertised upstream checkpoint during result issuance. Pending path reads remain qualified and witness reads reject with `RESULT_FIELD_UNAVAILABLE`, without executing semantics or consuming the checkpoint. Explicit retention observations distinguish source choice, capture outcome and issuance outcome. The hosted adapter supplies the effect boundary; protocol ownership and the query-state lifetime remain unchanged.
+Pending path reads remain evidence-only with original qualified coverage, and pending witness reads reject with `RESULT_FIELD_UNAVAILABLE` without semantic work or checkpoint consumption. The sole capture owner emits bounded started, captured, rejected and issuance receipts. The hosted adapter retains exact failure and storage outcomes without source-choice branches or payloads.
 
 ## Requested-site relationship accounting
 
