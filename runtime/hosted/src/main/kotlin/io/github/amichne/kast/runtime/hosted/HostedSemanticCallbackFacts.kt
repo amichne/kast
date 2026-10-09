@@ -90,6 +90,8 @@ private class HostedCallbackFactPreparation(
     private val context: HostedSemanticReadContext,
     private val store: SemanticCallbackFactStore,
 ) : CallbackSummaryCachePreparationPort {
+    private val attempts = HostedCallbackDependencyAttempts(context.observation)
+
     override fun prepare(
         request: RelationRequest,
         remaining: ResourceBudget,
@@ -107,25 +109,27 @@ private class HostedCallbackFactPreparation(
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return CallbackSummaryCachePort.Disabled
             }
-        context.observation.count(IntellijReadCounter.SEMANTIC_FACT_DEPENDENCY_REVALIDATIONS)
         return when (
-            val capture =
-                IntellijSemanticDependencyCapture(context.limits, context.observation)
-                    .capture(
-                        project,
-                        context.authority,
-                        context.model,
-                        context.model.sourceRoots.mapTo(linkedSetOf(), ModelOwnedSourceRoot::module),
-                        allowance,
-                        onCost = { charge(measuredWork(it.workUnits)) },
-                    )
-        ) {
-            is SemanticDependencyCapture.Unavailable -> {
-                context.observation.count(IntellijReadCounter.SEMANTIC_FACT_DEPENDENCY_REJECTIONS)
-                CallbackSummaryCachePort.Disabled
+            val capture = attempts.capture {
+                when (
+                    val result =
+                        IntellijSemanticDependencyCapture(context.limits, context.observation)
+                            .capture(
+                                project,
+                                context.authority,
+                                context.model,
+                                context.model.sourceRoots.mapTo(linkedSetOf(), ModelOwnedSourceRoot::module),
+                                allowance,
+                                onCost = { charge(measuredWork(it.workUnits)) },
+                            )
+                ) {
+                    is SemanticDependencyCapture.Captured -> Refinement.Refined(result.snapshot)
+                    is SemanticDependencyCapture.Unavailable -> Refinement.Rejected(result.cause)
+                }
             }
-            is SemanticDependencyCapture.Captured ->
-                HostedCallbackFactCache(capture.snapshot, store, context.observation)
+        ) {
+            is Refinement.Rejected -> CallbackSummaryCachePort.Disabled
+            is Refinement.Refined -> HostedCallbackFactCache(capture.value, store, context.observation)
         }
     }
 }
