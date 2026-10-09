@@ -41,6 +41,7 @@ import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
 import io.github.amichne.kast.protocol.contract.SymbolIdDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryCount
@@ -50,10 +51,12 @@ import io.github.amichne.kast.query.contract.QueryOperations
 import io.github.amichne.kast.query.contract.QueryResult
 import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.query.contract.QuerySymbol
+import io.github.amichne.kast.query.contract.QueryWorkCount
 import io.github.amichne.kast.query.protocol.CanonicalQueryProtocol
+import io.github.amichne.kast.query.protocol.QueryInvocationPolicy
+import io.github.amichne.kast.query.protocol.QueryResultRestoration
 import io.github.amichne.kast.query.protocol.QueryStateStore
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
-import io.github.amichne.kast.query.protocol.executeQueryPage
 import io.github.amichne.kast.symbol.contract.SymbolDescription
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -200,17 +203,25 @@ class HostedQueryRetainedPresentationTest {
         val request = fixture.request
         val output = fixture.output
         val budget = fixture.budget
-        val initial = protocol.executeQueryPage(request, owner.authority, budget) as OperationOutcome.Complete
-        val originalIds =
-            initial.evidence.payload.items.values.map { (it as QueryResultItemDocument.ExactSymbol).rowId }
+        val policy = retainedPolicy()
+        val initialOutcome = protocol.execute(request, owner.authority, budget, policy)
+        assertTrue(initialOutcome is OperationOutcome.Complete, initialOutcome.toString())
+        val initial = initialOutcome as OperationOutcome.Complete
         val retained = initial.evidence.payload.retention as QueryResultRetention.Retained
+        val originalIds =
+            (fixture.store.restoreResult(retained.reference, owner.authority) as QueryResultRestoration.Restored).rowIds
+        assertEquals(
+            originalIds.take(initial.evidence.payload.items.values.size),
+            initial.evidence.payload.items.values.map { (it as QueryResultItemDocument.ExactSymbol).rowId },
+        )
         assertEquals(0, initial.evidence.payload.presentationWindow?.start?.value)
         assertEquals(150, initial.evidence.payload.presentationWindow?.resultEnd?.value)
         val finalPage =
-            protocol.executeQueryPage(
+            protocol.execute(
                 QueryRunRequest.ReadResult.symbols(retained.reference, cursor(100), output),
                 owner.authority,
                 budget,
+                policy,
             ) as OperationOutcome.Complete
         assertNull(finalPage.evidence.payload.nextCursor)
         val fitted =
@@ -221,10 +232,11 @@ class HostedQueryRetainedPresentationTest {
         val prefix = (fitted.semantic as OperationOutcome.Complete).evidence.payload as QueryRunResult
         assertEquals(105, prefix.nextCursor?.value)
         val tail =
-            protocol.executeQueryPage(
+            protocol.execute(
                 QueryRunRequest.ReadResult.symbols(retained.reference, requireNotNull(prefix.nextCursor), output),
                 owner.authority,
                 budget,
+                policy,
             ) as OperationOutcome.Complete
         val rowIds =
             (prefix.items.values + tail.evidence.payload.items.values).map {
@@ -232,6 +244,7 @@ class HostedQueryRetainedPresentationTest {
             }
         assertEquals(originalIds.subList(100, 150), rowIds)
         assertEquals(50, rowIds.toSet().size)
+        assertEquals(1, fixture.providerCalls())
     }
 
     private fun presentationFailures() =
@@ -248,6 +261,8 @@ class HostedQueryRetainedPresentationTest {
         val request: QueryRunRequest.Run,
         val output: QueryOutputDocument.Symbols,
         val budget: QueryBudget,
+        val store: QueryStateStore,
+        val providerCalls: () -> Int,
     )
 
     private fun retainedFixture(): RetainedFixture {
@@ -257,13 +272,16 @@ class HostedQueryRetainedPresentationTest {
                 QuerySymbol(SymbolDescription.from(owner.selector), emptyList())
             }
         val store = QueryStateStore(clock = { 0L })
+        var providerCalls = 0
         val protocol =
             CanonicalQueryProtocol(
                 QueryOperations {
+                    providerCalls++
                     QueryExecutionResult.Complete.create(
-                        QueryResult(QueryRows.Symbols.of(symbols), emptyList()),
-                        QueryCoverage.Complete(QueryCount.parse(150).refined()),
-                    )
+                            QueryResult(QueryRows.Symbols.of(symbols), emptyList()),
+                            QueryCoverage.Complete(QueryCount.parse(150).refined()),
+                        )
+                        .observedWork(QueryWorkCount.parse(1).refined())
                 },
                 owner.references,
                 store,
@@ -271,7 +289,7 @@ class HostedQueryRetainedPresentationTest {
         val output = QueryOutputDocument.Symbols(bounded(listOf(QuerySymbolFieldDocument.NAME)))
         val request = retainedRequest(output)
         val budget = retainedBudget()
-        return RetainedFixture(owner, protocol, request, output, budget)
+        return RetainedFixture(owner, protocol, request, output, budget, store) { providerCalls }
     }
 
     private fun retainedRequest(output: QueryOutputDocument.Symbols) =
@@ -297,6 +315,15 @@ class HostedQueryRetainedPresentationTest {
                 ElapsedTimeLimitMillis.parse(1000).refined(),
             ),
             QueryByteLimit.parse(100_000).refined(),
+        )
+
+    private fun retainedPolicy() =
+        QueryInvocationPolicy(
+            previewRows = ResultLimit.parse(200).refined(),
+            previewBytesLimit = QueryByteLimit.parse(100_000).refined(),
+            retainedBytes = QueryByteLimit.parse(10_000_000).refined(),
+            previewBytes = CanonicalQueryCliDocuments::previewBytes,
+            nanoTime = { 0L },
         )
 
     internal fun page(

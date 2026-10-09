@@ -1,20 +1,23 @@
 package io.github.amichne.kast.query.protocol
 
+import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.ImpactAccountingDocument
+import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.protocol.contract.ImpactExecutionFailureDocument
 import io.github.amichne.kast.protocol.contract.ImpactExecutionSelectionCause
-import io.github.amichne.kast.protocol.contract.QueryCheckpointDocument
-import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
-import io.github.amichne.kast.protocol.contract.QueryQuestionDocument
-import io.github.amichne.kast.protocol.contract.QueryResultRetention
+import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
+import io.github.amichne.kast.protocol.contract.QueryInvocationStop
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
+import io.github.amichne.kast.query.contract.QueryByteLimit
+import io.github.amichne.kast.query.contract.QueryCheckpoint
 import io.github.amichne.kast.query.contract.QueryContinuationState
-import io.github.amichne.kast.query.contract.QueryRetainedResult
+import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryRetainedResultFailure
-import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.query.contract.QueryTerminalReason
+import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertSame
@@ -22,107 +25,93 @@ import org.junit.jupiter.api.Test
 
 class PendingImpactRetentionTest {
     @Test
-    fun `pending impact work cutoff retains presented empty snapshot and protects exact upstream checkpoint`() {
+    fun `invocation captures pending evidence once and retains exact original checkpoint`() = runTest {
         val f = PendingImpactRetentionFixture()
-        val execution = f.pending()
-        assertEquals(
-            Refinement.Rejected(QueryRetainedResultFailure.INCONSISTENT_COVERAGE),
-            QueryRetainedResult.captureInvestigation(f.symbols.authority, execution),
-        )
-        val projected = f.projection.projectExecution(f.request, f.symbols.authority, execution)
-        val qualified = assertInstanceOf(OperationOutcome.Qualified::class.java, projected)
-        val payload = projectedPayload(projected)
-        assertEquals(QueryQuestionDocument.from(f.request), payload.question)
-        assertEquals(
-            ImpactAccountingDocument.EvidenceOnly(
-                io.github.amichne.kast.protocol.contract.QueryDiscoveryCountDocument.parse(0).value()
-            ),
-            payload.impactAccounting,
-        )
-        val retained = payload.retention as QueryResultRetention.Retained
-        val restored = f.store.restoreResult(retained.reference, f.symbols.authority) as QueryResultRestoration.Restored
+        val outcome = project(f, f.pending()) as OperationOutcome.Rejected
+        val rejection = assertInstanceOf(QueryRunRejection.CompletionUnproven::class.java, outcome.reason)
+        val retained = assertInstanceOf(QueryCompletionEvidenceDocument.Retained::class.java, rejection.evidence)
+        val restored = f.store.restoreResult(retained.result, f.symbols.authority) as QueryResultRestoration.Restored
         assertEquals(0, restored.result.rowCount)
-        val progress = qualified.qualification as io.github.amichne.kast.protocol.contract.QueryRunQualification
-        val checkpoint =
-            ((progress.progress as QueryQualifiedProgressDocument.Resumable).checkpoint
-                    as QueryCheckpointDocument.Upstream)
-                .token
-        val original = f.store.restoreCheckpoint(checkpoint, f.symbols.authority) as QueryCheckpointRestoration.Restored
-        assertSame(f.checkpoint, original.checkpoint)
-        assertEquals(
-            listOf(
-                QueryResultRetentionEvidence.CaptureStarted(QueryResultRetentionScope.PENDING_IMPACT),
-                QueryResultRetentionEvidence.Captured(QueryResultRetentionScope.PENDING_IMPACT),
-                QueryResultRetentionEvidence.Issuance(QueryResultRetentionIssue.ISSUED),
-            ),
-            f.observed,
-        )
+        assertSame(f.checkpoint, (restored.result.producerProgress as QueryContinuationState.Resumable).checkpoint)
+        assertEquals(successReceipts(), f.observed)
     }
 
     @Test
-    fun `pending evidence-only terminal cannot acquire original investigation retention`() {
-        val f = PendingImpactRetentionFixture()
-        val execution = f.pending(continuation = QueryContinuationState.Terminal(QueryTerminalReason.NO_PROGRESS))
-        val rejected =
-            assertInstanceOf(
-                OperationOutcome.Rejected::class.java,
-                f.projection.projectExecution(f.request, f.symbols.authority, execution),
-            )
-        assertEquals(selectionRejection(), rejected.reason)
-        assertEquals(
-            listOf(QueryResultRetentionEvidence.CaptureRejected(QueryRetainedResultFailure.INCONSISTENT_COVERAGE)),
-            f.observed,
-        )
-    }
-
-    @Test
-    fun `evidence-only completed path cannot stand in for a pending empty investigation page`() {
-        val f = PendingImpactRetentionFixture()
-        val execution = f.pending(QueryRows.ValuePaths.of(listOf(f.path())))
-        val rejected =
-            assertInstanceOf(
-                OperationOutcome.Rejected::class.java,
-                f.projection.projectExecution(f.request, f.symbols.authority, execution),
-            )
-        assertEquals(selectionRejection(), rejected.reason)
-        assertEquals(
-            listOf(QueryResultRetentionEvidence.CaptureRejected(QueryRetainedResultFailure.INCONSISTENT_COVERAGE)),
-            f.observed,
-        )
-    }
-
-    @Test
-    fun `finalized investigation retains original ledger scope and emits exact capture and issuance evidence`() {
+    fun `final invocation captures original investigation ledger and reports one issuance`() = runTest {
         val f = PendingImpactRetentionFixture()
         val execution =
             f.pending(f.investigatedRows(), QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE))
-        val outcome = f.projection.projectExecution(f.request, f.symbols.authority, execution)
-        assertInstanceOf(OperationOutcome.Qualified::class.java, outcome)
-        val payload = projectedPayload(outcome)
-        assertInstanceOf(ImpactAccountingDocument.Investigated::class.java, payload.impactAccounting)
+        val outcome = project(f, execution) as OperationOutcome.Rejected
+        val rejection = assertInstanceOf(QueryRunRejection.CompletionUnproven::class.java, outcome.reason)
+        val retained = assertInstanceOf(QueryCompletionEvidenceDocument.Retained::class.java, rejection.evidence)
+        val restored = f.store.restoreResult(retained.result, f.symbols.authority) as QueryResultRestoration.Restored
+        assertEquals(
+            execution.result.rows,
+            (restored.result as io.github.amichne.kast.query.contract.QueryRetainedResult.ValuePaths).rows,
+        )
+        assertEquals(successReceipts(), f.observed)
+    }
+
+    @Test
+    fun `foreign checkpoint capture preserves finite impact selection cause and rejection signal`() = runTest {
+        val f = PendingImpactRetentionFixture()
+        val foreign =
+            object : QueryCheckpoint by f.checkpoint {
+                override val lease =
+                    SemanticReadLease(f.symbols.authority.workspaceRoot, EvidenceGeneration.parse(8).value())
+            }
+        val outcome = project(f, f.pending(continuation = QueryContinuationState.Resumable(foreign)))
+        assertEquals(
+            OperationOutcome.Rejected(
+                QueryRunRejection.ImpactExecutionRejected(
+                    ImpactExecutionFailureDocument.Selection(ImpactExecutionSelectionCause.BASIS_MISMATCH)
+                )
+            ),
+            outcome,
+        )
         assertEquals(
             listOf(
-                QueryResultRetentionEvidence.CaptureStarted(QueryResultRetentionScope.ORIGINAL_INVESTIGATION),
-                QueryResultRetentionEvidence.Captured(QueryResultRetentionScope.ORIGINAL_INVESTIGATION),
-                QueryResultRetentionEvidence.Issuance(QueryResultRetentionIssue.ISSUED),
+                QueryResultRetentionEvidence.CaptureStarted,
+                QueryResultRetentionEvidence.CaptureRejected(QueryRetainedResultFailure.BASIS_MISMATCH),
             ),
             f.observed,
         )
     }
 
-    private fun selectionRejection() =
-        QueryRunRejection.ImpactExecutionRejected(
-            ImpactExecutionFailureDocument.Selection(ImpactExecutionSelectionCause.INCONSISTENT_COVERAGE)
+    private suspend fun project(
+        f: PendingImpactRetentionFixture,
+        execution: QueryExecutionResult.Qualified,
+    ): QueryPublishedPage {
+        val policy =
+            QueryInvocationPolicy(
+                previewRows = ResultLimit.parse(100).value(),
+                previewBytesLimit = QueryByteLimit.parse(100_000).value(),
+                retainedBytes = QueryByteLimit.parse(1_000_000).value(),
+                previewBytes = CanonicalQueryCliDocuments::previewBytes,
+            )
+        val items =
+            (QueryItemProjector(f.symbols.references).projectItems(f.request.output, execution.result.rows)
+                    as QueryProjection.Projected)
+                .values
+        val claim = (f.store.acquireInitial(f.symbols.authority) as QueryInitialAcquisition.Acquired).claim
+        return QueryPagePublication(f.store, QueryExecutionPublication.Immediate).execute(claim) {
+            QueryInvocationProjection(f.symbols.references, f.store, QueryResultRetentionObservation(f.observed::add))
+                .project(
+                    request = f.request,
+                    lease = f.symbols.authority,
+                    accumulated = AccumulatedSymbolQuery(execution, items, QueryInvocationStop.WORK_LIMIT, null),
+                    policy = policy,
+                    owner = claim,
+                )
+        }
+    }
+
+    private fun successReceipts() =
+        listOf(
+            QueryResultRetentionEvidence.CaptureStarted,
+            QueryResultRetentionEvidence.Captured,
+            QueryResultRetentionEvidence.Issuance(QueryResultRetentionIssue.ISSUED),
         )
 }
-
-private fun projectedPayload(
-    value:
-        io.github.amichne.kast.kernel.OperationOutcome<
-            io.github.amichne.kast.protocol.contract.QueryRunResult,
-            io.github.amichne.kast.protocol.contract.QueryRunQualification,
-            QueryRunRejection,
-        >
-) = (value as OperationOutcome.Qualified).evidence.payload
 
 private fun <T> Refinement<T, *>.value(): T = (this as Refinement.Refined).value

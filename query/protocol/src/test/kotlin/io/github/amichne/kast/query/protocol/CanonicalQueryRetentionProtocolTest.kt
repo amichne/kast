@@ -69,25 +69,27 @@ class CanonicalQueryRetentionProtocolTest {
     fun `retained result draining cannot recreate an evicted producer checkpoint`() = runTest {
         val store = QueryStateStore(capacity = 3)
         var calls = 0
+        lateinit var producerResult: QueryExecutionResult.Qualified
         val protocol =
             CanonicalQueryProtocol(
                 QueryOperations { admitted ->
                     calls++
                     QueryExecutionResult.Qualified(
-                        QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
-                        QueryCoverage.Qualified.create(
-                                QueryCount.parse(0).refined(),
-                                setOf(QueryLimitation.WORK_LIMIT_REACHED),
-                            )
-                            .refined(),
-                        QueryContinuationState.Resumable(
-                            object : QueryCheckpoint {
-                                override val plan = admitted.plan
-                                override val lease = admitted.lease
-                                override val retainedBytes = 1024L
-                            }
-                        ),
-                    )
+                            QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
+                            QueryCoverage.Qualified.create(
+                                    QueryCount.parse(0).refined(),
+                                    setOf(QueryLimitation.WORK_LIMIT_REACHED),
+                                )
+                                .refined(),
+                            QueryContinuationState.Resumable(
+                                object : QueryCheckpoint {
+                                    override val plan = admitted.plan
+                                    override val lease = admitted.lease
+                                    override val retainedBytes = 1024L
+                                }
+                            ),
+                        )
+                        .also { producerResult = it }
                 },
                 CanonicalQueryReferences(),
                 store,
@@ -95,8 +97,12 @@ class CanonicalQueryRetentionProtocolTest {
         val first =
             protocol.executePage(request().copy(retention = QueryRetentionModeDocument.RETAIN), lease, budget)
                 as OperationOutcome.Qualified
-        val reference = (first.evidence.payload.retention as QueryResultRetention.Retained).reference
         val checkpoint = first.qualification.progress.continuationToken as QueryExecutionContinuation.Pipeline
+        val snapshot =
+            io.github.amichne.kast.query.contract.QueryRetainedResult.capture(lease, producerResult).refined()
+        val reference =
+            (store.issueResult(request(), snapshot, protectedCheckpoint = checkpoint) as QueryResultIssuance.Issued)
+                .reference
         val unrelated =
             io.github.amichne.kast.query.contract.QueryRetainedResult.capture(
                     lease,
@@ -125,6 +131,31 @@ class CanonicalQueryRetentionProtocolTest {
     }
 
     @Test
+    fun `internal evaluator page never captures or issues retained output`() = runTest {
+        val observations = mutableListOf<QueryResultRetentionEvidence>()
+        var calls = 0
+        val protocol =
+            CanonicalQueryProtocol(
+                operations =
+                    QueryOperations {
+                        calls++
+                        QueryExecutionResult.Complete.create(
+                            QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
+                            QueryCoverage.Complete(QueryCount.parse(0).refined()),
+                        )
+                    },
+                authority = CanonicalQueryReferences(),
+                retentionObservation = QueryResultRetentionObservation(observations::add),
+            )
+        val page =
+            protocol.executePage(request().copy(retention = QueryRetentionModeDocument.RETAIN), lease, budget)
+                as OperationOutcome.Complete
+        assertEquals(QueryResultRetention.NotRequested, page.evidence.payload.retention)
+        assertEquals(emptyList<QueryResultRetentionEvidence>(), observations)
+        assertEquals(1, calls)
+    }
+
+    @Test
     fun `retained empty result is readable without another semantic execution`() = runTest {
         var executions = 0
         val protocol =
@@ -132,15 +163,20 @@ class CanonicalQueryRetentionProtocolTest {
                 QueryOperations {
                     executions++
                     QueryExecutionResult.Complete.create(
-                        QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
-                        QueryCoverage.Complete(QueryCount.parse(0).refined()),
-                    )
+                            QueryResult(QueryRows.Symbols.of(emptyList()), emptyList()),
+                            QueryCoverage.Complete(QueryCount.parse(0).refined()),
+                        )
+                        .observedWork(io.github.amichne.kast.query.contract.QueryWorkCount.parse(1).refined())
                 },
                 CanonicalQueryReferences(),
             )
         val first =
-            protocol.executePage(request().copy(retention = QueryRetentionModeDocument.RETAIN), lease, budget)
-                as OperationOutcome.Complete
+            protocol.execute(
+                request().copy(retention = QueryRetentionModeDocument.RETAIN),
+                lease,
+                budget,
+                retainedQueryTestPolicy(budget),
+            ) as OperationOutcome.Complete
         val reference = (first.evidence.payload.retention as QueryResultRetention.Retained).reference
         val read =
             protocol.executePage(

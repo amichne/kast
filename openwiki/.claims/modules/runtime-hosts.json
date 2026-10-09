@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:abe5e2f7b57dafbf486fd22a3c70a4dd48401873781b3a5de38a810b283c26ba",
+  "pageVersion": "sha256:e841709540e2298696e5600c704eb98eccbe763f8c4a9f6b9c52caad7da1c0a6",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -212,15 +212,19 @@
     },
     {
       "id": "claim_26406fa4394d40c98e92ed0dd33f6010",
-      "statement": "Hosted canonical query supplies an explicit finite retention observer that maps presented, pending-impact and original-investigation capture and issuance outcomes into existing RETENTION diagnostics without source payloads, handles, new state ownership or semantic authority.",
+      "statement": "Hosted canonical query supplies a finite retention observer for the sole invocation issuer's capture start and success, each closed capture failure and issuance outcome, mapped into existing RETENTION diagnostics without payloads, handles, new state ownership or semantic authority.",
       "evidence": [
         {
-          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt#L140-L157",
-          "version": "repo-lines-v1:sha256:031dcb5011f58ae8ef63cd74a370857ae0e05eb0fdb5d4914a9ebbc8a93279e0:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5Y2FkNTE3NjhhYjNmMjFjNTMzZWUwMDUyNTA5MmZhNjZlMmUzZjJiNmFlMWQ1NGI0MTE4OWZjZTI5MDcyZTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUyZDg0Y2IxYzJlN2QxODIxZDYwMWU1YmFmOTkyZGVhZmFkNDNjZWJlM2Y2ZDVjZmUyYjRlMDc5MTgzN2QwODUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJjN2YxMWEwMDk4NjU5NGFkYjJjMjEyYTkwZThlOWM4NDBkMmM1NDc4Y2U2NDY4MWY3MmZkN2QwZWY5ZGIzNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI1MjhmYmViYmE4ZjEyMzlmNGJkNjkyODRmODc2YWI4YmZmZWQ0ZDZhNmQ0NTJhYzQ2N2YwN2EzYzQyMDY3ZGUifQ"
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt",
+          "version": "repo-file-v1:sha256:bcb7e77c4f3d047641eedfb238f82982e705e0097c6097e18cb8f4397a91429c"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt",
-          "version": "repo-file-v1:sha256:3f6e89e49855108e682e65d0f3a0def2cd8f3b82c57f60c826cba471f66d054a"
+          "version": "repo-file-v1:sha256:76fd91792b13102dc04fb78a3bcf3170aea9834851fac0303b21c746464c567b"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt",
+          "version": "repo-file-v1:sha256:d355abfe98fab7dc5cb8a4e88c158576d3cffb500127a442f43e29945a73e8b2"
         }
       ]
     },
@@ -305,6 +309,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-09T02:50:46.064Z"
+    "at": "2026-10-09T14:52:54.878Z"
   }
 }

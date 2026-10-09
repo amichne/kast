@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:026f36bfdc4bc455718a07428920de34cfe00c234d7be14e887a19b6d9cb764d",
+  "pageVersion": "sha256:35d87908fdc7cea78f4d5356ab3dfad357a7997e114f59cfdcc4cd69d6b643eb",
   "claims": [
     {
       "id": "claim_028d251874414d8da5da1449de9e8ce4",
@@ -96,15 +96,23 @@
     },
     {
       "id": "claim_2d12226c67fb41fb9f19ab4057521653",
-      "statement": "Before impact finalization, only a qualified resumable empty evidence-only snapshot is admitted for retention; its exact existing checkpoint retains unfinished execution, while original investigation ordinals and witness sections require a finalized ledger.",
+      "statement": "The sole invocation projection can retain proven incomplete impact facts for typed completion rejection with original coverage and producer progress; internal evaluator pages issue no retained results. Empty pending value-path reads remain evidence-only and witness reads reject with RESULT_FIELD_UNAVAILABLE without semantic execution or checkpoint consumption.",
       "evidence": [
         {
-          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultRetentionSource.kt",
-          "version": "repo-file-v1:sha256:18d95a614270b5263f1867ef38c582021267448c9ae158e0aa202b166f2980f8"
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidenceRead.kt",
+          "version": "repo-file-v1:sha256:568129b66d2ea0a9d0b242951cea3bf0abdbc8974e1daff974b301e6b2cd8b5b"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt",
+          "version": "repo-file-v1:sha256:e6f788df208a5c43692b732f634d1286139da3f802abd915b4429f9b3181fc0a"
         },
         {
           "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt",
-          "version": "repo-file-v1:sha256:c3129f33c901a8e05e7dc7874b97a5719bd644ce1340538331b2505751d8138b"
+          "version": "repo-file-v1:sha256:d23b0e45db2bfe8dd606c91ff52dcdb2d40d4d791f4e4414ef305c20c70b5e5b"
+        },
+        {
+          "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactRetentionTest.kt",
+          "version": "repo-file-v1:sha256:b63a056e1f376bb41b043485311660405c0c61554e72381d0d8ac0fe940873e7"
         }
       ]
     },
@@ -154,11 +162,11 @@
       "evidence": [
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/AutomaticSymbolQueryRunner.kt",
-          "version": "repo-file-v1:sha256:d0bee3b4677b42599aaafecbe4ab5b8cdb5782bc908daf224c9d2cec56b37567"
+          "version": "repo-file-v1:sha256:0e7e2bb8f5a631bc76eb44c08d9e461ca8d03198e650f55881910267512ae17f"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt",
-          "version": "repo-file-v1:sha256:9a63296cee5ad42f57a4bbdd3a92848dc91d2bc35258b105f71a1ea043442d9f"
+          "version": "repo-file-v1:sha256:90a9f73d789e5ab379f04ee15db525a1e1d3f9d783d1b1023292707fa782da3b"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidenceRead.kt",
@@ -169,6 +177,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-09T14:26:30.997Z"
+    "at": "2026-10-09T14:52:54.878Z"
   }
 }

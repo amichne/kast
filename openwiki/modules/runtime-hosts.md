@@ -266,12 +266,14 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/RegisteredPeerRead.kt
   - id: openwiki-source-738d50046b5f0d1312b7fcb7
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt
+  - id: openwiki-source-08d8bbce5989f3afa7c532a7
+    resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-73144b588342a1cc6d17731e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-08T02:31:16.815Z" }
+generated: { by: "codex", at: "2026-10-09T14:52:54.878Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-09T02:50:46.064Z
+    at: 2026-10-09T14:52:54.878Z
 ---
 
 # Runtime and process hosts
@@ -534,7 +536,7 @@ after relation reads. The shared diagnostic clock records exclusive phase
 intervals, leaving native inventory and confirmation in their own phases; these
 intervals are not inclusive traversal duration or CPU measurements.
 
-`HostedCanonicalQuery` supplies an explicit retention observation callback to the canonical protocol. The adapter maps presented, pending-impact and original-investigation capture starts and successes, each closed capture failure, and issuance outcomes into existing bounded `RETENTION` diagnostics. It records no source payload or handles and creates no new state or semantic authority. Typed adapter tests and the actual diagnostic serializer golden cover success and rejection signals.
+`HostedCanonicalQuery` supplies an explicit retention observation callback to the canonical protocol. The adapter maps the sole invocation issuer's capture start and success, each closed capture failure, and issuance outcomes into existing bounded `RETENTION` diagnostics. It records no source payload or handles and creates no new state or semantic authority. Typed adapter tests and the actual diagnostic serializer golden cover success and rejection signals.
 
 The peer-site adapter uses the already created lifecycle application's registry without activating it. Exact registered host, canonical root and non-disposed project must agree before an independently owned child read is allowed. That read revalidates the complete target basis before restoring declaration tokens, uses single evaluation and final freshness validation, and binds the actual admitted grant, aggregate work and whole elapsed time into a completed receipt. An over-granted child or missing/changed authority fails closed. It neither opens the peer nor traverses target flow.
 

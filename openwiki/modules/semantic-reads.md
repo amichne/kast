@@ -243,10 +243,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-8d15fa1e67cdc054e05e2796
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedValueFlowDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-09T02:50:46.064Z" }
+generated: { by: "codex", at: "2026-10-09T14:52:54.878Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-09T14:15:56.247Z
+    at: 2026-10-09T14:52:54.878Z
 ---
 
 # Semantic read domains
@@ -685,7 +685,7 @@ native relation reads. Native inventory and compiler confirmation keep their own
 intervals and authority. The adapter preserves the existing traversal plan,
 relation requests and outcomes; phase timing grants no semantic coverage.
 
-The existing read counter vocabulary also distinguishes presented, pending-impact and original-investigation retention capture, each finite capture failure, and result issuance outcomes. The hosted adapter records them in the existing `RETENTION` phase. An encoded diagnostic golden verifies actual success and rejection receipt shapes; these observations carry no source payload or handles and cannot establish compiler proof or investigation closure.
+The existing read counter vocabulary records the sole invocation issuer's capture start and success, each finite capture failure, and result issuance outcomes. The hosted adapter records them in the existing `RETENTION` phase. An encoded diagnostic golden verifies actual success and rejection receipt shapes; these observations carry no source payload or handles and cannot establish compiler proof or investigation closure.
 
 ### Normal try/catch results
 
