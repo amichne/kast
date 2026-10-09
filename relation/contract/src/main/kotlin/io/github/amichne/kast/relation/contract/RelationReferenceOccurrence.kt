@@ -254,6 +254,8 @@ private fun CanonicalCompilerSignature.projectedDocumentTextBytes(): Long =
                     contextReceivers.sumOf { it.value.projectedJsonTextBytes() + JSON_LIST_ITEM_BYTES } +
                     returnType.value.projectedJsonTextBytes()
             is CanonicalCompilerSignature.LocalProperty -> returnType.value.projectedJsonTextBytes()
+            is CanonicalCompilerSignature.AnonymousObject ->
+                supertypes.sumOf { it.value.projectedJsonTextBytes() + JSON_LIST_ITEM_BYTES }
             is CanonicalCompilerSignature.TypeAlias,
             is CanonicalCompilerSignature.ClassLike -> 0L
         }

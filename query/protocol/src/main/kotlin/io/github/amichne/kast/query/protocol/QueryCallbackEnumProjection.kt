@@ -59,6 +59,8 @@ internal fun CallbackInvocationFlowCause.protocolCallbackDocument(): QueryCallba
 internal fun CallbackInvocationFlowFailure.protocolCallbackDocument(): QueryCallbackFlowFailureDocument =
     when (this) {
         CallbackInvocationFlowFailure.INVALID_SCAN_PROOF -> QueryCallbackFlowFailureDocument.INVALID_SCAN_PROOF
+        CallbackInvocationFlowFailure.INVALID_DEPENDENCY_CONTRACT ->
+            QueryCallbackFlowFailureDocument.INVALID_DEPENDENCY_CONTRACT
         CallbackInvocationFlowFailure.INVALID_FORWARDING_PATH ->
             QueryCallbackFlowFailureDocument.INVALID_FORWARDING_PATH
         CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH -> QueryCallbackFlowFailureDocument.OWNER_BINDING_MISMATCH

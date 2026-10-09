@@ -67,6 +67,9 @@ internal sealed interface CallbackBindingPreparation {
         val call: org.jetbrains.kotlin.psi.KtCallExpression,
     ) : CallbackBindingPreparation
 
+    data class DependencyContract(val binding: io.github.amichne.kast.relation.contract.CallbackDependencyContract) :
+        CallbackBindingPreparation
+
     data class Unavailable(val cause: CallbackInvocationFlowCause) : CallbackBindingPreparation
 
     data class ContractRejected(val cause: CallbackInvocationFlowFailure) : CallbackBindingPreparation
@@ -119,6 +122,9 @@ internal class IntellijCallbackBindingReader(
                 is Refinement.Refined -> result.value
                 is Refinement.Rejected -> return unavailable(result.failure.flowCause())
             }
+        val mappedFile = mapped.declaration.containingFile?.virtualFile
+        if (mappedFile != null && !context.scope.nativeScope.contains(mappedFile))
+            return readCallbackDependencyContract(context, call, argument.expression)
         val target =
             when (val result = target(mapped)) {
                 is Refinement.Refined -> result.value

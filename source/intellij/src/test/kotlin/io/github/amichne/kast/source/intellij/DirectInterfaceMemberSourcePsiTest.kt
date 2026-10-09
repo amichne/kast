@@ -61,6 +61,20 @@ import org.junit.jupiter.api.io.TempDir
 /** Physical PSI and production source enumeration. Visibility is injected; K2 anchor validation remains separate. */
 class DirectInterfaceMemberSourcePsiTest {
     @Test
+    fun `anonymous object source lookup label comes from actual object literal PSI`(@TempDir home: Path) {
+        physical(home, "fun owner() = object : Runnable { override fun run() = Unit }\nobject Named") { file, _ ->
+            val objects =
+                com.intellij.psi.util.PsiTreeUtil.findChildrenOfType(
+                        file,
+                        org.jetbrains.kotlin.psi.KtObjectDeclaration::class.java,
+                    )
+                    .toList()
+            assertEquals(listOf("<anonymous-object>", "Named"), objects.map { it.compilerDeclarationName() })
+            assertTrue(objects.first().isObjectLiteral())
+        }
+    }
+
+    @Test
     fun `direct interface inventory proves exact structural parents and retains member kind constraints`(
         @TempDir home: Path
     ) {

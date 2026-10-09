@@ -1,0 +1,573 @@
+{
+  "type": "TRACE_BASELINE_MANIFEST",
+  "fixtureRevision": "r1",
+  "sourceRevision": "a5391de62078f911d91e33a9b6920fc693f58f45",
+  "fixtureRoot": "/private/tmp/ktrace-eezyvuyb/fixture",
+  "grant": {
+    "maxElapsedMs": 15000,
+    "maxWorkUnits": 100000,
+    "maxResults": 100,
+    "maxReturnedBytes": 524288
+  },
+  "queries": [
+    {
+      "label": "A.TRACE",
+      "package": "fixture.attributes",
+      "declaration": "Attributes",
+      "kind": "CLASS",
+      "steps": [
+        "TRACE"
+      ],
+      "expansionDirectory": "src",
+      "sourceSets": [
+        "main",
+        "test"
+      ],
+      "sourcePolicy": "PRODUCTION_AND_TEST",
+      "strict": true
+    },
+    {
+      "label": "B.TRACE",
+      "package": "fixture.flow",
+      "declaration": "FlowCollector",
+      "kind": "CLASS",
+      "steps": [
+        "TRACE"
+      ],
+      "expansionDirectory": "src",
+      "sourceSets": [
+        "main",
+        "test"
+      ],
+      "sourcePolicy": "PRODUCTION_AND_TEST",
+      "strict": true
+    },
+    {
+      "label": "A.IMPLEMENTATIONS",
+      "package": "fixture.attributes",
+      "declaration": "Attributes",
+      "kind": "CLASS",
+      "steps": [
+        "IMPLEMENTATIONS",
+        "DISTINCT_SYMBOLS"
+      ],
+      "expansionDirectory": "src",
+      "sourceSets": [
+        "main",
+        "test"
+      ],
+      "sourcePolicy": "PRODUCTION_AND_TEST",
+      "strict": true
+    },
+    {
+      "label": "B.IMPLEMENTATIONS",
+      "package": "fixture.flow",
+      "declaration": "FlowCollector",
+      "kind": "CLASS",
+      "steps": [
+        "IMPLEMENTATIONS",
+        "DISTINCT_SYMBOLS"
+      ],
+      "expansionDirectory": "src",
+      "sourceSets": [
+        "main",
+        "test"
+      ],
+      "sourcePolicy": "PRODUCTION_AND_TEST",
+      "strict": true
+    },
+    {
+      "label": "B.OVERRIDES",
+      "package": "fixture.flow",
+      "declaration": "emit",
+      "kind": "FUNCTION",
+      "steps": [
+        "OVERRIDES",
+        "DISTINCT_SYMBOLS"
+      ],
+      "expansionDirectory": "src",
+      "sourceSets": [
+        "main",
+        "test"
+      ],
+      "sourcePolicy": "PRODUCTION_AND_TEST",
+      "strict": true
+    },
+    {
+      "label": "A.library.CALLEES",
+      "package": "fixture.attributes",
+      "declaration": "take",
+      "kind": "FUNCTION",
+      "steps": [
+        "CALLEES"
+      ],
+      "expansionDirectory": "src/main/kotlin/fixture/attributes",
+      "sourceSets": [
+        "main",
+        "test"
+      ],
+      "sourcePolicy": "PRODUCTION_AND_TEST",
+      "strict": true
+    },
+    {
+      "label": "A.helper.CALLEES",
+      "package": "fixture.attributes",
+      "declaration": "helperRemoval",
+      "kind": "FUNCTION",
+      "steps": [
+        "CALLEES"
+      ],
+      "expansionDirectory": "src/main/kotlin/fixture/attributes",
+      "sourceSets": [
+        "main",
+        "test"
+      ],
+      "sourcePolicy": "PRODUCTION_AND_TEST",
+      "strict": true
+    },
+    {
+      "label": "B.named.CALLERS",
+      "package": "fixture.flow",
+      "declaration": "consume",
+      "kind": "FUNCTION",
+      "steps": [
+        "CALLERS"
+      ],
+      "expansionDirectory": "src/main/kotlin/fixture/flow",
+      "sourceSets": [
+        "main",
+        "test"
+      ],
+      "sourcePolicy": "PRODUCTION_AND_TEST",
+      "strict": true
+    },
+    {
+      "label": "N.stored.CALLEES",
+      "package": "fixture.shadow",
+      "declaration": "storedControl",
+      "kind": "FUNCTION",
+      "steps": [
+        "CALLEES"
+      ],
+      "expansionDirectory": "src/main/kotlin/fixture/shadow",
+      "sourceSets": [
+        "main",
+        "test"
+      ],
+      "sourcePolicy": "PRODUCTION_AND_TEST",
+      "strict": true
+    },
+    {
+      "label": "N.conditional.CALLEES",
+      "package": "fixture.shadow",
+      "declaration": "conditionalControl",
+      "kind": "FUNCTION",
+      "steps": [
+        "CALLEES"
+      ],
+      "expansionDirectory": "src/main/kotlin/fixture/shadow",
+      "sourceSets": [
+        "main",
+        "test"
+      ],
+      "sourcePolicy": "PRODUCTION_AND_TEST",
+      "strict": true
+    },
+    {
+      "label": "N.spring.IMPLEMENTATIONS",
+      "package": "fixture.spring",
+      "declaration": "ArticleRepository",
+      "kind": "CLASS",
+      "steps": [
+        "IMPLEMENTATIONS",
+        "DISTINCT_SYMBOLS"
+      ],
+      "expansionDirectory": "src",
+      "sourceSets": [
+        "main",
+        "test"
+      ],
+      "sourcePolicy": "PRODUCTION_AND_TEST",
+      "strict": true
+    }
+  ],
+  "oracle": [
+    {
+      "label": "A.member.get",
+      "file": "src/main/kotlin/fixture/attributes/Attributes.kt",
+      "startInclusive": 469,
+      "endExclusive": 477,
+      "role": "DECLARATION",
+      "owner": "fixture.attributes.Attributes",
+      "target": "fixture.attributes.Attributes.get",
+      "expectation": "TRACE retains direct interface member"
+    },
+    {
+      "label": "A.member.getOrNull",
+      "file": "src/main/kotlin/fixture/attributes/Attributes.kt",
+      "startInclusive": 834,
+      "endExclusive": 848,
+      "role": "DECLARATION",
+      "owner": "fixture.attributes.Attributes",
+      "target": "fixture.attributes.Attributes.getOrNull",
+      "expectation": "TRACE retains direct interface member"
+    },
+    {
+      "label": "A.member.contains",
+      "file": "src/main/kotlin/fixture/attributes/Attributes.kt",
+      "startInclusive": 1073,
+      "endExclusive": 1086,
+      "role": "DECLARATION",
+      "owner": "fixture.attributes.Attributes",
+      "target": "fixture.attributes.Attributes.contains",
+      "expectation": "TRACE retains direct interface member"
+    },
+    {
+      "label": "A.member.put",
+      "file": "src/main/kotlin/fixture/attributes/Attributes.kt",
+      "startInclusive": 1328,
+      "endExclusive": 1336,
+      "role": "DECLARATION",
+      "owner": "fixture.attributes.Attributes",
+      "target": "fixture.attributes.Attributes.put",
+      "expectation": "TRACE retains direct interface member"
+    },
+    {
+      "label": "A.member.set",
+      "file": "src/main/kotlin/fixture/attributes/Attributes.kt",
+      "startInclusive": 1588,
+      "endExclusive": 1596,
+      "role": "DECLARATION",
+      "owner": "fixture.attributes.Attributes",
+      "target": "fixture.attributes.Attributes.set",
+      "expectation": "TRACE retains direct interface member"
+    },
+    {
+      "label": "A.member.remove",
+      "file": "src/main/kotlin/fixture/attributes/Attributes.kt",
+      "startInclusive": 1849,
+      "endExclusive": 1860,
+      "role": "DECLARATION",
+      "owner": "fixture.attributes.Attributes",
+      "target": "fixture.attributes.Attributes.remove",
+      "expectation": "TRACE retains direct interface member"
+    },
+    {
+      "label": "A.member.take",
+      "file": "src/main/kotlin/fixture/attributes/Attributes.kt",
+      "startInclusive": 2150,
+      "endExclusive": 2159,
+      "role": "DECLARATION",
+      "owner": "fixture.attributes.Attributes",
+      "target": "fixture.attributes.Attributes.take",
+      "expectation": "TRACE retains direct interface member"
+    },
+    {
+      "label": "A.member.takeOrNull",
+      "file": "src/main/kotlin/fixture/attributes/Attributes.kt",
+      "startInclusive": 2485,
+      "endExclusive": 2500,
+      "role": "DECLARATION",
+      "owner": "fixture.attributes.Attributes",
+      "target": "fixture.attributes.Attributes.takeOrNull",
+      "expectation": "TRACE retains direct interface member"
+    },
+    {
+      "label": "A.member.computeIfAbsent",
+      "file": "src/main/kotlin/fixture/attributes/Attributes.kt",
+      "startInclusive": 2818,
+      "endExclusive": 2838,
+      "role": "DECLARATION",
+      "owner": "fixture.attributes.Attributes",
+      "target": "fixture.attributes.Attributes.computeIfAbsent",
+      "expectation": "TRACE retains direct interface member"
+    },
+    {
+      "label": "A.member.allKeys",
+      "file": "src/main/kotlin/fixture/attributes/Attributes.kt",
+      "startInclusive": 3072,
+      "endExclusive": 3080,
+      "role": "DECLARATION",
+      "owner": "fixture.attributes.Attributes",
+      "target": "fixture.attributes.Attributes.allKeys",
+      "expectation": "TRACE retains direct interface member"
+    },
+    {
+      "label": "A.take.callback",
+      "file": "src/main/kotlin/fixture/attributes/Attributes.kt",
+      "startInclusive": 2196,
+      "endExclusive": 2211,
+      "role": "CALLBACK_BODY",
+      "owner": "fixture.attributes.Attributes.take",
+      "target": "kotlin.also",
+      "expectation": "resolved library binding must retain external scope and required invocation proof"
+    },
+    {
+      "label": "A.take.remove",
+      "file": "src/main/kotlin/fixture/attributes/Attributes.kt",
+      "startInclusive": 2198,
+      "endExclusive": 2209,
+      "role": "CODE",
+      "owner": "A.take.callback",
+      "target": "fixture.attributes.Attributes.remove",
+      "expectation": "call belongs to callback body; lexical outer function alone is insufficient"
+    },
+    {
+      "label": "A.takeOrNull.callback",
+      "file": "src/main/kotlin/fixture/attributes/Attributes.kt",
+      "startInclusive": 2544,
+      "endExclusive": 2559,
+      "role": "CALLBACK_BODY",
+      "owner": "fixture.attributes.Attributes.takeOrNull",
+      "target": "kotlin.also",
+      "expectation": "same obligation under nullable receiver"
+    },
+    {
+      "label": "A.takeOrNull.remove",
+      "file": "src/main/kotlin/fixture/attributes/Attributes.kt",
+      "startInclusive": 2546,
+      "endExclusive": 2557,
+      "role": "CODE",
+      "owner": "A.takeOrNull.callback",
+      "target": "fixture.attributes.Attributes.remove",
+      "expectation": "call belongs to separate callback body"
+    },
+    {
+      "label": "A.helper.callback",
+      "file": "src/main/kotlin/fixture/attributes/Consumers.kt",
+      "startInclusive": 676,
+      "endExclusive": 699,
+      "role": "CALLBACK_BODY",
+      "owner": "fixture.attributes.helperRemoval",
+      "target": "fixture.attributes.insideAlso",
+      "expectation": "in-domain helper isolates external target admission"
+    },
+    {
+      "label": "A.helper.remove",
+      "file": "src/main/kotlin/fixture/attributes/Consumers.kt",
+      "startInclusive": 678,
+      "endExclusive": 697,
+      "role": "CODE",
+      "owner": "A.helper.callback",
+      "target": "fixture.attributes.Attributes.remove",
+      "expectation": "compiler callback connection under source-domain helper"
+    },
+    {
+      "label": "B.object.0",
+      "file": "src/main/kotlin/fixture/flow/Collect.kt",
+      "startInclusive": 259,
+      "endExclusive": 284,
+      "role": "ANONYMOUS_CLASS",
+      "owner": "fixture.flow.collectIndexed",
+      "target": "fixture.flow.FlowCollector",
+      "expectation": "distinct anonymous compiler owner and implementation edge"
+    },
+    {
+      "label": "B.emit.0",
+      "file": "src/main/kotlin/fixture/flow/Collect.kt",
+      "startInclusive": 325,
+      "endExclusive": 360,
+      "role": "OVERRIDE",
+      "owner": "B.object.0",
+      "target": "fixture.flow.FlowCollector.emit",
+      "expectation": "distinct owner; no fabricated global class name"
+    },
+    {
+      "label": "B.action.0",
+      "file": "src/main/kotlin/fixture/flow/Collect.kt",
+      "startInclusive": 363,
+      "endExclusive": 405,
+      "role": "CALLBACK_INVOCATION",
+      "owner": "B.emit.0",
+      "target": "fixture.flow.collectIndexed.action",
+      "expectation": "static invocation belongs to named anonymous override, not enclosing function"
+    },
+    {
+      "label": "B.object.1",
+      "file": "src/main/kotlin/fixture/flow/Collect.kt",
+      "startInclusive": 598,
+      "endExclusive": 623,
+      "role": "ANONYMOUS_CLASS",
+      "owner": "fixture.flow.collectSecond",
+      "target": "fixture.flow.FlowCollector",
+      "expectation": "distinct anonymous compiler owner and implementation edge"
+    },
+    {
+      "label": "B.emit.1",
+      "file": "src/main/kotlin/fixture/flow/Collect.kt",
+      "startInclusive": 664,
+      "endExclusive": 699,
+      "role": "OVERRIDE",
+      "owner": "B.object.1",
+      "target": "fixture.flow.FlowCollector.emit",
+      "expectation": "distinct owner; no fabricated global class name"
+    },
+    {
+      "label": "B.action.1",
+      "file": "src/main/kotlin/fixture/flow/Collect.kt",
+      "startInclusive": 702,
+      "endExclusive": 744,
+      "role": "CALLBACK_INVOCATION",
+      "owner": "B.emit.1",
+      "target": "fixture.flow.collectSecond.action",
+      "expectation": "static invocation belongs to named anonymous override, not enclosing function"
+    },
+    {
+      "label": "B.named.emit",
+      "file": "src/main/kotlin/fixture/flow/Consumers.kt",
+      "startInclusive": 73,
+      "endExclusive": 113,
+      "role": "OVERRIDE",
+      "owner": "fixture.flow.NamedCollector",
+      "target": "fixture.flow.FlowCollector.emit",
+      "expectation": "named implementation control"
+    },
+    {
+      "label": "B.named.consume",
+      "file": "src/main/kotlin/fixture/flow/Consumers.kt",
+      "startInclusive": 116,
+      "endExclusive": 130,
+      "role": "CODE",
+      "owner": "fixture.flow.NamedCollector.emit",
+      "target": "fixture.flow.consume",
+      "expectation": "named caller control"
+    },
+    {
+      "label": "N.stored",
+      "file": "src/main/kotlin/fixture/shadow/Shadow.kt",
+      "startInclusive": 305,
+      "endExclusive": 323,
+      "role": "CALLBACK_BODY",
+      "owner": "fixture.shadow.storedControl",
+      "target": "fixture.shadow.also",
+      "expectation": "must not fabricate invocation for stored callback"
+    },
+    {
+      "label": "N.conditional",
+      "file": "src/main/kotlin/fixture/shadow/Shadow.kt",
+      "startInclusive": 375,
+      "endExclusive": 393,
+      "role": "CALLBACK_BODY",
+      "owner": "fixture.shadow.conditionalControl",
+      "target": "fixture.shadow.also",
+      "expectation": "retain conditional invocation qualification, never unconditional runtime execution"
+    }
+  ],
+  "files": [
+    {
+      "path": "build.gradle.kts",
+      "sha256": "a4c9ea7cdf077a8ba8c54c8fa78787a6b84df0a5d319c2c462a693c527bf0d0e"
+    },
+    {
+      "path": "gradle/wrapper/gradle-wrapper.jar",
+      "sha256": "7a9ce74cff467ca1bf60a4fcd9f05185acceda4d0f382434d393e17864262c5d"
+    },
+    {
+      "path": "gradle/wrapper/gradle-wrapper.properties",
+      "sha256": "d0bebe8133babb74ab29a31ee6616c56ef8985fc801e1fd16c61b5ed2189e907"
+    },
+    {
+      "path": "gradle.properties",
+      "sha256": "b3b7daaa3f2a79622426d3bb3813087db1c5486ae031a22c6b62ec47549ebc31"
+    },
+    {
+      "path": "gradlew",
+      "sha256": "a5a5c199ba02189ae8c46a334223371a20599d9c298ef65e7540ede4a3f72d59"
+    },
+    {
+      "path": "settings.gradle.kts",
+      "sha256": "c7cc0027207329f70fa2fb0b0076c427ef5f8fe22e7ce2b5139ee263f8a99b12"
+    },
+    {
+      "path": "src/main/kotlin/fixture/attributes/Attributes.kt",
+      "sha256": "aabd89cc8a0c866912e7e416a757eff9a5022619990ba728b0a84aee9b790d1f"
+    },
+    {
+      "path": "src/main/kotlin/fixture/attributes/Consumers.kt",
+      "sha256": "c61c3004f04f2c1ca1261216086b2c895fef6070ca481dbbe1ae540938c1e321"
+    },
+    {
+      "path": "src/main/kotlin/fixture/attributes/Implementations.kt",
+      "sha256": "e60caea990aa8a95bc3ad93d9fb1b6f4f0572b1716b96a7540dcfb2a4bf56846"
+    },
+    {
+      "path": "src/main/kotlin/fixture/flow/Collect.kt",
+      "sha256": "784bcd4697221e80d0c41beb23904eb8cf9a42037e7efd8d0b92af91dedc59e2"
+    },
+    {
+      "path": "src/main/kotlin/fixture/flow/Consumers.kt",
+      "sha256": "525334f7f308a402867a66bf92c3c0b52124ca30998e10f452ded6af8f57dd8c"
+    },
+    {
+      "path": "src/main/kotlin/fixture/flow/Flow.kt",
+      "sha256": "50054a6011010818bb8dcb3b3453b51bf0e0fbb5e8a44c2265bde13620437c47"
+    },
+    {
+      "path": "src/main/kotlin/fixture/flow/FlowCollector.kt",
+      "sha256": "193e64d38564a3d245234c323e3b09eb313819a214bd1391633f8fcdd9fe61a6"
+    },
+    {
+      "path": "src/main/kotlin/fixture/shadow/Shadow.kt",
+      "sha256": "340570e369dca9c505212ef86edc96ea170a9e40057a765a3de3cf4b0446519a"
+    },
+    {
+      "path": "src/main/kotlin/fixture/spring/Consumers.kt",
+      "sha256": "be06afa7297fd8da7906ab123505ed1648164db27dc1b12c78c6913e22b06ccd"
+    },
+    {
+      "path": "src/main/kotlin/fixture/spring/Repositories.kt",
+      "sha256": "57551fbb349fbcc73d56a31d6d5e8f6bb73d117a4d5386e3883098d0aba38796"
+    },
+    {
+      "path": "src/test/kotlin/fixture/attributes/TestConsumers.kt",
+      "sha256": "e7e143c9c45a3acd3e62cb2addb6df8b9c000bcf1cd0a9412476a98edf693191"
+    },
+    {
+      "path": "src/test/kotlin/fixture/flow/TestConsumers.kt",
+      "sha256": "898bdae70937d19d1080cd9bf4bd8d1fe0fecb832d6d2574be723253c13a542b"
+    }
+  ],
+  "upstream": [
+    {
+      "name": "Attributes.kt",
+      "revision": "f76c50da18f6b284ce4ae7b4e84bed4c9aea5ce0",
+      "sha256": "88467572569f2ebe11b1186e43d5fb6f184b6ee9a877ae8c604cb201b0211bec",
+      "adaptation": "Selected slice, package relocation, authored support/consumers; Flow removes opt-in annotation; checkIndexOverflow is authored support"
+    },
+    {
+      "name": "Collect.kt",
+      "revision": "bd2e9a1b90400fb7b2fa4f8731e7d8148799ab73",
+      "sha256": "b06e2fe418a8f44441ce64692d9c239e275334486c92b71710d4bfaf50348642",
+      "adaptation": "Selected slice, package relocation, authored support/consumers; Flow removes opt-in annotation; checkIndexOverflow is authored support"
+    },
+    {
+      "name": "Flow.kt",
+      "revision": "bd2e9a1b90400fb7b2fa4f8731e7d8148799ab73",
+      "sha256": "fee94461d39204738e92a4d115cd2e2322ff4cf689485989c07415e9e398c920",
+      "adaptation": "Selected slice, package relocation, authored support/consumers; Flow removes opt-in annotation; checkIndexOverflow is authored support"
+    },
+    {
+      "name": "FlowCollector.kt",
+      "revision": "bd2e9a1b90400fb7b2fa4f8731e7d8148799ab73",
+      "sha256": "7548eb948dfaad0b43ae4483be2beb1ae68c73262c030c901160b21ed60c0439",
+      "adaptation": "Selected slice, package relocation, authored support/consumers; Flow removes opt-in annotation; checkIndexOverflow is authored support"
+    },
+    {
+      "name": "Repositories.kt",
+      "revision": "a599cbd44f5ec108c402e9967309ead7008b2212",
+      "sha256": "cefb7d1c0a54f8927d565db9814b40bd97ea7779553ecd9a383ae26944d4914e",
+      "adaptation": "Selected slice, package relocation, authored support/consumers; Flow removes opt-in annotation; checkIndexOverflow is authored support"
+    }
+  ],
+  "requiredAttributesImplementations": [
+    "fixture.attributes.MapAttributes",
+    "fixture.attributes.EmptyAttributes"
+  ],
+  "requiredCollectorImplementations": [
+    "fixture.flow.NamedCollector",
+    "B.object.0",
+    "B.object.1"
+  ],
+  "springSourceImplementations": [],
+  "replayQualification": "NEW_REVISION_OF_REPORTED_SHAPES_NOT_DELETED_RUN_REPLAY"
+}

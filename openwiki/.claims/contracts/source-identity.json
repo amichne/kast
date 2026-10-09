@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:4c7dcc9400ff9cf2c801b8a7eea77b15c2b4bf109bb8370f21cd589416f82427",
+  "pageVersion": "sha256:c70c2748ed4caef3d5152af7b39c41ba62701e3dcf53e215703244f394546ff7",
   "claims": [
     {
       "id": "claim_f7d072d0792940888833dd8e689c0570",
@@ -46,7 +46,7 @@
         },
         {
           "resource": "repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt",
-          "version": "repo-file-v1:sha256:ba968a3c6e47c0931f09edd63269eef63362b4c2091d22e77ae16030b15cf1a3"
+          "version": "repo-file-v1:sha256:6b61fe9f812d24676bde4bb28867a6333de19f4b739013071617bf0f7ca35bab"
         },
         {
           "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactRevalidationCapture.kt",
@@ -57,10 +57,28 @@
           "version": "repo-file-v1:sha256:1dacbb29b54269cf7de0a13088a2ad2513a3b63125b67d242b0840f0754a81ed"
         }
       ]
+    },
+    {
+      "id": "claim_9babc3fd9980444bad0bb3181d31bc43",
+      "statement": "Anonymous objects and their members preserve compiler-owned local addresses; source lookup selects actual object-literal PSI and revalidates exact ranges and compiler evidence without inventing qualified identity.",
+      "evidence": [
+        {
+          "resource": "repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/LiveIntellijSourceRead.kt",
+          "version": "repo-file-v1:sha256:b2d7831effcfdb9c1d5bd92dce48fbcfa2dff2773e64dc90cdf7c0163d930e21"
+        },
+        {
+          "resource": "repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/SourceCompilerDeclarationName.kt",
+          "version": "repo-file-v1:sha256:6d930d9bd54e0111f9fda593c5af8d1c0abd6c7e2c1f57ffd105f635158063a1"
+        },
+        {
+          "resource": "repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt",
+          "version": "repo-file-v1:sha256:8c93dacbf4262f27bc3b93e1ba8f8726e14d978c5ccbecbd9fb375272c367981"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-08T03:09:54.978Z"
+    "at": "2026-10-09T02:50:46.064Z"
   }
 }

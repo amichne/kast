@@ -126,6 +126,14 @@ internal sealed interface CompilerSignatureWireDocument {
     ) : CompilerSignatureWireDocument
 
     @Serializable
+    @SerialName("ANONYMOUS_OBJECT")
+    data class AnonymousObject(
+        val address: LocalDeclarationAddressWireDocument,
+        @io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint(maximumItems = 1000)
+        val supertypes: List<String>,
+    ) : CompilerSignatureWireDocument
+
+    @Serializable
     @SerialName("type-alias")
     data class TypeAlias(val qualifiedIdentity: String) : CompilerSignatureWireDocument
 
@@ -161,6 +169,7 @@ internal sealed interface LocalDeclarationFileWireDocument {
 internal enum class LocalDeclarationKindWireDocument {
     FUNCTION,
     PROPERTY,
+    ANONYMOUS_OBJECT,
 }
 
 @Serializable
@@ -356,6 +365,11 @@ internal fun CompilerSignatureDocument.toWireDocument(): CompilerSignatureWireDo
                     LocalPropertyMutabilityDocument.VAR -> LocalPropertyMutabilityWireDocument.VAR
                 },
             )
+        is CompilerSignatureDocument.AnonymousObject ->
+            CompilerSignatureWireDocument.AnonymousObject(
+                address.toWireDocument(),
+                supertypes.values.map(ProtocolText::value),
+            )
         is CompilerSignatureDocument.TypeAlias -> CompilerSignatureWireDocument.TypeAlias(qualifiedIdentity.value)
         is CompilerSignatureDocument.ClassLike -> CompilerSignatureWireDocument.ClassLike(qualifiedIdentity.value)
     }
@@ -394,6 +408,12 @@ internal fun CompilerSignatureWireDocument.toContract(): WireDocumentConversion<
             }
         is CompilerSignatureWireDocument.LocalFunction -> localFunctionContract()
         is CompilerSignatureWireDocument.LocalProperty -> localPropertyContract()
+        is CompilerSignatureWireDocument.AnonymousObject ->
+            if (address.kind != LocalDeclarationKindWireDocument.ANONYMOUS_OBJECT) WireDocumentConversion.Rejected
+            else
+                combineConverted(address.toContract(), supertypes.toProtocolTextList()) { address, types ->
+                    CompilerSignatureDocument.AnonymousObject(address, types)
+                }
         is CompilerSignatureWireDocument.TypeAlias ->
             qualifiedIdentity.toProtocolText().mapConverted {
                 CompilerSignatureDocument.TypeAlias(it)
@@ -445,6 +465,7 @@ internal fun LocalDeclarationAddressDocument.toWireDocument(): LocalDeclarationA
         when (kind) {
             LocalDeclarationKindDocument.FUNCTION -> LocalDeclarationKindWireDocument.FUNCTION
             LocalDeclarationKindDocument.PROPERTY -> LocalDeclarationKindWireDocument.PROPERTY
+            LocalDeclarationKindDocument.ANONYMOUS_OBJECT -> LocalDeclarationKindWireDocument.ANONYMOUS_OBJECT
         },
         range.toWireDocument(),
         ownerIdentity.value,
@@ -465,6 +486,8 @@ internal fun LocalDeclarationAddressWireDocument.toContract(): WireDocumentConve
                     when (kind) {
                         LocalDeclarationKindWireDocument.FUNCTION -> LocalDeclarationKindDocument.FUNCTION
                         LocalDeclarationKindWireDocument.PROPERTY -> LocalDeclarationKindDocument.PROPERTY
+                        LocalDeclarationKindWireDocument.ANONYMOUS_OBJECT ->
+                            LocalDeclarationKindDocument.ANONYMOUS_OBJECT
                     },
                     range,
                     owner,

@@ -14,6 +14,15 @@ internal fun admitCallbackFlowEvidence(
         is CallbackBindingEvidence.Bound -> admitBoundCallbackFlow(basis, body, binding.binding, invocations)
         is CallbackBindingEvidence.Default -> admitDefaultCallbackFlow(basis, body, binding.binding, invocations)
         is CallbackBindingEvidence.Direct -> admitDirectCallbackFlow(basis, body, binding.binding, invocations)
+        is CallbackBindingEvidence.DependencyContract ->
+            when {
+                binding.binding.basis != basis -> Refinement.Rejected(CallbackInvocationFlowFailure.BASIS_MISMATCH)
+                body.file != binding.binding.occurrence.file ||
+                    !binding.binding.occurrence.range.containsValueRange(body.range) ->
+                    Refinement.Rejected(CallbackInvocationFlowFailure.BODY_OUTSIDE_ARGUMENT)
+                invocations.isNotEmpty() -> Refinement.Rejected(CallbackInvocationFlowFailure.UNBOUND_INVOCATION)
+                else -> Refinement.Refined(Unit)
+            }
         is CallbackBindingEvidence.Unavailable -> admitUnboundCallbackFlow(binding, invocations, obligations)
     }
 
@@ -31,6 +40,7 @@ internal fun admitCallbackScan(
         when (binding) {
             is CallbackBindingEvidence.Bound,
             is CallbackBindingEvidence.Default -> scan != CallbackInvocationScan.NOT_APPLICABLE
+            is CallbackBindingEvidence.DependencyContract -> scan == CallbackInvocationScan.EXHAUSTIVE
             is CallbackBindingEvidence.Direct -> scan == CallbackInvocationScan.NOT_APPLICABLE
             is CallbackBindingEvidence.Unavailable -> scan == CallbackInvocationScan.INCOMPLETE
         }
@@ -153,6 +163,8 @@ internal fun callbackExecutionNeedsQualification(
                 binding.binding.invocation.callable
             }
             is CallbackBindingEvidence.Default -> binding.binding.parameter.callable
+            is CallbackBindingEvidence.DependencyContract ->
+                return binding.binding.owner is RelationCallableBody.Anonymous
             is CallbackBindingEvidence.Direct -> return binding.binding.owner is RelationCallableBody.Anonymous
             is CallbackBindingEvidence.Unavailable -> return false
         }

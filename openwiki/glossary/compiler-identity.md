@@ -19,6 +19,8 @@ code_sources:
 sources:
   - id: openwiki-source-432d05143d371dfe54d7f30d
     resource: repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt
+  - id: openwiki-source-6774ed1d0295b67d908dbbd8
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2SymbolIdentity.kt
   - id: openwiki-source-bc400ee5321e91684ef51817
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/RelationLocalOwnerCallableIdentity.kt
   - id: openwiki-source-56940b0178b2713b872235da
@@ -35,10 +37,10 @@ sources:
     resource: repo://symbol/contract/src/test/kotlin/io/github/amichne/kast/symbol/contract/LocalDeclarationIdentityTest.kt
   - id: openwiki-source-bf5d180cb375453831c662fa
     resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/exact/IntellijKotlinCompilerSymbolLookup.kt
-generated: { by: "codex", at: "2026-10-08T04:02:52.014Z" }
+generated: { by: "codex", at: "2026-10-09T02:50:46.064Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-08T04:02:52.014Z
+    at: 2026-10-09T02:50:46.064Z
 ---
 
 # Compiler identity
@@ -75,3 +77,9 @@ initializer, its containing enum entry, exact initializer equality, the entry's
 callable identity and a named compiler member. Source and relation apply the
 same proof as symbol discovery. This local-owner path preserves the existing
 qualified signature facts and does not broaden global qualified admission.
+
+Anonymous object signatures use `anonymous-object-v1` with the same compiler-owned
+local address and actual ordered supertypes. Members retain the anonymous
+containing symbol even when K2 classifies the member's location as `CLASS`.
+Distinct lexical owners produce distinct object and member identities. The
+`<anonymous-object>` label is presentation, not qualified identity.

@@ -4,6 +4,7 @@ package io.github.amichne.kast.relation.intellij
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure
+import org.jetbrains.kotlin.analysis.api.symbols.KaAnonymousObjectSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaLocalVariableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
@@ -22,6 +23,7 @@ internal fun KaSymbol.localRelationCompilerTypeProof(): Refinement<Unit, LocalDe
                     valueParameters.asSequence().map { it.returnType } +
                     typeParameters.asSequence().flatMap { it.upperBounds.asSequence() }
             is KaLocalVariableSymbol -> sequenceOf(returnType)
+            is KaAnonymousObjectSymbol -> superTypes.asSequence()
             else -> emptySequence()
         }
     return nativeCompilerTypeProof(facts).asLocalRelationTypeProof()

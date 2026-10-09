@@ -84,7 +84,7 @@ internal class IntellijK2RelationProjection(
                 .filter { declaration ->
                     declaration.textRange?.startOffset == subject.range.startInclusive &&
                         declaration.textRange?.endOffset == subject.range.endExclusive &&
-                        declaration.name == subject.name.value
+                        declaration.compilerDeclarationName() == subject.name.value
                 }
                 .toList()
         val declaration =
@@ -352,7 +352,7 @@ internal fun groundedProjection(
                     detached,
                     range.startOffset,
                     range.endOffset,
-                    declaration.name.orEmpty(),
+                    declaration.compilerDeclarationName(),
                     projection.qualifiedIdentity,
                     projection.kind,
                     projection.signature,
@@ -363,3 +363,9 @@ internal fun groundedProjection(
         }
     return IntellijRelationDeclarationProjection.Projected(declaration, evidence)
 }
+
+private fun com.intellij.psi.PsiNamedElement.compilerDeclarationName(): String =
+    name
+        ?: if (this is org.jetbrains.kotlin.psi.KtObjectDeclaration && isObjectLiteral())
+            io.github.amichne.kast.symbol.contract.ANONYMOUS_OBJECT_DECLARATION_NAME
+        else ""

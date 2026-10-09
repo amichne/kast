@@ -20,7 +20,11 @@ enum class LocalDeclarationAddressFailure {
 enum class LocalDeclarationKind {
     FUNCTION,
     PROPERTY,
+    ANONYMOUS_OBJECT,
 }
+
+/** Presentation label only; compiler ownership and the admitted address establish identity. */
+const val ANONYMOUS_OBJECT_DECLARATION_NAME = "<anonymous-object>"
 
 enum class LocalPropertyMutability {
     VAL,

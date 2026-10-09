@@ -78,6 +78,14 @@ sealed interface CompilerSignatureCliDocument {
     ) : CompilerSignatureCliDocument
 
     @Serializable
+    @SerialName("ANONYMOUS_OBJECT")
+    data class AnonymousObject(
+        val address: LocalDeclarationAddressCliDocument,
+        @io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint(maximumItems = 1000)
+        val supertypes: List<String>,
+    ) : CompilerSignatureCliDocument
+
+    @Serializable
     @SerialName("type-alias")
     data class TypeAlias(val qualifiedIdentity: String) : CompilerSignatureCliDocument
 
@@ -113,6 +121,7 @@ sealed interface LocalDeclarationFileCliDocument {
 enum class LocalDeclarationKindCliDocument {
     FUNCTION,
     PROPERTY,
+    ANONYMOUS_OBJECT,
 }
 
 @Serializable
@@ -187,6 +196,8 @@ fun CompilerSignatureDocument.toCliDocument(): CompilerSignatureCliDocument =
                     LocalPropertyMutabilityDocument.VAR -> LocalPropertyMutabilityCliDocument.VAR
                 },
             )
+        is CompilerSignatureDocument.AnonymousObject ->
+            CompilerSignatureCliDocument.AnonymousObject(address.toCliDocument(), supertypes.values.map { it.value })
         is CompilerSignatureDocument.TypeAlias -> CompilerSignatureCliDocument.TypeAlias(qualifiedIdentity.value)
         is CompilerSignatureDocument.ClassLike -> CompilerSignatureCliDocument.ClassLike(qualifiedIdentity.value)
     }
@@ -200,6 +211,7 @@ fun LocalDeclarationAddressDocument.toCliDocument(): LocalDeclarationAddressCliD
         when (kind) {
             LocalDeclarationKindDocument.FUNCTION -> LocalDeclarationKindCliDocument.FUNCTION
             LocalDeclarationKindDocument.PROPERTY -> LocalDeclarationKindCliDocument.PROPERTY
+            LocalDeclarationKindDocument.ANONYMOUS_OBJECT -> LocalDeclarationKindCliDocument.ANONYMOUS_OBJECT
         },
         range.toCliDocument(),
         ownerIdentity.value,

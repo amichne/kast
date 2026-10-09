@@ -14,6 +14,7 @@ internal fun admitCallbackOwnerBindings(
             listOfNotNull(
                 when (val binding = flow.binding) {
                     is CallbackBindingEvidence.Bound -> binding.binding.invocationOwner
+                    is CallbackBindingEvidence.DependencyContract -> binding.binding.owner
                     is CallbackBindingEvidence.Direct -> binding.binding.owner
                     is CallbackBindingEvidence.Default,
                     is CallbackBindingEvidence.Unavailable -> null
@@ -43,6 +44,7 @@ internal fun admitCallbackOwnerBindings(
             when (val binding = it.binding) {
                 is CallbackBindingEvidence.Bound -> binding.binding.invocation.basis != basis
                 is CallbackBindingEvidence.Default -> binding.binding.parameter.callable.lease.identity != basis
+                is CallbackBindingEvidence.DependencyContract -> binding.binding.basis != basis
                 is CallbackBindingEvidence.Direct -> binding.binding.basis != basis
                 is CallbackBindingEvidence.Unavailable -> false
             }

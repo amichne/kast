@@ -151,6 +151,11 @@ sealed interface CompilerSignatureDocument {
         val mutability: LocalPropertyMutabilityDocument,
     ) : CompilerSignatureDocument
 
+    data class AnonymousObject(
+        val address: LocalDeclarationAddressDocument,
+        val supertypes: BoundedProtocolList<ProtocolText>,
+    ) : CompilerSignatureDocument
+
     data class TypeAlias(val qualifiedIdentity: ProtocolText) : CompilerSignatureDocument
 
     data class ClassLike(val qualifiedIdentity: ProtocolText) : CompilerSignatureDocument
@@ -293,6 +298,7 @@ private fun CompilerSignatureDocument.canonicalSignature(): CanonicalCompilerSig
                         },
                     )
                     .valueOrNull() ?: return null
+            is CompilerSignatureDocument.AnonymousObject -> canonicalAnonymousObject() ?: return null
             is CompilerSignatureDocument.TypeAlias ->
                 CanonicalCompilerSignature.typeAlias(qualifiedIdentity.value).valueOrNull() ?: return null
             is CompilerSignatureDocument.ClassLike ->
@@ -336,6 +342,8 @@ private fun CompilerSignatureDocument.matchesCanonical(canonical: CanonicalCompi
             address.canonicalAddress() == canonical.address &&
                 returnType.value == canonical.returnType.value &&
                 mutability.name == canonical.mutability.name
+        this is CompilerSignatureDocument.AnonymousObject && canonical is CanonicalCompilerSignature.AnonymousObject ->
+            matchesAnonymousObject(canonical)
         this is CompilerSignatureDocument.TypeAlias && canonical is CanonicalCompilerSignature.TypeAlias ->
             qualifiedIdentity.value == canonical.qualifiedIdentity.value
         this is CompilerSignatureDocument.ClassLike && canonical is CanonicalCompilerSignature.ClassLike ->
@@ -359,7 +367,8 @@ internal fun CompilerSignatureDocument.supports(kind: SymbolKindDocument): Boole
         is CompilerSignatureDocument.Property,
         is CompilerSignatureDocument.LocalProperty -> kind == SymbolKindDocument.PROPERTY
         is CompilerSignatureDocument.TypeAlias -> kind == SymbolKindDocument.TYPE_ALIAS
-        is CompilerSignatureDocument.ClassLike -> kind == SymbolKindDocument.CLASSLIKE
+        is CompilerSignatureDocument.ClassLike,
+        is CompilerSignatureDocument.AnonymousObject -> kind == SymbolKindDocument.CLASSLIKE
     }
 
 internal fun CompilerSignatureDocument.qualifiedIdentity(): SymbolQualifiedIdentityDocument =
@@ -369,13 +378,15 @@ internal fun CompilerSignatureDocument.qualifiedIdentity(): SymbolQualifiedIdent
         is CompilerSignatureDocument.TypeAlias -> SymbolQualifiedIdentityDocument.Available(qualifiedIdentity)
         is CompilerSignatureDocument.ClassLike -> SymbolQualifiedIdentityDocument.Available(qualifiedIdentity)
         is CompilerSignatureDocument.LocalFunction,
-        is CompilerSignatureDocument.LocalProperty -> SymbolQualifiedIdentityDocument.Unavailable
+        is CompilerSignatureDocument.LocalProperty,
+        is CompilerSignatureDocument.AnonymousObject -> SymbolQualifiedIdentityDocument.Unavailable
     }
 
 internal fun CompilerSignatureDocument.matchesLocation(file: ProtocolText, range: SourceRangeDocument): Boolean =
     when (this) {
         is CompilerSignatureDocument.LocalFunction -> address.file.value == file && address.range == range
         is CompilerSignatureDocument.LocalProperty -> address.file.value == file && address.range == range
+        is CompilerSignatureDocument.AnonymousObject -> address.file.value == file && address.range == range
         is CompilerSignatureDocument.Function,
         is CompilerSignatureDocument.Property,
         is CompilerSignatureDocument.TypeAlias,
@@ -393,3 +404,13 @@ private fun <Value, Failure> Refinement<Value, Failure>.valueOrNull(): Value? =
         is Refinement.Refined -> value
         is Refinement.Rejected -> null
     }
+
+private fun CompilerSignatureDocument.AnonymousObject.canonicalAnonymousObject(): CanonicalCompilerSignature? =
+    CanonicalCompilerSignature.anonymousObject(address.canonicalAddress(), supertypes.values.map(ProtocolText::value))
+        .valueOrNull()
+
+private fun CompilerSignatureDocument.AnonymousObject.matchesAnonymousObject(
+    canonical: CanonicalCompilerSignature.AnonymousObject
+): Boolean =
+    address.canonicalAddress() == canonical.address &&
+        supertypes.values.map(ProtocolText::value) == canonical.supertypes.map { it.value }

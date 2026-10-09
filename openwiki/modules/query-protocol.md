@@ -145,6 +145,8 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactSiteRevalidation.kt
   - id: openwiki-source-584136874e8bed46fcb3def2
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt
+  - id: openwiki-source-002f330ed788c0424c569827
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackObservationProjection.kt
   - id: openwiki-source-c754dabd913ffc31ab2c0d99
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactPeerSelection.kt
   - id: openwiki-source-473a965ca24f2431cb51317a
@@ -183,6 +185,8 @@ sources:
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt
   - id: openwiki-source-711e20b0c3995766bf099120
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryValuePathOutputAdmission.kt
+  - id: openwiki-source-93876d4cad57b972d2315feb
+    resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackBindingCanonical.kt
   - id: openwiki-source-680008eb9e24b45cf91f6d9d
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
   - id: openwiki-source-d932b255353af72bc963a5f0
@@ -195,10 +199,10 @@ sources:
     resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisition.kt
   - id: openwiki-source-614907c76c5e46269ec7d42b
     resource: repo://symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisitionBudgetTest.kt
-generated: { by: "codex", at: "2026-10-08T03:32:51.833Z" }
+generated: { by: "codex", at: "2026-10-09T02:50:46.064Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-08T04:02:52.014Z
+    at: 2026-10-09T02:50:46.064Z
 ---
 
 # Query protocol
@@ -436,3 +440,10 @@ Local addresses survive exact selectors, references, joins, deduplication and
 source projection. Their versioned signature and lexical ownership anchors are
 charged under the existing query retained-storage owner. Identity admission does
 not add mutable assignment flow or prove deferred execution.
+
+Declared binary callback contracts retain their compiler target separately from
+authored source handles. Projection preserves the semantic basis, exact source
+occurrence, source owner, formal parameter position and binary class digest.
+Contract evidence does not invent a dependency body invocation; nested callback
+obligations remain qualified. Canonical retained-storage accounting charges this
+provenance through the existing owner.

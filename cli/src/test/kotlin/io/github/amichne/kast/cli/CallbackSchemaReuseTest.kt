@@ -20,6 +20,9 @@ class CallbackSchemaReuseTest {
         val definitions = schema.getValue("\$defs").jsonObject
         for ((name, serializer) in
             listOf(
+                "callbackCompilerTarget" to
+                    io.github.amichne.kast.protocol.wire.presentation.CanonicalCallbackSchemaDocuments.serializers
+                        .getValue("callbackCompilerTarget"),
                 "callbackObservation" to CanonicalQueryCliDocuments.callbackObservationSerializer,
                 "callableObservation" to CanonicalQueryCliDocuments.callableObservationSerializer,
                 "localDeclarationAddress" to LocalDeclarationAddressCliDocument.serializer(),

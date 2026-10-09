@@ -397,6 +397,7 @@ private fun CanonicalCompilerSignature.supports(kind: CompilerSymbolKind): Boole
         is CanonicalCompilerSignature.Property -> kind == CompilerSymbolKind.PROPERTY
         is CanonicalCompilerSignature.TypeAlias -> kind == CompilerSymbolKind.TYPE_ALIAS
         is CanonicalCompilerSignature.ClassLike -> kind == CompilerSymbolKind.CLASSLIKE
+        is CanonicalCompilerSignature.AnonymousObject -> kind == CompilerSymbolKind.CLASSLIKE
     }
 
 private fun CanonicalCompilerSignature.admitDeclarationAddress(

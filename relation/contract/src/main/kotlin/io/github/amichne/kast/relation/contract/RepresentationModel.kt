@@ -108,6 +108,7 @@ private constructor(
                     is CanonicalCompilerSignature.LocalProperty,
                     is CanonicalCompilerSignature.Property -> false
                     is CanonicalCompilerSignature.ClassLike,
+                    is CanonicalCompilerSignature.AnonymousObject,
                     is CanonicalCompilerSignature.TypeAlias -> false
                 }
             if (!available) return Refinement.Rejected(ModelBindingFailure.POSITION_UNAVAILABLE)

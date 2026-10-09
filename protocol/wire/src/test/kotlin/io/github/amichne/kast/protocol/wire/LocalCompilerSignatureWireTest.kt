@@ -19,6 +19,39 @@ import org.junit.jupiter.api.Test
 
 class LocalCompilerSignatureWireTest {
     @Test
+    fun `anonymous object wire shape preserves compiler owner and rejects forged address or supertype facts`() {
+        val signature =
+            CompilerSignatureWireDocument.AnonymousObject(
+                address(LocalDeclarationKindWireDocument.ANONYMOUS_OBJECT),
+                listOf("sample.Collector<kotlin.String>"),
+            )
+        assertEquals(
+            expected("anonymous-object.json"),
+            wireJson.encodeToJsonElement(CompilerSignatureWireDocument.serializer(), signature),
+        )
+        val contract = signature.toContract().converted()
+        assertEquals(
+            expected("anonymous-object.json"),
+            wireJson.encodeToJsonElement(CompilerSignatureCliDocument.serializer(), contract.toCliDocument()),
+        )
+        val evidence = CompilerSymbolEvidenceDocument.fromSignature(contract).refined().toWireDocument()
+        assertEquals(WireDocumentConversion.Rejected, evidence.copy(identity = "forged").toContract())
+        assertEquals(
+            WireDocumentConversion.Rejected,
+            signature.copy(address = address(LocalDeclarationKindWireDocument.PROPERTY)).toContract(),
+        )
+        assertEquals(
+            WireDocumentConversion.Rejected,
+            signature
+                .copy(address = signature.address.copy(ownerRange = SourceRangeWireDocument(25, 100)))
+                .toContract(),
+        )
+        // Wire conversion alone does not confer compiler evidence; canonical admission rejects empty types.
+        val empty = signature.copy(supertypes = emptyList()).toContract().converted()
+        assertTrue(CompilerSymbolEvidenceDocument.fromSignature(empty) is Refinement.Rejected)
+    }
+
+    @Test
     fun `local wire and CLI signatures preserve full address and independent expected shape`() {
         for ((signature, resource) in
             listOf(function() to "local-function.json", property() to "local-property.json")) {

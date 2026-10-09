@@ -48,6 +48,18 @@ private class NativeCallbackInvocationFlow(
             is CallbackBindingPreparation.ContractRejected ->
                 CallbackInvocationFlowRead.ContractRejected(prepared.cause)
             is CallbackBindingPreparation.Direct -> readDirectCallbackFlow(context, prepared, body, lexicalOwner)
+            is CallbackBindingPreparation.DependencyContract ->
+                context.observed(
+                    body,
+                    io.github.amichne.kast.relation.contract.CallbackBindingEvidence.DependencyContract(
+                        prepared.binding
+                    ),
+                    emptyList(),
+                    if (prepared.binding.owner is RelationCallableBody.Anonymous)
+                        setOf(CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION)
+                    else emptySet(),
+                    io.github.amichne.kast.relation.contract.CallbackInvocationScan.EXHAUSTIVE,
+                )
             is CallbackBindingPreparation.Prepared -> prepared(prepared.value)
         }
 

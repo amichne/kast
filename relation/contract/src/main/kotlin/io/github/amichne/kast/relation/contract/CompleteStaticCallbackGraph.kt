@@ -132,6 +132,7 @@ private class StaticCallbackGraphAdmission(
             when (val binding = flow.binding) {
                 is CallbackBindingEvidence.Bound -> bound(binding.binding)
                 is CallbackBindingEvidence.Direct -> direct(binding.binding)
+                is CallbackBindingEvidence.DependencyContract -> dependencyContract(binding.binding)
                 is CallbackBindingEvidence.Default ->
                     Refinement.Rejected(StaticCallbackGraphFailure.UnsupportedDefaultSupply)
                 is CallbackBindingEvidence.Unavailable ->
@@ -230,6 +231,21 @@ private class StaticCallbackGraphAdmission(
         return Refinement.Refined(edges)
     }
 
+    private fun dependencyContract(
+        binding: CallbackDependencyContract
+    ): Refinement<List<StaticCallbackEdge>, StaticCallbackGraphFailure> {
+        if (flow.scan != CallbackInvocationScan.EXHAUSTIVE)
+            return Refinement.Rejected(StaticCallbackGraphFailure.IncompleteScan)
+        val owner =
+            binding.owner as? RelationCallableBody.Named
+                ?: return Refinement.Rejected(StaticCallbackGraphFailure.MissingNamedOwner)
+        if (owner.evidence != observation.lexicalOwner)
+            return Refinement.Rejected(StaticCallbackGraphFailure.SupplierIdentityMismatch)
+        return Refinement.Refined(
+            listOf(StaticCallbackEdge.DependencyContractInvoke(StaticCallbackNode.Named(owner), body, binding))
+        )
+    }
+
     private fun direct(
         binding: CallbackDirectInvocationBinding
     ): Refinement<List<StaticCallbackEdge>, StaticCallbackGraphFailure> {
@@ -287,6 +303,7 @@ private fun List<StaticCallbackEdge>.nodes(): Set<StaticCallbackNode> = flatMap 
                 }
             is StaticCallbackEdge.Supply -> listOf(edge.body)
             is StaticCallbackEdge.Invoke -> listOf(edge.owner)
+            is StaticCallbackEdge.DependencyContractInvoke,
             is StaticCallbackEdge.BodyTarget,
             is StaticCallbackEdge.DirectInvoke,
             is StaticCallbackEdge.Forward -> emptyList()

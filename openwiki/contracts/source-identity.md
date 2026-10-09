@@ -58,8 +58,14 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceStateStore.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceRetentionAdmission.kt
 sources:
+  - id: openwiki-source-c49b75ae0217840059d27d21
+    resource: repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/LiveIntellijSourceRead.kt
+  - id: openwiki-source-b26cd272fe4de3788232851a
+    resource: repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/SourceCompilerDeclarationName.kt
   - id: openwiki-source-d16ec0b0b90b8cd04743a4f3
     resource: repo://source/service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt
+  - id: openwiki-source-7eafefdcae84f515bd6aba32
+    resource: repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt
   - id: openwiki-source-d932b255353af72bc963a5f0
     resource: repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt
   - id: openwiki-source-436e0d50dd1efa48daac0182
@@ -70,15 +76,15 @@ sources:
     resource: repo://symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt
   - id: openwiki-source-096cb7b190932815f87b4a1d
     resource: repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt
-generated: { by: "codex", at: "2026-10-08T03:09:54.978Z" }
+generated: { by: "codex", at: "2026-10-09T02:50:46.064Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-08T03:09:54.978Z
+    at: 2026-10-09T02:50:46.064Z
 ---
 
 # Source and workspace identity
 
-Local `val`, `var`, and named functions carry a compiler-admitted declaration
+Local `val`, `var`, named functions and anonymous objects carry a compiler-admitted declaration
 address with exact file/range, containing compiler declaration and bounded
 lexical ownership anchors. A local address establishes positive identity without
 fabricating a qualified name. Exact selectors retain this address through reads,
@@ -222,3 +228,8 @@ same invocation and return `reference_acquisitions`. This is a new read of the
 current declaration, not restoration of the prior source snapshot. Source-anchor
 and continuation reads keep their original snapshot checks. See
 [automatic acquisition](../modules/query-protocol.md#automatic-acquisition-for-fresh-reads).
+
+Anonymous objects retain their actual compiler supertypes and owner-relative
+address. Their members retain that anonymous compiler owner. Source lookup uses
+the label only for actual object-literal PSI, then revalidates the exact range
+and compiler evidence; it does not manufacture a qualified name.

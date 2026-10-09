@@ -64,6 +64,7 @@ private constructor(
                     }
                 }
                 is CallbackBindingEvidence.Default -> binding.binding.parameter
+                is CallbackBindingEvidence.DependencyContract,
                 is CallbackBindingEvidence.Direct,
                 is CallbackBindingEvidence.Unavailable ->
                     return Refinement.Rejected(CallbackInvocationFlowFailure.UNBOUND_INVOCATION)

@@ -76,6 +76,7 @@ internal fun CanonicalCompilerSignature.storageBytes(g: QueryImpactRetainedGraph
                         .saturatedAdd(g.collection(contextReceivers) { g.text(it.value) })
                         .saturatedAdd(g.text(returnType.value))
                 is CanonicalCompilerSignature.LocalProperty -> g.text(returnType.value)
+                is CanonicalCompilerSignature.AnonymousObject -> g.collection(supertypes) { g.text(it.value) }
                 is CanonicalCompilerSignature.ClassLike,
                 is CanonicalCompilerSignature.TypeAlias -> 0L
             }

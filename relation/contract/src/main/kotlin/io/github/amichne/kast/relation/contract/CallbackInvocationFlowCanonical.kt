@@ -126,38 +126,6 @@ private fun StringBuilder.ownerBinding(owner: CallbackBodyBinding) {
     obligations(owner.obligations)
 }
 
-private fun StringBuilder.binding(evidence: CallbackBindingEvidence) {
-    when (evidence) {
-        is CallbackBindingEvidence.Bound -> {
-            field("BOUND")
-            endpoint(evidence.binding.invocation.enclosing)
-            range(evidence.binding.invocation.range)
-            body(evidence.binding.invocationOwner)
-            endpoint(evidence.binding.invocation.callable)
-            field(evidence.binding.position.value.toString())
-            occurrence(evidence.binding.parameter)
-        }
-        is CallbackBindingEvidence.Default -> {
-            field("DEFAULT")
-            endpoint(evidence.binding.parameter.callable)
-            field(evidence.binding.parameter.position.value.toString())
-            occurrence(evidence.binding.parameter.parameter)
-            occurrence(evidence.binding.defaultValue)
-        }
-        is CallbackBindingEvidence.Direct -> {
-            field("DIRECT")
-            field(evidence.binding.basis.workspaceRoot.value)
-            field(evidence.binding.basis.revisionKey.value)
-            occurrence(evidence.binding.occurrence)
-            body(evidence.binding.owner)
-        }
-        is CallbackBindingEvidence.Unavailable -> {
-            field("UNAVAILABLE")
-            field(evidence.cause.name)
-        }
-    }
-}
-
 private fun StringBuilder.obligations(obligations: Set<CallbackInvocationFlowCause>) {
     field(obligations.size.toString())
     obligations.sortedBy { it.ordinal }.forEach { field(it.name) }
@@ -182,7 +150,7 @@ private fun StringBuilder.site(site: ValueSite) {
     }
 }
 
-private fun StringBuilder.body(body: RelationCallableBody) {
+internal fun StringBuilder.body(body: RelationCallableBody) {
     field(body.file.stableValue)
     range(body.range)
     field(body.compilerIdentity.value)
@@ -199,7 +167,7 @@ private fun StringBuilder.body(body: RelationCallableBody) {
     }
 }
 
-private fun StringBuilder.endpoint(endpoint: RelationEndpoint) {
+internal fun StringBuilder.endpoint(endpoint: RelationEndpoint) {
     field(endpoint.fingerprint.value)
     field(endpoint.file.stableValue)
     range(endpoint.range)
@@ -207,17 +175,17 @@ private fun StringBuilder.endpoint(endpoint: RelationEndpoint) {
     field(endpoint.signature.canonicalEncoding().value)
 }
 
-private fun StringBuilder.occurrence(occurrence: RelationOccurrence) {
+internal fun StringBuilder.occurrence(occurrence: RelationOccurrence) {
     field(occurrence.file.stableValue)
     range(occurrence.range)
 }
 
-private fun StringBuilder.range(range: ExactDeclarationTextRange) {
+internal fun StringBuilder.range(range: ExactDeclarationTextRange) {
     field(range.startInclusive.toString())
     field(range.endExclusive.toString())
 }
 
-private fun StringBuilder.field(value: String) {
+internal fun StringBuilder.field(value: String) {
     append(value.toByteArray(Charsets.UTF_8).size)
     append(':')
     append(value)

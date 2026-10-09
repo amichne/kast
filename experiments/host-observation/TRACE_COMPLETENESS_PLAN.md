@@ -1,8 +1,24 @@
 # Complete the two remaining TRACE cases
 
-Status: **Proposed**. Written 2026-10-08 for an implementer and reviewer continuing
-the enterprise-feedback work. This document plans validation and implementation;
-no product code or executable tests were changed or run to produce it.
+Status: **Implemented and privately qualified**. Both frozen TRACE questions
+complete: Attributes 32 rows; FlowCollector 13 rows. The full build and native
+retention, source restoration and freshness checks pass. See the
+[implementation record](trace-completeness/VALIDATION.md) and
+[reusable suite](trace-completeness/README.md) for exact authority, the corrected
+B membership oracle, evidence archives, limits and verified cleanup.
+
+The sections below retain the original planning and baseline evidence. Their
+proposed actions describe the starting state; the implementation record gives
+the final gate results and records the matched-root execution departure.
+
+## Original planning record
+
+Status: **Implementation proposed; r1 baseline run**. Originally written
+2026-10-08 for an implementer and reviewer continuing the enterprise-feedback
+work. The original draft ran no tests. The subsequent r1 baseline completed
+gates 0–1; both TRACE completion objectives failed. This revision incorporates
+those receipts and plans the remaining work. No product changes or new test
+execution occurred while drafting this revision.
 
 ## Working card
 
@@ -13,15 +29,22 @@ no product code or executable tests were changed or run to produce it.
   facts whenever an obligation remains unproven. Completion means the original
   scoped question succeeds against an independent source oracle, not merely that
   a smaller query succeeds or a rejection is handled correctly.
-- **Known:** The prior candidate retained 29 Ktor rows and 20 coroutine rows with
-  explicit proof gaps. Its build and recovery assertions passed. The broad TRACE
-  completion objective remains unmet. See the [validation record](ENTERPRISE_CACHE_VALIDATION.md#live-compiler-litmus).
+- **Known, recorded observation:** Candidate
+  `a5391de62078f911d91e33a9b6920fc693f58f45`, installed as Control/Host
+  `0.20261009.5120`, retained 32 Attributes rows and 13 FlowCollector rows on the
+  frozen r1 suite. A rejected required external callback proof; B rejected
+  incomplete relation evidence. Fixture compilation and 12 evidence assertions
+  passed. Neither broad TRACE question completed. See
+  [the r1 record](../../build/trace-completeness-baseline-r1/BASELINE.md).
 - **Inferred:** External callback admission and anonymous declaration projection
   are the main remaining boundaries. Current source contains matching rejection
   paths, but that does not establish the complete cause of every prior omission.
 - **Unknown:** Which existing compiler observations can discharge the external
   callback obligation, and which anonymous identity transitions need extension.
   Resolve these before selecting a new representation or broadening a schema.
+- **Accepted direction:** Keep r1 as a recurring validation suite. Preserve its
+  inputs and original failures; make execution portable before adopting it as a
+  repository acceptance gate.
 - **Smallest faithful tests:** One resolved `also` callback and one anonymous
   `FlowCollector` implementation, each with independently specified source
   locations, ownership and edges. Include a shadowed callback function and two
@@ -36,11 +59,36 @@ no product code or executable tests were changed or run to produce it.
 
 ## Evidence and scope
 
-The baseline report describes a working-tree candidate based on
+### Current r1 baseline
+
+The current baseline is a new fixture revision on committed
+`a5391de62078f911d91e33a9b6920fc693f58f45`. Its grants, source scope and oracle
+were frozen before the public queries. It used an actual imported Gradle project
+in a private IDEA profile. Starting and ending pins agreed for eight loaded
+classes and all 12 Kotlin source files.
+
+| Evidence | Status and authority | What it establishes |
+| --- | --- | --- |
+| Fixture compile | **Passed, recorded native build** | The selected main/test sources compile; not semantic completeness. |
+| A broad TRACE | **Failed completion, recorded public/K2 observation** | Enumeration completed, but required proof retained `CALLBACK_GRAPH_UNPROVEN / OUTSIDE_DOMAIN`; 32 recovered rows. |
+| B broad TRACE | **Failed completion, recorded public/K2 observation** | Anonymous implementation and override omissions retained `UNSUPPORTED_ITEM`; 13 recovered rows. Native diagnostics also include `SEMANTIC_INPUT_DEPENDENCY_MODULE_UNMODELED`. |
+| Twelve baseline assertions | **Passed, recorded** | Exact syntax spans, returned target facts, named/helper/negative controls, grants, fixture continuity and rejection-preserving recovery. |
+| Complete independent graph oracle | **Proposed** | The existing oracle does not yet specify every expected broad TRACE edge or independently prove all K2 bindings. |
+| Owner fixes and candidate acceptance | **Proposed** | No implementation or complete candidate result yet. |
+
+The first A read rejected at `MODEL_CAPTURE` with
+`FRESHNESS_REJECTED / MOVED`. Its receipt remains preserved. A fresh pin and the
+same request reproduced the callback gap. Treat preparation/freshness rejection
+separately from semantic failure.
+
+### Historical evidence
+
+The earlier baseline report describes a working-tree candidate based on
 `0e69f48053328941bd94ecf8a3ea483fff79d4fb`, not a committed implementation at that
 SHA. Its archive and changed-file hashes are recorded under
 [evidence identity](ENTERPRISE_CACHE_VALIDATION.md#evidence-identity-and-limits).
-Source inspection for this plan used the current uncommitted task checkout.
+Source inspection for the original draft used an uncommitted task checkout.
+The follow-up owner inspection used committed `a5391de620`.
 
 | Evidence | Status and authority | What it establishes |
 | --- | --- | --- |
@@ -83,6 +131,36 @@ before admitting its target and function parameter. Other callback supply and
 forwarding readers also enforce scope. Trace the original obligation through
 these paths before changing one gate in isolation.
 
+**Recommended change, conditional on compiler evidence.** Keep authored-source
+relation scope separate from the dependency evidence needed to prove a callback
+connection. Admit only the resolved dependency callable and exact formal
+parameter needed for that obligation. This must not enroll dependency declarations
+as authored-source TRACE results or permit unrestricted dependency traversal.
+
+The first implementation decision is which evidence the installed K2 build can
+actually supply. Inspect the exact resolved `also` target, argument mapping,
+formal parameter and invocation evidence. An attached dependency source body
+resolved under the imported model can support a compiler-grounded summary. A
+declared contract is another possible input, with a distinct trust basis.
+
+The current upstream Analysis API exposes experimental
+[`KaNamedFunctionSymbol.contractEffects`](https://github.com/JetBrains/kotlin/blob/master/analysis/analysis-api/src/org/jetbrains/kotlin/analysis/api/symbols/KaFunctionSymbol.kt).
+Kotlin's [`callsInPlace` contract](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.contracts/-contract-builder/calls-in-place.html)
+specifies invocation during the owner call and an optional invocation count.
+These sources establish a capability to investigate, not availability in the
+installed build or validity of the particular dependency's behavior. Preserve
+declared-contract provenance; compiler exposure does not turn an authored promise
+into verified body behavior. A contract can discharge only the obligations its
+semantics and accepted model actually support. Otherwise, require body evidence
+or retain the failure.
+
+Detach the resulting evidence into the existing callback binding/summary types
+where they can express it faithfully. Extend an owning closed type only for a
+missing fact demonstrated by the probe. Preserve argument position, callable
+owner, dependency identity, invocation qualification and incomplete scan state.
+Revalidate the dependency/classpath/compiler basis on reuse. Charge all reads and
+summary work to the existing budget.
+
 **Decision to investigate.** Determine whether current K2 observations, admitted
 dependency source, or an existing compiler-grounded summary can establish the
 callback connection without changing the user's authored-source relation scope.
@@ -102,6 +180,12 @@ in-domain failures. Preserve the original relation question and dependency basis
 | A2: resolved library callback | Small imported Kotlin source with the failing `also { remove(key) }` shape and real library resolution; K2 reads only | Exact argument-to-parameter binding, callback body identity and connection to the source `remove` call agree with independently marked source spans. Complete only when every required obligation is discharged. |
 | A3: boundary controls | Same callback body through an in-domain helper, then through actual resolved library `also`, holding query scope and grants fixed | The pair isolates external admission from callback-body discovery. Record the first differing typed stage; do not assume both have the same available proof. |
 | A4: negative controls | A same-named user function that stores or conditionally invokes its callback; unresolved supply; excluded dependency | No name-based library special case, fabricated unconditional invocation or loss of scope evidence. Preserve qualified flow or reject according to the actual proof; unresolved required proof cannot complete. |
+
+Also test missing/mismatched contract parameters, unavailable dependency source,
+changed classpath and unsupported effects. If contract evidence is used, retain
+its exact invocation qualification. For example, an at-most-once effect cannot
+be promoted to exactly-once. Source lookup failure must not select a name-based
+fallback or erase `OUTSIDE_DOMAIN` evidence.
 
 Expected callback facts come from the fixture's authored operations and independent
 compiler binding checks, not Kast's returned rows. Static invocation possibilities
@@ -130,6 +214,32 @@ compiler owner → override/implementation relation → caller occurrence owner 
 TRACE grouping → retained/public projection → exact-reference readmission. Record
 the first unsupported transition for each omission. Reuse working transitions;
 extend the owning finite type only when a failing case demonstrates the need.
+
+**Recommended representation.** Extend the existing canonical declaration
+address/signature machinery to represent a compiler-owned anonymous object and
+its member callable separately. Today `LocalDeclarationKind` supports functions
+and properties. Local projection accepts named local functions/properties, and
+classlike projection rejects a missing class ID. Those inspected limits make an
+anonymous-object address a concrete candidate; they do not prove its complete
+design before the native ownership probe.
+
+The proposed address retains admitted file identity, exact declaration range,
+canonical enclosing compiler owner and lexical ancestry. Anonymous object
+signature evidence must preserve the relevant compiler-confirmed type facts;
+the member signature must retain the anonymous owner and actual callable facts.
+Two same-shaped objects and their same-named methods must remain distinct.
+Display labels never establish equality. Do not synthesize a global class name
+or reuse the enclosing function as the override's callable identity.
+
+Implement this through discovery, relation projection and the shared exact
+lookup/readmission path together. Preserve existing enum-entry initializer and
+named-local handling. Check source reads, reference handles and all signature
+consumers before selecting an exported variant. If the variant crosses the wire,
+update serializers, schemas, parsers and examples in the same change.
+
+Investigate the dependency-module diagnostic independently. If it is a separate
+missing model admission, locate its owning transition and add its own focused
+test. Do not hide it behind the anonymous identity extension.
 
 | Case | Starting facts and permitted effects | Independent expected result |
 | --- | --- | --- |
@@ -174,14 +284,75 @@ and [QueryTraceGroupedRecoveryTest](../../query/service/src/test/kotlin/io/githu
 Observation-driven tests establish production decisions under supplied facts;
 they do not establish that K2 supplies those facts in a real project.
 
+## Keep the validation suite
+
+**Preserved now.** The frozen fixture, source pins, oracle, exact requests,
+capture scripts, original receipts and runner/schema snapshots have an unchanged
+local archive outside temporary and Gradle build directories:
+
+`/Users/amichne/.local/share/kast/validation-suites/trace-completeness/r1-a5391de620/suite.zip`
+
+Its SHA-256 is
+`d5975a63604a399ec9a4f02fa09a6cd5f8ec4cb3825fc058ee2d33c5f891b9eb`.
+The sibling `receipt.json` inventories and verifies 95 entries: 4,826,477
+uncompressed bytes, 519,577 archive bytes. File bytes are unchanged; the receipt
+records original modes for restoration. This preservation does not claim
+portable execution. Scripts still bind the original root and checkout dependencies.
+IDE installations, live state and dependency caches are excluded.
+
+**Proposed repository home.** Promote the reviewed text fixture, provenance,
+requests and oracle into `experiments/host-observation/trace-completeness/`.
+Keep the existing host-observation capture and public RPC adapters. Add only the
+parameters needed for explicit fixture root, candidate installation, IDEA home
+and evidence destination. Reuse existing process/schema/page machinery. Do not
+create a separate test framework or a product test mode.
+
+Before promotion, review third-party source attribution and licenses for the
+selected slices. Preserve the original source and adaptation hashes. Track
+reproducible fixture inputs and concise reviewed evidence; keep native caches,
+plugin archives, sockets and raw session receipts in owned run directories.
+
+| Suite layer | Proposed role | Independent oracle / entry gate |
+| --- | --- | --- |
+| Detached rules | Fast regression checks in the existing owning modules | Explicit domain facts, invalid-owner/parameter controls and typed outcomes. |
+| Compiler fixture | Real K2 supply, anonymous ownership and override proof | Reviewed fixture sites plus independent K2 binding, containing-symbol and override observations; no Kast response copied into expectations. |
+| Private native composition | Broad TRACE, actual import, public contracts and recovery | Same frozen semantic inputs and grants for baseline/candidate; exact candidate class hashes and independent expected facts. |
+
+Keep the baseline verifier as evidence of the existing failures. Add separate
+candidate acceptance assertions; a verifier that merely reproduces rejection
+must not become a completeness gate. Define expected implementations, direct
+members, overrides, callers and callback connections before scoring a candidate.
+The current UTF-16 oracle establishes syntax locations and selected target checks;
+it needs that independent graph review to establish broad completion.
+
+Moving a fixture changes physical paths. Record the new root and manifest
+transport bindings explicitly, while preserving source bytes, semantic scope,
+oracle and RUN grants. Compare project-relative facts and compiler ownership.
+Fresh leases/handles must be acquired; do not compare opaque reference strings or
+reuse archived result handles. Never normalize away a changed owner, qualification,
+failure, source set or missing edge.
+
+Use one fresh owned root for each native run. Parameterize setup instead of
+replaying historical provisioning failures. Verify actual import, saved/committed
+PSI, smart mode and loaded candidate bytes before querying. Bound call count,
+captured output and log windows; stop only owned processes on every exit path.
+Do not add this native suite to routine pure tests or automatically run it against
+the daily IDE. CI adoption follows a reproducible private native run.
+
+Proposed additional lifecycle cases belong to later isolated runs: stale owner
+after an edit, changed dependency basis, an evidence-only page and retained reads
+with zero semantic-provider work. These assertions were not all established by
+the 12 baseline checks.
+
 ## Execution gates and completion receipts
 
-All gates are **Proposed**, in order. Keep A and B independently reportable.
+Gates 0–1 have r1 receipts. Gates 2–5 remain **Proposed**; gate 6 has process
+closure and archive preservation only. Keep A and B independently reportable.
 
 | Gate | Work and entry condition | Required receipt / exit condition |
 | --- | --- | --- |
-| 0: reconstruct baseline | Create an owned disposable root. Preserve the current checkout and inventory its exact candidate bytes. Reconstruct minimal fixtures and pinned source slices from the durable report and [portable guide](ENTERPRISE_CACHE.md). Freeze the complete fixture/query/oracle manifest before issuing baseline queries. | Fixture provenance, content hashes, independently reviewed source oracle, exact queries/grants, toolchain and current candidate identity. If old inputs cannot be recovered exactly, label this a new fixture revision, not an exact replay. |
-| 1: reproduce the gap | Run the manifest's broad TRACE queries on the unchanged baseline candidate before changing the relevant owner; retain strict mode and the declared scope. | Actual finite causes and first failing stages for A and B. Failure to reproduce is an investigation result; do not invent a red baseline. |
+| 0: reconstruct baseline — run | Frozen r1 fixture, requests, syntax oracle, scope, grants and exact installed candidate. | Manifest and native pins preserved. Complete graph-oracle review is still required before candidate acceptance. |
+| 1: reproduce the gap — run | Unchanged candidate; both broad TRACE queries retained strict scope and grants. | A/B failed completion with finite causes. Source and native observations identify investigation boundaries; causal owner proof remains gate 2 work. |
 | 2: smallest owner proof | Reuse/extend only the demonstrated production rule. Run the focused owner test before wider consumers; use controlled effect observations only at real seams. | Positive case and adversarial control pass against the production rule. Actual compiler observations, not a double that returns the desired success, are required for identity/resolution claims. |
 | 3: integrated public behavior | A/B authority proof passes; exercise affected TRACE, serialization and retention consumers. | Exact identities/occurrences and finite failures survive all projections. Schema validity alone does not prove semantic correctness. |
 | 4: native acceptance | Prior gates pass. Build/load the exact candidate in a private IDEA profile with actual Gradle import and indexing. Use the same frozen fixture/query/oracle manifest for baseline and candidate. | Both broad TRACE questions from that manifest complete for the supported slices with independently justified rows and callback qualifications. Negative controls remain qualified/rejected. Verify loaded class hashes, public schemas, page equality and freshness. Report this as matched qualification on the recorded revision. |
@@ -204,6 +375,37 @@ Counts of 29 and 20 are historical retained counts, not acceptance totals for
 newly supported traces. Derive the new exact expected set from source before
 evaluating candidate output. Preserve all previously proved rows unless an
 independently reviewed source/contract change explains a difference.
+
+The r1 counts of 32 and 13 are also evidence counts, not target totals. Complete
+acceptance requires the independently expected fact set, finished discovery and
+all required callback obligations discharged. A smaller successful query, a
+schema-valid row or a green recovery assertion does not close the original question.
+
+### Recommended implementation sequence
+
+1. Make suite preservation portable and complete the independent graph oracle.
+   Keep r1 immutable; add diagnostic probes and lifecycle cases under explicit
+   new manifests rather than silently changing the matched workload.
+2. Obtain actual A dependency binding/invocation observations and B anonymous
+   owner/override observations. Add bounded typed stage/outcome evidence at the
+   first failing production boundaries. Record original finite failure codes;
+   exclude source payloads and secrets.
+3. Implement B's shared anonymous identity/readmission slice first if its owner
+   proof is available. It serves implementation, override and caller paths.
+   Run detached invariants, actual K2 ownership checks and affected consumers.
+4. Implement A's bounded dependency callback proof after its authority decision.
+   Preserve explicit dependency provenance and scope exclusion. Run the helper,
+   library, shadowed/stored and conditional cases against the production rule.
+5. Carry admitted facts through existing TRACE grouping, schemas and retained
+   paging. Run focused consumers before the matched native candidate suite.
+6. Require both frozen broad TRACE questions to complete. Keep all negative
+   controls sound, preserve previously proved facts and verify live readmission.
+   Run required repository guards and export separate A/B/C outcomes.
+
+Steps 3–4 may switch order based on observed authority; neither may bypass step 2.
+If the installed compiler cannot provide the required A evidence, state the
+missing capability and keep A incomplete. Do not ship a completeness claim for
+the two-gap objective based on B alone.
 
 ## Resource bounds, deferred claims and cleanup
 
@@ -234,14 +436,27 @@ daily IDE. Export only a bounded review record before removing temporary receipt
 exclude source payloads, secrets and unbounded diagnostics. Cleanup must run after
 failed as well as successful qualification, with any failure explicitly recorded.
 
+The user's suite-retention decision preserves the reviewed test sources and
+bounded baseline archive separately from disposable native state. The r1 private
+IDEA and Gradle processes have stopped. Its original temporary root is still
+present for the matched run; final root deletion has not passed. Future cleanup
+must retain the suite archive and intended repository fixtures while removing
+only the owned execution root.
+
 ## Handoff
 
-The next execution step is gate 0 followed by the two baseline reproductions.
-The first decisions are which authoritative callback evidence is available and
-where anonymous object/override identity first fails. Implementation follows
-those findings, preserving existing owners wherever they already carry the proof.
+The next execution step is suite portability and the independent graph-oracle
+review, followed by gate 2's actual compiler ownership/binding probes. Baseline
+reconstruction is already recorded. Re-run a baseline only when changed inputs,
+environment or candidate foundation require a new comparison revision.
 
 Close this plan only with separate A, B and C results, native acceptance, required
 build/guard evidence and verified cleanup. If a case remains unsupported, state
 that gap alongside the passed recovery checks. Planning is complete when this
 document is reviewed; implementation and execution remain separate work.
+
+Revision checks: local link targets exist and `git diff --check` passed. Shared
+prose assessment rejected with `VALE_UNAVAILABLE`; its report is in
+`build/trace-completeness-baseline-r1/plan-text-assessment.json`. Automated prose
+assessment and independent reader review remain unverified. No product tests
+ran during this planning revision.

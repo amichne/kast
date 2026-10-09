@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:fd6e9002f32f89cf51596342517a7faa9610bfe62d77a5d98b72de6e79e6e0f2",
+  "pageVersion": "sha256:e8ed66b5e060f7789d75f6a99b1efd483ddb98a980bb003ffc2753d14168083c",
   "claims": [
     {
       "id": "claim_d5f49799d6a64a78a95f34b3ba0fa09a",
       "statement": "The authored tools.schema.json generates Kotlin DTOs, per-tool admission and strict Responses schemas, examples and App Server registrations; check mode rejects any stale generated artifact.",
       "evidence": [
         {
-          "resource": "repo://packaging/generate-public-query.py#L470-L508",
+          "resource": "repo://packaging/generate-public-query.py#L490-L528",
           "version": "repo-lines-v1:sha256:94373d8b7b4e73d1639969c94e24a12d62e722e0a8f9a0f572aa9df8cc095e6c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExMDFhMmQ5YjhlZmRkODg2MTQ1Zjk4ZTg0Nzg0Mzc0OWY5ZWEyN2U5Mzg0NmIwNDg2Mjk5MDUzYmQ4YmIxNGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmNDRkZTQ0ZDdiMzUzYzFmZDRkMjljMTRhMDQwMmUwMDJlYTgzNTNlZGM1ZjdhZjM0NzUxZDY3NTJjNDE4ZDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJlZjEzMjY1NjFlMjFiNDdjZDdmYWFiNzc3MzJlMDU2NjljYzJjY2YxNDlkYzNmZjI0YjUzZDhiYTM2YTVlMjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIxMzVjYzI2Zjk3ZGMxY2RkNmM3NGVlZThhZjI0NTI3YzVhODYzMzVlZmU1Y2RiODA4N2Y0NDQyNzBhNzBkMmYifQ"
         }
       ]
@@ -37,8 +37,8 @@
       "statement": "Retained query results preserve their original semantic authority, row type, item failures, relation omissions, walk observations, coverage and producer progress in detached immutable collections.",
       "evidence": [
         {
-          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt#L7-L38",
-          "version": "repo-lines-v1:sha256:2ff1f5d1844053e8bd2c18752dcfdd71b41eec3f8fbcf25329a77038d5a67387:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRiYjAwMjQ0NzQzMjJjNDRkMWE2M2EyYjI4YWIzYjRhY2FkNWM2NDNhNGVkZDJlYWIxZTgzYjNkOTE1NTlkZTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMxNTkyNDEwODE3OWM0MDg1MjUyYmU1NDU0Yjg2NzExMGMxZWMzOWVkMjYwN2Y0ZTI1NDExMDU1ZWNkMTA0M2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVhNDczYjMxZjcwZTQ0NDFiZmRlODNhYTBmNjdlNjZkZTA4ZWU1MWYwOGY1Y2I4M2JjODdkYmMxMjZkZjliNmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVlZDY4OTM0YThlOWE3NzY5NGQ4YjJlNjhlYWViNGRiM2FhNTAwNmE5ZjdlYWQzNzBkOTViYTFiMTM2ZmMzZGMifQ"
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt",
+          "version": "repo-file-v1:sha256:69e1e71c1e5263328f330378ed4c3a9c2b90e4c675ae62cf5850d1cfd5485d6c"
         }
       ]
     },
@@ -48,7 +48,7 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactDocuments.kt",
-          "version": "repo-file-v1:sha256:7e3d4cf091505c3d2323733b2c524af41f77b0315cb5fcd87bbd9322c2ffad5f"
+          "version": "repo-file-v1:sha256:56717ad109a90f0d20bb0413386403716a6979a0dc2d4f889ea9f8d628f80932"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt",
@@ -56,7 +56,7 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt",
-          "version": "repo-file-v1:sha256:2c0c20f400ae197cd9ca00d526d9a2fc28cb1e12221876f85aa2826d0fd6e814"
+          "version": "repo-file-v1:sha256:3abd74a2e83b4311efa1e223de27fdfd02fbcf8f3a6a6cfd7cb95e8dde845fb3"
         }
       ]
     },
@@ -70,7 +70,7 @@
         },
         {
           "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolExpansionScopeContractTest.kt",
-          "version": "repo-file-v1:sha256:74c4130a8df7565f5eb06ad6e8cdef938f7639cef0ee69b945b1cdd4756d5161"
+          "version": "repo-file-v1:sha256:a91149bbf75f49eb4bdd6047dcd359051cb573db21366c0733e703cf0a133b44"
         },
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryExpansionScopeDocument.kt",
@@ -84,7 +84,7 @@
       "evidence": [
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingValidation.kt",
-          "version": "repo-file-v1:sha256:c362a221eb26a90eed46110df2e15854d622fcb40bb8e4749ce8a086d844f660"
+          "version": "repo-file-v1:sha256:0c9258552818e66a7d336f4b06abdcfd87bb2bcab09c378dc259e3c881bdb04e"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt",
@@ -92,7 +92,7 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt",
-          "version": "repo-file-v1:sha256:2c0c20f400ae197cd9ca00d526d9a2fc28cb1e12221876f85aa2826d0fd6e814"
+          "version": "repo-file-v1:sha256:3abd74a2e83b4311efa1e223de27fdfd02fbcf8f3a6a6cfd7cb95e8dde845fb3"
         },
         {
           "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt",
@@ -116,7 +116,7 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactDocuments.kt",
-          "version": "repo-file-v1:sha256:7e3d4cf091505c3d2323733b2c524af41f77b0315cb5fcd87bbd9322c2ffad5f"
+          "version": "repo-file-v1:sha256:56717ad109a90f0d20bb0413386403716a6979a0dc2d4f889ea9f8d628f80932"
         },
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingDocument.kt",
@@ -162,23 +162,19 @@
     },
     {
       "id": "claim_9631e8c5a90e442f94b16206c07b3094",
-      "statement": "Public contract version7 and generated Pi/Copilot catalog admission require compatible versions before registration, preserving required branch evidence and local addresses.",
+      "statement": "Public contract version12 and generated Pi/Copilot catalog admission require compatible versions before registration, preserving required branch evidence and local addresses.",
       "evidence": [
         {
-          "resource": "repo://copilot/extension.mjs#L69-L77",
-          "version": "repo-lines-v1:sha256:070a72d29b5700334a93204838149a7ee59836250b9c1df2d27e99c0634f0588:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWJjODhlMDA2OTVkNGQwYTMxMGQxYzVmZTk4Nzk5ZDkxZmE4Y2QwYWNiNGU4ZTE4YTQ1ZWNiNjVlZWNkYjgyZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWJjMDhlNmNmMDY4ODU0ZWIxZTNjNGJkYzUwNjY5OGI1NWQ1Zjk5N2E5ZjQ1ZGJlOWFkNDk3ZmI0MGQxNDVmNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTQxNzhmOWFjYTc5Nzc3NGY1NjJhN2FjMmVlYTJhNDI5NDIzMTcyZTgxNWE0OWY1ZTlhYWNmNWYxNzE4ZTE0ZCJ9"
+          "resource": "repo://copilot/extension.mjs",
+          "version": "repo-file-v1:sha256:b53e9966108334cb6b6191e7a864086b0b01afaa6995c05bcbffa25e1bb1c86e"
         },
         {
-          "resource": "repo://pi/extension.ts#L1-L2",
-          "version": "repo-lines-v1:sha256:ad426cfccb1957354ef6119b0a2e4d4cfbf64958342b6f9fbce6625341f24bdc:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTUwMzVmMGQ4MzdmZGQ5MjdhZWUxNjUwYjgxMWJjZWU1OGY1ZTdiZTkyYTU2NDU1ZDAwMzAwNjI3Y2NkNTU0NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjA0YzhjMzY1NmUwNTg4NzdjNzk5OGIzYTYxODZhMzQ3Y2RlZjcyMDdhNTg2YjcwNTY0OTcyNGUwNWU2ZjMwZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDE4Y2I2ODJhYTVlMTlhMTZjZjRhNjRjMjFlMmFjNzRhNTgzNmU5ZDJiYjM4NzBkN2M3NDk0Y2E3NDgzYTgyZiJ9"
+          "resource": "repo://pi/extension.ts",
+          "version": "repo-file-v1:sha256:32a30b74dd55633626065c49ebc7a6436a8f97eb314c874f206b302bcb09242f"
         },
         {
-          "resource": "repo://pi/extension.ts#L81-L89",
-          "version": "repo-lines-v1:sha256:14559c365c00b5e4aac34556e6e9ca8d783717a843548dacd3018c4018d7a366:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDVjYjI5OWYwZGI1ZWE3ZmU0NmM4NDM1ZGIxZDM1NTQzMGNlM2FkNjhjNGVlODg3MThjY2JmNmNkYjljMjcyMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWQ2NmJhZjM1ZDEyMmJmYTdhNTNiNzZjNDM1MmYxNjA2YTAwZmU3YzQ4N2U1YTY3M2Y1Yzg0ODBkNGY3ODdjMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWExYTc2ZTBlN2UxNmEzMzJlZWU2M2I3NDdmNzMwNDg1YTljMDI3ODk5ZmIzMDMwYmEyMWEyNzk5ZGUzZjZlZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmE0MGExZDE5NGE0MmExOGZjOTE2Y2VjY2U2N2ZhMTkwNzQwNDI2Y2RmNGI4NDVkODBiMTY3NzJkM2E1ZjNjNiJ9"
-        },
-        {
-          "resource": "repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt#L1-L6",
-          "version": "repo-lines-v1:sha256:ce19c2976b0cc2827014c223032756de824bd09ae2cefadc68f4063c8c13b8ce:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjk2NGRhNmQ1NGE3MDE1ZDllM2QxOWNhNDYxNjVjYWNmZjBmZDFjZTMzZmMyODBjOThkMGFmZGQzZDk2MDI4NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2EzZjE5ZDI3MjU1YmJlYWZhZDA5YWRmOWVhMDM2NDg5ODY3MTBiN2ViZGUwNmFkNWRiMmIxOGQ0MzJlZTY3NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTAxZThlNjk1ZWU1NmIzZjJlNTlkYWY0ZWUwMTUzMWQ3ZGQ5NDk0ZWUyN2RkNWFjN2U2MTk4Mzg5NzE3YTM4ZSJ9"
+          "resource": "repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt",
+          "version": "repo-file-v1:sha256:063d63c8ccd3a761e3912b19dd07bdab1854ed7281de196e6b3045179eddb1c8"
         }
       ]
     },
@@ -188,11 +184,11 @@
       "evidence": [
         {
           "resource": "repo://cli/src/test/js/harness-adapters.test.mjs",
-          "version": "repo-file-v1:sha256:f399038e3c53314a883a05ca53bc55cd3c9dcead044176e268a0dd7aef8263e4"
+          "version": "repo-file-v1:sha256:f071440987eb12772df22e94f5064beefb34b9c2f7e47beaac6af4de3491f314"
         },
         {
           "resource": "repo://copilot/extension.mjs",
-          "version": "repo-file-v1:sha256:8a9fce54ce626c0b55ef50e425d9b82e778ec33a9ed4e66a172eed9880d5f98b"
+          "version": "repo-file-v1:sha256:b53e9966108334cb6b6191e7a864086b0b01afaa6995c05bcbffa25e1bb1c86e"
         },
         {
           "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt",
@@ -200,7 +196,7 @@
         },
         {
           "resource": "repo://pi/extension.ts",
-          "version": "repo-file-v1:sha256:760471766852296bed372add0e5f585075f3efa92432f62e5ce7a8e9533961b6"
+          "version": "repo-file-v1:sha256:32a30b74dd55633626065c49ebc7a6436a8f97eb314c874f206b302bcb09242f"
         }
       ]
     },
@@ -210,15 +206,15 @@
       "evidence": [
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/LocalDeclarationAddressDocuments.kt",
-          "version": "repo-file-v1:sha256:b10b21f688158a402e8a0ee7c6ada85ed86893ad206e9ac35d4481271bfb6304"
+          "version": "repo-file-v1:sha256:e2250ce5f19649a3615e39af5d5db089dbbbb984c1fa12f616960e5df4e6ab14"
         },
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SymbolProtocolModels.kt",
-          "version": "repo-file-v1:sha256:04970a9a591f7455f8a99434ea08a0f33c21154fb94fd05c75abbf5cfc264079"
+          "version": "repo-file-v1:sha256:87fd04cfd455e21b0969c73eef869f2564a62a4d8b9ce8d997f9e9cd6343db27"
         },
         {
           "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalSymbolDocuments.kt",
-          "version": "repo-file-v1:sha256:4f7d294a146c7b59f4ce3890a4b49c494d7d4ff02d6ea3642f9ee0c966560ea3"
+          "version": "repo-file-v1:sha256:402903984f2f2ca1c1bfc3d960799a31ff58fd2d0861fe1e45c1e71eb2a3a948"
         }
       ]
     },
@@ -239,10 +235,28 @@
           "version": "repo-file-v1:sha256:a87d5896236c93f9b76ae2c096ddb697b897598ac25e2b59552dd7e577331d6d"
         }
       ]
+    },
+    {
+      "id": "claim_e25ca0f909dd4bf0a3b83cf35ac1a41f",
+      "statement": "ANONYMOUS_OBJECT signatures preserve compiler local addresses and actual supertypes, while DEPENDENCY_CONTRACT callback evidence preserves declared binary calls-in-place provenance and detached compiler targets without authored-source handles or fabricated body invocations.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackDocumentAdmission.kt",
+          "version": "repo-file-v1:sha256:294e909831b83c5c8963ed6fa4708bc588d5f847bdebba9a1ce25bb557457f31"
+        },
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SymbolProtocolModels.kt",
+          "version": "repo-file-v1:sha256:87fd04cfd455e21b0969c73eef869f2564a62a4d8b9ce8d997f9e9cd6343db27"
+        },
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/QueryCallbackBindingWireDocuments.kt",
+          "version": "repo-file-v1:sha256:79e71fda4c06945ff4a5b411d50f086c552e6020cfe80256b14fbd9e9edcfc34"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-08T04:15:35.391Z"
+    "at": "2026-10-09T02:50:46.064Z"
   }
 }

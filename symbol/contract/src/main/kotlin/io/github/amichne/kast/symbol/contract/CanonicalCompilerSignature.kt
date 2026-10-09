@@ -21,6 +21,7 @@ enum class CanonicalCompilerSignatureFailure {
     INVALID_VALUE_PARAMETER_TYPE,
     INVALID_TYPE_PARAMETER_COUNT,
     INVALID_RETURN_TYPE,
+    INVALID_SUPERTYPE,
     INVALID_CANONICAL_ENCODING,
     UNSUPPORTED_CANONICAL_VERSION,
     UNSUPPORTED_SIGNATURE_KIND,
@@ -118,11 +119,34 @@ sealed interface CanonicalCompilerSignature {
             get() = CompilerDeclarationAddress.Local(address)
     }
 
+    @ConsistentCopyVisibility
+    data class AnonymousObject
+    internal constructor(
+        val address: LocalDeclarationAddress,
+        val supertypes: List<CanonicalCompilerType>,
+    ) : CanonicalCompilerSignature {
+        override val declarationAddress: CompilerDeclarationAddress
+            get() = CompilerDeclarationAddress.Local(address)
+    }
+
     /** Explicit projection for a persistence or transport boundary. */
     fun canonicalEncoding(): CanonicalCompilerSignatureEncoding =
         CanonicalCompilerSignatureEncoding(encodeCanonicalSignature())
 
     companion object {
+        fun anonymousObject(
+            address: LocalDeclarationAddress,
+            rawSupertypes: List<String>,
+        ): Refinement<CanonicalCompilerSignature, CanonicalCompilerSignatureFailure> {
+            if (address.kind != LocalDeclarationKind.ANONYMOUS_OBJECT)
+                return Refinement.Rejected(CanonicalCompilerSignatureFailure.LOCAL_ADDRESS_KIND_MISMATCH)
+            val types =
+                rawSupertypes.canonicalTypes()
+                    ?: return Refinement.Rejected(CanonicalCompilerSignatureFailure.INVALID_SUPERTYPE)
+            if (types.isEmpty()) return Refinement.Rejected(CanonicalCompilerSignatureFailure.INVALID_SUPERTYPE)
+            return Refinement.Refined(AnonymousObject(address, types))
+        }
+
         /**
          * Establishes a structured function signature with a non-blank qualified identity, canonical receiver and
          * parameter types, and a non-negative type-parameter count.
@@ -292,6 +316,7 @@ sealed interface CanonicalCompilerSignature {
                     CLASS_LIKE_SIGNATURE_KIND -> restoreClassLike(cursor)
                     "local-function-v1" -> restoreLocalFunction(cursor)
                     "local-property-v1" -> restoreLocalProperty(cursor)
+                    "anonymous-object-v1" -> restoreAnonymousObject(cursor)
                     else -> Refinement.Rejected(CanonicalCompilerSignatureFailure.UNSUPPORTED_SIGNATURE_KIND)
                 }
             return restored.requireExactEncoding(raw, cursor)

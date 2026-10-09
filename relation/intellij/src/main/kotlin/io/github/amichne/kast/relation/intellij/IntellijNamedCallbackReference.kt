@@ -62,6 +62,8 @@ internal class IntellijNamedCallbackReference(
                     unavailableFlow(prepared.cause, expression, lexicalOwner, origin)
                 is CallbackBindingPreparation.ContractRejected ->
                     return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+                is CallbackBindingPreparation.DependencyContract ->
+                    NamedCallbackReferenceFlow.Unavailable(CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY)
                 is CallbackBindingPreparation.Direct -> NamedCallbackReferenceFlow.Direct(prepared.binding)
                 is CallbackBindingPreparation.Prepared -> preparedFlow(prepared.value, expression, lexicalOwner, origin)
             }

@@ -19,6 +19,7 @@ sealed interface LocalDeclarationFileDocument {
 enum class LocalDeclarationKindDocument {
     FUNCTION,
     PROPERTY,
+    ANONYMOUS_OBJECT,
 }
 
 enum class LocalDeclarationAddressDocumentFailure {
@@ -77,6 +78,7 @@ private constructor(
                             when (kind) {
                                 LocalDeclarationKindDocument.FUNCTION -> LocalDeclarationKind.FUNCTION
                                 LocalDeclarationKindDocument.PROPERTY -> LocalDeclarationKind.PROPERTY
+                                LocalDeclarationKindDocument.ANONYMOUS_OBJECT -> LocalDeclarationKind.ANONYMOUS_OBJECT
                             },
                             range.canonicalRange(),
                             owner,

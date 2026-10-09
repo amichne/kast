@@ -6,6 +6,8 @@ import io.github.amichne.kast.workspace.contract.LiveSemanticReadFailure
 import java.util.Collections
 
 sealed interface CallbackSummaryReadmissionFailure {
+    data object DependencyContractNeedsFreshRead : CallbackSummaryReadmissionFailure
+
     data object WorkLimitReached : CallbackSummaryReadmissionFailure
 
     data object TimeLimitReached : CallbackSummaryReadmissionFailure
