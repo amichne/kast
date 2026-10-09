@@ -77,6 +77,7 @@ class Candidate:
     sourceTree: str
     version: str
     runId: int
+    runNumber: int
     runAttempt: int
     event: str
     platform: str
@@ -132,7 +133,8 @@ def decode(document: object) -> Candidate:
                 or not SHA.fullmatch(candidate.sourceTree) or candidate.sourceTree == "0" * 40
                 or not re.fullmatch(r"0\.0\.[1-9][0-9]*", candidate.version)
                 or not positive(candidate.runId) or not positive(candidate.runAttempt)
-                or candidate.version != f"0.0.{candidate.runId}"
+                or not positive(candidate.runNumber) or candidate.runNumber > 2147483647
+                or candidate.version != f"0.0.{candidate.runNumber}"
                 or candidate.event not in {"pull_request", "merge_group", "push", "workflow_dispatch"}
                 or candidate.platform != "macos-aarch64"
                 or not DIGEST.fullmatch(toolchain.releaseSha256)
@@ -155,6 +157,7 @@ def refine(candidate: Candidate, run: dict, repository: str, tree: str) -> Admit
     if (not isinstance(run, dict) or not isinstance(run.get("repository"), dict)
             or run["repository"].get("full_name") != repository
             or run.get("path") != WORKFLOW or run.get("id") != candidate.runId
+            or run.get("run_number") != candidate.runNumber
             or run.get("run_attempt") != candidate.runAttempt
             or run.get("event") != candidate.event or run.get("head_sha") != candidate.sourceRevision
             or candidate.repository != repository):
@@ -281,21 +284,21 @@ def reuse(repository: str, revision: str, bundle: Path) -> CandidateState:
     return CandidateState.MISSING
 
 
-def seal(repository: str, revision: str, run_id: int, attempt: int, event: str, bundle: Path) -> Candidate:
+def seal(repository: str, revision: str, run_id: int, number: int, attempt: int, event: str, bundle: Path) -> Candidate:
     identity(repository, revision)
-    if not positive(run_id) or not positive(attempt) or platform.system() != "Darwin" or platform.machine() != "arm64":
+    if not positive(run_id) or not positive(number) or number > 2147483647 or not positive(attempt) or platform.system() != "Darwin" or platform.machine() != "arm64":
         raise Rejected(Failure.UNSUPPORTED_PLATFORM)
     empty(bundle)
     execute(["bash", ".github/scripts/release/admit-source.sh", "--repository-root", str(ROOT),
              "--expected-source-revision", revision], Failure.INVALID_IDENTITY, cwd=ROOT)
-    version = f"0.0.{run_id}"
+    version = f"0.0.{number}"
     payload = ROOT / f"build/release/v{version}"
     legacy.validate(payload, version, revision)
     release = Path(os.environ["JAVA_HOME"]) / "release"
     properties = dict(re.findall(r'^([A-Z_]+)="([^\n"]*)"$', release.read_text(), re.MULTILINE))
     local_tree = execute(["git", "rev-parse", "HEAD^{tree}"], Failure.OBSERVATION_FAILED,
                          cwd=ROOT, text=True, capture_output=True).stdout.strip()
-    candidate = Candidate(1, repository, revision, local_tree, version, run_id, attempt, event,
+    candidate = Candidate(1, repository, revision, local_tree, version, run_id, number, attempt, event,
                           "macos-aarch64", Toolchain(properties["JAVA_VERSION"], properties["IMPLEMENTOR"], legacy.digest(release)),
                           tuple(Asset(path.name, legacy.digest(path), path.stat().st_size) for path in sorted(payload.iterdir())))
     decode(asdict(candidate))
@@ -384,6 +387,7 @@ def main() -> None:
     parser.add_argument("--revision", required=True)
     parser.add_argument("--bundle", type=Path)
     parser.add_argument("--run-id", type=int)
+    parser.add_argument("--run-number", type=int)
     parser.add_argument("--run-attempt", type=int)
     parser.add_argument("--event")
     parser.add_argument("--version")
@@ -408,7 +412,7 @@ def main() -> None:
             print(f"build-candidate: {state.value}")
         else:
             if args.action == "seal":
-                candidate = seal(args.repository, args.revision, args.run_id, args.run_attempt, args.event, args.bundle)
+                candidate = seal(args.repository, args.revision, args.run_id, args.run_number, args.run_attempt, args.event, args.bundle)
             else:
                 if args.promotion_record is None:
                     raise Rejected(Failure.INVALID_IDENTITY)

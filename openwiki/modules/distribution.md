@@ -191,6 +191,8 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationRecovery.kt
   - id: openwiki-source-82001d1847d4403e8e24787a
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt
+  - id: openwiki-source-211f90f77f217ad3273b0d4f
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt
   - id: openwiki-source-8f4d86f42434fcc1ce269879
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
   - id: openwiki-source-e98296a26c7cb717460f6f68
@@ -246,7 +248,7 @@ sources:
 generated: { by: "codex", at: "2026-10-09T14:48:51.708Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-09T14:48:51.708Z
+    at: 2026-10-09T14:55:15.920Z
 ---
 
 # Distribution and packaging
@@ -273,13 +275,13 @@ Codex registration requires the explicit `mcp` or `app-server` transport. MCP ow
 
 The public installer renders progress, activation qualifications, and finite failure details for people. `--verbose` retains full child JSON reports and diagnostics. Native upgrades retain the private installation report on disk without printing it by default.
 
-CI selects documentation and graph checks on Linux before allocating product runners. Every PR runs product and portable validation, including documentation-only changes. The completion job requires every selected job to succeed. One product invocation tests and assembles the complete Control/Host pair at `0.0.<CI run ID>`. Pre-push retains its published stable-version admission independently.
+CI selects documentation and graph checks on Linux before allocating product runners. Every PR runs product and portable validation, including documentation-only changes. The completion job requires every selected job to succeed. One product invocation tests and assembles the complete Control/Host pair at `0.0.<CI run number>`. Pre-push retains its published stable-version admission independently.
 
 The candidate's typed identity record retains the exact build commit, Git tree, producer run and attempt, platform, toolchain, and payload digests. Main CI reuses a successful same-repository PR candidate only when the PR head tree equals the merged main tree. Missing or expired records, fork producers, and changed trees require a fresh main candidate. Malformed records, damaged bytes, and incomplete observations reject reuse. Candidate retention is 30 days.
 
 Successful main CI triggers developer publication. Its trusted publication job downloads retained bytes without running Gradle or native-image. A separate promotion record binds the unchanged candidate to the successful main run and merged commit. The publisher rechecks producer success, complete asset inventory, checksums, source identity, and remote file digests. Existing releases must match exactly for retries. A delayed publisher can retain its immutable release but cannot update latest after main advances. The public `developer-latest` branch contains a pointer to the exact prerelease and original build revision. The installer accepts `--developer-latest`; stable version resolution ignores developer tags. Manual publication retries supply the successful current-main CI run ID.
 
-The product job restores Gradle task outputs and native reachability metadata. Main and same-repository PRs save cache entries; forks only restore trusted entries. A repository secret enables encrypted configuration-cache storage and is unavailable to fork PRs. CI pins GraalVM 25.0.2 and retains native stage/resource metrics, finite build outcome records, and Gradle profile reports for matched comparisons. Native optimization remains unchanged. Stable full and component releases retain explicit versions that affect compiled bytes, so a different version requires another build. The existing stable release path rejects active producers before falling back to exact-version construction.
+The product job restores Gradle task outputs and native reachability metadata. Main and same-repository PRs save cache entries; forks only restore trusted entries. A repository secret enables encrypted configuration-cache storage and is unavailable to fork PRs. CI pins GraalVM 25.0.2 and retains native analysis/resource metrics, finite build outcome records, and Gradle profile reports for matched comparisons. Native optimization remains unchanged. Stable full and component releases retain explicit versions that affect compiled bytes, so a different version requires another build. The existing stable release path rejects active producers before falling back to exact-version construction.
 
 The public installer reports the selected IDEA product version and build before
 fetching release-line-specific plugin bytes. An absent matching plugin is a

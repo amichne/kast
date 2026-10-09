@@ -145,7 +145,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
-        run: bash .github/scripts/ci/verify.sh --version "0.0.$GITHUB_RUN_ID"
+        run: bash .github/scripts/ci/verify.sh --version "0.0.$GITHUB_RUN_NUMBER"
 
       - name: Seal tested candidate identity
         if: steps.reuse.outputs.candidate != 'REUSED'
@@ -154,7 +154,7 @@ jobs:
         run: >-
           python3 .github/scripts/release/build_candidate.py seal
           --repository "$GITHUB_REPOSITORY" --revision "$CHECKOUT_SHA"
-          --run-id "$GITHUB_RUN_ID" --run-attempt "$GITHUB_RUN_ATTEMPT"
+          --run-id "$GITHUB_RUN_ID" --run-number "$GITHUB_RUN_NUMBER" --run-attempt "$GITHUB_RUN_ATTEMPT"
           --event "$GITHUB_EVENT_NAME" --bundle build/candidate
 
       - name: Retain immutable build candidate

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:63d2d7c1bf26f52fdf04e2bb6ca4c497f16378daa76b9b26cb22443e9d7de634",
+  "pageVersion": "sha256:427e9fce9ec20783aac1c5afe9d7714257080bd4da501be23037f9cad565c4f2",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -323,12 +323,12 @@
           "version": "repo-file-v1:sha256:17671041a287674f57740f9150e7bb5e0634cb143d6c46b5b57aa7e3890a5ba9"
         },
         {
-          "resource": "repo://.github/scripts/release/build_candidate.py#L229-L263",
+          "resource": "repo://.github/scripts/release/build_candidate.py#L232-L266",
           "version": "repo-lines-v1:sha256:a3f1a02609f0f5d8b745c4575d15e5f0581bb6c68d51d2b2e50a71585f40a137:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY5MGJiY2IwNjI5ODM4ZjEyOGM1NzViYWEzYjdkN2QzN2Q4MjZjNWI3Njg3MGQ2Yzk0YmU1ZjQ5NDkzNTUzODciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFjMWE4MjQyNmE4MTA5YzNjMzlkZDg2ZTMzNGViMmFkNTY0ZWFlMDlmNGNiYmIzMTg3MjhkMmQxM2ExMDUzZGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlmNDI0MzM4MTk4NmQwYmZhMzZkNGRhNjEyYzhmNTM4YjhiYjU0MGM1YjRhZTViYmNjZWZlNTRlNzNkZGM3OGMifQ"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:00633fa3aacc674f1083a13d1e9b8f5e8ffccb6d81c61cc23ca0a11744ca4934"
+          "version": "repo-file-v1:sha256:1c2e859a1c3ebfd7a810d4b4bd1fc7dc8528ec354e02abd3b7d04bd2b5d6b845"
         }
       ]
     },
@@ -337,8 +337,8 @@
       "statement": "Successful main CI automatically promotes retained candidate bytes to the developer channel without rebuilding; the publisher verifies producer and digest provenance, requires exact retries, and preserves latest when main has advanced.",
       "evidence": [
         {
-          "resource": "repo://.github/scripts/release/build_candidate.py#L294-L363",
-          "version": "repo-lines-v1:sha256:a91f722ff5486aa23ccfb7866cb820af5b63175ceffd106989dffde9dcedae6e:eyJzZWxlY3RlZExpbmVDb3VudCI6NzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI4MWE4YzgwMjkzNmIxYWZjNTQyZGIxOTY3ZDYyYmM4N2Y5OGM1MmQyNzU5ZWY1MjNhNmE5YTM1ODBjOTcyMDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc3ZDBjYjIxMWMwMTFiMTk5MDAwMTExNjM1YjJiODJjOGI0OWZhYTc3MGM1NWUzZmQwNjY3MWY0OGVmMjEwMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkwMGMwNmU2ODZhYmJmYmMwYWIyNGQyYjIyMTNlYjU2OTNmZDNmZjNlNjQxZjkxNTNhYzQ2Zjc3YmFkYWJiZmUifQ"
+          "resource": "repo://.github/scripts/release/build_candidate.py#L312-L364",
+          "version": "repo-lines-v1:sha256:4a6b9400d3043a504718ca26e161cc1ab3e236fa13ab100632e0e536c64d9df4:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY4YWJlZjE4NjBlZWMyMzAzYTAyODg3NzNiZmU5ZGY1MDg3ZGI2MDRmZTJiOTAwZjBkOGU3MjJhYTBhMjFlOTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzNDBlZmU5ZjQyNTdjNzNjZWVkM2NkNTM0NGUyYTgzMTEwY2JhNGZiZTY2ZWZlNzUyNTk3MWZmMDg2ODhjOTUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM5MzY5YmFlMjkzYzNiMGY2YWYzODE4YzJkMzhkMTYwNzc5NTJmN2I2YWQ0MDRhZDQ1ZDFlMzU5NzQ1YmI1YzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRiYTA2MGU2ZDNiMWVjMGU5YWVlZTBiODIzYWU2ZTQ3OWFiNDlmNzBkZTJmMTQ5ZmFlZTAyOWYyZjlmZmQ2ZDYifQ"
         },
         {
           "resource": "repo://.github/scripts/release/publish-developer.sh",
@@ -360,17 +360,35 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml#L104-L150",
-          "version": "repo-lines-v1:sha256:aebc7be25326a0a28882a99bff3dc587b3ba2400267e5b3cc23ad480e99c8ced:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1OTRjZmRjNjRjMzAyZDQ0MDE1NDE5ZjdiMDJiYmJkYjMxNDk2OTJlNWY1OTBjN2Q3MDU3ZjYzYWMyZjdkOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OGJmMzg0ZmQyMGNkZjkwZGQ5OTVhZWZkZjI2NWRjNDNjZWViY2Q0NjdjYzU5NTlkZDdkMjMxNTkxMTE3NDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRlNGNiZGE4MTE5YjBiNmVmMTI3ZGVhZjlkNjEyODJlODQ0MjEwZTk1MzY1OThjZDc0Y2IwOGJjNTcyNGZmYmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIyZmUzYjc4Y2ZlOWMwYmUzMjFhODNmNzc2MjUwMDdjODJjOTgyNDRhOThkZDNhZGJlYzhlZGE3NTU0ZmM2OTkifQ"
+          "version": "repo-lines-v1:sha256:55844767a3a073cc32217d88565302ba2a9f62f6f4474c141cb5938328eae90f:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1OTRjZmRjNjRjMzAyZDQ0MDE1NDE5ZjdiMDJiYmJkYjMxNDk2OTJlNWY1OTBjN2Q3MDU3ZjYzYWMyZjdkOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OGJmMzg0ZmQyMGNkZjkwZGQ5OTVhZWZkZjI2NWRjNDNjZWViY2Q0NjdjYzU5NTlkZDdkMjMxNTkxMTE3NDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRlNGNiZGE4MTE5YjBiNmVmMTI3ZGVhZjlkNjEyODJlODQ0MjEwZTk1MzY1OThjZDc0Y2IwOGJjNTcyNGZmYmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIyZmUzYjc4Y2ZlOWMwYmUzMjFhODNmNzc2MjUwMDdjODJjOTgyNDRhOThkZDNhZGJlYzhlZGE3NTU0ZmM2OTkifQ"
         },
         {
           "resource": "repo://distribution/cli/build.gradle.kts#L60-L69",
           "version": "repo-lines-v1:sha256:4c50b499168d0b433385a80d4300a31eeaa3d60ed70b0f130f1fc4b88eca881f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzM2U1NWRkZDFkOTkxNzk2M2Y4MjlkMWQ3YjM0Zjc5ZWVhMjIwMTg4OWI2MDUzOTdhNWFlYjI4NjRkY2Q5MjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI5MjViZjc2MGUyNjQ3MGE1MzJmMmVmOGZkOTI2NGM4YjY0ZTNjOTE0YTc1YTM0NGQ5YWU2ZTdlNWM2ZTc1OTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_16c134706f9f4a4ea8d586c503ce1f0d",
+      "statement": "Candidate versions use the CI run number within the installer's 32-bit semantic-version range, while the identity record retains the full run ID and producer attempt.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/release/build_candidate.py#L121-L161",
+          "version": "repo-lines-v1:sha256:b3f5fca2b4f6ad923c50a08f0bc3aab0f2aea8b0a05c3c49196ab2252df0c532:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4ZTg3Nzg1MTlkZTdlMjFjZWFiYzViMjI2ZjMwMDM2NzA3YTNjMDk2ODg4MGE5MjA5MTk0NjVlZDA4MjQ1MzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNjMzA3NGUxNWY1YjM5ZTQ4ZGQxMTVmNjUxN2Q2ZWUzMjY5ZmQxYTllYjA1ZDQxOWRmNmMzNzY5YjI4ZTcwMGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczN2RlNmEwOTU3ZTNmODJkZGUyZTg4YWJlYjc4OWE3NmE2ZWU5MGRkYzFlODFkYWE4MTE4ZDEzMTc1NDU5NDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYzMmNlMjUxNmY2YTkwODZkMjRjZGU0YzY0Yjg4NTBiMzY4MTIyMjc5YzE2OGU3ZDk3Y2ZkM2JjODRjNjk2ZTcifQ"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml#L157-L172",
+          "version": "repo-lines-v1:sha256:dfe9abba222720d275953e15b9941838b072100f1c4ba6134eb91f1e18549c26:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkxNzllOTFhYTVhNWNhNmQzODZkMWYyODY2MDY3MTE5Y2MyOWY1NzkxMDRlZmQ1OTEyODZlZmNhOGZjNWNiOTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiMzJiOTg3MjYzZGYyMTYzZTcyNmQ0OGI5MmY2Zjk2NTE0OGNiNmI2ZDI4MzE3OTE1MTRjOTM5ZjgzN2ExNDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2ZGM0MWU2YzIzZjk2ODY0NDY4MWFmYzE0MTA2MjU2Mzk5NmMwY2MyN2UxMWM2MWY3ZTA4NWE5OWYzOTM4NjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNjNTkxMGRmYzViM2FjNjAwODQ1YTdkMTVmOTRmNWRjZjc2YzY1ZDA5NDNiMWRmZTBkYmQ2NjhjZDlhM2IxMTgifQ"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt#L33-L50",
+          "version": "repo-lines-v1:sha256:6db2f6dba5c14a620f16d2fe377c5320fa4a99bfd31938f55f8f4d17e3efda21:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNlNGMyMzRlZTg1YTM5NzhlODMyNzRhZjZjNzIzYmI3NmU1YzkyMTlkYmRlMGQ5YTNjNWUxMzYzNWMyZjliZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEzYTI3ZWVjZTU3ZGI5M2VjMDhiNWY0YzE2OTVjMzFjMjZkZTkzZjg4YjcwYWMyZWNiZDAyNjQ3NTBiYjU0MGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE3NzI2ZjQxMTdhMmM0Mzg3NzkwNGQyYjdkZTFlYmQ2MTk3OTc5MjhmM2MwZDgzZjMxZTVlNTNjNWYxNGEwNGUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-09T14:48:51.708Z"
+    "at": "2026-10-09T14:55:15.920Z"
   }
 }

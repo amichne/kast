@@ -172,8 +172,9 @@ explicitly.
 ## CI candidates and developer publication
 
 Every PR builds and tests one complete Control/Host pair, including documentation-only PRs.
-CI fixes the candidate version to `0.0.<CI run ID>` before compilation.
+CI fixes the candidate version to `0.0.<CI run number>` before compilation.
 Retries retain that version and record the producer attempt separately.
+The identity record retains the full run ID; the version uses an installer-compatible integer.
 The candidate contains the installable payload and a typed identity record.
 The record retains the build commit, Git tree, toolchain, platform, and every file digest.
 CI retains candidates for 30 days.
@@ -210,7 +211,7 @@ Developer promotion never renames or edits a tested payload.
 CI pins GraalVM 25.0.2 and retains Gradle task outputs plus the native reachability-metadata repository.
 The repository secret `GRADLE_ENCRYPTION_KEY` enables encrypted configuration-cache storage.
 Fork workflows do not receive the key.
-Native-image builds retain structured stage and resource metrics in `build/reports/native/build-output.json`.
+Native-image builds retain structured analysis and resource metrics in `build/reports/native/build-output.json`.
 The process adapter records success, process failure, execution refusal, or missing metrics in `build/reports/ci/build-execution.json`.
 Failed builds cannot claim successful native metrics.
 Gradle profiles remain in `build/reports/profile`.

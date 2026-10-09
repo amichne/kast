@@ -26,6 +26,7 @@ class Repository:
 @dataclass(frozen=True)
 class Run:
     id: int = 123
+    run_number: int = 123
     run_attempt: int = 1
     path: str = candidate.WORKFLOW
     event: str = "pull_request"
@@ -54,7 +55,7 @@ class Sbom:
 
 
 def record(assets=()):
-    return candidate.Candidate(1, REPOSITORY, BUILD, TREE, VERSION, 123, 1, "pull_request",
+    return candidate.Candidate(1, REPOSITORY, BUILD, TREE, VERSION, 123, 123, 1, "pull_request",
                                "macos-aarch64", candidate.Toolchain("25.0.2", "Oracle Corporation", "d" * 64), assets)
 
 
@@ -65,12 +66,19 @@ class SourceAdmissionTest(unittest.TestCase):
         self.assertEqual(BUILD, value.sourceRevision)
         self.assertEqual(VERSION, value.version)
 
+    def test_large_run_identity_preserves_installable_run_number_version(self):
+        value = replace(record((candidate.Asset("asset", "e" * 64, 1),)), runId=37939600363)
+        self.assertEqual(value, candidate.decode(asdict(value)))
+        self.assertEqual(candidate.Admitted(value),
+                         candidate.refine(value, asdict(replace(Run(), id=37939600363)), REPOSITORY, TREE))
+        self.assertEqual("0.0.123", value.version)
+
     def test_unequal_tree_cannot_be_promoted(self):
         self.assertEqual(candidate.Failure.SOURCE_TREE_MISMATCH,
                          candidate.refine(record(), asdict(Run()), REPOSITORY, "e" * 40))
 
     def test_every_unproven_producer_rejects(self):
-        for run in (replace(Run(), run_attempt=2), replace(Run(), id=124),
+        for run in (replace(Run(), run_attempt=2), replace(Run(), id=124), replace(Run(), run_number=124),
                     replace(Run(), repository=Repository("foreign/kast")),
                     replace(Run(), path=".github/workflows/foreign.yml"),
                     replace(Run(), head_sha=MERGED), replace(Run(), event="push")):
@@ -87,9 +95,9 @@ class SourceAdmissionTest(unittest.TestCase):
         value = record((candidate.Asset("asset", "e" * 64, 1),))
         encoded = json.loads(json.dumps(asdict(value)))
         self.assertEqual({"schemaVersion", "repository", "sourceRevision", "sourceTree", "version", "runId",
-                          "runAttempt", "event", "platform", "toolchain", "assets"}, set(encoded))
+                          "runNumber", "runAttempt", "event", "platform", "toolchain", "assets"}, set(encoded))
         self.assertEqual(value, candidate.decode(encoded))
-        for change in ({"schemaVersion": True}, {"runId": True}, {"runAttempt": 0}, {"version": "0.0.124"},
+        for change in ({"schemaVersion": True}, {"runId": True}, {"runAttempt": 0}, {"runNumber": 2147483648}, {"runNumber": True}, {"version": "0.0.124"},
                        {"platform": "linux"}, {"event": "unknown"}, {"unknown": "value"},
                        {"sourceTree": "unknown"}, {"toolchain": {}}, {"assets": []},
                        {"assets": [asdict(candidate.Asset("../escape", "e" * 64, 1))]}):
