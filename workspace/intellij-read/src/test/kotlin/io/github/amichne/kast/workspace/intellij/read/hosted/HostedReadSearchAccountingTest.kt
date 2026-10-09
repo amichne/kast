@@ -128,7 +128,7 @@ class HostedReadSearchAccountingTest {
         val observation = HostedReadDiagnostics({ 0L }, publish = receipts::add)
         observation.finish(HostedDiagnosticOutcome.Completed)
         val encoded = Json.parseToJsonElement(receipts.single().encode()).jsonObject
-        assertEquals("8", encoded.getValue("schemaVersion").jsonPrimitive.content)
+        assertEquals("9", encoded.getValue("schemaVersion").jsonPrimitive.content)
         val searches = encoded.getValue("nativeSearches").jsonArray
         assertEquals(
             listOf("REFERENCES", "DEFINITIONS"),
