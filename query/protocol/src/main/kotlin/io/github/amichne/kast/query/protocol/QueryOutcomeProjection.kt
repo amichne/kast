@@ -87,9 +87,7 @@ internal class QueryOutcomeProjection(
                 is Refinement.Rejected -> return rejected(admitted.failure)
             }
         val evidence =
-            when (
-                val selected = retainedEvidence(restored.evidenceMode, request, presentation.result, maximumResults)
-            ) {
+            when (val selected = retainedEvidence(request, presentation.result, maximumResults)) {
                 is Refinement.Refined -> selected.value
                 is Refinement.Rejected -> return rejected(selected.failure)
             }
@@ -97,7 +95,7 @@ internal class QueryOutcomeProjection(
             project(
                 request = restored.request,
                 lease = lease,
-                result = evidence?.result ?: presentation.result,
+                result = evidence.result,
                 coverage = presentation.coverage,
                 continuationState = presentation.producerProgress,
                 output = request.output,
@@ -114,7 +112,7 @@ internal class QueryOutcomeProjection(
                     },
             )
         return completionEvidenceRead(
-            withEvidenceWindow(outcome, evidence?.window),
+            withEvidenceWindow(outcome, evidence.window),
             restored.request,
             restored.result,
             state,
@@ -122,22 +120,19 @@ internal class QueryOutcomeProjection(
     }
 
     private fun retainedEvidence(
-        mode: QueryRetainedEvidenceMode,
         request: QueryRunRequest.ReadResult,
         result: QueryResult,
         maximumResults: ResultLimit,
-    ): Refinement<QueryEvidencePresentation?, QueryExecutionRejectionDocument> =
-        if (mode == QueryRetainedEvidenceMode.PAGED || request.evidenceCursor != null)
-            QueryEvidencePresentation.create(
-                result,
-                request.evidenceCursor ?: QueryEvidenceCursor.Start,
-                maximumResults,
-            )
-        else Refinement.Refined(null)
+    ): Refinement<QueryEvidencePresentation, QueryExecutionRejectionDocument> =
+        QueryEvidencePresentation.create(
+            result,
+            request.evidenceCursor ?: QueryEvidenceCursor.Start,
+            maximumResults,
+        )
 
     private fun withEvidenceWindow(
         outcome: QueryPublishedPage,
-        window: QueryEvidenceWindowDocument?,
+        window: QueryEvidenceWindowDocument,
     ): QueryPublishedPage =
         when (outcome) {
             is OperationOutcome.Complete ->

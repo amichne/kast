@@ -8,12 +8,6 @@ import io.github.amichne.kast.protocol.contract.QueryEvidenceWindowDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.query.contract.QueryResult
 
-/** The legacy presentation remains whole; automatic retained results carry independently paged evidence. */
-enum class QueryRetainedEvidenceMode {
-    WHOLE,
-    PAGED,
-}
-
 internal data class QueryEvidencePresentation(val result: QueryResult, val window: QueryEvidenceWindowDocument) {
     companion object {
         fun create(
