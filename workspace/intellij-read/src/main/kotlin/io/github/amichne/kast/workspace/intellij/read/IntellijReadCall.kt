@@ -54,9 +54,14 @@ interface IntellijReadCallScope {
 
 /** Synchronous effect scope: parentage cannot escape to another thread or across suspension. */
 // Observe every exceptional exit, including fatal native failures, then preserve the original throwable.
-@Suppress("TooGenericExceptionCaught")
 inline fun <Value> IntellijReadObservation.call(call: IntellijReadCall, crossinline effect: () -> Value): Value {
-    val scope = enterCall(call)
+    return enterCall(call).observe(effect)
+}
+
+/** Retains the original exceptional exit while closing its explicit effect scope. */
+@Suppress("TooGenericExceptionCaught")
+inline fun <Value> IntellijReadCallScope.observe(crossinline effect: () -> Value): Value {
+    val scope = this
     val value =
         try {
             effect()
