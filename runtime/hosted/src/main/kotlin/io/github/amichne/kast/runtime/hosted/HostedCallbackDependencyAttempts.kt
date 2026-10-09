@@ -7,21 +7,29 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 
 /** One request's optional preparation decision. No successful snapshot survives its native read action. */
-internal class HostedCallbackDependencyAttempts(private val observation: IntellijReadObservation) {
+internal class HostedCallbackDependencyAttempts(
+    private val observation: IntellijReadObservation,
+    allowed: Set<HostedCallbackDependencyUniverse> = setOf(HostedCallbackDependencyUniverse.WholeWorkspace),
+) {
+    private val allowed = allowed.toSet()
+
     private sealed interface State {
         data object Ready : State
 
         data class Unavailable(val cause: SemanticDependencyCaptureFailure) : State
     }
 
-    private var state: State = State.Ready
+    private val states = mutableMapOf<HostedCallbackDependencyUniverse, State>()
 
     /** A rejection disables optional reuse for this request; ordinary fresh extraction remains available. */
     @Synchronized
     fun capture(
-        effect: () -> Refinement<SemanticDependencySnapshot, SemanticDependencyCaptureFailure>
-    ): Refinement<SemanticDependencySnapshot, SemanticDependencyCaptureFailure> =
-        when (val current = state) {
+        universe: HostedCallbackDependencyUniverse = HostedCallbackDependencyUniverse.WholeWorkspace,
+        effect: () -> Refinement<SemanticDependencySnapshot, SemanticDependencyCaptureFailure>,
+    ): Refinement<SemanticDependencySnapshot, SemanticDependencyCaptureFailure> {
+        if (universe !in allowed)
+            return Refinement.Rejected(SemanticDependencyCaptureFailure.DEPENDENCY_MODULE_UNMODELED)
+        return when (val current = states[universe] ?: State.Ready) {
             is State.Unavailable -> {
                 observation.count(IntellijReadCounter.SEMANTIC_FACT_DEPENDENCY_PREPARATIONS_SKIPPED)
                 Refinement.Rejected(current.cause)
@@ -31,11 +39,12 @@ internal class HostedCallbackDependencyAttempts(private val observation: Intelli
                 when (val result = effect()) {
                     is Refinement.Refined -> result
                     is Refinement.Rejected -> {
-                        state = State.Unavailable(result.failure)
+                        states[universe] = State.Unavailable(result.failure)
                         observation.count(IntellijReadCounter.SEMANTIC_FACT_DEPENDENCY_REJECTIONS)
                         result
                     }
                 }
             }
         }
+    }
 }

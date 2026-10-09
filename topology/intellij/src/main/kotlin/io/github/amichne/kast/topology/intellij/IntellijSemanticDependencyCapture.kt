@@ -53,7 +53,24 @@ enum class SemanticDependencyCaptureFailure {
 }
 
 /** Measured preparation cost must be charged even when reuse admission fails. */
-class SemanticDependencyCaptureCost internal constructor(val workUnits: Long, val elapsedNanos: Long)
+class SemanticDependencyCaptureCost internal constructor(val workUnits: Long, val elapsedNanos: Long) {
+    companion object {
+        fun fromBoundary(
+            workUnits: Long,
+            elapsedNanos: Long,
+        ): Refinement<SemanticDependencyCaptureCost, SemanticDependencyCaptureCostFailure> =
+            when {
+                workUnits < 0 -> Refinement.Rejected(SemanticDependencyCaptureCostFailure.NEGATIVE_WORK)
+                elapsedNanos < 0 -> Refinement.Rejected(SemanticDependencyCaptureCostFailure.NEGATIVE_ELAPSED)
+                else -> Refinement.Refined(SemanticDependencyCaptureCost(workUnits, elapsedNanos))
+            }
+    }
+}
+
+enum class SemanticDependencyCaptureCostFailure {
+    NEGATIVE_WORK,
+    NEGATIVE_ELAPSED,
+}
 
 sealed interface SemanticDependencyCapture {
     val cost: SemanticDependencyCaptureCost

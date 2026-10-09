@@ -54,7 +54,12 @@ internal class IntellijRelationCompilerQuery(
     ): io.github.amichne.kast.relation.contract.CallbackSummaryCachePort =
         when (val remaining = allowance.remainingResources(request.budget.resources)) {
             is io.github.amichne.kast.kernel.Refinement.Refined ->
-                summaries.prepare(request, remaining.value, allowance::chargePreparation)
+                summaries.prepare(
+                    request,
+                    remaining.value,
+                    { allowance.remainingResources(request.budget.resources) },
+                    allowance::chargePreparation,
+                )
             is io.github.amichne.kast.kernel.Refinement.Rejected ->
                 io.github.amichne.kast.relation.contract.CallbackSummaryCachePort.Disabled
         }

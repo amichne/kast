@@ -9,7 +9,27 @@ import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 
-class HostedCallbackDependencyAttemptsTest : HostedSemanticFactFixture() {
+internal class HostedCallbackDependencyAttemptsTest : HostedScopedCaptureFixture() {
+    @Test
+    fun `allowed universes are copied and foreign modules cannot start an effect`() {
+        val known = HostedCallbackDependencyUniverse.Forward(main)
+        val unknown = HostedCallbackDependencyUniverse.Forward(dependency)
+        val allowed = mutableSetOf<HostedCallbackDependencyUniverse>(known)
+        val attempts = HostedCallbackDependencyAttempts(counts, allowed)
+        allowed.clear()
+        allowed += unknown
+        assertEquals(
+            Refinement.Rejected(SemanticDependencyCaptureFailure.DEPENDENCY_MODULE_UNMODELED),
+            attempts.capture(unknown) { throw AssertionError("Foreign module cannot capture") },
+        )
+        val rejection = Refinement.Rejected(SemanticDependencyCaptureFailure.INPUT_UNAVAILABLE)
+        assertSame(rejection, attempts.capture(known) { rejection })
+        assertEquals(
+            rejection,
+            attempts.capture(known) { throw AssertionError("Known unavailable universe cannot capture") },
+        )
+    }
+
     @Test
     fun `every typed capture rejection skips subsequent effects and preserves its cause`() {
         for (cause in SemanticDependencyCaptureFailure.entries) {

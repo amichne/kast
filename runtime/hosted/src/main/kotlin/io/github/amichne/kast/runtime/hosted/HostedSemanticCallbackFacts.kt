@@ -20,16 +20,13 @@ import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.topology.build.SemanticCallbackFactStore
 import io.github.amichne.kast.topology.build.SemanticCallbackLookup
 import io.github.amichne.kast.topology.build.SemanticCallbackPublication
-import io.github.amichne.kast.topology.contract.CompleteSemanticModuleSources
-import io.github.amichne.kast.topology.contract.SemanticDependencyInventory
 import io.github.amichne.kast.topology.contract.SemanticDependencySnapshot
 import io.github.amichne.kast.topology.intellij.IntellijSemanticDependencyCapture
 import io.github.amichne.kast.topology.intellij.SemanticDependencyCapture
-import io.github.amichne.kast.workspace.contract.ModelOwnedSourceRoot
+import io.github.amichne.kast.topology.intellij.SemanticDependencyCaptureFailure
 import io.github.amichne.kast.workspace.contract.WorkspaceModuleIdentity
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadContext
-import java.nio.file.Path
 
 /** Project lifetime facts are separate from strict epoch-bound references and continuations. */
 @Service(Service.Level.PROJECT)
@@ -90,11 +87,18 @@ private class HostedCallbackFactPreparation(
     private val context: HostedSemanticReadContext,
     private val store: SemanticCallbackFactStore,
 ) : CallbackSummaryCachePreparationPort {
-    private val attempts = HostedCallbackDependencyAttempts(context.observation)
+    private val attempts =
+        HostedCallbackDependencyAttempts(
+            context.observation,
+            context.model.sourceRoots.mapTo(linkedSetOf<HostedCallbackDependencyUniverse>()) {
+                HostedCallbackDependencyUniverse.Forward(it.module)
+            } + HostedCallbackDependencyUniverse.WholeWorkspace,
+        )
 
     override fun prepare(
         request: RelationRequest,
         remaining: ResourceBudget,
+        currentBudget: () -> Refinement<ResourceBudget, io.github.amichne.kast.kernel.PositiveLimitFailure>,
         charge: (RelationWorkCount) -> Unit,
     ): CallbackSummaryCachePort {
         if (
@@ -109,8 +113,11 @@ private class HostedCallbackFactPreparation(
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return CallbackSummaryCachePort.Disabled
             }
-        return when (
-            val capture = attempts.capture {
+        val accounting = HostedCallbackCaptureAllowance(allowance)
+        return HostedCallbackFactCache(
+            HostedReadCallbackPartitions(context.model, attempts, accounting, currentBudget, context.observation) {
+                roots,
+                budget ->
                 when (
                     val result =
                         IntellijSemanticDependencyCapture(context.limits, context.observation)
@@ -118,44 +125,53 @@ private class HostedCallbackFactPreparation(
                                 project,
                                 context.authority,
                                 context.model,
-                                context.model.sourceRoots.mapTo(linkedSetOf(), ModelOwnedSourceRoot::module),
-                                allowance,
-                                onCost = { charge(measuredWork(it.workUnits)) },
+                                roots,
+                                budget,
+                                onCost = {
+                                    accounting.record(it)
+                                    charge(measuredWork(it.workUnits))
+                                },
                             )
                 ) {
                     is SemanticDependencyCapture.Captured -> Refinement.Refined(result.snapshot)
                     is SemanticDependencyCapture.Unavailable -> Refinement.Rejected(result.cause)
                 }
-            }
-        ) {
-            is Refinement.Rejected -> CallbackSummaryCachePort.Disabled
-            is Refinement.Refined -> HostedCallbackFactCache(capture.value, store, context.observation)
-        }
+            },
+            store,
+            context.observation,
+        )
     }
 }
 
 /** One complete query observation supplies smaller per-formal dependency partitions. */
 internal class HostedCallbackFactCache(
-    private val captured: SemanticDependencySnapshot,
+    private val dependencies: HostedCallbackDependencyPartitions,
     private val store: SemanticCallbackFactStore,
     private val observation: io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation,
 ) : CallbackSummaryCachePort {
+    constructor(
+        captured: SemanticDependencySnapshot,
+        store: SemanticCallbackFactStore,
+        observation: io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation,
+    ) : this(HostedCapturedCallbackPartitions(captured), store, observation)
+
+    override fun finishNativeRead() = dependencies.finishNativeRead()
+
     override val namedRelations: io.github.amichne.kast.relation.contract.NamedRelationCachePort =
         HostedNamedRelationFacts(store, observation) { request ->
             if (request.meaning == io.github.amichne.kast.relation.contract.RelationMeaning.Callers)
-                HostedCallbackPartition.Available(captured)
-            else partition(request.subject)
+                dependencies.whole()
+            else dependencies.forward(request.subject)
         }
     override val suppliers: io.github.amichne.kast.relation.contract.CallbackSupplierCachePort =
-        HostedCallbackSupplierFacts(captured, store, observation)
-    private val partitions = mutableMapOf<WorkspaceModuleIdentity, SemanticDependencySnapshot>()
+        HostedCallbackSupplierFacts(dependencies::whole, store, observation)
 
     override fun find(
         formal: CallbackParameterIdentity,
         readmit: (CallbackParameterSummary) -> CallbackReadmission<CallbackParameterSummary>,
     ): CallbackSummaryCacheLookup {
         val snapshot =
-            when (val admitted = partition(formal.callable)) {
+            when (val admitted = dependencies.forward(formal.callable)) {
                 is HostedCallbackPartition.Available -> admitted.snapshot
                 is HostedCallbackPartition.Rejected -> {
                     observation.count(IntellijReadCounter.SEMANTIC_FACT_DEPENDENCY_REJECTIONS)
@@ -219,7 +235,7 @@ internal class HostedCallbackFactCache(
 
     override fun retain(summary: CallbackParameterSummary) {
         val snapshot =
-            when (val admitted = partition(summary.formal.callable)) {
+            when (val admitted = dependencies.forward(summary.formal.callable)) {
                 is HostedCallbackPartition.Available -> admitted.snapshot
                 is HostedCallbackPartition.Rejected -> {
                     observation.count(IntellijReadCounter.SEMANTIC_FACT_GENERATIONS_REJECTED)
@@ -234,60 +250,6 @@ internal class HostedCallbackFactCache(
                 is SemanticCallbackPublication.Rejected -> IntellijReadCounter.SEMANTIC_FACT_GENERATIONS_REJECTED
             }
         )
-    }
-
-    @Synchronized
-    private fun partition(
-        endpoint: io.github.amichne.kast.relation.contract.RelationEndpoint
-    ): HostedCallbackPartition {
-        val source =
-            captured.inventory.files.singleOrNull {
-                Path.of(captured.authority.workspaceRoot.value).resolve(it.path.value).toString() ==
-                    endpoint.file.stableValue
-            } ?: return HostedCallbackPartition.Rejected(HostedCallbackPartitionFailure.SourceNotInventoried)
-        partitions[source.root.module]?.let {
-            return HostedCallbackPartition.Available(it)
-        }
-        val graph = captured.inventory.closure.graph
-        val closure =
-            when (val admitted = graph.closure(setOf(source.root.module))) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected ->
-                    return HostedCallbackPartition.Rejected(HostedCallbackPartitionFailure.Dependency(admitted.failure))
-            }
-        val completed = mutableListOf<CompleteSemanticModuleSources>()
-        for (module in closure.modules) when (
-            val admitted =
-                CompleteSemanticModuleSources.fromCompiler(
-                    graph,
-                    module,
-                    captured.inventory.files.filter { it.root.module == module },
-                )
-        ) {
-            is Refinement.Refined -> completed += admitted.value
-            is Refinement.Rejected ->
-                return HostedCallbackPartition.Rejected(HostedCallbackPartitionFailure.Inventory(admitted.failure))
-        }
-        val inventory =
-            when (val admitted = SemanticDependencyInventory.admit(closure, completed)) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected ->
-                    return HostedCallbackPartition.Rejected(HostedCallbackPartitionFailure.Inventory(admitted.failure))
-            }
-        val inputs =
-            when (val admitted = captured.inputs.narrow(closure)) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected ->
-                    return HostedCallbackPartition.Rejected(
-                        HostedCallbackPartitionFailure.ResolutionInputs(admitted.failure)
-                    )
-            }
-        return when (val admitted = SemanticDependencySnapshot.fromCompiler(captured.authority, inventory, inputs)) {
-            is Refinement.Refined ->
-                HostedCallbackPartition.Available(admitted.value.also { partitions[source.root.module] = it })
-            is Refinement.Rejected ->
-                HostedCallbackPartition.Rejected(HostedCallbackPartitionFailure.Snapshot(admitted.failure))
-        }
     }
 }
 
@@ -322,6 +284,21 @@ internal sealed interface HostedCallbackPartition {
 
 internal sealed interface HostedCallbackPartitionFailure {
     data object SourceNotInventoried : HostedCallbackPartitionFailure
+
+    data object AmbiguousSourceOwnership : HostedCallbackPartitionFailure
+
+    data object NativeReadEnded : HostedCallbackPartitionFailure
+
+    data object CaptureUniverseMismatch : HostedCallbackPartitionFailure
+
+    data class Capture(val cause: SemanticDependencyCaptureFailure) : HostedCallbackPartitionFailure
+
+    data class ParentBudget(val cause: io.github.amichne.kast.kernel.PositiveLimitFailure) :
+        HostedCallbackPartitionFailure
+
+    data class PreparationBudget(val cause: HostedCallbackCaptureBudgetFailure) : HostedCallbackPartitionFailure
+
+    data class UncapturedModules(val modules: Set<WorkspaceModuleIdentity>) : HostedCallbackPartitionFailure
 
     data class Dependency(val cause: io.github.amichne.kast.topology.contract.SemanticDependencyFailure) :
         HostedCallbackPartitionFailure
