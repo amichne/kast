@@ -624,7 +624,7 @@
             "expansionScope"
           ],
           "additionalProperties": false,
-          "description": "Traverse the reachable compiler-confirmed relation graph to exhaustion by default. Omitted or null maximumDepth with omitted or null relationScope traverses the workspace, even when seed discovery was narrow. Explicit maximumDepth selects a bounded question. Apply destination scope before enumeration; later output filters do not reduce native search work. Resource grants do not shorten the requested question; incomplete proof rejects the fixed COMPLETE_ONLY verdict."
+          "description": "Traverse the reachable compiler-confirmed relation graph to exhaustion by default. Omitted or null maximumDepth with omitted or null expansionScope traverses the workspace, even when seed discovery was narrow. Explicit maximumDepth selects a bounded question. Apply destination scope before enumeration; later output filters do not reduce native search work. Resource grants do not shorten the requested question; incomplete proof rejects the fixed COMPLETE_ONLY verdict."
         },
         "DistinctSymbols": {
           "type": "object",
