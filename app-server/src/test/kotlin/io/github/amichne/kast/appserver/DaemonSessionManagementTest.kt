@@ -28,17 +28,19 @@ class DaemonSessionManagementTest {
         val activities = java.util.concurrent.CopyOnWriteArrayList<BrokerStartupActivity>()
         val options =
             (InstalledCoordinatorConfiguration.admit(
-                    kast,
-                    root,
-                    environment +
-                        mapOf(
-                            "BROKER_SERVICE_IDENTITY" to command.identity.value,
-                            "BROKER_READINESS_FILE" to command.readinessFile.toString(),
-                        ),
-                    BrokerStartupActivitySink {
-                        activities += it
-                        BrokerStartupActivityPublication.PUBLISHED
-                    },
+                    kast = kast,
+                    user = root,
+                    environment =
+                        environment +
+                            mapOf(
+                                "BROKER_SERVICE_IDENTITY" to command.identity.value,
+                                "BROKER_READINESS_FILE" to command.readinessFile.toString(),
+                            ),
+                    activitySink =
+                        BrokerStartupActivitySink { activity ->
+                            activities += activity
+                            BrokerStartupActivityPublication.PUBLISHED
+                        },
                 ) as Refinement.Refined)
                 .value
         val running = (InstalledCoordinator.start(options) as InstalledCoordinatorStart.Started).coordinator

@@ -39,11 +39,11 @@ class CoordinatorStatusCapacityTest {
             publishReadiness(command, generation)
             val document =
                 status(
-                    owner.installationId.value,
-                    owner.stateEpoch.value.toString(),
-                    generation,
-                    coordinatorConfigurationIdentity(command.configuration),
-                    0,
+                    installation = owner.installationId.value,
+                    epoch = owner.stateEpoch.value.toString(),
+                    generation = generation,
+                    configuration = coordinatorConfigurationIdentity(command.configuration),
+                    count = 0,
                 )
             assertTrue(document.toString().toByteArray().size <= CoordinatorStatusProtocol.maximumMessageBytes)
             assertTrue(CoordinatorStatusSnapshot.admit(document) is Refinement.Refined)
@@ -107,7 +107,13 @@ class CoordinatorStatusCapacityTest {
     @Test
     fun `one extra worker exceeds admitted status capacity`() {
         val document =
-            status("sha256:" + "0".repeat(64), UUID(0, 1).toString(), UUID(0, 2).toString(), "0".repeat(64), 1)
+            status(
+                installation = "sha256:" + "0".repeat(64),
+                epoch = UUID(0, 1).toString(),
+                generation = UUID(0, 2).toString(),
+                configuration = "0".repeat(64),
+                count = 1,
+            )
         assertTrue(CoordinatorStatusSnapshot.admit(document) is Refinement.Rejected)
     }
 
@@ -120,21 +126,22 @@ class CoordinatorStatusCapacityTest {
     ): JsonObject =
         Json.encodeToJsonElement(
                 StatusFixture(
-                    "READY",
-                    installation,
-                    epoch,
-                    generation,
-                    configuration,
-                    count.toLong(),
-                    0,
-                    List(count) {
-                        CoordinatorWorkerDocument(
-                            workspaceId = "1".repeat(64),
-                            reservationId = UUID(0, 1).toString(),
-                            phase = "READY",
-                            reservedMiB = 1,
-                        )
-                    },
+                    status = "READY",
+                    installationId = installation,
+                    stateEpoch = epoch,
+                    serviceGeneration = generation,
+                    configurationIdentity = configuration,
+                    reservedMiB = count.toLong(),
+                    starting = 0,
+                    workers =
+                        List(count) {
+                            CoordinatorWorkerDocument(
+                                workspaceId = "1".repeat(64),
+                                reservationId = UUID(0, 1).toString(),
+                                phase = "READY",
+                                reservedMiB = 1,
+                            )
+                        },
                 )
             )
             .jsonObject

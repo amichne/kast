@@ -96,6 +96,26 @@ All values are positive decimal integers, up to 2,147,483,646. Transport and pro
 
 The IDE's `idea.log` receives a `kast_semantic_read` JSON record by default after each admitted request drains, including rejected requests. No diagnostic enable switch is required. Each record includes the host/epoch correlation when available, stage durations, remaining outer deadline at semantic entry, bounded counters, exact native termination reasons, the final hosted outcome, and effective limit values with their sources. Early endpoint/transport failures emit `kast_hosted` records with a stage and closed failure code.
 
+Callback proof retention records up to six bounded gauges in `kast_semantic_read`.
+`CALLBACK_PROOF_BYTE_ALLOWANCE`, `CALLBACK_PROOF_RETAINED_BYTES` and
+`CALLBACK_PROOF_REQUIRED_BYTES` describe the latest actual retention attempt:
+the admitted allowance, admitted storage after the decision, and storage required
+by that attempted addition. A rejected addition leaves admitted storage unchanged.
+Required accounting saturates at `Long.MAX_VALUE` if addition would overflow.
+The three `CALLBACK_PROOF_BYTE_REJECTION_*` gauges (`ALLOWANCE`, `RETAINED_BYTES`,
+`REQUIRED_BYTES`) preserve one coherent latest byte-rejected attempt even if a
+later attempt succeeds with a smaller allowance. They describe that rejecting
+ledger, not the ledger making the latest successful attempt.
+
+`CALLBACK_PROOF_RETENTION_ADMITTED`, `CALLBACK_PROOF_RETENTION_RESULT_REJECTED`
+and `CALLBACK_PROOF_RETENTION_BYTE_REJECTED` count the actual admission decisions.
+Result capacity is checked first; a result rejection does not also count as a byte
+rejection. Independent ledgers are not summed. These bytes are conservative
+accounting for detached callback evidence, not measured heap use or encoded
+response bytes. The final response has its own encoded-byte guard. Public query
+results retain the finite callback cause, scan state and obligations; these numeric
+receipts belong to the diagnostic log, not the public semantic result.
+
 When retained results or continuations become unavailable, inspect
 `kast_project_read_epoch` records with the same `host`. A `MOVED` outcome names
 the changed signals: `PSI`, `VFS`, `WORKSPACE_MODEL`, `ROOT_MODEL`, `INDEXING`,

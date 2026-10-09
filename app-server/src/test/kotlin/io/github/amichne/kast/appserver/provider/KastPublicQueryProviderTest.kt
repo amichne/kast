@@ -36,6 +36,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
+import kotlinx.serialization.serializer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -145,14 +146,11 @@ class KastPublicQueryProviderTest {
                 ExistingIdeClient { _, operation ->
                     executor.operations += operation
                     ExistingIdeExchange.HostRejected(
-                        CanonicalJsonDocument.generated(HostRejection.serializer()).create(HostRejection())
+                        CanonicalJsonDocument.generated(serializer<HostRejection>()).create(HostRejection())
                     )
                 },
         )
     }
-
-    private fun request(root: Path, identity: PublicToolIdentity, input: String) =
-        request(root, identity, Json.parseToJsonElement(input))
 
     private fun request(root: Path, identity: PublicToolIdentity, input: kotlinx.serialization.json.JsonElement) =
         BrokerDispatchRequest(

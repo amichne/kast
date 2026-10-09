@@ -49,7 +49,7 @@ internal fun IntellijNativeDiscoveryQuery.discoverMixedDeclarations(
             (IntellijDiscoveryDeclarationInput) -> Boolean,
         ) -> Boolean,
 ): IntellijNativeDiscoveryExecution =
-    discoverIndexed(compiledScope, request, IntellijReadContributor.SCOPED_DECLARATIONS, process)
+    discoverIndexed(compiledScope, request, IntellijReadContributor.SCOPED_DECLARATIONS, process = process)
 
 internal fun IntellijNativeDiscoveryQuery.discoverExactName(
     compiledScope: CompiledIntellijSearchScope,

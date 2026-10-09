@@ -49,6 +49,14 @@ enum class QueryPrimitiveOperatorDocument {
 
 @Serializable
 sealed interface QueryStepDocument {
+    @Serializable
+    @SerialName("TRACE")
+    data class Trace(
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("expansion_scope")
+        val expansionScope: QueryExpansionScopeDocument = QueryExpansionScopeDocument.Workspace
+    ) : QueryStepDocument
+
     @Serializable @SerialName("where") data class Where(val predicate: QueryPredicateDocument) : QueryStepDocument
 
     @Serializable

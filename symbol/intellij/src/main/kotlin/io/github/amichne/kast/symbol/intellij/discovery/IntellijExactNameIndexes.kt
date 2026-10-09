@@ -5,16 +5,12 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiManager
 import com.intellij.psi.search.FilenameIndex
 import com.intellij.util.indexing.IdFilter
-import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
-import org.jetbrains.kotlin.idea.stubindex.KotlinClassShortNameIndex
-import org.jetbrains.kotlin.idea.stubindex.KotlinFunctionShortNameIndex
-import org.jetbrains.kotlin.idea.stubindex.KotlinPropertyShortNameIndex
-import org.jetbrains.kotlin.idea.stubindex.KotlinTypeAliasShortNameIndex
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
 
 /** Index callbacks only collect candidates; PSI projection and K2 run after they return. */
 internal fun IntellijNativeDiscoveryQuery.discoverNative(
@@ -25,9 +21,37 @@ internal fun IntellijNativeDiscoveryQuery.discoverNative(
 ): IntellijNativeDiscoveryExecution {
     if (scope.population == IntellijScopePopulation.KNOWN_EMPTY) return discover(scope, request, emptyList())
     val target = request.target
-    val kinds = request.requestedDeclarationKinds()
     return if (target is SymbolDiscoveryTarget.All && target.kind != SymbolNameDiscoveryKind.FILE) {
         discoverIncrementalScopedDeclarations(project, scope, request, limits, allowance, observation)
+    } else if (
+        target is SymbolDiscoveryTarget.Name &&
+            target.kind != SymbolNameDiscoveryKind.FILE &&
+            target.match == SymbolDiscoveryMatch.EXACT_NAME
+    ) {
+        // Detach authoritative indexed matches before the completeness scan. The same admission grant and identities
+        // survive both phases; local declarations still require the existing scoped producer.
+        discoverIndexed(
+            compiledScope = scope,
+            request = request,
+            contributor = IntellijReadContributor.EXACT_INDEX,
+            process = { observe, qualify, accept ->
+                collectIndexedNamedDeclarations(project, scope, request, observe, qualify, limits) {
+                    accept(IntellijDiscoveryDeclarationInput.Indexed(it))
+                }
+            },
+            continuation = { observe, qualify, accept ->
+                collectScopedKotlinDeclarations(
+                    project,
+                    scope,
+                    request,
+                    ScopedDeclarationCallbacks(observe, qualify) {
+                        accept(IntellijDiscoveryDeclarationInput.Scoped(it))
+                    },
+                    limits,
+                    localOnly = scope.scope.libraryPolicy() == SymbolLibraryPolicy.INCLUDE,
+                )
+            },
+        )
     } else if (request.usesScopedDeclarationEnumeration()) {
         discoverDeclarations(scope, request) { observe, qualify, accept ->
             collectScopedKotlinDeclarations(
@@ -56,41 +80,25 @@ internal fun IntellijNativeDiscoveryQuery.discoverNative(
                     localOnly = true,
                 )
         }
-    } else if (target is SymbolDiscoveryTarget.Name && target.match == SymbolDiscoveryMatch.EXACT_NAME) {
+    } else if (
+        target is SymbolDiscoveryTarget.Name &&
+            target.kind == SymbolNameDiscoveryKind.FILE &&
+            target.match == SymbolDiscoveryMatch.EXACT_NAME
+    ) {
         discoverExactName(scope, request) { name, accept ->
-            when (target.kind) {
-                SymbolNameDiscoveryKind.CLASS,
-                SymbolNameDiscoveryKind.SYMBOL ->
-                    (CompilerSymbolKind.CLASSLIKE !in kinds ||
-                        KotlinClassShortNameIndex.processElements(name, project, scope.nativeScope) { accept(it) }) &&
-                        (CompilerSymbolKind.FUNCTION !in kinds ||
-                            KotlinFunctionShortNameIndex.processElements(name, project, scope.nativeScope) {
-                                accept(it)
-                            }) &&
-                        (CompilerSymbolKind.PROPERTY !in kinds ||
-                            KotlinPropertyShortNameIndex.processElements(name, project, scope.nativeScope) {
-                                accept(it)
-                            }) &&
-                        (CompilerSymbolKind.TYPE_ALIAS !in kinds ||
-                            KotlinTypeAliasShortNameIndex.processElements(name, project, scope.nativeScope) {
-                                accept(it)
-                            })
-                SymbolNameDiscoveryKind.FILE -> {
-                    val files = ArrayList<com.intellij.openapi.vfs.VirtualFile>()
-                    val complete =
-                        FilenameIndex.processFilesByName(name, true, scope.nativeScope) {
-                            ProgressManager.checkCanceled()
-                            files += it
-                            files.size.toLong() <= request.budget.resources.workUnitLimit.value
-                        }
-                    var projected = true
-                    for (file in files) {
-                        val item = PsiManager.getInstance(project).findFile(file)
-                        if (item == null) projected = false else if (!accept(item)) return@discoverExactName false
-                    }
-                    complete && projected
+            val files = ArrayList<com.intellij.openapi.vfs.VirtualFile>()
+            val complete =
+                FilenameIndex.processFilesByName(name, true, scope.nativeScope) {
+                    ProgressManager.checkCanceled()
+                    files += it
+                    files.size.toLong() <= request.budget.resources.workUnitLimit.value
                 }
+            var projected = true
+            for (file in files) {
+                val item = PsiManager.getInstance(project).findFile(file)
+                if (item == null) projected = false else if (!accept(item)) return@discoverExactName false
             }
+            complete && projected
         }
     } else {
         // A custom GlobalSearchScope's default key filter includes indexed libraries.

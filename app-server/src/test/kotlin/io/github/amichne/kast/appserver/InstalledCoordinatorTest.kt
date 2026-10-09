@@ -26,13 +26,14 @@ class InstalledCoordinatorTest {
             val activities = java.util.concurrent.CopyOnWriteArrayList<BrokerStartupActivity>()
             val options =
                 (InstalledCoordinatorConfiguration.admit(
-                        kast,
-                        root,
-                        mapOf("PATH" to "/usr/bin:/bin", "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private"),
-                        BrokerStartupActivitySink {
-                            activities += it
-                            BrokerStartupActivityPublication.PUBLISHED
-                        },
+                        kast = kast,
+                        user = root,
+                        environment = mapOf("PATH" to "/usr/bin:/bin", "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private"),
+                        activitySink =
+                            BrokerStartupActivitySink {
+                                activities += it
+                                BrokerStartupActivityPublication.PUBLISHED
+                            },
                     ) as Refinement.Refined)
                     .value
             val running = (InstalledCoordinator.start(options) as InstalledCoordinatorStart.Started).coordinator
@@ -118,10 +119,10 @@ class InstalledCoordinatorTest {
                 }
                 val options =
                     (InstalledCoordinatorConfiguration.admit(
-                            kast,
-                            root,
-                            mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private"),
-                            sink,
+                            kast = kast,
+                            user = root,
+                            environment = mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private"),
+                            activitySink = sink,
                         ) as Refinement.Refined)
                         .value
                 val start = InstalledCoordinator.start(options)
@@ -220,10 +221,10 @@ class InstalledCoordinatorTest {
                     (exchange(DaemonManagementRequest.Status()) as DaemonManagementResponse.Status).coordinator
                 val target =
                     DaemonManagementTarget(
-                        observed.installationId,
-                        observed.stateEpoch,
-                        observed.serviceGeneration,
-                        observed.configurationIdentity,
+                        installationId = observed.installationId,
+                        stateEpoch = observed.stateEpoch,
+                        serviceGeneration = observed.serviceGeneration,
+                        configurationIdentity = observed.configurationIdentity,
                     )
                 val workspace = Files.createDirectory(root.resolve("workspace"))
                 assertEquals(

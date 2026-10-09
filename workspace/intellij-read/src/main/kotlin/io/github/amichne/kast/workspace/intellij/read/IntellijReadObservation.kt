@@ -70,6 +70,10 @@ enum class IntellijReadCounter {
     /** Successful retain calls, including idempotent success; not a count of distinct stored formals. */
     CALLBACK_SUMMARIES_RETAINED,
     CALLBACK_SUMMARY_RETENTION_REJECTIONS,
+    /** Actual callback-proof admission decisions, independently of summary lookup and idempotent reuse. */
+    CALLBACK_PROOF_RETENTION_ADMITTED,
+    CALLBACK_PROOF_RETENTION_RESULT_REJECTED,
+    CALLBACK_PROOF_RETENTION_BYTE_REJECTED,
     NAMED_CALLBACK_REFERENCES_CONFIRMED,
     NAMED_CALLBACK_REFERENCES_REJECTED,
     /** Extracted formal partitions; extraction alone does not imply supplier instantiation success. */

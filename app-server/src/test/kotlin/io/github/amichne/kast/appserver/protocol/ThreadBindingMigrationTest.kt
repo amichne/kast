@@ -32,12 +32,12 @@ class ThreadBindingMigrationTest {
         val registration = WorkspaceRegistration(checkNotNull(CanonicalBrokerDirectory.admit(workspace)))
         val legacy =
             LegacyThreadBindingDocument(
-                "old-thread",
-                digest.value,
-                workspace.toString(),
-                workspace.toString(),
-                registration.id.value,
-                "protocolFixture",
+                threadId = "old-thread",
+                catalogDigest = digest.value,
+                cwd = workspace.toString(),
+                workspaceRoot = workspace.toString(),
+                workspaceId = registration.id.value,
+                ownerKind = "protocolFixture",
             )
         val file = root.resolve("threads.json")
         privateWrite(file, Json { explicitNulls = false }.encodeToString(LegacyThreadStoreDocument(2, listOf(legacy))))

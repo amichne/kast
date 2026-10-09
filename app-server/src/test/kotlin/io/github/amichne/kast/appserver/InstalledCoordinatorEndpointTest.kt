@@ -45,8 +45,8 @@ class InstalledCoordinatorEndpointTest {
     fun `canonical service cannot publish readiness without native Codex protocol`() = withPayload { root, kast ->
         runBlocking {
             val activities = java.util.concurrent.CopyOnWriteArrayList<BrokerStartupActivity>()
-            val sink = BrokerStartupActivitySink {
-                activities += it
+            val sink = BrokerStartupActivitySink { activity ->
+                activities += activity
                 BrokerStartupActivityPublication.PUBLISHED
             }
             val options = managedOptions(kast, root, sink)
@@ -89,7 +89,13 @@ class InstalledCoordinatorEndpointTest {
                 "BROKER_SERVICE_IDENTITY" to "sha256:${"b".repeat(64)}",
                 "BROKER_READINESS_FILE" to readiness.toString(),
             )
-        return (InstalledCoordinatorConfiguration.admit(kast, root, environment, sink) as Refinement.Refined).value
+        return (InstalledCoordinatorConfiguration.admit(
+                kast = kast,
+                user = root,
+                environment = environment,
+                activitySink = sink,
+            ) as Refinement.Refined)
+            .value
     }
 
     private fun privateOptions(kast: Path, root: Path): InstalledCoordinatorOptions =

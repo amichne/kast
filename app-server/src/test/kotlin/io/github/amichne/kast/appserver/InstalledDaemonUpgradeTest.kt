@@ -29,10 +29,10 @@ class InstalledDaemonUpgradeTest {
                 InstalledUpgradeRejection.Command(PersistentBrokerServiceFailure.KAST_EXECUTABLE_UNAVAILABLE)
             ),
             InstalledDaemonUpgrade.prepare(
-                Path.of("/unobserved/kast"),
-                Path.of("/unobserved/home"),
-                mapOf("JAVA_HOME" to "\u0000"),
-                "a".repeat(64),
+                kast = Path.of("/unobserved/kast"),
+                userHome = Path.of("/unobserved/home"),
+                environment = mapOf("JAVA_HOME" to "\u0000"),
+                candidate = "a".repeat(64),
             ),
         )
     }

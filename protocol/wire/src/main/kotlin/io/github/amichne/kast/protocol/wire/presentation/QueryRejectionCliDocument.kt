@@ -12,7 +12,7 @@ internal sealed interface QueryRejectionCliDocument {
 
     @Serializable
     @SerialName("COMPLETION_UNPROVEN")
-    data class CompletionUnproven(val detail: QueryRunRejection.CompletionUnproven) : QueryRejectionCliDocument
+    data class CompletionUnproven(val detail: QueryCompletionRejectionCliDocument) : QueryRejectionCliDocument
 
     @Serializable
     @SerialName("IMPACT_EXECUTION_REJECTED")
@@ -63,7 +63,7 @@ internal sealed interface QueryRejectionCliDocument {
 internal fun QueryRunRejection.toCliDocument(): QueryRejectionCliDocument =
     when (this) {
         is QueryRunRejection.CompletionUnsupported -> QueryRejectionCliDocument.CompletionUnsupported(this)
-        is QueryRunRejection.CompletionUnproven -> QueryRejectionCliDocument.CompletionUnproven(this)
+        is QueryRunRejection.CompletionUnproven -> QueryRejectionCliDocument.CompletionUnproven(toCompletionCli())
         is QueryRunRejection.ImpactSourceRejected -> QueryRejectionCliDocument.ImpactSourceRejected(cause)
         is QueryRunRejection.ImpactExecutionRejected -> QueryRejectionCliDocument.ImpactExecutionRejected(cause)
         is QueryRunRejection.ImpactPresentationRejected -> QueryRejectionCliDocument.ImpactPresentationRejected(cause)

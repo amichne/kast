@@ -55,10 +55,10 @@ class BrokerFailureDocumentTest {
         val rejected = schema.admit(Json.parseToJsonElement("""{"identity":"private-source"}""")) as Validation.Rejected
         val failure =
             BrokerFailure.OutputContractRejected(
-                address,
-                rejected.failures.size,
-                JsonSchemaViolationEvidence.from(rejected.failures),
-                io.github.amichne.kast.appserver.core.BrokerOperationEffect.Unknown,
+                address = address,
+                failureCount = rejected.failures.size,
+                violationEvidence = JsonSchemaViolationEvidence.from(rejected.failures),
+                settledEffect = io.github.amichne.kast.appserver.core.BrokerOperationEffect.Unknown,
             )
         val encoded = Json.encodeToString(BrokerFailureDocument.from(failure))
         val expected =

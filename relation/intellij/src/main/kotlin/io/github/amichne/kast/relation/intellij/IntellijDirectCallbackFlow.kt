@@ -40,7 +40,10 @@ internal fun readDirectCallbackFlow(
             is Refinement.Refined -> read.value
             is Refinement.Rejected -> return CallbackInvocationFlowRead.ContractRejected(read.failure)
         }
-    when (val permitted = CallbackFlowRetention(context.scope.request.budget).admit(binding.retainedBytes)) {
+    when (
+        val permitted =
+            CallbackFlowRetention(context.scope.request.budget, context.observation).admit(binding.retainedBytes)
+    ) {
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> return observed(setOf(permitted.failure))
     }

@@ -329,7 +329,7 @@ private fun SourceTextProjectionDocument.toCliDocument(): SourceTextProjectionCl
         is SourceTextProjectionDocument.Withheld -> SourceTextProjectionCliDocument.Withheld(reason.cliName())
     }
 
-private fun SourceReadQualification.toCliDocument() =
+internal fun SourceReadQualification.toCliDocument() =
     SourceReadQualificationCliDocument(
         knownMinimumEntityCount.value,
         limitations.map { it.cliName() },

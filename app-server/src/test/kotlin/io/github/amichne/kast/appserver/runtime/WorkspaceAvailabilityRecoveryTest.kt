@@ -71,9 +71,9 @@ internal class WorkspaceAvailabilityRecoveryTest {
             ),
             case.events
                 .map { it.outcome }
-                .filter {
-                    it is WorkspacePreparationActivityOutcome.CheckingHost ||
-                        it is WorkspacePreparationActivityOutcome.RetryingHost
+                .filter { outcome ->
+                    outcome is WorkspacePreparationActivityOutcome.CheckingHost ||
+                        outcome is WorkspacePreparationActivityOutcome.RetryingHost
                 },
         )
         case.preparations.close()
@@ -108,8 +108,8 @@ internal class WorkspaceAvailabilityRecoveryTest {
         val events = mutableListOf<WorkspacePreparationActivity>()
         val preparations =
             WorkspacePreparations(
-                scope,
-                script::exchange,
+                scope = scope,
+                exchange = script::exchange,
                 observer = WorkspacePreparationObserver { events += it },
                 newId = { ids.removeFirst() },
             )
@@ -140,11 +140,17 @@ internal class WorkspaceAvailabilityRecoveryTest {
 
         private fun inspected() =
             IdeLifecycleResult.Inspected(
-                target.host,
-                "/idea",
-                "IU-262.1",
-                listOf(IdeProjectDescription(target, IdeProjectOwnership.MANAGED, 1)),
-                HostedCompatibilityDocument("262.1.1", "262.1.1-IJ", "0.50.0", CanonicalHostedContract.document),
+                host = target.host,
+                home = "/idea",
+                build = "IU-262.1",
+                projects = listOf(IdeProjectDescription(target, IdeProjectOwnership.MANAGED, 1)),
+                compatibility =
+                    HostedCompatibilityDocument(
+                        ideBuild = "262.1.1",
+                        kotlinPluginBuild = "262.1.1-IJ",
+                        hostedPluginVersion = "0.50.0",
+                        hostedContract = CanonicalHostedContract.document,
+                    ),
             )
 
         private fun id(raw: String) = checkNotNull(WorkspacePreparationId.admit(raw))

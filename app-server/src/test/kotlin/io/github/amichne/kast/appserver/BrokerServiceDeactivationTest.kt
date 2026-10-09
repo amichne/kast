@@ -135,10 +135,10 @@ class BrokerServiceDeactivationTest {
         writeServiceState(
             initial.readinessFile,
             BrokerServiceStateDocument.Ready(
-                BROKER_SERVICE_STATE_SCHEMA_VERSION,
-                initial.identity.value,
-                "123e4567-e89b-42d3-a456-426614174000",
-                VENDORED_BROKER_VERSION,
+                schemaVersion = BROKER_SERVICE_STATE_SCHEMA_VERSION,
+                serviceIdentity = initial.identity.value,
+                serviceInstanceId = "123e4567-e89b-42d3-a456-426614174000",
+                brokerVersion = VENDORED_BROKER_VERSION,
             ),
         )
         val discovery = DesktopDaemonDiscovery(environment)

@@ -159,6 +159,10 @@ sealed interface QueryItemFailure {
 }
 
 sealed interface QuerySourceFailure {
+    data class EnumerationIncomplete(
+        val qualification: io.github.amichne.kast.source.contract.SourceReadQualification
+    ) : QuerySourceFailure
+
     data class Rejected(val reason: SourceReadRejection) : QuerySourceFailure
 
     data class Withheld(val reason: SourceTextWithheldReason) : QuerySourceFailure

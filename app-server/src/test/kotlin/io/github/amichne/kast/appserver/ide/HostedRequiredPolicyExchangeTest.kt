@@ -12,7 +12,12 @@ import org.junit.jupiter.api.Test
 class HostedRequiredPolicyExchangeTest {
     private val fixture = HostedSocketExchangeFixture()
     private val compatibility =
-        HostedCompatibilityDocument("262.1.1", "262.1.1-IJ", "0.49.0", CanonicalHostedContract.document)
+        HostedCompatibilityDocument(
+            ideBuild = "262.1.1",
+            kotlinPluginBuild = "262.1.1-IJ",
+            hostedPluginVersion = "0.49.0",
+            hostedContract = CanonicalHostedContract.document,
+        )
 
     @Test
     fun `three same client operations load required policy once but each admits a fresh describe`() {

@@ -16,13 +16,14 @@ class ExistingIdeModelRefreshTest {
         val name = (ExistingIdeClassName.parse("Subject") as Refinement.Refined).value
         val response =
             ExistingIdeDocuments.response(
-                Json { encodeDefaults = true }.encodeToString(ModelRefreshRejection()).toByteArray(),
-                root,
-                ExistingIdeOperation.Classes(name),
-                ExistingIdeDescriptor(
-                    (HostedEndpointOwnerPid.parse("1") as Refinement.Refined).value,
-                    UUID.fromString("00000000-0000-0000-0000-000000000001"),
-                ),
+                raw = Json { encodeDefaults = true }.encodeToString(ModelRefreshRejection()).toByteArray(),
+                root = root,
+                operation = ExistingIdeOperation.Classes(name),
+                descriptor =
+                    ExistingIdeDescriptor(
+                        (HostedEndpointOwnerPid.parse("1") as Refinement.Refined).value,
+                        UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                    ),
             )
         assertEquals(HostedPresemanticRecovery.ModelReload, (response as ExistingIdeExchange.HostRejected).recovery)
     }

@@ -17,6 +17,45 @@ Use Kast to find submitOrder under checkout in main. Show matching signatures, l
 
 Select by signature and file. Ask the agent to read its source and keep its exact reference for follow-up queries.
 
+For a Kotlin interface, use `declarationKinds: ["CLASS"]`. The request's `CLASS`
+family includes supported class-like declarations, including interfaces and
+objects; returned symbols report `kind: "classlike"`. `INTERFACE` and
+`CLASSLIKE` are not accepted request kind values.
+
+```json
+{
+  "request": {
+    "type": "RUN",
+    "source": {
+      "type": "SEARCH_DECLARATIONS",
+      "declarationName": "CacheManager",
+      "declarationKinds": ["CLASS"],
+      "scope": {
+        "type": "PACKAGE",
+        "packageName": "example.cache",
+        "includeSubpackages": false,
+        "sourceSetNames": ["main"]
+      }
+    },
+    "output": {"type": "SYMBOLS", "fields": ["NAME", "LOCATION", "SIGNATURE"]}
+  }
+}
+```
+
+Find an interface method with `declarationName: "execute"` and
+`declarationKinds: ["FUNCTION"]` in the same package. Inspect the signature's
+qualified identity to select `example.cache.CacheManager.execute` from its
+overrides. Exact name matching returns all eligible overloads and owners.
+
+`AT_LOCATION` selects the nearest containing named declaration. An offset inside
+the method's generic parameter list selects that method; an offset on
+`manager.execute(...)` selects its enclosing declaration. It does not resolve
+the `execute` use-site token to the interface method. To establish that link,
+select the exact method and request `REFERENCES` or `CALLERS` in the intended
+relationship domain. Use occurrence evidence to identify the exact use site.
+Offsets and returned ranges use UTF-16 code units, not byte offsets or line
+numbers. Recompute them from the current file after edits.
+
 | Check | Why it matters |
 | --- | --- |
 | Signature | Distinguishes overloads. |
@@ -61,5 +100,12 @@ Use one case-sensitive ASCII word beginning with a letter or underscore. Phrases
 ## Keep the investigation current
 
 Pass issued references unchanged. After a stale-reference or unavailable-state failure, search again. Edits, IDEA restarts, and retention expiry can invalidate saved work.
+
+A new opaque reference for the same signature and location does not by itself
+prove a source change. Read `reference_acquisitions` when Kast reacquires an
+exact handle, and retain each response's semantic basis. Signature and location
+help select a declaration; they do not replace handle authority. Continuations
+and source snapshots require their original basis. See [read-limit diagnostics](https://github.com/amichne/kast/blob/main/docs/hosted-read-configuration.md#read-the-evidence)
+for the bounded epoch-movement signals.
 
 Use [What an answer proves](/concepts/evidence-boundaries) for conclusions, [Results](/reference/responses) for progress, or [Combine query results](/query-pipelines) for retained composition.

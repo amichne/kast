@@ -136,7 +136,12 @@ class InvocationResponsesTest {
     ): AdmittedInvocation =
         assertInstanceOf(
                 InvocationResponseAdmission.Started::class.java,
-                responses.begin(identity(call), fingerprint, ::failure, settled),
+                responses.begin(
+                    identity = identity(call),
+                    fingerprint = fingerprint,
+                    reject = ::failure,
+                    settled = settled,
+                ),
             )
             .invocation
 

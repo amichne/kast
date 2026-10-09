@@ -42,6 +42,13 @@ internal sealed interface QueryItemFailureWireDocument {
     ) : QueryItemFailureWireDocument
 
     @Serializable
+    @SerialName("SOURCE_ENUMERATION_INCOMPLETE")
+    data class SourceEnumerationIncomplete(
+        val ref: QueryReferenceWireDocument.ExactSymbol,
+        val qualification: SourceReadQualificationWireDocument,
+    ) : QueryItemFailureWireDocument
+
+    @Serializable
     @SerialName("relation")
     data class Relation(
         val ref: QueryReferenceWireDocument.ExactSymbol,

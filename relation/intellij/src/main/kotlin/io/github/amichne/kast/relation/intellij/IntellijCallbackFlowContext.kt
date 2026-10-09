@@ -20,6 +20,7 @@ import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
@@ -36,6 +37,7 @@ internal class IntellijCallbackFlowContext(
     val scope: CompiledRelationScope,
     private val projection: IntellijK2RelationProjection,
     private val admitWork: () -> CallbackWorkAdmission,
+    val observation: IntellijReadObservation,
 ) {
     fun permit(): Refinement<Unit, CallbackInvocationFlowCause> =
         when (admitWork()) {

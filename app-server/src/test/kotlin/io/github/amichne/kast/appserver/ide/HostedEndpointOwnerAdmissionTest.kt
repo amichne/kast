@@ -5,6 +5,7 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -21,9 +22,9 @@ class HostedEndpointOwnerAdmissionTest {
         assertEquals(HostedServicesObservation.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE), result)
         assertTrue(events.contains(HostedAdmissionEvidence.Excluded(HostedAdmissionStage.OWNER_LIVENESS)))
         assertTrue(
-            events.none {
-                it.stage() == HostedAdmissionStage.CURRENT_DESCRIPTOR ||
-                    it.stage() == HostedAdmissionStage.ROOT_ADMISSION
+            events.none { event ->
+                event.stage() == HostedAdmissionStage.CURRENT_DESCRIPTOR ||
+                    event.stage() == HostedAdmissionStage.ROOT_ADMISSION
             }
         )
     }
@@ -100,8 +101,8 @@ class HostedEndpointOwnerAdmissionTest {
         val result =
             observeRunningHostedServices(
                 home,
-                HostedEndpointOwnerProbe {
-                    assertEquals(123L, it.value)
+                HostedEndpointOwnerProbe { process ->
+                    assertEquals(123L, process.value)
                     assertEquals(0, calls++, "excess process observation")
                     observation
                 },
@@ -117,7 +118,7 @@ class HostedEndpointOwnerAdmissionTest {
         }
 
     private fun bytes(): ByteArray =
-        json.encodeToString(RecordedEndpoint.serializer(), RecordedEndpoint()).toByteArray()
+        json.encodeToString(serializer<RecordedEndpoint>(), RecordedEndpoint()).toByteArray()
 
     private fun HostedAdmissionEvidence.stage(): HostedAdmissionStage =
         when (this) {

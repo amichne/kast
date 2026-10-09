@@ -127,6 +127,7 @@ class CallbackSummaryReuseTest {
         assertEquals(
             listOf(
                 IntellijReadCounter.CALLBACK_SUMMARY_MISSES,
+                IntellijReadCounter.CALLBACK_PROOF_RETENTION_ADMITTED,
                 IntellijReadCounter.CALLBACK_SUMMARIES_RETAINED,
                 IntellijReadCounter.CALLBACK_SUMMARY_HITS,
                 IntellijReadCounter.CALLBACK_SUMMARY_REJECTIONS,
@@ -158,7 +159,14 @@ class CallbackSummaryReuseTest {
         assertEquals(setOf(CallbackInvocationFlowCause.STORED_CALLBACK), supplied.obligations)
         assertNull(summaries.find(formal))
         assertEquals(emptySet<CallbackInvocationFlowCause>(), candidate.summary.obligations)
-        assertEquals(listOf(IntellijReadCounter.CALLBACK_SUMMARY_RETENTION_REJECTIONS), counts.values)
+        assertEquals(
+            listOf(
+                IntellijReadCounter.CALLBACK_PROOF_RETENTION_ADMITTED,
+                IntellijReadCounter.CALLBACK_PROOF_RETENTION_BYTE_REJECTED,
+                IntellijReadCounter.CALLBACK_SUMMARY_RETENTION_REJECTIONS,
+            ),
+            counts.values,
+        )
     }
 
     @Test

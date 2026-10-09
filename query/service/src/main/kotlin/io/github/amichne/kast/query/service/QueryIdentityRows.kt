@@ -41,6 +41,15 @@ internal class QueryIdentityRows(restored: Map<ExactQueryStage, Map<CanonicalSym
         val distinctRows = rows.getOrPut(stage) { linkedMapOf() }
         val id = CanonicalSymbolId.from(incoming.selector)
         val first = distinctRows.putIfAbsent(id, incoming) ?: return Refinement.Refined(Unit)
+        if (stage.evidence == io.github.amichne.kast.query.contract.QueryGroupingEvidence.ALL_ARRIVALS) {
+            return when (val merged = mergeRows(first, incoming)) {
+                is Refinement.Refined -> {
+                    distinctRows[id] = merged.value
+                    Refinement.Refined(Unit)
+                }
+                is Refinement.Rejected -> merged
+            }
+        }
         val matches =
             when (val merged = first.textMatches.merge(incoming.textMatches)) {
                 is Refinement.Refined -> merged.value

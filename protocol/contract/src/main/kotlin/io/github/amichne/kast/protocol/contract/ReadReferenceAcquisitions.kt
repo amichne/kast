@@ -4,7 +4,18 @@ import io.github.amichne.kast.kernel.Refinement
 import kotlinx.serialization.Serializable
 
 /** Informational correspondence from an old handle to freshly issued authority; never authorizes a write. */
-@Serializable data class ReadReferenceAcquisition(val previous: ProtocolText, val current: ProtocolText)
+@Serializable
+enum class ReadReferenceAcquisitionReason {
+    REFERENCE_UNAVAILABLE,
+    STALE_SEMANTIC_AUTHORITY,
+}
+
+@Serializable
+data class ReadReferenceAcquisition(
+    val previous: ProtocolText,
+    val current: ProtocolText,
+    val reason: ReadReferenceAcquisitionReason,
+)
 
 @ConsistentCopyVisibility
 @Serializable

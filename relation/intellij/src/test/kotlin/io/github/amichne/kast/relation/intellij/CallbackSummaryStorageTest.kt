@@ -387,6 +387,11 @@ private class StorageCounts : IntellijReadObservation {
         assertEquals(
             listOf(
                 IntellijReadCounter.CALLBACK_SUMMARY_MISSES,
+                IntellijReadCounter.CALLBACK_PROOF_RETENTION_ADMITTED,
+                IntellijReadCounter.CALLBACK_PROOF_RETENTION_ADMITTED,
+                IntellijReadCounter.CALLBACK_PROOF_RETENTION_ADMITTED,
+                IntellijReadCounter.CALLBACK_PROOF_RETENTION_ADMITTED,
+                IntellijReadCounter.CALLBACK_PROOF_RETENTION_ADMITTED,
                 IntellijReadCounter.CALLBACK_SUMMARIES_RETAINED,
                 IntellijReadCounter.CALLBACK_SUMMARY_HITS,
             ),

@@ -32,10 +32,10 @@ class OutputContractRecoveryPolicyTest {
         runTest {
             val fixture =
                 OutputContractExecutionFixture.create(
-                    root,
-                    this,
-                    BrokerOperationEffect.Canonical(OperationEffect.INTELLIJ_WRITE),
-                    FixtureTermination.ROOT_DISCOVERY_REJECTION,
+                    root = root,
+                    scope = this,
+                    effect = BrokerOperationEffect.Canonical(OperationEffect.INTELLIJ_WRITE),
+                    termination = FixtureTermination.ROOT_DISCOVERY_REJECTION,
                 )
             try {
                 val first = fixture.submit("first")
@@ -72,10 +72,10 @@ class OutputContractRecoveryPolicyTest {
         for ((index, effect) in effects.withIndex()) {
             val fixture =
                 OutputContractExecutionFixture.create(
-                    Files.createDirectory(root.resolve("case-$index")),
-                    this,
-                    effect,
-                    FixtureTermination.MUTATION_THEN_INVALID_OUTPUT,
+                    root = Files.createDirectory(root.resolve("case-$index")),
+                    scope = this,
+                    effect = effect,
+                    termination = FixtureTermination.MUTATION_THEN_INVALID_OUTPUT,
                 )
             try {
                 val first = fixture.submit("first")
@@ -107,10 +107,10 @@ class OutputContractRecoveryPolicyTest {
         for (effect in listOf(OperationEffect.NONE, OperationEffect.INTELLIJ_READ)) {
             val fixture =
                 OutputContractExecutionFixture.create(
-                    Files.createDirectory(root.resolve(effect.name)),
-                    this,
-                    BrokerOperationEffect.Canonical(effect),
-                    FixtureTermination.INVALID_OUTPUT,
+                    root = Files.createDirectory(root.resolve(effect.name)),
+                    scope = this,
+                    effect = BrokerOperationEffect.Canonical(effect),
+                    termination = FixtureTermination.INVALID_OUTPUT,
                 )
             try {
                 val first = fixture.submit("first")
@@ -134,10 +134,10 @@ class OutputContractRecoveryPolicyTest {
     fun `cancelled read with unproven termination never grants queued or later work`(@TempDir root: Path) = runTest {
         val fixture =
             OutputContractExecutionFixture.create(
-                root,
-                this,
-                BrokerOperationEffect.Canonical(OperationEffect.INTELLIJ_READ),
-                FixtureTermination.AWAIT_CANCELLATION,
+                root = root,
+                scope = this,
+                effect = BrokerOperationEffect.Canonical(OperationEffect.INTELLIJ_READ),
+                termination = FixtureTermination.AWAIT_CANCELLATION,
             )
         try {
             val first = fixture.submit("first")
@@ -171,11 +171,11 @@ class OutputContractRecoveryPolicyTest {
             val budget = (ElapsedTimeLimitMillis.parse(100) as Refinement.Refined).value
             val fixture =
                 OutputContractExecutionFixture.create(
-                    root,
-                    this,
-                    BrokerOperationEffect.Canonical(OperationEffect.INTELLIJ_READ),
-                    FixtureTermination.AWAIT_CANCELLATION,
-                    budget,
+                    root = root,
+                    scope = this,
+                    effect = BrokerOperationEffect.Canonical(OperationEffect.INTELLIJ_READ),
+                    termination = FixtureTermination.AWAIT_CANCELLATION,
+                    invocationBudget = budget,
                 )
             try {
                 val first = fixture.submit("first")
@@ -208,9 +208,10 @@ class OutputContractRecoveryPolicyTest {
         assertEquals(JsonPrimitive("OUTPUT_CONTRACT_REJECTED"), failure["failure"])
         assertEquals(
             listOf("PATTERN" to "CONTINUATION"),
-            failure.getValue("outputViolationEvidence").jsonObject.getValue("observations").jsonArray.map {
-                it.jsonObject.getValue("keyword").jsonPrimitive.content to
-                    it.jsonObject.getValue("field").jsonPrimitive.content
+            failure.getValue("outputViolationEvidence").jsonObject.getValue("observations").jsonArray.map { observation
+                ->
+                observation.jsonObject.getValue("keyword").jsonPrimitive.content to
+                    observation.jsonObject.getValue("field").jsonPrimitive.content
             },
         )
     }

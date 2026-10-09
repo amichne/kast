@@ -30,7 +30,14 @@ class DaemonUpgradeHubTest {
                         ToolRequest(
                             7,
                             "item/tool/call",
-                            ToolParams("thread-1", "turn-1", "call-1", "kast", "query", Arguments(false)),
+                            ToolParams(
+                                threadId = "thread-1",
+                                turnId = "turn-1",
+                                callId = "call-1",
+                                namespace = "kast",
+                                tool = "query",
+                                arguments = Arguments(false),
+                            ),
                         )
                     )
                 )

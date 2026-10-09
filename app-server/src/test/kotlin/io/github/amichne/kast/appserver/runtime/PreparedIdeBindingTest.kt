@@ -14,6 +14,7 @@ import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -26,7 +27,10 @@ class PreparedIdeBindingTest {
             Files.writeString(home.resolve("settings.gradle.kts"), "")
             val root = CanonicalRoot(home)
             val document = writeDescriptor(home)
-            val encoded = Json { encodeDefaults = true }.encodeToString(PreparedEndpointDocument.serializer(), document)
+            val encoded = Json {
+                encodeDefaults = true
+            }
+                .encodeToString(serializer<PreparedEndpointDocument>(), document)
             assertTrue(
                 ExistingIdeDocuments.descriptor(encoded.toByteArray(), root, Path.of(document.socket))
                     is Refinement.Refined
@@ -62,7 +66,7 @@ class PreparedIdeBindingTest {
     private fun writeDescriptor(home: Path): PreparedEndpointDocument {
         val digest =
             MessageDigest.getInstance("SHA-256").digest(home.toString().toByteArray()).take(16).joinToString("") {
-                "%02x".format(it)
+                "%02x".format(java.util.Locale.ROOT, it)
             }
         val directory = Files.createDirectories(home.resolve(".kast/ide-hosted/$digest"))
         Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
@@ -70,7 +74,7 @@ class PreparedIdeBindingTest {
             PreparedEndpointDocument(root = home.toString(), socket = directory.resolve("host.sock").toString())
         Files.writeString(
             directory.resolve("endpoint.json"),
-            Json { encodeDefaults = true }.encodeToString(PreparedEndpointDocument.serializer(), document),
+            Json { encodeDefaults = true }.encodeToString(serializer<PreparedEndpointDocument>(), document),
         )
         return document
     }

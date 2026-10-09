@@ -55,7 +55,9 @@ class PublicToolSchemaPolicyTest {
 
     private fun visit(node: JsonObject, check: (JsonObject) -> Unit) {
         check(node)
-        listOf("properties", "\$defs").forEach { node[it]?.jsonObject?.values?.forEach { visit(it.jsonObject, check) } }
+        listOf("properties", "\$defs").forEach { group ->
+            node[group]?.jsonObject?.values?.forEach { schema -> visit(schema.jsonObject, check) }
+        }
         node["anyOf"]?.jsonArray?.forEach { visit(it.jsonObject, check) }
         node["items"]?.let { visit(it.jsonObject, check) }
     }

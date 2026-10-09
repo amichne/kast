@@ -279,9 +279,10 @@ def render_tools(authority: dict) -> dict[Path, str]:
     body = []
     discovery_body = []
     impact_body = []
+    trace_body = []
     discovery_objects = {'DirectoryScope', 'PackageScope', 'LocationSource', 'SearchSource', 'TextSource', 'AllSource'}
     for key, spec in objects.items():
-        object_body = impact_body if key.startswith('Impact') else discovery_body if key in discovery_objects else body
+        object_body = trace_body if key == 'Trace' else impact_body if key.startswith('Impact') else discovery_body if key in discovery_objects else body
         inherited = parents.get(key, [])
         discriminator = 'type'
         props = [(p,s) for p,s in spec['properties'].items() if p != discriminator]
@@ -392,6 +393,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
     document_source = ''.join(lines)
     outputs = {
         KOTLIN / 'PublicToolDocuments.kt': document_source,
+        KOTLIN / 'PublicToolTrace.kt': HEADER + ''.join(trace_body).rstrip() + '\n',
         KOTLIN / 'PublicToolDiscoveryDocuments.kt':
             '// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.\n'
             'package io.github.amichne.kast.appserver.query\n\n'

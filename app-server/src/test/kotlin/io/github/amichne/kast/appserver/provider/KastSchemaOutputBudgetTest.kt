@@ -27,9 +27,9 @@ class KastSchemaOutputBudgetTest {
                 Files.writeString(output, "x".repeat(size))
                 val request =
                     BrokerProcessRequest.admit(
-                        (BrokerExecutable.admit(executable) as Refinement.Refined).value,
-                        listOf(output.toString(), if (extra) "extra" else "quiet"),
-                        checkNotNull(CanonicalBrokerDirectory.admit(root.toRealPath())),
+                        executable = (BrokerExecutable.admit(executable) as Refinement.Refined).value,
+                        arguments = listOf(output.toString(), if (extra) "extra" else "quiet"),
+                        workingDirectory = checkNotNull(CanonicalBrokerDirectory.admit(root.toRealPath())),
                         maximumOutputBytes = BrokerOperationalLimits.maximumKastSchemaBytes,
                         timeoutMillis = 5_000,
                     ) as Refinement.Refined

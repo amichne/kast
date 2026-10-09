@@ -1492,11 +1492,11 @@ class CodexProtocolAdapterTest {
             )
         val tool: BrokerTool<Unit, ObserverInput, ObserverOutput, Nothing> =
             BrokerTool(
-                toolName("query_symbols"),
-                ToolDescription.admit("Inspect one symbol.").refinedValue(),
-                ToolLoading.DEFERRED,
-                input,
-                openObjectSchema,
+                name = toolName("query_symbols"),
+                description = ToolDescription.admit("Inspect one symbol.").refinedValue(),
+                loading = ToolLoading.DEFERRED,
+                input = input,
+                outputSchema = openObjectSchema,
                 invoke = { _, inputValue, _ ->
                     invocations.incrementAndGet()
                     executedArguments += inputValue.arguments

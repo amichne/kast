@@ -15,6 +15,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import kotlinx.serialization.serializer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -32,7 +33,7 @@ class BrokerCatalogTest {
             broker.dispatch(
                 BrokerDispatchRequest(
                     ToolAddress(namespace("echo"), toolName("say")),
-                    kotlinx.serialization.json.Json.encodeToJsonElement(EchoInput.serializer(), EchoInput(expected)),
+                    kotlinx.serialization.json.Json.encodeToJsonElement(serializer<EchoInput>(), EchoInput(expected)),
                     invocationContext(temporary),
                 )
             )

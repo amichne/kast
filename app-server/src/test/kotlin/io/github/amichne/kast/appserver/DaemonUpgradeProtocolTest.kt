@@ -20,7 +20,13 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 
 class DaemonUpgradeProtocolTest {
-    private val target = DaemonManagementTarget("installation", "epoch", "generation", "configuration")
+    private val target =
+        DaemonManagementTarget(
+            installationId = "installation",
+            stateEpoch = "epoch",
+            serviceGeneration = "generation",
+            configurationIdentity = "configuration",
+        )
     private val candidate = "a".repeat(64)
 
     @Test
@@ -37,7 +43,15 @@ class DaemonUpgradeProtocolTest {
             )
         assertEquals(rejected, admitDaemonUpdate(response, target.copy(stateEpoch = "other"), candidate))
         assertEquals(rejected, admitDaemonUpdate(response, target, "b".repeat(64)))
-        assertEquals(rejected, admitDaemonUpdate(response, target, candidate, "00000000-0000-0000-0000-000000000002"))
+        assertEquals(
+            rejected,
+            admitDaemonUpdate(
+                response = response,
+                target = target,
+                candidate = candidate,
+                requestId = "00000000-0000-0000-0000-000000000002",
+            ),
+        )
         assertEquals(
             rejected,
             admitDaemonUpdate(
@@ -97,21 +111,24 @@ class DaemonUpgradeProtocolTest {
 
     private val status =
         CoordinatorStatusDocument(
-            CoordinatorServiceState.READY,
-            "installation",
-            "epoch",
-            "generation",
-            "configuration",
-            0,
-            0,
-            emptyList(),
-            CoordinatorHostAttachment.PENDING,
+            status = CoordinatorServiceState.READY,
+            installationId = "installation",
+            stateEpoch = "epoch",
+            serviceGeneration = "generation",
+            configurationIdentity = "configuration",
+            reservedMiB = 0,
+            starting = 0,
+            workers = emptyList(),
+            hostAttachment = CoordinatorHostAttachment.PENDING,
         )
 
     @Test
     fun `management seal blocks mutations preserves passive status and commits exact request`() = runBlocking {
         val frontend = DeferredBrokerFrontend { error("unexpected host qualification") }
-        val management = DaemonManagement(target, { true }, { status }, frontend) { error("unexpected enrollment") }
+        val management =
+            DaemonManagement(target = target, available = { true }, status = { status }, sessions = frontend) {
+                error("unexpected enrollment")
+            }
         try {
             val sealed =
                 management.execute(DaemonManagementRequest.PrepareUpdate(target, candidate))
@@ -139,21 +156,7 @@ class DaemonUpgradeProtocolTest {
                     )
                 ),
             )
-            val committed =
-                management.execute(DaemonManagementRequest.CommitUpdate(target, sealed.update.requestId))
-                    as DaemonManagementResponse.Update
-            assertInstanceOf(DaemonUpgradeDocument.Committed::class.java, committed.update)
-            assertEquals(sealed.update.requestId, committed.update.requestId)
-            assertEquals(
-                committed,
-                management.execute(DaemonManagementRequest.CommitUpdate(target, sealed.update.requestId)),
-            )
-            assertEquals(
-                DaemonManagementResponse.Rejected(
-                    DaemonManagementRejection.Upgrade(DaemonUpgradeFailure.ALREADY_COMMITTED)
-                ),
-                management.execute(DaemonManagementRequest.CancelUpdate(target, sealed.update.requestId)),
-            )
+            assertCommittedUpdate(management, sealed)
         } finally {
             frontend.close()
         }
@@ -212,5 +215,23 @@ class DaemonUpgradeProtocolTest {
             assertEquals(setOf("event", "stage", "outcome"), encoded.keys)
             assertEquals("kast_daemon_upgrade", encoded.getValue("event").jsonPrimitive.content)
         }
+    }
+
+    private fun assertCommittedUpdate(management: DaemonManagement, sealed: DaemonManagementResponse.Update) {
+        val committed =
+            management.execute(DaemonManagementRequest.CommitUpdate(target, sealed.update.requestId))
+                as DaemonManagementResponse.Update
+        assertInstanceOf(DaemonUpgradeDocument.Committed::class.java, committed.update)
+        assertEquals(sealed.update.requestId, committed.update.requestId)
+        assertEquals(
+            committed,
+            management.execute(DaemonManagementRequest.CommitUpdate(target, sealed.update.requestId)),
+        )
+        assertEquals(
+            DaemonManagementResponse.Rejected(
+                DaemonManagementRejection.Upgrade(DaemonUpgradeFailure.ALREADY_COMMITTED)
+            ),
+            management.execute(DaemonManagementRequest.CancelUpdate(target, sealed.update.requestId)),
+        )
     }
 }

@@ -168,7 +168,25 @@ class HostedRejectedPublicationEffectTest {
         HostedReadRejectedPublication.RetainedEvidence(
             QueryCompletionEvidenceDocument.Retained(
                 (QueryResultReference.parse("result:v1:00000000-0000-0000-0000-000000000001") as Refinement.Refined)
-                    .value
+                    .value,
+                (io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(
+                        emptyList<io.github.amichne.kast.protocol.contract.QueryResultItemDocument>()
+                    ) as Refinement.Refined)
+                    .value,
+                io.github.amichne.kast.protocol.contract.QueryQuestionDocument(
+                    io.github.amichne.kast.protocol.contract.QueryFromDocument.Location(
+                        (io.github.amichne.kast.protocol.contract.ProtocolText.parse("Example.kt")
+                                as Refinement.Refined)
+                            .value,
+                        (io.github.amichne.kast.protocol.contract.ProtocolOffset.parse(0) as Refinement.Refined).value,
+                    ),
+                    (io.github.amichne.kast.protocol.contract.BoundedProtocolList.create(
+                            emptyList<io.github.amichne.kast.protocol.contract.QueryStepDocument>()
+                        ) as Refinement.Refined)
+                        .value,
+                    io.github.amichne.kast.protocol.contract.QueryOutputDocument.Occurrences,
+                    io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument.Default,
+                ),
             )
         )
 

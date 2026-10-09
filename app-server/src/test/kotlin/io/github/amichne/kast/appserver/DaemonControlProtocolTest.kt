@@ -13,19 +13,30 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class DaemonControlProtocolTest {
-    private val target = DaemonManagementTarget("installation", "epoch", "generation", "configuration")
+    private val target =
+        DaemonManagementTarget(
+            installationId = "installation",
+            stateEpoch = "epoch",
+            serviceGeneration = "generation",
+            configurationIdentity = "configuration",
+        )
     private val request =
         DaemonManagementRequest.Control(
-            target,
-            ControlOperation.CLAIM,
-            "thread-1",
-            "00000000-0000-0000-0000-000000000001",
+            target = target,
+            operation = ControlOperation.CLAIM,
+            threadId = "thread-1",
+            connectionId = "00000000-0000-0000-0000-000000000001",
         )
 
     @Test
     fun `control acknowledgment must preserve every admitted identity and operation`() {
         val accepted =
-            DaemonManagementResponse.Controlled(target, request.operation, request.threadId, request.connectionId)
+            DaemonManagementResponse.Controlled(
+                target = target,
+                operation = request.operation,
+                threadId = request.threadId,
+                connectionId = request.connectionId,
+            )
         assertEquals(Refinement.Refined(accepted), admitDaemonControl(accepted, request))
         val rejected =
             listOf(
@@ -38,10 +49,10 @@ class DaemonControlProtocolTest {
                 accepted.copy(connectionId = "00000000-0000-0000-0000-000000000002"),
                 DaemonManagementResponse.Sessions(target, DaemonSessionInspection.Pending),
             )
-        rejected.forEach {
+        rejected.forEach { response ->
             assertEquals(
                 Refinement.Rejected(DaemonManagementRejection.Protocol(DaemonManagementFailure.RESPONSE_REJECTED)),
-                admitDaemonControl(it, request),
+                admitDaemonControl(response, request),
             )
         }
     }
@@ -59,10 +70,10 @@ class DaemonControlProtocolTest {
                 .encodeToJsonElement(
                     DaemonManagementResponse.serializer(),
                     DaemonManagementResponse.Controlled(
-                        target,
-                        request.operation,
-                        request.threadId,
-                        request.connectionId,
+                        target = target,
+                        operation = request.operation,
+                        threadId = request.threadId,
+                        connectionId = request.connectionId,
                     ),
                 )
                 .jsonObject
@@ -92,7 +103,12 @@ class DaemonControlProtocolTest {
                     error("unexpected control")
             }
         val management =
-            DaemonManagement(target, { true }, { error("unexpected status") }, sessions) {
+            DaemonManagement(
+                target = target,
+                available = { true },
+                status = { error("unexpected status") },
+                sessions = sessions,
+            ) {
                 error("unexpected enrollment")
             }
         assertEquals(

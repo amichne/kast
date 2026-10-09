@@ -35,6 +35,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.serializer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -90,7 +91,7 @@ class KastProviderTest {
 
     private fun hostRejection() =
         ExistingIdeExchange.HostRejected(
-            CanonicalJsonDocument.generated(HostRejection.serializer()).create(HostRejection())
+            CanonicalJsonDocument.generated(serializer<HostRejection>()).create(HostRejection())
         )
 
     private fun searchInput(): JsonElement = io.github.amichne.kast.appserver.publicNameQuery("Thing")
@@ -114,7 +115,7 @@ class KastProviderTest {
     @Test
     fun `zero exit host rejections retain details but never present successful observations`(@TempDir temporary: Path) =
         runBlocking {
-            val executable = executable(temporary.resolve("kast"))
+            executable(temporary.resolve("kast"))
             val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
             for (rejection in
                 listOf(
@@ -226,7 +227,7 @@ class KastProviderTest {
 
     @Test
     fun `projection rejects missing or weakened canonical execution budgets`(@TempDir temporary: Path) = runBlocking {
-        val executable = executable(temporary.resolve("kast"))
+        executable(temporary.resolve("kast"))
         val schema = capabilitySchema()
         val current = Json.decodeFromString<KastCapabilityBoundary>(schema)
         assertEquals(18, current.serverProjection.schemaVersion)
@@ -287,7 +288,7 @@ class KastProviderTest {
     @Test
     fun `complete suite retains one change route and omits phase tools`(@TempDir temporary: Path) =
         runBlocking<Unit> {
-            val executable = executable(temporary.resolve("kast"))
+            executable(temporary.resolve("kast"))
             val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
             val executor = RecordingCatalogSource(schema = capabilitySchema())
             val options = KastProviderOptions(catalogSource = executor)
@@ -336,8 +337,8 @@ class KastProviderTest {
 
     @Test
     fun `complete suite publishes all qualified tools`(@TempDir temporary: Path) = runBlocking {
-        val executable = executable(temporary.resolve("kast"))
-        val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
+        executable(temporary.resolve("kast"))
+        Files.createDirectory(temporary.resolve("workspace")).toRealPath()
         val options = KastProviderOptions(catalogSource = RecordingCatalogSource(schema = capabilitySchema()))
         val qualification =
             assertInstanceOf(
@@ -555,7 +556,7 @@ class KastProviderTest {
 
     @Test
     fun `provider start rejects contract drift before invocation`(@TempDir temporary: Path) = runBlocking {
-        val executable = executable(temporary.resolve("kast"))
+        executable(temporary.resolve("kast"))
         val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
         Files.writeString(cwd.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
         val originalSchema = capabilitySchema()
@@ -600,8 +601,8 @@ class KastProviderTest {
 
     @Test
     fun `open input object is rejected before extra arguments can be dropped`(@TempDir temporary: Path) = runBlocking {
-        val executable = executable(temporary.resolve("kast"))
-        val cwd = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
+        executable(temporary.resolve("kast"))
+        Files.createDirectory(temporary.resolve("workspace")).toRealPath()
         val openInput =
             capabilitySchema()
                 .replaceFirst(

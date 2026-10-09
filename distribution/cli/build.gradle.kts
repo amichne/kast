@@ -39,7 +39,9 @@ val generateVersion =
     }
 
 kotlin.sourceSets.main {
-    kotlin.srcDir(layout.buildDirectory.dir("generated/sources/management-version/kotlin"))
+    kotlin.srcDir(
+        files(layout.buildDirectory.dir("generated/sources/management-version/kotlin")).builtBy(generateVersion)
+    )
 }
 
 tasks.named("compileKotlin") { dependsOn(generateVersion) }

@@ -285,8 +285,12 @@ internal class SupplementalCollector(
     }
 }
 
-private fun PsiFile.declarationAt(offset: Int): KtNamedDeclaration? =
-    generateSequence(findElementAt(offset)) { it.parent }.filterIsInstance<KtNamedDeclaration>().firstOrNull()
+/** Type and ordinary value parameters are syntax inside their owning supported declaration. */
+internal fun PsiFile.declarationAt(offset: Int): KtNamedDeclaration? =
+    generateSequence(findElementAt(offset)) { it.parent }
+        .takeWhile { it !is PsiFile }
+        .filterIsInstance<KtNamedDeclaration>()
+        .firstOrNull { it.discoveryCompilerKind() != null }
 
 private fun KtNamedDeclaration.candidate(request: SymbolDiscoveryRequest): Refinement<SymbolDiscoveryCandidate, *> {
     val file = containingFile?.virtualFile ?: return Refinement.Rejected(Unit)

@@ -26,12 +26,13 @@ class SettledReadOutputContractTest {
         runTest {
             val fixture =
                 OutputContractExecutionFixture.create(
-                    root,
-                    this,
-                    BrokerOperationEffect.Canonical(
-                        io.github.amichne.kast.protocol.registry.OperationEffect.INTELLIJ_READ
-                    ),
-                    FixtureTermination.INVALID_OUTPUT,
+                    root = root,
+                    scope = this,
+                    effect =
+                        BrokerOperationEffect.Canonical(
+                            io.github.amichne.kast.protocol.registry.OperationEffect.INTELLIJ_READ
+                        ),
+                    termination = FixtureTermination.INVALID_OUTPUT,
                 )
             try {
                 val first = fixture.submit("first")
@@ -48,8 +49,9 @@ class SettledReadOutputContractTest {
                 assertEquals(
                     listOf("PATTERN" to "CONTINUATION"),
                     failure.getValue("outputViolationEvidence").jsonObject.getValue("observations").jsonArray.map {
-                        it.jsonObject.getValue("keyword").jsonPrimitive.content to
-                            it.jsonObject.getValue("field").jsonPrimitive.content
+                        observation ->
+                        observation.jsonObject.getValue("keyword").jsonPrimitive.content to
+                            observation.jsonObject.getValue("field").jsonPrimitive.content
                     },
                 )
                 assertEquals(

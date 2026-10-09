@@ -16,6 +16,18 @@ import io.github.amichne.kast.traversal.contract.TraversalContinuation
 
 /** A detached depth-first ordered pipeline. Stage identity retains each distinct operator's own history. */
 internal sealed interface PipelineTask {
+    sealed interface TraceTask : PipelineTask
+
+    data class TraceMembers(
+        val owner: QuerySymbol,
+        val stage: ExactQueryStage.Trace,
+        val page: io.github.amichne.kast.source.contract.SourceReadPage =
+            io.github.amichne.kast.source.contract.SourceReadPage.First,
+        val qualification: io.github.amichne.kast.source.contract.SourceReadQualification? = null,
+    ) : TraceTask
+
+    data class TraceMember(val member: QueryTraceMember, val stage: ExactQueryStage.Trace) : TraceTask
+
     data class ImpactExplore(val route: QueryImpactRoute) : PipelineTask
 
     data object ImpactFinalize : PipelineTask
@@ -95,6 +107,8 @@ internal sealed interface QueryJoinCursor {
 
 internal fun PipelineTask.needsWork(): Boolean =
     when (this) {
+        is PipelineTask.TraceMembers,
+        is PipelineTask.TraceMember,
         is PipelineTask.Discover,
         is PipelineTask.DiscoverText,
         is PipelineTask.DiscoverLocation,

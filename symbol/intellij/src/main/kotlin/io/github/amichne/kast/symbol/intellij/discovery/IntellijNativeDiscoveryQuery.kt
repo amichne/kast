@@ -200,6 +200,13 @@ internal class IntellijNativeDiscoveryQuery(
         compiledScope: CompiledIntellijSearchScope,
         request: SymbolDiscoveryRequest,
         contributor: IntellijReadContributor,
+        continuation:
+            ((
+                () -> Boolean,
+                (SymbolDiscoveryQualification) -> Unit,
+                (IntellijDiscoveryDeclarationInput) -> Boolean,
+            ) -> Boolean)? =
+            null,
         process:
             (
                 () -> Boolean,
@@ -218,7 +225,11 @@ internal class IntellijNativeDiscoveryQuery(
         collector.contributor = contributor
         if (compiledScope.population == IntellijScopePopulation.KNOWN_EMPTY) return collector.finish()
         try {
-            IntellijIndexedDiscoveryAdmission(collector, request, limits, observation, contributor).collect(process)
+            val admission = IntellijIndexedDiscoveryAdmission(collector, request, limits, observation)
+            if (admission.collect(process) && continuation != null) {
+                collector.contributor = IntellijReadContributor.SCOPED_DECLARATIONS
+                admission.collect(continuation)
+            }
         } catch (cancelled: ProcessCanceledException) {
             throw cancelled
         } catch (cancelled: CancellationException) {

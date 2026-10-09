@@ -153,7 +153,13 @@ class InvocationFileStoreTest {
         val fence = InvocationFence(file)
         fence.admit("call", fingerprint)
         val path = recordPath(file, callKey)
-        val replaced = InvocationRecordDocument(2, "b".repeat(64), fingerprint, InvocationPhase.COMPLETED)
+        val replaced =
+            InvocationRecordDocument(
+                schemaVersion = 2,
+                key = "b".repeat(64),
+                fingerprint = fingerprint,
+                phase = InvocationPhase.COMPLETED,
+            )
         privateWrite(path, Json.encodeToString(replaced))
         assertEquals(rejected(InvocationFenceFailure.STORE_REJECTED), fence.admit("call", fingerprint))
         assertEquals(Json.encodeToString(replaced), Files.readString(path))

@@ -49,7 +49,7 @@ class PreparedKastProviderTest {
             PreparedWorkspaceDemand(owner, { error("unexpected inspect") }, { _, _ -> error("unexpected query") })
         val options =
             KastProviderOptions(
-                RecordingCatalogSource(installedKastCatalogFixture()),
+                catalogSource = RecordingCatalogSource(installedKastCatalogFixture()),
                 ideClient = ExistingIdeClient { _, _ -> error("unexpected fallback") },
                 ioDispatcher = StandardTestDispatcher(testScheduler),
                 workspaceDemand = demand,
@@ -86,6 +86,12 @@ class PreparedKastProviderTest {
                 (ToolName.admit("query_symbols") as Refinement.Refined).value,
             ),
             publicNameQuery(),
-            (BrokerInvocationContext.admit("thread", "turn", "call", root) as Refinement.Refined).value,
+            (BrokerInvocationContext.admit(
+                    threadId = "thread",
+                    turnId = "turn",
+                    callId = "call",
+                    workingDirectory = root,
+                ) as Refinement.Refined)
+                .value,
         )
 }

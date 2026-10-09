@@ -295,7 +295,7 @@ private fun SourceSelector.protocolSelection(): SourceSelectionDocument? {
     )
 }
 
-private fun DomainSourceReadQualification.protocol(): SourceReadQualification? {
+internal fun DomainSourceReadQualification.protocol(): SourceReadQualification? {
     val count = SourceEntityCountDocument.parse(knownMinimumEntityCount.value).refinedOrNull() ?: return null
     val protocolLimitations = limitations.map { it.protocol() }
     val progress = projectProgress().refinedOrNull() ?: return null

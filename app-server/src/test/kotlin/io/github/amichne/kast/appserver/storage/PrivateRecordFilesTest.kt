@@ -4,6 +4,7 @@ import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.serializer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -18,7 +19,12 @@ class PrivateRecordFilesTest {
         assertEquals(
             Refinement.Refined(Unit),
             files.locked {
-                files.write(record, ValueDocument.serializer(), ValueDocument("first"), maximumBytes = 32)
+                files.write(
+                    path = record,
+                    serializer = serializer<ValueDocument>(),
+                    document = ValueDocument("first"),
+                    maximumBytes = 32,
+                )
                 Refinement.Refined(Unit)
             },
         )
@@ -27,9 +33,9 @@ class PrivateRecordFilesTest {
             Refinement.Rejected(PrivateRecordFailure.STORE_REJECTED),
             files.locked {
                 files.write(
-                    record,
-                    ValueDocument.serializer(),
-                    ValueDocument("replacement".repeat(10)),
+                    path = record,
+                    serializer = serializer<ValueDocument>(),
+                    document = ValueDocument("replacement".repeat(10)),
                     maximumBytes = 32,
                 )
                 Refinement.Refined(Unit)

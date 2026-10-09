@@ -32,26 +32,31 @@ internal fun installedKastCatalogFixture(): String =
                     CanonicalAgentToolDefinitions.policy.text,
                     CanonicalAgentToolDefinitions.all.map { definition ->
                         KastHostedToolBoundary(
-                            definition.operation.id.value,
-                            definition.name.value,
-                            definition.description.value,
-                            definition.loading == HostedToolLoading.DEFERRED,
-                            definition.operation.effect.name.lowercase(),
-                            when (definition.approval) {
-                                HostedApprovalPolicy.NONE -> KastApprovalPolicy.NONE
-                                HostedApprovalPolicy.EXPLICIT -> KastApprovalPolicy.EXPLICIT
-                                HostedApprovalPolicy.EXACT_PROJECT_CLOSE -> KastApprovalPolicy.EXACT_PROJECT_CLOSE
-                            },
-                            KastExecutionBudgetBoundary(
-                                OperationExecutionBudget.WORKSPACE_READINESS.value,
-                                OperationExecutionBudget.forOperation(definition.operation.operation).operation.value,
-                            ),
-                            when (val input = definition.inputBinding) {
-                                is AgentToolInputBinding.Facade -> PublicToolContract.parameters(input.identity)
-                                AgentToolInputBinding.Canonical ->
-                                    catalogFixtureJson.encodeToJsonElement(FixtureInputSchema())
-                            },
-                            catalogFixtureJson.encodeToJsonElement(FixtureOutputSchema()),
+                            operationId = definition.operation.id.value,
+                            name = definition.name.value,
+                            description = definition.description.value,
+                            deferLoading = definition.loading == HostedToolLoading.DEFERRED,
+                            effect = definition.operation.effect.name.lowercase(),
+                            approvalPolicy =
+                                when (definition.approval) {
+                                    HostedApprovalPolicy.NONE -> KastApprovalPolicy.NONE
+                                    HostedApprovalPolicy.EXPLICIT -> KastApprovalPolicy.EXPLICIT
+                                    HostedApprovalPolicy.EXACT_PROJECT_CLOSE -> KastApprovalPolicy.EXACT_PROJECT_CLOSE
+                                },
+                            executionBudget =
+                                KastExecutionBudgetBoundary(
+                                    OperationExecutionBudget.WORKSPACE_READINESS.value,
+                                    OperationExecutionBudget.forOperation(definition.operation.operation)
+                                        .operation
+                                        .value,
+                                ),
+                            inputSchema =
+                                when (val input = definition.inputBinding) {
+                                    is AgentToolInputBinding.Facade -> PublicToolContract.parameters(input.identity)
+                                    AgentToolInputBinding.Canonical ->
+                                        catalogFixtureJson.encodeToJsonElement(FixtureInputSchema())
+                                },
+                            outputSchema = catalogFixtureJson.encodeToJsonElement(FixtureOutputSchema()),
                         )
                     },
                 ),

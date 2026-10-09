@@ -7,7 +7,6 @@ import io.github.amichne.kast.protocol.contract.QueryCompletionCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionLimitationsDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionPolicyDocument
-import io.github.amichne.kast.protocol.contract.QueryCompletionRetentionFailure
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
 import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
@@ -20,7 +19,7 @@ internal fun rejectInvocationCompletion(
     failure: QueryCompletionFailure,
     accumulated: AccumulatedSymbolQuery,
     progress: QueryQualifiedProgressDocument?,
-    retain: () -> Refinement<QueryResultIssuance, QueryRunRejection>,
+    retain: () -> Refinement<QueryCompletionEvidenceDocument, QueryRunRejection>,
 ): QueryPublishedPage {
     val originalFailure =
         when (val admitted = optionalOriginalFailure(accumulated.failure)) {
@@ -47,14 +46,7 @@ internal fun rejectInvocationCompletion(
     val retained =
         when (val captured = retain()) {
             is Refinement.Rejected -> return OperationOutcome.Rejected(captured.failure)
-            is Refinement.Refined ->
-                when (val issued = captured.value) {
-                    is QueryResultIssuance.Issued -> QueryCompletionEvidenceDocument.Retained(issued.reference)
-                    QueryResultIssuance.Unavailable ->
-                        QueryCompletionEvidenceDocument.Unavailable(QueryCompletionRetentionFailure.UNAVAILABLE)
-                    QueryResultIssuance.CapacityExceeded ->
-                        QueryCompletionEvidenceDocument.Unavailable(QueryCompletionRetentionFailure.CAPACITY_EXCEEDED)
-                }
+            is Refinement.Refined -> captured.value
         }
     return OperationOutcome.Rejected(
         QueryRunRejection.CompletionUnproven(

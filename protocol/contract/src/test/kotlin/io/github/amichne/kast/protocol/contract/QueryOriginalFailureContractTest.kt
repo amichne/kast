@@ -1,5 +1,6 @@
 package io.github.amichne.kast.protocol.contract
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -39,12 +40,18 @@ class QueryOriginalFailureContractTest {
         val invalid =
             InvalidInvocationFailure(
                 "INVALID_STATE",
-                QueryRunRejection.CompletionUnsupported(
-                    QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1,
-                    QueryCompletionUnsupportedReason.UNSUPPORTED_OUTPUT,
+                InvalidInvocationCompletionFailure.Unsupported(
+                    QueryRunRejection.CompletionUnsupported(
+                        QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1,
+                        QueryCompletionUnsupportedReason.UNSUPPORTED_OUTPUT,
+                    )
                 ),
             )
         val encoded = json.encodeToJsonElement(InvalidInvocationFailure.serializer(), invalid)
+        assertEquals(
+            "COMPLETION_UNSUPPORTED",
+            encoded.jsonObject.getValue("failure").jsonObject.getValue("type").jsonPrimitive.content,
+        )
         assertThrows(SerializationException::class.java) {
             json.decodeFromJsonElement(QueryInvocationOutcome.serializer(), encoded)
         }
@@ -68,4 +75,13 @@ private data class InvalidOriginalFailure(
     val detail: QueryRunRejection.WorkspaceNotReady = QueryRunRejection.WorkspaceNotReady,
 )
 
-@Serializable private data class InvalidInvocationFailure(val type: String, val failure: QueryRunRejection)
+@Serializable
+private data class InvalidInvocationFailure(val type: String, val failure: InvalidInvocationCompletionFailure)
+
+/** Typed operation rejection leaf deliberately supplied where only an original execution failure is admitted. */
+@Serializable
+private sealed interface InvalidInvocationCompletionFailure {
+    @Serializable
+    @SerialName("COMPLETION_UNSUPPORTED")
+    data class Unsupported(val detail: QueryRunRejection.CompletionUnsupported) : InvalidInvocationCompletionFailure
+}

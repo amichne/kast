@@ -23,7 +23,12 @@ class AppServerStartupEnrollmentTest {
             PersistentBrokerServiceAdmission.Rejected(PersistentBrokerServiceFailure.SERVICE_SUBMISSION_REJECTED)
         }
         val result =
-            InstalledAppServerManager(kast, home, mapOf(selectedBrokerJbr(root)), service)
+            InstalledAppServerManager(
+                    kast = kast,
+                    userHome = home,
+                    environment = mapOf(selectedBrokerJbr(root)),
+                    serviceHost = service,
+                )
                 .execute(AppServerAction.Enable, home)
 
         assertEquals(
@@ -50,12 +55,13 @@ class AppServerStartupEnrollmentTest {
         Files.writeString(registry, "invalid registry")
         val result =
             InstalledAppServerManager(
-                    kast,
-                    home,
-                    mapOf(selectedBrokerJbr(root)),
-                    PersistentBrokerServiceHost {
-                        error("service start must not be observed")
-                    },
+                    kast = kast,
+                    userHome = home,
+                    environment = mapOf(selectedBrokerJbr(root)),
+                    serviceHost =
+                        PersistentBrokerServiceHost {
+                            error("service start must not be observed")
+                        },
                 )
                 .execute(AppServerAction.Enable, home)
 

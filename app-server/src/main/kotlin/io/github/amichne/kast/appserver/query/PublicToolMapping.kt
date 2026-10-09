@@ -272,6 +272,10 @@ private fun List<PublicToolStep>.lower(): Refinement<List<QueryStepDocument>, Pu
 
 private fun PublicToolStep.lower(): Refinement<QueryStepDocument, PublicToolInputFailure> =
     when (this) {
+        is PublicToolTrace ->
+            Refinement.Refined(
+                QueryStepDocument.Trace(expansionScope?.lowerExpansionScope() ?: QueryExpansionScopeDocument.Workspace)
+            )
         is PublicToolWhere -> Refinement.Refined(QueryStepDocument.Where(predicate.lower()))
         is PublicToolExpandRelation ->
             Refinement.Refined(

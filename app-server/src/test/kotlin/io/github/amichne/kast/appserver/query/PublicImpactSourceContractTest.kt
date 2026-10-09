@@ -76,10 +76,10 @@ class PublicImpactSourceContractTest {
         assertEquals(QueryImpactFlowDocument.KOTLIN_FORWARD_V1, question.flow)
         assertEquals(
             QueryExpansionScopeDocument.Sources(
-                bounded(listOf(text("main"))),
-                QueryDirectoryScopeDocument(text("src/main"), QueryContainmentDocument.DIRECT),
-                QueryDiscoverySourcePolicyDocument.PRODUCTION_ONLY,
-                QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
+                sourceSets = bounded(listOf(text("main"))),
+                directory = QueryDirectoryScopeDocument(text("src/main"), QueryContainmentDocument.DIRECT),
+                sourcePolicy = QueryDiscoverySourcePolicyDocument.PRODUCTION_ONLY,
+                generatedSources = QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
             ),
             question.domain,
         )
@@ -91,11 +91,11 @@ class PublicImpactSourceContractTest {
     fun `strict impact witness run lowers the original investigation and progressive run rejects`() {
         val source =
             PublicToolImpactSource(
-                producerSeeds(),
-                bounded(emptyList()),
-                bounded(emptyList()),
-                PublicToolImpactRetainedDomain,
-                QueryImpactFlowDocument.KOTLIN_FORWARD_V1,
+                seeds = producerSeeds(),
+                declarations = bounded(emptyList()),
+                models = bounded(emptyList()),
+                domain = PublicToolImpactRetainedDomain,
+                flow = QueryImpactFlowDocument.KOTLIN_FORWARD_V1,
             )
         for (section in ImpactWitnessSectionDocument.entries) {
             val input =
@@ -202,7 +202,7 @@ class PublicImpactSourceContractTest {
             val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, encoded).refined()
             val run = (admitted.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
             assertEquals(
-                targets?.values ?: emptyList<ImpactValueSiteReferenceDocument>(),
+                targets?.values.orEmpty(),
                 (run.from as QueryFromDocument.Impact).investigation.requestedSites.values,
             )
         }
@@ -273,33 +273,36 @@ class PublicImpactSourceContractTest {
 
     private fun declarationReference() =
         ImpactDeclarationReferenceDocument(
-            ImpactSemanticBasisDocument.Published(
-                text("/workspace"),
-                ImpactEvidenceRevisionDocument.parse(7).refined(),
-            ),
-            text("/workspace/File.kt"),
-            range(0, 200),
-            text("canonical-signature-sha256-v1|" + "a".repeat(64)),
+            basis =
+                ImpactSemanticBasisDocument.Published(
+                    text("/workspace"),
+                    ImpactEvidenceRevisionDocument.parse(7).refined(),
+                ),
+            file = text("/workspace/File.kt"),
+            range = range(0, 200),
+            compilerIdentity = text("canonical-signature-sha256-v1|" + "a".repeat(64)),
         )
 
     private fun originModel(declaration: ImpactDeclarationReferenceDocument) =
         ImpactModelDocument.Representation(
-            ImpactModelFormatDocument.Current,
-            ImpactModelIdentityDocument(
-                id("custom-encryption"),
-                ImpactModelVersionDocument.parse(1).refined(),
-                id("review:913"),
-            ),
-            bounded(listOf(id("HIPED"))),
-            bounded(
-                listOf(
-                    ImpactRepresentationRuleDocument.Origin(
-                        id("encrypt-result"),
-                        ImpactCallablePositionDocument(declaration, ImpactModelValuePositionDocument.Result),
-                        id("HIPED"),
+            schemaVersion = ImpactModelFormatDocument.Current,
+            model =
+                ImpactModelIdentityDocument(
+                    id("custom-encryption"),
+                    ImpactModelVersionDocument.parse(1).refined(),
+                    id("review:913"),
+                ),
+            states = bounded(listOf(id("HIPED"))),
+            rules =
+                bounded(
+                    listOf(
+                        ImpactRepresentationRuleDocument.Origin(
+                            id("encrypt-result"),
+                            ImpactCallablePositionDocument(declaration, ImpactModelValuePositionDocument.Result),
+                            id("HIPED"),
+                        )
                     )
-                )
-            ),
+                ),
         )
 
     private fun producerSeeds() =
@@ -315,11 +318,11 @@ class PublicImpactSourceContractTest {
 
     private fun sourceDomain() =
         PublicToolImpactSourceDomain(
-            bounded(listOf(text("main"))),
-            text("src/main"),
-            false,
-            PublicToolSourcePolicy.PRODUCTION_ONLY,
-            PublicToolGeneratedSources.EXCLUDE,
+            sourceSets = bounded(listOf(text("main"))),
+            directory = text("src/main"),
+            includeSubdirectories = false,
+            sourcePolicy = PublicToolSourcePolicy.PRODUCTION_ONLY,
+            generatedSources = PublicToolGeneratedSources.EXCLUDE,
         )
 
     private fun range(start: Int, end: Int) =

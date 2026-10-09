@@ -26,16 +26,17 @@ class McpWorkspaceOperationClientTest {
         val request = WorkspaceLifecycleRequest.Inspect
         val inspected =
             IdeLifecycleResult.Inspected(
-                "host",
-                "/ide",
-                "build",
-                emptyList(),
-                io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument(
-                    "262.1.1",
-                    "262.1.1-IJ",
-                    "0.49.0",
-                    io.github.amichne.kast.protocol.wire.CanonicalHostedContract.document,
-                ),
+                host = "host",
+                home = "/ide",
+                build = "build",
+                projects = emptyList(),
+                compatibility =
+                    io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument(
+                        ideBuild = "262.1.1",
+                        kotlinPluginBuild = "262.1.1-IJ",
+                        hostedPluginVersion = "0.49.0",
+                        hostedContract = io.github.amichne.kast.protocol.wire.CanonicalHostedContract.document,
+                    ),
             )
         var observedClient: String? = null
         var observedRequest: WorkspaceLifecycleRequest? = null

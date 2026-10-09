@@ -21,6 +21,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.serializer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -47,16 +48,17 @@ class PreparedWorkspaceDemandTest {
                 {
                     calls += "inspect"
                     IdeLifecycleResult.Inspected(
-                        target.host,
-                        "/idea",
-                        "IU-262.1",
-                        listOf(IdeProjectDescription(target, IdeProjectOwnership.MANAGED, 1)),
-                        io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument(
-                            "262.1.1",
-                            "262.1.1-IJ",
-                            "0.49.0",
-                            io.github.amichne.kast.protocol.wire.CanonicalHostedContract.document,
-                        ),
+                        host = target.host,
+                        home = "/idea",
+                        build = "IU-262.1",
+                        projects = listOf(IdeProjectDescription(target, IdeProjectOwnership.MANAGED, 1)),
+                        compatibility =
+                            io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument(
+                                ideBuild = "262.1.1",
+                                kotlinPluginBuild = "262.1.1-IJ",
+                                hostedPluginVersion = "0.49.0",
+                                hostedContract = io.github.amichne.kast.protocol.wire.CanonicalHostedContract.document,
+                            ),
                     )
                 },
                 { prepared, operation ->
@@ -185,7 +187,7 @@ class PreparedWorkspaceDemandTest {
             )
         val rejected =
             ExistingIdeExchange.HostRejected(
-                CanonicalJsonDocument.generated(ModelRefreshRejection.serializer()).create(ModelRefreshRejection()),
+                CanonicalJsonDocument.generated(serializer<ModelRefreshRejection>()).create(ModelRefreshRejection()),
                 HostedPresemanticRecovery.ModelReload,
             )
         val completed = ExistingIdeExchange.Rejected(ExistingIdeFailure.TRANSPORT_REJECTED)
@@ -212,15 +214,16 @@ class PreparedWorkspaceDemandTest {
 
     private fun inspected(value: IdeProjectTarget) =
         IdeLifecycleResult.Inspected(
-            value.host,
-            "/idea",
-            "IU-262.1",
-            listOf(IdeProjectDescription(value, IdeProjectOwnership.MANAGED, 1)),
-            io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument(
-                "262.1.1",
-                "262.1.1-IJ",
-                "0.49.0",
-                io.github.amichne.kast.protocol.wire.CanonicalHostedContract.document,
-            ),
+            host = value.host,
+            home = "/idea",
+            build = "IU-262.1",
+            projects = listOf(IdeProjectDescription(value, IdeProjectOwnership.MANAGED, 1)),
+            compatibility =
+                io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument(
+                    ideBuild = "262.1.1",
+                    kotlinPluginBuild = "262.1.1-IJ",
+                    hostedPluginVersion = "0.49.0",
+                    hostedContract = io.github.amichne.kast.protocol.wire.CanonicalHostedContract.document,
+                ),
         )
 }

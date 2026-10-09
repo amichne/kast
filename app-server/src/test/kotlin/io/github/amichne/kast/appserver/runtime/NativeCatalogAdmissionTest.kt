@@ -78,10 +78,18 @@ class NativeCatalogAdmissionTest {
         val namespace = json.decodeFromString<NativeNamespace>(catalog)
         val unrelated =
             NativeNamespace(
-                "namespace",
-                "unrelated",
-                "Preserved host tools",
-                listOf(NativeTool("function", "probe", "Host probe", json.encodeToJsonElement(ProbeSchema()))),
+                type = "namespace",
+                name = "unrelated",
+                description = "Preserved host tools",
+                tools =
+                    listOf(
+                        NativeTool(
+                            type = "function",
+                            name = "probe",
+                            description = "Host probe",
+                            inputSchema = json.encodeToJsonElement(ProbeSchema()),
+                        )
+                    ),
             )
         connection.send(
             json.encodeToString(

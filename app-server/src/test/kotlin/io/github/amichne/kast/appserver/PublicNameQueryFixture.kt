@@ -26,10 +26,10 @@ internal fun publicNameQuery(
         PublicToolQuerySymbols(
             PublicToolRunAction(
                 PublicToolSearchSource(
-                    (ProtocolText.parse(name) as Refinement.Refined).value,
-                    match,
-                    kinds?.let { (BoundedProtocolList.create(it) as Refinement.Refined).value },
-                    scope,
+                    declarationName = (ProtocolText.parse(name) as Refinement.Refined).value,
+                    nameMatch = match,
+                    declarationKinds = kinds?.let { (BoundedProtocolList.create(it) as Refinement.Refined).value },
+                    scope = scope,
                 ),
                 null,
                 output,

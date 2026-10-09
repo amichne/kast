@@ -58,30 +58,15 @@ class DaemonManagementRuntimeProjectionTest {
 
     @Test
     fun `mixed host versions encode independent provenance and finite compatibility outcomes`() {
-        val compatible = HostedServiceStatus.Compatible("/one", "00000000-0000-0000-0000-000000000001", 101, "0.49.0")
-        val mismatch =
-            HostedCompatibilityStatusFailure.Mismatch(
-                HostedCompatibilityStatusField.RUNTIME_PROTOCOL_IDENTITY,
-                listOf("kast.ide-host.v4"),
-                listOf("kast.ide-host.v3"),
-            )
-        val incompatible =
-            HostedServiceStatus.Incompatible(
-                "/two",
-                "00000000-0000-0000-0000-000000000002",
-                202,
-                "0.48.0",
-                mismatch,
-            )
-        val unavailable = HostedServiceStatus.Unavailable("/three", HostedServiceUnavailableFailure.HOST_UNAVAILABLE)
+        val hostedServices = mixedHostedServices()
         val document =
             Json.parseToJsonElement(
                     DaemonManagementProtocol.json.encodeToString(
                         ManagementRuntimeProjection(
-                            "0.50.0",
-                            emptyList(),
-                            0,
-                            listOf(compatible, incompatible, unavailable),
+                            loadedVersion = "0.50.0",
+                            activeWorkspaces = emptyList(),
+                            liveConnections = 0,
+                            hostedServices = hostedServices,
                         )
                     )
                 )
@@ -126,22 +111,22 @@ class DaemonManagementRuntimeProjectionTest {
     fun `status encodes the passive runtime projection with an exact shape`() {
         val target =
             DaemonManagementTarget(
-                "sha256:${"a".repeat(64)}",
-                "00000000-0000-0000-0000-000000000001",
-                "00000000-0000-0000-0000-000000000002",
-                "b".repeat(64),
+                installationId = "sha256:${"a".repeat(64)}",
+                stateEpoch = "00000000-0000-0000-0000-000000000001",
+                serviceGeneration = "00000000-0000-0000-0000-000000000002",
+                configurationIdentity = "b".repeat(64),
             )
         val status =
             CoordinatorStatusDocument(
-                CoordinatorServiceState.READY,
-                target.installationId,
-                target.stateEpoch,
-                target.serviceGeneration,
-                target.configurationIdentity,
-                0,
-                0,
-                emptyList(),
-                CoordinatorHostAttachment.PENDING,
+                status = CoordinatorServiceState.READY,
+                installationId = target.installationId,
+                stateEpoch = target.stateEpoch,
+                serviceGeneration = target.serviceGeneration,
+                configurationIdentity = target.configurationIdentity,
+                reservedMiB = 0,
+                starting = 0,
+                workers = emptyList(),
+                hostAttachment = CoordinatorHostAttachment.PENDING,
             )
         val response =
             DaemonManagementResponse.Status(status, ManagementRuntimeProjection("1.2.3", listOf("/workspace"), 2))
@@ -156,5 +141,31 @@ class DaemonManagementRuntimeProjectionTest {
         assertEquals("1.2.3", runtime.getValue("loadedVersion").jsonPrimitive.content)
         assertEquals("/workspace", runtime.getValue("activeWorkspaces").jsonArray.single().jsonPrimitive.content)
         assertEquals(2, runtime.getValue("liveConnections").jsonPrimitive.content.toInt())
+    }
+
+    private fun mixedHostedServices(): List<HostedServiceStatus> {
+        val compatible =
+            HostedServiceStatus.Compatible(
+                root = "/one",
+                host = "00000000-0000-0000-0000-000000000001",
+                hostPid = 101,
+                hostedPluginVersion = "0.49.0",
+            )
+        val mismatch =
+            HostedCompatibilityStatusFailure.Mismatch(
+                HostedCompatibilityStatusField.RUNTIME_PROTOCOL_IDENTITY,
+                listOf("kast.ide-host.v4"),
+                listOf("kast.ide-host.v3"),
+            )
+        val incompatible =
+            HostedServiceStatus.Incompatible(
+                root = "/two",
+                host = "00000000-0000-0000-0000-000000000002",
+                hostPid = 202,
+                hostedPluginVersion = "0.48.0",
+                failure = mismatch,
+            )
+        val unavailable = HostedServiceStatus.Unavailable("/three", HostedServiceUnavailableFailure.HOST_UNAVAILABLE)
+        return listOf(compatible, incompatible, unavailable)
     }
 }

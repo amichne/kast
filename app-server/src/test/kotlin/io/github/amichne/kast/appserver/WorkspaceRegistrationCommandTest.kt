@@ -29,17 +29,19 @@ class WorkspaceRegistrationCommandTest {
             val activities = java.util.concurrent.CopyOnWriteArrayList<BrokerStartupActivity>()
             val options =
                 (InstalledCoordinatorConfiguration.admit(
-                        kast,
-                        home,
-                        environment +
-                            mapOf(
-                                "BROKER_SERVICE_IDENTITY" to command.identity.value,
-                                "BROKER_READINESS_FILE" to command.readinessFile.toString(),
-                            ),
-                        BrokerStartupActivitySink {
-                            activities += it
-                            BrokerStartupActivityPublication.PUBLISHED
-                        },
+                        kast = kast,
+                        user = home,
+                        environment =
+                            environment +
+                                mapOf(
+                                    "BROKER_SERVICE_IDENTITY" to command.identity.value,
+                                    "BROKER_READINESS_FILE" to command.readinessFile.toString(),
+                                ),
+                        activitySink =
+                            BrokerStartupActivitySink { activity ->
+                                activities += activity
+                                BrokerStartupActivityPublication.PUBLISHED
+                            },
                     ) as Refinement.Refined)
                     .value
             val running = (InstalledCoordinator.start(options) as InstalledCoordinatorStart.Started).coordinator
@@ -48,11 +50,7 @@ class WorkspaceRegistrationCommandTest {
                 val result = manager.execute(AppServerAction.Register, workspace)
                 assertTrue(result is AppServerManagementResult.Completed, result.toString())
                 val document = (result as AppServerManagementResult.Completed).document
-                assertEquals(workspace.toString(), document["root"]?.jsonPrimitive?.content)
-                assertEquals("app-server.register", document["operation"]?.jsonPrimitive?.content)
-                assertTrue(document["workspaceId"]?.jsonPrimitive?.content?.matches(Regex("[a-f0-9]{64}")) == true)
-                assertEquals("1", document["revision"]?.jsonPrimitive?.content)
-                assertTrue(Files.isRegularFile(installation.resolve("config/workspaces.json")))
+                assertRegistration(document, workspace, installation)
                 assertFalse(activities.any { it.stage == BrokerStartupStage.HOST_ADMISSION })
                 assertFalse(Files.exists(home.resolve("Library")))
                 assertEquals(
@@ -126,5 +124,17 @@ class WorkspaceRegistrationCommandTest {
         )
         assertFalse(Files.exists(installation.resolve("config/workspaces.json")))
         assertFalse(Files.exists(home.resolve("Library")))
+    }
+
+    private fun assertRegistration(
+        document: kotlinx.serialization.json.JsonObject,
+        workspace: Path,
+        installation: Path,
+    ) {
+        assertEquals(workspace.toString(), document["root"]?.jsonPrimitive?.content)
+        assertEquals("app-server.register", document["operation"]?.jsonPrimitive?.content)
+        assertTrue(document["workspaceId"]?.jsonPrimitive?.content?.matches(Regex("[a-f0-9]{64}")) == true)
+        assertEquals("1", document["revision"]?.jsonPrimitive?.content)
+        assertTrue(Files.isRegularFile(installation.resolve("config/workspaces.json")))
     }
 }

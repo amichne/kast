@@ -118,11 +118,11 @@ class WorkspaceExecutionBudgetTest {
             val turn = requireNotNull(BrokerTurnId.admit("turn"))
             fun identity(call: String) =
                 WorkspaceExecutionIdentity(
-                    workspace,
-                    ClientConnectionId.fresh(),
-                    thread,
-                    turn,
-                    requireNotNull(BrokerCallId.admit(call)),
+                    workspace = workspace,
+                    connection = ClientConnectionId.fresh(),
+                    thread = thread,
+                    turn = turn,
+                    call = requireNotNull(BrokerCallId.admit(call)),
                 )
             val entered = CompletableDeferred<Unit>()
             val first =

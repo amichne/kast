@@ -4,7 +4,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /** Exact finite request, execution and presentation failures share one canonical outcome owner. */
-@Serializable
 sealed interface QueryRunRejection : QueryRunFailure {
     @Serializable
     @SerialName("COMPLETION_UNSUPPORTED")
@@ -13,8 +12,6 @@ sealed interface QueryRunRejection : QueryRunFailure {
         val reason: QueryCompletionUnsupportedReason,
     ) : QueryRunRejection
 
-    @Serializable
-    @SerialName("COMPLETION_UNPROVEN")
     data class CompletionUnproven(
         val model: QueryStaticModelDocument,
         val cause: QueryCompletionCauseDocument,

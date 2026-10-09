@@ -18,6 +18,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.serializer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 
@@ -99,13 +100,13 @@ internal class HostedSocketExchangeFixture {
     ): PeerFixture {
         val digest =
             MessageDigest.getInstance("SHA-256").digest(home.toString().toByteArray()).take(16).joinToString("") {
-                "%02x".format(it)
+                "%02x".format(java.util.Locale.ROOT, it)
             }
         val directory = Files.createDirectories(home.resolve(".kast/ide-hosted/$digest"))
         Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
         val socket = directory.resolve("host.sock")
         val descriptor = Descriptor(home.toString(), socket.toString())
-        Files.writeString(directory.resolve("endpoint.json"), json.encodeToString(Descriptor.serializer(), descriptor))
+        Files.writeString(directory.resolve("endpoint.json"), json.encodeToString(serializer<Descriptor>(), descriptor))
         return PeerFixture(
             metadata = metadata,
             omitEvidence = omitEvidence,
@@ -146,16 +147,16 @@ internal class HostedSocketExchangeFixture {
         }
 
         private fun document(operation: String): String {
-            if (operation != "DESCRIBE") return json.encodeToString(Rejection.serializer(), Rejection())
+            if (operation != "DESCRIBE") return json.encodeToString(serializer<Rejection>(), Rejection())
             val description = metadata.removeFirst()
             return if (omitEvidence) {
                 json.encodeToString(
-                    LegacyHost.serializer(),
+                    serializer<LegacyHost>(),
                     LegacyHost(descriptor.root, descriptor.host, descriptor.hostPid),
                 )
             } else {
                 json.encodeToString(
-                    Host.serializer(),
+                    serializer<Host>(),
                     Host(
                         root = descriptor.root,
                         host = descriptor.host,

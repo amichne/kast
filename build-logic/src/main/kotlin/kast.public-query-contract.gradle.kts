@@ -26,6 +26,7 @@ val verifyPublicQueryGeneration = tasks.register<Exec>("verifyPublicQueryGenerat
     inputs.files(
         layout.projectDirectory.file("src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDocuments.kt"),
         layout.projectDirectory.file("src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDiscoveryDocuments.kt"),
+        layout.projectDirectory.file("src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolTrace.kt"),
     )
     workingDir(rootProject.projectDir)
     commandLine("python3", generator.asFile.absolutePath, "--check")

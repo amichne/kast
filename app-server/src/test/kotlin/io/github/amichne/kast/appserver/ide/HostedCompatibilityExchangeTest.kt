@@ -14,6 +14,7 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
@@ -23,7 +24,12 @@ class HostedCompatibilityExchangeTest {
     private val json = Json { encodeDefaults = true }
     private val fixture = HostedSocketExchangeFixture()
     private val compatibility =
-        HostedCompatibilityDocument("262.1.1", "262.1.1-IJ", "0.49.0", CanonicalHostedContract.document)
+        HostedCompatibilityDocument(
+            ideBuild = "262.1.1",
+            kotlinPluginBuild = "262.1.1-IJ",
+            hostedPluginVersion = "0.49.0",
+            hostedContract = CanonicalHostedContract.document,
+        )
 
     @Test
     fun `absent recorded process with a removed project cannot block live host admission`() {
@@ -37,7 +43,7 @@ class HostedCompatibilityExchangeTest {
             Files.writeString(
                 directory.resolve("endpoint.json"),
                 json.encodeToString(
-                    Descriptor.serializer(),
+                    serializer<Descriptor>(),
                     Descriptor(missing.toString(), directory.resolve("host.sock").toString(), hostPid = retired.pid()),
                 ),
             )
