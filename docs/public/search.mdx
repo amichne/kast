@@ -48,6 +48,11 @@ Find an interface method with `declarationName: "execute"` and
 qualified identity to select `example.cache.CacheManager.execute` from its
 overrides. Exact name matching returns all eligible overloads and owners.
 
+Exact-name discovery uses name indexes and a supplemental declaration scan to
+prove completeness within the admitted scope. Apply known directory, package,
+source-set, and declaration-kind constraints before searching. An exact name
+alone does not bound the number of source files the completeness scan visits.
+
 `AT_LOCATION` selects the nearest containing named declaration. An offset inside
 the method's generic parameter list selects that method; an offset on
 `manager.execute(...)` selects its enclosing declaration. It does not resolve
@@ -118,6 +123,13 @@ timeout does not remove host ceilings.
 For a question about only direct callers or implementations, use one
 `EXPAND_RELATION`. For a graph with a requested depth, use `WALK` and inspect its
 hop evidence. These forms are available in [Query forms](/reference/api).
+
+If `WALK.maximumDepth` and `relationScope` are omitted or null, `WALK` traverses
+the reachable graph across the workspace to exhaustion. A narrow discovery
+scope does not narrow those destinations. Set the requested depth or destination
+scope explicitly when the question requires that bound. Keep `COMPLETE_ONLY`:
+resource exhaustion leaves proof incomplete, and later output filters do not
+reduce native enumeration work.
 
 Invocations inside lambdas preserve separate ownership. Static callback paths do not prove runtime execution. See [Callback evidence](/reference/callbacks).
 
