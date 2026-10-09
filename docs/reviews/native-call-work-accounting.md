@@ -57,6 +57,29 @@ The ordering is justified by an invariant: optional preparation cannot make a re
 
 Sources: [adapter](../../relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationCompilerAdapter.kt), [production sequencing rule](../../relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/AdmittedRelationPreparation.kt), [admission tests](../../relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/AdmittedRelationPreparationTest.kt).
 
+## Raw-call minimization: identical scope obligations
+
+Instrumented source baseline: `2b50a1f824d8392b1964ff863ef9d1401565c71c`.
+Both baseline scope compilations use the same request, project, model, and native read action. The compiler takes the selected scope and constraints as its remaining inputs.
+
+The candidate retains the first compiled scope when the requested search scope and constraints exactly equal the retained subject scope and constraints. It uses that same admitted object for subject restoration. Distinct inputs still require distinct compilation. Reuse lasts only for the current read attempt.
+
+| Case | Baseline `RELATION_SCOPE_COMPILE` calls, instrumented source order | Candidate calls, production-rule test |
+| --- | ---: | ---: |
+| Equal scope and constraints, accepted | 2 | 1 |
+| Different scope policy, accepted | 2 | 2 |
+| Equal scope, different directory or source sets | 2 | 2 |
+| First compilation rejected | 1 | 1 |
+| Distinct subject compilation rejected | 2 | 2 |
+
+This removes one declared compilation invocation for each accepted equal-input pair. It adds no compiler invocation on another path. Subject restoration, optional preparation, provider selection, and semantic evaluation keep their existing order after scope admission. No coefficient, clock estimate, or workspace frequency estimate determines eligibility.
+
+The tests execute the production reuse decision and real accounting scopes with detached input observations. They cover all seven relation meanings, exact equal inputs from separate scope values, and different policies. They preserve returned observations by identity and preserve rejection and cancellation. They do not establish live K2 equivalence or native latency.
+
+The unchanged scope compiler depends on project state protected by the same native read action and the same model compilation. No result survives that action or crosses a request or epoch. The guard compares every scope and constraint field; it does not infer equivalence from overlapping files or weaker native index evidence.
+
+Sources: [admitted scopes](../../relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/AdmittedRelationScopes.kt), [raw-call tests](../../relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/AdmittedRelationScopesTest.kt), [native compiler](../../relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijRelationScopeCompiler.kt).
+
 ## Mechanical evidence
 
 - Changing clock observations preserves the call-count table for the same effect sequence. Nested callbacks retain their parent search boundary.
@@ -72,7 +95,7 @@ Tests: [accounting](../../workspace/intellij-read/src/test/kotlin/io/github/amic
 
 ## Remaining checkpoint obligations
 
-The accounting foundation and local avoidance rule are reviewable. Complete per-operation coverage is not yet proven.
+The accounting foundation and the two local avoidance rules are reviewable. Complete per-operation coverage is not yet proven.
 
 1. Extend the declared inventory through document saves, EDT scheduling, VFS refresh, read-action acquisition, primary indexes, fuzzy contributors, source and diagnostic adapters, and traversal dispatch. In particular, readiness work before the hosted executor cannot be inferred from its semantic receipt. Preserve explicit operation ownership across that earlier lifecycle.
 2. Distinguish a submitted native effect from its asynchronous completion. The synchronous wrapper must not span coroutine suspension or transfer its parent stack across threads.
@@ -83,6 +106,8 @@ The accounting foundation and local avoidance rule are reviewable. Complete per-
 Dependency closure narrowing, cache changes, timeout increases, coefficient fitting, and vector analysis remain outside this checkpoint.
 
 ## Validation record
+
+The original accounting checkpoint passed the checks below. The raw-call minimization adds five production-rule tests, and the full build-logic suite passes 113 tests. Publication also runs the repository pre-push `productBuildGate` at the final commit. Its terminal result is reported with the pull request.
 
 The focused accounting, hashing, and admission selectors passed. Final validation passed 791 JVM tests across the four affected modules and the hosted consumer, plus 222 replay-harness tests. All four module quality checks passed, including formatting, static analysis, and file-length checks. The native-search bytecode confinement test passed separately. The JSON contract guard reported 636 fingerprints and zero violations. Architecture verification and knowledge citation checks passed.
 

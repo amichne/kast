@@ -155,33 +155,25 @@ internal class IntellijRelationCompilerQuery(
         request: RelationRequest,
         modelCompilation: WorkspaceSearchScopeModelCompilation,
     ): io.github.amichne.kast.kernel.Refinement<AdmittedRelationRead, RelationCompilerRejection> {
-        val scope =
+        val scopes =
             when (
-                val compilation =
-                    observation.call(IntellijReadCall.RELATION_SCOPE_COMPILE) {
-                        scopeCompiler.compile(project, request, modelCompilation)
+                val admitted =
+                    AdmittedRelationScopes.compile(request, observation) { selected, constraints ->
+                        when (
+                            val compilation =
+                                scopeCompiler.compile(project, request, modelCompilation, selected, constraints)
+                        ) {
+                            is IntellijRelationScopeCompilation.Compiled ->
+                                io.github.amichne.kast.kernel.Refinement.Refined(compilation.scope)
+                            is IntellijRelationScopeCompilation.Rejected ->
+                                io.github.amichne.kast.kernel.Refinement.Rejected(
+                                    RelationCompilerRejection.SCOPE_REJECTED
+                                )
+                        }
                     }
             ) {
-                is IntellijRelationScopeCompilation.Compiled -> compilation.scope
-                is IntellijRelationScopeCompilation.Rejected ->
-                    return io.github.amichne.kast.kernel.Refinement.Rejected(RelationCompilerRejection.SCOPE_REJECTED)
-            }
-        val subjectScope =
-            when (
-                val compilation =
-                    observation.call(IntellijReadCall.RELATION_SCOPE_COMPILE) {
-                        scopeCompiler.compile(
-                            project,
-                            request,
-                            modelCompilation,
-                            request.subject.scope,
-                            request.subject.constraints,
-                        )
-                    }
-            ) {
-                is IntellijRelationScopeCompilation.Compiled -> compilation.scope
-                is IntellijRelationScopeCompilation.Rejected ->
-                    return io.github.amichne.kast.kernel.Refinement.Rejected(RelationCompilerRejection.SCOPE_REJECTED)
+                is io.github.amichne.kast.kernel.Refinement.Refined -> admitted.value
+                is io.github.amichne.kast.kernel.Refinement.Rejected -> return admitted
             }
         val projection =
             IntellijK2RelationProjection(
@@ -193,7 +185,7 @@ internal class IntellijRelationCompilerQuery(
             when (
                 val lookup =
                     observation.call(IntellijReadCall.RELATION_SUBJECT_RESTORE) {
-                        projection.subject(subjectScope, request.subject)
+                        projection.subject(scopes.subject, request.subject)
                     }
             ) {
                 is IntellijRelationSubjectLookup.Found -> lookup
@@ -201,7 +193,9 @@ internal class IntellijRelationCompilerQuery(
                     return io.github.amichne.kast.kernel.Refinement.Rejected(lookup.reason.compilerRejection())
             }
 
-        return io.github.amichne.kast.kernel.Refinement.Refined(AdmittedRelationRead(scope, projection, subject))
+        return io.github.amichne.kast.kernel.Refinement.Refined(
+            AdmittedRelationRead(scopes.search, projection, subject)
+        )
     }
 
     private fun evaluateRead(
