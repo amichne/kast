@@ -117,3 +117,7 @@ Older receipts that stopped at a retained prefix need a fresh capture. Re-admitt
 Trial receipts use version 2 and preserve the full observation window so the join can be derived again. The loader rejects old trial shapes. Native pins now require the read-identity, dispatch, logger, timing and diagnostic-encoding owners. Pure and scripted collector checks do not establish installed-host latency or replay of the original private incident.
 
 Each call also records `observationCaptureNanos`. Workload wall and first-usable times exclude previous calls' capture intervals. This keeps the bounded wait for log records from inflating continuation timing. Other replay driver work remains included in workload wall time. Process and native clocks retain their original values.
+
+Checkpoint admission emits diagnostic schema 13. The record includes the allowance, required estimate and five accounting components: tasks, identity rows, inputs, impact state and joins. These are the existing conservative storage estimates. They do not measure heap usage or encoded response bytes. Admission keeps the same accounting and byte limit.
+
+Each admission records a finite success or capacity-rejection counter. The latest rejection snapshot survives later successful admissions. The record contains no source text, paths or selectors. Use the `QUERY_CHECKPOINT_STORAGE` native pin slice to qualify the interpreter, accounting, adapter and diagnostic owners before inspecting these fields.

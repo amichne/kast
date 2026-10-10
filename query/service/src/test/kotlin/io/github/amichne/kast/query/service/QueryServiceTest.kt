@@ -480,6 +480,8 @@ class QueryServiceTest {
         },
         clock: QueryNanoClock = QueryNanoClock(System::nanoTime),
         source: SourceReadOperations = SourceReadOperations { error("Source read was not expected") },
+        checkpointObservation: io.github.amichne.kast.query.contract.QueryCheckpointStorageObservation =
+            io.github.amichne.kast.query.contract.QueryCheckpointStorageObservation.None,
     ): QueryService =
         QueryService(
             discovery = discovery,
@@ -489,6 +491,7 @@ class QueryServiceTest {
             traversal = unexpectedQueryTraversal(),
             traversalCeiling = queryTestTraversalCeiling(),
             clock = clock,
+            checkpointObservation = checkpointObservation,
         )
 
     internal fun discoveryWithCandidate(): SymbolDiscoveryOperations = SymbolDiscoveryOperations { request ->

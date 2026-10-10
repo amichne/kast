@@ -60,6 +60,7 @@ class NativeDiagnosticCounterVersion(Enum):
     SCOPE_API_CALLS = 10
     FILE_ENUMERATION = 11
     SDK_FILE_PLAN = 12
+    CHECKPOINT_STORAGE = 13
 
 
 @dataclass(frozen=True)
