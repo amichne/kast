@@ -21,6 +21,7 @@ internal constructor(
     val timeAllowance: HostedSemanticTimeAllowance,
     private val freshness: HostedReadFreshness,
     private val publicationEffects: HostedReadPublicationOwner = HostedReadPublicationOwner(),
+    val readTrace: HostedReadTraceObservation = HostedReadTraceObservation.Unobserved,
 ) {
     val executionBudget
         get() = timeAllowance.executionBudget

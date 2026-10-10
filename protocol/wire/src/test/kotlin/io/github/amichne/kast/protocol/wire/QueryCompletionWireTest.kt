@@ -21,6 +21,58 @@ import org.junit.jupiter.api.Test
 
 class QueryCompletionWireTest {
     @Test
+    fun `original diagnostic allocation survives wire and public rejection without live authority`() {
+        val identity =
+            io.github.amichne.kast.protocol.contract.QueryDiagnosticReadIdentity.fromBoundary(
+                java.util.UUID.fromString("33333333-3333-4333-8333-333333333333")
+            )
+        val rejection =
+            QueryRunRejection.CompletionUnproven(
+                QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1,
+                io.github.amichne.kast.protocol.contract.QueryCompletionCauseDocument.IncompleteExecution,
+                QueryCompletionCoverageDocument.Complete,
+                QueryInvocationStop.TIME_LIMIT,
+                QueryCompletionEvidenceDocument.Unavailable(QueryCompletionRetentionFailure.CAPACITY_EXCEEDED),
+                diagnosticReadId = identity,
+            )
+        val encoded =
+            CanonicalQuerySerializers.rejection.encode(rejection, WireValueRole.REJECTION) as WireValueEncoding.Encoded
+        assertEquals(
+            "33333333-3333-4333-8333-333333333333",
+            encoded.value.jsonObject.getValue("detail").jsonObject.getValue("diagnosticReadId").jsonPrimitive.content,
+        )
+        assertEquals(
+            rejection,
+            (CanonicalQuerySerializers.rejection.decode(encoded.value, WireValueRole.REJECTION) as WireDecoding.Decoded)
+                .value,
+        )
+        val unobserved =
+            CanonicalQuerySerializers.rejection.encode(
+                rejection.copy(diagnosticReadId = null),
+                WireValueRole.REJECTION,
+            ) as WireValueEncoding.Encoded
+        assertTrue("diagnosticReadId" !in unobserved.value.jsonObject.getValue("detail").jsonObject)
+        val malformed = Json.parseToJsonElement(encoded.value.toString().replace(identity.value, "read"))
+        assertTrue(
+            CanonicalQuerySerializers.rejection.decode(malformed, WireValueRole.REJECTION) is WireDecoding.Rejected
+        )
+        val cli =
+            io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.project(
+                io.github.amichne.kast.kernel.OperationOutcome.Rejected(rejection)
+            ) as io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome.Rejected
+        val document =
+            Json.parseToJsonElement(
+                    cli.document.present(io.github.amichne.kast.protocol.contract.ToolOutputDetail.VERBOSE).value
+                )
+                .jsonObject
+        assertTrue("live" !in document)
+        assertEquals("rejected", document.getValue("status").jsonPrimitive.content)
+        val detail = document.getValue("rejection").jsonObject.getValue("detail").jsonObject
+        assertEquals("33333333-3333-4333-8333-333333333333", detail.getValue("diagnosticReadId").jsonPrimitive.content)
+        assertEquals("COMPLETE", detail.getValue("originalCoverage").jsonObject.getValue("type").jsonPrimitive.content)
+    }
+
+    @Test
     fun `retention rejection retains independently completed coverage in wire output`() {
         for (failure in QueryCompletionRetentionFailure.entries) {
             val rejection =

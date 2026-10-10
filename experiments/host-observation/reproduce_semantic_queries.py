@@ -8,6 +8,7 @@ from enum import Enum
 import hashlib
 import json
 import os
+import re
 import select
 from pathlib import Path
 import shutil
@@ -87,6 +88,20 @@ NATIVE_COMMON_OWNERS = frozenset({
 
 
 RELATION_WORK_NATIVE_OWNERS = frozenset({
+    'io.github.amichne.kast.protocol.contract.QueryRunRejection$CompletionUnproven',
+    'io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadTraceObservation',
+    'io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadTraceObservation$Observed',
+    'io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadTraceObservation$Unobserved',
+    'io.github.amichne.kast.runtime.hosted.HostedQueryPublicationSession',
+    'io.github.amichne.kast.runtime.hosted.HostedQueryDiagnosticIdentityKt',
+    'io.github.amichne.kast.runtime.hosted.HostedSymbolInvocationPolicyKt',
+    'io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadContext',
+    'io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryExecutor',
+    'io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryProgress',
+    'io.github.amichne.kast.protocol.contract.QueryDiagnosticReadIdentity',
+    'io.github.amichne.kast.protocol.contract.QueryDiagnosticReadIdentitySerializer',
+    'io.github.amichne.kast.protocol.wire.QueryCompletionRejectionWireDocument',
+    'io.github.amichne.kast.protocol.wire.presentation.QueryCompletionRejectionCliDocument',
     'io.github.amichne.kast.query.service.QueryTraceTasksKt',
     'io.github.amichne.kast.relation.intellij.AdmittedRelationScopes',
     'io.github.amichne.kast.relation.intellij.IntellijRelationScopeCompilerKt',
@@ -875,6 +890,19 @@ class RejectedDiagnosticCorrelation:
 
 
 def correlate_diagnostic(response, diagnostics):
+    rejection = response.get('rejection') if isinstance(response, dict) else None
+    detail = rejection.get('detail') if isinstance(rejection, dict) else None
+    if (isinstance(response, dict) and response.get('status') == 'rejected' and
+        isinstance(rejection, dict) and rejection.get('type') == 'COMPLETION_UNPROVEN' and
+        isinstance(detail, dict) and 'diagnosticReadId' in detail):
+        identity = detail['diagnosticReadId']
+        if not isinstance(identity, str) or not re.fullmatch(
+            r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', identity):
+            return RejectedDiagnosticCorrelation(DiagnosticCorrelationFailure.MISMATCHED)
+        matching = [doc for doc in diagnostics if doc.get('readId') == identity]
+        if len(matching) == 1: return MatchedDiagnostic(matching[0])
+        return RejectedDiagnosticCorrelation(DiagnosticCorrelationFailure.AMBIGUOUS if matching else
+                                             DiagnosticCorrelationFailure.MISMATCHED)
     basis = response.get('live') if isinstance(response, dict) else None
     if (not diagnostics or not isinstance(basis, dict) or not isinstance(basis.get('host'), str) or
         type(basis.get('epoch')) is not int):

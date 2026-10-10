@@ -38,6 +38,8 @@ internal data class QueryCompletionRejectionCliDocument(
     @EncodeDefault(EncodeDefault.Mode.ALWAYS)
     val policyProgress: QueryCompletionPolicyProgressDocument = QueryCompletionPolicyProgressDocument.EvidenceOnly,
     @EncodeDefault(EncodeDefault.Mode.NEVER) val originalFailure: QueryOriginalFailureDocument? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val diagnosticReadId: io.github.amichne.kast.protocol.contract.QueryDiagnosticReadIdentity? = null,
 )
 
 @Serializable
@@ -129,6 +131,7 @@ internal fun QueryRunRejection.CompletionUnproven.toCompletionCli() =
         },
         policyProgress,
         originalFailure,
+        diagnosticReadId,
     )
 
 internal fun QueryOutputDocument.toCompletionPublicOutput(): QueryCompletionPublicReadOutput =
