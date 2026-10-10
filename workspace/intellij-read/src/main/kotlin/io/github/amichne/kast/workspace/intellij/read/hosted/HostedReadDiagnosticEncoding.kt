@@ -35,7 +35,7 @@ internal fun hostedReadDiagnostics(limits: ReadLimits = ReadLimits.Default): Hos
 internal fun HostedReadDiagnosticReceipt.encode(): String =
     diagnosticOutcomeJson.encodeToString(
         HostedReadDiagnosticDocument(
-            schemaVersion = 10,
+            schemaVersion = 11,
             limits =
                 limits.values.map {
                     HostedLimitDocument(it.parameter.name, it.value, it.parameter.unit.name, it.source.name)
