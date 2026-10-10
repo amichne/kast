@@ -45,6 +45,8 @@ enum class SemanticDependencyCaptureFailure {
     INPUT_UNAVAILABLE,
     CAPACITY_EXCEEDED,
     WORK_EXHAUSTED,
+    MINIMUM_HASH_WORK_UNAVAILABLE,
+    FILE_CAPTURE_ADMISSION_CONSUMED,
     TIME_EXHAUSTED,
 }
 
@@ -233,6 +235,16 @@ internal class DependencyCaptureBudget(
             }
         }
 
+    /** A lower bound is proof of infeasibility, never work that was actually performed. */
+    fun requireHashReads(minimum: SemanticHashReadMinimum): SemanticCapture<Unit> {
+        checkCanceled()
+        if ((nanoTime() - started) / NANOS_PER_MILLISECOND >= budget.elapsedTimeLimit.value)
+            return rejected(SemanticDependencyCaptureFailure.TIME_EXHAUSTED)
+        if (minimum.calls.toLong() > budget.workUnitLimit.value - work)
+            return rejected(SemanticDependencyCaptureFailure.MINIMUM_HASH_WORK_UNAVAILABLE)
+        return Refinement.Refined(Unit)
+    }
+
     fun cost() = SemanticDependencyCaptureCost(work, (nanoTime() - started).coerceAtLeast(0))
 }
 
@@ -277,6 +289,10 @@ internal fun SemanticDependencyCaptureFailure.termination(): IntellijReadTermina
         SemanticDependencyCaptureFailure.INPUT_UNAVAILABLE -> IntellijReadTermination.SEMANTIC_INPUT_UNAVAILABLE
         SemanticDependencyCaptureFailure.CAPACITY_EXCEEDED -> IntellijReadTermination.SEMANTIC_INPUT_CAPACITY_EXCEEDED
         SemanticDependencyCaptureFailure.WORK_EXHAUSTED -> IntellijReadTermination.SEMANTIC_INPUT_WORK_EXHAUSTED
+        SemanticDependencyCaptureFailure.MINIMUM_HASH_WORK_UNAVAILABLE ->
+            IntellijReadTermination.SEMANTIC_INPUT_MINIMUM_HASH_WORK_UNAVAILABLE
+        SemanticDependencyCaptureFailure.FILE_CAPTURE_ADMISSION_CONSUMED ->
+            IntellijReadTermination.SEMANTIC_INPUT_FILE_CAPTURE_ADMISSION_CONSUMED
         SemanticDependencyCaptureFailure.TIME_EXHAUSTED -> IntellijReadTermination.SEMANTIC_INPUT_TIME_EXHAUSTED
     }
 

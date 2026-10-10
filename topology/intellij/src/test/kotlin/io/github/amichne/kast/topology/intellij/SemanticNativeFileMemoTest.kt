@@ -15,6 +15,38 @@ internal class SemanticNativeFileMemoTest : SemanticReadInputFixture() {
     private val identity = SemanticNativeFileIdentity("file:///owned/input")
 
     @Test
+    fun `tree admission cannot publish after ownership closes or execute twice`() {
+        val memo = SemanticNativeFileMemo()
+        val admission = memo.prepareTree(identity, budget()).value() as SemanticNativeFileMemo.TreeAdmission
+        assertEquals(hash, admission.capture { Refinement.Refined(hash) }.value())
+        assertEquals(
+            Refinement.Rejected(SemanticDependencyCaptureFailure.FILE_CAPTURE_ADMISSION_CONSUMED),
+            admission.capture { unexpected() },
+        )
+        val second =
+            memo.prepareTree(SemanticNativeFileIdentity("file:///other"), budget()).value()
+                as SemanticNativeFileMemo.TreeAdmission
+        memo.finishNativeRead()
+        assertEquals(
+            Refinement.Rejected(SemanticDependencyCaptureFailure.READ_CAPTURE_ENDED),
+            second.capture { unexpected() },
+        )
+    }
+
+    @Test
+    fun `closing a native capture during execution rejects its completed tree proof`() {
+        val memo = SemanticNativeFileMemo()
+        val admission = memo.prepareTree(identity, budget()).value() as SemanticNativeFileMemo.TreeAdmission
+        assertEquals(
+            Refinement.Rejected(SemanticDependencyCaptureFailure.READ_CAPTURE_ENDED),
+            admission.capture {
+                memo.finishNativeRead()
+                Refinement.Refined(hash)
+            },
+        )
+    }
+
+    @Test
     fun `each hash kind has a lifetime capacity and an existing entry does not spend another slot`() {
         val limits =
             io.github.amichne.kast.kernel.ReadLimits.resolve(
