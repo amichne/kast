@@ -224,7 +224,7 @@ class IntellijValueFlowCompilerAdapter(
     ): Prepared {
         val compiler = IntellijRelationScopeCompiler()
         val scope =
-            when (val value = compiler.compile(project, request, model)) {
+            when (val value = compiler.compile(project, request, model, observation = observation)) {
                 is IntellijRelationScopeCompilation.Compiled -> value.scope
                 is IntellijRelationScopeCompilation.Rejected ->
                     return Prepared.Rejected(ValueFlowRejection.OUTSIDE_DOMAIN)
@@ -232,7 +232,14 @@ class IntellijValueFlowCompilerAdapter(
         val ownerScope =
             when (
                 val value =
-                    compiler.compile(project, request, model, request.subject.scope, request.subject.constraints)
+                    compiler.compile(
+                        project,
+                        request,
+                        model,
+                        request.subject.scope,
+                        request.subject.constraints,
+                        observation,
+                    )
             ) {
                 is IntellijRelationScopeCompilation.Compiled -> value.scope
                 is IntellijRelationScopeCompilation.Rejected ->
