@@ -68,9 +68,9 @@ internal class QueryInvocationFacts(
         if (current is QueryRows.ValuePaths) {
             investigation = selection.ledger
             originalOrdinals = selection.ordinals
-            graphTransaction.commit()
             selectedPaths += current.values
         }
+        graphTransaction.commit()
         recordPage(page, current, next)
         return Refinement.Refined(Unit)
     }
@@ -125,17 +125,29 @@ internal class QueryInvocationFacts(
                 is Refinement.Refined -> captured.value
                 is Refinement.Rejected -> return Refinement.Rejected(invalidInvocation())
             }
-        val charge =
+        val snapshotBytes =
             (if (rows is QueryRows.ValuePaths) {
-                    (snapshot as QueryRetainedResult.ValuePaths)
-                        .retainedBytes(graph)
-                        .saturatedAdd(rows.values.size.toLong() * QUERY_ROW_REFERENCE_CHARGE_BYTES * 2L)
-                        .saturatedAdd(
-                            if (selection.newLedger)
-                                selection.ordinals.size.toLong() * QUERY_ROW_REFERENCE_CHARGE_BYTES * 2L
-                            else 0L
-                        )
-                } else snapshot.retainedBytes)
+                (snapshot as QueryRetainedResult.ValuePaths)
+                    .retainedBytes(graph)
+                    .saturatedAdd(rows.values.size.toLong() * QUERY_ROW_REFERENCE_CHARGE_BYTES * 2L)
+                    .saturatedAdd(
+                        if (selection.newLedger)
+                            selection.ordinals.size.toLong() * QUERY_ROW_REFERENCE_CHARGE_BYTES * 2L
+                        else 0L
+                    )
+            } else snapshot.retainedBytes)
+        val checkpoint =
+            ((page.execution as? QueryExecutionResult.Qualified)?.continuation as? QueryContinuationState.Resumable)
+                ?.checkpoint
+        val semanticBytes =
+            if (checkpoint == null || snapshotBytes == Long.MAX_VALUE) snapshotBytes
+            else {
+                val standaloneCheckpoint = checkpoint.retainedBytes
+                if (standaloneCheckpoint > snapshotBytes) return Refinement.Rejected(invalidInvocation())
+                (snapshotBytes - standaloneCheckpoint).saturatedAdd(checkpoint.retainedBytes(graph))
+            }
+        val charge =
+            semanticBytes
                 .saturatedAdd(policy.previewBytes(page.items))
                 .saturatedAdd(page.items.size.toLong() * QUERY_ROW_REFERENCE_CHARGE_BYTES)
         return Refinement.Refined(charge)

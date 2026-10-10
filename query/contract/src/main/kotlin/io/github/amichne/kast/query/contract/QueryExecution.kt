@@ -330,6 +330,9 @@ interface QueryCheckpoint {
     val lease: SemanticReadAuthority
     /** Conservative retained-state accounting used by bounded host stores. */
     val retainedBytes: Long
+
+    /** Conservative fallback for checkpoints without a graph-aware immutable-owner estimate. */
+    fun retainedBytes(graph: QueryImpactRetainedGraph): Long = retainedBytes
 }
 
 enum class QueryTerminalReason {

@@ -2,6 +2,11 @@ package io.github.amichne.kast.query.contract
 
 import io.github.amichne.kast.kernel.Refinement
 
+/** Immutable detached task ownership; storage arithmetic grants no semantic authority. */
+interface QueryCheckpointStorageOwner {
+    fun retainedBytes(graph: QueryImpactRetainedGraph): Long
+}
+
 /** Conservative detached-storage estimates, never encoded response bytes or measured heap usage. */
 @JvmInline
 value class QueryCheckpointStorageBytes private constructor(val value: Long) {

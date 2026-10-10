@@ -54,11 +54,11 @@ internal data class PipelineCheckpoint(
     override val retainedBytes: Long
         get() = retainedBytes(QueryImpactRetainedGraph())
 
-    fun retainedBytes(graph: QueryImpactRetainedGraph): Long = storageEstimate(graph).required.value
+    override fun retainedBytes(graph: QueryImpactRetainedGraph): Long = storageEstimate(graph).required.value
 
     fun storageEstimate(graph: QueryImpactRetainedGraph = QueryImpactRetainedGraph()): QueryCheckpointStorageEstimate =
         QueryCheckpointStorageEstimate(
-            tasks = pipelineTaskBytes(tasks, graph, seed.retainedRootBytes(graph)).storageBytes(),
+            tasks = pipelineTaskBytes(tasks, graph, saturatedAdd(4096L, seed.retainedRootBytes(graph))).storageBytes(),
             identityRows =
                 identityRows.values
                     .fold(0L) { total, rows ->
@@ -85,10 +85,13 @@ internal fun pipelineTaskBytes(
     initial: Long = 0L,
 ): Long =
     tasks.fold(initial) { total, task ->
-        saturatedAdd(total, saturatedAdd(TASK_OVERHEAD_BYTES, task.retainedBytes(graph)))
+        saturatedAdd(total, graph.checkpointTask(task))
     }
 
-private fun PipelineTask.retainedBytes(graph: QueryImpactRetainedGraph): Long =
+internal fun PipelineTask.retainedOwnerBytes(graph: QueryImpactRetainedGraph): Long =
+    saturatedAdd(TASK_OVERHEAD_BYTES, retainedPayloadBytes(graph))
+
+private fun PipelineTask.retainedPayloadBytes(graph: QueryImpactRetainedGraph): Long =
     when (this) {
         is PipelineTask.TraceTask -> retainedTraceBytes()
         is PipelineTask.ImpactExplore -> route.retainedBytes(graph)
@@ -107,7 +110,7 @@ private fun PipelineTask.retainedBytes(graph: QueryImpactRetainedGraph): Long =
         is PipelineTask.Related ->
             saturatedAdd(
                 saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER),
-                saturatedAdd(RELATION_CURSOR_BYTES, cursor?.providerState?.retainedBytes ?: 0L),
+                saturatedAdd(RELATION_CURSOR_BYTES, cursor?.providerState?.let(graph::providerState) ?: 0L),
             )
         is PipelineTask.Walk ->
             saturatedAdd(

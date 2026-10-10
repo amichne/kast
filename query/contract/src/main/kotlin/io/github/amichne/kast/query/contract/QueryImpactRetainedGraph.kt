@@ -2,6 +2,8 @@ package io.github.amichne.kast.query.contract
 
 import io.github.amichne.kast.relation.contract.BoundaryModel
 import io.github.amichne.kast.relation.contract.LocalBindingReadRemainder
+import io.github.amichne.kast.relation.contract.RelationProviderRetainedGraph
+import io.github.amichne.kast.relation.contract.RelationProviderState
 import io.github.amichne.kast.relation.contract.RepresentationRule
 import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowWorkReceipt
@@ -16,6 +18,12 @@ import java.util.IdentityHashMap
 class QueryImpactRetainedGraph private constructor(private val parent: QueryImpactRetainedGraph?) {
     constructor() : this(null)
 
+    private val providers: RelationProviderRetainedGraph = RelationProviderRetainedGraph(parent?.providers)
+
+    fun providerState(value: RelationProviderState): Long = value.retainedBytes(providers)
+
+    fun checkpointTask(value: QueryCheckpointStorageOwner): Long = node(value) { value.retainedBytes(this) }
+
     /** Stage newly charged identities without changing accepted request-local accounting. */
     fun transaction(): Transaction = Transaction(this)
 
@@ -24,6 +32,7 @@ class QueryImpactRetainedGraph private constructor(private val parent: QueryImpa
 
         fun commit() {
             owner.visited.putAll(graph.visited)
+            graph.providers.commitToParent()
         }
     }
 
