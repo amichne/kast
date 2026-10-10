@@ -127,6 +127,7 @@ RELATION_WORK_NATIVE_OWNERS = frozenset({
     'io.github.amichne.kast.runtime.hosted.HostedReadCallbackPartitions',
     'io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadActionAccounting',
     'io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadSearchAccounting',
+    'io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadBaselineCountersKt',
     'io.github.amichne.kast.workspace.intellij.read.IntellijReadCall',
 })
 
