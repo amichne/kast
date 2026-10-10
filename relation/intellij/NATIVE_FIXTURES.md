@@ -24,7 +24,8 @@ An already extracted distribution of exactly the pinned build can be used read-o
 
 The home must retain `product-info.json`, Platform libraries and bundled plugin
 layout. It is not a daily IDE project or an installed Kast plugin. Java, Kotlin and
-TOML libraries are included; Kotlin's enabled TOML reference-search extension
+TOML libraries are included; only Java, Kotlin and TOML plugins are enabled.
+Kotlin's enabled TOML reference-search extension
 requires the latter when using the core classloader. Official transitive test
 framework dependencies are verified by the checked Gradle checksum metadata.
 

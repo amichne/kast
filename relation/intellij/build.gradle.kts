@@ -211,6 +211,7 @@ val nativeFixtureTest =
         systemProperty("idea.system.path", layout.buildDirectory.dir("native-test/system").get().asFile.absolutePath)
         systemProperty("idea.log.path", layout.buildDirectory.dir("native-test/log").get().asFile.absolutePath)
         systemProperty("idea.plugins.path", nativeIdeaHome.get().dir("plugins").asFile.absolutePath)
+        systemProperty("idea.load.plugins.id", "com.intellij.java,org.jetbrains.kotlin,org.toml.lang")
         systemProperty("idea.is.unit.test", "true")
         systemProperty("idea.force.use.core.classloader", "true")
         systemProperty("kotlin.plugin.mode", "K2")
