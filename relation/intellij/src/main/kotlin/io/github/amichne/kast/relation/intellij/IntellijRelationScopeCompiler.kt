@@ -282,7 +282,7 @@ private class RelationModelScope(
             if (libraries == SymbolLibraryPolicy.INCLUDE && libraryMembership(file)) return@observed true
             when (val path = relationNativePath(file)) {
                 is IntellijRelationNativePath.Absolute ->
-                    sourceMembership(file) && fileAdmission(path.value) && paths.contains(path.value)
+                    fileAdmission(path.value) && paths.contains(path.value) && sourceMembership(file)
                 IntellijRelationNativePath.Relative,
                 IntellijRelationNativePath.Unavailable -> false
             }

@@ -52,6 +52,12 @@ class TryLocalOracleTest(unittest.TestCase):
 
     def test_relation_work_profile_requires_current_contract_and_every_work_owner(self):
         profile = native.QualificationSlice.RELATION_WORK_REDUCTION
+        for owner in (
+            'io.github.amichne.kast.relation.intellij.IntellijRelationScopeCompiler',
+            'io.github.amichne.kast.relation.intellij.RelationModelScope',
+            'io.github.amichne.kast.workspace.intellij.read.IntellijProjectSourceMembership',
+        ):
+            self.assertIn(owner, profile.changed_owners)
         source = (native.REPO / 'protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt').read_text()
         current = int(re.search(r'PUBLIC_TOOL_CONTRACT_VERSION = (\d+)', source)[1])
         self.assertEqual(current, profile.public_contract_version)

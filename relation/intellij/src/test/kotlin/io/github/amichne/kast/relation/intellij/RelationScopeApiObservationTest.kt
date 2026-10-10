@@ -1,7 +1,12 @@
 package io.github.amichne.kast.relation.intellij
 
 import com.intellij.openapi.vfs.VirtualFile
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationMeaning
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectory
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectoryConstraint
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
@@ -178,6 +183,48 @@ class RelationScopeApiObservationTest {
         rejectedSdk.assertConsumed()
     }
 
+    @Test
+    fun `unrelated directory files do not enter live source membership`() {
+        val observed = ScopeObservation()
+        val sdk = RelationScopeSdkFixture(sourceContains = { true })
+        val constraints =
+            SymbolDiscoveryConstraints.None.copy(
+                directory =
+                    SymbolDiscoveryDirectoryConstraint(
+                        (SymbolDiscoveryDirectory.parse("app/src/main/kotlin/selected") as Refinement.Refined).value,
+                        SymbolDiscoveryContainment.DESCENDANTS,
+                    )
+            )
+        val scope = compiled(sdk, workspace(), observed, constraints).nativeScope
+        repeat(256) { index ->
+            assertFalse(
+                scope.contains(AbsolutePathFile(Path.of(root.value).resolve("app/src/main/kotlin/other/$index.kt")))
+            )
+        }
+        assertTrue(scope.contains(AbsolutePathFile(Path.of(root.value).resolve("app/src/main/kotlin/selected/A.kt"))))
+        assertEquals(listOf("SOURCE", "EXCLUDED"), sdk.fileIndexCalls)
+        assertEquals(256, observed.counts[IntellijReadCounter.RELATION_SCOPE_FILES_EXCLUDED])
+        assertEquals(1, observed.counts[IntellijReadCounter.RELATION_SCOPE_FILES_ADMITTED])
+        assertEquals(1, observed.completed.count { it.first == IntellijReadCall.RELATION_SCOPE_SOURCE_MEMBERSHIP })
+        sdk.assertConsumed()
+    }
+
+    @Test
+    fun `unowned paths do not enter live source membership and eligible native rejection remains authoritative`() {
+        val observed = ScopeObservation()
+        val sdk = RelationScopeSdkFixture(sourceContains = { false })
+        val scope = compiled(sdk, workspace(), observed).nativeScope
+        repeat(256) { index ->
+            assertFalse(scope.contains(AbsolutePathFile(Path.of(root.value).resolve("app/build/$index.kt"))))
+        }
+        assertFalse(scope.contains(AbsolutePathFile(Path.of(root.value).resolve("app/src/main/kotlin/A.kt"))))
+        assertEquals(listOf("SOURCE"), sdk.fileIndexCalls)
+        assertEquals(257, observed.counts[IntellijReadCounter.RELATION_SCOPE_FILES_EXCLUDED])
+        assertFalse(IntellijReadCounter.RELATION_SCOPE_FILES_ADMITTED in observed.counts)
+        assertEquals(1, observed.completed.count { it.first == IntellijReadCall.RELATION_SCOPE_SOURCE_MEMBERSHIP })
+        sdk.assertConsumed()
+    }
+
     private class AbsolutePathFile(private val path: Path) : UnavailablePathFile() {
         override fun toNioPath(): Path = path
     }
@@ -186,6 +233,7 @@ class RelationScopeApiObservationTest {
         sdk: RelationScopeSdkFixture,
         selected: SymbolSearchScope,
         observation: IntellijReadObservation,
+        constraints: SymbolDiscoveryConstraints = SymbolDiscoveryConstraints.None,
     ): CompiledRelationScope =
         (IntellijRelationScopeCompiler()
                 .compile(
@@ -193,6 +241,7 @@ class RelationScopeApiObservationTest {
                     request,
                     WorkspaceSearchScopeModelCompilation.Compiled(model),
                     selected,
+                    constraints,
                     observation = observation,
                 ) as IntellijRelationScopeCompilation.Compiled)
             .scope
