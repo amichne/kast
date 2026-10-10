@@ -36,6 +36,26 @@ class PiEvaluationMutationTest(unittest.TestCase):
              "await session.agent.continue();",
              "await session.prompt('coaching');",
              "supported received-result controller"),
+            ("qualified-envelope-rejected", "pi_evaluation_policy.mjs",
+             "['complete','qualified','rejected_document','rejected']",
+             "['complete','rejected_document','rejected']",
+             "canonical qualified producer reply"),
+            ("original-coverage-lost", "pi_evaluation_policy.mjs",
+             "knownMinimum:detail?.originalCoverage?.knownMinimum??null",
+             "knownMinimum:detail?.coverage?.knownMinimum??null",
+             "canonical rejection preserves originalCoverage"),
+            ("measured-input-ignored", "pi_evaluation_policy.mjs",
+             "Math.max(this.config.inputTokenCeiling+this.contextGrowthCeiling,measuredInputFloor)",
+             "this.config.inputTokenCeiling+this.contextGrowthCeiling",
+             "measured input above calibration"),
+            ("unsafe-automatic-transport", "pi_evaluation_worker.mjs",
+             "transport:'sse',cacheWarming:'off'",
+             "transport:'auto',cacheWarming:'off'",
+             "worker explicitly disables unaccounted warming"),
+            ("unaccounted-background-warming", "pi_evaluation_worker.mjs",
+             "transport:'sse',cacheWarming:'off'",
+             "transport:'sse',cacheWarming:'streaming'",
+             "worker explicitly disables unaccounted warming"),
         ]
         for name, filename, original, replacement, selection in mutations:
             with self.subTest(mutation=name), tempfile.TemporaryDirectory(prefix="kast-pi-mutation-") as directory:
@@ -43,6 +63,7 @@ class PiEvaluationMutationTest(unittest.TestCase):
                 for source in here.glob("pi_evaluation*.mjs"):
                     shutil.copyfile(source, root / source.name)
                 shutil.copyfile(here / "run_pi_evaluation.mjs", root / "run_pi_evaluation.mjs")
+                shutil.copytree(here / "pi-fixtures", root / "pi-fixtures")
                 target = root / filename
                 text = target.read_text()
                 self.assertEqual(1, text.count(original), "Mutation must change exactly one owning rule")

@@ -1,7 +1,7 @@
 // Pure rules; no process, filesystem, provider, Kast, clock or credential access.
 import { isDeepStrictEqual } from 'node:util';
 export const READ_TOOLS=Object.freeze(['query_symbols','check_diagnostics','health_check']);
-export const Outcome = Object.freeze({RUNNING:'RUNNING', FINAL_ANSWER:'FINAL_ANSWER', REJECTION:'INTENTIONAL_REJECTION', BUDGET:'HARNESS_BUDGET_LIMIT', MODEL_MISMATCH:'HARNESS_MODEL_MISMATCH', TOOL_BLOCKED:'HARNESS_TOOL_BLOCKED', INVALID:'HARNESS_OBSERVATION_INVALID', MODEL_ERROR:'MODEL_ERROR', CANCELLED:'HARNESS_CANCELLED'});
+export const Outcome = Object.freeze({RUNNING:'RUNNING', FINAL_ANSWER:'FINAL_ANSWER', QUALIFIED_ANSWER:'QUALIFIED_ANSWER', REJECTION:'INTENTIONAL_REJECTION', BUDGET:'HARNESS_BUDGET_LIMIT', MODEL_MISMATCH:'HARNESS_MODEL_MISMATCH', TOOL_BLOCKED:'HARNESS_TOOL_BLOCKED', INVALID:'HARNESS_OBSERVATION_INVALID', MODEL_ERROR:'MODEL_ERROR', CANCELLED:'HARNESS_CANCELLED'});
 const emptyUsage=()=>({input:0,cacheRead:0,cacheWrite:0,output:0,reasoning:0,totalTokens:0});
 const integer=n=>Number.isSafeInteger(n)&&n>=0;
 const decision=(allow,reason,phase)=>({allow,reason,phase});
@@ -15,9 +15,10 @@ export function decodeEnvelope(content,toolName='query_symbols') {
   if(!Array.isArray(content)||content.length!==1||content[0]?.type!=='text') return {type:'invalid'};
   try {
     const envelope=JSON.parse(content[0].text);
-    if(!['complete','rejected_document','rejected'].includes(envelope?.type)) return {type:'invalid'};
+    if(!['complete','qualified','rejected_document','rejected'].includes(envelope?.type)) return {type:'invalid'};
     if(envelope.type==='rejected_document'&&(envelope.document?.status!=='rejected'||typeof envelope.document?.rejection?.type!=='string')) return {type:'invalid'};
     if(envelope.type==='complete' && (!envelope.document || (toolName==='query_symbols'&&(envelope.document.status!=='complete' || typeof envelope.document.coverage?.exhaustive!=='boolean' || !Array.isArray(envelope.document.items))))) return {type:'invalid'};
+    if(envelope.type==='qualified' && (envelope.document?.status!=='qualified'||envelope.document.coverage?.exhaustive!==false||!Array.isArray(envelope.document.items)||!integer(envelope.document.qualification?.knownMinimum)||!Array.isArray(envelope.document.qualification?.limitations)||!['resumable','terminal_incomplete','retention_unavailable'].includes(envelope.document.qualification?.progress?.type))) return {type:'invalid'};
     return envelope;
   } catch { return {type:'invalid'}; }
 }
@@ -31,10 +32,11 @@ export class CasePolicy {
     this.config=structuredClone(config);this.phase='WORK';this.outcome=Outcome.RUNNING;this.nativeOutcome='UNOBSERVED';
     this.usage=emptyUsage();this.phaseUsage={WORK:emptyUsage(),DELIVERY:emptyUsage()};this.requests={WORK:0,DELIVERY:0};this.requestObservations=[];
     this.proposals=[];this.tools=0;this.resultCount=0;this.toolTextBytes=0;this.contextGrowthCeiling=0;this.finalAnswer=false;this.exhaustiveEvidence=false;this.evidenceRequest=undefined;this.providerInFlight=false;
+    this.lastMeasuredInput=0;this.growthSinceMeasured=0;
   }
   stop(outcome) {this.outcome=outcome;this.phase='STOPPED';return decision(false,outcome,this.phase);}
   restoreReceivedResult(envelope,textBytes) {
-    if(this.phase!=='WORK'||this.tools||this.requests.WORK||envelope.type!=='complete') return this.stop(Outcome.INVALID);
+    if(this.phase!=='WORK'||this.tools||this.requests.WORK||!['complete','qualified'].includes(envelope.type)) return this.stop(Outcome.INVALID);
     const observed=this.toolResult(envelope,textBytes);
     if(!observed.allow) return observed;
     this.phase='DELIVERY';
@@ -47,11 +49,12 @@ export class CasePolicy {
     const bound=this.phase==='WORK'?this.config.work:this.config.delivery;
     // Declared input ceiling + conservative context-byte growth + generation
     // reserve. This is explicitly an estimate, never an exact tokenizer claim.
-    const inputEstimate=this.config.inputTokenCeiling+this.contextGrowthCeiling;
+    const measuredInputFloor=this.lastMeasuredInput+this.growthSinceMeasured;
+    const inputEstimate=Math.max(this.config.inputTokenCeiling+this.contextGrowthCeiling,measuredInputFloor);
     const required=inputEstimate+bound.outputReserve;
     const remaining=bound.reportedTokens-this.phaseUsage[this.phase].totalTokens;
     const allow=this.requests[this.phase]<bound.requests && required<=remaining && observation.toolsBytes<=this.config.declarationByteCeiling;
-    this.requestObservations.push({...observation,phase:this.phase,inputEstimate,required,remaining,allow});
+    this.requestObservations.push({...observation,phase:this.phase,inputEstimate,measuredInputFloor,required,remaining,allow});
     if(!allow) return this.stop(Outcome.BUDGET);
     this.requests[this.phase]++;this.providerInFlight=true;this.lastRequestPhase=this.phase;
     return decision(true,'ADMITTED',this.phase);
@@ -65,6 +68,7 @@ export class CasePolicy {
     this.providerInFlight=false;
     for(const key of Object.keys(usage)) {this.usage[key]+=usage[key];this.phaseUsage[this.lastRequestPhase][key]+=usage[key];}
     this.contextGrowthCeiling+=usage.output;
+    this.lastMeasuredInput=usage.input+usage.cacheRead+usage.cacheWrite;this.growthSinceMeasured=usage.output;
     const bound=this.lastRequestPhase==='WORK'?this.config.work:this.config.delivery;
     if(this.phaseUsage[this.lastRequestPhase].totalTokens>bound.reportedTokens) return this.stop(Outcome.BUDGET);
     return decision(true,'ACCOUNTED',this.phase);
@@ -82,7 +86,7 @@ export class CasePolicy {
   toolResult(envelope,textBytes=0,callId) {
     if(this.phase==='STOPPED') return decision(false,this.outcome,this.phase);
     if(!integer(textBytes)) return this.stop(Outcome.INVALID);
-    this.toolTextBytes+=textBytes;this.contextGrowthCeiling+=textBytes;
+    this.toolTextBytes+=textBytes;this.contextGrowthCeiling+=textBytes;this.growthSinceMeasured+=textBytes;
     const proposal=this.proposals.find(p=>p.callId===callId);
     if(callId!==undefined&&!proposal) return this.stop(Outcome.INVALID);
     if(callId===this.activeToolCall) this.activeToolCall=undefined;
@@ -93,7 +97,7 @@ export class CasePolicy {
       this.nativeOutcome='REJECTED';this.rejection=structuredClone(envelope);
       const detail=envelope.document?.rejection?.detail;
       this.rejectionSummary={code:envelope.document?.rejection?.type??'TRANSPORT_REJECTION',nextAction:envelope.document?.next_action??null,
-        knownMinimum:detail?.coverage?.knownMinimum??null,limitations:detail?.coverage?.limitations??[],progress:detail?.coverage?.progress??null,policyProgress:detail?.policyProgress?.type??null};
+        knownMinimum:detail?.originalCoverage?.knownMinimum??null,limitations:detail?.originalCoverage?.limitations??[],progress:detail?.originalCoverage?.progress??null,policyProgress:detail?.policyProgress?.type??null};
       this.semanticRejected=true;
       const next=envelope.document?.rejection?.detail?.evidence?.nextQuery?.request;
       // Only the exact product-issued READ_RESULT is allowed by explicit opt-in.
@@ -102,6 +106,12 @@ export class CasePolicy {
       return this.stop(Outcome.REJECTION);
     }
     if(proposal&&proposal.toolName!=='query_symbols') return decision(true,'READ_TOOL_REPLY',this.phase);
+    if(envelope.type==='qualified') {
+      this.resultCount++;this.semanticQualified=true;this.qualification=structuredClone(envelope.document.qualification);
+      this.exhaustiveEvidence=false;if(!this.semanticRejected)this.nativeOutcome='QUALIFIED_RESULT';
+      this.phase='DELIVERY';this.evidenceRequest=undefined;
+      return decision(true,'QUALIFIED_RESULT_RECEIVED',this.phase);
+    }
     if(envelope.type!=='complete'||envelope.document?.status!=='complete'||typeof envelope.document.coverage?.exhaustive!=='boolean') return this.stop(Outcome.INVALID);
     this.resultCount++;this.exhaustiveEvidence=envelope.document.coverage.exhaustive;
     if(!this.semanticRejected) this.nativeOutcome=this.exhaustiveEvidence?'EXHAUSTIVE_RESULT':'QUALIFIED_RESULT';
@@ -114,7 +124,7 @@ export class CasePolicy {
     if(this.phase==='STOPPED') return decision(false,this.outcome,this.phase);
     if(message.stopReason==='error') return this.stop(Outcome.MODEL_ERROR);
     if(message.stopReason==='aborted') return this.stop(Outcome.CANCELLED);
-    if(message.stopReason==='stop') {this.finalAnswer=message.content?.some(b=>b.type==='text'&&typeof b.text==='string'&&b.text.trim().length>0)??false;return this.stop(this.finalAnswer?(this.semanticRejected?Outcome.REJECTION:Outcome.FINAL_ANSWER):Outcome.INVALID);}
+    if(message.stopReason==='stop') {this.finalAnswer=message.content?.some(b=>b.type==='text'&&typeof b.text==='string'&&b.text.trim().length>0)??false;return this.stop(this.finalAnswer?(this.semanticRejected?Outcome.REJECTION:this.semanticQualified?Outcome.QUALIFIED_ANSWER:Outcome.FINAL_ANSWER):Outcome.INVALID);}
     if(message.stopReason!=='toolUse') return this.stop(Outcome.INVALID);
     return decision(true,'TOOL_PROPOSAL_PENDING',this.phase);
   }
@@ -123,6 +133,6 @@ export class CasePolicy {
       // External row/oracle proof is never inferred from a final answer/row count.
       exhaustiveRowsVerified:false,requiredEvidenceVerified:false,usage:structuredClone(this.usage),phaseUsage:structuredClone(this.phaseUsage),
       bounds:{work:structuredClone(this.config.work),delivery:structuredClone(this.config.delivery),inputTokenCeiling:this.config.inputTokenCeiling,declarationByteCeiling:this.config.declarationByteCeiling,maximumToolTextBytes:this.config.maximumToolTextBytes,wallSeconds:this.config.wallSeconds},
-      semanticRejection:structuredClone(this.rejectionSummary??null),requestObservations:structuredClone(this.requestObservations),modelProposals:structuredClone(this.proposals),nativeRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved).length,semanticRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved&&(p.requestType==='RUN'||p.toolName==='check_diagnostics')).length,toolTextBytes:this.toolTextBytes,tokenPreflightMethod:'DECLARED_INPUT_CEILING_PLUS_CONSERVATIVE_CONTEXT_GROWTH_AND_OUTPUT_RESERVE',providerEnforcedTokenCap:false};
+      qualification:structuredClone(this.qualification??null),semanticRejection:structuredClone(this.rejectionSummary??null),requestObservations:structuredClone(this.requestObservations),modelProposals:structuredClone(this.proposals),nativeRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved).length,semanticRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved&&(p.requestType==='RUN'||p.toolName==='check_diagnostics')).length,toolTextBytes:this.toolTextBytes,tokenPreflightMethod:'MAX_DECLARED_OR_MEASURED_INPUT_PLUS_CONTEXT_GROWTH_AND_OUTPUT_RESERVE',providerEnforcedTokenCap:false};
   }
 }

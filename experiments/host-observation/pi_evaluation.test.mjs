@@ -1,16 +1,20 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
 import { CasePolicy, decodeEnvelope, decodeUsage } from './pi_evaluation_policy.mjs';
 import { evaluationGuard } from './pi_evaluation_guard.mjs';
 import { driveSession, runOwnedWorker } from './pi_evaluation_controller.mjs';
 import { validatePlan } from './run_pi_evaluation.mjs';
+import { isolatedSettings } from './pi_evaluation_worker.mjs';
 
 const config=()=>({name:'negative',expectedSemanticCalls:1,inputTokenCeiling:20000,declarationByteCeiling:80000,work:{reportedTokens:30000,requests:2,tools:2,outputReserve:2000},delivery:{reportedTokens:25000,requests:1,outputReserve:2000},maximumToolTextBytes:1048576});
 const pinned={provider:'openai-codex',model:'gpt-6.1-sol',thinking:'high',payloadModel:'gpt-6.1-sol',effort:'high',payloadBytes:79339,toolsBytes:73716,instructionsBytes:1920,inputBytes:3357};
 // Public synthetic facts and usage shapes from the 2026-10-10 pilot. No logs,
 // source dumps, live handles, credential fields or personal paths are fixtures.
-const denseRejected={type:'rejected_document',document:{status:'rejected',rejection:{type:'COMPLETION_UNPROVEN',detail:{coverage:{type:'QUALIFIED',knownMinimum:56,limitations:['BYTE_LIMIT_REACHED'],progress:{type:'terminal_incomplete',reason:'checkpoint-capacity-exceeded'}},policyProgress:{type:'EVIDENCE_ONLY'},evidence:{nextQuery:{request:{type:'READ_RESULT',result:'synthetic-retained-result',output:{type:'OCCURRENCES'},cursor:0}}}}},next_action:'report_failure'}};
-const negativeComplete={type:'complete',document:{status:'complete',items:[],coverage:{exhaustive:true},invocation:{stop:{type:'COMPLETED'}}}};
+const fixture=name=>JSON.parse(readFileSync(new URL(`./pi-fixtures/${name}-document.json`,import.meta.url),'utf8'));
+const denseRejected={type:'rejected_document',document:fixture('rejected')};
+const negativeComplete={type:'complete',document:fixture('complete')};
+const qualified={type:'qualified',document:fixture('qualified')};
 
 test('recorded terminal dense rejection stops the next provider request immediately',()=>{
   const policy=new CasePolicy({...config(),name:'positive',expectedSemanticCalls:2,work:{...config().work,reportedTokens:60000,requests:3}});
@@ -177,4 +181,44 @@ test('ordinary read tools remain admitted without manufacturing query evidence',
   assert.equal(policy.toolResult(decodeEnvelope([{type:'text',text:'{"type":"complete","document":{"healthy":true}}'}],'health_check'),60,'health').allow,true);
   assert.equal(policy.report().nativeOutcome,'UNOBSERVED');assert.equal(policy.report().semanticRepliesObserved,0);
   policy.toolResult(negativeComplete);assert.equal(policy.toolCall('health_check',{},'extra').allow,false);
+});
+
+test('measured input above calibration prevents an unaffordable final request before transport',()=>{
+  const policy=new CasePolicy(config());assert.equal(policy.beforeProvider(pinned).allow,true);
+  policy.modelUsage({input:26000,cacheRead:0,output:100,totalTokens:26100});
+  policy.toolResult(negativeComplete,2141);
+  assert.equal(policy.beforeProvider(pinned).reason,'HARNESS_BUDGET_LIMIT');
+});
+
+test('canonical qualified producer reply permits bounded delivery without exhaustive success',()=>{
+  const policy=new CasePolicy({...config(),expectedSemanticCalls:2}),guard=callbacks(policy);
+  guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'}}});
+  guard.emit('tool_result',resultEvent(qualified));
+  assert.equal(guard.aborted,0);assert.equal(policy.report().phase,'DELIVERY');
+  assert.equal(policy.report().nativeOutcome,'QUALIFIED_RESULT');assert.equal(policy.report().exhaustiveEvidence,false);
+  assert.deepEqual(policy.report().qualification,{knownMinimum:56,limitations:['byte-limit-reached'],progress:{type:'terminal_incomplete',reason:'checkpoint-capacity-exceeded'}});
+  policy.beforeProvider(pinned);policy.modelUsage({input:17000,output:100,totalTokens:17100});
+  policy.assistantEnded({stopReason:'stop',content:[{type:'text',text:'A qualified prefix; completeness is unproven.'}]});
+  assert.equal(policy.report().outcome,'QUALIFIED_ANSWER');assert.equal(policy.report().finalAnswer,true);
+  const received=new CasePolicy(config());assert.equal(received.restoreReceivedResult(qualified,2141).allow,true);
+  assert.equal(received.toolCall('query_symbols',{request:{type:'RUN'}},'new').allow,false);
+  const malformed=structuredClone(qualified);malformed.document.coverage.exhaustive=true;
+  assert.deepEqual(decodeEnvelope([{type:'text',text:JSON.stringify(malformed)}]),{type:'invalid'});
+});
+
+test('canonical rejection preserves originalCoverage at the actual guard boundary',()=>{
+  const policy=new CasePolicy(config()),guard=callbacks(policy);
+  guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'}}});
+  guard.emit('tool_result',resultEvent(denseRejected));
+  assert.equal(guard.aborted,1);
+  assert.deepEqual(policy.report().semanticRejection,{code:'COMPLETION_UNPROVEN',nextAction:'report_failure',knownMinimum:56,limitations:['BYTE_LIMIT_REACHED'],progress:{type:'terminal_incomplete',reason:'checkpoint-capacity-exceeded'},policyProgress:'EVIDENCE_ONLY'});
+});
+
+test('worker explicitly disables unaccounted warming and selects abort-safe SSE',()=>{
+  let captured,settings;
+  assert.doesNotThrow(()=>{settings=isolatedSettings({inMemory:options=>{captured=options;return {getTransport:()=>options.transport??'auto',getCacheWarmingMode:()=>options.cacheWarming??'streaming'};}});});
+  assert.equal(settings.getTransport(),'sse');assert.equal(settings.getCacheWarmingMode(),'off');
+  assert.equal(captured.defaultModel,'gpt-6.1-sol');assert.equal(captured.defaultThinkingLevel,'high');
+  assert.deepEqual(captured.extensions,[]);assert.deepEqual(captured.packages,[]);
+  assert.throws(()=>isolatedSettings({inMemory:()=>({getTransport:()=> 'auto',getCacheWarmingMode:()=> 'off'})}),/policy unavailable/);
 });

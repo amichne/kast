@@ -10,6 +10,10 @@ negative-control target could not cover both requests with roughly 17,000 input
 tokens per request. Its later, explicitly authorized saved-result continuation
 used 17,905 tokens and zero additional semantic calls. Sanitized numeric/shaped
 regressions are in `pi_evaluation.test.mjs`; private transcripts stay outside Git.
+The original pilot's guard abort was not transport proof: installed Pi's cached
+WebSocket sends before observing that abort. This change uses isolated SSE and
+turns off background cache warming; it does not revise the original raw evidence
+or claim that the pilot's denied request reached a provider or incurred usage.
 
 Run deterministic checks without Pi, authentication, IDEs or inference:
 
@@ -28,19 +32,25 @@ or GREEN. The Python wrapper includes these checks in the existing Gradle gate.
   Work cannot debit another case or its separate final interpretation allowance.
 - Provider preflight proves the exact `openai-codex/gpt-6.1-sol` selection and
   effective `high` effort, and records serialized declaration, instruction,
-  context and whole-request byte sizes. A declared input-token ceiling plus
-  conservative context growth and output reserve controls admission. These are
-  estimates; bytes are not reported as tokenizer counts.
+  context and whole-request byte sizes. Admission takes the greater of the
+  initial input calibration plus conservative context growth and the latest
+  measured input (including cached input) plus subsequent growth, then adds the
+  output reserve. These are estimates; bytes are not tokenizer counts.
 - Finalized API usage keeps uncached input, cached input read/write, generated
   output and reasoning subset separate. Total usage includes cached input on
   each request. Reasoning is not an extra additive category. There is no claim
   of a provider-enforced output/token cap; an in-flight overshoot is explicitly
   `HARNESS_BUDGET_LIMIT` and stops further requests.
-- A semantic rejection aborts at `tool_result`, before another provider request.
+- A semantic rejection aborts at `tool_result`. The isolated SSE transport
+  checks the abort before fetch; abort intent alone is not transport evidence.
   The default outcome is `INTENTIONAL_REJECTION`. Optional, explicitly declared
   evidence delivery admits only the exact product-issued `READ_RESULT` request;
   changed cursor/scope/grants, RUN and RESUME are blocked before execution.
-- DELIVERY from a received complete result permits model interpretation but
+- Canonical `qualified` replies enter DELIVERY and preserve known minimum,
+  limitations and closed progress. A final interpretation is `QUALIFIED_ANSWER`,
+  never exhaustive success. Rejection diagnostics read the actual producer's
+  `detail.originalCoverage`, separately from `detail.policyProgress`.
+- DELIVERY from a received complete or qualified result permits interpretation but
   no additional tool. `HARNESS_BUDGET_LIMIT` remains a harness outcome even when
   the saved native evidence is complete. It is not model/product failure or
   successful answer delivery.
@@ -69,7 +79,11 @@ not its binary), `kastAdapter`, `workspaceRoot`, new `outputRoot`, `authPath`, a
 copied into the isolated profile. Existing OAuth validity must cover preparation
 without refresh. Settings are in memory, with retry/compaction disabled and no
 ambient packages/context files. The actual candidate adapter supplies unchanged
-tool schemas. All three read tool declarations remain enabled.
+tool schemas. All three read tool declarations remain enabled. The supported
+in-memory settings explicitly select `transport: "sse"` and `cacheWarming: "off"`,
+and construction rejects a runtime that cannot preserve them. These settings do
+not change the user's normal profile. No implicit warming, retry or catalog
+refresh may debit an unobserved case allowance.
 
 Each case declares `name`, `mode`, `expectedSemanticCalls`, `inputTokenCeiling`,
 `declarationByteCeiling`, `maximumToolTextBytes`, `wallSeconds` (1–480), and:
@@ -91,15 +105,50 @@ For `mode: "received-result"`, provide the exact `receivedSessionFile` and
 `receivedResultEntryId`, the expected `receivedContextSha256`, and omit `prompt`.
 The saved workspace and exact restored context are checked before inference.
 Public `SessionManager.open` and
-append-only `branch` retain the saved tool result; `session.agent.continue()`
+`branch` select the saved tool-result leaf in memory; the next appended entry
+persists that branch without replacing older entries. `session.agent.continue()`
 consumes it without a new task, trimming, summary, reissued query or coaching.
 The original session entries remain intact. DELIVERY blocks all new tool calls.
 
-`test_pi_evaluation_mutations.py` kills six changes to the real rules: removing
+`test_pi_evaluation_mutations.py` kills eleven changes to the real rules: removing
 the terminal gate, sharing the final budget, dropping cached-input accounting,
 allowing semantic work in DELIVERY, weakening exact evidence-read admission,
-and adding a coaching prompt to received-result continuation. A syntax/import
+adding a coaching prompt, rejecting valid qualified replies, losing original
+coverage, ignoring measured input, selecting unsafe automatic transport, and
+enabling unaccounted warming. A syntax/import
 or provisioning failure does not count as a killed mutation.
+
+## Installed SDK check without inference
+
+`pi_evaluation_sdk_check.mjs` is a separate opt-in installed-dependency check;
+CI policy tests do not require a personal Pi install. Supply the actual installed
+coding-agent package root, release adapter path and admitted adapter digest:
+
+```sh
+node experiments/host-observation/pi_evaluation_sdk_check.mjs \
+  "$PI_PACKAGE_ROOT" "$KAST_ADAPTER" "$KAST_ADAPTER_SHA256"
+```
+
+This loads the actual adapter's read-only catalog, uses the committed worker's
+real SDK construction and awaited hooks, and doubles only external provider
+transports. Its auth and catalog storage are synthetic and in memory. Both
+provider responses are synthetic; zero inference, semantic tools and real
+provider requests occur. A first synthetic SSE response completes; a denied
+second request reaches neither fetch nor a socket. A separate real-SDK cached
+WebSocket session reproduces one send after its guard denied the second request.
+This validates the selected transport boundary; it is not native semantic proof.
+
+The checked coding-agent package is 1.0.2, but its resolved pi-ai and
+pi-agent-core dependencies are both **1.1.0**. Sanitized exact source/package
+digests and startup settings are in `pi-fixtures/installed-sdk-evidence.json`.
+Relevant installed source is `pi-ai/dist/api/openai-codex-responses.js`:
+the awaited payload hook at 174, SSE's abort check at 260 before fetch at 270,
+cached connection reuse at 900, and socket send at 1204. Pi's
+`dist/core/settings-manager.js` defaults cache warming to streaming at 679–682;
+the worker explicitly overrides it. No claim is made that the original pilot
+actually ran a cache-warming request. SDK `tools: string[]` is the supported
+public contract. Fixture provenance and offline owning Kotlin serialization
+steps are in `pi-fixtures/README.md`.
 
 ## Minimal next live validation (not run by this change)
 
