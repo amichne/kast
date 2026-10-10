@@ -50,6 +50,28 @@ def lines(observation):
 
 
 class HostedTimingTest(unittest.TestCase):
+    def test_rejected_completion_joins_original_allocation_without_claiming_live_basis(self):
+        response = {'status': 'rejected', 'rejection': {'type': 'COMPLETION_UNPROVEN',
+                    'detail': {'diagnosticReadId': READ}}}
+        own = {'readId': READ, 'correlation': {'type': 'unbound'}}
+        other = {'readId': RETRY, 'correlation': {'type': 'unbound'}}
+        matched = replay.correlate_diagnostic(response, (other, own))
+        self.assertIsInstance(matched, replay.MatchedDiagnostic)
+        self.assertEqual(own, matched.document)
+        observations = replace(window(), diagnostics=(other, own))
+        self.assertTrue(replay.response_read_released(response, observations))
+        self.assertFalse(replay.response_read_released(response, replace(observations, transport=transport()[:-2])))
+        for documents, expected in (((other,), replay.DiagnosticCorrelationFailure.MISMATCHED),
+                                    ((own, own), replay.DiagnosticCorrelationFailure.AMBIGUOUS)):
+            self.assertEqual(expected, replay.correlate_diagnostic(response, documents).failure)
+        for identity in (None, '', 'read', 'AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA'):
+            malformed = {'status': 'rejected', 'live': {'host': 'host', 'epoch': 4},
+                         'rejection': {'type': 'COMPLETION_UNPROVEN', 'detail': {'diagnosticReadId': identity}}}
+            self.assertEqual(replay.DiagnosticCorrelationFailure.MISMATCHED,
+                             replay.correlate_diagnostic(malformed, (own,)).failure)
+        self.assertEqual(replay.DiagnosticCorrelationFailure.UNAVAILABLE,
+                         replay.correlate_diagnostic({'status': 'rejected'}, (own,)).failure)
+
     def rejected(self, observation, failure, read=READ):
         result = h.join_timing(observation, read)
         self.assertIsInstance(result, h.UnavailableTiming)

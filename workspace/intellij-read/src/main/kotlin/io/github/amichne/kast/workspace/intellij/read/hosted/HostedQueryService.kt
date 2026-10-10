@@ -195,6 +195,7 @@ private constructor(
                                 timeAllowance = timeAllowance,
                                 freshness = freshnessCheck,
                                 publicationEffects = progress.publicationEffects,
+                                readTrace = progress.readTrace,
                             )
                         try {
                             evaluate(context)

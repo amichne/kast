@@ -223,6 +223,11 @@ internal class HostedQueryProgress(
     val observation: io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
         get() = diagnostics ?: io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation.None
 
+    val readTrace: HostedReadTraceObservation
+        get() =
+            diagnostics?.let { HostedReadTraceObservation.Observed(it.identity) }
+                ?: HostedReadTraceObservation.Unobserved
+
     fun observe(value: HostedReadDiagnostics?) {
         diagnostics = value
         value?.stage(stage)

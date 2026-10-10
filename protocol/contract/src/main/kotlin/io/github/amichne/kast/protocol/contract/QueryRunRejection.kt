@@ -22,6 +22,7 @@ sealed interface QueryRunRejection : QueryRunFailure {
         val policyProgress: QueryCompletionPolicyProgressDocument = QueryCompletionPolicyProgressDocument.EvidenceOnly,
         @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
         val originalFailure: QueryOriginalFailureDocument? = null,
+        val diagnosticReadId: QueryDiagnosticReadIdentity? = null,
     ) : QueryRunRejection {
         val reason
             get() = cause.reason

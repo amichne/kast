@@ -64,7 +64,8 @@ internal class HostedQueryPublicationSession(
             return QueryExecutionPublicationResult.Rejected(QueryPublicationFailure.CLAIM_UNAVAILABLE)
         return when (context.preparePublication(this)) {
             is Refinement.Refined -> {
-                state = State.Prepared(store, claim, page)
+                state =
+                    State.Prepared(store, claim, page.withQueryDiagnosticIdentity(context.readTrace).publicationPage())
                 context.observation.phase(IntellijReadPhase.RETENTION)
                 measureRetention(store)
                 QueryExecutionPublicationResult.PREPARED

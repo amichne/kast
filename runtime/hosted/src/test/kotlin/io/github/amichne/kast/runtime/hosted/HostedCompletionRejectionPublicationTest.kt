@@ -112,7 +112,17 @@ class HostedCompletionRejectionPublicationTest {
         val case = Case()
         val rejection = case.run()
         val report = case.budgetReport()
-        val budgeted = rejection.withQueryBudget(report)
+        val decorated =
+            rejection
+                .withQueryDiagnosticIdentity(
+                    io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadTraceObservation.Observed(
+                        io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadTraceIdentity.fromBoundary(
+                            java.util.UUID.fromString("33333333-3333-4333-8333-333333333333")
+                        )
+                    )
+                )
+                .publicationPage()
+        val budgeted = decorated.withQueryBudget(report)
         var fitted: QueryPublicationPageCharge.Encoded? = null
         val response =
             assertInstanceOf(
@@ -120,10 +130,10 @@ class HostedCompletionRejectionPublicationTest {
                 encodeHostedQueryResponse(budgeted, published = { fitted = it }),
             )
         assertNotNull(fitted)
-        assertEquals(rejection, fitted!!.page)
+        assertEquals(decorated, fitted!!.page)
         assertInstanceOf(
             HostedReadRejectedPublication.RetainedEvidence::class.java,
-            fittedRejectedQueryPublication(rejection, fitted!!),
+            fittedRejectedQueryPublication(decorated, fitted!!),
         )
         val decoded =
             assertInstanceOf(
@@ -131,7 +141,10 @@ class HostedCompletionRejectionPublicationTest {
                 CanonicalOperationWireBindings.queryRun.decodeOutcome(response.document),
             )
         val decodedRejection = assertInstanceOf(OperationOutcome.Rejected::class.java, decoded.value)
-        assertEquals(AdmittedQueryRunRejection(rejection.reason, report), decodedRejection.reason)
+        assertEquals(
+            AdmittedQueryRunRejection((decorated as OperationOutcome.Rejected).reason, report),
+            decodedRejection.reason,
+        )
         assertEquals(QueryPublicationCommit.Committed, case.store.commitPublication(case.claim, fitted!!.page, fitted))
         case.store.releasePublication(case.claim)
         assertInstanceOf(OperationOutcome.Qualified::class.java, case.read(rejection))
