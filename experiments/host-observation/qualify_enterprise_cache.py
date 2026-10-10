@@ -113,6 +113,12 @@ class Trace:
 
 
 @dataclass(frozen=True)
+class ScopedTrace:
+    expansionScope: SourceDomain
+    type: str = field(default='TRACE', init=False)
+
+
+@dataclass(frozen=True)
 class Output:
     type: str = 'SYMBOLS'
     fields: tuple[str, ...] = ('NAME', 'LOCATION', 'SIGNATURE')
@@ -127,7 +133,7 @@ class RowsOutput:
 class Run:
     source: Search | Location | Refs
     output: Output | RowsOutput = Output()
-    steps: tuple[Relation | ScopedRelation | Walk | Distinct | Trace, ...] = ()
+    steps: tuple[Relation | ScopedRelation | Walk | Distinct | Trace | ScopedTrace, ...] = ()
     executionBudget: Budget | PhotoWalkBudget = Budget()
     retention: str = 'RETAIN'
     type: str = field(default='RUN', init=False)
