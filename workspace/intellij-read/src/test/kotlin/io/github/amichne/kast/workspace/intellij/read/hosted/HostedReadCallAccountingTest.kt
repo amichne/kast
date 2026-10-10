@@ -88,7 +88,7 @@ class HostedReadCallAccountingTest {
         observation.finish(HostedDiagnosticOutcome.Completed)
         val receipt = receipts.single()
         val encoded = Json.parseToJsonElement(receipt.encode()).jsonObject
-        assertEquals("10", encoded.getValue("schemaVersion").jsonPrimitive.content)
+        assertEquals("11", encoded.getValue("schemaVersion").jsonPrimitive.content)
         val actual =
             encoded
                 .getValue("nativeCalls")
@@ -153,7 +153,7 @@ class HostedReadCallAccountingTest {
         }
         observation.count(IntellijReadCounter.RELATION_SCOPE_FILES_ADMITTED)
         val encoded = Json.parseToJsonElement(receipts.single().encode()).jsonObject
-        assertEquals("10", encoded.getValue("schemaVersion").jsonPrimitive.content)
+        assertEquals("11", encoded.getValue("schemaVersion").jsonPrimitive.content)
         val vocabulary = encoded.getValue("nativeCallVocabulary").jsonArray.map { it.jsonPrimitive.content }
         val rows = encoded.getValue("nativeCalls").jsonArray.map { it.jsonObject }
         for (call in
