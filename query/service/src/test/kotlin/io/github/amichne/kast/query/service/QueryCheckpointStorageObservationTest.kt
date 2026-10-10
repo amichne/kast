@@ -28,12 +28,12 @@ import org.junit.jupiter.api.Test
 
 class QueryCheckpointStorageObservationTest {
     @Test
-    fun `empty discovery checkpoint keeps the existing 4608 byte accounting charge`() {
+    fun `empty discovery checkpoint charges its existing root and accounted seed structure`() {
         val fixture = QueryServiceTest()
         val request = fixture.request(fixture.symbolPlan(), 8L)
         val checkpoint =
             PipelineCheckpoint(
-                request.plan,
+                PipelineSeed.Accounted.create(request.plan),
                 request.lease,
                 emptyList(),
                 emptyMap(),
@@ -42,8 +42,8 @@ class QueryCheckpointStorageObservationTest {
                 0.queryCount(),
             )
         val estimate = checkpoint.storageEstimate()
-        assertEquals(4608L, checkpoint.retainedBytes)
-        assertEquals(4608L, estimate.tasks.value)
+        assertEquals(4864L, checkpoint.retainedBytes)
+        assertEquals(4864L, estimate.tasks.value)
         assertEquals(0L, estimate.identityRows.value)
         assertEquals(0L, estimate.inputs.value)
         assertEquals(0L, estimate.impact.value)
@@ -84,6 +84,52 @@ class QueryCheckpointStorageObservationTest {
                 )
                 .run(fixture.request(fixture.symbolPlan(), 8L))
         assertInstanceOf(QueryExecutionResult.Complete::class.java, result)
+    }
+
+    @Test
+    fun `successive pages reuse the admitted seed and preserve exact descriptions in order`() = runTest {
+        val fixture = QueryServiceTest()
+        val first = fixture.selector(fixture.selection())
+        val selectors = listOf(first, otherSelector(fixture, first), otherSelector(fixture, first, "ThirdService", 80))
+        val plan = fixture.exactReferencePlan(selectors)
+        val original = fixture.request(plan, 8L, resultLimit = 1)
+        val described = mutableListOf<SymbolSelector>()
+        val service =
+            fixture.service(
+                clock = QueryNanoClock { 0L },
+                exact =
+                    fixture.exactOperations(
+                        describe = {
+                            assertTrue(described.size < selectors.size, "Unexpected exact description")
+                            assertSame(selectors[described.size], it)
+                            described += it
+                            SymbolDescriptionResult.Described(SymbolDescription.from(it))
+                        },
+                        resolve = { error("Unexpected resolution") },
+                    ),
+            )
+        val page1 = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(original))
+        val checkpoint1 = (page1.continuation as QueryContinuationState.Resumable).checkpoint as PipelineCheckpoint
+        val page2 =
+            assertInstanceOf(
+                QueryExecutionResult.Qualified::class.java,
+                service.run(QueryExecutionRequest.create(plan, original.lease, original.budget, checkpoint1).refined()),
+            )
+        val checkpoint2 = (page2.continuation as QueryContinuationState.Resumable).checkpoint as PipelineCheckpoint
+        assertSame(checkpoint1.seed, checkpoint2.seed)
+        assertSame(plan, checkpoint2.plan)
+        assertSame(original.lease, checkpoint2.lease)
+        val page3 =
+            assertInstanceOf(
+                QueryExecutionResult.Complete::class.java,
+                service.run(QueryExecutionRequest.create(plan, original.lease, original.budget, checkpoint2).refined()),
+            )
+        assertEquals(selectors, described, "Unconsumed exact descriptions")
+        assertEquals(
+            selectors,
+            listOf(page1.result, page2.result, page3.result).flatMap { it.symbolRows().map { row -> row.selector } },
+        )
+        assertTrue(listOf(page1.result, page2.result, page3.result).all { it.failures.isEmpty() })
     }
 
     private suspend fun boundedPage(
@@ -137,29 +183,34 @@ class QueryCheckpointStorageObservationTest {
         return qualified to observations.single()
     }
 
-    private fun otherSelector(fixture: QueryServiceTest, first: SymbolSelector): SymbolSelector {
+    private fun otherSelector(
+        fixture: QueryServiceTest,
+        first: SymbolSelector,
+        name: String = "OtherService",
+        offset: Int = 40,
+    ): SymbolSelector {
         val basis = fixture.selection()
         val path = Path.of(first.file.stableValue)
         val candidate =
             SymbolDiscoveryCandidate.fromBoundary(
                     SymbolDiscoveryKind.CLASS,
-                    "OtherService",
+                    name,
                     first.lease,
                     path,
                     path.toUri().toString(),
-                    40,
+                    offset,
                 )
                 .refined()
         val selection =
             SymbolDiscoverySelection.restore(first.lease, first.scope, candidate, basis.constraints).refined()
-        val signature = CanonicalCompilerSignature.classLike("sample.OtherService").refined()
+        val signature = CanonicalCompilerSignature.classLike("sample.$name").refined()
         val evidence =
             CompilerGroundedSymbolEvidence.fromBoundary(
                     first.file,
-                    40,
-                    60,
-                    "OtherService",
-                    "sample.OtherService",
+                    offset,
+                    offset + 20,
+                    name,
+                    "sample.$name",
                     CompilerSymbolKind.CLASSLIKE,
                     signature,
                 )

@@ -34,7 +34,7 @@ internal val pageLimits =
     )
 
 internal data class PipelineCheckpoint(
-    override val plan: AdmittedQueryPlan,
+    val seed: PipelineSeed.Accounted,
     override val lease: SemanticReadAuthority,
     val tasks: List<PipelineTask>,
     val identityRows: Map<ExactQueryStage, Map<QueryIdentityRowKey, QuerySymbol>>,
@@ -43,6 +43,9 @@ internal data class PipelineCheckpoint(
     val emittedCount: io.github.amichne.kast.query.contract.QueryCount,
     val impact: QueryImpactSnapshot? = null,
 ) : QueryCheckpointPartialSymbols {
+    override val plan: AdmittedQueryPlan
+        get() = seed.plan
+
     override fun partialSymbols(
         rowLimit: io.github.amichne.kast.kernel.ResultLimit,
         byteLimit: io.github.amichne.kast.query.contract.QueryByteLimit,
@@ -55,12 +58,7 @@ internal data class PipelineCheckpoint(
 
     fun storageEstimate(graph: QueryImpactRetainedGraph = QueryImpactRetainedGraph()): QueryCheckpointStorageEstimate =
         QueryCheckpointStorageEstimate(
-            tasks =
-                (if (plan is AdmittedQueryPlan.Impact) tasks else initialTasks(plan) + tasks)
-                    .fold(0L) { total, task ->
-                        saturatedAdd(total, saturatedAdd(TASK_OVERHEAD_BYTES, task.retainedBytes(graph)))
-                    }
-                    .storageBytes(),
+            tasks = pipelineTaskBytes(tasks, graph, seed.retainedRootBytes(graph)).storageBytes(),
             identityRows =
                 identityRows.values
                     .fold(0L) { total, rows ->
@@ -75,10 +73,19 @@ internal data class PipelineCheckpoint(
         )
 }
 
-private fun Long.storageBytes(): QueryCheckpointStorageBytes =
+internal fun Long.storageBytes(): QueryCheckpointStorageBytes =
     when (val parsed = QueryCheckpointStorageBytes.parse(this)) {
         is io.github.amichne.kast.kernel.Refinement.Refined -> parsed.value
         is io.github.amichne.kast.kernel.Refinement.Rejected -> error("Checkpoint accounting produced negative storage")
+    }
+
+internal fun pipelineTaskBytes(
+    tasks: List<PipelineTask>,
+    graph: QueryImpactRetainedGraph,
+    initial: Long = 0L,
+): Long =
+    tasks.fold(initial) { total, task ->
+        saturatedAdd(total, saturatedAdd(TASK_OVERHEAD_BYTES, task.retainedBytes(graph)))
     }
 
 private fun PipelineTask.retainedBytes(graph: QueryImpactRetainedGraph): Long =
