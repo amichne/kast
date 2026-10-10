@@ -16,6 +16,8 @@ import io.github.amichne.kast.query.contract.QueryOccurrence
 import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.query.contract.QueryTerminalReason
+import io.github.amichne.kast.relation.contract.RelationOccurrence
+import io.github.amichne.kast.symbol.contract.SymbolDescription
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -137,6 +139,7 @@ internal class AutomaticDenseRetentionTest : AutomaticDenseRetentionCase() {
                 )
                 .refined()
         val invocationPolicy = policy()
+        assertMatchedPrefix(listOf(first, second))
         val facts = QueryInvocationFacts(fixture.authority, invocationPolicy)
         facts.append(first, Long.MAX_VALUE).refined()
         facts.append(second, Long.MAX_VALUE).refined()
@@ -149,7 +152,6 @@ internal class AutomaticDenseRetentionTest : AutomaticDenseRetentionCase() {
         val starts =
             listOf(first, second)
                 .flatMap { (it.result.rows as QueryRows.Occurrences).values }
-                .take(40)
                 .map { (it as QueryOccurrence.Reference).value.occurrence.range.startInclusive }
         println(
             "MatchedPrefixFacts(bytes=${facts.retainedBytes}, standalone=$standalone, " +
@@ -163,6 +165,30 @@ internal class AutomaticDenseRetentionTest : AutomaticDenseRetentionCase() {
             "Matched two-page owner charges: facts=${facts.retainedBytes}, " +
                 "standalone=$standalone, inventory=${inventory.retainedBytes}",
         )
+    }
+
+    private fun assertMatchedPrefix(pages: List<SymbolInvocationPage>) {
+        // Independent fixture oracle, not a selection from returned rows or provider locators.
+        val starts = listOf(100, 132, 164, 196, 228, 260, 292, 324, 356, 388, 420, 452, 484, 516, 548, 580)
+        val expected = starts.map { RelationOccurrence.fromBoundary(fixture.selector.file, it, it + 20).refined() }
+        val rows =
+            pages
+                .flatMap { (it.result.rows as QueryRows.Occurrences).values }
+                .map { (it as QueryOccurrence.Reference).value }
+        assertEquals(expected, rows.map { it.occurrence }, "Exact semantic row identities and order")
+        assertEquals(
+            List(16) { SymbolDescription.from(fixture.selector).compilerIdentity },
+            rows.map { it.target.compilerIdentity },
+        )
+        assertEquals(listOf(8, 8), pages.map { it.items.size })
+        assertEquals(listOf(0L), positions, "One provider batch; second page drains its pending tasks")
+        assertEquals(listOf(21L, 0L), pages.map { it.work.count.value })
+        val items = pages.flatMap { it.items }.map { it as QueryResultItemDocument.ReferenceOccurrence }
+        assertEquals(starts, items.map { it.occurrence.occurrence.range.startInclusive.value })
+        assertEquals(starts.map { it + 20 }, items.map { it.occurrence.occurrence.range.endExclusive.value })
+        assertEquals(List(16) { fixture.selector.file.stableValue }, items.map { it.occurrence.occurrence.file.value })
+        // These semantic pages precede retained-result UUID issuance. Signed selectors can vary between runs.
+        assertEquals(List(16) { null }, items.map { it.rowId })
     }
 
     @Test
