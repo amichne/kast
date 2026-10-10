@@ -40,6 +40,20 @@ kast status
 Inspect the version and installation path. Verify loaded tools with the [first query](/agent-harnesses#check-that-the-tools-work).
 
 <AccordionGroup>
+  <Accordion title="Install the latest developer build">
+    The default command selects stable releases. To select the latest tested developer build:
+
+    ```shell wrap
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest
+    ```
+
+    Keep the `--` separator before installer options. Terminal downloads show progress. Wait for the installation result; Ctrl-C stops installation.
+
+    Developer builds are prereleases. Selection reads the published GitHub channel, independently of the local checkout or installed version. The installer prints the selected version and source revision. `kast upgrade` keeps the developer channel.
+
+    To preserve an existing Codex MCP configuration, append `--skip-codex-mcp`. Restart IDEA and your agent after installation.
+  </Accordion>
+
   <Accordion title="If your shell cannot find kast">
     The executable is `$XDG_CONFIG_HOME/kast` when `XDG_CONFIG_HOME` is nonempty. Otherwise, it is `$HOME/.local/bin/kast`.
 

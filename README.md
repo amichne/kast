@@ -38,6 +38,17 @@ You need Apple silicon macOS, a Kotlin Gradle repository, and IntelliJ IDEA
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
+The default command selects stable releases. For the latest tested developer build:
+
+```shell
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest
+```
+
+Keep the `--` separator before installer options. Terminal downloads show progress.
+Wait for the installation result. Ctrl-C stops installation. Append `--skip-codex-mcp`
+to preserve an existing Codex MCP configuration.
+Developer selection reads the published GitHub channel, independently of the local checkout or installed version.
+
 Restart IDEA to load the plugin. Use `kast status` to inspect the installation.
 The command is `$XDG_CONFIG_HOME/kast` when `XDG_CONFIG_HOME` is nonempty, otherwise
 `$HOME/.local/bin/kast`. Upgrades preserve that location. If needed, add its directory to `PATH` using
