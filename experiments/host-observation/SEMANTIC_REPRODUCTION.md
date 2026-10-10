@@ -37,7 +37,7 @@ identity and effective query limits still require independent qualification.
 For the current relation work comparison, use
 `--qualification-slice RELATION_WORK_REDUCTION`. This profile admits only public
 contract version 14. It requires the common and branch-proof owners. It also
-requires 19 owners for admission, file enumeration, SDK capture, callback reuse
+requires 18 owners for admission, file enumeration, SDK capture, callback reuse
 and read accounting. Missing owners or another contract version reject the pin. The
 older version 6 and 7 profiles retain their separate requirements. Match loaded
 resources and all plugin JARs to the exact tested candidate before replay;

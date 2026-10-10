@@ -45,6 +45,9 @@ class TryLocalOracleTest(unittest.TestCase):
         self.assertEqual(native.TRY_BRANCH_NATIVE_OWNERS, sections['branchClasses'])
         self.assertEqual(native.LOCAL_IDENTITY_NATIVE_OWNERS, sections['localClasses'])
         self.assertEqual(native.RELATION_WORK_NATIVE_OWNERS, sections['workClasses'])
+        for extra in ('localClasses', 'workClasses'):
+            groups = [sections[key] for key in ('commonClasses', 'branchClasses', extra)]
+            self.assertEqual(sum(map(len, groups)), len(set().union(*groups)), extra + ': duplicate profile owner')
 
     def test_relation_work_profile_requires_current_contract_and_every_work_owner(self):
         profile = native.QualificationSlice.RELATION_WORK_REDUCTION
