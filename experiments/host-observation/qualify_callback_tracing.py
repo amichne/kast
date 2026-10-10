@@ -57,6 +57,7 @@ class NativeDiagnosticCounterVersion(Enum):
     NATIVE_CALLS = 7
     FIRST_CALLBACK = 8
     READ_ACTIONS = 9
+    SCOPE_API_CALLS = 10
 
 
 @dataclass(frozen=True)

@@ -13,6 +13,14 @@ internal fun initialHostedReadCounters(): LinkedHashMap<Pair<IntellijReadCounter
                 IntellijReadCounter.DEPENDENCY_HASH_MEMO_HITS,
                 IntellijReadCounter.DEPENDENCY_TREE_MEMO_HITS,
                 IntellijReadCounter.DECLARATION_PSI_NODES_VISITED,
+                IntellijReadCounter.RELATION_SCOPE_FILES_ADMITTED,
+                IntellijReadCounter.RELATION_SCOPE_FILES_EXCLUDED,
+                IntellijReadCounter.RELATION_SCOPE_MODULES_ADMITTED,
+                IntellijReadCounter.RELATION_SCOPE_MODULES_EXCLUDED,
+                IntellijReadCounter.RELATION_SCOPE_MODULE_SOURCE_KINDS_ADMITTED,
+                IntellijReadCounter.RELATION_SCOPE_MODULE_SOURCE_KINDS_EXCLUDED,
+                IntellijReadCounter.RELATION_SCOPE_LIBRARY_SEARCH_ADMITTED,
+                IntellijReadCounter.RELATION_SCOPE_LIBRARY_SEARCH_EXCLUDED,
             )
             .forEach { this[it to IntellijReadContributor.NONE] = 0L }
         // Explicit zeros prove page observation capability even when a workload never enters that provider.
