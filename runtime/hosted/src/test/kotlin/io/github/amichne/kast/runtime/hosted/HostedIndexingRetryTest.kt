@@ -42,10 +42,45 @@ class HostedIndexingRetryTest {
                     reads++
                     indexing
                 },
-                wait = { IndexingWait.Unavailable },
+                wait = { IndexingWait.TimedOut },
             )
         assertSame(indexing, result)
         assertEquals(1, reads)
+    }
+
+    @Test
+    fun `project disposal while waiting preserves the original rejection`() = runTest {
+        var reads = 0
+        val result =
+            retryPresemanticIndexing(
+                read = {
+                    reads++
+                    indexing
+                },
+                wait = { IndexingWait.Disposed },
+            )
+        assertSame(indexing, result)
+        assertEquals(1, reads)
+    }
+
+    @Test
+    fun `a second indexing rejection cannot schedule another wait`() = runTest {
+        var reads = 0
+        var waits = 0
+        val result =
+            retryPresemanticIndexing(
+                read = {
+                    reads++
+                    indexing
+                },
+                wait = {
+                    waits++
+                    IndexingWait.Ready
+                },
+            )
+        assertSame(indexing, result)
+        assertEquals(2, reads)
+        assertEquals(1, waits)
     }
 
     @Test

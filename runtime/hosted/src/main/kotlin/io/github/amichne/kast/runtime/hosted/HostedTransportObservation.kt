@@ -34,6 +34,11 @@ internal class HostedTransportTrace(
     private var stage = HostedTransportStage.ACCEPT
     private var started = clock()
 
+    /** A nested wait retains this connection identity without replacing the surrounding execution clock. */
+    fun smartModeWait(observation: HostedSmartModeWaitObservation) {
+        observer.smartModeWait(HostedCorrelatedSmartModeWait(connectionId.toString(), observation))
+    }
+
     fun enter(next: HostedTransportStage) {
         stage = next
         started = clock()

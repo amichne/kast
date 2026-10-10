@@ -45,13 +45,32 @@ class HostedConnectionAdmissionTest {
             fixture { listener, address ->
                 val entered = CompletableDeferred<Unit>()
                 val release = CompletableDeferred<Unit>()
+                val transports = Collections.synchronizedList(mutableListOf<HostedTransportObservation>())
+                val waits = Collections.synchronizedList(mutableListOf<HostedCorrelatedSmartModeWait>())
+                val observed =
+                    object : HostedEndpointObserver {
+                        override fun observe(stage: HostedEndpointStage, outcome: HostedEndpointOutcome) = Unit
+
+                        override fun transport(observation: HostedTransportObservation) {
+                            transports += observation
+                        }
+
+                        override fun smartModeWait(observation: HostedCorrelatedSmartModeWait) {
+                            waits += observation
+                        }
+                    }
                 val server =
                     launch(Dispatchers.IO) {
                         serveHostedListener(
                             listener,
-                            observer(Collections.synchronizedList(mutableListOf())) {},
+                            observed,
                             ReadLimits.Default,
-                        ) { request ->
+                        ) { request, trace ->
+                            waitForHostedSmartMode(
+                                state = { HostedIndexingState.SMART },
+                                observe = trace::smartModeWait,
+                                clock = { 0L },
+                            )
                             if (request.root.value == "/workspace/first") {
                                 entered.complete(Unit)
                                 release.await()
@@ -67,6 +86,7 @@ class HostedConnectionAdmissionTest {
                     assertFalse(first.isCompleted)
                     release.complete(Unit)
                     assertEquals(json.encodeToString(Reply("/workspace/first")), first.await())
+                    assertWaitsMatchReplies(transports, waits)
                 } finally {
                     release.complete(Unit)
                     server.cancelAndJoin()
@@ -94,7 +114,7 @@ class HostedConnectionAdmissionTest {
                 val calls = AtomicInteger()
                 val server =
                     launch(Dispatchers.IO) {
-                        serveHostedListener(listener, observer, ReadLimits.Default) { request ->
+                        serveHostedListener(listener, observer, ReadLimits.Default) { request, _ ->
                             assertTrue(active.incrementAndGet() <= 16)
                             try {
                                 yield()
@@ -141,7 +161,7 @@ class HostedConnectionAdmissionTest {
                                     reading.complete(Unit)
                             },
                             limits,
-                        ) {
+                        ) { _, _ ->
                             error("Saturated requests must not dispatch")
                         }
                     }
@@ -176,7 +196,9 @@ class HostedConnectionAdmissionTest {
                 val cancellation = CancellationFixture()
                 val server =
                     launch(Dispatchers.IO) {
-                        serveHostedListener(listener, cancellation, ReadLimits.Default, cancellation::dispatch)
+                        serveHostedListener(listener, cancellation, ReadLimits.Default) { request, _ ->
+                            cancellation.dispatch(request)
+                        }
                     }
                 try {
                     withContext(Dispatchers.IO) {
@@ -215,7 +237,7 @@ class HostedConnectionAdmissionTest {
                 val observations = Collections.synchronizedList(mutableListOf<HostedTransportObservation>())
                 val server =
                     launch(Dispatchers.IO) {
-                        serveHostedListener(listener, observer(observations) {}, ReadLimits.Default) {
+                        serveHostedListener(listener, observer(observations) {}, ReadLimits.Default) { _, _ ->
                             error("Malformed input must not enter semantic dispatch")
                         }
                     }
@@ -241,6 +263,28 @@ class HostedConnectionAdmissionTest {
                 )
             }
         }
+    }
+
+    private fun assertWaitsMatchReplies(
+        transports: MutableList<HostedTransportObservation>,
+        waits: MutableList<HostedCorrelatedSmartModeWait>,
+    ) {
+        val replies = synchronized(transports) { transports.toList() }
+        val recorded = synchronized(waits) { waits.toList() }
+        val connectionIds =
+            replies
+                .filter {
+                    it.stage == HostedTransportStage.REPLY_WRITE && it.outcome == HostedEndpointOutcome.COMPLETED
+                }
+                .map { it.connectionId }
+                .toSet()
+        assertEquals(2, connectionIds.size)
+        assertEquals(connectionIds, recorded.map { it.connectionId }.toSet())
+        assertEquals(4, recorded.size)
+        for (id in connectionIds) assertEquals(
+            listOf(HostedSmartModeWaitOutcome.STARTED, HostedSmartModeWaitOutcome.READY),
+            recorded.filter { it.connectionId == id }.map { it.wait.outcome },
+        )
     }
 
     private suspend fun concurrentReads(address: UnixDomainSocketAddress) = coroutineScope {

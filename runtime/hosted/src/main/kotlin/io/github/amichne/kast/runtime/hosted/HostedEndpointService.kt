@@ -17,7 +17,6 @@ import java.nio.file.Path
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.*
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 internal enum class HostedEndpointStage {
@@ -44,6 +43,8 @@ internal fun interface HostedEndpointObserver {
     fun observe(stage: HostedEndpointStage, outcome: HostedEndpointOutcome)
 
     fun transport(observation: HostedTransportObservation) = Unit
+
+    fun smartModeWait(observation: HostedCorrelatedSmartModeWait) = Unit
 
     fun responded(response: HostedResponse) {
         when (response) {
@@ -146,23 +147,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
 
     private val query = project.getService(HostedQueryService::class.java)
     private val changes = HostedChangeCoordinator(project, query)
-    private val observer =
-        object : HostedEndpointObserver {
-            override fun transport(observation: HostedTransportObservation) {
-                Logger.getInstance(HostedEndpointService::class.java)
-                    .info("kast_transport " + Json { encodeDefaults = true }.encodeToString(observation))
-            }
-
-            override fun observe(stage: HostedEndpointStage, outcome: HostedEndpointOutcome) {
-                Logger.getInstance(HostedEndpointService::class.java)
-                    .info("kast_hosted stage=${stage.name} outcome=${outcome.name}")
-            }
-
-            override fun rejected(stage: HostedEndpointStage, failure: HostedEndpointFailure) {
-                Logger.getInstance(HostedEndpointService::class.java)
-                    .info("kast_hosted stage=${stage.name} outcome=REJECTED failure=${failure.name}")
-            }
-        }
+    private val observer = LoggingHostedEndpointObserver
     private val job =
         scope.launch(Dispatchers.IO) {
             observer.observe(HostedEndpointStage.BIND, HostedEndpointOutcome.STARTED)
@@ -218,11 +203,18 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
             refreshOwner.set(RefreshOwner.Available(refresh))
             observer.observe(HostedEndpointStage.BIND, HostedEndpointOutcome.COMPLETED)
             try {
-                serveHostedListener(owner.server, observer, limits) { request ->
+                serveHostedListener(owner.server, observer, limits) { request, trace ->
                     if (!lifecycleAdmission.enter()) HostedResponse.Rejected(HostedEndpointFailure.PLATFORM_UNAVAILABLE)
                     else
                         try {
-                            dispatch(root, request, limits, refresh, gradleChanges)
+                            dispatch(
+                                root = root,
+                                request = request,
+                                limits = limits,
+                                refresh = refresh,
+                                gradleChanges = gradleChanges,
+                                trace = trace,
+                            )
                         } finally {
                             lifecycleAdmission.leave()
                         }
@@ -256,6 +248,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
         limits: io.github.amichne.kast.kernel.ReadLimits,
         refresh: io.github.amichne.kast.runtime.hosted.workspace.HostedWorkspaceRefresh,
         gradleChanges: HostedGradleChangeTracker,
+        trace: HostedTransportTrace,
     ): HostedResponse {
         if (request.root != root) {
             return HostedResponse.Rejected(HostedEndpointFailure.WRONG_ROOT)
@@ -309,11 +302,11 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                 }
             is HostedRequest.PlanChange ->
                 observeHostedChange(HostedChangeStage.PLANNING) { planHostedChange(project, query, request) }
-            is HostedRequest.Read -> dispatchRead(request)
+            is HostedRequest.Read -> dispatchRead(request, trace)
         }
     }
 
-    private suspend fun dispatchRead(request: HostedRequest.Read): HostedResponse =
+    private suspend fun dispatchRead(request: HostedRequest.Read, trace: HostedTransportTrace): HostedResponse =
         when (
             val result =
                 retryPresemanticIndexing(
@@ -335,7 +328,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                                 )
                         }
                     },
-                    wait = { awaitHostedSmartMode(project) },
+                    wait = { awaitHostedSmartMode(project, trace::smartModeWait) },
                 )
         ) {
             is HostedSemanticReadResult.Completed -> result.value

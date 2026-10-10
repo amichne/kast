@@ -20,7 +20,7 @@ internal suspend fun serveHostedListener(
     listener: ServerSocketChannel,
     observer: HostedEndpointObserver,
     limits: ReadLimits,
-    dispatch: suspend (HostedRequest) -> HostedResponse,
+    dispatch: suspend (HostedRequest, HostedTransportTrace) -> HostedResponse,
 ) = coroutineScope {
     val connections = Semaphore(limits[ReadLimitParameter.HOST_CONNECTIONS].value)
     while (isActive) {
@@ -75,7 +75,7 @@ private suspend fun serveAdmittedHostedConnection(
     observer: HostedEndpointObserver,
     trace: HostedTransportTrace,
     limits: ReadLimits,
-    dispatch: suspend (HostedRequest) -> HostedResponse,
+    dispatch: suspend (HostedRequest, HostedTransportTrace) -> HostedResponse,
 ) {
     serveHostedConnection(Channels.newInputStream(client), Channels.newOutputStream(client), observer, limits, trace) {
         request ->
@@ -111,10 +111,10 @@ private fun io.github.amichne.kast.workspace.intellij.read.hosted.HostedEvaluati
 private suspend fun dispatchHosted(
     request: HostedRequest,
     trace: HostedTransportTrace,
-    dispatch: suspend (HostedRequest) -> HostedResponse,
+    dispatch: suspend (HostedRequest, HostedTransportTrace) -> HostedResponse,
 ): HostedResponse {
     trace.enter(HostedTransportStage.SEMANTIC_ADMISSION)
     trace.emit(HostedEndpointOutcome.COMPLETED)
     trace.enter(HostedTransportStage.EXECUTION)
-    return dispatch(request).also { trace.emit(it.outcome.transportOutcome()) }
+    return dispatch(request, trace).also { trace.emit(it.outcome.transportOutcome()) }
 }
