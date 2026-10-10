@@ -187,6 +187,7 @@ class RelationScopeApiObservationTest {
     fun `unrelated directory files do not enter live source membership`() {
         val observed = ScopeObservation()
         val sdk = RelationScopeSdkFixture(sourceContains = { true })
+        val admittedPaths = mutableListOf<Path>()
         val constraints =
             SymbolDiscoveryConstraints.None.copy(
                 directory =
@@ -195,13 +196,19 @@ class RelationScopeApiObservationTest {
                         SymbolDiscoveryContainment.DESCENDANTS,
                     )
             )
-        val scope = compiled(sdk, workspace(), observed, constraints).nativeScope
+        val scope =
+            compiled(sdk, workspace(), observed, constraints) { path ->
+                    admittedPaths.add(path)
+                    true
+                }
+                .nativeScope
         repeat(256) { index ->
             assertFalse(
                 scope.contains(AbsolutePathFile(Path.of(root.value).resolve("app/src/main/kotlin/other/$index.kt")))
             )
         }
         assertTrue(scope.contains(AbsolutePathFile(Path.of(root.value).resolve("app/src/main/kotlin/selected/A.kt"))))
+        assertEquals(listOf(Path.of(root.value).resolve("app/src/main/kotlin/selected/A.kt")), admittedPaths)
         assertEquals(listOf("SOURCE", "EXCLUDED"), sdk.fileIndexCalls)
         assertEquals(256, observed.counts[IntellijReadCounter.RELATION_SCOPE_FILES_EXCLUDED])
         assertEquals(1, observed.counts[IntellijReadCounter.RELATION_SCOPE_FILES_ADMITTED])
@@ -234,8 +241,9 @@ class RelationScopeApiObservationTest {
         selected: SymbolSearchScope,
         observation: IntellijReadObservation,
         constraints: SymbolDiscoveryConstraints = SymbolDiscoveryConstraints.None,
+        fileAdmission: (Path) -> Boolean = { true },
     ): CompiledRelationScope =
-        (IntellijRelationScopeCompiler()
+        (IntellijRelationScopeCompiler(fileAdmission)
                 .compile(
                     sdk.project,
                     request,

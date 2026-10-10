@@ -187,8 +187,8 @@ internal class IntellijRelationScopeCompiler(private val fileAdmission: (Path) -
                     },
                     observation = observation,
                     fileAdmission = { path ->
-                        fileAdmission(path) &&
-                            matchesDirectory(path, request.subject.lease.workspaceRoot.value, constraints)
+                        matchesDirectory(path, request.subject.lease.workspaceRoot.value, constraints) &&
+                            fileAdmission(path)
                     },
                 ),
                 RelationSourceDomainMembership(
