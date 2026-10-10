@@ -96,7 +96,11 @@ class NativeCallbackExpiryTest : NativeReferenceFixtureTest() {
             ExpireAtNativeCallback(now, narrowed.request.budget.resources.elapsedTimeLimit.value * NANOS_PER_MILLI)
         val siteReads = AtomicInteger()
         assertFalse(
-            observed.forEachReference(fixture.target, nativeScope) { reference ->
+            observed.forEachReference(
+                fixture.target,
+                nativeScope,
+                nativeScopeTestAdmission(fixture.request, observed),
+            ) { reference ->
                 assertEquals(
                     Refinement.Rejected(CallbackInvocationFlowCause.TIME_LIMIT_REACHED),
                     context.providerSite {
@@ -122,7 +126,11 @@ class NativeCallbackExpiryTest : NativeReferenceFixtureTest() {
     ) {
         val controls = AtomicInteger()
         assertTrue(
-            IntellijReadObservation.None.forEachReference(fixture.target, nativeScope) { reference ->
+            IntellijReadObservation.None.forEachReference(
+                fixture.target,
+                nativeScope,
+                nativeScopeTestAdmission(fixture.request, IntellijReadObservation.None),
+            ) { reference ->
                 assertExcludedReferenceOracle(fixture, reference)
                 assertEquals(
                     Refinement.Refined(RelationProviderScopeAdmission.SOURCE_DOMAIN_EXCLUDED),

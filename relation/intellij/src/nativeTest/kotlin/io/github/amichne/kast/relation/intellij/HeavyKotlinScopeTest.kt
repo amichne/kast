@@ -15,6 +15,7 @@ import com.intellij.psi.impl.source.PsiFileImpl
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.testFramework.HeavyPlatformTestCase
 import com.intellij.testFramework.IndexingTestUtil
+import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
@@ -133,7 +134,8 @@ class HeavyKotlinScopeTest : HeavyPlatformTestCase() {
             val compiled = scope(observed, narrow)
             val rows = mutableListOf<Pair<String, Int>>()
             assertTrue(
-                observed.forEachReference(target, compiled.nativeScope) { reference ->
+                observed.forEachReference(target, compiled.nativeScope, nativeScopeTestAdmission(request, observed)) {
+                    reference ->
                     rows += reference.element.containingFile.virtualFile.path to reference.element.textRange.startOffset
                     assertSame(target, reference.resolve())
                     true
@@ -155,17 +157,22 @@ class HeavyKotlinScopeTest : HeavyPlatformTestCase() {
 
         val negative = NativeWorkObservation()
         assertTrue(
-            negative.forEachReference(unused, scope(negative, true).nativeScope) {
+            negative.forEachReference(
+                unused,
+                scope(negative, true).nativeScope,
+                nativeScopeTestAdmission(request, negative),
+            ) {
                 fail("unused has no references")
                 false
             }
         )
-        assertNativeCancellation(target) { scope(it, true).nativeScope }
-        assertCommittedEditInvalidates(callerFile, target) { scope(it, true).nativeScope }
+        assertNativeCancellation(request, target) { scope(it, true).nativeScope }
+        assertCommittedEditInvalidates(request, callerFile, target) { scope(it, true).nativeScope }
         println("native-scope tiny narrow=$narrowTiny broad=$broadTiny; wide narrow=$narrowWide broad=$broadWide")
     }
 
     private fun assertNativeCancellation(
+        request: RelationRequest,
         target: KtNamedFunction,
         nativeScope: (NativeWorkObservation) -> GlobalSearchScope,
     ) {
@@ -175,7 +182,11 @@ class HeavyKotlinScopeTest : HeavyPlatformTestCase() {
             ProgressManager.getInstance()
                 .runProcess(
                     {
-                        cancellation.forEachReference(target, nativeScope(cancellation)) {
+                        cancellation.forEachReference(
+                            target,
+                            nativeScope(cancellation),
+                            nativeScopeTestAdmission(request, cancellation),
+                        ) {
                             indicator.cancel()
                             ProgressManager.checkCanceled()
                             true
@@ -190,6 +201,7 @@ class HeavyKotlinScopeTest : HeavyPlatformTestCase() {
     }
 
     private fun assertCommittedEditInvalidates(
+        request: RelationRequest,
         callerFile: VirtualFile,
         target: KtNamedFunction,
         nativeScope: (NativeWorkObservation) -> GlobalSearchScope,
@@ -201,7 +213,7 @@ class HeavyKotlinScopeTest : HeavyPlatformTestCase() {
         IndexingTestUtil.waitUntilIndexesAreReady(project)
         val fresh = NativeWorkObservation()
         assertTrue(
-            fresh.forEachReference(target, nativeScope(fresh)) {
+            fresh.forEachReference(target, nativeScope(fresh), nativeScopeTestAdmission(request, fresh)) {
                 fail("committed edit removed the reference")
                 false
             }

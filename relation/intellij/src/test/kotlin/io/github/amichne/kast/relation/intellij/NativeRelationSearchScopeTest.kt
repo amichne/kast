@@ -201,6 +201,24 @@ internal class NativeRelationSearchScopeTest : RelationFileEnumerationFixture() 
     }
 
     @Test
+    fun `SDK intersections preserve the complete identity superset and the original admission`() {
+        var now = 0L
+        val collector = IntellijRelationCollector(request, clockNanoseconds = { now })
+        val original =
+            EnumeratedRelationScope(nativeScope { true }, prepare(plan()).complete(), IntellijReadObservation.None)
+        val admission =
+            NativeRelationScopeAdmission(IntellijReadObservation.None) { collector.admitProviderCallback {} }
+        val narrowed = admission.wrap(original).intersectWith(nativeScope { false })
+        val enumeration = checkNotNull(VirtualFileEnumeration.extract(narrowed))
+        assertArrayEquals(intArrayOf(11, 12), enumeration.asArray().sortedArray())
+        assertTrue(checkNotNull(enumeration.filesIfCollection).isEmpty())
+        assertFalse(narrowed.contains(a))
+        now = request.budget.resources.elapsedTimeLimit.value * 1_000_000L
+        assertThrows<NativeRelationScopeStopped> { enumeration.asArray() }
+        assertThrows<NativeRelationScopeStopped> { narrowed.intersectWith(nativeScope { true }) }
+    }
+
+    @Test
     fun `external cancellation and fixture failure propagate without becoming owned scope stops`() {
         for (failure in listOf(ProcessCanceledException(), IllegalStateException("Unexpected fixture access"))) {
             val admission = NativeRelationScopeAdmission(IntellijReadObservation.None) { throw failure }
@@ -216,8 +234,8 @@ internal class NativeRelationSearchScopeTest : RelationFileEnumerationFixture() 
         val terminations = mutableListOf<IntellijReadTermination>()
 
         override fun count(counter: IntellijReadCounter, contributor: IntellijReadContributor, amount: Int) {
-            if (counter == IntellijReadCounter.RELATION_SCOPE_CALLBACKS_HALTED) halted += amount
-            if (counter == IntellijReadCounter.RELATION_SCOPE_CALLBACKS_ADMITTED) admitted += amount
+            if (counter == IntellijReadCounter.RELATION_SCOPE_ADMISSIONS_HALTED) halted += amount
+            if (counter == IntellijReadCounter.RELATION_SCOPE_ADMISSIONS_READY) admitted += amount
         }
 
         override fun enterCall(call: IntellijReadCall): IntellijReadCallScope =

@@ -84,6 +84,7 @@ abstract class NativeReferenceFixtureTest : HeavyPlatformTestCase() {
             IntellijReadObservation.None.forEachReference(
                 fixture.target,
                 fixture.scope(IntellijReadObservation.None).nativeScope,
+                nativeScopeTestAdmission(fixture.request, IntellijReadObservation.None),
             ) { reference ->
                 rows += reference.element.containingFile.virtualFile.path to reference.element.textRange.startOffset
                 assertSame(fixture.target, reference.resolve())

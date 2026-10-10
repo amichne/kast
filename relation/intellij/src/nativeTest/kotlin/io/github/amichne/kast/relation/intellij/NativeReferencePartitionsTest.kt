@@ -67,7 +67,11 @@ class NativeReferencePartitionsTest : HeavyPlatformTestCase() {
         val stopped = PartitionObservation()
         var callbacks = 0
         assertFalse(
-            stopped.forEachReference(fixture.target, scope(fixture, stopped)) {
+            stopped.forEachReference(
+                fixture.target,
+                scope(fixture, stopped),
+                nativeScopeTestAdmission(fixture.request, stopped),
+            ) {
                 callbacks++
                 false
             }
@@ -80,7 +84,11 @@ class NativeReferencePartitionsTest : HeavyPlatformTestCase() {
             ProgressManager.getInstance()
                 .runProcess(
                     {
-                        cancelled.forEachReference(fixture.target, scope(fixture, cancelled)) {
+                        cancelled.forEachReference(
+                            fixture.target,
+                            scope(fixture, cancelled),
+                            nativeScopeTestAdmission(fixture.request, cancelled),
+                        ) {
                             indicator.cancel()
                             ProgressManager.checkCanceled()
                             true
@@ -100,21 +108,21 @@ class NativeReferencePartitionsTest : HeavyPlatformTestCase() {
         val fixture = fixture()
         val observed = PartitionObservation()
         val prepared = scope(fixture, observed) as EnumeratedRelationScope
-        val parts = prepared.referencePartitions().toList()
+        val parts = prepared.referencePartitions(nativeScopeTestAdmission(fixture.request, observed)).toList()
         assertEquals(2, parts.size)
         val targetFile = fixture.target.containingFile.virtualFile
         assertEquals(1, parts.count { it.contains(targetFile) })
         assertEquals(1, parts.count { it.contains(fixture.caller) })
         val narrowed = prepared.intersectWith(GlobalSearchScope.fileScope(project, targetFile))
         assertTrue(
-            observed.forEachReference(fixture.target, narrowed) {
+            observed.forEachReference(fixture.target, narrowed, nativeScopeTestAdmission(fixture.request, observed)) {
                 fail("No calls in the target file")
                 false
             }
         )
         val empty = prepared.intersectWith(GlobalSearchScope.EMPTY_SCOPE)
         assertTrue(
-            observed.forEachReference(fixture.target, empty) {
+            observed.forEachReference(fixture.target, empty, nativeScopeTestAdmission(fixture.request, observed)) {
                 fail("Empty complete scope")
                 false
             }
@@ -128,11 +136,21 @@ class NativeReferencePartitionsTest : HeavyPlatformTestCase() {
         }
         ready()
         val atCapacity = scope(fixture, PartitionObservation()) as EnumeratedRelationScope
-        assertEquals(EXPECTED_PARTITION_CAPACITY, atCapacity.referencePartitions().count())
+        assertEquals(
+            EXPECTED_PARTITION_CAPACITY,
+            atCapacity
+                .referencePartitions(nativeScopeTestAdmission(fixture.request, IntellijReadObservation.None))
+                .count(),
+        )
         file(fixture.caller.parent, "Beyond.kt", "package proof\nval beyond = 1\n")
         ready()
         val original = scope(fixture, PartitionObservation()) as EnumeratedRelationScope
-        assertSame(original, original.referencePartitions().single())
+        assertSame(
+            original,
+            original
+                .referencePartitions(nativeScopeTestAdmission(fixture.request, IntellijReadObservation.None))
+                .single(),
+        )
         val fallback = query(fixture, partitioned = true)
         assertEquals(1, fallback.calls[IntellijReadCall.REFERENCE_SEARCH])
         assertTrue(fallback.fileIdChecks > 0)
@@ -164,7 +182,8 @@ class NativeReferencePartitionsTest : HeavyPlatformTestCase() {
         assertEquals(expected, baseline.sorted())
         val sites = mutableListOf<String>()
         assertTrue(
-            observed.forEachReference(fixture.target, selected) { reference ->
+            observed.forEachReference(fixture.target, selected, nativeScopeTestAdmission(fixture.request, observed)) {
+                reference ->
                 assertSame(fixture.target, checkNotNull(reference.resolve()).navigationElement)
                 sites += reference.element.containingFile.virtualFile.path
                 true
@@ -273,7 +292,13 @@ class NativeReferencePartitionsTest : HeavyPlatformTestCase() {
             true
         }
         val exhausted =
-            if (partitioned) observed.forEachReference(fixture.target, selected, process = visit)
+            if (partitioned)
+                observed.forEachReference(
+                    subject = fixture.target,
+                    scope = selected,
+                    admission = nativeScopeTestAdmission(fixture.request, observed),
+                    process = visit,
+                )
             else ReferencesSearch.search(fixture.target, selected, false).forEach(Processor(visit))
         assertTrue(exhausted)
         assertEquals(listOf(fixture.caller.path to CALLER_OFFSET), sites)

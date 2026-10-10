@@ -23,9 +23,9 @@ internal class NativeRelationScopeAdmission(
         observation.call(IntellijReadCall.RELATION_SCOPE_CALLBACK_ADMISSION) {
             when (admit()) {
                 IntellijRelationProviderEnumerationAdmission.READY ->
-                    observation.count(IntellijReadCounter.RELATION_SCOPE_CALLBACKS_ADMITTED)
+                    observation.count(IntellijReadCounter.RELATION_SCOPE_ADMISSIONS_READY)
                 IntellijRelationProviderEnumerationAdmission.HALTED -> {
-                    observation.count(IntellijReadCounter.RELATION_SCOPE_CALLBACKS_HALTED)
+                    observation.count(IntellijReadCounter.RELATION_SCOPE_ADMISSIONS_HALTED)
                     throw NativeRelationScopeStopped()
                 }
             }
@@ -71,6 +71,9 @@ internal class NativeRelationScopeAdmission(
             admission.check()
             return delegate.compare(first, second)
         }
+
+        override fun intersectWith(scope: GlobalSearchScope): GlobalSearchScope =
+            admission.wrap(delegate.intersectWith(scope))
     }
 
     private class EnumeratedScope(
