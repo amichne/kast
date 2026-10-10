@@ -4,6 +4,8 @@ const QUERY_DELIVERY_LIMITS = Object.freeze({ pages: 64, bytes: 262_144 });
 const deliveryObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const deliveryInteger = value => Number.isSafeInteger(value) && value >= 0 && value <= 1_000_000;
 const deliveryReference = value => typeof value === 'string' && /^result:v1:[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(value);
+const deliveryBlocker = document => document.qualification?.progress?.next_action === 'increase_execution_budget'
+  ? 'BUDGET_INCREASE_REQUIRED' : document.qualification?.progress?.type === 'retention_unavailable' ? 'DELIVERY_UNAVAILABLE' : null;
 const deliveryContinuation = value => typeof value === 'string' && /^query-output:v1:[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(value);
 
 /**
@@ -38,7 +40,9 @@ async function awaitQueryDelivery(params, invoke, policy, signal, now = Date.now
   const invocation = first.invocation;
   const count = invocation?.accumulated_row_count;
   let liveIdentity = first.live;
-  let rowCursor = first.next_cursor ?? (invocation?.preview?.type === 'PREFIX' ? invocation.preview.row_count : count);
+  const initialReadEnd = params.request?.type === 'READ_RESULT' && deliveryInteger(params.request.cursor ?? 0) && Array.isArray(first.items)
+    ? (params.request.cursor ?? 0) + first.items.length : undefined;
+  let rowCursor = first.next_cursor ?? (invocation?.preview?.type === 'PREFIX' ? invocation.preview.row_count : count ?? initialReadEnd);
   let evidenceCursor = first.evidence_window?.end ?? 0;
   let evidenceTotal = first.evidence_window?.total ?? null;
   let continuation = first.continuation ?? first.qualification?.progress?.checkpoint?.token;
@@ -63,7 +67,7 @@ async function awaitQueryDelivery(params, invoke, policy, signal, now = Date.now
   }, ...(params.verbose != null ? { verbose: params.verbose } : {}) });
   if (signal?.aborted) return bounded('CANCELLED');
   if (now() - started >= policy.callTimeoutMillis) return bounded('TIME_LIMIT');
-  if (first.qualification?.progress?.next_action === 'increase_execution_budget') return bounded('BUDGET_INCREASE_REQUIRED');
+  if (deliveryBlocker(first)) return bounded(deliveryBlocker(first));
   if (rejectedEvidence) {
     if (!deliveryReference(retained) || rejectedEvidence.nextQuery?.request?.type !== 'READ_RESULT' ||
         rejectedEvidence.nextQuery.request.result !== retained) return bounded('MALFORMED_PAGE');
@@ -96,6 +100,10 @@ async function awaitQueryDelivery(params, invoke, policy, signal, now = Date.now
     }
     if (presentationBytes + Buffer.byteLength(JSON.stringify(reply), 'utf8') + 4096 >= QUERY_DELIVERY_LIMITS.bytes)
       return bounded('BYTE_LIMIT');
+    if (deliveryBlocker(page)) {
+      pages.push(reply);
+      return bounded(deliveryBlocker(page));
+    }
     if (next.request.type === 'READ_RESULT') {
       const items = page.items;
       const window = page.evidence_window;

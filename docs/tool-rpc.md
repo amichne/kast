@@ -105,13 +105,14 @@ even when its delivery finishes. No narrower RUN or increased semantic grant is
 submitted to recover output.
 
 One model/tool turn can therefore require three physical RPCs. These are
-separate metrics. The byte fields count UTF-8 physical request and response bytes (including response framing); it does not
-measure model tokens or savings. Catalog discovery is outside the invocation's
+separate metrics. The byte fields count UTF-8 physical request and response bytes, including
+response framing; they do not measure model tokens or savings. Catalog discovery is outside the invocation's
 RPC count.
 
 Delivery permits at most 64 physical invocation RPCs and 262,144 UTF-8 bytes in
 its aggregate presentation, within one catalog call deadline. Reaching a limit
-returns `PAGE_LIMIT`, `BYTE_LIMIT`, or `TIME_LIMIT`; the result reference remains
+returns `PAGE_LIMIT`, `BYTE_LIMIT`, or `TIME_LIMIT`; a requested budget increase
+returns `BUDGET_INCREASE_REQUIRED` without raising the original grant. The result reference remains
 available under the existing bounded host retention lifetime. An initial reply
 that alone exceeds the presentation ceiling returns a small `BYTE_LIMIT`
 observation with `initial: null`, `original_outcome`, and the reference if issued.
@@ -123,7 +124,9 @@ Cancellation stops the current child and prevents further delivery calls.
 Malformed pages, changed question/result identities, and nonadvancing cursors
 terminate with `MALFORMED_PAGE`, `IDENTITY_MISMATCH`, or `NON_ADVANCING`. An expired,
 evicted, stale or disposed handle retains its exact canonical rejection in the
-last delivered page and stops with `DELIVERY_UNAVAILABLE`. A lost delivery reply
+last delivered page and stops with `DELIVERY_UNAVAILABLE`. A qualified prefix with
+`retention_unavailable` also stops with that blocker: its tokenless response does
+not prove delivery of the lost suffix. A lost delivery reply
 also stops without retry. If the initial submission response is lost, its bounded
 transport error is surfaced and the client never blindly resubmits. Public query
 transport currently has no cancellation/reattachment identity that proves the

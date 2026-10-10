@@ -101,30 +101,7 @@ internal object QueryDeliveryFixtures {
         }
 
     fun serialized(): String {
-        val cases =
-            linkedMapOf<String, ToolRpcReply>(
-                "inline" to page(0, ROW_COUNT, 0, 0, summary = true),
-                "prefix" to page(0, 1, 0, 0, summary = true, evidenceTotal = 2),
-                "emptyPrefix" to page(0, 0, 0, 0, summary = true, evidenceTotal = 2),
-                "rows" to page(1, ROW_COUNT, 0, 1, evidenceTotal = 2),
-                "allRows" to page(0, ROW_COUNT, 0, 1, evidenceTotal = 2),
-                "emptyAdvancing" to page(0, 0, 0, 1, evidenceTotal = 2),
-                "rowsAfterEvidence" to page(0, ROW_COUNT, 1, 2, evidenceTotal = 2),
-                "tail" to page(ROW_COUNT, ROW_COUNT, 1, 2, evidenceTotal = 2),
-                "rejected" to rejection(),
-                "proof" to page(0, ROW_COUNT, 0, 1, evidenceTotal = 2, rejectedProof = true),
-                "proofTail" to page(ROW_COUNT, ROW_COUNT, 1, 2, evidenceTotal = 2, rejectedProof = true),
-                "outputPrefix" to page(0, 1, 0, 0, output = true),
-                "outputFinal" to page(1, ROW_COUNT, 0, 0, outputSuffix = true),
-                "stale" to
-                    ToolRpcReply.RejectedDocument(
-                        project(
-                            OperationOutcome.Rejected(
-                                QueryRunRejection.ExecutionRejected(QueryExecutionRejectionDocument.RESULT_STALE_BASIS)
-                            )
-                        )
-                    ),
-            )
+        val cases = cases()
         val schemas = LiveReadOutputSchemaTest()
         for (reply in cases.values) {
             val document =
@@ -144,6 +121,73 @@ internal object QueryDeliveryFixtures {
             cases,
         )
     }
+
+    private fun cases(): Map<String, ToolRpcReply> =
+        linkedMapOf(
+            "inline" to page(0, ROW_COUNT, 0, 0, summary = true),
+            "prefix" to page(0, 1, 0, 0, summary = true, evidenceTotal = 2),
+            "emptyPrefix" to page(0, 0, 0, 0, summary = true, evidenceTotal = 2),
+            "rows" to page(1, ROW_COUNT, 0, 1, evidenceTotal = 2),
+            "allRows" to page(0, ROW_COUNT, 0, 1, evidenceTotal = 2),
+            "emptyAdvancing" to page(0, 0, 0, 1, evidenceTotal = 2),
+            "rowsAfterEvidence" to page(0, ROW_COUNT, 1, 2, evidenceTotal = 2),
+            "tail" to page(ROW_COUNT, ROW_COUNT, 1, 2, evidenceTotal = 2),
+            "rejected" to rejection(),
+            "proof" to page(0, ROW_COUNT, 0, 1, evidenceTotal = 2, rejectedProof = true),
+            "proofTail" to page(ROW_COUNT, ROW_COUNT, 1, 2, evidenceTotal = 2, rejectedProof = true),
+            "outputPrefix" to page(0, 1, 0, 0, output = true),
+            "outputFinal" to page(1, ROW_COUNT, 0, 0, outputSuffix = true),
+            "outputUnavailable" to
+                outputBlocker(
+                    QueryQualifiedProgressDocument.RetentionUnavailable(QueryPreparedCoverageDocument.Complete)
+                ),
+            "outputBudget" to outputBlocker(budgetProgress()),
+            "readBudget" to outputBlocker(budgetProgress(), retained = true),
+            "stale" to unavailable(QueryExecutionRejectionDocument.RESULT_STALE_BASIS),
+            "expiredResult" to unavailable(QueryExecutionRejectionDocument.RESULT_UNAVAILABLE),
+            "disposedResult" to unavailable(QueryExecutionRejectionDocument.RESULT_UNAVAILABLE),
+            "expiredOutput" to unavailable(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE),
+            "disposedOutput" to unavailable(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE),
+        )
+
+    private fun budgetProgress() =
+        QueryQualifiedProgressDocument.Resumable(
+            QueryCheckpointDocument.RetainedOutput(
+                QueryExecutionContinuation.Output.parse("query-output:v1:00000000-0000-0000-0000-000000000002")
+                    .refined(),
+                QueryPreparedCoverageDocument.Complete,
+            ),
+            ReadResumeActionDocument.INCREASE_EXECUTION_BUDGET,
+        )
+
+    private fun outputBlocker(progress: QueryQualifiedProgressDocument, retained: Boolean = false): ToolRpcReply {
+        val result =
+            QueryRunResult(
+                question,
+                bounded(rows.subList(1, if (retained) ROW_COUNT else 2)),
+                bounded(if (retained) evidence.take(1) else emptyList()),
+                retention = retention(!retained),
+                evidenceWindow = if (retained) evidenceWindow(0, 1, 2) else null,
+            )
+        val qualification =
+            QueryRunQualification.create(
+                    QueryKnownMinimum.parse(ROW_COUNT).refined(),
+                    listOf(QueryLimitationDocument.RETENTION_LIMIT_REACHED),
+                    progress,
+                )
+                .refined()
+        return ToolRpcReply.Qualified(
+            project(
+                OperationOutcome.Qualified(
+                    EvidenceEnvelope(CanonicalOperation.QUERY_RUN.id, basis, result),
+                    qualification,
+                )
+            )
+        )
+    }
+
+    private fun unavailable(reason: QueryExecutionRejectionDocument) =
+        ToolRpcReply.RejectedDocument(project(OperationOutcome.Rejected(QueryRunRejection.ExecutionRejected(reason))))
 
     private fun page(
         start: Int,
