@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from enterprise_cache_oracle import CACHE, FIXTURE, FixtureIntegrityError, load_oracle, materialize
 import kast_ide
-from qualify_enterprise_cache import Budget, DirectoryScope, Location, Output, PackageScope, Payload, PhotoWalkBudget, Refs, RowsOutput, Run, Search, Walk, encode, request_validator, retained_pages, run
+from qualify_enterprise_cache import Budget, DirectoryScope, Location, Output, PackageScope, Payload, PhotoWalkBudget, Refs, RowsOutput, Run, ScopedTrace, Search, SourceDomain, Trace, Walk, encode, request_validator, retained_pages, run
 
 
 class EnterpriseCacheQualificationTest(unittest.TestCase):
@@ -72,6 +72,30 @@ class EnterpriseCacheQualificationTest(unittest.TestCase):
         self.assertEqual(request['request']['executionBudget'], {'maxElapsedMs': 15000, 'maxResults': 100})
         self.assertEqual(request['request']['steps'], [{'type': 'WALK', 'relation': 'CALLEES', 'maximumDepth': 1}])
         request_validator().validate(request)
+
+    def test_scoped_trace_retains_the_explicit_domain_under_the_public_schema(self):
+        source = Search('CacheManager', DirectoryScope(), ('CLASS',))
+        domain = SourceDomain(sourceSets=('main', 'test'), sourcePolicy='PRODUCTION_AND_TEST',
+                              directory='src/main/kotlin/example/cache')
+        request = encode(Payload(Run(source, steps=(ScopedTrace(domain),))))
+        self.assertEqual(request['request']['steps'], [{
+            'type': 'TRACE', 'expansionScope': {
+                'type': 'SOURCE_DOMAIN', 'sourceSets': ['main', 'test'],
+                'sourcePolicy': 'PRODUCTION_AND_TEST', 'generatedSources': 'EXCLUDE',
+                'directory': 'src/main/kotlin/example/cache'}}])
+        request_validator().validate(request)
+
+    def test_default_trace_keeps_workspace_expansion_omitted_without_changing_the_grant(self):
+        source = Search('CacheManager', DirectoryScope(), ('CLASS',))
+        workspace = encode(Payload(Run(source, steps=(Trace(),))))
+        scoped = encode(Payload(Run(source, steps=(ScopedTrace(SourceDomain()),))))
+        self.assertEqual(workspace['request']['steps'], [{'type': 'TRACE'}])
+        self.assertEqual(workspace['request']['executionBudget'], {
+            'maxElapsedMs': 15000, 'maxResults': 100,
+            'maxWorkUnits': 100000, 'maxReturnedBytes': 524288})
+        self.assertEqual(workspace['request']['source'], scoped['request']['source'])
+        self.assertEqual(workspace['request']['executionBudget'], scoped['request']['executionBudget'])
+        request_validator().validate(workspace)
 
     def test_retained_rows_and_evidence_have_independent_cursors(self):
         first = {'live': 'basis', 'items': ['first'], 'next_cursor': 1,
