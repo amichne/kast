@@ -26,8 +26,8 @@ export function evaluationGuard(policy,record) {
     pi.on('tool_result',(event,ctx)=>{
       const textBytes=(event.content??[]).reduce((sum,c)=>sum+(c.type==='text'?Buffer.byteLength(c.text):0),0);
       const envelope=decodeEnvelope(event.content,event.toolName);
-      const admission=policy.toolResult(envelope,textBytes,event.toolCallId);
-      record({type:'native_reply',callId:event.toolCallId,envelopeType:envelope.type,textBytes,decision:admission});
+      const admission=policy.toolResult(envelope,textBytes,event.toolCallId,event.isError);
+      record({type:'native_reply',callId:event.toolCallId,envelopeType:envelope.type,hostIsError:typeof event.isError==='boolean'?event.isError:null,deliveryStop:envelope.delivery?.stop??null,physicalRpcsReported:envelope.delivery?.rpc_count??null,textBytes,decision:admission});
       if(!admission.allow) ctx.abort();
     });
     pi.on('message_end',(event,ctx)=>{

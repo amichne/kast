@@ -237,3 +237,80 @@ test('closed production RPC failures retain their code without fabricated native
   }
   assert.deepEqual(decodeEnvelope([{type:'text',text:'{"type":"rejected","failure":"UNKNOWN"}'}]),{type:'invalid'});
 });
+
+const deliveryCases=JSON.parse(readFileSync(new URL('./pi-fixtures/query-delivery-cases.json',import.meta.url),'utf8')).cases;
+function deliveredCase(name,options={}) {
+  const policy=new CasePolicy({...config(),delivery:{...config().delivery,reportedTokens:60000},...options}),guard=callbacks(policy);
+  guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'}}});
+  const fixture=deliveryCases[name];
+  guard.emit('tool_result',{...resultEvent(fixture.result),isError:fixture.hostFailure});
+  return {policy,guard,fixture};
+}
+test('actual shared-client delivered complete and qualified preserve initial semantics and count physical RPCs separately',()=>{
+  for(const [name,nativeOutcome,finalOutcome] of [['complete','EXHAUSTIVE_RESULT','FINAL_ANSWER'],['qualified','QUALIFIED_RESULT','QUALIFIED_ANSWER']]) {
+    const {policy,guard,fixture}=deliveredCase(name);
+    assert.equal(guard.aborted,0);assert.equal(policy.report().phase,'DELIVERY');
+    assert.equal(policy.report().nativeOutcome,nativeOutcome);
+    assert.equal(policy.report().modelProposals.length,1);assert.equal(policy.report().semanticRepliesObserved,1);
+    const delivery=policy.report().queryDeliveries[0];
+    assert.equal(delivery.stop,'DELIVERED');assert.equal(delivery.rpcCount,fixture.result.delivery.rpc_count);
+    assert.equal(delivery.hostFailureExpected,fixture.hostFailure);
+    assert.equal(policy.report().modelProposals[0].hostIsErrorObserved,fixture.hostFailure);
+    assert.deepEqual(delivery.canonicalOutcomes.map(r=>r.type),[fixture.result.initial,...fixture.result.pages].map(r=>r.type));
+    if(name==='qualified')assert.deepEqual(policy.report().qualification,fixture.result.initial.document.qualification);
+    assert.equal(policy.beforeProvider(pinned).allow,true);policy.modelUsage({input:17000,output:100,totalTokens:17100});
+    policy.assistantEnded({stopReason:'stop',content:[{type:'text',text:'Bounded interpretation of delivered evidence.'}]});
+    assert.equal(policy.report().outcome,finalOutcome);assert.equal(policy.report().requiredEvidenceVerified,false);
+    const second=deliveredCase(name);assert.equal(second.policy.toolCall('query_symbols',{request:{type:'RUN'}},'rerun').allow,false);
+  }
+});
+test('actual shared-client delivered rejection proof stays rejected and cannot trigger another retained read',()=>{
+  const {policy,guard,fixture}=deliveredCase('rejectedProof',{expectedSemanticCalls:2});
+  assert.equal(guard.aborted,1);assert.equal(policy.report().outcome,'INTENTIONAL_REJECTION');
+  assert.equal(policy.report().semanticRejection.code,'COMPLETION_UNPROVEN');
+  assert.equal(policy.report().semanticRejection.knownMinimum,43);assert.equal(policy.report().exhaustiveEvidence,false);
+  assert.equal(policy.report().queryDeliveries[0].hostFailureExpected,true);
+  assert.equal(policy.report().queryDeliveries[0].rpcCount,3);assert.equal(policy.report().semanticRepliesObserved,1);
+  assert.equal(policy.beforeProvider(pinned).allow,false);
+  const opted=deliveredCase('rejectedProof',{evidenceOnlyDelivery:true});
+  assert.equal(opted.policy.report().phase,'DELIVERY');
+  assert.equal(opted.policy.toolCall('query_symbols',{request:fixture.result.initial.document.rejection.detail.evidence.nextQuery.request},'duplicate-proof').allow,false);
+});
+test('actual shared-client blockers cancellation and lost-byte initial remain finite delivery failures with zero semantic reruns',()=>{
+  for(const name of ['unavailable','expired','budgetIncrease','readBudgetIncrease','cancelled','cancelledAfterPage','lostDelivery','deadline','byteLimitWithoutInitial']) {
+    const {policy,guard,fixture}=deliveredCase(name,{expectedSemanticCalls:2}),report=policy.report();
+    assert.equal(report.outcome,'CLIENT_DELIVERY_BLOCKED',name);assert.equal(guard.aborted,1);
+    assert.equal(report.queryDeliveries[0].stop,fixture.result.delivery.stop);
+    assert.equal(report.queryDeliveries[0].rpcCount,fixture.result.delivery.rpc_count);
+    assert.equal(report.queryDeliveries[0].hostFailureExpected,true);
+    assert.equal(report.modelProposals[0].hostIsErrorObserved,true);
+    assert.equal(report.exhaustiveEvidence,false);assert.equal(report.requiredEvidenceVerified,false);
+    assert.equal(policy.beforeProvider(pinned).allow,false);
+    assert.equal(policy.toolCall('query_symbols',{request:{type:'RUN'}},'rerun').allow,false);
+    assert.equal(policy.toolCall('query_symbols',{request:{type:'RESUME'}},'resume').allow,false);
+    if(name==='expired')assert.equal(report.queryDeliveries[0].canonicalOutcomes.at(-1).rejection.reason,'result-unavailable');
+    if(name==='unavailable'||name==='budgetIncrease')assert.deepEqual(report.queryDeliveries[0].canonicalOutcomes.at(-1).qualification,fixture.result.pages.at(-1).document.qualification);
+    if(name==='byteLimitWithoutInitial') {
+      assert.equal(report.nativeOutcome,'UNOBSERVED');assert.equal(report.semanticRepliesObserved,0);
+      assert.equal(report.queryDeliveries[0].originalOutcome,'complete');
+    }
+  }
+});
+test('shared-client saved delivery continues only its existing received result and rejects incompatible envelopes',()=>{
+  for(const name of ['complete','qualified']) {
+    const policy=new CasePolicy({...config(),delivery:{...config().delivery,reportedTokens:60000}});
+    const envelope=decodeEnvelope(resultEvent(deliveryCases[name].result).content);
+    assert.equal(policy.restoreReceivedResult(envelope,10000).allow,true);
+    assert.equal(policy.report().phase,'DELIVERY');assert.equal(policy.report().semanticRepliesObserved,0);
+    assert.equal(policy.report().deliveryPhysicalRpcCountReported,0);
+    assert.equal(policy.report().savedDeliveryPhysicalRpcCountReported,deliveryCases[name].result.delivery.rpc_count);
+    assert.equal(policy.toolCall('query_symbols',{request:{type:'RUN'}},'retry').allow,false);
+  }
+  const failed=new CasePolicy(config());
+  assert.equal(failed.restoreReceivedResult(decodeEnvelope(resultEvent(deliveryCases.lostDelivery.result).content),2000).reason,'CLIENT_DELIVERY_BLOCKED');
+  assert.equal(decodeEnvelope(resultEvent(deliveryCases.lostDelivery.result).content).type,'query_delivery','failed RPC count can exceed 1 + pages');
+  for(const change of [r=>r.delivery.stop='UNKNOWN',r=>r.delivery.rpc_count=0,r=>r.pages.push(structuredClone(r)),r=>r.initial=null]) {
+    const value=structuredClone(deliveryCases.complete.result);change(value);
+    assert.deepEqual(decodeEnvelope(resultEvent(value).content),{type:'invalid'});
+  }
+});

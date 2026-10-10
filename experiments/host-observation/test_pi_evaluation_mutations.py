@@ -56,6 +56,22 @@ class PiEvaluationMutationTest(unittest.TestCase):
              "transport:'sse',cacheWarming:'off'",
              "transport:'sse',cacheWarming:'streaming'",
              "worker explicitly disables unaccounted warming"),
+            ("delivery-upgrades-initial-qualification", "pi_evaluation_policy.mjs",
+             "this.acceptQuery(envelope.initial,true)",
+             "this.acceptQuery(envelope.pages.at(-1)??envelope.initial,true)",
+             "actual shared-client delivered complete and qualified"),
+            ("delivery-blocker-treated-as-success", "pi_evaluation_policy.mjs",
+             "if(envelope.delivery.stop!=='DELIVERED')",
+             "if(false)",
+             "actual shared-client blockers cancellation"),
+            ("physical-rpc-count-collapsed", "pi_evaluation_delivery.mjs",
+             "rpcCount:d.rpc_count",
+             "rpcCount:1",
+             "actual shared-client delivered complete and qualified"),
+            ("failed-rpc-count-rejected", "pi_evaluation_delivery.mjs",
+             "value.pages.length+1>d.rpc_count",
+             "value.pages.length+1!==d.rpc_count",
+             "actual shared-client blockers cancellation"),
         ]
         for name, filename, original, replacement, selection in mutations:
             with self.subTest(mutation=name), tempfile.TemporaryDirectory(prefix="kast-pi-mutation-") as directory:

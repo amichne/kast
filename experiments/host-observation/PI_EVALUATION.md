@@ -112,12 +112,13 @@ persists that branch without replacing older entries. `session.agent.continue()`
 consumes it without a new task, trimming, summary, reissued query or coaching.
 The original session entries remain intact. DELIVERY blocks all new tool calls.
 
-`test_pi_evaluation_mutations.py` kills eleven changes to the real rules: removing
+`test_pi_evaluation_mutations.py` kills fifteen changes to the real rules: removing
 the terminal gate, sharing the final budget, dropping cached-input accounting,
 allowing semantic work in DELIVERY, weakening exact evidence-read admission,
 adding a coaching prompt, rejecting valid qualified replies, losing original
 coverage, ignoring measured input, selecting unsafe automatic transport, and
-enabling unaccounted warming. A syntax/import
+enabling unaccounted warming, upgrading initial delivery qualification, erasing a
+delivery blocker, collapsing physical RPC count and rejecting a failed-RPC count. A syntax/import
 or provisioning failure does not count as a killed mutation.
 
 ## Installed SDK check without inference
@@ -163,3 +164,41 @@ retain the exact transcript and prove zero additional semantic calls. Compare
 rows and qualification with an external oracle; label contention. No semantic
 retry, schema reduction, source mutation, new login or global setting edit is
 part of that plan.
+
+## #995 query delivery integration
+
+The classifier also admits the actual `query_delivery` envelope at reviewed
+client head `36a2e6d256d620cf37a4e7e622ee643d4c38c178`. Raw canonical
+adapter replies remain compatible. The harness observes one logical result;
+it never implements paging, advances cursors or invokes the shared client again.
+
+`delivery.stop=DELIVERED` proves output delivery only. Initial qualification and
+rejection remain authoritative even when a suffix is complete. All canonical
+inner qualifications/rejections remain unchanged in the model-visible result
+and private transcript; reports retain structured summaries of each outcome.
+Initial rejected proof remains an intentional rejection. The explicitly enabled
+evidence-only interpretation mode may interpret already delivered proof under
+its bounded DELIVERY allowance, but cannot read that proof again.
+
+Non-DELIVERED statuses are `CLIENT_DELIVERY_BLOCKED` with the exact client stop,
+including unavailable delivery, required budget increase and cancellation. No
+RUN, RESUME, retained read or provider continuation can recover that blocked
+case. A BYTE_LIMIT envelope with a null initial reply preserves original_outcome
+as a hint, without inventing native coverage. No remote cancellation settlement
+is inferred from the client's CANCELLED observation.
+
+`queryDeliveries` records stop, physical rpc_count and UTF-8 byte counts separately
+from logical model proposals and semantic replies. A failed RPC can increase
+rpc_count without adding a page. Saved-result continuation reports historical
+delivery RPC counts separately and executes zero new semantic calls. Pi's
+observed isError flag and the client's expected host failure remain distinct
+from semantic completion; host success is not proof of exhaustive evidence.
+
+The twelve envelope fixtures are produced by the actual pinned shared client,
+using #995's Kotlin-serialized and schema-admitted canonical fixture owner.
+`generate_pi_delivery_fixtures.mjs` asserts both input/source digests and calls
+that client's original functions through the same export-only exposure used by
+its production tests. Only external transport is doubled. Reproducibility and
+class/source hashes are in `pi-fixtures/README.md`. These 43-row contract fixtures
+are not a replacement for the frozen public 1001-reference live scenario. No
+model, native query, production adapter edit or activation was performed.

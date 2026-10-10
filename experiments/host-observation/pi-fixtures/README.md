@@ -45,3 +45,41 @@ are read, and no semantic tools or provider requests execute. It demonstrates
 cached WebSocket reuse sending one denied request, and the isolated SSE worker
 sending zero denied requests. It is compatibility/transport proof, not live
 model, native query or exhaustive-oracle evidence.
+
+# Reviewed shared-client envelope provenance
+
+`delivery-canonical-rpc.json` comes from the actual compiled #995 fixture owner
+`QueryDeliveryFixtures.INSTANCE.serialized()`, called by
+`PiDeliveryCanonicalFixtures.java`. That owner constructs domain facts, uses the
+production Kotlin serializers, and asserts every document against its actual
+query schema. No owner checkout or compiled file was modified.
+
+Pinned #995 source: `36a2e6d256d620cf37a4e7e622ee643d4c38c178`.
+
+- `cli/src/main/js/query-delivery.mjs` SHA256: `681d1291a6afabe9614efbdc8d0f12095a421f0ade72fb8e18d7a54fd3b366fd`
+- `QueryDeliveryFixtures.kt` SHA256: `e7067d689a70cbc29f269aeb62c0352028145675e8e23ada173f9e0ba480a5bc`
+- Actual compiled fixture class SHA256: `11dfeab7a65936ce7628d968de9f29628e9d1943d08478df4edb03d37162656d`
+- Canonical JSON SHA256: `868a92ac907a860b35ea08dee088f25661aa1535c011467786fc2000231705ad`
+
+`query-delivery-cases.json` is emitted by that pinned production shared client
+using these canonical inputs. It covers complete, qualified, rejected proof,
+suffix retention loss, expired result, output/read budget increases, cancellation
+before/after a page, lost delivery, aggregate deadline, and oversized initial
+presentation with null initial. The oversized input control repeats the owning
+client test's deliberate name-byte overflow; its envelope is still produced by
+the real client. No positive envelope is hand-shaped.
+
+Reproduce the stored envelope bytes with the exact client source:
+
+```sh
+node experiments/host-observation/generate_pi_delivery_fixtures.mjs \
+  "$CLIENT_SOURCE" experiments/host-observation/pi-fixtures/delivery-canonical-rpc.json \
+  /tmp/query-delivery-cases.json
+```
+
+The generator changes no production source; it exposes the two existing
+functions only, doubles external RPC transport and checks that every request
+after the initial submission is READ_RESULT or output-only RESUME. The
+classifier/controller do not contain continuation-management logic. These are
+portable client/harness contract observations, not native work, owner-clock
+expiry, cancellation settlement, or model usability evidence.
