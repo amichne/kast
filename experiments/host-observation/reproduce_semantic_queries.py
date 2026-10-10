@@ -18,6 +18,9 @@ from run_host_acceptance import wait_for
 from native_host_selection import select_native_host, admit_same_host, RejectedNativeHost
 from replay_requests import (WorkloadProfile, Workload, NEGATIVE_DECLARATION_NAME,
     KAST_DIRECTORY, KAST_SCOPED_DIRECTORY, comparison_requests, budget as request_budget)
+import replay_requests as replay_wire
+from retained_pages import (presentation, PresentationComplete, PresentationNext, PresentationRejected,
+    PresentationFailure)
 from hosted_timing import (OBSERVATION_POLICY, ObservationWindow, JoinedTiming, UnavailableTiming,
     TimingFailure, collect_observations, read_observations, join_timing, load_window, release_observed)
 
@@ -1030,6 +1033,7 @@ def continuation(response):
 
 
 def drain_workload(request, invoke, max_calls):
+    initial = request
     calls, seen, live = [], set(), None
     for _ in range(max_calls):
         call = invoke(request)
@@ -1042,11 +1046,22 @@ def drain_workload(request, invoke, max_calls):
             break
         live = basis
         token = continuation(response)
-        if token is None or token in seen:
-            break
-        seen.add(token)
-        request = dict(verbose=True, request=dict(type='RESUME', continuation=token,
-                       executionBudget=request['request']['executionBudget']))
+        grant = replay_wire.ExecutionBudget(**initial['request']['executionBudget'])
+        if token is not None:
+            if token in seen: break
+            seen.add(token)
+            request = asdict(replay_wire.Query(replay_wire.Resume(token, grant)))
+        else:
+            progress = presentation(calls)
+            if not isinstance(progress, PresentationNext): break
+            selected = initial['request']['output']
+            if selected['type'] == 'SYMBOLS':
+                output = replay_wire.Symbols([replay_wire.SymbolField(f) for f in selected['fields']])
+            elif selected['type'] == 'OCCURRENCES':
+                output = replay_wire.Occurrences()
+            else: raise ValueError('UNSUPPORTED_WORKLOAD_OUTPUT')
+            request = asdict(replay_wire.Query(replay_wire.ReadResult(
+                progress.result.value, progress.cursor.value, output, grant, progress.evidence_cursor.value)))
     return calls
 
 
@@ -1238,6 +1253,11 @@ def finish_trial(workload, repetition, warmup, calls, total_nanos, first_usable,
         if len({json.dumps(x.get('live'), sort_keys=True) for x in responses}) != 1:
             state = 'INCOMPLETE'
             unavailable.append('HOST_OR_EPOCH_MOVED')
+        presented = presentation(calls)
+        if isinstance(presented, (PresentationNext, PresentationRejected)):
+            if state == 'COMPLETE': state = 'INCOMPLETE'
+            unavailable.append(presented.failure.value if isinstance(presented, PresentationRejected)
+                               else PresentationFailure.UNREAD.value)
         try: semantic = stable_semantics(responses)
         except ValueError as error:
             unavailable.append(str(error))

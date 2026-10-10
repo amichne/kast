@@ -104,6 +104,10 @@ See [ACCEPTANCE.md](ACCEPTANCE.md) for executed evidence and promotion limits. I
 
 ## Semantic replay timing
 
+The workload runner drains producer checkpoints with `RESUME`. A complete producer can still return a retained preview with unread rows or evidence. The runner consumes those pages with `READ_RESULT`, keeping the original output selection and execution budget. It advances the row cursor and evidence cursor independently. It requires stable result ownership, live authority, unique row identities and contiguous cursor positions. Unknown presentation variants or inconsistent pages fail admission. Reaching the call limit with unread pages leaves the trial incomplete. A retained rejection preview never becomes a complete result.
+
+Older receipts that stopped at a retained prefix need a fresh capture. Re-admitting their saved calls records unread pages; it cannot supply missing rows or evidence.
+
 `reproduce_semantic_queries.py replay-workloads --idea-log <idea.log>` saves each call's appended records in `hosted-observations.json`. Collection uses the original 250 ms limit, two MiB byte limit and one immediate log rotation. It waits for the response's single bound host/epoch receipt, its explicit `kast_transport_read` join and its connection release. It never sends another query to collect diagnostics.
 
 `hosted-timing.json` retains transport stages, smart-mode waits and each joined read's diagnostic document and phase entries. Read-action waits, native calls and native-search callback counts keep their original qualifications in that document. Presemantic retries keep distinct read IDs under one connection. Missing joins, duplicate identities, ambiguous response correlation, partial stages and malformed records produce finite unavailable results with the observed prefix.
