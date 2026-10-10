@@ -15,6 +15,7 @@ import subprocess
 import time
 
 from run_host_acceptance import wait_for
+from native_host_selection import select_native_host, admit_same_host, RejectedNativeHost
 from replay_requests import (WorkloadProfile, Workload, NEGATIVE_DECLARATION_NAME,
     KAST_DIRECTORY, KAST_SCOPED_DIRECTORY, comparison_requests, budget as request_budget)
 from hosted_timing import (OBSERVATION_POLICY, ObservationWindow, JoinedTiming, UnavailableTiming,
@@ -82,9 +83,33 @@ NATIVE_COMMON_OWNERS = frozenset({
 })
 
 
+RELATION_WORK_NATIVE_OWNERS = frozenset({
+    'io.github.amichne.kast.query.service.QueryTraceTasksKt',
+    'io.github.amichne.kast.relation.intellij.AdmittedRelationScopes',
+    'io.github.amichne.kast.relation.intellij.IntellijRelationScopeCompilerKt',
+    'io.github.amichne.kast.relation.intellij.CompiledRelationScope',
+    'io.github.amichne.kast.relation.intellij.RelationFileEnumerationPlan',
+    'io.github.amichne.kast.relation.intellij.RelationFileInventory',
+    'io.github.amichne.kast.relation.intellij.CompleteRelationFileUniverse',
+    'io.github.amichne.kast.relation.intellij.EnumeratedRelationScope',
+    'io.github.amichne.kast.relation.intellij.ObservedRelationSearchKt',
+    'io.github.amichne.kast.topology.intellij.IntellijSemanticDependencyCapture',
+    'io.github.amichne.kast.topology.intellij.SemanticDependencyReadInputs',
+    'io.github.amichne.kast.topology.intellij.SemanticNativeSdkFilePlan',
+    'io.github.amichne.kast.topology.intellij.SemanticNativeFileMemo',
+    'io.github.amichne.kast.runtime.hosted.HostedSemanticCallbackFacts',
+    'io.github.amichne.kast.runtime.hosted.HostedReadCallbackPartitions',
+    'io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadActionAccounting',
+    'io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadSearchAccounting',
+    'io.github.amichne.kast.workspace.intellij.read.IntellijReadCall',
+    'io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter',
+})
+
+
 class QualificationSlice(str, Enum):
     TRY_BRANCH_RESULTS = 'TRY_BRANCH_RESULTS'
     TRY_LOCAL_IDENTITIES = 'TRY_LOCAL_IDENTITIES'
+    RELATION_WORK_REDUCTION = 'RELATION_WORK_REDUCTION'
 
     @classmethod
     def admit(cls, value):
@@ -95,11 +120,16 @@ class QualificationSlice(str, Enum):
 
     @property
     def changed_owners(self):
-        return TRY_BRANCH_NATIVE_OWNERS if self == self.TRY_BRANCH_RESULTS else TRY_LOCAL_NATIVE_OWNERS
+        return {
+            self.TRY_BRANCH_RESULTS: TRY_BRANCH_NATIVE_OWNERS,
+            self.TRY_LOCAL_IDENTITIES: TRY_LOCAL_NATIVE_OWNERS,
+            self.RELATION_WORK_REDUCTION: TRY_BRANCH_NATIVE_OWNERS | RELATION_WORK_NATIVE_OWNERS,
+        }[self]
 
     @property
     def public_contract_version(self):
-        return 6 if self == self.TRY_BRANCH_RESULTS else 7
+        return {self.TRY_BRANCH_RESULTS: 6, self.TRY_LOCAL_IDENTITIES: 7,
+                self.RELATION_WORK_REDUCTION: 14}[self]
 
 
 def admit_native_owner_profile(slice_, owners):
@@ -219,19 +249,25 @@ def reject_native_pin(value):
     raise ValueError('PIN_CAPTURE_REJECTED:' + value['stage'])
 
 
+@dataclass(frozen=True)
+class NativePinRequest:
+    project: str
+    hostPid: int
+    qualificationSlice: str | None
+
+
 def pin(args):
     output = fresh(args.output)
     cli = args.cli.resolve(strict=True)
     launcher = args.idea_contents / "MacOS/idea"
     # Reuse the hosted acceptance original-process admission; no replacement worker or launch fallback.
-    rows = subprocess.check_output(["ps", "-ww", "-axo", "pid=,comm="], text=True).splitlines()
-    pids = [int(row.split(maxsplit=1)[0]) for row in rows
-            if len(row.split(maxsplit=1)) == 2 and row.split(maxsplit=1)[1] == str(launcher)]
-    if len(pids) != 1:
-        raise ValueError("EXACT_RUNNING_HOST_UNAVAILABLE")
-    request = dict(project=str(args.fixture.resolve(strict=True)), hostPid=pids[0],
-                   qualificationSlice=getattr(args, 'qualification_slice', None))
-    write(output / "input.json", request)
+    rows = subprocess.check_output(["ps", "-ww", "-axo", "pid=,comm="], text=True)
+    selected = select_native_host(rows, launcher, getattr(args, 'host_pid', None))
+    if isinstance(selected, RejectedNativeHost):
+        raise ValueError(selected.failure.value)
+    request = NativePinRequest(project=str(args.fixture.resolve(strict=True)), hostPid=selected.pid,
+                               qualificationSlice=getattr(args, 'qualification_slice', None))
+    write(output / "input.json", asdict(request))
     script = (HERE / "semantic-reproduction-pin.kts.template").read_text().replace(
         "@INPUT_BASE64@", base64.b64encode(str(output / "input.json").encode()).decode())
     (output / "pin.kts").write_text(script)
@@ -1500,9 +1536,12 @@ def replay_workloads(args):
     def repin(label):
         pin_args = argparse.Namespace(output=output / label, fixture=root, cli=args.cli,
             idea_contents=args.idea_contents, source_tree=None, public_rpc=True,
+            host_pid=pinned['host']['pid'],
             qualification_slice=pinned['qualificationSlice'], public_mcp=pinned["cli"].get("transport") == "MCP_SESSION")
         if pin(pin_args) != 0: raise ValueError('NATIVE_PIN_UNAVAILABLE')
         current = json.loads((pin_args.output / 'pin.json').read_text())
+        host = admit_same_host(pinned['host'], current['host'])
+        if isinstance(host, RejectedNativeHost): raise ValueError(host.failure.value)
         if artifact_identity(current) != artifact_identity(pinned): raise ValueError('PIN_CHANGED:artifact')
         for key in ('fixture', 'limits'):
             if current[key] != pinned[key]: raise ValueError('PIN_CHANGED:' + key)
@@ -1794,6 +1833,7 @@ def main():
     create.set_defaults(run=setup)
     identify = commands.add_parser("pin", help="Read loaded plugin/model facts from an existing IDEA process")
     identify.add_argument("--idea-contents", type=Path, required=True)
+    identify.add_argument("--host-pid", type=int, help="Exact existing host PID when several IDEA profiles use this executable")
     identify.add_argument("--source-tree", type=Path)
     identify.add_argument("--public-mcp", action="store_true", help="Pin the installed persistent MCP query path")
     identify.add_argument("--public-rpc", action="store_true", help="Pin the installed Tool RPC catalog and executable")

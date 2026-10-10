@@ -24,19 +24,24 @@ class SemanticReproductionTest(unittest.TestCase):
     def test_native_pin_selects_one_exact_executable_without_command_arguments(self):
         from argparse import Namespace
         launcher = Path('/Applications/IntelliJ IDEA.app/Contents/MacOS/idea')
-        for rows, expected in (
-            (f'123 {launcher}\n456 {launcher}-other\n', 'PIN_CAPTURE_REJECTED:PROJECT_ADMISSION'),
-            ('', 'EXACT_RUNNING_HOST_UNAVAILABLE'),
-            (f'123 {launcher}\n456 {launcher}\n', 'EXACT_RUNNING_HOST_UNAVAILABLE'),
-            (f'123 {launcher}-other\n', 'EXACT_RUNNING_HOST_UNAVAILABLE'),
+        for rows, requested, selected, expected in (
+            (f'123 {launcher}\n456 {launcher}-other\n', None, 123, 'PIN_CAPTURE_REJECTED:PROJECT_ADMISSION'),
+            ('', None, None, 'EXACT_RUNNING_HOST_UNAVAILABLE'),
+            (f'123 {launcher}\n456 {launcher}\n', None, None, 'EXACT_RUNNING_HOST_UNAVAILABLE'),
+            (f'123 {launcher}-other\n', None, None, 'EXACT_RUNNING_HOST_UNAVAILABLE'),
+            (f'123 {launcher}\n456 {launcher}\n', 456, 456, 'PIN_CAPTURE_REJECTED:PROJECT_ADMISSION'),
+            (f'123 {launcher}\n456 {launcher}-other\n', 456, None, 'EXACT_RUNNING_HOST_UNAVAILABLE'),
+            (f'123 {launcher}\n', 789, None, 'EXACT_RUNNING_HOST_UNAVAILABLE'),
+            (f'123 {launcher}\n', 0, None, 'INVALID_NATIVE_HOST_PID'),
         ):
             with self.subTest(rows=rows), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory).resolve()
                 args = Namespace(output=root / 'pin', cli=Path(r.__file__), fixture=root,
-                                 idea_contents=launcher.parent.parent)
+                                 idea_contents=launcher.parent.parent, host_pid=requested)
                 def reject_project(command, cwd):
                     self.assertEqual([launcher, 'ideScript', args.output / 'pin.kts'], command)
-                    self.assertEqual(123, json.loads((args.output / 'input.json').read_text())['hostPid'])
+                    self.assertEqual(dict(project=str(root), hostPid=selected, qualificationSlice=None),
+                                     json.loads((args.output / 'input.json').read_text()))
                     r.write(args.output / 'pin-rejection.json',
                             dict(type='PIN_CAPTURE_REJECTED', stage='PROJECT_ADMISSION'))
                     return dict(exitCode=0)
