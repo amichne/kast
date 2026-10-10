@@ -163,7 +163,7 @@ class HostedReadActionAccountingTest {
         val observation = HostedReadDiagnostics({ 0L }, publish = receipts::add)
         observation.finish(HostedDiagnosticOutcome.Completed)
         val encoded = Json.parseToJsonElement(receipts.single().encode()).jsonObject
-        assertEquals("9", encoded.getValue("schemaVersion").jsonPrimitive.content)
+        assertEquals("10", encoded.getValue("schemaVersion").jsonPrimitive.content)
         val rows = encoded.getValue("readActions").jsonArray
         assertEquals(listOf("READ"), rows.map { it.jsonObject.getValue("mode").jsonPrimitive.content })
         rows.forEach { value ->
