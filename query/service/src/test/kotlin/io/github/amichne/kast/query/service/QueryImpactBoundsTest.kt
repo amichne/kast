@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.contract.QueryCount
+import io.github.amichne.kast.query.contract.QueryCoverage
 import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryImpactClosure
 import io.github.amichne.kast.query.contract.QueryImpactExclusionCause
@@ -10,10 +11,15 @@ import io.github.amichne.kast.query.contract.QueryImpactPath
 import io.github.amichne.kast.query.contract.QueryImpactReadRejection
 import io.github.amichne.kast.query.contract.QueryImpactRepresentation
 import io.github.amichne.kast.query.contract.QueryImpactRequiredObligation
+import io.github.amichne.kast.query.contract.QueryImpactRetainedGraph
 import io.github.amichne.kast.query.contract.QueryImpactStep
 import io.github.amichne.kast.query.contract.QueryImpactTerminal
 import io.github.amichne.kast.query.contract.QueryLimitation
+import io.github.amichne.kast.query.contract.QueryOutputSyntax
+import io.github.amichne.kast.query.contract.QueryResult
+import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QueryRows
+import io.github.amichne.kast.query.contract.QuerySourceSyntax
 import io.github.amichne.kast.query.contract.QueryValuePathAccounting
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
@@ -117,6 +123,44 @@ class QueryImpactBoundsTest {
         native.assertConsumed()
     }
 
+    @Test
+    fun `retained path seed preserves graph sharing on every accounting read`() {
+        val f = QueryImpactExecutionFixture()
+        val path = cachedImpactCase(f).first
+        val result =
+            QueryExecutionResult.Qualified(
+                QueryResult(
+                    QueryRows.ValuePaths.of(listOf(path)),
+                    emptyList(),
+                ),
+                QueryCoverage.Qualified.create(
+                        1.queryCount(),
+                        setOf(QueryLimitation.IMPACT_COVERAGE_UNPROVEN),
+                    )
+                    .value(),
+            )
+        val retained = QueryRetainedResult.capture(f.lease, result).value()
+        val plan =
+            QueryServiceTest()
+                .admittedPlan(
+                    QuerySourceSyntax.Retained(retained),
+                    output = QueryOutputSyntax.ValuePaths,
+                )
+        val seed = PipelineSeed.Accounted.create(plan)
+        val fresh = QueryImpactRetainedGraph()
+        val precharged = QueryImpactRetainedGraph()
+        precharged.path(path)
+        val freshBytes = seed.retainedRootBytes(fresh)
+        val sharedBytes = seed.retainedRootBytes(precharged)
+        assertTrue(freshBytes > sharedBytes, "Shared path proof must remain graph-aware")
+        assertEquals(840L, sharedBytes) // 256 seed + 8 root slot + 512 task + 64 shared path reference.
+        assertEquals(sharedBytes, seed.retainedRootBytes(fresh))
+        assertEquals(
+            freshBytes,
+            seed.retainedRootBytes(QueryImpactRetainedGraph()),
+        )
+    }
+
     private data class CachedImpactCase(
         val checkpoint: PipelineCheckpoint,
         val first: QueryImpactPath,
@@ -159,7 +203,7 @@ class QueryImpactBoundsTest {
         first: QueryImpactPath,
     ): PipelineCheckpoint =
         PipelineCheckpoint(
-            f.plan,
+            PipelineSeed.Accounted.create(f.plan),
             f.lease,
             listOf(PipelineTask.ImpactExplore(pending), PipelineTask.ImpactFinalize),
             emptyMap(),

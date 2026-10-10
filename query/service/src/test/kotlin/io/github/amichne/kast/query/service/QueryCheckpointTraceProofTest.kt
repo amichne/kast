@@ -114,7 +114,7 @@ class QueryCheckpointTraceProofTest {
 
     private fun checkpoint(stage: ExactQueryStage): PipelineCheckpoint =
         PipelineCheckpoint(
-            fixture.symbolPlan(),
+            PipelineSeed.Accounted.create(fixture.symbolPlan()),
             selector.lease,
             emptyList(),
             mapOf(
