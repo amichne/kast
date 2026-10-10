@@ -24,7 +24,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 
-/** Shared native ownership and error guards for two concrete boundary fixtures. */
+/** Shared native ownership and error guards for concrete boundary fixtures. */
 // JUnit must discover the concrete cases only, never this fixture as an empty test class.
 @Suppress("AbstractClassCanBeConcreteClass")
 abstract class NativeSmartModeFixtureTest : HeavyPlatformTestCase() {

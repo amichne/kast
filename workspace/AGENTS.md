@@ -24,6 +24,7 @@ Defines canonical workspace identity and read evidence, and admits bounded seman
 - [HostedQueryExecutor.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt) - bounded read execution and outcome observation.
 - [HostedReadTransaction.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt) - freshness admission and revalidation.
 - [HostedReadDiagnostics.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt) - typed stage and outcome evidence.
+- [HostedReadTraceIdentity.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTraceIdentity.kt) - one diagnostic allocation identity; observation grants no semantic admission or freshness authority.
 - [DetachedModelCapture.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/DetachedModelCapture.kt) - detached project model capture.
 
 - [HostedReadDeadline.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDeadline.kt) - semantic allowance admission from remaining host time.

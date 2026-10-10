@@ -102,25 +102,19 @@ private constructor(
         publication: HostedReadPublicationAdmission = HostedReadPublicationAdmission.Containment,
         completion: HostedReadCompletionPolicy = HostedReadCompletionPolicy.HOST_CONTAINMENT,
         replay: HostedReadReplayPolicy = HostedReadReplayPolicy.SINGLE_EVALUATION,
+        observeReadIdentity: (HostedReadTraceIdentity) -> Unit = {},
         evaluate: suspend (HostedSemanticReadContext) -> Value,
     ): HostedSemanticReadResult<Value> {
         if (
             ApplicationManager.getApplication().isReadAccessAllowed ||
                 ApplicationManager.getApplication().isDispatchThread
-        ) {
-            hostedReadDiagnostics().finish(HostedDiagnosticOutcome.Rejected(HostedQueryFailure.WRONG_THREAD))
-            return HostedSemanticReadResult.Rejected(
-                HostedQueryFailure.WRONG_THREAD,
-                HostedQueryStage.REQUEST_ADMISSION,
-            )
-        }
+        )
+            return rejectUnadmittedHostedRead(HostedQueryFailure.WRONG_THREAD, observeReadIdentity)
         val configured =
             when (val state = configuredSession) {
                 is ConfiguredHostedSession.Ready -> state
-                is ConfiguredHostedSession.Rejected -> {
-                    hostedReadDiagnostics().finish(HostedDiagnosticOutcome.Rejected(state.failure))
-                    return HostedSemanticReadResult.Rejected(state.failure, HostedQueryStage.REQUEST_ADMISSION)
-                }
+                is ConfiguredHostedSession.Rejected ->
+                    return rejectUnadmittedHostedRead(state.failure, observeReadIdentity)
             }
         val session = configured.session
         return executor
@@ -130,6 +124,7 @@ private constructor(
                 executionBudget = executionBudget,
                 publication = publication,
                 completion = completion,
+                observeReadIdentity = observeReadIdentity,
                 outcome = { result: HostedSemanticRead<Value> ->
                     when (result) {
                         is HostedSemanticRead.Rejected -> HostedDiagnosticOutcome.Rejected(result.failure)
@@ -338,6 +333,16 @@ private constructor(
         executor.retire()
         Disposer.dispose(owner)
     }
+}
+
+private fun rejectUnadmittedHostedRead(
+    failure: HostedQueryFailure,
+    observeReadIdentity: (HostedReadTraceIdentity) -> Unit,
+): HostedSemanticReadResult.Rejected {
+    val diagnostics = hostedReadDiagnostics()
+    observeReadIdentity(diagnostics.identity)
+    diagnostics.finish(HostedDiagnosticOutcome.Rejected(failure))
+    return HostedSemanticReadResult.Rejected(failure, HostedQueryStage.REQUEST_ADMISSION)
 }
 
 enum class HostedQueryRetirement {

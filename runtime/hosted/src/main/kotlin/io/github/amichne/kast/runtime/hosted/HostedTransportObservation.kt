@@ -1,5 +1,6 @@
 package io.github.amichne.kast.runtime.hosted
 
+import io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadTraceIdentity
 import java.util.UUID
 import kotlinx.serialization.Serializable
 
@@ -13,6 +14,9 @@ internal data class HostedTransportObservation(
     val bytes: Long,
     val failure: HostedEndpointFailure? = null,
 )
+
+/** One actual diagnostic allocation belongs to this connection, including presemantic retry rejections. */
+@Serializable internal data class HostedCorrelatedReadIdentity(val connectionId: String, val readId: String)
 
 @Serializable
 internal enum class HostedTransportStage {
@@ -37,6 +41,10 @@ internal class HostedTransportTrace(
     /** A nested wait retains this connection identity without replacing the surrounding execution clock. */
     fun smartModeWait(observation: HostedSmartModeWaitObservation) {
         observer.smartModeWait(HostedCorrelatedSmartModeWait(connectionId.toString(), observation))
+    }
+
+    fun readIdentity(identity: HostedReadTraceIdentity) {
+        observer.readIdentity(HostedCorrelatedReadIdentity(connectionId.toString(), identity.value.toString()))
     }
 
     fun enter(next: HostedTransportStage) {

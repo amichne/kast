@@ -54,11 +54,13 @@ internal class HostedQueryExecutor(
         executionBudget: HostedExecutionBudgetRequest = HostedExecutionBudgetRequest(),
         publication: HostedReadPublicationAdmission = HostedReadPublicationAdmission.Containment,
         completion: HostedReadCompletionPolicy = HostedReadCompletionPolicy.HOST_CONTAINMENT,
+        observeReadIdentity: (HostedReadTraceIdentity) -> Unit = {},
         computation: suspend (HostedQueryProgress) -> Value,
     ): HostedExecution<Value> {
         // Export is optional; request-owned work accounting exists even when diagnostics are not exported.
         val diagnostic =
             requestDiagnostics(limits).also {
+                observeReadIdentity(it.identity)
                 it.stage(HostedQueryStage.REQUEST_ADMISSION)
             }
         val permit =
