@@ -100,9 +100,11 @@ private fun fitHostedQueryOutcome(
     context.observation.phase(io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase.ENCODING)
     return encodeHostedQueryResponse(
         semantic =
-            outcome.withQueryBudget(
-                io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.from(context.executionBudget)
-            ),
+            outcome
+                .withQueryDiagnosticIdentity(context.readTrace)
+                .withQueryBudget(
+                    io.github.amichne.kast.protocol.contract.ExecutionBudgetReport.from(context.executionBudget)
+                ),
         limits = context.limits,
         observation = context.observation,
         maximumResults = context.executionBudget.results.effective,

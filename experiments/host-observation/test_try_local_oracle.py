@@ -57,6 +57,10 @@ class TryLocalOracleTest(unittest.TestCase):
             'io.github.amichne.kast.relation.intellij.RelationModelScope',
             'io.github.amichne.kast.workspace.intellij.read.IntellijProjectSourceMembership',
             'io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScope',
+            'io.github.amichne.kast.runtime.hosted.HostedQueryDiagnosticIdentityKt',
+            'io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryExecutor',
+            'io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadContext',
+            'io.github.amichne.kast.protocol.contract.QueryDiagnosticReadIdentitySerializer',
         ):
             self.assertIn(owner, profile.changed_owners)
         source = (native.REPO / 'protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt').read_text()

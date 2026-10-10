@@ -8,3 +8,10 @@ class HostedReadTraceIdentity private constructor(val value: UUID) {
         fun fromBoundary(value: UUID): HostedReadTraceIdentity = HostedReadTraceIdentity(value)
     }
 }
+
+/** Optional diagnostic export remains separate from read authority. */
+sealed interface HostedReadTraceObservation {
+    data object Unobserved : HostedReadTraceObservation
+
+    data class Observed(val identity: HostedReadTraceIdentity) : HostedReadTraceObservation
+}

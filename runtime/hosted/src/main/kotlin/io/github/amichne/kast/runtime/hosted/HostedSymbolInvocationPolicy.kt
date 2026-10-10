@@ -37,7 +37,9 @@ internal fun hostedSymbolInvocationPolicy(
             when (
                 HostedResponse.Canonical.encode(
                     CanonicalOperationWireBindings.queryRun,
-                    outcome.withQueryBudget(ExecutionBudgetReport.from(context.executionBudget)),
+                    outcome
+                        .withQueryDiagnosticIdentity(context.readTrace)
+                        .withQueryBudget(ExecutionBudgetReport.from(context.executionBudget)),
                     context.limits,
                     context.executionBudget.returnedBytes.effective,
                 )

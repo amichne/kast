@@ -31,6 +31,8 @@ internal data class QueryCompletionRejectionWireDocument(
     @EncodeDefault(EncodeDefault.Mode.ALWAYS)
     val policyProgress: QueryCompletionPolicyProgressDocument = QueryCompletionPolicyProgressDocument.EvidenceOnly,
     @EncodeDefault(EncodeDefault.Mode.NEVER) val originalFailure: QueryOriginalFailureDocument? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val diagnosticReadId: io.github.amichne.kast.protocol.contract.QueryDiagnosticReadIdentity? = null,
 )
 
 @Serializable
@@ -66,12 +68,22 @@ internal fun QueryRunRejection.CompletionUnproven.toCompletionWire() =
         },
         policyProgress,
         originalFailure,
+        diagnosticReadId,
     )
 
 internal fun QueryCompletionRejectionWireDocument.toContract():
     WireDocumentConversion<QueryRunRejection.CompletionUnproven> =
     evidence.toContract().mapConverted {
-        QueryRunRejection.CompletionUnproven(model, cause, originalCoverage, stop, it, policyProgress, originalFailure)
+        QueryRunRejection.CompletionUnproven(
+            model,
+            cause,
+            originalCoverage,
+            stop,
+            it,
+            policyProgress,
+            originalFailure,
+            diagnosticReadId,
+        )
     }
 
 private fun QueryCompletionEvidenceWireDocument.toContract(): WireDocumentConversion<QueryCompletionEvidenceDocument> =

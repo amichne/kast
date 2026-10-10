@@ -26,6 +26,7 @@ class HostedReadTraceIdentityTest {
         val result =
             executor.execute(executor.endpoint, observeReadIdentity = identities::add) { progress ->
                 assertEquals(1, identities.size)
+                assertEquals(HostedReadTraceObservation.Observed(identities.single()), progress.readTrace)
                 assertTrue(receipts.isEmpty())
                 progress.observation.phase(IntellijReadPhase.REFERENCE_INVENTORY)
                 42
