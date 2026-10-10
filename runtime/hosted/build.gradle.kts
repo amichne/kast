@@ -198,7 +198,12 @@ val nativeIdeaLibraries =
                         "plugins/Kotlin/lib/**/*.jar",
                         "plugins/toml/lib/**/*.jar",
                     )
-                    exclude("plugins/Kotlin/lib/jps/**", "plugins/Kotlin/lib/kotlinc/**")
+                    exclude(
+                        "plugins/Kotlin/lib/jps/**",
+                        "plugins/Kotlin/lib/kotlinc/**",
+                        "lib/intellij.libraries.kotlinx.serialization.*.jar",
+                        "lib/intellij.libraries.ktor.utils.jar",
+                    )
                 }
             }
         )
