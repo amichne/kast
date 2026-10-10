@@ -40,17 +40,21 @@ import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import java.nio.file.Path
 
 /** Selector evidence supplies the production scope's address; native resolution is asserted independently. */
-internal fun nativeRelationRequest(root: Path, file: Path, offset: Int): RelationRequest {
-    val lease =
-        SemanticReadLease(
-            CanonicalWorkspaceRoot.fromCanonicalPath(root).nativeRefined(),
-            EvidenceGeneration.parse(1L).nativeRefined(),
-        )
-    val scope =
+internal fun nativeRelationRequest(
+    root: Path,
+    file: Path,
+    offset: Int,
+    scope: SymbolSearchScope =
         SymbolSearchScope.Workspace(
             SymbolSourceKindPolicy.PRODUCTION_ONLY,
             SymbolGeneratedSourcePolicy.EXCLUDE,
             SymbolLibraryPolicy.EXCLUDE,
+        ),
+): RelationRequest {
+    val lease =
+        SemanticReadLease(
+            CanonicalWorkspaceRoot.fromCanonicalPath(root).nativeRefined(),
+            EvidenceGeneration.parse(1L).nativeRefined(),
         )
     val resources =
         ResourceBudget(
