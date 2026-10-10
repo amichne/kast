@@ -104,10 +104,11 @@ class WorkspaceRefreshImportCompletionTest {
 
     @Test
     fun `conflicting imported callbacks cannot erase failure before settlement`() {
-        for (results in listOf(
-            listOf(WorkspaceRefreshEffectResult.FAILED, WorkspaceRefreshEffectResult.SUCCEEDED),
-            listOf(WorkspaceRefreshEffectResult.SUCCEEDED, WorkspaceRefreshEffectResult.FAILED),
-        )) {
+        for (results in
+            listOf(
+                listOf(WorkspaceRefreshEffectResult.FAILED, WorkspaceRefreshEffectResult.SUCCEEDED),
+                listOf(WorkspaceRefreshEffectResult.SUCCEEDED, WorkspaceRefreshEffectResult.FAILED),
+            )) {
             val completed = mutableListOf<WorkspaceRefreshEffectResult>()
             val completion = WorkspaceRefreshImportCompletion<String>(completed::add) {}
             completion.started("selected")
@@ -120,40 +121,13 @@ class WorkspaceRefreshImportCompletionTest {
     @Test
     fun `generated task event prefixes never publish success without application and matching end`() {
         val events = listOf("start-a", "start-b", "success", "failure", "cancel-a", "end-a", "end-b", "dispose")
-        fun check(prefix: List<String>) {
-            val results = mutableListOf<WorkspaceRefreshEffectResult>()
-            val completion = WorkspaceRefreshImportCompletion<String>(results::add) {}
-            var selected: String? = null
-            var applied = false
-            var ended = false
-            for (event in prefix) {
-                when (event) {
-                    "start-a", "start-b" -> {
-                        val id = event.removePrefix("start-")
-                        if (selected == null) selected = id
-                        completion.started(id)
-                    }
-                    "success" -> { applied = true; completion.finished(WorkspaceRefreshEffectResult.SUCCEEDED) }
-                    "failure" -> completion.finished(WorkspaceRefreshEffectResult.FAILED)
-                    "cancel-a" -> completion.cancelled("a")
-                    "end-a", "end-b" -> {
-                        val id = event.removePrefix("end-")
-                        if (selected == id) ended = true
-                        completion.ended(id)
-                    }
-                    "dispose" -> completion.retired()
-                }
-                assertEquals(true, results.filter { it != WorkspaceRefreshEffectResult.RETIRED }.size <= 1, prefix.toString())
-                assertEquals(true, results.size <= 2, prefix.toString())
-                if (WorkspaceRefreshEffectResult.SUCCEEDED in results)
-                    assertEquals(true, applied && ended, prefix.toString())
+        forEachBoundedPrefix(events, 4) { prefix ->
+            val case = ImportPrefixCase()
+            prefix.forEach { event ->
+                case.accept(event)
+                case.assertInvariant(prefix)
             }
         }
-        fun generate(prefix: List<String>, remaining: Int) {
-            check(prefix)
-            if (remaining > 0) events.forEach { generate(prefix + it, remaining - 1) }
-        }
-        generate(emptyList(), 4)
     }
 
     private fun assertEncodedObservation(observation: WorkspaceRefreshImportObservation, outcome: String) {
@@ -164,4 +138,47 @@ class WorkspaceRefreshImportCompletionTest {
     }
 
     private fun task(project: String) = project
+}
+
+/** Oracle records application and matching task end independently of production completion state. */
+private class ImportPrefixCase {
+    private val results = mutableListOf<WorkspaceRefreshEffectResult>()
+    private val completion = WorkspaceRefreshImportCompletion<String>(results::add) {}
+    private var selected: String? = null
+    private var applied = false
+    private var ended = false
+
+    fun accept(event: String) {
+        when (event) {
+            "start-a",
+            "start-b" -> start(event.removePrefix("start-"))
+            "success" -> applyImport()
+            "failure" -> completion.finished(WorkspaceRefreshEffectResult.FAILED)
+            "cancel-a" -> completion.cancelled("a")
+            "end-a",
+            "end-b" -> end(event.removePrefix("end-"))
+            "dispose" -> completion.retired()
+        }
+    }
+
+    private fun start(id: String) {
+        if (selected == null) selected = id
+        completion.started(id)
+    }
+
+    private fun applyImport() {
+        applied = true
+        completion.finished(WorkspaceRefreshEffectResult.SUCCEEDED)
+    }
+
+    private fun end(id: String) {
+        if (selected == id) ended = true
+        completion.ended(id)
+    }
+
+    fun assertInvariant(prefix: List<String>) {
+        assertEquals(true, results.filter { it != WorkspaceRefreshEffectResult.RETIRED }.size <= 1, prefix.toString())
+        assertEquals(true, results.size <= 2, prefix.toString())
+        if (WorkspaceRefreshEffectResult.SUCCEEDED in results) assertEquals(true, applied && ended, prefix.toString())
+    }
 }

@@ -9,8 +9,10 @@ class WorkspaceReadinessFixture(root: CanonicalWorkspaceRoot, incarnation: UUID 
     private var revision = 0
     private val source = ProjectReadEpoch.Source.create { Refinement.Refined(revision) }
 
+    fun observe(): ProjectReadEpochObservation = source.observe()
+
     fun ready(): WorkspaceCapabilityReadiness.Ready =
-        WorkspaceCapabilityReadiness.Ready(identity, (source.observe() as ProjectReadEpochObservation.Observed).epoch)
+        WorkspaceCapabilityReadiness.Ready(identity, (observe() as ProjectReadEpochObservation.Observed).epoch)
 
     fun advance(): WorkspaceCapabilityReadiness.Ready {
         revision++

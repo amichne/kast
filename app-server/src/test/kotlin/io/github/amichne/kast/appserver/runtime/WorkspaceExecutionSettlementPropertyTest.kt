@@ -33,7 +33,10 @@ class WorkspaceExecutionSettlementPropertyTest {
     @Test
     fun `detached workspace identity admits only canonical digest syntax`() {
         val raw = "0123456789abcdef".repeat(4)
-        assertEquals(raw, assertInstanceOf<Refinement.Refined<BrokerWorkspaceId>>(BrokerWorkspaceId.parse(raw)).value.value)
+        assertEquals(
+            raw,
+            assertInstanceOf<Refinement.Refined<BrokerWorkspaceId>>(BrokerWorkspaceId.parse(raw)).value.value,
+        )
         for (invalid in listOf("", raw.dropLast(1), raw + "0", raw.uppercase(), "g".repeat(64), " " + raw)) {
             assertEquals(Refinement.Rejected(BrokerWorkspaceId.Failure.INVALID), BrokerWorkspaceId.parse(invalid))
         }
@@ -55,10 +58,13 @@ class WorkspaceExecutionSettlementPropertyTest {
                 fixture.inspect()
                 fixture.retire.complete(Unit)
                 runCurrent()
-                assertEquals(WorkspaceExecutionResult.Rejected(
-                    if (stop == Event.CANCEL) WorkspaceExecutionFailure.WORKSPACE_OUTCOME_UNCERTAIN
-                    else WorkspaceExecutionFailure.WORKSPACE_INTERACTION_TIMED_OUT,
-                ), fixture.first.await())
+                assertEquals(
+                    WorkspaceExecutionResult.Rejected(
+                        if (stop == Event.CANCEL) WorkspaceExecutionFailure.WORKSPACE_OUTCOME_UNCERTAIN
+                        else WorkspaceExecutionFailure.WORKSPACE_INTERACTION_TIMED_OUT
+                    ),
+                    fixture.first.await(),
+                )
                 assertEquals(completed, queued.await())
                 assertEquals(completed, fixture.fresh("after-retirement").await())
                 fixture.assertPrefix()
@@ -70,14 +76,16 @@ class WorkspaceExecutionSettlementPropertyTest {
 
     @Test
     fun `all uncertain writing effects and unknown effects remain fenced while inspection stays reachable`() = runTest {
-        val effects = listOf(
-            OperationEffect.INTELLIJ_READ_AND_PERSISTENCE_WRITE,
-            OperationEffect.INTELLIJ_WRITE,
-            OperationEffect.FILESYSTEM_WRITE,
-            OperationEffect.PERSISTENCE_WRITE,
-            OperationEffect.WORKSPACE_MODEL_WRITE,
-            OperationEffect.PROCESS_CONTROL,
-        ).map { BrokerOperationEffect.Canonical(it) } + BrokerOperationEffect.Unknown
+        val effects =
+            listOf(
+                    OperationEffect.INTELLIJ_READ_AND_PERSISTENCE_WRITE,
+                    OperationEffect.INTELLIJ_WRITE,
+                    OperationEffect.FILESYSTEM_WRITE,
+                    OperationEffect.PERSISTENCE_WRITE,
+                    OperationEffect.WORKSPACE_MODEL_WRITE,
+                    OperationEffect.PROCESS_CONTROL,
+                )
+                .map { BrokerOperationEffect.Canonical(it) } + BrokerOperationEffect.Unknown
         for (effect in effects) {
             val fixture = Fixture(this, WorkspaceExecutionAccess.Operation(effect))
             try {
@@ -117,7 +125,10 @@ class WorkspaceExecutionSettlementPropertyTest {
         val fixture = Fixture(this, WorkspaceExecutionAccess.Operation(BrokerOperationEffect.Unknown))
         fixture.cancel()
         runCurrent()
-        assertEquals(WorkspaceExecutionResult.Rejected(WorkspaceExecutionFailure.CANCELLED_BEFORE_EXECUTION), fixture.first.await())
+        assertEquals(
+            WorkspaceExecutionResult.Rejected(WorkspaceExecutionFailure.CANCELLED_BEFORE_EXECUTION),
+            fixture.first.await(),
+        )
         assertEquals(emptyList<String>(), fixture.calls)
         assertEquals(completed, fixture.fresh("fresh").await())
         assertEquals(WorkspaceExecutionLaneState.IDLE, fixture.inspect().state)
@@ -125,7 +136,8 @@ class WorkspaceExecutionSettlementPropertyTest {
 
     @Test
     fun `every bounded event prefix preserves settlement capacity and observation reachability`() = runTest {
-        // Exhaust every length-three word: repeated demands, repeated cancellation, deadlines, and early retirement gates.
+        // Exhaust every length-three word: repeated demands, repeated cancellation, deadlines, and early retirement
+        // gates.
         for (events in sequences(Event.entries, 3)) {
             val fixture = Fixture(this, readAccess)
             try {
@@ -148,7 +160,13 @@ class WorkspaceExecutionSettlementPropertyTest {
         }
     }
 
-    private enum class Event { CANCEL, DEADLINE, QUEUE, INSPECT, RETIRE }
+    private enum class Event {
+        CANCEL,
+        DEADLINE,
+        QUEUE,
+        INSPECT,
+        RETIRE,
+    }
 
     private fun sequences(events: List<Event>, length: Int): List<List<Event>> =
         if (length == 0) listOf(emptyList())
@@ -159,12 +177,15 @@ class WorkspaceExecutionSettlementPropertyTest {
         private val access: WorkspaceExecutionAccess,
         start: Boolean = true,
     ) {
-        private val workspace = assertInstanceOf<Refinement.Refined<BrokerWorkspaceId>>(BrokerWorkspaceId.parse("a".repeat(64))).value
+        private val workspace =
+            assertInstanceOf<Refinement.Refined<BrokerWorkspaceId>>(BrokerWorkspaceId.parse("a".repeat(64))).value
         private val connection = requireNotNull(ClientConnectionId.admit("00000000-0000-0000-0000-000000000001"))
         private val thread = requireNotNull(BrokerThreadId.admit("thread"))
-        private val policy = assertInstanceOf<Refinement.Refined<WorkspaceExecutionPolicy>>(
-            WorkspaceExecutionPolicy.admit(4, 5_000, 10_000),
-        ).value
+        private val policy =
+            assertInstanceOf<Refinement.Refined<WorkspaceExecutionPolicy>>(
+                    WorkspaceExecutionPolicy.admit(4, 5_000, 10_000)
+                )
+                .value
         val lane = WorkspaceExecution(scope, policy, scope.testTimeSource)
         val firstIdentity = identity("first")
         val retiring = CompletableDeferred<Unit>()
@@ -173,29 +194,41 @@ class WorkspaceExecutionSettlementPropertyTest {
         private var providerRetired = false
         private var active = 0
         private val pending = mutableListOf<Deferred<WorkspaceExecutionResult>>()
-        val first = if (start) lane.submit(firstIdentity, limit, access) {
-            calls += "first"
-            active++
-            try {
-                awaitCancellation()
-            } finally {
-                withContext(NonCancellable) {
-                    retiring.complete(Unit)
-                    retire.await()
-                    active--
-                    providerRetired = true
+        val first =
+            if (start)
+                lane.submit(firstIdentity, limit, access) {
+                    calls += "first"
+                    active++
+                    try {
+                        awaitCancellation()
+                    } finally {
+                        withContext(NonCancellable) {
+                            retiring.complete(Unit)
+                            retire.await()
+                            active--
+                            providerRetired = true
+                        }
+                    }
                 }
-            }
-        } else CompletableDeferred(completed)
+            else CompletableDeferred(completed)
 
-        fun identity(call: String) = WorkspaceExecutionIdentity(workspace, connection, thread,
-            requireNotNull(BrokerTurnId.admit("turn-$call")), requireNotNull(BrokerCallId.admit(call)))
+        fun identity(call: String) =
+            WorkspaceExecutionIdentity(
+                workspace,
+                connection,
+                thread,
+                requireNotNull(BrokerTurnId.admit("turn-$call")),
+                requireNotNull(BrokerCallId.admit(call)),
+            )
 
-        fun fresh(call: String): Deferred<WorkspaceExecutionResult> = lane.submit(identity(call), access = readAccess) {
-            assertEquals(0, active, "native provider has not terminated")
-            calls += call
-            reply
-        }.also(pending::add)
+        fun fresh(call: String): Deferred<WorkspaceExecutionResult> =
+            lane
+                .submit(identity(call), access = readAccess) {
+                    assertEquals(0, active, "native provider has not terminated")
+                    calls += call
+                    reply
+                }
+                .also(pending::add)
 
         fun cancel() = lane.cancel(workspace, firstIdentity.thread, firstIdentity.turn)
 
@@ -211,10 +244,11 @@ class WorkspaceExecutionSettlementPropertyTest {
 
         suspend fun inspect(): WorkspaceExecutionLaneSnapshot {
             var observed: WorkspaceExecutionLaneSnapshot? = null
-            val outcome = lane.submit(identity("inspect"), access = WorkspaceExecutionAccess.Observation) {
-                observed = lane.observation(workspace)
-                reply
-            }
+            val outcome =
+                lane.submit(identity("inspect"), access = WorkspaceExecutionAccess.Observation) {
+                    observed = lane.observation(workspace)
+                    reply
+                }
             assertEquals(completed, outcome.await(), "inspection must not enter semantic admission")
             return requireNotNull(observed)
         }
@@ -248,8 +282,10 @@ class WorkspaceExecutionSettlementPropertyTest {
     }
 
     private companion object {
-        val readAccess = WorkspaceExecutionAccess.Operation(BrokerOperationEffect.Canonical(OperationEffect.INTELLIJ_READ))
-        val limit = assertInstanceOf<Refinement.Refined<ElapsedTimeLimitMillis>>(ElapsedTimeLimitMillis.parse(100)).value
+        val readAccess =
+            WorkspaceExecutionAccess.Operation(BrokerOperationEffect.Canonical(OperationEffect.INTELLIJ_READ))
+        val limit =
+            assertInstanceOf<Refinement.Refined<ElapsedTimeLimitMillis>>(ElapsedTimeLimitMillis.parse(100)).value
         val reply = ProtocolRouting.ReplyUpstream("detached-result")
         val completed = WorkspaceExecutionResult.Completed(reply)
         val recoveryRequired = WorkspaceExecutionResult.Rejected(WorkspaceExecutionFailure.WORKSPACE_RECOVERY_REQUIRED)

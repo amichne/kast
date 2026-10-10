@@ -28,23 +28,23 @@ internal class HostedWorkspaceRefresh(
     private val service = WorkspaceRefreshService(port)
     private val triggers = WorkspaceRefreshTaskTrigger(project, root, scope) { command -> execute(command) }
 
-    fun refreshForRead(complete: (HostedVfsRefreshOutcome) -> Unit): () -> Unit =
-        service.refreshForRead { status ->
-            complete(
-                when (status) {
-                    WorkspaceRefreshStatus.Complete -> HostedVfsRefreshOutcome.READY
-                    is WorkspaceRefreshStatus.Failed -> when (status.reason) {
+    fun refreshForRead(complete: (HostedVfsRefreshOutcome) -> Unit): () -> Unit = service.refreshForRead { status ->
+        complete(
+            when (status) {
+                WorkspaceRefreshStatus.Complete -> HostedVfsRefreshOutcome.READY
+                is WorkspaceRefreshStatus.Failed ->
+                    when (status.reason) {
                         WorkspaceRefreshFailure.DISPOSED -> HostedVfsRefreshOutcome.PROJECT_DISPOSED
                         WorkspaceRefreshFailure.ROOT_UNAVAILABLE -> HostedVfsRefreshOutcome.ROOT_UNAVAILABLE
                         WorkspaceRefreshFailure.UNSAVED_DOCUMENTS -> HostedVfsRefreshOutcome.UNSAVED_DOCUMENTS
                         WorkspaceRefreshFailure.DEADLINE_EXCEEDED -> HostedVfsRefreshOutcome.DEADLINE_EXCEEDED
                         else -> HostedVfsRefreshOutcome.FAILED
                     }
-                    is WorkspaceRefreshStatus.Rejected -> HostedVfsRefreshOutcome.FAILED
-                    is WorkspaceRefreshStatus.Pending -> error("Only terminal refresh outcomes reach a waiter")
-                }
-            )
-        }
+                is WorkspaceRefreshStatus.Rejected -> HostedVfsRefreshOutcome.FAILED
+                is WorkspaceRefreshStatus.Pending -> error("Only terminal refresh outcomes reach a waiter")
+            }
+        )
+    }
 
     fun initialImport(requestId: String): WorkspaceRefreshResult =
         when (val prepared = port.prepareInitialLink()) {

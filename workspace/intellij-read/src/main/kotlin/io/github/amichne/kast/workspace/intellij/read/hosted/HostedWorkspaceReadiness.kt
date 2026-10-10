@@ -66,7 +66,8 @@ internal fun workspaceReadinessRejected(
             ExistingProjectAdmissionFailure.ProjectNotInitialized -> WorkspaceReadinessReason.PROJECT_INITIALIZING
             ExistingProjectAdmissionFailure.ProjectRootUnavailable -> WorkspaceReadinessReason.PROJECT_ROOT_UNAVAILABLE
             ExistingProjectAdmissionFailure.ProjectRootMismatch,
-            ExistingProjectAdmissionFailure.RetainedAuthorityMismatch -> WorkspaceReadinessReason.PROJECT_IDENTITY_MISMATCH
+            ExistingProjectAdmissionFailure.RetainedAuthorityMismatch ->
+                WorkspaceReadinessReason.PROJECT_IDENTITY_MISMATCH
             ExistingProjectAdmissionFailure.GradleModelUnavailable -> WorkspaceReadinessReason.MODEL_UNAVAILABLE
             ExistingProjectAdmissionFailure.GradleModelIncomplete -> WorkspaceReadinessReason.MODEL_INCOMPLETE
             ExistingProjectAdmissionFailure.DumbMode -> WorkspaceReadinessReason.INDEXING

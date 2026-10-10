@@ -1193,56 +1193,6 @@
     },
     {
       "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt",
-        "scope": "type:WorkspaceExecution/fun:snapshot()",
-        "kind": "JSON_BUILDER",
-        "sha256": "04085bf65b198e3936b4f886dd926e9eaa02b176042bc0e0fc620243bb722cc1"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt",
-        "scope": "type:WorkspaceExecution/fun:snapshot()/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "6ea45faa8d694e65a78dde3c960db50db4abdc345dbd96a3c94bbea61b33fc35"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt",
-        "scope": "type:WorkspaceExecution/fun:snapshot()/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "c136ea28e667c87baa722604b53fb125ddf69087547c9fe4b496079539ddf3df"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt",
-        "scope": "type:WorkspaceExecution/fun:snapshot()/declaration:<anonymous>/declaration:<anonymous>/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "6a8ccc81006bb00f842e5fac18081dcb0f53e38227131321bc788c8e85a8a4ba"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt",
-        "scope": "type:WorkspaceExecution/fun:snapshot()/declaration:<anonymous>/declaration:<anonymous>/declaration:<anonymous>",
-        "kind": "JSON_BUILDER",
-        "sha256": "b7db8bd55b63edfd63f5bd9c4b78528092625e6c7407129e473910920c6680ba"
-      },
-      "count": 1,
-      "justification": "Existing construction at guard adoption; migrate fixed shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/InstalledBrokerServerTest.kt",
         "scope": "type:InstalledBrokerServerTest/fun:Codex qualification rejection emits its exact bounded startup reason(4:Path)/declaration:<anonymous>",
         "kind": "JSON_LITERAL",

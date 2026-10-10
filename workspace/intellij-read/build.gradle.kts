@@ -93,6 +93,7 @@ dependencies {
     testImplementation(ideaLibraries)
     testImplementation(kotlinPluginLibraries)
     testImplementation(catalog.findLibrary("serialization-json").get())
+    testImplementation(testFixtures(project(":workspace:contract")))
 }
 
 private val workspaceContractFriendPath =

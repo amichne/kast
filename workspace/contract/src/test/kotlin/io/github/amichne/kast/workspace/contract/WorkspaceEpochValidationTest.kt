@@ -26,9 +26,23 @@ class WorkspaceEpochValidationTest {
         val source = ProjectReadEpoch.Source.create { Refinement.Refined(7) }
         val admitted = source.epoch()
         // The metadata cannot enter the production rule. Actual content/model movement is a different input.
-        val metadata = listOf("checkout-a", "checkout-b", "branch-a", "branch-b", "registered", "unregistered", "installed", "absent")
+        val metadata =
+            listOf(
+                "checkout-a",
+                "checkout-b",
+                "branch-a",
+                "branch-b",
+                "registered",
+                "unregistered",
+                "installed",
+                "absent",
+            )
         metadata.forEach {
-            val current = assertInstanceOf(WorkspaceEpochValidation.Current::class.java, validateWorkspaceEpoch(admitted, source.observe()))
+            val current =
+                assertInstanceOf(
+                    WorkspaceEpochValidation.Current::class.java,
+                    validateWorkspaceEpoch(admitted, source.observe()),
+                )
             assertEquals(ProjectReadEpochRelation.SAME, admitted.relationTo(current.epoch))
         }
     }
@@ -48,13 +62,13 @@ class WorkspaceEpochValidationTest {
         assertFalse(
             sequenceAccepted(listOf(Event.MOVE)) { admitted, _ ->
                 validateWorkspaceEpoch(admitted, ProjectReadEpochObservation.Observed(admitted))
-            },
+            }
         )
         assertFalse(
-            sequenceAccepted(listOf(Event.DISPOSE)) { admitted, _ -> WorkspaceEpochValidation.Current(admitted) },
+            sequenceAccepted(listOf(Event.DISPOSE)) { admitted, _ -> WorkspaceEpochValidation.Current(admitted) }
         )
         assertFalse(
-            sequenceAccepted(listOf(Event.REOPEN)) { admitted, _ -> WorkspaceEpochValidation.Current(admitted) },
+            sequenceAccepted(listOf(Event.REOPEN)) { admitted, _ -> WorkspaceEpochValidation.Current(admitted) }
         )
     }
 
@@ -71,10 +85,11 @@ class WorkspaceEpochValidationTest {
         var revision = 0
         var incarnation = 0
         var retired = false
-        fun source() = ProjectReadEpoch.Source.create {
-            if (retired) Refinement.Rejected(ProjectReadEpochObservationFailure.ProjectDisposed)
-            else Refinement.Refined(revision)
-        }
+        fun source() =
+            ProjectReadEpoch.Source.create {
+                if (retired) Refinement.Rejected(ProjectReadEpochObservationFailure.ProjectDisposed)
+                else Refinement.Refined(revision)
+            }
         var currentSource = source()
         var admitted = currentSource.epoch()
         var admittedRevision = revision
@@ -88,27 +103,53 @@ class WorkspaceEpochValidationTest {
                     incarnation++
                     currentSource = source()
                 }
-                Event.ADMIT -> if (!retired) {
-                    admitted = currentSource.epoch()
-                    admittedRevision = revision
-                    admittedIncarnation = incarnation
-                }
-                Event.METADATA, null -> Unit
+                Event.ADMIT ->
+                    if (!retired) {
+                        admitted = currentSource.epoch()
+                        admittedRevision = revision
+                        admittedIncarnation = incarnation
+                    }
+                Event.METADATA,
+                null -> Unit
             }
             val actual = validate(admitted, currentSource.observe())
-            val expected =
-                when {
-                    retired -> actual == WorkspaceEpochValidation.Unavailable(ProjectReadEpochObservationFailure.ProjectDisposed)
-                    incarnation != admittedIncarnation -> actual == WorkspaceEpochValidation.DifferentIncarnation
-                    revision != admittedRevision -> actual == WorkspaceEpochValidation.Stale
-                    else -> actual is WorkspaceEpochValidation.Current
-                }
-            if (!expected) return false
+            if (
+                !matchesOracle(
+                    actual,
+                    OracleObservation(revision, incarnation, retired),
+                    OracleAdmission(admittedRevision, admittedIncarnation),
+                )
+            )
+                return false
         }
         return true
     }
 
-    private enum class Event { MOVE, DISPOSE, REOPEN, ADMIT, METADATA }
+    /** Expectations use only independent fixture revisions and incarnation/disposal events. */
+    private fun matchesOracle(
+        actual: WorkspaceEpochValidation,
+        observed: OracleObservation,
+        admitted: OracleAdmission,
+    ): Boolean =
+        when {
+            observed.retired ->
+                actual == WorkspaceEpochValidation.Unavailable(ProjectReadEpochObservationFailure.ProjectDisposed)
+            observed.incarnation != admitted.incarnation -> actual == WorkspaceEpochValidation.DifferentIncarnation
+            observed.revision != admitted.revision -> actual == WorkspaceEpochValidation.Stale
+            else -> actual is WorkspaceEpochValidation.Current
+        }
+
+    private data class OracleObservation(val revision: Int, val incarnation: Int, val retired: Boolean)
+
+    private data class OracleAdmission(val revision: Int, val incarnation: Int)
+
+    private enum class Event {
+        MOVE,
+        DISPOSE,
+        REOPEN,
+        ADMIT,
+        METADATA,
+    }
 }
 
 private fun <State : Any> ProjectReadEpoch.Source<State>.epoch(): ProjectReadEpoch<*> =

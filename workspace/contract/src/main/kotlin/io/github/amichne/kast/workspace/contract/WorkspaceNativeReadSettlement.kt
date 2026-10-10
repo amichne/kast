@@ -14,10 +14,12 @@ sealed interface WorkspaceReadOperationIdentity {
 sealed interface WorkspaceNativeReadSettlement {
     data object Quiescent : WorkspaceNativeReadSettlement
 
-    class Running internal constructor(val operations: List<WorkspaceReadOperationIdentity>) : WorkspaceNativeReadSettlement
+    class Running internal constructor(val operations: List<WorkspaceReadOperationIdentity>) :
+        WorkspaceNativeReadSettlement
 
     /** Retirement denies admission but is not proof that outstanding native operations have terminated. */
-    class Retired internal constructor(val operations: List<WorkspaceReadOperationIdentity>) : WorkspaceNativeReadSettlement
+    class Retired internal constructor(val operations: List<WorkspaceReadOperationIdentity>) :
+        WorkspaceNativeReadSettlement
 }
 
 /** Preserve observed model evidence while truthful unsettled execution prevents preparation admission. */

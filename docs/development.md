@@ -318,6 +318,10 @@ The adjacent-patch acceptance helper supports archives with the current contract
 
 ## Workspace readiness proof boundary
 
+The [workspace recovery proof](reviews/workspace-readiness-recovery-989.md)
+records ownership decisions, policy properties, production mutations and native
+validation limits for issue #989.
+
 `WorkspaceCapabilityReadiness` reports detached facts for `MODEL_PREPARATION`.
 The IntelliJ query adapter validates the selected open, initialized project,
 exact canonical root, complete current cached Gradle model, smart indexing,
@@ -342,6 +346,11 @@ retaining outstanding invocation observations until their native work terminates
 Preparation reports pending native work with the retained model observation and
 active operation identities. A retired endpoint incarnation remains blocked and
 requires a newly attached host; it does not imply the live project was disposed.
+The query owner retains its last successful preparation observation for the same
+native project identity. If refresh or observation cancellation makes current
+model checks unavailable, inspection still shows the earlier observed model and
+the current rejection separately. History never substitutes for a new ready
+observation or a final semantic freshness check.
 
 The associated IntelliJ modules own the truthfulness of these observations and
 native settlement guarantees. Pure tests establish the decisions conditional on

@@ -1,18 +1,12 @@
 package io.github.amichne.kast.runtime.hosted.lifecycle
 
-import com.intellij.openapi.application.EDT
-import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType
-import com.intellij.openapi.externalSystem.service.internal.ExternalSystemProcessingManager
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeProjectTarget
-import io.github.amichne.kast.runtime.hosted.saveProjectDocuments
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /** One bounded existing-project readiness sequence, with at most one Kast-owned model reload. */
@@ -21,11 +15,9 @@ internal class IdeLifecycleReadiness(
     private val target: IdeProjectTarget,
     private val root: CanonicalWorkspaceRoot,
     private val query: HostedQueryService,
-    private val refreshExistingModel: Boolean = false,
     private val reloadModel: suspend () -> IdeLifecycleResult,
 ) {
-    private var reloaded = false
-    private var saved = false
+    private val preparation = WorkspaceReadinessPreparation()
 
     suspend fun await(): IdeLifecycleResult =
         withTimeoutOrNull(OPERATION_WAIT_MILLIS) {
@@ -40,32 +32,16 @@ internal class IdeLifecycleReadiness(
         } ?: blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
 
     private suspend fun step(): ReadinessStep =
-        when (query.readiness(root).automaticAction()) {
-            AutomaticReadinessAction.Ready ->
-                if (refreshExistingModel && !reloaded) reloadIfIdle()
-                else ReadinessStep.Finished(IdeLifecycleResult.Opened(target))
-            AutomaticReadinessAction.ReloadModel -> reloadIfIdle()
-            AutomaticReadinessAction.Wait -> ReadinessStep.Wait
-            AutomaticReadinessAction.UnsavedDocuments ->
-                if (!saved && withContext(Dispatchers.EDT) { saveProjectDocuments(root) }) {
-                    saved = true
-                    ReadinessStep.Wait
-                } else ReadinessStep.Finished(blocked(IdeLifecycleFailure.UNSAVED_DOCUMENTS))
+        when (val action = preparation.observe(query.workspaceReadiness(root))) {
+            WorkspacePreparationAction.Ready -> ReadinessStep.Finished(IdeLifecycleResult.Opened(target))
+            WorkspacePreparationAction.Wait -> ReadinessStep.Wait
+            WorkspacePreparationAction.ReloadModel ->
+                when (val result = reloadModel()) {
+                    is IdeLifecycleResult.Synced -> ReadinessStep.Wait
+                    else -> ReadinessStep.Finished(result)
+                }
+            is WorkspacePreparationAction.Blocked -> ReadinessStep.Finished(blocked(action.reason))
         }
-
-    private suspend fun reloadIfIdle(): ReadinessStep {
-        if (
-            ExternalSystemProcessingManager.getInstance()
-                .hasTaskOfTypeInProgress(ExternalSystemTaskType.RESOLVE_PROJECT, project)
-        )
-            return ReadinessStep.Wait
-        if (reloaded) return ReadinessStep.Finished(blocked(IdeLifecycleFailure.IMPORT_FAILED))
-        reloaded = true
-        return when (val result = reloadModel()) {
-            is IdeLifecycleResult.Synced -> ReadinessStep.Wait
-            else -> ReadinessStep.Finished(result)
-        }
-    }
 
     private fun blocked(failure: IdeLifecycleFailure) = IdeLifecycleResult.Blocked(failure)
 

@@ -119,6 +119,7 @@ data class IdeProjectDescription(
     val ownership: IdeProjectOwnership,
     val users: Int,
     val readiness: WorkspaceReadinessInspectionDocument = WorkspaceReadinessInspectionDocument.Unknown,
+    val refresh: WorkspaceRefreshInspectionDocument = WorkspaceRefreshInspectionDocument.Unknown,
 )
 
 @Serializable sealed interface IdeLifecycleRejection

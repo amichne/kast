@@ -10,18 +10,26 @@ internal class WorkspaceRefreshImportCompletion<TaskId : Any>(
 ) {
     private sealed interface Outcome {
         data object Awaiting : Outcome
+
         data class Observed(val result: WorkspaceRefreshEffectResult) : Outcome
     }
 
     private sealed interface State<out Id> {
         data class Waiting(val outcome: Outcome = Outcome.Awaiting) : State<Nothing>
+
         data class Running<Id>(val id: Id, val outcome: Outcome = Outcome.Awaiting) : State<Id>
+
         data class Ended<Id>(val id: Id) : State<Id>
+
         data class Cancelling<Id>(val id: Id) : State<Id>
+
         data object Finished : State<Nothing>
     }
 
-    private enum class Retirement { ACTIVE, RETIRED }
+    private enum class Retirement {
+        ACTIVE,
+        RETIRED,
+    }
 
     private var state: State<TaskId> = State.Waiting()
     private var retirement = Retirement.ACTIVE
@@ -41,14 +49,17 @@ internal class WorkspaceRefreshImportCompletion<TaskId : Any>(
     @Synchronized
     fun ended(id: TaskId) {
         when (val current = state) {
-            is State.Running -> if (current.id == id) {
-                when (val outcome = current.outcome) {
-                    Outcome.Awaiting -> state = State.Ended(id)
-                    is Outcome.Observed -> publish(outcome.result)
+            is State.Running ->
+                if (current.id == id) {
+                    when (val outcome = current.outcome) {
+                        Outcome.Awaiting -> state = State.Ended(id)
+                        is Outcome.Observed -> publish(outcome.result)
+                    }
                 }
-            }
             is State.Cancelling -> if (current.id == id) publish(WorkspaceRefreshEffectResult.CANCELLED)
-            is State.Waiting, is State.Ended, State.Finished -> Unit
+            is State.Waiting,
+            is State.Ended,
+            State.Finished -> Unit
         }
     }
 
@@ -58,7 +69,8 @@ internal class WorkspaceRefreshImportCompletion<TaskId : Any>(
             is State.Waiting -> state = State.Waiting(merge(current.outcome, result))
             is State.Running -> state = current.copy(outcome = merge(current.outcome, result))
             is State.Ended -> publish(result)
-            is State.Cancelling, State.Finished -> Unit
+            is State.Cancelling,
+            State.Finished -> Unit
         }
     }
 

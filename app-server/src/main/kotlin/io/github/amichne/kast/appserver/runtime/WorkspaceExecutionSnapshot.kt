@@ -2,6 +2,10 @@ package io.github.amichne.kast.appserver.runtime
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
 
 @Serializable
 internal enum class WorkspaceExecutionLaneState {
@@ -35,7 +39,8 @@ internal data class WorkspaceExecutionIdentityDocument(
     val callId: String,
 )
 
-internal fun WorkspaceExecutionIdentity.document() = WorkspaceExecutionIdentityDocument(connection.value, thread.value, turn.value, call.value)
+internal fun WorkspaceExecutionIdentity.document() =
+    WorkspaceExecutionIdentityDocument(connection.value, thread.value, turn.value, call.value)
 
 @Serializable
 internal data class WorkspaceExecutionSnapshot(
@@ -62,3 +67,42 @@ internal data class WorkspaceExecutionEventSnapshot(
     val failure: String? = null,
     val certainty: String? = null,
 )
+
+internal fun serializeWorkspaceExecutionSnapshot(
+    policy: WorkspaceExecutionPolicy,
+    lanes: List<WorkspaceExecutionLaneSnapshot>,
+    events: Iterable<WorkspaceExecutionEvent>,
+): JsonObject =
+    snapshotJson
+        .encodeToJsonElement(
+            WorkspaceExecutionSnapshot(
+                policy.maximumQueued,
+                policy.queueWait.value,
+                policy.interaction.value,
+                lanes,
+                events.map(WorkspaceExecutionEvent::document),
+            )
+        )
+        .jsonObject
+
+private fun WorkspaceExecutionEvent.document() =
+    WorkspaceExecutionEventSnapshot(
+        request.workspace.value,
+        request.connection.value,
+        request.thread.value,
+        request.turn.value,
+        request.call.value,
+        stage.name.lowercase(),
+        outcome.name.lowercase(),
+        elapsed.inWholeMilliseconds,
+        queued.inWholeMilliseconds,
+        interactionLimit.value,
+        (interactionLimit.value - elapsed.inWholeMilliseconds).coerceAtLeast(0),
+        failure?.name,
+        failure?.certainty?.name?.lowercase(),
+    )
+
+private val snapshotJson = Json {
+    encodeDefaults = true
+    explicitNulls = false
+}

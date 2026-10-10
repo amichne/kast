@@ -6,12 +6,16 @@ import java.security.MessageDigest
 
 @JvmInline
 internal value class BrokerWorkspaceId private constructor(val value: String) {
-    enum class Failure { INVALID }
+    enum class Failure {
+        INVALID
+    }
 
     companion object {
+        private const val SHA256_DIGEST_HEX_LENGTH = 64
+
         /** Detached identity ingress; canonical lowercase digest syntax conveys no native readiness. */
         fun parse(raw: String): Refinement<BrokerWorkspaceId, Failure> =
-            if (raw.length == 64 && raw.all { it in '0'..'9' || it in 'a'..'f' })
+            if (raw.length == SHA256_DIGEST_HEX_LENGTH && raw.all { it in '0'..'9' || it in 'a'..'f' })
                 Refinement.Refined(BrokerWorkspaceId(raw))
             else Refinement.Rejected(Failure.INVALID)
 

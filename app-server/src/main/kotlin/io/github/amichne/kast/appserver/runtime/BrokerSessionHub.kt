@@ -92,21 +92,6 @@ internal class BrokerSessionHub(
             addAll(requests.upgradeBlockers())
         }
 
-        private fun executionAccess(params: JsonObject): WorkspaceExecutionAccess {
-            val namespace = when (val parsed = io.github.amichne.kast.appserver.core.ProviderNamespace.admit(params.text("namespace") ?: "")) {
-                is io.github.amichne.kast.kernel.Refinement.Refined -> parsed.value
-                is io.github.amichne.kast.kernel.Refinement.Rejected -> return WorkspaceExecutionAccess.Operation(io.github.amichne.kast.appserver.core.BrokerOperationEffect.Unknown)
-            }
-            val name = when (val parsed = io.github.amichne.kast.appserver.core.ToolName.admit(params.text("tool") ?: "")) {
-                is io.github.amichne.kast.kernel.Refinement.Refined -> parsed.value
-                is io.github.amichne.kast.kernel.Refinement.Rejected -> return WorkspaceExecutionAccess.Operation(io.github.amichne.kast.appserver.core.BrokerOperationEffect.Unknown)
-            }
-            val effect = options.broker.effect(io.github.amichne.kast.appserver.core.ToolAddress(namespace, name))
-            val definition = options.sessionBootstrap?.tools?.definitions?.singleOrNull { it.name.value == name.value }
-            val arguments = params["arguments"] ?: JsonNull
-            return workspaceInvocationAccess(effect, definition, arguments)
-        }
-
         private fun awaitInvocationResponse(response: Deferred<ProtocolRouting>, doc: JsonObject) {
             calls.incrementAndGet()
             scope.launch {
@@ -370,6 +355,12 @@ internal class BrokerSessionHub(
                                                 )
                                             )
                                         is io.github.amichne.kast.kernel.Refinement.Refined -> {
+                                            val access =
+                                                workspaceInvocationAccess(
+                                                    params,
+                                                    options.broker,
+                                                    options.sessionBootstrap?.tools?.definitions.orEmpty(),
+                                                )
                                             val submit:
                                                 (BrokerInvocationApproval) -> Deferred<WorkspaceExecutionResult> =
                                                 { approval ->
@@ -382,17 +373,23 @@ internal class BrokerSessionHub(
                                                             identity.call,
                                                         ),
                                                         interactionLimit,
-                                                        executionAccess(params),
+                                                        access,
                                                     ) {
                                                         try {
                                                             val dispatched = adapter.fromUpstream(message, approval)
                                                             currentCoroutineContext().ensureActive()
-                                                            val observed = if (executionAccess(params) == WorkspaceExecutionAccess.Observation && dispatched is ProtocolRouting.ReplyUpstream) {
-                                                                when (val projected = io.github.amichne.kast.appserver.protocol.codex.appendWorkspaceInspection(dispatched, workspaceExecution.observation(bound.value.id), options.maximumMessageBytes)) {
-                                                                    is io.github.amichne.kast.kernel.Refinement.Refined -> projected.value
-                                                                    is io.github.amichne.kast.kernel.Refinement.Rejected -> ProtocolRouting.ReplyUpstream(toolFailure(doc, projected.failure.name))
+                                                            val observed =
+                                                                projectWorkspaceInspection(
+                                                                    dispatched,
+                                                                    access,
+                                                                    { workspaceExecution.observation(bound.value.id) },
+                                                                    options.maximumMessageBytes,
+                                                                    options.broker.limits.maximumToolResultBytes,
+                                                                ) { failure ->
+                                                                    ProtocolRouting.ReplyUpstream(
+                                                                        toolFailure(doc, failure.name)
+                                                                    )
                                                                 }
-                                                            } else dispatched
                                                             invocation.settle(observed)
                                                         } catch (failure: Exception) {
                                                             invocation.settle(

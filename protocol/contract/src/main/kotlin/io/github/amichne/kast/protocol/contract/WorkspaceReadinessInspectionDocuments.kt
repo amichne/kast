@@ -4,14 +4,17 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /** Inspection is observational. An opaque native epoch remains confined to its original IntelliJ owner. */
-@Serializable
-data class WorkspaceInspectionModelIdentity(val root: String, val incarnation: String)
+@Serializable data class WorkspaceInspectionModelIdentity(val root: String, val incarnation: String)
 
 @Serializable
-enum class WorkspaceInspectionCapability { MODEL_PREPARATION }
+enum class WorkspaceInspectionCapability {
+    MODEL_PREPARATION
+}
 
 @Serializable
-enum class WorkspaceInspectionEpochEvidence { OBSERVED_OPAQUE_EPOCH }
+enum class WorkspaceInspectionEpochEvidence {
+    OBSERVED_OPAQUE_EPOCH
+}
 
 @Serializable
 enum class WorkspaceInspectionReadinessReason {
@@ -29,6 +32,7 @@ enum class WorkspaceInspectionReadinessReason {
     HOST_INCOMPATIBLE,
     CONFIGURATION_UNAVAILABLE,
     OBSERVATION_FAILED,
+    OBSERVATION_CANCELLED,
     EPOCH_UNAVAILABLE,
     NATIVE_WORK,
 }
@@ -65,6 +69,7 @@ sealed interface WorkspaceInspectionRetainedModel {
     @Serializable
     @SerialName("rejected")
     data class Rejected(
+        val identity: WorkspaceInspectionModelIdentity,
         val reason: WorkspaceInspectionReadinessReason,
         val nextAction: WorkspaceInspectionNextAction,
         val epochRejection: WorkspaceInspectionEpochRejection = WorkspaceInspectionEpochRejection.Unobserved,
@@ -73,22 +78,50 @@ sealed interface WorkspaceInspectionRetainedModel {
 
 @Serializable
 enum class WorkspaceInspectionEpochFailure {
-    WRONG_THREAD, PROJECT_DISPOSED, PROJECT_NOT_OPEN, PROJECT_NOT_INITIALIZED,
-    PROJECT_ROOT_UNAVAILABLE, PROJECT_ROOT_MALFORMED, DUMB_MODE, GRADLE_MODEL_UNAVAILABLE,
-    GRADLE_MODEL_INCOMPLETE, GRADLE_MODEL_AMBIGUOUS, GRADLE_ROOT_UNAVAILABLE, GRADLE_ROOT_MALFORMED,
-    IMPORT_TIMESTAMPS_INCOHERENT, VFS_BATCH_LIMIT_EXCEEDED, VFS_PATH_MALFORMED, SIGNAL_EXHAUSTED, READ_PREEMPTED,
+    WRONG_THREAD,
+    PROJECT_DISPOSED,
+    PROJECT_NOT_OPEN,
+    PROJECT_NOT_INITIALIZED,
+    PROJECT_ROOT_UNAVAILABLE,
+    PROJECT_ROOT_MALFORMED,
+    DUMB_MODE,
+    GRADLE_MODEL_UNAVAILABLE,
+    GRADLE_MODEL_INCOMPLETE,
+    GRADLE_MODEL_AMBIGUOUS,
+    GRADLE_ROOT_UNAVAILABLE,
+    GRADLE_ROOT_MALFORMED,
+    IMPORT_TIMESTAMPS_INCOHERENT,
+    VFS_BATCH_LIMIT_EXCEEDED,
+    VFS_PATH_MALFORMED,
+    SIGNAL_EXHAUSTED,
+    READ_PREEMPTED,
 }
 
 @Serializable
 enum class WorkspaceInspectionEpochStage {
-    THREAD, DISPOSAL, OPEN, INITIALIZATION, PROJECT_ROOT, PROJECT_MODEL, PSI, VFS, ROOT_MODEL, DUMB_MODE,
+    THREAD,
+    DISPOSAL,
+    OPEN,
+    INITIALIZATION,
+    PROJECT_ROOT,
+    PROJECT_MODEL,
+    PSI,
+    VFS,
+    ROOT_MODEL,
+    DUMB_MODE,
 }
 
 @Serializable
 sealed interface WorkspaceInspectionEpochRejection {
     @Serializable @SerialName("unobserved") data object Unobserved : WorkspaceInspectionEpochRejection
-    @Serializable @SerialName("rejected") data class Rejected(val cause: WorkspaceInspectionEpochFailure) : WorkspaceInspectionEpochRejection
-    @Serializable @SerialName("observation_failed") data class ObservationFailed(val stage: WorkspaceInspectionEpochStage) : WorkspaceInspectionEpochRejection
+
+    @Serializable
+    @SerialName("rejected")
+    data class Rejected(val cause: WorkspaceInspectionEpochFailure) : WorkspaceInspectionEpochRejection
+
+    @Serializable
+    @SerialName("observation_failed")
+    data class ObservationFailed(val stage: WorkspaceInspectionEpochStage) : WorkspaceInspectionEpochRejection
 }
 
 @Serializable

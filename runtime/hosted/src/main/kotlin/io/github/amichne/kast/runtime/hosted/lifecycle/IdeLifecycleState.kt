@@ -56,7 +56,11 @@ internal class IdeLifecycleState(val host: UUID, private val capacity: Int = 256
     @Synchronized
     fun inspectionSelections(): List<IdeLifecycleInspectionSelection> =
         projects.values.map {
-            IdeLifecycleInspectionSelection(it.project, it.root, IdeProjectDescription(it.target, it.ownership, it.users.size))
+            IdeLifecycleInspectionSelection(
+                it.project,
+                it.root,
+                IdeProjectDescription(it.target, it.ownership, it.users.size),
+            )
         }
 
     @Synchronized

@@ -23,6 +23,7 @@ internal class WorkspaceRefreshImportCallback(
     private val root: CanonicalWorkspaceRoot,
     complete: (WorkspaceRefreshEffectResult) -> Unit,
 ) : ExternalProjectRefreshCallback, Disposable {
+    private var abortedBeforeStart = false
     private val manager = ExternalSystemProgressNotificationManager.getInstance()
     private val listener: ExternalSystemTaskNotificationListener =
         object : ExternalSystemTaskNotificationListener {
@@ -81,6 +82,13 @@ internal class WorkspaceRefreshImportCallback(
 
     fun failedStartCall(result: WorkspaceRefreshEffectResult) = completion.finished(result)
 
-    override fun dispose() = completion.retired()
-}
+    fun abortBeforeStart() {
+        abortedBeforeStart = true
+        manager.removeNotificationListener(listener)
+        if (!Disposer.isDisposed(this)) Disposer.dispose(this)
+    }
 
+    override fun dispose() {
+        if (!abortedBeforeStart) completion.retired()
+    }
+}

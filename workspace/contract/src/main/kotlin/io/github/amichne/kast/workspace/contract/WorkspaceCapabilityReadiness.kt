@@ -5,7 +5,7 @@ data class WorkspaceModelIdentity(val root: CanonicalWorkspaceRoot, val incarnat
 
 /** Preparation checks the existing imported model; semantic execution still needs its own complete admission. */
 enum class WorkspaceCapability {
-    MODEL_PREPARATION,
+    MODEL_PREPARATION
 }
 
 enum class WorkspaceReadinessReason {
@@ -23,6 +23,7 @@ enum class WorkspaceReadinessReason {
     HOST_INCOMPATIBLE,
     CONFIGURATION_UNAVAILABLE,
     OBSERVATION_FAILED,
+    OBSERVATION_CANCELLED,
     EPOCH_UNAVAILABLE,
     NATIVE_WORK,
 }
@@ -42,6 +43,12 @@ sealed interface WorkspaceReadinessDetail {
 
     data class EpochRejected(val failure: ProjectReadEpochObservationFailure) : WorkspaceReadinessDetail
 
+    /** Previous native model evidence remains informational while [currentDetail] describes the current rejection. */
+    data class PreviouslyObservedModel(
+        val observation: WorkspaceCapabilityReadiness.Ready,
+        val currentDetail: WorkspaceReadinessDetail,
+    ) : WorkspaceReadinessDetail
+
     /** The retained observation is informational; settlement and a new current observation are still required. */
     data class UnsettledReads(
         val retainedObservation: WorkspaceCapabilityReadiness,
@@ -50,15 +57,16 @@ sealed interface WorkspaceReadinessDetail {
 }
 
 /**
- * Detached native observation. Ready describes model preparation at [Ready.epoch], not a semantic capability.
- * Retaining this value never makes it current: use and publication must reobserve the original epoch source.
+ * Detached native observation. Ready describes model preparation at [Ready.epoch], not a semantic capability. Retaining
+ * this value never makes it current: use and publication must reobserve the original epoch source.
  */
 sealed interface WorkspaceCapabilityReadiness {
     val identity: WorkspaceModelIdentity
     val capability: WorkspaceCapability
         get() = WorkspaceCapability.MODEL_PREPARATION
 
-    class Ready internal constructor(
+    class Ready
+    internal constructor(
         override val identity: WorkspaceModelIdentity,
         val epoch: ProjectReadEpoch<*>,
     ) : WorkspaceCapabilityReadiness

@@ -5,128 +5,6 @@ import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.workspace.contract.WorkspaceCapabilityReadiness
 import io.github.amichne.kast.workspace.contract.WorkspaceReadinessReason
 
-@JvmInline
-internal value class WorkspaceRefreshRequestId private constructor(val value: String) {
-    companion object {
-        private const val MAX_REQUEST_ID_CHARACTERS = 128
-
-        fun parse(value: String): Refinement<WorkspaceRefreshRequestId, WorkspaceRefreshRejection> =
-            if (value.isNotBlank() && value.length <= MAX_REQUEST_ID_CHARACTERS)
-                Refinement.Refined(WorkspaceRefreshRequestId(value))
-            else Refinement.Rejected(WorkspaceRefreshRejection.INVALID_REQUEST)
-    }
-}
-
-@JvmInline
-internal value class WorkspaceRefreshStamp private constructor(val value: Long) {
-    companion object {
-        fun parse(value: Long): Refinement<WorkspaceRefreshStamp, WorkspaceRefreshRejection> =
-            if (value >= 0) Refinement.Refined(WorkspaceRefreshStamp(value))
-            else Refinement.Rejected(WorkspaceRefreshRejection.INVALID_REQUEST)
-    }
-}
-
-internal enum class WorkspaceRefreshRejection {
-    INVALID_REQUEST,
-    REQUEST_CONFLICT,
-    CAPACITY,
-    UNKNOWN_REQUEST,
-    DISPOSED,
-}
-
-internal enum class WorkspaceRefreshFailure {
-    BUSY,
-    UNSAVED_DOCUMENTS,
-    UNLINKED_BUILD,
-    EFFECT_FAILED,
-    ROOT_UNAVAILABLE,
-    CANCELLED,
-    DISPOSED,
-    DEADLINE_EXCEEDED,
-}
-
-internal enum class WorkspaceRefreshStage {
-    QUEUED,
-    EFFECT,
-    ADMISSION,
-}
-
-@kotlinx.serialization.Serializable
-internal enum class WorkspaceRefreshEffectResult {
-    BUSY,
-    UNSAVED_DOCUMENTS,
-    UNLINKED_BUILD,
-    ROOT_UNAVAILABLE,
-    SUCCEEDED,
-    FAILED,
-    CANCELLED,
-    DISPOSED,
-    RETIRED,
-}
-
-internal sealed interface WorkspaceRefreshStatus {
-    data class Pending(val stage: WorkspaceRefreshStage) : WorkspaceRefreshStatus
-
-    data object Complete : WorkspaceRefreshStatus
-
-    data class Failed(val reason: WorkspaceRefreshFailure) : WorkspaceRefreshStatus
-
-    data class Rejected(val reason: WorkspaceRefreshRejection) : WorkspaceRefreshStatus
-}
-
-@JvmInline
-internal value class WorkspaceRefreshAttemptId private constructor(val value: Long) {
-    companion object {
-        fun fromSequence(sequence: Long): WorkspaceRefreshAttemptId {
-            require(sequence > 0)
-            return WorkspaceRefreshAttemptId(sequence)
-        }
-    }
-}
-
-internal enum class WorkspaceRefreshNativeEffect {
-    INCREMENTAL_FILES,
-    FORCED_FILES,
-    MODEL_RELOAD,
-}
-
-internal sealed interface WorkspaceRefreshWaiterIdentity {
-    data class Request(val id: WorkspaceRefreshRequestId) : WorkspaceRefreshWaiterIdentity
-    data object ReadPreparation : WorkspaceRefreshWaiterIdentity
-}
-
-internal data class WorkspaceRefreshWaiterInspection(
-    val identity: WorkspaceRefreshWaiterIdentity,
-    val status: WorkspaceRefreshStatus,
-)
-
-internal data class WorkspaceRefreshAttemptInspection(
-    val id: WorkspaceRefreshAttemptId,
-    val effect: WorkspaceRefreshNativeEffect,
-    val stamp: WorkspaceRefreshStamp,
-    val initiator: WorkspaceRefreshWaiterIdentity,
-    val waiters: List<WorkspaceRefreshWaiterInspection>,
-)
-
-internal sealed interface WorkspaceRefreshInspection {
-    data object Idle : WorkspaceRefreshInspection
-    data class Retired(val unsettled: List<WorkspaceRefreshAttemptInspection>) : WorkspaceRefreshInspection
-    data class Running(
-        val active: WorkspaceRefreshAttemptInspection,
-        val queued: List<WorkspaceRefreshAttemptInspection>,
-    ) : WorkspaceRefreshInspection
-    data class AwaitingAdmission(val waiters: List<WorkspaceRefreshWaiterInspection>) : WorkspaceRefreshInspection
-}
-
-/** Terminal results prove native settlement; RETIRED only retires model authority. Neither grants admission. */
-internal interface WorkspaceRefreshPort {
-    fun start(effect: WorkspaceRefreshEffect, complete: (WorkspaceRefreshEffectResult) -> Unit)
-
-    fun startIncremental(complete: (WorkspaceRefreshEffectResult) -> Unit)
-
-    fun readiness(): WorkspaceCapabilityReadiness
-}
-
 /** Project-owned transitions and one thin native effect boundary, independent of semantic request budgets. */
 internal class WorkspaceRefreshService(
     private val port: WorkspaceRefreshPort,
@@ -139,46 +17,37 @@ internal class WorkspaceRefreshService(
         require(capacity > 0)
     }
 
-    private sealed interface Effect {
-        data class Explicit(val effect: WorkspaceRefreshEffect) : Effect
-        data object Incremental : Effect
-    }
-
-    private data class Work(val effect: Effect, val stamp: WorkspaceRefreshStamp)
-
-    // Referential identity prevents a duplicate native callback from settling an identical later retry.
-    private class Attempt(
-        val work: Work,
-        val id: WorkspaceRefreshAttemptId,
-        val initiator: WorkspaceRefreshWaiterIdentity,
-    )
-
-    private sealed interface Waiter {
-        data class Explicit(val id: WorkspaceRefreshRequestId) : Waiter
-        class Read : Waiter
-    }
-
-    private class Entry(
-        val attempt: Attempt,
-        val started: Long,
-        var status: WorkspaceRefreshStatus,
-        val complete: (WorkspaceRefreshStatus) -> Unit = {},
-    )
-
-    private val entries = linkedMapOf<Waiter, Entry>()
-    private val queue = ArrayDeque<Attempt>()
-    private var active: Attempt? = null
+    private val entries = linkedMapOf<WorkspaceRefreshWaiter, WorkspaceRefreshEntry>()
+    private val queue = ArrayDeque<WorkspaceRefreshAttempt>()
+    private var active: WorkspaceRefreshAttempt? = null
     private var disposed = false
     private var latestStamp = 0L
     private var latestAttempt = 0L
 
     @Synchronized
     fun submit(id: WorkspaceRefreshRequestId, effect: WorkspaceRefreshEffect): WorkspaceRefreshStatus {
-        entries[Waiter.Explicit(id)]?.let { return submit(id, effect, it.attempt.work.stamp) }
-        return when (val stamp = nextStamp()) {
-            is Refinement.Refined -> submit(id, effect, stamp.value)
-            is Refinement.Rejected -> WorkspaceRefreshStatus.Rejected(stamp.failure)
+        entries[WorkspaceRefreshWaiter.Explicit(id)]?.let {
+            return submit(id, effect, it.attempt.work.stamp)
         }
+        if (disposed) return WorkspaceRefreshStatus.Rejected(WorkspaceRefreshRejection.DISPOSED)
+        expire()
+        observeAdmission()
+        val observed = port.readiness() as? WorkspaceCapabilityReadiness.Ready
+        val candidates =
+            listOfNotNull(active) +
+                queue +
+                entries.values
+                    .filter {
+                        it.status is WorkspaceRefreshStatus.Pending
+                    }
+                    .map { it.attempt }
+        val equivalent = candidates.equivalentModelDemand(effect, observed)
+        return if (equivalent != null) submit(id, effect, equivalent.work.stamp, observed)
+        else
+            when (val stamp = nextStamp()) {
+                is Refinement.Refined -> submit(id, effect, stamp.value, observed)
+                is Refinement.Rejected -> WorkspaceRefreshStatus.Rejected(stamp.failure)
+            }
     }
 
     @Synchronized
@@ -186,10 +55,11 @@ internal class WorkspaceRefreshService(
         id: WorkspaceRefreshRequestId,
         effect: WorkspaceRefreshEffect,
         stamp: WorkspaceRefreshStamp,
+        observation: WorkspaceCapabilityReadiness.Ready? = null,
     ): WorkspaceRefreshStatus {
         if (disposed) return WorkspaceRefreshStatus.Rejected(WorkspaceRefreshRejection.DISPOSED)
-        val work = Work(Effect.Explicit(effect), stamp)
-        val waiter = Waiter.Explicit(id)
+        val work = WorkspaceRefreshWork(WorkspaceRefreshEffectKind.Explicit(effect), stamp)
+        val waiter = WorkspaceRefreshWaiter.Explicit(id)
         entries[waiter]?.let { previous ->
             if (previous.attempt.work != work)
                 return WorkspaceRefreshStatus.Rejected(WorkspaceRefreshRejection.REQUEST_CONFLICT)
@@ -199,7 +69,7 @@ internal class WorkspaceRefreshService(
         observeAdmission()
         if (!makeRoom()) return WorkspaceRefreshStatus.Rejected(WorkspaceRefreshRejection.CAPACITY)
         latestStamp = maxOf(latestStamp, stamp.value)
-        when (val added = add(waiter, work)) {
+        when (val added = add(waiter, work, observation = observation)) {
             is Refinement.Rejected -> return WorkspaceRefreshStatus.Rejected(added.failure)
             is Refinement.Refined -> Unit
         }
@@ -220,17 +90,21 @@ internal class WorkspaceRefreshService(
             complete(WorkspaceRefreshStatus.Rejected(WorkspaceRefreshRejection.CAPACITY))
             return {}
         }
-        val equivalent = entries.values.firstOrNull {
-            it.attempt.work.effect == Effect.Incremental && it.status is WorkspaceRefreshStatus.Pending
-        }
-        val work = equivalent?.attempt?.work ?: when (val stamp = nextStamp()) {
-            is Refinement.Refined -> Work(Effect.Incremental, stamp.value)
-            is Refinement.Rejected -> {
-                complete(WorkspaceRefreshStatus.Rejected(stamp.failure))
-                return {}
+        val equivalent =
+            entries.values.firstOrNull {
+                it.attempt.work.effect == WorkspaceRefreshEffectKind.Incremental &&
+                    it.status is WorkspaceRefreshStatus.Pending
             }
-        }
-        val waiter = Waiter.Read()
+        val work =
+            equivalent?.attempt?.work
+                ?: when (val stamp = nextStamp()) {
+                    is Refinement.Refined -> WorkspaceRefreshWork(WorkspaceRefreshEffectKind.Incremental, stamp.value)
+                    is Refinement.Rejected -> {
+                        complete(WorkspaceRefreshStatus.Rejected(stamp.failure))
+                        return {}
+                    }
+                }
+        val waiter = WorkspaceRefreshWaiter.Read()
         when (val added = add(waiter, work, complete)) {
             is Refinement.Rejected -> {
                 complete(WorkspaceRefreshStatus.Rejected(added.failure))
@@ -247,61 +121,59 @@ internal class WorkspaceRefreshService(
         else WorkspaceRefreshStamp.parse(++latestStamp)
 
     private fun add(
-        waiter: Waiter,
-        work: Work,
+        waiter: WorkspaceRefreshWaiter,
+        work: WorkspaceRefreshWork,
         complete: (WorkspaceRefreshStatus) -> Unit = {},
+        observation: WorkspaceCapabilityReadiness.Ready? = null,
     ): Refinement<Unit, WorkspaceRefreshRejection> {
-        val equivalent = entries.values.firstOrNull {
-            it.attempt.work == work && it.status is WorkspaceRefreshStatus.Pending
-        }
-        val attempt = equivalent?.attempt ?: run {
-            if (latestAttempt == Long.MAX_VALUE) return Refinement.Rejected(WorkspaceRefreshRejection.CAPACITY)
-            Attempt(work, WorkspaceRefreshAttemptId.fromSequence(++latestAttempt), waiter.identity()).also(queue::addLast)
-        }
-        entries[waiter] = Entry(
-            attempt,
-            nanoTime(),
-            equivalent?.status ?: WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.QUEUED),
-            complete,
-        )
+        val equivalent =
+            entries.values.firstOrNull {
+                it.attempt.work == work && it.status is WorkspaceRefreshStatus.Pending
+            }
+        val attempt =
+            equivalent?.attempt
+                ?: run {
+                    if (latestAttempt == Long.MAX_VALUE) return Refinement.Rejected(WorkspaceRefreshRejection.CAPACITY)
+                    WorkspaceRefreshAttempt(
+                            work,
+                            WorkspaceRefreshAttemptId.fromSequence(++latestAttempt),
+                            waiter.identity(),
+                            observation,
+                        )
+                        .also(queue::addLast)
+                }
+        entries[waiter] =
+            WorkspaceRefreshEntry(
+                attempt,
+                nanoTime(),
+                equivalent?.status ?: WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.QUEUED),
+                complete,
+            )
         return Refinement.Refined(Unit)
-    }
-
-    private fun Waiter.identity(): WorkspaceRefreshWaiterIdentity = when (this) {
-        is Waiter.Explicit -> WorkspaceRefreshWaiterIdentity.Request(id)
-        is Waiter.Read -> WorkspaceRefreshWaiterIdentity.ReadPreparation
     }
 
     @Synchronized
     fun inspection(): WorkspaceRefreshInspection {
         expire()
-        if (disposed) return WorkspaceRefreshInspection.Retired(listOfNotNull(active?.inspection()))
-        active?.let { return WorkspaceRefreshInspection.Running(it.inspection(), queue.map { queued -> queued.inspection() }) }
-        val admission = entries.filterValues { it.status == WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.ADMISSION) }
-        if (admission.isNotEmpty()) return WorkspaceRefreshInspection.AwaitingAdmission(
-            admission.map { (waiter, entry) -> WorkspaceRefreshWaiterInspection(waiter.identity(), entry.status) }
-        )
+        if (disposed) return WorkspaceRefreshInspection.Retired(listOfNotNull(active?.inspection(entries)))
+        active?.let {
+            return WorkspaceRefreshInspection.Running(
+                it.inspection(entries),
+                queue.map { queued -> queued.inspection(entries) },
+            )
+        }
+        val admission = entries.filterValues {
+            it.status == WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.ADMISSION)
+        }
+        if (admission.isNotEmpty())
+            return WorkspaceRefreshInspection.AwaitingAdmission(
+                admission.map { (waiter, entry) -> WorkspaceRefreshWaiterInspection(waiter.identity(), entry.status) }
+            )
         return WorkspaceRefreshInspection.Idle
     }
 
-    private fun Attempt.inspection(): WorkspaceRefreshAttemptInspection = WorkspaceRefreshAttemptInspection(
-        id,
-        when (val effect = work.effect) {
-            Effect.Incremental -> WorkspaceRefreshNativeEffect.INCREMENTAL_FILES
-            is Effect.Explicit -> when (effect.effect) {
-                WorkspaceRefreshEffect.FILE_REFRESH -> WorkspaceRefreshNativeEffect.FORCED_FILES
-                WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD -> WorkspaceRefreshNativeEffect.MODEL_RELOAD
-            }
-        },
-        work.stamp,
-        initiator,
-        entries.filterValues { it.attempt === this }.map { (waiter, entry) ->
-            WorkspaceRefreshWaiterInspection(waiter.identity(), entry.status)
-        },
-    )
-
     @Synchronized
-    private fun cancel(waiter: Waiter) {
+    private fun cancel(waiter: WorkspaceRefreshWaiter) {
         entries[waiter]?.let { entry ->
             if (entry.status is WorkspaceRefreshStatus.Pending)
                 transition(entry, WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.CANCELLED))
@@ -311,8 +183,9 @@ internal class WorkspaceRefreshService(
 
     @Synchronized
     fun status(id: WorkspaceRefreshRequestId): WorkspaceRefreshStatus {
-        val entry = entries[Waiter.Explicit(id)]
-            ?: return WorkspaceRefreshStatus.Rejected(WorkspaceRefreshRejection.UNKNOWN_REQUEST)
+        val entry =
+            entries[WorkspaceRefreshWaiter.Explicit(id)]
+                ?: return WorkspaceRefreshStatus.Rejected(WorkspaceRefreshRejection.UNKNOWN_REQUEST)
         expire()
         advance()
         observeAdmission()
@@ -324,21 +197,24 @@ internal class WorkspaceRefreshService(
         if (entries.values.none { it.status == WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.ADMISSION) }) return
         // Always reobserve through the native owner after effect settlement. No retained ready flag.
         when (val observed = port.readiness()) {
-            is WorkspaceCapabilityReadiness.Ready -> entries.values.toList().forEach {
-                if (it.status == WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.ADMISSION))
-                    transition(it, WorkspaceRefreshStatus.Complete)
-            }
+            is WorkspaceCapabilityReadiness.Ready ->
+                entries.values.toList().forEach {
+                    if (it.status == WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.ADMISSION))
+                        transition(it, WorkspaceRefreshStatus.Complete)
+                }
             is WorkspaceCapabilityReadiness.Blocked ->
                 if (
                     observed.reason == WorkspaceReadinessReason.PROJECT_DISPOSED ||
-                    observed.reason == WorkspaceReadinessReason.RETIRED_INCARNATION
-                ) dispose()
+                        observed.reason == WorkspaceReadinessReason.RETIRED_INCARNATION
+                )
+                    dispose()
             is WorkspaceCapabilityReadiness.Pending,
             is WorkspaceCapabilityReadiness.Unavailable -> Unit
         }
     }
 
-    @Synchronized fun contains(id: WorkspaceRefreshRequestId): Boolean = entries.containsKey(Waiter.Explicit(id))
+    @Synchronized
+    fun contains(id: WorkspaceRefreshRequestId): Boolean = entries.containsKey(WorkspaceRefreshWaiter.Explicit(id))
 
     @Synchronized
     fun hasWork(): Boolean =
@@ -356,8 +232,8 @@ internal class WorkspaceRefreshService(
 
     private fun makeRoom(): Boolean {
         while (entries.size >= capacity) {
-            val terminal = entries.entries.firstOrNull { it.value.status !is WorkspaceRefreshStatus.Pending }
-                ?: return false
+            val terminal =
+                entries.entries.firstOrNull { it.value.status !is WorkspaceRefreshStatus.Pending } ?: return false
             entries.remove(terminal.key)
         }
         return true
@@ -385,13 +261,13 @@ internal class WorkspaceRefreshService(
         active = attempt
         update(attempt, WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.EFFECT))
         when (val effect = attempt.work.effect) {
-            is Effect.Explicit -> port.start(effect.effect) { finish(attempt, it) }
-            Effect.Incremental -> port.startIncremental { finish(attempt, it) }
+            is WorkspaceRefreshEffectKind.Explicit -> port.start(effect.effect) { finish(attempt, it) }
+            WorkspaceRefreshEffectKind.Incremental -> port.startIncremental { finish(attempt, it) }
         }
     }
 
     @Synchronized
-    private fun finish(attempt: Attempt, result: WorkspaceRefreshEffectResult) {
+    private fun finish(attempt: WorkspaceRefreshAttempt, result: WorkspaceRefreshEffectResult) {
         if (active !== attempt) return
         if (result == WorkspaceRefreshEffectResult.RETIRED) {
             dispose()
@@ -403,22 +279,7 @@ internal class WorkspaceRefreshService(
         }
         expire()
         active = null
-        val outcome = when (result) {
-            WorkspaceRefreshEffectResult.BUSY -> WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.BUSY)
-            WorkspaceRefreshEffectResult.UNSAVED_DOCUMENTS ->
-                WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.UNSAVED_DOCUMENTS)
-            WorkspaceRefreshEffectResult.UNLINKED_BUILD ->
-                WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.UNLINKED_BUILD)
-            WorkspaceRefreshEffectResult.ROOT_UNAVAILABLE ->
-                WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.ROOT_UNAVAILABLE)
-            WorkspaceRefreshEffectResult.SUCCEEDED ->
-                if (attempt.work.effect == Effect.Incremental) WorkspaceRefreshStatus.Complete
-                else WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.ADMISSION)
-            WorkspaceRefreshEffectResult.FAILED -> WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.EFFECT_FAILED)
-            WorkspaceRefreshEffectResult.CANCELLED -> WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.CANCELLED)
-            WorkspaceRefreshEffectResult.DISPOSED -> WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.DISPOSED)
-            WorkspaceRefreshEffectResult.RETIRED -> error("Retirement is handled before terminal settlement")
-        }
+        val outcome = result.settledStatus(attempt.work.effect)
         update(attempt, outcome)
         if (result == WorkspaceRefreshEffectResult.DISPOSED) dispose()
         else {
@@ -427,13 +288,13 @@ internal class WorkspaceRefreshService(
         }
     }
 
-    private fun update(attempt: Attempt, status: WorkspaceRefreshStatus) {
+    private fun update(attempt: WorkspaceRefreshAttempt, status: WorkspaceRefreshStatus) {
         entries.values.toList().forEach {
             if (it.attempt === attempt && it.status is WorkspaceRefreshStatus.Pending) transition(it, status)
         }
     }
 
-    private fun transition(entry: Entry, status: WorkspaceRefreshStatus) {
+    private fun transition(entry: WorkspaceRefreshEntry, status: WorkspaceRefreshStatus) {
         entry.status = status
         if (status !is WorkspaceRefreshStatus.Pending) entry.complete(status)
     }

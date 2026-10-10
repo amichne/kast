@@ -4,12 +4,12 @@ import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.ProjectReadEpoch
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservation
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure
-import io.github.amichne.kast.workspace.contract.WorkspaceEpochValidation
-import io.github.amichne.kast.workspace.contract.validateWorkspaceEpoch
 import io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmission
 import io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmissionFailure
 import io.github.amichne.kast.workspace.contract.VfsPassiveReadCapability
 import io.github.amichne.kast.workspace.contract.VfsPassiveReadUnavailableCause
+import io.github.amichne.kast.workspace.contract.WorkspaceEpochValidation
+import io.github.amichne.kast.workspace.contract.validateWorkspaceEpoch
 
 /**
  * Proof transition: `(CanonicalWorkspaceRoot, ProjectReadEpoch<*>, ProjectReadEpochObservation) ->

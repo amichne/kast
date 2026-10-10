@@ -8,6 +8,8 @@ import com.intellij.openapi.startup.ProjectActivity
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
+import io.github.amichne.kast.protocol.contract.WorkspaceRefreshInspectionDocument
+import io.github.amichne.kast.runtime.hosted.lifecycle.inspectionDocument
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryResult
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
@@ -92,7 +94,8 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
         data class Available(val value: io.github.amichne.kast.runtime.hosted.workspace.HostedWorkspaceRefresh) :
             RefreshOwner
 
-        data object Retired : RefreshOwner
+        data class Retired(val value: io.github.amichne.kast.runtime.hosted.workspace.HostedWorkspaceRefresh) :
+            RefreshOwner
     }
 
     private val refreshOwner = java.util.concurrent.atomic.AtomicReference<RefreshOwner>(RefreshOwner.Starting)
@@ -106,7 +109,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
         modelTracker.get()?.modelImported(startedAt)
     }
 
-    internal suspend fun lifecycleVfsRefresh(root: CanonicalWorkspaceRoot): HostedVfsRefreshOutcome =
+    internal suspend fun lifecycleVfsRefresh(): HostedVfsRefreshOutcome =
         when (val owner = refreshOwner.get()) {
             is RefreshOwner.Available -> awaitHostedVfsRefresh(project, owner.value::refreshForRead)
             else -> HostedVfsRefreshOutcome.FAILED
@@ -126,11 +129,19 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
     internal fun lifecycleHasWork(): Boolean =
         when (val owner = refreshOwner.get()) {
             RefreshOwner.Starting -> true
-            RefreshOwner.Retired -> false
+            is RefreshOwner.Retired -> false
             is RefreshOwner.Available -> owner.value.hasWork()
         }
 
     internal fun lifecycleRefreshReady(): Boolean = refreshOwner.get() is RefreshOwner.Available
+
+    /** Read the existing owner without starting an endpoint or another refresh lifecycle. */
+    internal fun lifecycleRefreshInspection(): WorkspaceRefreshInspectionDocument =
+        when (val owner = refreshOwner.get()) {
+            RefreshOwner.Starting -> WorkspaceRefreshInspectionDocument.Unknown
+            is RefreshOwner.Available -> owner.value.inspection().inspectionDocument()
+            is RefreshOwner.Retired -> owner.value.inspection().inspectionDocument()
+        }
 
     internal fun lifecycleRefresh(
         command: io.github.amichne.kast.protocol.contract.WorkspaceRefreshCommand
@@ -140,7 +151,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                 io.github.amichne.kast.protocol.contract.WorkspaceRefreshResult.Rejected(
                     io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure.ADMISSION_REJECTED
                 )
-            RefreshOwner.Retired ->
+            is RefreshOwner.Retired ->
                 io.github.amichne.kast.protocol.contract.WorkspaceRefreshResult.Rejected(
                     io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure.DISPOSED
                 )
@@ -226,7 +237,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                     observer.observe(HostedEndpointStage.RETIREMENT, HostedEndpointOutcome.STARTED)
                     try {
                         try {
-                            refreshOwner.set(RefreshOwner.Retired)
+                            refreshOwner.set(RefreshOwner.Retired(refresh))
                             modelTracker.set(null)
                             gradleChanges.dispose()
                             refresh.dispose()

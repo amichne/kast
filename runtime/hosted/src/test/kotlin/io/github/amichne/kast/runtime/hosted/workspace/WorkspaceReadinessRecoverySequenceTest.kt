@@ -3,7 +3,6 @@ package io.github.amichne.kast.runtime.hosted.workspace
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
-import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservation
 import io.github.amichne.kast.workspace.contract.WorkspaceCapabilityReadiness
 import io.github.amichne.kast.workspace.contract.WorkspaceEpochValidation
 import io.github.amichne.kast.workspace.contract.WorkspaceExecutionCertainty
@@ -25,7 +24,7 @@ import org.junit.jupiter.api.Test
 /** Synthetic native observations exercise the real owners and rules; this does not assert incident causality. */
 class WorkspaceReadinessRecoverySequenceTest {
     @Test
-    fun `screenshot sequence retains M1 after read cancellation and lost reply and admits fresh read after settlement`() = runTest {
+    fun `screenshot sequence recovers a fresh read without discarding imported M1`() = runTest {
         val port = Port()
         val service = WorkspaceRefreshService(port, { testScheduler.currentTime * 1_000_000 })
         val m0 = assertInstanceOf(WorkspaceCapabilityReadiness.Ready::class.java, port.readiness())
@@ -33,34 +32,85 @@ class WorkspaceReadinessRecoverySequenceTest {
         // A model-relevant change requires an authorized import; retained M0 is still historical evidence.
         port.modelChanged()
         assertSame(WorkspaceEpochValidation.Stale, validateWorkspaceEpoch(m0.epoch, port.currentEpoch()))
-        assertEquals(WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.EFFECT), service.submit(id(), WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD))
+        assertEquals(
+            WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.EFFECT),
+            service.submit(id(), WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD),
+        )
         assertEquals(listOf(WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD), port.effects)
         assertSame(WorkspaceEpochValidation.Stale, validateWorkspaceEpoch(m0.epoch, port.currentEpoch()))
 
         port.importAppliedAndSettled()
         assertSame(WorkspaceRefreshStatus.Complete, service.status(id()))
         val m1 = assertInstanceOf(WorkspaceCapabilityReadiness.Ready::class.java, port.readiness())
-        assertInstanceOf(WorkspaceEpochValidation.Current::class.java, validateWorkspaceEpoch(m1.epoch, port.currentEpoch()))
+        assertInstanceOf(
+            WorkspaceEpochValidation.Current::class.java,
+            validateWorkspaceEpoch(m1.epoch, port.currentEpoch()),
+        )
 
         // The provider is still running after read cancellation. Lost reply changes no native model fact.
-        val cancelled = workspaceExecutionDisposition(WorkspaceRequestEffect.READ, WorkspaceExecutionCertainty.UNCERTAIN, WorkspaceExecutionSettlement.PROVIDER_RUNNING)
-        assertEquals(WorkspaceExecutionDisposition.AWAIT_PROVIDER, cancelled)
-        val lostReply = workspaceExecutionDisposition(WorkspaceRequestEffect.READ, WorkspaceExecutionCertainty.UNCERTAIN, WorkspaceExecutionSettlement.PROVIDER_RUNNING)
-        assertEquals(cancelled, lostReply)
+        assertReadCancellationAndLostReplyAwaitProvider()
 
         // Observation remains reachable independently of the execution disposition and refresh lane.
         assertSame(WorkspaceRefreshStatus.Complete, service.status(id()))
-        val inspected = assertInstanceOf(WorkspaceCapabilityReadiness.Ready::class.java, port.readiness())
-        assertInstanceOf(WorkspaceEpochValidation.Current::class.java, validateWorkspaceEpoch(m1.epoch, ProjectReadEpochObservation.Observed(inspected.epoch)))
-        assertSame(WorkspaceEpochValidation.Stale, validateWorkspaceEpoch(m0.epoch, ProjectReadEpochObservation.Observed(inspected.epoch)))
+        assertInstanceOf(WorkspaceCapabilityReadiness.Ready::class.java, port.readiness())
+        assertInstanceOf(
+            WorkspaceEpochValidation.Current::class.java,
+            validateWorkspaceEpoch(m1.epoch, port.currentEpoch()),
+        )
+        assertSame(
+            WorkspaceEpochValidation.Stale,
+            validateWorkspaceEpoch(m0.epoch, port.currentEpoch()),
+        )
 
-        assertEquals(WorkspaceExecutionDisposition.REOBSERVE_NATIVE_AUTHORITY, workspaceExecutionDisposition(WorkspaceRequestEffect.READ, WorkspaceExecutionCertainty.UNCERTAIN, WorkspaceExecutionSettlement.PROVIDER_TERMINATED))
-        val freshRead = assertInstanceOf(WorkspaceCapabilityReadiness.Ready::class.java, port.readiness())
-        assertInstanceOf(WorkspaceEpochValidation.Current::class.java, validateWorkspaceEpoch(m1.epoch, ProjectReadEpochObservation.Observed(freshRead.epoch)))
+        assertRetiredProviderReobservesReadAuthority()
+        assertInstanceOf(WorkspaceCapabilityReadiness.Ready::class.java, port.readiness())
+        assertInstanceOf(
+            WorkspaceEpochValidation.Current::class.java,
+            validateWorkspaceEpoch(m1.epoch, port.currentEpoch()),
+        )
         assertEquals(listOf(WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD), port.effects)
 
         // Native model usability cannot reconcile an uncertain mutation.
-        assertEquals(WorkspaceExecutionDisposition.RECONCILE_MUTATION, workspaceExecutionDisposition(WorkspaceRequestEffect.MUTATION, WorkspaceExecutionCertainty.UNCERTAIN, WorkspaceExecutionSettlement.PROVIDER_TERMINATED))
+        assertUncertainMutationRemainsFenced()
+    }
+
+    private fun assertReadCancellationAndLostReplyAwaitProvider() {
+        val cancelled =
+            workspaceExecutionDisposition(
+                WorkspaceRequestEffect.READ,
+                WorkspaceExecutionCertainty.UNCERTAIN,
+                WorkspaceExecutionSettlement.PROVIDER_RUNNING,
+            )
+        assertEquals(WorkspaceExecutionDisposition.AWAIT_PROVIDER, cancelled)
+        val lostReply =
+            workspaceExecutionDisposition(
+                WorkspaceRequestEffect.READ,
+                WorkspaceExecutionCertainty.UNCERTAIN,
+                WorkspaceExecutionSettlement.PROVIDER_RUNNING,
+            )
+        assertEquals(cancelled, lostReply)
+    }
+
+    private fun assertRetiredProviderReobservesReadAuthority() {
+        assertEquals(
+            WorkspaceExecutionDisposition.REOBSERVE_NATIVE_AUTHORITY,
+            workspaceExecutionDisposition(
+                WorkspaceRequestEffect.READ,
+                WorkspaceExecutionCertainty.UNCERTAIN,
+                WorkspaceExecutionSettlement.PROVIDER_TERMINATED,
+            ),
+        )
+    }
+
+    private fun assertUncertainMutationRemainsFenced() {
+        assertEquals(
+            WorkspaceExecutionDisposition.RECONCILE_MUTATION,
+            workspaceExecutionDisposition(
+                WorkspaceRequestEffect.MUTATION,
+                WorkspaceExecutionCertainty.UNCERTAIN,
+                WorkspaceExecutionSettlement.PROVIDER_TERMINATED,
+            ),
+        )
     }
 
     @Test
@@ -77,7 +127,10 @@ class WorkspaceReadinessRecoverySequenceTest {
     }
 
     private class Port : WorkspaceRefreshPort {
-        val facts = WorkspaceReadinessFixture((CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")) as Refinement.Refined).value)
+        val facts =
+            WorkspaceReadinessFixture(
+                (CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")) as Refinement.Refined).value
+            )
         val effects = mutableListOf<WorkspaceRefreshEffect>()
         private val callbacks = ArrayDeque<(WorkspaceRefreshEffectResult) -> Unit>()
         var ready = true
@@ -87,13 +140,19 @@ class WorkspaceReadinessRecoverySequenceTest {
             callbacks += complete
         }
 
-        override fun startIncremental(complete: (WorkspaceRefreshEffectResult) -> Unit) = start(WorkspaceRefreshEffect.FILE_REFRESH, complete)
+        override fun startIncremental(complete: (WorkspaceRefreshEffectResult) -> Unit) =
+            start(WorkspaceRefreshEffect.FILE_REFRESH, complete)
 
         override fun readiness(): WorkspaceCapabilityReadiness =
             if (ready) facts.ready()
-            else WorkspaceCapabilityReadiness.Pending(facts.identity, WorkspaceReadinessReason.NATIVE_WORK, WorkspaceReadinessNextAction.OBSERVE_SETTLEMENT)
+            else
+                WorkspaceCapabilityReadiness.Pending(
+                    facts.identity,
+                    WorkspaceReadinessReason.NATIVE_WORK,
+                    WorkspaceReadinessNextAction.OBSERVE_SETTLEMENT,
+                )
 
-        fun currentEpoch() = ProjectReadEpochObservation.Observed(facts.ready().epoch)
+        fun currentEpoch() = facts.observe()
 
         fun modelChanged() {
             ready = false
