@@ -1,32 +1,5 @@
 import org.gradle.api.artifacts.VersionCatalogsExtension
-import org.gradle.process.CommandLineArgumentProvider
-
-abstract class NativeFixtureJvmArguments : CommandLineArgumentProvider {
-    @get:InputFile @get:PathSensitive(PathSensitivity.NONE) abstract val productInfo: RegularFileProperty
-
-    @get:Input abstract val pinnedBuild: Property<String>
-
-    @get:Input abstract val osName: Property<String>
-
-    override fun asArguments(): Iterable<String> {
-        val info = groovy.json.JsonSlurper().parse(productInfo.get().asFile) as Map<*, *>
-        check(info["buildNumber"] == pinnedBuild.get()) { "Native fixture distribution must match the pinned build" }
-        val launches = info["launch"] as List<*>
-        val platform =
-            when {
-                osName.get().startsWith("Mac") -> "macOS"
-                osName.get().startsWith("Windows") -> "Windows"
-                else -> "Linux"
-            }
-        return launches
-            .filter { (it as Map<*, *>)["os"] == platform }
-            .flatMap { launch ->
-                ((launch as Map<*, *>)["additionalJvmArguments"] as List<*>).filterIsInstance<String>()
-            }
-            .filter { it.startsWith("--add-opens=") || it.startsWith("--add-exports=") }
-            .distinct() + "--enable-native-access=ALL-UNNAMED"
-    }
-}
+import support.tasks.nativefixtures.NativeFixtureJvmArguments
 
 plugins {
     id("kast.kotlin-library")
