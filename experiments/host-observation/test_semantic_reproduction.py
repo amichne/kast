@@ -37,10 +37,12 @@ class SemanticReproductionTest(unittest.TestCase):
             with self.subTest(rows=rows), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory).resolve()
                 args = Namespace(output=root / 'pin', cli=Path(r.__file__), fixture=root,
-                                 idea_contents=launcher.parent.parent, host_pid=requested)
+                                 idea_contents=launcher.parent.parent, host_pid=requested,
+                                 qualification_slice='TRY_BRANCH_RESULTS')
                 def reject_project(command, cwd):
                     self.assertEqual([launcher, 'ideScript', args.output / 'pin.kts'], command)
-                    self.assertEqual(dict(project=str(root), hostPid=selected, qualificationSlice=None),
+                    self.assertEqual(dict(project=str(root), hostPid=selected, qualificationSlice='TRY_BRANCH_RESULTS',
+                                          requiredOwners=sorted(r.NATIVE_COMMON_OWNERS | r.TRY_BRANCH_NATIVE_OWNERS)),
                                      json.loads((args.output / 'input.json').read_text()))
                     r.write(args.output / 'pin-rejection.json',
                             dict(type='PIN_CAPTURE_REJECTED', stage='PROJECT_ADMISSION'))
