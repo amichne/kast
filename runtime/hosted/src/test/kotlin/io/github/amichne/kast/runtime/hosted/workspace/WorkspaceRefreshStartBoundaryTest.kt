@@ -43,7 +43,7 @@ class WorkspaceRefreshStartBoundaryTest {
                         }
                     }
                 }
-            val service = WorkspaceRefreshService(port)
+            val service = WorkspaceRefreshService(port, { 0L })
             assertTrue(service.submit(id(1), WorkspaceRefreshEffect.FILE_REFRESH) is WorkspaceRefreshStatus.Failed)
             assertFalse(service.hasWork())
             fail = false

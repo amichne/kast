@@ -27,7 +27,9 @@ internal fun inspectLifecycleProject(
                     WorkspaceReadinessReason.PROJECT_IDENTITY_MISMATCH,
                     WorkspaceReadinessNextAction.SELECT_PROJECT,
                 )
-            else query.workspaceReadiness(selection.root)
+            else
+                project.getServiceIfCreated(HostedEndpointService::class.java)?.lifecycleReadiness(selection.root)
+                    ?: query.workspaceReadiness(selection.root)
         } catch (_: com.intellij.openapi.progress.ProcessCanceledException) {
             WorkspaceCapabilityReadiness.Unavailable(
                 identity,

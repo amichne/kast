@@ -8,13 +8,14 @@ import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.openapi.vfs.newvfs.events.VFileMoveEvent
 import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent
+import io.github.amichne.kast.runtime.hosted.workspace.WorkspaceRefreshEffectResult
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import java.util.concurrent.atomic.AtomicLong
 import org.jetbrains.plugins.gradle.service.project.GradleAutoImportAware
 
 /** A changed Gradle input is a presemantic blocker until a native import proves a new model. */
 internal class HostedGradleChangeTracker(project: Project, private val root: CanonicalWorkspaceRoot) : Disposable {
-    private val revision = HostedGradleRevision()
+    val revision = HostedGradleRevision()
     private val awareness = GradleAutoImportAware()
     private val connection = project.messageBus.connect()
 
@@ -41,14 +42,6 @@ internal class HostedGradleChangeTracker(project: Project, private val root: Can
             }
         }
 
-    fun currentRevision(): Long = revision.current()
-
-    fun needsModelReload(): Boolean = revision.pending()
-
-    fun needsOpeningImport(): Boolean = revision.needsOpeningImport()
-
-    fun modelImported(startedAt: Long) = revision.acknowledge(startedAt)
-
     override fun dispose() = connection.disconnect()
 
     private companion object {
@@ -69,20 +62,33 @@ internal fun String.isWithin(root: CanonicalWorkspaceRoot): Boolean = this == ro
 internal class HostedGradleRevision {
     private val current = AtomicLong(0)
     private val imported = AtomicLong(0)
-    private val openingImportComplete = java.util.concurrent.atomic.AtomicBoolean(false)
 
     fun current(): Long = current.get()
 
     fun pending(): Boolean = current.get() > imported.get()
 
-    fun needsOpeningImport(): Boolean = !openingImportComplete.get() || pending()
-
     fun changed() {
         current.updateAndGet { if (it == Long.MAX_VALUE) it else it + 1 }
     }
 
-    fun acknowledge(startedAt: Long) {
+    fun beginOwnedImport(): ImportTicket = ImportTicket.capture(this)
+
+    private fun acknowledge(startedAt: Long) {
         imported.updateAndGet { maxOf(it, startedAt) }
-        openingImportComplete.set(true)
+    }
+
+    /** Only this owner can capture coverage; one terminal settlement may discharge only that captured revision. */
+    class ImportTicket private constructor(private val owner: HostedGradleRevision, private val covered: Long) {
+        private val settled = java.util.concurrent.atomic.AtomicBoolean(false)
+
+        fun settled(result: WorkspaceRefreshEffectResult) {
+            if (result == WorkspaceRefreshEffectResult.RETIRED) return
+            if (!settled.compareAndSet(false, true)) return
+            if (result == WorkspaceRefreshEffectResult.SUCCEEDED) owner.acknowledge(covered)
+        }
+
+        companion object {
+            internal fun capture(owner: HostedGradleRevision): ImportTicket = ImportTicket(owner, owner.current())
+        }
     }
 }

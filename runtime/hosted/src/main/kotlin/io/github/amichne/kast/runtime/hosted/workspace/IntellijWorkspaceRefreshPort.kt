@@ -28,6 +28,7 @@ internal class IntellijWorkspaceRefreshPort(
     private val project: Project,
     private val root: CanonicalWorkspaceRoot,
     private val query: HostedQueryService,
+    private val modelInputs: WorkspaceRefreshModelBoundary,
 ) : WorkspaceRefreshPort {
     private sealed interface LinkState {
         data object Existing : LinkState
@@ -128,7 +129,9 @@ internal class IntellijWorkspaceRefreshPort(
             .info("kast_workspace_refresh_start_unsettled outcome=" + Json.encodeToString(failure))
     }
 
-    override fun readiness(): WorkspaceCapabilityReadiness = query.workspaceReadiness(root)
+    override fun readiness(): WorkspaceCapabilityReadiness = modelInputs.readiness(query.workspaceReadiness(root))
+
+    fun needsModelReload(): Boolean = modelInputs.needsModelReload()
 
     private fun refreshFiles(
         complete: (WorkspaceRefreshEffectResult) -> Unit,
@@ -239,6 +242,12 @@ internal class IntellijWorkspaceRefreshPort(
     private fun importModel(link: LinkState, complete: (WorkspaceRefreshEffectResult) -> Unit) {
         val boundary = WorkspaceRefreshStartBoundary()
         var callback: WorkspaceRefreshImportCallback? = null
+        val importTicket =
+            java.util.concurrent.atomic.AtomicReference<
+                io.github.amichne.kast.runtime.hosted.HostedGradleRevision.ImportTicket?
+            >(
+                null
+            )
         boundary.run(
             ::startFailure,
             { outcome ->
@@ -247,9 +256,14 @@ internal class IntellijWorkspaceRefreshPort(
             },
             { outcome -> callback?.failedStartCall(outcome) ?: observeUnsettledStart(outcome) },
         ) {
-            val preparedCallback = WorkspaceRefreshImportCallback(project, root, complete)
+            val preparedCallback =
+                WorkspaceRefreshImportCallback(project, root) { outcome ->
+                    importTicket.get()?.settled(outcome)
+                    complete(outcome)
+                }
             callback = preparedCallback
             val spec = quietWorkspaceImport(project, preparedCallback)
+            importTicket.set(modelInputs.beginOwnedImport())
             boundary.mayHaveStarted()
             when (link) {
                 LinkState.Existing -> ExternalSystemUtil.refreshProject(root.value, spec)

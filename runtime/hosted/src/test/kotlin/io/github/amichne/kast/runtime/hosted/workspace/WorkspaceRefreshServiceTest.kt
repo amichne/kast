@@ -8,9 +8,36 @@ import org.junit.jupiter.api.Test
 
 class WorkspaceRefreshServiceTest {
     @Test
+    fun `production demand joins unresolved equal epoch attempt after waiter timeout and eviction`() {
+        for (capacity in listOf(1, 4)) {
+            val port = WorkspaceRefreshTestPort().apply { ready = true }
+            var now = 0L
+            val service = WorkspaceRefreshService(port, { now }, pendingTimeoutNanos = 10, capacity = capacity)
+            service.submit(id(1), WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD)
+            val original = assertInstanceOf(WorkspaceRefreshInspection.Running::class.java, service.inspection())
+            now = 10
+            assertEquals(
+                WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.DEADLINE_EXCEEDED),
+                service.status(id(1)),
+            )
+            assertEquals(
+                WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.EFFECT),
+                service.submit(id(2), WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD),
+            )
+            val joined = assertInstanceOf(WorkspaceRefreshInspection.Running::class.java, service.inspection())
+            assertEquals(original.active.id, joined.active.id)
+            assertEquals(emptyList<WorkspaceRefreshAttemptInspection>(), joined.queued)
+            assertEquals(1, port.effects.size)
+            port.finish(WorkspaceRefreshEffectResult.SUCCEEDED)
+            assertEquals(WorkspaceRefreshStatus.Complete, service.status(id(2)))
+            assertEquals(1, port.effects.size)
+        }
+    }
+
+    @Test
     fun `production submit coalesces reloads only with current equal native epochs`() {
         val port = WorkspaceRefreshTestPort().apply { ready = true }
-        val service = WorkspaceRefreshService(port)
+        val service = WorkspaceRefreshService(port, { 0L })
         service.submit(id(1), WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD)
         service.submit(id(2), WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD)
         assertEquals(1, port.effects.size)
@@ -25,7 +52,7 @@ class WorkspaceRefreshServiceTest {
     @Test
     fun `repeated absence of current epoch cannot prove equivalent new demand`() {
         val port = WorkspaceRefreshTestPort()
-        val service = WorkspaceRefreshService(port)
+        val service = WorkspaceRefreshService(port, { 0L })
         service.submit(id(1), WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD)
         service.submit(id(2), WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD)
         port.finish(WorkspaceRefreshEffectResult.SUCCEEDED)
@@ -35,7 +62,7 @@ class WorkspaceRefreshServiceTest {
     @Test
     fun `explicit new requests conservatively retain unobserved external changes`() {
         val port = WorkspaceRefreshTestPort().apply { ready = true }
-        val service = WorkspaceRefreshService(port)
+        val service = WorkspaceRefreshService(port, { 0L })
         service.submit(id(1), WorkspaceRefreshEffect.FILE_REFRESH)
         service.submit(id(1), WorkspaceRefreshEffect.FILE_REFRESH)
         service.submit(id(2), WorkspaceRefreshEffect.FILE_REFRESH)
@@ -51,7 +78,7 @@ class WorkspaceRefreshServiceTest {
     @Test
     fun `effect completion still requires fresh readiness and duplicate requests are idempotent`() {
         val port = WorkspaceRefreshTestPort()
-        val service = WorkspaceRefreshService(port)
+        val service = WorkspaceRefreshService(port, { 0L })
         val initial = service.submit(id(1), WorkspaceRefreshEffect.FILE_REFRESH, stamp(1))
         assertEquals(WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.EFFECT), initial)
         assertEquals(initial, service.submit(id(1), WorkspaceRefreshEffect.FILE_REFRESH, stamp(1)))
@@ -70,7 +97,7 @@ class WorkspaceRefreshServiceTest {
     @Test
     fun `equivalent work coalesces but a newer change waits for its own completed effect`() {
         val port = WorkspaceRefreshTestPort().apply { ready = true }
-        val service = WorkspaceRefreshService(port)
+        val service = WorkspaceRefreshService(port, { 0L })
         service.submit(id(1), WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD, stamp(1))
         service.submit(id(2), WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD, stamp(1))
         service.submit(id(3), WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD, stamp(2))
@@ -93,7 +120,7 @@ class WorkspaceRefreshServiceTest {
                 WorkspaceRefreshEffectResult.CANCELLED to WorkspaceRefreshFailure.CANCELLED,
             )) {
             val port = WorkspaceRefreshTestPort().apply { ready = true }
-            val service = WorkspaceRefreshService(port)
+            val service = WorkspaceRefreshService(port, { 0L })
             service.submit(id(1), WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD, stamp(1))
             service.submit(id(2), WorkspaceRefreshEffect.FILE_REFRESH, stamp(2))
             port.finish(result)
@@ -129,8 +156,8 @@ class WorkspaceRefreshServiceTest {
     fun `host disposal rejects work and late callbacks cannot restore completion or affect another workspace`() {
         val first = WorkspaceRefreshTestPort()
         val second = WorkspaceRefreshTestPort().apply { ready = true }
-        val service = WorkspaceRefreshService(first)
-        val other = WorkspaceRefreshService(second)
+        val service = WorkspaceRefreshService(first, { 0L })
+        val other = WorkspaceRefreshService(second, { 0L })
         service.submit(id(1), WorkspaceRefreshEffect.FILE_REFRESH, stamp(1))
         other.submit(id(1), WorkspaceRefreshEffect.FILE_REFRESH, stamp(1))
         service.dispose()
@@ -147,7 +174,7 @@ class WorkspaceRefreshServiceTest {
     @Test
     fun `terminal records do not permanently exhaust refresh capacity`() {
         val port = WorkspaceRefreshTestPort().apply { ready = true }
-        val service = WorkspaceRefreshService(port, capacity = 1)
+        val service = WorkspaceRefreshService(port, { 0L }, capacity = 1)
         service.submit(id(1), WorkspaceRefreshEffect.FILE_REFRESH, stamp(1))
         port.finish(WorkspaceRefreshEffectResult.FAILED)
         assertEquals(
@@ -159,7 +186,7 @@ class WorkspaceRefreshServiceTest {
     @Test
     fun `new demand reobserves pending admission before capacity accounting`() {
         val port = WorkspaceRefreshTestPort()
-        val service = WorkspaceRefreshService(port, capacity = 1)
+        val service = WorkspaceRefreshService(port, { 0L }, capacity = 1)
         service.submit(id(1), WorkspaceRefreshEffect.FILE_REFRESH, stamp(1))
         port.finish(WorkspaceRefreshEffectResult.SUCCEEDED)
         port.ready = true
@@ -173,7 +200,7 @@ class WorkspaceRefreshServiceTest {
     @Test
     fun `late duplicate completion cannot settle retry of identical demand`() {
         val port = WorkspaceRefreshTestPort().apply { ready = true }
-        val service = WorkspaceRefreshService(port)
+        val service = WorkspaceRefreshService(port, { 0L })
         service.submit(id(1), WorkspaceRefreshEffect.FILE_REFRESH, stamp(1))
         val stale = port.callbacks.first()
         port.finish(WorkspaceRefreshEffectResult.FAILED)
@@ -190,7 +217,7 @@ class WorkspaceRefreshServiceTest {
     @Test
     fun `read waiters share incremental effect and cancellation does not cancel survivors`() {
         val port = WorkspaceRefreshTestPort()
-        val service = WorkspaceRefreshService(port)
+        val service = WorkspaceRefreshService(port, { 0L })
         val first = mutableListOf<WorkspaceRefreshStatus>()
         val second = mutableListOf<WorkspaceRefreshStatus>()
         val cancelFirst = service.refreshForRead(first::add)
@@ -211,7 +238,7 @@ class WorkspaceRefreshServiceTest {
     @Test
     fun `cancelled queued read is pruned while active shared native work remains fenced`() {
         val port = WorkspaceRefreshTestPort()
-        val service = WorkspaceRefreshService(port)
+        val service = WorkspaceRefreshService(port, { 0L })
         service.submit(id(1), WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD, stamp(1))
         val outcomes = mutableListOf<WorkspaceRefreshStatus>()
         val cancel = service.refreshForRead(outcomes::add)
@@ -260,7 +287,7 @@ class WorkspaceRefreshServiceTest {
     @Test
     fun `retired inspection retains native identity until actual late settlement without revival`() {
         val port = WorkspaceRefreshTestPort()
-        val service = WorkspaceRefreshService(port)
+        val service = WorkspaceRefreshService(port, { 0L })
         service.submit(id(1), WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD, stamp(1))
         val callback = port.callbacks.first()
         callback(WorkspaceRefreshEffectResult.RETIRED)

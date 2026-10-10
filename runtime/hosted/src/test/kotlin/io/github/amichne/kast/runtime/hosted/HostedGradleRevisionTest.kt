@@ -1,6 +1,7 @@
 package io.github.amichne.kast.runtime.hosted
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.runtime.hosted.workspace.WorkspaceRefreshEffectResult
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -11,17 +12,14 @@ class HostedGradleRevisionTest {
     fun `an import discharges only changes observed before it began`() {
         val revision = HostedGradleRevision()
         assertEquals(false, revision.pending())
-        assertEquals(true, revision.needsOpeningImport())
-        val initial = revision.current()
+        val initial = revision.beginOwnedImport()
         revision.changed()
-        revision.acknowledge(initial)
+        initial.settled(WorkspaceRefreshEffectResult.SUCCEEDED)
         assertEquals(true, revision.pending())
-        revision.acknowledge(revision.current())
+        revision.beginOwnedImport().settled(WorkspaceRefreshEffectResult.SUCCEEDED)
         assertEquals(false, revision.pending())
-        assertEquals(false, revision.needsOpeningImport())
         revision.changed()
         assertEquals(true, revision.pending())
-        assertEquals(true, revision.needsOpeningImport())
     }
 
     @Test

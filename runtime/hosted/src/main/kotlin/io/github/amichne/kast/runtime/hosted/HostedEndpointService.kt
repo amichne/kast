@@ -99,15 +99,15 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
     }
 
     private val refreshOwner = java.util.concurrent.atomic.AtomicReference<RefreshOwner>(RefreshOwner.Starting)
-    private val modelTracker = java.util.concurrent.atomic.AtomicReference<HostedGradleChangeTracker?>()
 
-    internal fun lifecycleModelRevision(): Long? = modelTracker.get()?.currentRevision()
-
-    internal fun lifecycleShouldReloadModel(): Boolean = modelTracker.get()?.needsOpeningImport() ?: true
-
-    internal fun lifecycleModelImported(startedAt: Long) {
-        modelTracker.get()?.modelImported(startedAt)
-    }
+    internal fun lifecycleReadiness(
+        root: CanonicalWorkspaceRoot
+    ): io.github.amichne.kast.workspace.contract.WorkspaceCapabilityReadiness? =
+        when (val owner = refreshOwner.get()) {
+            RefreshOwner.Starting -> null
+            is RefreshOwner.Available -> owner.value.readiness(root)
+            is RefreshOwner.Retired -> owner.value.readiness(root)
+        }
 
     internal suspend fun lifecycleVfsRefresh(): HostedVfsRefreshOutcome =
         when (val owner = refreshOwner.get()) {
@@ -115,7 +115,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
             else -> HostedVfsRefreshOutcome.FAILED
         }
 
-    internal fun lifecycleInitialImport(
+    internal suspend fun lifecycleInitialImport(
         requestId: String
     ): io.github.amichne.kast.protocol.contract.WorkspaceRefreshResult =
         when (val owner = refreshOwner.get()) {
@@ -211,8 +211,6 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                 }
             val refresh =
                 io.github.amichne.kast.runtime.hosted.workspace.HostedWorkspaceRefresh(project, root, query, scope)
-            val gradleChanges = HostedGradleChangeTracker(project, root)
-            modelTracker.set(gradleChanges)
             refreshOwner.set(RefreshOwner.Available(refresh))
             observer.observe(HostedEndpointStage.BIND, HostedEndpointOutcome.COMPLETED)
             try {
@@ -225,7 +223,6 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                                 request = request,
                                 limits = limits,
                                 refresh = refresh,
-                                gradleChanges = gradleChanges,
                                 trace = trace,
                             )
                         } finally {
@@ -238,8 +235,6 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                     try {
                         try {
                             refreshOwner.set(RefreshOwner.Retired(refresh))
-                            modelTracker.set(null)
-                            gradleChanges.dispose()
                             refresh.dispose()
                             query.detach()
                         } finally {
@@ -260,7 +255,6 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
         request: HostedRequest,
         limits: io.github.amichne.kast.kernel.ReadLimits,
         refresh: io.github.amichne.kast.runtime.hosted.workspace.HostedWorkspaceRefresh,
-        gradleChanges: HostedGradleChangeTracker,
         trace: HostedTransportTrace,
     ): HostedResponse {
         if (request.root != root) {
@@ -269,7 +263,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
         if (request !is HostedRequest.Describe && request !is HostedRequest.Refresh) {
             val refreshFailure = awaitHostedVfsRefresh(project, refresh::refreshForRead).failure()
             if (refreshFailure != null) return HostedResponse.Rejected(refreshFailure)
-            if (gradleChanges.needsModelReload()) {
+            if (refresh.needsModelReload()) {
                 observer.rejected(HostedEndpointStage.READINESS, HostedEndpointFailure.MODEL_REFRESH_REQUIRED)
                 return HostedResponse.Rejected(HostedEndpointFailure.MODEL_REFRESH_REQUIRED)
             }
@@ -297,7 +291,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                                 host = query.hostLifetime.value.toString(),
                                 querySchema = HostedReadCapabilities.querySchema,
                                 operations = HostedEndpointCapabilities.operations,
-                                readiness = observeEndpointReadiness(observer) { query.readiness(root) },
+                                readiness = observeEndpointReadiness(observer) { refresh.legacyReadiness() },
                             )
                         )
                 )

@@ -1,6 +1,7 @@
 package io.github.amichne.kast.runtime.hosted.workspace
 
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.kernel.Refinement
@@ -10,10 +11,17 @@ import io.github.amichne.kast.protocol.contract.WorkspaceRefreshResponse
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshResult
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshRule
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshStage as PublicStage
+import io.github.amichne.kast.runtime.hosted.HostedGradleChangeTracker
 import io.github.amichne.kast.runtime.hosted.HostedVfsRefreshOutcome
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.WorkspaceCapabilityReadiness
+import io.github.amichne.kast.workspace.contract.WorkspaceModelIdentity
+import io.github.amichne.kast.workspace.contract.WorkspaceReadinessNextAction
+import io.github.amichne.kast.workspace.contract.WorkspaceReadinessReason
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -24,7 +32,9 @@ internal class HostedWorkspaceRefresh(
     private val query: HostedQueryService,
     scope: CoroutineScope,
 ) : Disposable {
-    private val port = IntellijWorkspaceRefreshPort(project, root, query)
+    private val modelChanges = HostedGradleChangeTracker(project, root)
+    private val modelInputs = WorkspaceRefreshModelBoundary(modelChanges.revision)
+    private val port = IntellijWorkspaceRefreshPort(project, root, query, modelInputs)
     private val service = WorkspaceRefreshService(port)
     private val triggers = WorkspaceRefreshTaskTrigger(project, root, scope) { command -> execute(command) }
 
@@ -46,8 +56,8 @@ internal class HostedWorkspaceRefresh(
         )
     }
 
-    fun initialImport(requestId: String): WorkspaceRefreshResult =
-        when (val prepared = port.prepareInitialLink()) {
+    suspend fun initialImport(requestId: String): WorkspaceRefreshResult =
+        when (val prepared = withContext(Dispatchers.EDT) { port.prepareInitialLink() }) {
             is Refinement.Rejected -> WorkspaceRefreshResult.Rejected(prepared.failure)
             is Refinement.Refined ->
                 admittedRequest(
@@ -127,12 +137,27 @@ internal class HostedWorkspaceRefresh(
                 }
         }
 
+    fun legacyReadiness(): io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadinessDocument =
+        modelInputs.legacyReadiness(query.readiness(root))
+
+    fun needsModelReload(): Boolean = port.needsModelReload()
+
+    fun readiness(selectedRoot: CanonicalWorkspaceRoot): WorkspaceCapabilityReadiness =
+        if (selectedRoot == root) port.readiness()
+        else
+            WorkspaceCapabilityReadiness.Blocked(
+                WorkspaceModelIdentity(selectedRoot, query.hostLifetime),
+                WorkspaceReadinessReason.PROJECT_IDENTITY_MISMATCH,
+                WorkspaceReadinessNextAction.SELECT_PROJECT,
+            )
+
     fun hasWork(): Boolean = service.hasWork()
 
     fun inspection(): WorkspaceRefreshInspection = service.inspection()
 
     override fun dispose() {
         triggers.dispose()
+        modelChanges.dispose()
         service.dispose()
     }
 }

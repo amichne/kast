@@ -142,6 +142,14 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
             "finiteFailureEvidence" to textSchema("Finite failure evidence."),
             "compilerQualifiedIdentity" to textSchema("Compiler qualified identity."),
             "compilerIdentity" to compilerIdentitySchema(),
+            "workspaceInspectionObstruction" to
+                generatedOutputSchema(
+                    io.github.amichne.kast.protocol.contract.WorkspaceInspectionObstruction.serializer()
+                ),
+            "workspaceInspectionRefreshAttempt" to
+                generatedOutputSchema(
+                    io.github.amichne.kast.protocol.contract.WorkspaceInspectionRefreshAttempt.serializer()
+                ),
             "readRecoveryAction" to
                 generatedOutputSchema(io.github.amichne.kast.protocol.contract.ReadRecoveryAction.serializer()),
             "executionBudget" to

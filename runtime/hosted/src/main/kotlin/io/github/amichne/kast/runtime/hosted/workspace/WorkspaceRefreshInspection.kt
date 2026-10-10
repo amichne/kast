@@ -47,3 +47,27 @@ internal sealed interface WorkspaceRefreshInspection {
 
     data class AwaitingAdmission(val waiters: List<WorkspaceRefreshWaiterInspection>) : WorkspaceRefreshInspection
 }
+
+/** Detached inspection projects owner transitions without observing native readiness or authorizing effects. */
+internal fun workspaceRefreshInspection(
+    disposed: Boolean,
+    active: WorkspaceRefreshAttempt?,
+    queue: Iterable<WorkspaceRefreshAttempt>,
+    entries: Map<WorkspaceRefreshWaiter, WorkspaceRefreshEntry>,
+): WorkspaceRefreshInspection {
+    if (disposed) return WorkspaceRefreshInspection.Retired(listOfNotNull(active?.inspection(entries)))
+    active?.let {
+        return WorkspaceRefreshInspection.Running(
+            it.inspection(entries),
+            queue.map { queued -> queued.inspection(entries) },
+        )
+    }
+    val admission = entries.filterValues {
+        it.status == WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.ADMISSION)
+    }
+    if (admission.isNotEmpty())
+        return WorkspaceRefreshInspection.AwaitingAdmission(
+            admission.map { (waiter, entry) -> WorkspaceRefreshWaiterInspection(waiter.identity(), entry.status) }
+        )
+    return WorkspaceRefreshInspection.Idle
+}

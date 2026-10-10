@@ -93,3 +93,26 @@ internal fun List<WorkspaceRefreshAttempt>.equivalentModelDemand(
             previous.epoch.relationTo(observed.epoch) == ProjectReadEpochRelation.SAME
     }
 }
+
+/** Bounded historical waiter retention does not own or release native attempts. */
+internal fun MutableMap<WorkspaceRefreshWaiter, WorkspaceRefreshEntry>.reclaimTerminalWaiters(capacity: Int): Boolean {
+    while (size >= capacity) {
+        val terminal = entries.firstOrNull { it.value.status !is WorkspaceRefreshStatus.Pending } ?: return false
+        remove(terminal.key)
+    }
+    return true
+}
+
+internal fun Map<WorkspaceRefreshWaiter, WorkspaceRefreshEntry>.transitionAttempt(
+    attempt: WorkspaceRefreshAttempt,
+    status: WorkspaceRefreshStatus,
+) {
+    values.toList().forEach {
+        if (it.attempt === attempt && it.status is WorkspaceRefreshStatus.Pending) it.transition(status)
+    }
+}
+
+internal fun WorkspaceRefreshEntry.transition(status: WorkspaceRefreshStatus) {
+    this.status = status
+    if (status !is WorkspaceRefreshStatus.Pending) complete(status)
+}

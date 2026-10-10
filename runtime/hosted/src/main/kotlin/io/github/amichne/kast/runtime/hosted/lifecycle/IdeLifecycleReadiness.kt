@@ -4,8 +4,7 @@ import com.intellij.openapi.project.Project
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeProjectTarget
-import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
-import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
+import io.github.amichne.kast.workspace.contract.WorkspaceCapabilityReadiness
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -13,8 +12,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 internal class IdeLifecycleReadiness(
     private val project: Project,
     private val target: IdeProjectTarget,
-    private val root: CanonicalWorkspaceRoot,
-    private val query: HostedQueryService,
+    private val observe: () -> WorkspaceCapabilityReadiness,
     private val reloadModel: suspend () -> IdeLifecycleResult,
 ) {
     private val preparation = WorkspaceReadinessPreparation()
@@ -32,7 +30,7 @@ internal class IdeLifecycleReadiness(
         } ?: blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
 
     private suspend fun step(): ReadinessStep =
-        when (val action = preparation.observe(query.workspaceReadiness(root))) {
+        when (val action = preparation.observe(observe())) {
             WorkspacePreparationAction.Ready -> ReadinessStep.Finished(IdeLifecycleResult.Opened(target))
             WorkspacePreparationAction.Wait -> ReadinessStep.Wait
             WorkspacePreparationAction.ReloadModel ->

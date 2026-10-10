@@ -25,6 +25,7 @@ import io.github.amichne.kast.protocol.contract.WorkspaceRefreshResult
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshStage
 import io.github.amichne.kast.runtime.hosted.HostedEndpointService
 import io.github.amichne.kast.runtime.hosted.saveProjectDocuments
+import io.github.amichne.kast.runtime.hosted.workspace.observeWorkspaceRefresh
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadResult
@@ -34,7 +35,6 @@ import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
-import org.jetbrains.plugins.gradle.settings.GradleSettings
 
 /** Ordinary graphical 262 APIs only. No force closure, global preferences, or implicit trust. */
 @Suppress("LargeClass") // One owner retains the native project and lifecycle effect order.
@@ -176,12 +176,10 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
             lifecycleVfsFailure(endpoint)?.let {
                 return blocked(it)
             }
-            val revision = endpoint.lifecycleModelRevision() ?: return blocked(IdeLifecycleFailure.PLATFORM_UNAVAILABLE)
             state.progress(LifecycleRequest(requestId), IdeLifecycleStage.IMPORTING)
-            val initial = initialImport(project, endpoint, root, requestId)
+            val initial = requestInitialWorkspaceImport(project, endpoint, root, requestId)
             return when (val imported = awaitRefresh(endpoint, target, requestId, initial)) {
                 is IdeLifecycleResult.Synced -> {
-                    endpoint.lifecycleModelImported(revision)
                     IdeLifecycleResult.Opened(target)
                 }
                 else -> imported
@@ -219,25 +217,6 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
                 },
             )
 
-    private suspend fun initialImport(
-        project: Project,
-        endpoint: HostedEndpointService,
-        root: CanonicalWorkspaceRoot,
-        requestId: String,
-    ): WorkspaceRefreshResult =
-        withContext(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) {
-            val settings = GradleSettings.getInstance(project).linkedProjectsSettings
-            if (settings.isEmpty()) endpoint.lifecycleInitialImport(requestId)
-            else if (settings.any { it.externalProjectPath == root.value })
-                endpoint.lifecycleRefresh(
-                    WorkspaceRefreshCommand.Request(
-                        requestId,
-                        WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD,
-                    )
-                )
-            else WorkspaceRefreshResult.Rejected(WorkspaceRefreshFailure.UNLINKED_BUILD)
-        }
-
     private suspend fun awaitReady(
         project: Project,
         target: IdeProjectTarget,
@@ -253,8 +232,10 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
         return IdeLifecycleReadiness(
                 project,
                 target,
-                root,
-                project.getService(HostedQueryService::class.java),
+                observe = {
+                    project.getService(HostedEndpointService::class.java).lifecycleReadiness(root)
+                        ?: project.getService(HostedQueryService::class.java).workspaceReadiness(root)
+                },
             ) {
                 sync(project, target, requestId, WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD)
             }
@@ -273,7 +254,7 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
             endpoint,
             target,
             requestId,
-            withContext(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) {
+            observeWorkspaceRefresh {
                 endpoint.lifecycleRefresh(WorkspaceRefreshCommand.Request(requestId, effect))
             },
         )
