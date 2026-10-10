@@ -136,6 +136,7 @@ val nativeIdeaLibraries =
                     include(
                         "lib/**/*.jar",
                         "plugins/java/lib/**/*.jar",
+                        "plugins/platform-structuralSearch-plugin/lib/**/*.jar",
                         "plugins/Kotlin/lib/**/*.jar",
                         "plugins/toml/lib/**/*.jar",
                     )

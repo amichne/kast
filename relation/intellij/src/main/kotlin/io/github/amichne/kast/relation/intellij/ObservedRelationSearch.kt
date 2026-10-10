@@ -20,19 +20,28 @@ internal fun IntellijReadObservation.forEachReference(
     scope: SearchScope,
     ignoreAccessScope: Boolean = false,
     process: (PsiReference) -> Boolean,
-): Boolean =
-    search(IntellijReadSearch.REFERENCES) { search ->
-        ReferencesSearch.search(subject, scope, ignoreAccessScope)
-            .forEach(
-                Processor { reference ->
-                    search.callbackEntered()
-                    call(IntellijReadCall.REFERENCE_CALLBACK) {
-                        com.intellij.openapi.progress.ProgressManager.checkCanceled()
-                        process(reference)
-                    }
-                }
-            )
+): Boolean {
+    com.intellij.openapi.progress.ProgressManager.checkCanceled()
+    val partitions = if (scope is EnumeratedRelationScope) scope.referencePartitions() else sequenceOf(scope)
+    for (partition in partitions) {
+        val exhausted =
+            search(IntellijReadSearch.REFERENCES) { search ->
+                com.intellij.openapi.progress.ProgressManager.checkCanceled()
+                ReferencesSearch.search(subject, partition, ignoreAccessScope)
+                    .forEach(
+                        Processor { reference ->
+                            search.callbackEntered()
+                            call(IntellijReadCall.REFERENCE_CALLBACK) {
+                                com.intellij.openapi.progress.ProgressManager.checkCanceled()
+                                process(reference)
+                            }
+                        }
+                    )
+            }
+        if (!exhausted) return false
     }
+    return true
+}
 
 internal fun IntellijReadObservation.forEachDefinition(
     subject: PsiElement,
