@@ -101,3 +101,13 @@ build/host-observation/schema-env/bin/python experiments/host-observation/check_
 The implementation uses JDK threads and synchronous pure checks, with no suspend functions or coroutine scheduler. `runTest` is therefore not needed in this slice. Any later coroutine consumer should use the repository's injected test dispatcher and `runTest` conventions.
 
 See [ACCEPTANCE.md](ACCEPTANCE.md) for executed evidence and promotion limits. Incremental consumption/coalescing, targeted local refresh, workspace-model events, and all live-copy/seed work remain separate future slices. Ordinary Kast behavior and existing index ownership are unchanged.
+
+## Semantic replay timing
+
+`reproduce_semantic_queries.py replay-workloads --idea-log <idea.log>` saves each call's appended records in `hosted-observations.json`. Collection uses the original 250 ms limit, two MiB byte limit and one immediate log rotation. It waits for the response's single bound host/epoch receipt, its explicit `kast_transport_read` join and its connection release. It never sends another query to collect diagnostics.
+
+`hosted-timing.json` retains transport stages, smart-mode waits and each joined read's diagnostic document and phase entries. Read-action waits, native calls and native-search callback counts keep their original qualifications in that document. Presemantic retries keep distinct read IDs under one connection. Missing joins, duplicate identities, ambiguous response correlation, partial stages and malformed records produce finite unavailable results with the observed prefix.
+
+`compare` reports these vectors under `hostedTimings`, separately from its existing semantic/work comparison. `JOINED` proves the observational join and complete transport stages; it grants no semantic or freshness authority. A lower elapsed time alone cannot make `lessWork` true. Stage, native-phase and nested wait clocks overlap and must not be added. `ACCEPT` can include listener idle time before invocation and is retained without attributing it to query latency. Missing fields in older diagnostic versions remain unobserved.
+
+Trial receipts use version 2 and preserve the full observation window so the join can be derived again. The loader rejects old trial shapes. Native pins now require the read-identity, dispatch, logger, timing and diagnostic-encoding owners. Pure and scripted collector checks do not establish installed-host latency or replay of the original private incident.
