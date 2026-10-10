@@ -76,7 +76,7 @@ class QueryExactReferences private constructor(val values: List<SymbolSelector>)
             return if (raw.any { it.lease != lease }) {
                 Refinement.Rejected(QueryCollectionFailure.MIXED_LEASE)
             } else {
-                Refinement.Refined(QueryExactReferences(raw.toList()))
+                Refinement.Refined(QueryExactReferences(java.util.List.copyOf(raw)))
             }
         }
     }

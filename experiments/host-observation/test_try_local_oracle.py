@@ -42,7 +42,7 @@ class TryLocalOracleTest(unittest.TestCase):
             self.assertEqual(tuple(sorted(native.NATIVE_COMMON_OWNERS | profile.changed_owners)), request.requiredOwners)
             self.assertEqual(profile, native.admit_native_owner_profile(profile, request.requiredOwners))
         checkpoint = native.NativePinRequest.create('/qualified-fixture', 123, 'QUERY_CHECKPOINT_STORAGE')
-        self.assertEqual(36, len(checkpoint.requiredOwners))
+        self.assertEqual(47, len(checkpoint.requiredOwners))
         self.assertIn('io.github.amichne.kast.query.service.QueryService$Execution', checkpoint.requiredOwners)
         unrelated = native.TRY_BRANCH_NATIVE_OWNERS - native.CHECKPOINT_STORAGE_NATIVE_OWNERS
         self.assertEqual(6, len(unrelated))
@@ -72,6 +72,8 @@ class TryLocalOracleTest(unittest.TestCase):
         native.admit_public_contract_slice(profile, 14)
         self.assertIn('io.github.amichne.kast.query.service.QueryService$Execution', profile.changed_owners)
         self.assertIn('io.github.amichne.kast.query.service.PipelineCheckpointKt', profile.changed_owners)
+        self.assertIn('io.github.amichne.kast.query.service.PipelineSeed$Accounted$Companion', profile.changed_owners)
+        self.assertIn('io.github.amichne.kast.query.contract.QueryExactReferences$Companion', profile.changed_owners)
         for owner in native.CHECKPOINT_STORAGE_NATIVE_OWNERS:
             with self.subTest(owner=owner), self.assertRaisesRegex(ValueError, '^NATIVE_OWNER_SLICE_MISMATCH$'):
                 native.admit_native_owner_profile(profile, owners - {owner})

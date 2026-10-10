@@ -34,6 +34,22 @@ import org.junit.jupiter.api.Test
 
 class QueryOccurrenceSnapshotTest {
     @Test
+    fun `exact reference admission freezes caller and exposed membership`() {
+        val first = selector()
+        val second = selector("Other.kt")
+        val input = mutableListOf(first, second)
+        val admitted = QueryExactReferences.from(input).refined()
+        input.reverse()
+        input.clear()
+        assertEquals(listOf(first, second), admitted.values)
+        assertThrows(UnsupportedOperationException::class.java) {
+            (admitted.values as MutableList<SymbolSelector>).clear()
+        }
+        assertSame(first, admitted.values[0])
+        assertSame(second, admitted.values[1])
+    }
+
+    @Test
     fun `declaration occurrence snapshots retain immutable connection proof through capture and selection`() {
         val selected = selector()
         val request = RelationRequest.start(selected, RelationMeaning.References, relationBudget())
@@ -74,22 +90,23 @@ class QueryOccurrenceSnapshotTest {
         assertEquals(retained.occurrences, retained.selectRows(listOf(0)).refined().occurrences)
     }
 
-    private fun selector(): SymbolSelector {
+    private fun selector(fileName: String = "Subject.kt"): SymbolSelector {
         val root = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
         val lease = SemanticReadLease(root, EvidenceGeneration.parse(7).refined())
         val file =
             SymbolDiscoveryFileIdentity.Workspace(
-                CanonicalWorkspaceFilePath.fromCanonicalPath(root, Path.of("/workspace/Subject.kt")).refined()
+                CanonicalWorkspaceFilePath.fromCanonicalPath(root, Path.of("/workspace/$fileName")).refined()
             )
+        val name = fileName.removeSuffix(".kt").lowercase()
         val evidence =
             CompilerGroundedSymbolEvidence.fromBoundary(
                     file,
                     0,
                     6,
-                    "subject",
-                    "sample.subject",
+                    name,
+                    "sample.$name",
                     CompilerSymbolKind.FUNCTION,
-                    CanonicalCompilerSignature.function("sample.subject", null, emptyList(), emptyList(), 0).refined(),
+                    CanonicalCompilerSignature.function("sample.$name", null, emptyList(), emptyList(), 0).refined(),
                 )
                 .refined()
         return SymbolSelector.issue(

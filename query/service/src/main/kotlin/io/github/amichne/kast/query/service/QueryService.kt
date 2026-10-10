@@ -68,6 +68,7 @@ class QueryService(
     private inner class Execution(private val request: QueryExecutionRequest, checkpoint: PipelineCheckpoint?) {
         private val emittedBefore = checkpoint?.emittedCount ?: 0.queryCount()
         private val state = QueryExecutionState(request, clock)
+        private var seed: PipelineSeed = checkpoint?.seed ?: PipelineSeed.Unmeasured
         private val tasks = ArrayDeque(checkpoint?.tasks ?: initialTasks(request.plan))
         private val identityRows = QueryIdentityRows(checkpoint?.identityRows.orEmpty())
         private val joinStage = QueryJoinStage(request, state, tasks, checkpoint?.joinState)
@@ -379,7 +380,7 @@ class QueryService(
 
         private fun checkpoint(emittedCount: QueryCount): PipelineCheckpoint =
             PipelineCheckpoint(
-                request.plan,
+                seed.accounted(request.plan).also { seed = it },
                 request.lease,
                 tasks.toList(),
                 identityRows.snapshot(),
