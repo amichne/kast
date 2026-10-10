@@ -130,7 +130,7 @@ internal class IntellijRelationCompilerQuery(
                     admission.attempt {
                         observation.call(IntellijReadCall.RELATION_READ_ATTEMPT) {
                             admitThenPrepareRelation(
-                                admit = { admitRead(project, request, modelCompilation) },
+                                admit = { admitRead(project, request, modelCompilation, allowance) },
                                 prepare = {
                                     observation.call(IntellijReadCall.CALLBACK_FACT_PREPARATION) {
                                         prepareSummaries(request, allowance)
@@ -167,6 +167,7 @@ internal class IntellijRelationCompilerQuery(
         project: Project,
         request: RelationRequest,
         modelCompilation: WorkspaceSearchScopeModelCompilation,
+        allowance: IntellijRelationAllowance,
     ): io.github.amichne.kast.kernel.Refinement<AdmittedRelationRead, RelationCompilerRejection> {
         val scopes =
             when (
@@ -214,9 +215,23 @@ internal class IntellijRelationCompilerQuery(
             }
 
         return io.github.amichne.kast.kernel.Refinement.Refined(
-            AdmittedRelationRead(scopes.search, projection, subject)
+            admittedRead(request, scopes.search, projection, subject, allowance)
         )
     }
+
+    private fun admittedRead(
+        request: RelationRequest,
+        scope: CompiledRelationScope,
+        projection: IntellijK2RelationProjection,
+        subject: IntellijRelationSubjectLookup.Found,
+        allowance: IntellijRelationAllowance,
+    ): AdmittedRelationRead =
+        AdmittedRelationRead(
+            if (request.meaning == io.github.amichne.kast.relation.contract.RelationMeaning.Callees) scope
+            else scope.prepareFileEnumeration(allowance, limits),
+            projection,
+            subject,
+        )
 
     private fun evaluateRead(
         project: Project,

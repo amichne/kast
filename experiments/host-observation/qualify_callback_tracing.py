@@ -58,6 +58,7 @@ class NativeDiagnosticCounterVersion(Enum):
     FIRST_CALLBACK = 8
     READ_ACTIONS = 9
     SCOPE_API_CALLS = 10
+    FILE_ENUMERATION = 11
 
 
 @dataclass(frozen=True)

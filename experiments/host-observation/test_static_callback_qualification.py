@@ -151,13 +151,13 @@ class StaticCallbackQualificationTest(unittest.TestCase):
                 q.native_callback_counters(call({}, diagnostics), LIVE)
 
     def test_counter_contract_admits_only_declared_integer_versions(self):
-        for version in (6, 7, 8, 9, 10):
+        for version in (6, 7, 8, 9, 10, 11):
             receipt = self.diagnostic()
             receipt['schemaVersion'] = version
             with self.subTest(version=version):
                 self.assertEqual(dict.fromkeys(q.STATIC_COUNTERS, 0),
                                  q.native_callback_counters(call({}, [receipt]), LIVE))
-        for version in (5, 11, 6.0, '9', True, None):
+        for version in (5, 12, 6.0, '9', True, None):
             receipt = self.diagnostic()
             receipt['schemaVersion'] = version
             with self.subTest(version=version), self.assertRaises(AssertionError):

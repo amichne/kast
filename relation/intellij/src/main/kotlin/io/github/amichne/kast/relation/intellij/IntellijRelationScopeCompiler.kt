@@ -67,29 +67,6 @@ internal sealed interface IntellijRelationScopeCompilation {
     data class Rejected(val failures: Set<IntellijRelationScopeFailure>) : IntellijRelationScopeCompilation
 }
 
-/** Request-local proof that subject scope and imported model compiled before native work. */
-internal class CompiledRelationScope
-internal constructor(
-    val request: RelationRequest,
-    val sourceRoots: List<ModelOwnedSourceRoot>,
-    val nativeScope: GlobalSearchScope,
-    private val sourceDomain: RelationSourceDomainMembership,
-    private val libraryMembership: (VirtualFile) -> Boolean,
-    private val libraries: SymbolLibraryPolicy,
-    private val observation: IntellijReadObservation,
-) {
-    /** Membership is decided before native candidate capacity or locator detachment. */
-    fun admitProviderSite(file: VirtualFile?): RelationProviderScopeAdmission =
-        when {
-            file == null -> RelationProviderScopeAdmission.UNAVAILABLE
-            nativeScope.contains(file) -> RelationProviderScopeAdmission.ADMITTED
-            libraryMembership(file) ->
-                if (libraries == SymbolLibraryPolicy.EXCLUDE) RelationProviderScopeAdmission.LIBRARY_POLICY_EXCLUDED
-                else RelationProviderScopeAdmission.UNAVAILABLE
-            else -> sourceDomain.classifyExcluded(relationNativePath(file))
-        }.observed(observation)
-}
-
 internal enum class RelationProviderScopeAdmission {
     ADMITTED,
     SOURCE_DOMAIN_EXCLUDED,
@@ -224,6 +201,17 @@ internal class IntellijRelationScopeCompiler(private val fileAdmission: (Path) -
                 libraryScope::contains,
                 libraryPolicy,
                 observation,
+                RelationFileEnumerationPlan.compile(
+                    selectedScope,
+                    readableRoots,
+                    model.workspaceRoot.value,
+                    constraints,
+                    admitsPath = { path ->
+                        pathPolicy.contains(path) &&
+                            fileAdmission(path) &&
+                            matchesDirectory(path, model.workspaceRoot.value, constraints)
+                    },
+                ),
             )
         )
     }
