@@ -1,7 +1,11 @@
 package io.github.amichne.kast.relation.intellij
 
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.psi.PsiReference
+import com.intellij.psi.search.GlobalSearchScope
 import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.RelationCompilation
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
@@ -65,7 +69,80 @@ class NativeCallbackExpiryTest : NativeReferenceFixtureTest() {
         assertEquals(0, result.batch.facts.size)
     }
 
+    fun testExcludedNativeCallbackExpiresBeforeProductionSiteSupplier() {
+        val fixture = prepareReferenceFixture()
+        assertPositiveControl(fixture)
+        val narrowed = fixture.targetFileOnly()
+        val scope = narrowed.scope(IntellijReadObservation.None)
+        assertEquals(RelationProviderScopeAdmission.SOURCE_DOMAIN_EXCLUDED, scope.admitProviderSite(fixture.callerFile))
+        val now = AtomicLong()
+        val allowance = IntellijRelationAllowance(now::get)
+        val context =
+            IntellijCallbackFlowContext(
+                scope = scope,
+                projection = IntellijK2RelationProjection(project, narrowed.request.subject.lease.workspaceRoot),
+                admitWork = { error("Provider-site admission must not debit eligible work") },
+                observation = IntellijReadObservation.None,
+                callbackExpiry = {
+                    if (allowance.elapsedLimitReached(narrowed.request.budget.resources))
+                        CallbackExpiryAdmission.EXPIRED
+                    else CallbackExpiryAdmission.CURRENT
+                },
+            )
+        // Deliberately broader SDK input exercises the production rule's excluded-candidate boundary.
+        val nativeScope = GlobalSearchScope.allScope(project)
+        assertCurrentExcludedCallback(fixture, nativeScope, context)
+        val observed =
+            ExpireAtNativeCallback(now, narrowed.request.budget.resources.elapsedTimeLimit.value * NANOS_PER_MILLI)
+        val siteReads = AtomicInteger()
+        assertFalse(
+            observed.forEachReference(fixture.target, nativeScope) { reference ->
+                assertEquals(
+                    Refinement.Rejected(CallbackInvocationFlowCause.TIME_LIMIT_REACHED),
+                    context.providerSite {
+                        siteReads.incrementAndGet()
+                        reference.element.containingFile.virtualFile
+                    },
+                )
+                // The independent callback oracle is checked after the production rejection.
+                assertExcludedReferenceOracle(fixture, reference)
+                false
+            }
+        )
+        assertEquals(1, observed.searches.get())
+        assertEquals(1, observed.callbacks.get())
+        assertEquals(1, observed.returned.get())
+        assertEquals(0, siteReads.get())
+    }
+
+    private fun assertCurrentExcludedCallback(
+        fixture: NativeReferenceFixture,
+        nativeScope: GlobalSearchScope,
+        context: IntellijCallbackFlowContext,
+    ) {
+        val controls = AtomicInteger()
+        assertTrue(
+            IntellijReadObservation.None.forEachReference(fixture.target, nativeScope) { reference ->
+                assertExcludedReferenceOracle(fixture, reference)
+                assertEquals(
+                    Refinement.Refined(RelationProviderScopeAdmission.SOURCE_DOMAIN_EXCLUDED),
+                    context.providerSite { reference.element.containingFile.virtualFile },
+                )
+                controls.incrementAndGet()
+                true
+            }
+        )
+        assertEquals(1, controls.get())
+    }
+
+    private fun assertExcludedReferenceOracle(fixture: NativeReferenceFixture, reference: PsiReference) {
+        assertEquals(fixture.callerFile.path, reference.element.containingFile.virtualFile.path)
+        assertEquals(CALLER_OFFSET, reference.element.textRange.startOffset)
+        assertSame(fixture.target, reference.resolve())
+    }
+
     private companion object {
+        const val CALLER_OFFSET = 38
         const val NANOS_PER_MILLI = 1_000_000L
     }
 }

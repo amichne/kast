@@ -61,10 +61,19 @@ callback, it advances the injected clock to the original semantic deadline.
 Production reference inventory must stop before site admission or candidate
 retention. The result must retain both `TIME_LIMIT_REACHED` and
 `PARTITION_INVENTORY_UNAVAILABLE`, with zero examined semantic work and no facts.
-The search closes after the callback returns the stop decision. This case uses
-an eligible native reference; the pure callback-admission test separately proves
-the rule before excluded-site inspection. Neither case raises a deadline or
-uses a sleep.
+The search closes after the callback returns the stop decision. This inventory
+case uses an eligible native reference and proves qualified incompleteness.
+
+The excluded-callback case narrows the production scope to the target file.
+A deliberately broader SDK search supplies the real cross-file reference.
+The current-time control must classify it as `SOURCE_DOMAIN_EXCLUDED`.
+At the original deadline, `IntellijCallbackFlowContext.providerSite` must reject
+it with `TIME_LIMIT_REACHED` before reading the supplied site. The exact callback
+path, UTF-16 offset and resolved target are independent oracle checks.
+This qualifies the production callback-admission rule on a real excluded SDK
+reference. Production search retains its scope. The narrower reference inventory
+remains qualified by the eligible case above. No case raises a deadline or uses
+a sleep.
 
 The work comparison calls the real production `IntellijRelationScopeCompiler`
 and `forEachReference` boundary. Counters count scope predicate calls, live source
