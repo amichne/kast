@@ -21,6 +21,13 @@ import org.junit.jupiter.api.assertThrows
 
 internal class EnumeratedRelationScopeTest : RelationFileEnumerationFixture() {
     @Test
+    fun `project independent scopes retain their original reference search`() {
+        val original =
+            EnumeratedRelationScope(nativeScope { it === a }, prepare(plan()).complete(), IntellijReadObservation.None)
+        assertSame(original, original.referencePartitions().single())
+    }
+
+    @Test
     fun `compiled scope policies select only their admitted source roots before lookup`() {
         val file =
             (CanonicalWorkspaceFilePath.fromCanonicalPath(request.subject.lease.workspaceRoot, a.toNioPath())

@@ -108,6 +108,17 @@ internal class EnumeratedRelationScope(
     private val universe: CompleteRelationFileUniverse,
     private val observation: IntellijReadObservation,
 ) : DelegatingGlobalSearchScope(base, universe), VirtualFileEnumeration {
+    /** Complete, disjoint file scopes retain the original global visibility and access-scope rules. */
+    fun referencePartitions(): Sequence<GlobalSearchScope> {
+        val owner = project ?: return sequenceOf(this)
+        // Bound SDK query fanout independently of the much larger admitted inventory capacity.
+        if (universe.files().size > MAX_REFERENCE_FILE_PARTITIONS) return sequenceOf(this)
+        return universe.files().asSequence().mapNotNull { file ->
+            ProgressManager.checkCanceled()
+            if (!delegate.contains(file)) null else GlobalSearchScope.fileScope(owner, file).intersectWith(delegate)
+        }
+    }
+
     override fun contains(fileId: Int): Boolean =
         observation.call(IntellijReadCall.RELATION_SCOPE_FILE_ID_MEMBERSHIP) {
             ProgressManager.checkCanceled()
@@ -138,3 +149,5 @@ internal class EnumeratedRelationScope(
     override fun intersectWith(scope: GlobalSearchScope): GlobalSearchScope =
         EnumeratedRelationScope(super.intersectWith(scope), universe, observation)
 }
+
+private const val MAX_REFERENCE_FILE_PARTITIONS = 8
