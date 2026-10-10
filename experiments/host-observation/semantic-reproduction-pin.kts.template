@@ -2,7 +2,7 @@
 enum class NativePinStage { HOST_ADMISSION, PLUGIN_ADMISSION, PROJECT_ADMISSION, CONFIGURATION_CAPTURE, ARTIFACT_CAPTURE, MODEL_CAPTURE, PUBLICATION }
 enum class NativePinFailure { PIN_CAPTURE_REJECTED }
 enum class NativeQualificationSlice { TRY_BRANCH_RESULTS, TRY_LOCAL_IDENTITIES, RELATION_WORK_REDUCTION, QUERY_CHECKPOINT_STORAGE }
-data class NativePinInput(val project: String, val hostPid: Long, val qualificationSlice: NativeQualificationSlice?)
+data class NativePinInput(val project: String, val hostPid: Long, val qualificationSlice: NativeQualificationSlice?, val requiredOwners: List<String>)
 data class NativePinRejection(val type: NativePinFailure = NativePinFailure.PIN_CAPTURE_REJECTED, val stage: NativePinStage)
 data class NativeProfilePin(val type: String = "NATIVE_PROFILE_PATHS", val hostPid: Long, val processStart: String,
     val ideaHome: String, val userHome: String, val config: String, val system: String, val plugins: String)
@@ -50,106 +50,9 @@ run {
     val legacyBudget = if (policy == null) constant("io.github.amichne.kast.runtime.hosted.HostedCanonicalQueryKt", "hostedQueryBudget") else null
     val legacyResources = legacyBudget?.let { getter(it, "getResources") }
     stage = NativePinStage.ARTIFACT_CAPTURE
-    val commonClasses = listOf(
-        "io.github.amichne.kast.workspace.intellij.read.DetachedModelLimits",
-        "io.github.amichne.kast.workspace.intellij.read.LiveNamedGradleSourceScopeCapture",
-        "io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryExecutorKt",
-        "io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadDiagnostics",
-    "io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService",
-    "io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadTraceIdentity",
-    "io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadDiagnosticEncodingKt",
-    "io.github.amichne.kast.runtime.hosted.HostedEndpointService",
-    "io.github.amichne.kast.runtime.hosted.HostedTransportTrace",
-    "io.github.amichne.kast.runtime.hosted.LoggingHostedEndpointObserver",
-    "io.github.amichne.kast.runtime.hosted.HostedSmartModeWaitKt",
-        "io.github.amichne.kast.runtime.hosted.HostedCanonicalQueryKt",
-        "io.github.amichne.kast.symbol.intellij.IntellijNativeDiscoveryQueryKt",
-        "io.github.amichne.kast.relation.intellij.IntellijK2RelationSearch",
-        "io.github.amichne.kast.relation.intellij.IntellijCallbackFlowRead",
-        "io.github.amichne.kast.relation.intellij.IntellijCallbackFlowScan",
-        "io.github.amichne.kast.relation.intellij.CallbackFormalWorklist",
-        "io.github.amichne.kast.relation.intellij.CallbackFlowRetention",
-        "io.github.amichne.kast.relation.intellij.CallbackRetainedRecords",
-        "io.github.amichne.kast.relation.intellij.CallbackParameterSummaries",
-        "io.github.amichne.kast.relation.contract.CompleteCallbackForwardingGraph",
-        "io.github.amichne.kast.relation.contract.CompleteStaticCallbackGraph",
-        "io.github.amichne.kast.relation.contract.RelationReferenceOccurrence"
-    )
-    val branchClasses = listOf(
-        "io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter",
-        "io.github.amichne.kast.relation.intellij.IntellijValueFlowNative",
-        "io.github.amichne.kast.relation.intellij.NativeTryBranchResult",
-        "io.github.amichne.kast.relation.intellij.TryBranchResultPosition",
-        "io.github.amichne.kast.relation.intellij.IntellijCompilerTypeProofKt",
-        "io.github.amichne.kast.relation.intellij.NativeCompilerTypeProof",
-        "io.github.amichne.kast.relation.contract.ValueTransferEvidence\$NormalBranchResult"
-    )
-    val localClasses = when (qualificationSlice) {
-        NativeQualificationSlice.TRY_BRANCH_RESULTS -> emptyList()
-        NativeQualificationSlice.RELATION_WORK_REDUCTION, NativeQualificationSlice.QUERY_CHECKPOINT_STORAGE -> emptyList()
-        NativeQualificationSlice.TRY_LOCAL_IDENTITIES -> listOf(
-        "io.github.amichne.kast.workspace.intellij.read.IntellijLocalIdentityObservationKt",
-        "io.github.amichne.kast.symbol.intellij.IntellijLocalDeclarationAddressProjectionKt",
-        "io.github.amichne.kast.symbol.intellij.IntellijLocalDeclarationAnchorsKt",
-        "io.github.amichne.kast.symbol.intellij.IntellijLocalCompilerTypeProofKt",
-        "io.github.amichne.kast.symbol.intellij.LocalCompilerTypeProof",
-        "io.github.amichne.kast.source.intellij.IntellijLocalCompilerTypeProofKt",
-        "io.github.amichne.kast.source.intellij.LocalCompilerTypeProof",
-        "io.github.amichne.kast.source.intellij.IntellijSourceCompilerProjectionKt",
-        "io.github.amichne.kast.source.intellij.SourceLocalOwnerCallableIdentityKt",
-        "io.github.amichne.kast.source.intellij.SourceLocalOwnerCallableIdentityObservationKt",
-        "io.github.amichne.kast.symbol.contract.LocalDeclarationAddress",
-        "io.github.amichne.kast.relation.intellij.IntellijK2RelationProjectionKt",
-        "io.github.amichne.kast.relation.intellij.IntellijK2SymbolIdentityKt",
-        "io.github.amichne.kast.relation.intellij.IntellijLocalDeclarationAnchorsKt",
-        "io.github.amichne.kast.relation.intellij.RelationLocalOwnerCallableIdentityKt",
-        "io.github.amichne.kast.relation.intellij.RelationLocalOwnerCallableIdentityObservationKt",
-        "io.github.amichne.kast.relation.intellij.IntellijLocalRelationOwnerSignatureKt"
-        )
-    }
-    val workClasses = when (qualificationSlice) {
-        NativeQualificationSlice.TRY_BRANCH_RESULTS, NativeQualificationSlice.TRY_LOCAL_IDENTITIES -> emptyList()
-        NativeQualificationSlice.QUERY_CHECKPOINT_STORAGE -> emptyList()
-        NativeQualificationSlice.RELATION_WORK_REDUCTION -> listOf(
-            "io.github.amichne.kast.query.service.QueryTraceTasksKt",
-            "io.github.amichne.kast.relation.intellij.AdmittedRelationScopes",
-            "io.github.amichne.kast.relation.intellij.IntellijRelationScopeCompilerKt",
-            "io.github.amichne.kast.relation.intellij.CompiledRelationScope",
-            "io.github.amichne.kast.relation.intellij.RelationFileEnumerationPlan",
-            "io.github.amichne.kast.relation.intellij.RelationFileInventory",
-            "io.github.amichne.kast.relation.intellij.CompleteRelationFileUniverse",
-            "io.github.amichne.kast.relation.intellij.EnumeratedRelationScope",
-            "io.github.amichne.kast.relation.intellij.ObservedRelationSearchKt",
-            "io.github.amichne.kast.topology.intellij.IntellijSemanticDependencyCapture",
-            "io.github.amichne.kast.topology.intellij.SemanticDependencyReadInputs",
-            "io.github.amichne.kast.topology.intellij.SemanticNativeSdkFilePlan",
-            "io.github.amichne.kast.topology.intellij.SemanticNativeFileMemo",
-            "io.github.amichne.kast.runtime.hosted.HostedSemanticCallbackFacts",
-            "io.github.amichne.kast.runtime.hosted.HostedReadCallbackPartitions",
-            "io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadActionAccounting",
-            "io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadSearchAccounting",
-            "io.github.amichne.kast.workspace.intellij.read.IntellijReadCall",
-        )
-    }
-    val checkpointClasses = when (qualificationSlice) {
-        NativeQualificationSlice.QUERY_CHECKPOINT_STORAGE -> listOf(
-            "io.github.amichne.kast.query.service.QueryService",
-            "io.github.amichne.kast.query.service.QueryService\$Execution",
-            "io.github.amichne.kast.query.service.QueryCheckpointStorageAdmissionKt",
-            "io.github.amichne.kast.query.service.PipelineCheckpoint",
-            "io.github.amichne.kast.query.service.PipelineCheckpointKt",
-            "io.github.amichne.kast.query.contract.QueryCheckpointStorageBytes",
-            "io.github.amichne.kast.query.contract.QueryCheckpointStorageEstimate",
-            "io.github.amichne.kast.query.contract.QueryCheckpointStorageAdmission",
-            "io.github.amichne.kast.query.contract.QueryCheckpointStorageOutcome",
-            "io.github.amichne.kast.runtime.hosted.HostedQueryCheckpointStorageObservationKt",
-            "io.github.amichne.kast.workspace.intellij.read.IntellijReadGauge",
-            "io.github.amichne.kast.workspace.intellij.read.IntellijReadGaugeKt",
-            "io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter",
-        )
-        else -> emptyList()
-    }
-    val classes = (commonClasses + branchClasses + localClasses + workClasses + checkpointClasses).associateWith { name ->
+    check(input.requiredOwners.size in 1..256 && input.requiredOwners.distinct().size == input.requiredOwners.size)
+    check(input.requiredOwners.all { it.length in 1..256 && it.startsWith("io.github.amichne.kast.") })
+    val classes = input.requiredOwners.associateWith { name ->
         val resource = loader.getResource(name.replace('.', '/') + ".class")!!
         mapOf("url" to resource.toString(), "sha256" to java.security.MessageDigest.getInstance("SHA-256")
             .digest(resource.openStream().use { it.readBytes() }).joinToString("") { "%02x".format(it) })
