@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { CasePolicy } from './pi_evaluation_policy.mjs';
+import { CasePolicy, decodeEnvelope, decodeUsage } from './pi_evaluation_policy.mjs';
 import { evaluationGuard } from './pi_evaluation_guard.mjs';
 import { driveSession, runOwnedWorker } from './pi_evaluation_controller.mjs';
+import { validatePlan } from './run_pi_evaluation.mjs';
 
 const config=()=>({name:'negative',expectedSemanticCalls:1,inputTokenCeiling:20000,declarationByteCeiling:80000,work:{reportedTokens:30000,requests:2,tools:2,outputReserve:2000},delivery:{reportedTokens:25000,requests:1,outputReserve:2000},maximumToolTextBytes:1048576});
 const pinned={provider:'openai-codex',model:'gpt-6.1-sol',thinking:'high',payloadModel:'gpt-6.1-sol',effort:'high',payloadBytes:79339,toolsBytes:73716,instructionsBytes:1920,inputBytes:3357};
@@ -101,7 +102,7 @@ test('supported received-result controller continues once with zero prompts or t
 test('delivery phase guard blocks any additional semantic tool before execution',()=>{
   const policy=new CasePolicy(config());policy.toolResult(negativeComplete);const guard=callbacks(policy);
   const result=guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'retry',input:{request:{type:'RUN'}}});
-  assert.equal(result.block,true);assert.equal(guard.aborted,1);assert.equal(policy.report().nativeRepliesObserved,0);
+  assert.deepEqual(result,{block:true,reason:'HARNESS_TOOL_BLOCKED'});assert.equal(guard.aborted,1);assert.equal(policy.report().nativeRepliesObserved,0);
 });
 
 test('owned real worker cancellation reaps an unresponsive process without inference',async()=>{
@@ -109,4 +110,71 @@ test('owned real worker cancellation reaps an unresponsive process without infer
   const script="process.on('message',()=>{}); process.on('SIGTERM',()=>{}); process.send({type:'ready'}); setInterval(()=>{},1000);";
   const result=await runOwnedWorker(process.execPath,['-e',script],{cwd:process.cwd(),env:{},signal:cancel.signal,wallMillis:5000,graceMillis:0,terminateMillis:0,onEvent:event=>{assert.equal(event.type==='ready'||event.type==='controller_cancel',true);if(event.type==='ready')cancel.abort();}});
   assert.equal(result.type,'cancelled');assert.equal(result.ownedChildReaped,true);assert.equal(result.signal,'SIGKILL');
+});
+
+test('unknown envelopes usage and model/effort stay finite failures without weaker fallback',()=>{
+  for(const content of [[],[{type:'text',text:'not-json'}],[{type:'text',text:'{"type":"rejected_document"}'}]])assert.deepEqual(decodeEnvelope(content),{type:'invalid'});
+  for(const usage of [undefined,null,'unknown',{input:10,output:1,totalTokens:10},{input:0,output:2,reasoning:3,totalTokens:2}])assert.deepEqual(decodeUsage(usage),{type:'invalid'});
+  const model=new CasePolicy(config());assert.equal(model.beforeProvider({...pinned,model:'other'}).reason,'HARNESS_MODEL_MISMATCH');
+  const effort=new CasePolicy(config());assert.equal(effort.beforeProvider({...pinned,effort:'medium'}).reason,'HARNESS_MODEL_MISMATCH');
+});
+
+test('received-result policy preserves qualification and forbids all new semantic work',()=>{
+  const policy=new CasePolicy(config());assert.equal(policy.restoreReceivedResult(negativeComplete,2141).allow,true);
+  assert.equal(policy.beforeProvider(pinned).allow,true);
+  policy.modelUsage({input:153,cacheRead:17664,cacheWrite:0,output:88,totalTokens:17905});
+  policy.assistantEnded({stopReason:'stop',content:[{type:'text',text:'Exact absent identity, within qualified scope.'}]});
+  assert.equal(policy.report().usage.totalTokens,17905);assert.equal(policy.report().semanticRepliesObserved,0);
+  assert.equal(policy.report().nativeOutcome,'EXHAUSTIVE_RESULT');assert.equal(policy.report().finalAnswer,true);
+  assert.equal(policy.report().phaseUsage.WORK.totalTokens,0);
+});
+
+test('explicit plans reject duplicated cases accidental fresh continuation and missing context identity',()=>{
+  const plan={piPackageRoot:'/public/pi',kastAdapter:'/public/adapter',workspaceRoot:'/public/fixture',outputRoot:'/new/output',authPath:'/existing/auth',modelsStorePath:'/existing/registry',kastAdapterSha256:'a'.repeat(64),piVersion:'1.0.2',cases:[{...config(),mode:'fresh',prompt:'Fixed public question',wallSeconds:120}]};
+  assert.equal(validatePlan(plan),plan);
+  assert.throws(()=>validatePlan({...plan,cases:[...plan.cases,...plan.cases]}),/Independent/);
+  assert.throws(()=>validatePlan({...plan,cases:[{...plan.cases[0],mode:'received-result',receivedSessionFile:'/saved/session',receivedResultEntryId:'result'}]}),/Continuation/);
+  assert.throws(()=>validatePlan({...plan,cases:[{...plan.cases[0],mode:'received-result',prompt:undefined,receivedSessionFile:'/saved/session',receivedResultEntryId:'result'}]}),/Continuation/);
+});
+
+test('evidence-only delivery preserves JSON meaning while exact scope cursor and grants stay pinned',()=>{
+  const policy=new CasePolicy({...config(),evidenceOnlyDelivery:true});policy.toolResult(denseRejected);
+  const original=denseRejected.document.rejection.detail.evidence.nextQuery.request;
+  const reordered={cursor:original.cursor,output:original.output,result:original.result,type:original.type};
+  assert.equal(policy.toolCall('query_symbols',{request:reordered},'read').allow,true);
+});
+
+test('model response beyond its reserve remains harness budget limit even if final text arrived',()=>{
+  const policy=new CasePolicy(config());policy.restoreReceivedResult(negativeComplete,2141);policy.beforeProvider(pinned);
+  policy.modelUsage({input:17000,cacheRead:0,output:9000,totalTokens:26000});
+  policy.assistantEnded({stopReason:'stop',content:[{type:'text',text:'Model final text received beyond the declared bound.'}]});
+  const report=policy.report();assert.equal(report.outcome,'HARNESS_BUDGET_LIMIT');assert.equal(report.finalTextObserved,true);assert.equal(report.finalAnswer,false);
+});
+
+test('another tool cannot race past an unresolved semantic call and its eventual rejection',()=>{
+  const policy=new CasePolicy(config());assert.equal(policy.toolCall('query_symbols',{request:{type:'RUN'}},'first').allow,true);
+  assert.equal(policy.toolCall('query_symbols',{request:{type:'RUN',scope:'other'}},'parallel').allow,false);
+  assert.equal(policy.report().semanticRepliesObserved,0);
+});
+
+test('real guard callbacks deliver recorded negative final answer under its separate allowance',()=>{
+  const policy=new CasePolicy(config()),guard=callbacks(policy);
+  guard.emit('before_provider_request',providerEvent());
+  guard.emit('message_end',{message:{role:'assistant',stopReason:'toolUse',usage:{input:17139,output:89,totalTokens:17228},content:[]}});
+  assert.equal(guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'}}}),undefined);
+  guard.emit('tool_execution_start',{toolCallId:'call-1'});
+  guard.emit('tool_result',resultEvent(negativeComplete));
+  assert.equal(guard.aborted,0);
+  guard.emit('before_provider_request',providerEvent());
+  guard.emit('message_end',{message:{role:'assistant',stopReason:'stop',usage:{input:153,cacheRead:17664,output:88,totalTokens:17905},content:[{type:'text',text:'Exact declaration absent under native qualification.'}]}});
+  const report=policy.report();assert.equal(report.outcome,'FINAL_ANSWER');assert.equal(report.usage.totalTokens,35133);
+  assert.equal(report.phaseUsage.WORK.totalTokens,17228);assert.equal(report.phaseUsage.DELIVERY.totalTokens,17905);
+  assert.equal(report.modelProposals.length,1);assert.equal(report.semanticRepliesObserved,1);assert.equal(report.modelProposals[0].adapterStartObserved,true);
+});
+
+test('ordinary read tools remain admitted without manufacturing query evidence',()=>{
+  const policy=new CasePolicy(config());assert.equal(policy.toolCall('health_check',{},'health').allow,true);
+  assert.equal(policy.toolResult(decodeEnvelope([{type:'text',text:'{"type":"complete","document":{"healthy":true}}'}],'health_check'),60,'health').allow,true);
+  assert.equal(policy.report().nativeOutcome,'UNOBSERVED');assert.equal(policy.report().semanticRepliesObserved,0);
+  policy.toolResult(negativeComplete);assert.equal(policy.toolCall('health_check',{},'extra').allow,false);
 });

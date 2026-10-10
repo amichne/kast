@@ -17,7 +17,7 @@ export function validatePlan(plan) {
     if(item.mode==='fresh') {
       if(typeof item.prompt!=='string'||!item.prompt.length||item.receivedSessionFile!==undefined) throw Error('Fresh case requires its fixed prompt');
     } else if(item.mode==='received-result') {
-      if(item.prompt!==undefined||!path.isAbsolute(item.receivedSessionFile??'')||typeof item.receivedResultEntryId!=='string') throw Error('Continuation requires saved session/result identity and no prompt');
+      if(item.prompt!==undefined||!path.isAbsolute(item.receivedSessionFile??'')||typeof item.receivedResultEntryId!=='string'||!/^[a-f0-9]{64}$/.test(item.receivedContextSha256??'')) throw Error('Continuation requires saved session/result/context identity and no prompt');
     } else throw Error('Explicit mode required');
   }
   return plan;

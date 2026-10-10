@@ -1,4 +1,4 @@
-import { decodeEnvelope } from './pi_evaluation_policy.mjs';
+import { decodeEnvelope, READ_TOOLS } from './pi_evaluation_policy.mjs';
 
 const bytes=value=>Buffer.byteLength(JSON.stringify(value));
 // The same exported factory is loaded by the real SDK worker and callback tests.
@@ -6,7 +6,7 @@ const bytes=value=>Buffer.byteLength(JSON.stringify(value));
 export function evaluationGuard(policy,record) {
   return pi=>{
     pi.on('session_start',(_event,ctx)=>{
-      pi.setActiveTools(['query_symbols','check_diagnostics','health_check']);
+      pi.setActiveTools([...READ_TOOLS]);
       record({type:'session_settings',provider:ctx.model?.provider,model:ctx.model?.id,thinking:pi.getThinkingLevel(),toolNames:pi.getActiveTools()});
     });
     pi.on('before_provider_request',(event,ctx)=>{
@@ -25,7 +25,7 @@ export function evaluationGuard(policy,record) {
     pi.on('tool_execution_start',event=>policy.adapterStarted(event.toolCallId));
     pi.on('tool_result',(event,ctx)=>{
       const textBytes=(event.content??[]).reduce((sum,c)=>sum+(c.type==='text'?Buffer.byteLength(c.text):0),0);
-      const envelope=decodeEnvelope(event.content);
+      const envelope=decodeEnvelope(event.content,event.toolName);
       const admission=policy.toolResult(envelope,textBytes,event.toolCallId);
       record({type:'native_reply',callId:event.toolCallId,envelopeType:envelope.type,textBytes,decision:admission});
       if(!admission.allow) ctx.abort();

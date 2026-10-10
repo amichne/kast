@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { pathToFileURL } from 'node:url';
-import { CasePolicy, Outcome } from './pi_evaluation_policy.mjs';
+import { CasePolicy, Outcome, decodeEnvelope } from './pi_evaluation_policy.mjs';
 import { evaluationGuard } from './pi_evaluation_guard.mjs';
 import { driveSession } from './pi_evaluation_controller.mjs';
 import { validatePlan } from './run_pi_evaluation.mjs';
@@ -33,20 +33,22 @@ async function worker(planFile,index) {
   let manager;
   if(item.mode==='received-result') {
     manager=SessionManager.open(item.receivedSessionFile);
+    if(manager.getCwd()!==plan.workspaceRoot)throw Error('Saved workspace identity mismatch');
     const result=manager.getEntries().find(e=>e.id===item.receivedResultEntryId);
     if(result?.message?.role!=='toolResult'||result.message.toolName!=='query_symbols')throw Error('Exact saved received result unavailable');
     manager.branch(result.id);
     const context=manager.buildSessionContext().messages;
-    if(context.at(-1)?.role!=='toolResult')throw Error('Received-result context lost');
+    if(context.at(-1)?.role!=='toolResult'||sha(JSON.stringify(context))!==item.receivedContextSha256)throw Error('Received-result context lost or changed');
     record({type:'received_context',sessionId:manager.getSessionId(),contextSha256:sha(JSON.stringify(context)),toolResultSha256:sha(JSON.stringify(result.message)),newUserMessages:0});
     // Continuation starts with a separate explicitly declared delivery allowance.
     // It cannot replay the saved semantic request or issue a new tool call.
-    policy.phase='DELIVERY';
-    policy.contextGrowthCeiling=Buffer.byteLength(JSON.stringify(result.message));
+    const restored=policy.restoreReceivedResult(decodeEnvelope(result.message.content),Buffer.byteLength(JSON.stringify(result.message)));
+    if(!restored.allow)throw Error('Saved result cannot be interpreted under this plan');
   } else manager=SessionManager.create(plan.workspaceRoot,path.join(directory,'sessions'));
   const {session,modelFallbackMessage}=await createAgentSession({cwd:plan.workspaceRoot,agentDir:directory,settingsManager,resourceLoader:loader,modelRuntime,model,thinkingLevel:'high',tools:['query_symbols','check_diagnostics','health_check'],sessionManager:manager});
   if(modelFallbackMessage||session.thinkingLevel!=='high')throw Error('Exact model/effort unavailable');
   await session.bindExtensions({mode:'rpc',abortHandler:()=>session.agent.abort()});
+  if(item.mode==='received-result'&&sha(JSON.stringify(session.agent.state.messages))!==item.receivedContextSha256)throw Error('SDK restoration changed the received context');
   session.subscribe(event=>fs.appendFileSync(path.join(directory,'events.jsonl'),JSON.stringify(event)+'\n',{mode:0o600}));
   const cancel=()=>{policy.stop(Outcome.CANCELLED);session.agent.abort();};
   process.on('message',m=>{if(m.type==='cancel')cancel();});

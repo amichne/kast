@@ -88,10 +88,18 @@ ceiling and 20,000-token initial input ceiling leave explicit space for that
 context. Validate new schema/context measurements before selecting bounds.
 
 For `mode: "received-result"`, provide the exact `receivedSessionFile` and
-`receivedResultEntryId`, and omit `prompt`. Public `SessionManager.open` and
+`receivedResultEntryId`, the expected `receivedContextSha256`, and omit `prompt`.
+The saved workspace and exact restored context are checked before inference.
+Public `SessionManager.open` and
 append-only `branch` retain the saved tool result; `session.agent.continue()`
 consumes it without a new task, trimming, summary, reissued query or coaching.
 The original session entries remain intact. DELIVERY blocks all new tool calls.
+
+`test_pi_evaluation_mutations.py` kills six changes to the real rules: removing
+the terminal gate, sharing the final budget, dropping cached-input accounting,
+allowing semantic work in DELIVERY, weakening exact evidence-read admission,
+and adding a coaching prompt to received-result continuation. A syntax/import
+or provisioning failure does not count as a killed mutation.
 
 ## Minimal next live validation (not run by this change)
 
