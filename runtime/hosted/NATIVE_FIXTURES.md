@@ -24,6 +24,7 @@ Each case enforces the SDK's read-access contract and restores that setting.
 A case-scoped error processor makes every logged platform error fail the test,
 including errors that the stock framework reports only through TeamCity output.
 The shared fixture applies those same guards to `NativePeerDisconnectTest`.
+It also guards `NativeReadIdentityTest`.
 The native lane excludes the SDK's bundled serialization core and Ktor utility
 JARs, as production compilation does. Typed fixture documents then use the
 project's versioned serialization runtime.
@@ -61,3 +62,18 @@ held. An invalid-request control gets the finite `INVALID_REQUEST` rejection on
 that freed slot. After the writer joins, a fresh connection completes a native
 smart-mode wait. The case owns its socket directory, caller threads and listener.
 It supplies no semantic evaluator and makes no full-query drainage claim.
+
+`NativeReadIdentityTest` calls the real `HostedQueryService` under native read access.
+The service must reject at request admission with `WRONG_THREAD`, before evaluation.
+Its actual diagnostic allocation supplies one `kast_transport_read` connection join.
+The fixture owns and drains the service's coroutine scope. This qualifies the
+early native rejection path, not an admitted semantic query.
+
+Production `kast_transport_read` records carry only `connectionId` and `readId`.
+They join the connection's transport and smart-mode records to the read's phases,
+native calls and final diagnostic. Each presemantic retry allocates a distinct
+read identity under the same connection. Identity observation grants no admission
+or freshness authority and does not reset the surrounding execution clock.
+JVM tests separately check allocation, rejected admission, caller cancellation,
+overlapping reads and the two-field encoded shape. Collectors must use the exact
+join; timing proximity or a shared host epoch cannot supply it.

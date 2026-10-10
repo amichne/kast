@@ -17,7 +17,8 @@ internal class HostedReadDiagnostics(
     private val publish: (HostedReadDiagnosticReceipt) -> Unit,
 ) : IntellijReadObservation {
     private val started = clock()
-    private val readId = UUID.randomUUID()
+    val identity = HostedReadTraceIdentity.fromBoundary(UUID.randomUUID())
+    private val readId = identity.value
     private val phaseDurations = linkedMapOf<IntellijReadPhase, Long>()
     private var nativePhase: HostedNativePhaseState = HostedNativePhaseState.NotEntered
     private var phaseStarted = 0L
