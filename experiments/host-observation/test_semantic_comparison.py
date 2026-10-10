@@ -1,7 +1,7 @@
 """Pure comparison and scripted replay checks; no native-performance claims."""
 import copy
 import argparse
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from contextlib import contextmanager
 import hashlib
 import io
@@ -17,6 +17,39 @@ from unittest.mock import patch
 import reproduce_semantic_queries as r
 import hosted_timing as timing
 from test_hosted_timing import window as timing_window, READ
+
+
+@dataclass(frozen=True)
+class ScriptedRetention:
+    reference: str
+    kind: str = 'retained'
+
+
+@dataclass(frozen=True)
+class ScriptedEvidenceWindow:
+    type: str
+    start: int
+    end: int
+    total: int
+
+
+@dataclass(frozen=True)
+class ScriptedPreview:
+    row_count: int
+    encoded_bytes: int
+    type: str = 'PREFIX'
+
+
+@dataclass(frozen=True)
+class ScriptedStop:
+    type: str = 'COMPLETED'
+
+
+@dataclass(frozen=True)
+class ScriptedInvocation:
+    accumulated_row_count: int
+    preview: ScriptedPreview
+    stop: ScriptedStop
 
 
 class SemanticComparisonTest(unittest.TestCase):
@@ -711,6 +744,155 @@ class SemanticComparisonTest(unittest.TestCase):
         self.assertTrue(r.observation_only(baseline, candidate))
         self.assertFalse(r.compare_trials(self.trial(), self.trial(work=1),
                          r.observation_only(baseline, candidate)).lessWork)
+
+    def retained_script(self):
+        """Case-owned retained reply pages; never a native compiler or performance witness."""
+        original = self.production_trial('scoped-all').calls[0]
+        rows = copy.deepcopy(original.response['items'])
+        for i, item in enumerate(rows):
+            item['row_id'] = f'result-row:v1:00000000-0000-0000-0000-{i + 1:012x}'
+        pages = []
+        for selected in (rows[:20], rows[20:]):
+            response = copy.deepcopy(original.response)
+            response['items'] = selected
+            response['retention'] = asdict(ScriptedRetention('result:v1:00000000-0000-0000-0000-000000000001'))
+            response['evidence_window'] = asdict(ScriptedEvidenceWindow('FINAL', 0, 0, 0))
+            pages.append(response)
+        pages[0]['next_cursor'] = 20
+        pages[0]['invocation'] = asdict(ScriptedInvocation(21,
+            ScriptedPreview(20, len(json.dumps(rows[:20]).encode())), ScriptedStop()))
+        return original, pages
+
+    def run_retained_script(self, original, pages, max_calls=None):
+        seen = []
+        def invoke(request):
+            self.assertLess(len(seen), len(pages), 'Unexpected or excess scripted retained read')
+            response = pages[len(seen)]
+            seen.append(copy.deepcopy(request))
+            process = {**original.process, 'stdout': json.dumps(response)}
+            return r.ReplayCall(request['request']['type'], request, process, response,
+                                original.diagnostics, [], 'MATCHED')
+        calls = r.drain_workload(original.request, invoke, max_calls or len(pages))
+        return calls, seen
+
+    def test_retained_preview_drains_full_answer_and_preserves_query_grant_and_row_identities(self):
+        original, pages = self.retained_script()
+        calls, seen = self.run_retained_script(original, pages)
+        self.assertEqual(2, len(calls), 'Unconsumed scripted retained read')
+        self.assertEqual(['RUN', 'READ_RESULT'], [q['request']['type'] for q in seen])
+        self.assertEqual(20, seen[1]['request']['cursor'])
+        self.assertEqual(0, seen[1]['request']['evidence_cursor'])
+        self.assertEqual(original.request['request']['output'], seen[1]['request']['output'])
+        self.assertEqual(original.request['request']['executionBudget'], seen[1]['request']['executionBudget'])
+        self.assertEqual(pages[0]['retention']['reference'], seen[1]['request']['result'])
+        trial = r.finish_trial('scoped-all', 0, False, calls, 400, 200, r.WorkloadProfile.KAST_SOURCE)
+        self.assertIs(trial.type, r.TrialState.COMPLETE)
+        self.assertEqual(21, len(trial.semantic['items']))
+        self.assertEqual([row['row_id'] for page in pages for row in page['items']],
+                         [row['row_id'] for row in trial.semantic['items']])
+        self.assertNotIn(r.PresentationFailure.UNREAD.value, trial.unavailable)
+
+    def test_retained_preview_is_incomplete_at_call_capacity(self):
+        original, pages = self.retained_script()
+        calls, _ = self.run_retained_script(original, pages, max_calls=1)
+        trial = r.finish_trial('scoped-all', 0, False, calls, 200, 200, r.WorkloadProfile.KAST_SOURCE)
+        self.assertIs(trial.type, r.TrialState.INCOMPLETE)
+        self.assertIn(r.PresentationFailure.UNREAD.value, trial.unavailable)
+        self.assertFalse(r.compare_trials(trial, trial, False).lessWork)
+
+    def test_retained_evidence_cursor_advances_independently_after_rows_end(self):
+        original, pages = self.retained_script()
+        # Window positions are the case's minimum facts for the independent cursor rule.
+        pages[0]['evidence_window'] = asdict(ScriptedEvidenceWindow('MORE', 0, 1, 2))
+        pages[1]['evidence_window'] = asdict(ScriptedEvidenceWindow('MORE', 1, 1, 2))
+        # The second page has only rows: it must also advance evidence when MORE is reported.
+        calls, _ = self.run_retained_script(original, pages)
+        self.assertEqual(r.PresentationRejected(r.PresentationFailure.EVIDENCE), r.presentation(calls))
+        pages[1]['evidence_window'] = asdict(ScriptedEvidenceWindow('FINAL', 1, 2, 2))
+        calls, seen = self.run_retained_script(original, pages)
+        self.assertEqual(1, seen[1]['request']['evidence_cursor'])
+        self.assertIsInstance(r.presentation(calls), r.PresentationComplete)
+        pages[0]['evidence_window'] = asdict(ScriptedEvidenceWindow('FINAL', 0, 2, 2))
+        pages[1]['evidence_window'] = asdict(ScriptedEvidenceWindow('FINAL', 2, 2, 2))
+        _, seen = self.run_retained_script(original, pages)
+        self.assertEqual(2, seen[1]['request']['evidence_cursor'], 'Consumed evidence must not be requested again')
+        pages[0]['evidence_window'] = asdict(ScriptedEvidenceWindow('MORE', 0, 1, 3))
+        pages[1]['evidence_window'] = asdict(ScriptedEvidenceWindow('MORE', 1, 2, 3))
+        last = copy.deepcopy(pages[1])
+        last['items'] = []
+        last['evidence_window'] = asdict(ScriptedEvidenceWindow('FINAL', 2, 3, 3))
+        calls, seen = self.run_retained_script(original, [*pages, last])
+        self.assertEqual(3, len(calls), 'Unconsumed evidence-only retained read')
+        self.assertEqual([20, 21], [q['request']['cursor'] for q in seen[1:]])
+        self.assertEqual([1, 2], [q['request']['evidence_cursor'] for q in seen[1:]])
+        self.assertIsInstance(r.presentation(calls), r.PresentationComplete)
+
+    def test_retained_page_owner_live_and_duplicate_rows_reject_without_extra_reads(self):
+        changes = [('owner', r.PresentationFailure.OWNER), ('live', r.PresentationFailure.LIVE),
+                   ('duplicate', r.PresentationFailure.ROWS)]
+        for changed, failure in changes:
+            with self.subTest(changed=changed):
+                original, pages = self.retained_script()
+                if changed == 'owner': pages[1]['retention']['reference'] = 'result:v1:00000000-0000-0000-0000-000000000002'
+                elif changed == 'live': pages[1]['live']['epoch'] += 1
+                else: pages[1]['items'][0]['row_id'] = pages[0]['items'][0]['row_id']
+                calls, _ = self.run_retained_script(original, pages)
+                self.assertEqual(r.PresentationRejected(failure), r.presentation(calls))
+                trial = r.finish_trial('scoped-all', 0, False, calls, 400, 200, r.WorkloadProfile.KAST_SOURCE)
+                self.assertIs(trial.type, r.TrialState.INCOMPLETE)
+                self.assertIn(failure.value, trial.unavailable)
+
+    def test_invalid_retained_cursor_window_and_count_do_not_manufacture_completion(self):
+        for changed, failure in [('row-cursor', r.PresentationFailure.ROW_CURSOR),
+                                ('evidence', r.PresentationFailure.EVIDENCE),
+                                ('count', r.PresentationFailure.ROW_COUNT)]:
+            with self.subTest(changed=changed):
+                original, pages = self.retained_script()
+                if changed == 'row-cursor': pages[0]['next_cursor'] = 19
+                elif changed == 'evidence': pages[0]['evidence_window']['type'] = 'UNKNOWN'
+                else: pages[0]['invocation']['accumulated_row_count'] = 22
+                calls, _ = self.run_retained_script(original, pages)
+                self.assertEqual(r.PresentationRejected(failure), r.presentation(calls))
+                trial = r.finish_trial('scoped-all', 0, False, calls, 400, 200, r.WorkloadProfile.KAST_SOURCE)
+                self.assertIs(trial.type, r.TrialState.INCOMPLETE)
+
+    def test_retained_rejection_preview_is_not_read_as_a_complete_result(self):
+        original, pages = self.retained_script()
+        pages[0]['status'] = 'rejected'
+        calls, _ = self.run_retained_script(original, pages)
+        self.assertEqual(1, len(calls))
+        trial = r.finish_trial('scoped-all', 0, False, calls, 200, None, r.WorkloadProfile.KAST_SOURCE)
+        self.assertIs(trial.type, r.TrialState.REJECTED)
+        self.assertEqual(pages[0], trial.calls[0].response)
+
+    def test_unknown_presentation_variants_cannot_bypass_paging_admission(self):
+        for field, failure in [('preview', r.PresentationFailure.ROW_COUNT),
+                               ('evidence_window', r.PresentationFailure.EVIDENCE)]:
+            with self.subTest(field=field):
+                original, pages = self.retained_script()
+                pages[0]['next_cursor'] = None
+                pages[0]['invocation']['preview']['type'] = 'INLINE'
+                selected = (pages[0]['invocation']['preview'] if field == 'preview'
+                            else pages[0]['evidence_window'])
+                selected['type'] = 'UNKNOWN'
+                calls, _ = self.run_retained_script(original, pages, max_calls=1)
+                self.assertEqual(r.PresentationRejected(failure), r.presentation(calls))
+                trial = r.finish_trial('scoped-all', 0, False, calls, 200, None, r.WorkloadProfile.KAST_SOURCE)
+                self.assertIs(trial.type, r.TrialState.INCOMPLETE)
+
+    def test_retained_receipt_cannot_change_grant_output_or_cursor_types(self):
+        from dataclasses import replace
+        for changed, failure in [('grant', r.PresentationFailure.REQUEST), ('output', r.PresentationFailure.REQUEST),
+                                ('boolean-cursor', r.PresentationFailure.ROW_CURSOR)]:
+            with self.subTest(changed=changed):
+                original, pages = self.retained_script()
+                calls, _ = self.run_retained_script(original, pages)
+                request = copy.deepcopy(calls[1].request)
+                if changed == 'grant': request['request']['executionBudget']['maxElapsedMs'] += 1
+                elif changed == 'output': request['request']['output']['fields'] = ['NAME']
+                else: request['request']['evidence_cursor'] = False
+                calls[1] = replace(calls[1], request=request)
+                self.assertEqual(r.PresentationRejected(failure), r.presentation(calls))
 
     def test_resume_reacquires_handle_and_drains_without_increasing_budget(self):
         requests = r.comparison_requests()
