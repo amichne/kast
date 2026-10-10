@@ -66,7 +66,7 @@ class WorkspaceRefreshVfsOrderTest {
 
     @Test
     fun `automatic read refresh uses native recursive refresh without forced dirty marking`() {
-        val trace = vfsCalls("refreshForRead")
+        val trace = vfsCalls("startIncrementalOnEdt")
         assertEquals(listOf("refresh"), trace.calls)
         assertEquals(listOf(Opcodes.ICONST_1, Opcodes.ICONST_1), trace.refreshFlags)
     }

@@ -52,6 +52,13 @@ internal class IdeLifecycleState(val host: UUID, private val capacity: Int = 256
     fun inspect(): List<IdeProjectDescription> =
         projects.values.map { IdeProjectDescription(it.target, it.ownership, it.users.size) }
 
+    /** Detach selections under the bookkeeping monitor; native observation must happen after this method returns. */
+    @Synchronized
+    fun inspectionSelections(): List<IdeLifecycleInspectionSelection> =
+        projects.values.map {
+            IdeLifecycleInspectionSelection(it.project, it.root, IdeProjectDescription(it.target, it.ownership, it.users.size))
+        }
+
     @Synchronized
     fun retire(project: UUID) {
         val retired = projects.remove(project) ?: return
@@ -254,3 +261,9 @@ internal sealed interface LifecycleSubmission {
 internal data class LifecycleRequest(val value: String)
 
 internal data class LifecycleClient(val value: String)
+
+internal data class IdeLifecycleInspectionSelection(
+    val project: UUID,
+    val root: CanonicalWorkspaceRoot,
+    val description: IdeProjectDescription,
+)

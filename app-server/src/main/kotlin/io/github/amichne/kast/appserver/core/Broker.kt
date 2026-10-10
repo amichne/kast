@@ -305,6 +305,10 @@ private constructor(
     val limits: BrokerLimits,
     private val routes: Map<ProviderNamespace, ProviderRoute>,
 ) {
+    /** Effect metadata comes from the executable qualified route, never client metadata. */
+    internal fun effect(address: ToolAddress): BrokerOperationEffect =
+        routes[address.namespace]?.effect(address.tool) ?: BrokerOperationEffect.Unknown
+
     internal suspend fun dispatch(request: BrokerDispatchRequest): BrokerDispatch {
         if (
             canonicalJson(request.arguments).toByteArray(StandardCharsets.UTF_8).size > limits.maximumToolArgumentBytes
@@ -358,6 +362,8 @@ private constructor(
 internal interface ProviderRoute {
     val namespace: ProviderNamespace
 
+    fun effect(tool: ToolName): BrokerOperationEffect
+
     suspend fun dispatch(request: BrokerDispatchRequest): BrokerDispatch
 }
 
@@ -376,6 +382,10 @@ private class TypedProviderRoute<Runtime>(
                 (listOf(tool.name) + tool.inputAliases).map { name -> name to route }
             }
             .toMap()
+
+    override fun effect(tool: ToolName): BrokerOperationEffect =
+        registration.tools.singleOrNull { it.name == tool || tool in it.inputAliases }?.effect
+            ?: BrokerOperationEffect.Unknown
 
     override suspend fun dispatch(request: BrokerDispatchRequest): BrokerDispatch =
         tools[request.address.tool]?.dispatch(request, ::acquire)

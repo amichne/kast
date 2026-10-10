@@ -1,15 +1,11 @@
 package io.github.amichne.kast.runtime.hosted
 
-import com.intellij.openapi.application.EDT
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
-import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import kotlin.coroutines.resume
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 internal enum class HostedVfsRefreshOutcome {
@@ -37,12 +33,11 @@ internal fun HostedVfsRefreshOutcome.failure(): HostedEndpointFailure? =
 /** Awaits native incremental VFS completion before a semantic operation enters its read epoch. */
 internal suspend fun awaitHostedVfsRefresh(
     project: Project,
-    root: CanonicalWorkspaceRoot,
-    start: (completed: (HostedVfsRefreshOutcome) -> Unit) -> Unit,
+    start: (completed: (HostedVfsRefreshOutcome) -> Unit) -> (() -> Unit),
 ): HostedVfsRefreshOutcome {
     val outcome =
         try {
-            refreshProjectVfs(project, root, start)
+            refreshProjectVfs(project, start)
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (cancellation: ProcessCanceledException) {
@@ -56,25 +51,24 @@ internal suspend fun awaitHostedVfsRefresh(
 
 private suspend fun refreshProjectVfs(
     project: Project,
-    root: CanonicalWorkspaceRoot,
-    start: (completed: (HostedVfsRefreshOutcome) -> Unit) -> Unit,
+    start: (completed: (HostedVfsRefreshOutcome) -> Unit) -> (() -> Unit),
 ): HostedVfsRefreshOutcome {
     if (project.isDisposed) return HostedVfsRefreshOutcome.PROJECT_DISPOSED
-    if (!withContext(Dispatchers.EDT) { saveProjectDocuments(root) }) return HostedVfsRefreshOutcome.UNSAVED_DOCUMENTS
     return awaitVfsRefresh(disposed = { project.isDisposed }, start = start)
 }
 
 /** The callback is the native completion boundary; timeout never authorizes a stale read. */
 internal suspend fun awaitVfsRefresh(
     disposed: () -> Boolean,
-    start: (completed: (HostedVfsRefreshOutcome) -> Unit) -> Unit,
+    start: (completed: (HostedVfsRefreshOutcome) -> Unit) -> (() -> Unit),
 ): HostedVfsRefreshOutcome {
     if (disposed()) return HostedVfsRefreshOutcome.PROJECT_DISPOSED
     val result =
         try {
             withTimeoutOrNull(VFS_REFRESH_WAIT_MILLIS) {
                 suspendCancellableCoroutine<HostedVfsRefreshOutcome> { continuation ->
-                    start { outcome -> if (continuation.isActive) continuation.resume(outcome) }
+                    val cancelWaiter = start { outcome -> if (continuation.isActive) continuation.resume(outcome) }
+                    continuation.invokeOnCancellation { cancelWaiter() }
                 }
             } ?: return HostedVfsRefreshOutcome.DEADLINE_EXCEEDED
         } catch (cancellation: CancellationException) {

@@ -35,6 +35,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
@@ -312,7 +314,8 @@ internal class CodexProtocolAdapter(
                 operation.await()
             } catch (_: CancellationException) {
                 // Dispatch lives in the adapter scope; cancellation of its caller must reach that operation.
-                operation.cancel()
+                // The adapter owns this provider. Caller cancellation is not provider termination.
+                withContext(NonCancellable) { operation.cancelAndJoin() }
                 null
             } finally {
                 activeInvocations.remove(invocationId)

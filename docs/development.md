@@ -316,6 +316,43 @@ Version-pinned archives must match the installer contract. To stage historical
 archives that require retired setup inputs, use their matching tagged installer.
 The adjacent-patch acceptance helper supports archives with the current contract.
 
+## Workspace readiness proof boundary
+
+`WorkspaceCapabilityReadiness` reports detached facts for `MODEL_PREPARATION`.
+The IntelliJ query adapter validates the selected open, initialized project,
+exact canonical root, complete current cached Gradle model, smart indexing,
+K2 mode, and compatible running host. It then observes the existing retained
+project epoch source. A ready observation carries the root, endpoint incarnation,
+and opaque epoch. Missing or conflicting evidence produces an unavailable,
+pending, or blocked outcome with a finite reason and supported next action.
+
+This preparation observation grants no semantic execution authority. Semantic
+queries still capture and validate the operation's source ownership, module,
+dependency, compiler, content, PSI, and index requirements through their existing
+admission boundaries. `validateWorkspaceEpoch` is the pure same-source final
+freshness rule consumed by passive VFS admission. It rejects moved epochs,
+different incarnations, and unavailable observations before a capability can be
+issued. Retaining a ready snapshot or receiving a successful refresh callback
+does not satisfy a later freshness check.
+
+The query lifetime also exposes detached native execution settlement. Cancellation
+and caller deadlines preserve each invocation's permit and diagnostic identity
+through cleanup. Retirement denies new admission and late publication while
+retaining outstanding invocation observations until their native work terminates.
+Preparation reports pending native work with the retained model observation and
+active operation identities. A retired endpoint incarnation remains blocked and
+requires a newly attached host; it does not imply the live project was disposed.
+
+The associated IntelliJ modules own the truthfulness of these observations and
+native settlement guarantees. Pure tests establish the decisions conditional on
+those guarantees; synthetic observations do not qualify IntelliJ behavior.
+`WorkspaceEpochValidationTest` enumerates bounded sequences of model movement,
+disposal, reopening, readmission, and irrelevant metadata changes. Its independent
+oracle tracks fixture state and rejects deliberate stale-snapshot, retirement,
+and incarnation-bypass mutations. `HostedWorkspaceReadinessTest` exercises the
+production adapter projection with detached epoch sources and no native project,
+filesystem, Git, import, or registration fixture.
+
 ## OpenWiki upkeep
 
 The repository's architecture concepts live in `openwiki/`. Use the OpenWiki

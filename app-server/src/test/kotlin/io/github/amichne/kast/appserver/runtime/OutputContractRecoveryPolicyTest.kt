@@ -131,7 +131,7 @@ class OutputContractRecoveryPolicyTest {
     }
 
     @Test
-    fun `cancelled read with unproven termination never grants queued or later work`(@TempDir root: Path) = runTest {
+    fun `cancelled read retains capacity until provider retirement then admits fresh work`(@TempDir root: Path) = runTest {
         val fixture =
             OutputContractExecutionFixture.create(
                 root = root,
@@ -149,24 +149,26 @@ class OutputContractRecoveryPolicyTest {
             fixture.retiring.await()
             runCurrent()
             assertEquals(1, fixture.active, "provider retirement gate must still be held")
-            assertRecovery(queued.await())
-            assertRecovery(fixture.submit("later").await())
+            assertFalse(first.isCompleted)
+            assertFalse(queued.isCompleted)
             assertEquals(listOf("first"), fixture.calls)
+            fixture.retire.complete(Unit)
+            runCurrent()
+            assertEquals(0, fixture.active)
             assertEquals(
                 WorkspaceExecutionResult.Rejected(WorkspaceExecutionFailure.WORKSPACE_OUTCOME_UNCERTAIN),
                 first.await(),
             )
-            fixture.retire.complete(Unit)
-            runCurrent()
-            assertEquals(0, fixture.active)
-            assertRecovery(fixture.submit("after-retirement").await())
+            assertSuccess(queued.await())
+            assertSuccess(fixture.submit("after-retirement").await())
+            assertEquals(1, fixture.maximumActive)
         } finally {
             fixture.close()
         }
     }
 
     @Test
-    fun `timed out read keeps its permit through retirement and remains recovery required`(@TempDir root: Path) =
+    fun `timed out read keeps its permit through retirement and admits fresh work`(@TempDir root: Path) =
         runTest {
             val budget = (ElapsedTimeLimitMillis.parse(100) as Refinement.Refined).value
             val fixture =
@@ -194,8 +196,8 @@ class OutputContractRecoveryPolicyTest {
                 val rejection = first.await().reply()
                 assertEquals(InvocationCertainty.UNCERTAIN, rejection.certainty)
                 assertEquals(JsonPrimitive("TIMED_OUT"), rejection.failureDocument()["failure"])
-                assertRecovery(queued.await())
-                assertRecovery(fixture.submit("later").await())
+                assertSuccess(queued.await())
+                assertSuccess(fixture.submit("later").await())
                 assertEquals(0, fixture.active)
                 assertEquals(1, fixture.maximumActive)
             } finally {

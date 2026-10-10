@@ -4,7 +4,8 @@ import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.ProjectReadEpoch
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservation
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure
-import io.github.amichne.kast.workspace.contract.ProjectReadEpochRelation
+import io.github.amichne.kast.workspace.contract.WorkspaceEpochValidation
+import io.github.amichne.kast.workspace.contract.validateWorkspaceEpoch
 import io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmission
 import io.github.amichne.kast.workspace.contract.VfsPassiveReadAdmissionFailure
 import io.github.amichne.kast.workspace.contract.VfsPassiveReadCapability
@@ -24,18 +25,15 @@ internal fun admitVfsPassiveReadObservation(
     expectedEpoch: ProjectReadEpoch<*>,
     current: ProjectReadEpochObservation,
 ): VfsPassiveReadAdmission =
-    when (current) {
-        is ProjectReadEpochObservation.Observed ->
-            when (expectedEpoch.relationTo(current.epoch)) {
-                ProjectReadEpochRelation.SAME ->
-                    VfsPassiveReadAdmission.Admitted(VfsPassiveReadCapability.issue(canonicalRoot, current.epoch))
-                ProjectReadEpochRelation.MOVED -> VfsPassiveReadAdmission.Rejected(VfsPassiveReadAdmissionFailure.Moved)
-                ProjectReadEpochRelation.INCOMPARABLE ->
-                    VfsPassiveReadAdmission.Rejected(VfsPassiveReadAdmissionFailure.Incomparable)
-            }
-        is ProjectReadEpochObservation.Rejected ->
+    when (val validation = validateWorkspaceEpoch(expectedEpoch, current)) {
+        is WorkspaceEpochValidation.Current ->
+            VfsPassiveReadAdmission.Admitted(VfsPassiveReadCapability.issue(canonicalRoot, validation.epoch))
+        WorkspaceEpochValidation.Stale -> VfsPassiveReadAdmission.Rejected(VfsPassiveReadAdmissionFailure.Moved)
+        WorkspaceEpochValidation.DifferentIncarnation ->
+            VfsPassiveReadAdmission.Rejected(VfsPassiveReadAdmissionFailure.Incomparable)
+        is WorkspaceEpochValidation.Unavailable ->
             VfsPassiveReadAdmission.Rejected(
-                when (val failure = current.failure) {
+                when (val failure = validation.failure) {
                     ProjectReadEpochObservationFailure.ProjectDisposed -> VfsPassiveReadAdmissionFailure.ProjectDisposed
                     ProjectReadEpochObservationFailure.DumbMode -> VfsPassiveReadAdmissionFailure.DumbMode
                     ProjectReadEpochObservationFailure.WrongThread ->

@@ -108,7 +108,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
 
     internal suspend fun lifecycleVfsRefresh(root: CanonicalWorkspaceRoot): HostedVfsRefreshOutcome =
         when (val owner = refreshOwner.get()) {
-            is RefreshOwner.Available -> awaitHostedVfsRefresh(project, root, owner.value::refreshForRead)
+            is RefreshOwner.Available -> awaitHostedVfsRefresh(project, owner.value::refreshForRead)
             else -> HostedVfsRefreshOutcome.FAILED
         }
 
@@ -256,7 +256,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
             return HostedResponse.Rejected(HostedEndpointFailure.WRONG_ROOT)
         }
         if (request !is HostedRequest.Describe && request !is HostedRequest.Refresh) {
-            val refreshFailure = awaitHostedVfsRefresh(project, root, refresh::refreshForRead).failure()
+            val refreshFailure = awaitHostedVfsRefresh(project, refresh::refreshForRead).failure()
             if (refreshFailure != null) return HostedResponse.Rejected(refreshFailure)
             if (gradleChanges.needsModelReload()) {
                 observer.rejected(HostedEndpointStage.READINESS, HostedEndpointFailure.MODEL_REFRESH_REQUIRED)

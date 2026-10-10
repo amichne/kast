@@ -28,7 +28,23 @@ internal class HostedWorkspaceRefresh(
     private val service = WorkspaceRefreshService(port)
     private val triggers = WorkspaceRefreshTaskTrigger(project, root, scope) { command -> execute(command) }
 
-    fun refreshForRead(complete: (HostedVfsRefreshOutcome) -> Unit) = port.refreshForRead(complete)
+    fun refreshForRead(complete: (HostedVfsRefreshOutcome) -> Unit): () -> Unit =
+        service.refreshForRead { status ->
+            complete(
+                when (status) {
+                    WorkspaceRefreshStatus.Complete -> HostedVfsRefreshOutcome.READY
+                    is WorkspaceRefreshStatus.Failed -> when (status.reason) {
+                        WorkspaceRefreshFailure.DISPOSED -> HostedVfsRefreshOutcome.PROJECT_DISPOSED
+                        WorkspaceRefreshFailure.ROOT_UNAVAILABLE -> HostedVfsRefreshOutcome.ROOT_UNAVAILABLE
+                        WorkspaceRefreshFailure.UNSAVED_DOCUMENTS -> HostedVfsRefreshOutcome.UNSAVED_DOCUMENTS
+                        WorkspaceRefreshFailure.DEADLINE_EXCEEDED -> HostedVfsRefreshOutcome.DEADLINE_EXCEEDED
+                        else -> HostedVfsRefreshOutcome.FAILED
+                    }
+                    is WorkspaceRefreshStatus.Rejected -> HostedVfsRefreshOutcome.FAILED
+                    is WorkspaceRefreshStatus.Pending -> error("Only terminal refresh outcomes reach a waiter")
+                }
+            )
+        }
 
     fun initialImport(requestId: String): WorkspaceRefreshResult =
         when (val prepared = port.prepareInitialLink()) {
@@ -62,18 +78,9 @@ internal class HostedWorkspaceRefresh(
             is Refinement.Refined -> triggers.configure(rule)
         }
 
-    private fun admittedRequest(command: WorkspaceRefreshCommand.Request): WorkspaceRefreshResult {
-        val id =
-            when (val parsed = WorkspaceRefreshRequestId.parse(command.requestId)) {
-                is Refinement.Rejected -> return WorkspaceRefreshResult.Rejected(PublicFailure.INVALID_REQUEST)
-                is Refinement.Refined -> parsed.value
-            }
-        if (service.contains(id)) return withId(command.requestId) { service.submit(it, command.effect) }
-        return when (val admission = port.admission()) {
-            is Refinement.Rejected -> WorkspaceRefreshResult.Rejected(admission.failure)
-            is Refinement.Refined -> withId(command.requestId) { service.submit(it, command.effect) }
-        }
-    }
+    private fun admittedRequest(command: WorkspaceRefreshCommand.Request): WorkspaceRefreshResult =
+        // Native admission or observation of an existing import occurs when the effect reaches its turn.
+        withId(command.requestId) { service.submit(it, command.effect) }
 
     private fun withId(
         raw: String,
@@ -100,7 +107,8 @@ internal class HostedWorkspaceRefresh(
                                 WorkspaceRefreshFailure.BUSY -> PublicFailure.NEWER_CHANGE
                                 WorkspaceRefreshFailure.UNSAVED_DOCUMENTS -> PublicFailure.UNSAVED_DOCUMENTS
                                 WorkspaceRefreshFailure.UNLINKED_BUILD -> PublicFailure.UNLINKED_BUILD
-                                WorkspaceRefreshFailure.EFFECT_FAILED -> PublicFailure.EFFECT_FAILED
+                                WorkspaceRefreshFailure.EFFECT_FAILED,
+                                WorkspaceRefreshFailure.ROOT_UNAVAILABLE -> PublicFailure.EFFECT_FAILED
                                 WorkspaceRefreshFailure.CANCELLED -> PublicFailure.CANCELLED
                                 WorkspaceRefreshFailure.DISPOSED -> PublicFailure.DISPOSED
                                 WorkspaceRefreshFailure.DEADLINE_EXCEEDED -> PublicFailure.DEADLINE_EXCEEDED
@@ -120,6 +128,8 @@ internal class HostedWorkspaceRefresh(
         }
 
     fun hasWork(): Boolean = service.hasWork()
+
+    fun inspection(): WorkspaceRefreshInspection = service.inspection()
 
     override fun dispose() {
         triggers.dispose()

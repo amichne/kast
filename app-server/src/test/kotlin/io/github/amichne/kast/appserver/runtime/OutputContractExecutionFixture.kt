@@ -62,7 +62,7 @@ internal class OutputContractExecutionFixture
 private constructor(
     root: Path,
     scope: TestScope,
-    effect: BrokerOperationEffect,
+    private val effect: BrokerOperationEffect,
     termination: FixtureTermination,
     invocationBudget: ElapsedTimeLimitMillis = ElapsedTimeLimitMillis.parse(60_000).refined(),
 ) {
@@ -174,7 +174,8 @@ private constructor(
                 thread = requireNotNull(BrokerThreadId.admit(thread)),
                 turn = requireNotNull(BrokerTurnId.admit(call)),
                 call = requireNotNull(BrokerCallId.admit(call)),
-            )
+            ),
+            access = WorkspaceExecutionAccess.Operation(effect),
         ) {
             adapter.fromUpstream(
                 Json.encodeToString(

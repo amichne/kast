@@ -14,8 +14,6 @@ import com.intellij.openapi.externalSystem.service.project.ExternalProjectRefres
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
-import kotlinx.serialization.EncodeDefault
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -45,11 +43,13 @@ internal class WorkspaceRefreshImportCallback(
 
             override fun onEnd(id: ExternalSystemTaskId) = completion.ended(id)
         }
-    private val completion: WorkspaceRefreshImportCompletion =
+    private val completion: WorkspaceRefreshImportCompletion<ExternalSystemTaskId> =
         WorkspaceRefreshImportCompletion(
             complete = { result ->
-                manager.removeNotificationListener(listener)
-                if (!Disposer.isDisposed(this)) Disposer.dispose(this)
+                if (result != WorkspaceRefreshEffectResult.RETIRED) {
+                    manager.removeNotificationListener(listener)
+                    if (!Disposer.isDisposed(this)) Disposer.dispose(this)
+                }
                 complete(result)
             },
             observe = { observation ->
@@ -79,60 +79,8 @@ internal class WorkspaceRefreshImportCallback(
         )
     }
 
-    fun failedToStart(result: WorkspaceRefreshEffectResult) = completion.finished(result)
+    fun failedStartCall(result: WorkspaceRefreshEffectResult) = completion.finished(result)
 
-    override fun dispose() = completion.finished(WorkspaceRefreshEffectResult.DISPOSED)
+    override fun dispose() = completion.retired()
 }
 
-/** Exactly one terminal signal; resolver success alone does not prove that imported data was applied. */
-internal class WorkspaceRefreshImportCompletion(
-    private val complete: (WorkspaceRefreshEffectResult) -> Unit,
-    private val observe: (WorkspaceRefreshImportObservation) -> Unit,
-) {
-    private sealed interface State {
-        data object Waiting : State
-
-        data class Running(val id: ExternalSystemTaskId) : State
-
-        data class Cancelling(val id: ExternalSystemTaskId) : State
-
-        data object Finished : State
-    }
-
-    private var state: State = State.Waiting
-
-    @Synchronized
-    fun started(id: ExternalSystemTaskId) {
-        if (state == State.Waiting) state = State.Running(id)
-    }
-
-    @Synchronized
-    fun cancelled(id: ExternalSystemTaskId) {
-        if (state == State.Running(id)) state = State.Cancelling(id)
-    }
-
-    @Synchronized
-    fun ended(id: ExternalSystemTaskId) {
-        if (state == State.Cancelling(id)) finished(WorkspaceRefreshEffectResult.CANCELLED)
-    }
-
-    @Synchronized
-    fun finished(result: WorkspaceRefreshEffectResult) {
-        if (state == State.Finished) return
-        state = State.Finished
-        observe(WorkspaceRefreshImportObservation(outcome = result))
-        complete(result)
-    }
-}
-
-@Serializable
-internal data class WorkspaceRefreshImportObservation(
-    @EncodeDefault(EncodeDefault.Mode.ALWAYS)
-    val stage: WorkspaceRefreshImportStage = WorkspaceRefreshImportStage.IMPORT_CALLBACK,
-    val outcome: WorkspaceRefreshEffectResult,
-)
-
-@Serializable
-internal enum class WorkspaceRefreshImportStage {
-    IMPORT_CALLBACK
-}

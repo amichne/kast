@@ -16,11 +16,12 @@ import com.intellij.openapi.vfs.newvfs.RefreshQueue
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure as PublicFailure
-import io.github.amichne.kast.runtime.hosted.HostedVfsRefreshOutcome
 import io.github.amichne.kast.runtime.hosted.saveProjectDocuments
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.WorkspaceCapabilityReadiness
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
-import io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadinessDocument
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 /** Effect boundary for exactly the existing project's linked root; never opens or links a project. */
 internal class IntellijWorkspaceRefreshPort(
@@ -91,6 +92,16 @@ internal class IntellijWorkspaceRefreshPort(
                 }
             } else complete
         try {
+            if (
+                effect == WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD &&
+                linkState == LinkState.Existing &&
+                !project.isDisposed && project.basePath == root.value &&
+                TrustedProjects.isProjectTrusted(project) &&
+                ExternalSystemApiUtil.getSettings(project, GRADLE).linkedProjectsSettings.any {
+                    it.externalProjectPath == root.value
+                } &&
+                observeExistingWorkspaceImport(project, root, observedComplete)
+            ) return
             when (val admitted = admission()) {
                 is Refinement.Rejected -> {
                     observedComplete(
@@ -111,19 +122,19 @@ internal class IntellijWorkspaceRefreshPort(
                 WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD -> reloadModel(observedComplete)
             }
         } catch (_: ProcessCanceledException) {
-            observedComplete(WorkspaceRefreshEffectResult.CANCELLED)
+            observeUnsettledStart(WorkspaceRefreshStartFailure.CANCELLED)
         } catch (_: RuntimeException) {
-            observedComplete(WorkspaceRefreshEffectResult.FAILED)
+            observeUnsettledStart(WorkspaceRefreshStartFailure.FAILED)
         }
     }
 
-    override fun readiness(): WorkspaceRefreshReadiness =
-        if (project.isDisposed) WorkspaceRefreshReadiness.DISPOSED
-        else
-            when (query.readiness(root)) {
-                HostedReadinessDocument.AdmissionReady -> WorkspaceRefreshReadiness.READY
-                is HostedReadinessDocument.Unavailable -> WorkspaceRefreshReadiness.NOT_READY
-            }
+    private fun observeUnsettledStart(failure: WorkspaceRefreshStartFailure) {
+        // A thrown scheduling call cannot establish that partially started native work terminated.
+        Logger.getInstance(IntellijWorkspaceRefreshPort::class.java)
+            .info("kast_workspace_refresh_start_unsettled outcome=" + Json.encodeToString(failure))
+    }
+
+    override fun readiness(): WorkspaceCapabilityReadiness = query.workspaceReadiness(root)
 
     private fun refreshFiles(complete: (WorkspaceRefreshEffectResult) -> Unit) {
         val directory = LocalFileSystem.getInstance().findFileByPath(root.value)
@@ -148,14 +159,30 @@ internal class IntellijWorkspaceRefreshPort(
     }
 
     /** Automatic read admission waits for native recursive refresh without forcing every descendant dirty. */
-    fun refreshForRead(complete: (HostedVfsRefreshOutcome) -> Unit) {
+    override fun startIncremental(complete: (WorkspaceRefreshEffectResult) -> Unit) {
+        ApplicationManager.getApplication().invokeLater {
+            try {
+                startIncrementalOnEdt(complete)
+            } catch (_: ProcessCanceledException) {
+                observeUnsettledStart(WorkspaceRefreshStartFailure.CANCELLED)
+            } catch (_: RuntimeException) {
+                observeUnsettledStart(WorkspaceRefreshStartFailure.FAILED)
+            }
+        }
+    }
+
+    private fun startIncrementalOnEdt(complete: (WorkspaceRefreshEffectResult) -> Unit) {
         if (project.isDisposed) {
-            complete(HostedVfsRefreshOutcome.PROJECT_DISPOSED)
+            complete(WorkspaceRefreshEffectResult.DISPOSED)
+            return
+        }
+        if (!saveProjectDocuments(root)) {
+            complete(WorkspaceRefreshEffectResult.UNSAVED_DOCUMENTS)
             return
         }
         val directory = LocalFileSystem.getInstance().findFileByPath(root.value)
         if (directory == null) {
-            complete(HostedVfsRefreshOutcome.ROOT_UNAVAILABLE)
+            complete(WorkspaceRefreshEffectResult.ROOT_UNAVAILABLE)
             return
         }
         // Native incremental refresh retains recursive coverage and reports completion through its callback.
@@ -165,8 +192,8 @@ internal class IntellijWorkspaceRefreshPort(
                 true,
                 {
                     complete(
-                        if (project.isDisposed) HostedVfsRefreshOutcome.PROJECT_DISPOSED
-                        else HostedVfsRefreshOutcome.READY
+                        if (project.isDisposed) WorkspaceRefreshEffectResult.DISPOSED
+                        else WorkspaceRefreshEffectResult.SUCCEEDED
                     )
                 },
                 directory,
@@ -214,9 +241,9 @@ internal class IntellijWorkspaceRefreshPort(
                 }
             }
         } catch (_: ProcessCanceledException) {
-            callback.failedToStart(WorkspaceRefreshEffectResult.CANCELLED)
+            callback.failedStartCall(WorkspaceRefreshEffectResult.CANCELLED)
         } catch (_: RuntimeException) {
-            callback.failedToStart(WorkspaceRefreshEffectResult.FAILED)
+            callback.failedStartCall(WorkspaceRefreshEffectResult.FAILED)
         }
     }
 
@@ -240,3 +267,9 @@ internal fun quietWorkspaceImport(
         .withActivateToolWindowOnFailure(false)
         .dontNavigateToError()
         .withCallback(callback)
+
+@kotlinx.serialization.Serializable
+private enum class WorkspaceRefreshStartFailure {
+    CANCELLED,
+    FAILED,
+}

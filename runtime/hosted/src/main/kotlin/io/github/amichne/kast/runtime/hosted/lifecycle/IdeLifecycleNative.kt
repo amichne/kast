@@ -15,6 +15,7 @@ import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeLifecycleStage
 import io.github.amichne.kast.protocol.contract.IdeProjectOwnership
+import io.github.amichne.kast.protocol.contract.IdeProjectDescription
 import io.github.amichne.kast.protocol.contract.IdeProjectTarget
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshCommand
@@ -25,6 +26,11 @@ import io.github.amichne.kast.protocol.contract.WorkspaceRefreshStage
 import io.github.amichne.kast.runtime.hosted.HostedEndpointService
 import io.github.amichne.kast.runtime.hosted.saveProjectDocuments
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.WorkspaceCapabilityReadiness
+import io.github.amichne.kast.workspace.contract.WorkspaceModelIdentity
+import io.github.amichne.kast.workspace.contract.WorkspaceReadinessReason
+import io.github.amichne.kast.workspace.contract.WorkspaceReadinessNextAction
+import io.github.amichne.kast.workspace.contract.IdeReadHostLifetime
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadResult
 import java.nio.file.Files
@@ -68,6 +74,25 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
                 observe(project, root, IdeProjectOwnership.BORROWED)
             }
     }
+
+    /** Registration selects an observation only; the associated project adapter supplies all readiness evidence. */
+    fun inspectProjects(): List<IdeProjectDescription> =
+        state.inspectionSelections().map { selection ->
+            val project = projects[selection.project] ?: return@map selection.description
+            val identity = WorkspaceModelIdentity(selection.root, IdeReadHostLifetime.fromBoundary(selection.project))
+            val readiness =
+                try {
+                    val query = project.getService(HostedQueryService::class.java)
+                    if (query.hostLifetime.value != selection.project)
+                        WorkspaceCapabilityReadiness.Blocked(identity, WorkspaceReadinessReason.PROJECT_IDENTITY_MISMATCH, WorkspaceReadinessNextAction.SELECT_PROJECT)
+                    else query.workspaceReadiness(selection.root)
+                } catch (_: com.intellij.openapi.progress.ProcessCanceledException) {
+                    WorkspaceCapabilityReadiness.Unavailable(identity, WorkspaceReadinessReason.OBSERVATION_FAILED, WorkspaceReadinessNextAction.OBSERVE_AGAIN)
+                } catch (_: RuntimeException) {
+                    WorkspaceCapabilityReadiness.Unavailable(identity, WorkspaceReadinessReason.OBSERVATION_FAILED, WorkspaceReadinessNextAction.OBSERVE_AGAIN)
+                }
+            selection.description.copy(readiness = readiness.inspectionDocument())
+        }
 
     private fun observe(
         project: Project,

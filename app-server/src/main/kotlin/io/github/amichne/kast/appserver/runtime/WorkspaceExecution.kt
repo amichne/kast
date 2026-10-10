@@ -8,6 +8,10 @@ import io.github.amichne.kast.appserver.core.BrokerTurnId
 import io.github.amichne.kast.appserver.protocol.codex.InvocationCertainty
 import io.github.amichne.kast.appserver.protocol.codex.ProtocolRouting
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.workspace.contract.WorkspaceExecutionCertainty
+import io.github.amichne.kast.workspace.contract.WorkspaceExecutionDisposition
+import io.github.amichne.kast.workspace.contract.WorkspaceExecutionSettlement
+import io.github.amichne.kast.workspace.contract.workspaceExecutionDisposition
 import kotlin.time.Duration
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
@@ -80,6 +84,7 @@ internal class WorkspaceExecution(
     private class Request(
         val identity: WorkspaceExecutionIdentity,
         val interactionLimit: ElapsedTimeLimitMillis,
+        val access: WorkspaceExecutionAccess,
         timeSource: TimeSource,
     ) {
         val enqueuedAt: TimeMark = timeSource.markNow()
@@ -105,14 +110,17 @@ internal class WorkspaceExecution(
     fun submit(
         identity: WorkspaceExecutionIdentity,
         interactionLimit: ElapsedTimeLimitMillis = policy.interaction,
+        access: WorkspaceExecutionAccess = WorkspaceExecutionAccess.Operation(io.github.amichne.kast.appserver.core.BrokerOperationEffect.Unknown),
         operation: suspend () -> ProtocolRouting,
     ): Deferred<WorkspaceExecutionResult> {
         val request =
             Request(
                 identity,
                 if (interactionLimit.value < policy.interaction.value) interactionLimit else policy.interaction,
+                access,
                 timeSource,
             )
+        if (access == WorkspaceExecutionAccess.Observation) return observe(request, operation)
         val job = scope.launch(start = CoroutineStart.LAZY) { perform(request, operation) }
         val execution = Execution(request, job)
         val accepted =
@@ -147,6 +155,22 @@ internal class WorkspaceExecution(
         } else job.cancel()
         return request.result
     }
+
+    /** Observation has its own bounded execution and can report a semantic fence while it is held. */
+    private fun observe(request: Request, operation: suspend () -> ProtocolRouting): Deferred<WorkspaceExecutionResult> =
+        scope.async {
+            try {
+                withTimeout(request.interactionLimit.value) {
+                    WorkspaceExecutionResult.Completed(operation())
+                }
+            } catch (_: TimeoutCancellationException) {
+                WorkspaceExecutionResult.Rejected(WorkspaceExecutionFailure.WORKSPACE_INTERACTION_TIMED_OUT)
+            } catch (_: CancellationException) {
+                WorkspaceExecutionResult.Rejected(WorkspaceExecutionFailure.CANCELLED_BEFORE_EXECUTION)
+            } catch (_: Exception) {
+                WorkspaceExecutionResult.Rejected(WorkspaceExecutionFailure.WORKSPACE_OUTCOME_UNCERTAIN)
+            }
+        }
 
     /** Caller supplies a workspace and turn only after validating the current controller's authority. */
     fun cancel(workspace: BrokerWorkspaceId, thread: BrokerThreadId, turn: BrokerTurnId) {
@@ -272,7 +296,12 @@ internal class WorkspaceExecution(
             lane.pending.removeAll { it.request === request }
             return
         }
-        if (uncertain) {
+        val disposition = workspaceExecutionDisposition(
+            request.access.requestEffect(),
+            if (uncertain) WorkspaceExecutionCertainty.UNCERTAIN else WorkspaceExecutionCertainty.KNOWN,
+            WorkspaceExecutionSettlement.PROVIDER_TERMINATED,
+        )
+        if (disposition == WorkspaceExecutionDisposition.RECONCILE_MUTATION) {
             lanes[request.identity.workspace] = Lane.RecoveryRequired(request.identity)
             lane.pending.forEach { waiting ->
                 rejectAdmission(waiting.request, WorkspaceExecutionFailure.WORKSPACE_RECOVERY_REQUIRED)
@@ -331,59 +360,38 @@ internal class WorkspaceExecution(
             .toSet()
 
     @Synchronized
-    fun snapshot(): JsonObject = buildJsonObject {
-        put("maximumQueuedPerWorkspace", policy.maximumQueued)
-        put("queueWaitMillis", policy.queueWait.value)
-        put("interactionLimitMillis", policy.interaction.value)
-        put(
-            "lanes",
-            buildJsonArray {
-                lanes.forEach { (workspace, lane) ->
-                    add(
-                        buildJsonObject {
-                            put("workspaceId", workspace.value)
-                            put(
-                                "state",
-                                when (lane) {
-                                    Lane.Idle -> "idle"
-                                    is Lane.Busy -> "busy"
-                                    is Lane.RecoveryRequired -> "recovery_required"
-                                },
-                            )
-                            put("queued", if (lane is Lane.Busy) lane.pending.size else 0)
-                        }
-                    )
-                }
+    fun observation(workspace: BrokerWorkspaceId): WorkspaceExecutionLaneSnapshot =
+        when (val lane = lanes[workspace] ?: Lane.Idle) {
+            Lane.Idle -> WorkspaceExecutionLaneSnapshot(workspace.value, WorkspaceExecutionLaneState.IDLE, 0, nextAction = WorkspaceExecutionNextAction.REOBSERVE_NATIVE_AUTHORITY)
+            is Lane.Busy -> WorkspaceExecutionLaneSnapshot(workspace.value, WorkspaceExecutionLaneState.BUSY, lane.pending.size, lane.active.request.identity.document(), WorkspaceExecutionNextAction.OBSERVE_PROVIDER_SETTLEMENT)
+            is Lane.RecoveryRequired -> WorkspaceExecutionLaneSnapshot(workspace.value, WorkspaceExecutionLaneState.RECOVERY_REQUIRED, 0, lane.request.document(), WorkspaceExecutionNextAction.RECONCILE_UNCERTAIN_MUTATION)
+        }
+
+    @Synchronized
+    fun snapshot(): JsonObject =
+        snapshotJson.encodeToJsonElement(WorkspaceExecutionSnapshot(
+            policy.maximumQueued,
+            policy.queueWait.value,
+            policy.interaction.value,
+            lanes.keys.map(::observation),
+            events.map { event ->
+                WorkspaceExecutionEventSnapshot(
+                    event.request.workspace.value,
+                    event.request.connection.value,
+                    event.request.thread.value,
+                    event.request.turn.value,
+                    event.request.call.value,
+                    event.stage.name.lowercase(),
+                    event.outcome.name.lowercase(),
+                    event.elapsed.inWholeMilliseconds,
+                    event.queued.inWholeMilliseconds,
+                    event.interactionLimit.value,
+                    (event.interactionLimit.value - event.elapsed.inWholeMilliseconds).coerceAtLeast(0),
+                    event.failure?.name,
+                    event.failure?.certainty?.name?.lowercase(),
+                )
             },
-        )
-        put(
-            "events",
-            buildJsonArray {
-                events.forEach { event ->
-                    add(
-                        buildJsonObject {
-                            put("workspaceId", event.request.workspace.value)
-                            put("connectionId", event.request.connection.value)
-                            put("threadId", event.request.thread.value)
-                            put("turnId", event.request.turn.value)
-                            put("callId", event.request.call.value)
-                            put("stage", event.stage.name.lowercase())
-                            put("outcome", event.outcome.name.lowercase())
-                            put("elapsedMillis", event.elapsed.inWholeMilliseconds)
-                            put("queueAgeMillis", event.queued.inWholeMilliseconds)
-                            put("interactionLimitMillis", event.interactionLimit.value)
-                            put(
-                                "remainingMillis",
-                                (event.interactionLimit.value - event.elapsed.inWholeMilliseconds).coerceAtLeast(0),
-                            )
-                            event.failure?.let {
-                                put("failure", it.name)
-                                put("certainty", it.certainty.name.lowercase())
-                            }
-                        }
-                    )
-                }
-            },
-        )
-    }
+        )).jsonObject
 }
+
+private val snapshotJson = Json { encodeDefaults = true; explicitNulls = false }

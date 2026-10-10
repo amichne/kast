@@ -7,6 +7,8 @@ import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
+import io.github.amichne.kast.workspace.contract.WorkspaceNativeReadSettlement
+import io.github.amichne.kast.workspace.contract.WorkspaceReadOperationIdentity
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadStage
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFailure
 import kotlinx.coroutines.CancellationException
@@ -64,7 +66,10 @@ internal class HostedQueryExecutor(
                 it.stage(HostedQueryStage.REQUEST_ADMISSION)
             }
         val permit =
-            when (val admission = lifetime.begin(endpoint, limits)) {
+            when (
+                val admission =
+                    lifetime.begin(endpoint, limits, WorkspaceReadOperationIdentity.Traced(diagnostic.identity.value))
+            ) {
                 is HostedQueryAdmission.Admitted -> admission.permit
                 is HostedQueryAdmission.Rejected -> {
                     diagnostic.finish(HostedDiagnosticOutcome.Rejected(admission.failure))
@@ -135,6 +140,8 @@ internal class HostedQueryExecutor(
 
     private fun requestDiagnostics(limits: ReadLimits): HostedReadDiagnostics =
         diagnostics(limits) ?: HostedReadDiagnostics(clock, limits, publish = {})
+
+    fun settlement(): WorkspaceNativeReadSettlement = lifetime.settlement()
 
     fun retire() {
         lifetime.retire()

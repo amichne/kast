@@ -14,6 +14,8 @@ import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicy
 import io.github.amichne.kast.workspace.contract.*
 import io.github.amichne.kast.workspace.intellij.read.AdmittedIdeProjectSession
 import io.github.amichne.kast.workspace.intellij.read.ExistingProjectAdmission
+import io.github.amichne.kast.workspace.intellij.read.ExistingProjectAdmissionFailure
+import io.github.amichne.kast.workspace.intellij.read.ExistingProjectValidation
 import io.github.amichne.kast.workspace.intellij.read.IntellijSemanticSourceFileAdmission
 import io.github.amichne.kast.workspace.intellij.read.ProjectReadEpochDiagnostics
 import io.github.amichne.kast.workspace.intellij.read.readHostedConfiguration
@@ -91,6 +93,65 @@ private constructor(
                 compatibility.policy,
             )
         }
+    }
+
+    /**
+     * Fresh project/model preparation observation from this exact endpoint incarnation and retained epoch source.
+     * No semantic executor or permit is involved; callers cannot use this detached observation as read authority.
+     */
+    fun workspaceReadiness(root: CanonicalWorkspaceRoot): WorkspaceCapabilityReadiness =
+        observeWorkspaceReadSettlement(observeWorkspaceModelReadiness(root), executor.settlement())
+
+    private fun observeWorkspaceModelReadiness(root: CanonicalWorkspaceRoot): WorkspaceCapabilityReadiness {
+        val identity = WorkspaceModelIdentity(root, hostLifetime)
+        if (Disposer.isDisposed(owner))
+            return WorkspaceCapabilityReadiness.Blocked(
+                identity,
+                WorkspaceReadinessReason.RETIRED_INCARNATION,
+                WorkspaceReadinessNextAction.ATTACH_HOST,
+            )
+        if (project.isDisposed)
+            return workspaceReadinessRejected(
+                identity,
+                ExistingProjectAdmissionFailure.ProjectDisposed,
+            )
+        val configured =
+            when (val state = configuredSession) {
+                is ConfiguredHostedSession.Ready -> state
+                is ConfiguredHostedSession.Rejected ->
+                    return WorkspaceCapabilityReadiness.Blocked(
+                        identity,
+                        WorkspaceReadinessReason.CONFIGURATION_UNAVAILABLE,
+                        WorkspaceReadinessNextAction.CHECK_CONFIGURATION,
+                    )
+            }
+        val compatibility =
+            when (val current = packagedCompatibility) {
+                is Refinement.Refined -> current.value
+                is Refinement.Rejected ->
+                    return WorkspaceCapabilityReadiness.Blocked(
+                        identity,
+                        WorkspaceReadinessReason.HOST_INCOMPATIBLE,
+                        WorkspaceReadinessNextAction.CHECK_CONFIGURATION,
+                    )
+            }
+        val validation =
+            ExistingProjectValidation.validate(
+                project,
+                root,
+                compatibility.candidate,
+                compatibility.policy,
+            )
+        if (validation is ExistingProjectValidation.Rejected)
+            return workspaceReadinessRejected(identity, validation.failure)
+        return when (
+                val admitted =
+                    configured.session.admit(project, root, compatibility.candidate, compatibility.policy)
+            ) {
+                is ExistingProjectAdmission.Admitted ->
+                    observeWorkspaceReadiness(identity, validation, admitted.project::observeReadEpoch)
+                is ExistingProjectAdmission.Rejected -> workspaceReadinessRejected(identity, admitted.failure)
+            }
     }
 
     /** One permit and deadline for the complete plan; each adapter owns its individual short read. */
