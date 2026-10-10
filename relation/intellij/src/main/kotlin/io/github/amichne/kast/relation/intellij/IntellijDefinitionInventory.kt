@@ -19,8 +19,9 @@ internal class IntellijDefinitionInventory(
     fun prepare(subject: PsiNamedElement): RelationInventoryPreparation {
         observation.phase(IntellijReadPhase.DEFINITION_INVENTORY)
         val inventory = IntellijRelationInventory<RelationProviderLocator.Definition>(collector, limits, observation)
+        val admission = NativeRelationScopeAdmission(observation) { collector.admitProviderCallback(cancellationCheck) }
         val exhausted =
-            observation.forEachDefinition(subject, scope.nativeScope) { provider ->
+            observation.forEachDefinition(subject, scope.nativeScope, admission) { provider ->
                 if (
                     collector.admitProviderCallback(cancellationCheck) !=
                         IntellijRelationProviderEnumerationAdmission.READY

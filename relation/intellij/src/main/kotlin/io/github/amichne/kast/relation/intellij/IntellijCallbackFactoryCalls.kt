@@ -55,7 +55,18 @@ private class CallbackFactoryReferenceCollector(
     private var outcome: Refinement<Unit, CallbackInvocationFlowCause> = Refinement.Refined(Unit)
 
     fun collect(function: KtNamedFunction): Refinement<List<PsiReference>, CallbackInvocationFlowCause> {
-        val exhausted = context.observation.forEachReference(function, context.scope.nativeScope, false, ::process)
+        val admission =
+            NativeRelationScopeAdmission(context.observation) {
+                when (val admitted = context.admitNativeScope()) {
+                    is Refinement.Refined -> IntellijRelationProviderEnumerationAdmission.READY
+                    is Refinement.Rejected -> {
+                        outcome = admitted
+                        IntellijRelationProviderEnumerationAdmission.HALTED
+                    }
+                }
+            }
+        val exhausted =
+            context.observation.forEachReference(function, context.scope.nativeScope, admission, false, ::process)
         return when (val admitted = outcome) {
             is Refinement.Rejected -> admitted
             is Refinement.Refined ->

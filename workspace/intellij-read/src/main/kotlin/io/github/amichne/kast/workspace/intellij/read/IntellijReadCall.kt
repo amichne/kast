@@ -9,6 +9,7 @@ enum class IntellijReadCall {
     RELATION_READ_ATTEMPT,
     RELATION_SCOPE_COMPILE,
     /** Request-scope API calls, including pre-processor index checks and provider rechecks. */
+    RELATION_SCOPE_CALLBACK_ADMISSION,
     RELATION_SCOPE_FILE_MEMBERSHIP,
     /** Live file-index membership inside a request scope predicate. */
     RELATION_SCOPE_SOURCE_MEMBERSHIP,

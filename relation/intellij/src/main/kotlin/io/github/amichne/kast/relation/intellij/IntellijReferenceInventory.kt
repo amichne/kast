@@ -20,8 +20,9 @@ internal class IntellijReferenceInventory(
     fun prepare(subject: PsiNamedElement): RelationInventoryPreparation {
         observation.phase(referenceInventoryPhase(scope.request.meaning))
         val inventory = IntellijRelationInventory<RelationProviderLocator.Reference>(collector, limits, observation)
+        val admission = NativeRelationScopeAdmission(observation) { collector.admitProviderCallback(cancellationCheck) }
         val exhausted =
-            observation.forEachReference(subject, scope.nativeScope, false) { reference ->
+            observation.forEachReference(subject, scope.nativeScope, admission, false) { reference ->
                 if (
                     collector.admitProviderCallback(cancellationCheck) !=
                         IntellijRelationProviderEnumerationAdmission.READY

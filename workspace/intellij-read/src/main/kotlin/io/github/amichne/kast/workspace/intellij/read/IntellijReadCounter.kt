@@ -37,6 +37,8 @@ enum class IntellijReadCounter {
     CANDIDATES_COLLECTED,
     SCOPE_FILTERED,
     /** Returned scope API decisions; repeated visits count separately, exceptions have no decision. */
+    RELATION_SCOPE_CALLBACKS_ADMITTED,
+    RELATION_SCOPE_CALLBACKS_HALTED,
     RELATION_SCOPE_FILES_ADMITTED,
     RELATION_SCOPE_FILES_EXCLUDED,
     RELATION_SCOPE_MODULES_ADMITTED,
