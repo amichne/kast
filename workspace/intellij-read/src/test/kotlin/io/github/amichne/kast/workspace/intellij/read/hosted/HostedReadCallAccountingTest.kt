@@ -2,6 +2,7 @@ package io.github.amichne.kast.workspace.intellij.read.hosted
 
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCallOutcome
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.call
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
@@ -87,7 +88,7 @@ class HostedReadCallAccountingTest {
         observation.finish(HostedDiagnosticOutcome.Completed)
         val receipt = receipts.single()
         val encoded = Json.parseToJsonElement(receipt.encode()).jsonObject
-        assertEquals("9", encoded.getValue("schemaVersion").jsonPrimitive.content)
+        assertEquals("10", encoded.getValue("schemaVersion").jsonPrimitive.content)
         val actual =
             encoded
                 .getValue("nativeCalls")
@@ -112,6 +113,83 @@ class HostedReadCallAccountingTest {
         assertEquals("EXACT", actual.getValue("qualification").jsonPrimitive.content)
         assertEquals("root", actual.getValue("parent").jsonObject.getValue("type").jsonPrimitive.content)
         assertEquals("0", actual.getValue("unfinished").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `scope API encoding retains actual native search and live source parentage`() {
+        val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
+        val observation = HostedReadDiagnostics({ 0L }, publish = receipts::add)
+        observation.call(IntellijReadCall.REFERENCE_SEARCH) {
+            observation.call(IntellijReadCall.RELATION_SCOPE_FILE_MEMBERSHIP) {
+                observation.call(IntellijReadCall.RELATION_SCOPE_SOURCE_MEMBERSHIP) { false }
+            }
+        }
+        observation.finish(HostedDiagnosticOutcome.Completed)
+        val encoded = Json.parseToJsonElement(receipts.single().encode()).jsonObject
+        val rows = encoded.getValue("nativeCalls").jsonArray.map { it.jsonObject }
+        for ((call, parent) in
+            listOf(
+                "RELATION_SCOPE_FILE_MEMBERSHIP" to "REFERENCE_SEARCH",
+                "RELATION_SCOPE_SOURCE_MEMBERSHIP" to "RELATION_SCOPE_FILE_MEMBERSHIP",
+            )) {
+            val scope = rows.single {
+                it.getValue("call").jsonPrimitive.content == call && it.getValue("entered").jsonPrimitive.content == "1"
+            }
+            assertEquals(parent, scope.getValue("parent").jsonObject.getValue("call").jsonPrimitive.content)
+            assertEquals("1", scope.getValue("returned").jsonPrimitive.content)
+            assertEquals("0", scope.getValue("unfinished").jsonPrimitive.content)
+        }
+    }
+
+    @Test
+    fun `schema ten declares unused scope capability and rejects effects after sealing`() {
+        val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
+        val observation = HostedReadDiagnostics({ 0L }, publish = receipts::add)
+        observation.finish(HostedDiagnosticOutcome.Completed)
+        assertThrows<IllegalStateException> {
+            observation.call(IntellijReadCall.RELATION_SCOPE_FILE_MEMBERSHIP) {
+                error("Unexpected scope effect after accounting sealed")
+            }
+        }
+        observation.count(IntellijReadCounter.RELATION_SCOPE_FILES_ADMITTED)
+        val encoded = Json.parseToJsonElement(receipts.single().encode()).jsonObject
+        assertEquals("10", encoded.getValue("schemaVersion").jsonPrimitive.content)
+        val vocabulary = encoded.getValue("nativeCallVocabulary").jsonArray.map { it.jsonPrimitive.content }
+        val rows = encoded.getValue("nativeCalls").jsonArray.map { it.jsonObject }
+        for (call in
+            listOf(
+                "RELATION_SCOPE_FILE_MEMBERSHIP",
+                "RELATION_SCOPE_SOURCE_MEMBERSHIP",
+                "RELATION_SCOPE_MODULE_MEMBERSHIP",
+                "RELATION_SCOPE_MODULE_SOURCE_KIND_MEMBERSHIP",
+                "RELATION_SCOPE_LIBRARY_POLICY",
+            )) {
+            assertTrue(call in vocabulary)
+            val unused = rows.single { it.getValue("call").jsonPrimitive.content == call }
+            assertEquals("0", unused.getValue("entered").jsonPrimitive.content)
+            assertEquals("not-entered", unused.getValue("firstEntry").jsonObject.getValue("type").jsonPrimitive.content)
+        }
+        val counts = encoded.getValue("counters").jsonArray.map { it.jsonObject }
+        for (counter in
+            listOf(
+                "RELATION_SCOPE_FILES_ADMITTED",
+                "RELATION_SCOPE_FILES_EXCLUDED",
+                "RELATION_SCOPE_MODULES_ADMITTED",
+                "RELATION_SCOPE_MODULES_EXCLUDED",
+                "RELATION_SCOPE_MODULE_SOURCE_KINDS_ADMITTED",
+                "RELATION_SCOPE_MODULE_SOURCE_KINDS_EXCLUDED",
+                "RELATION_SCOPE_LIBRARY_SEARCH_ADMITTED",
+                "RELATION_SCOPE_LIBRARY_SEARCH_EXCLUDED",
+            )) {
+            assertEquals(
+                "0",
+                counts
+                    .single { it.getValue("counter").jsonPrimitive.content == counter }
+                    .getValue("count")
+                    .jsonPrimitive
+                    .content,
+            )
+        }
     }
 
     @Test

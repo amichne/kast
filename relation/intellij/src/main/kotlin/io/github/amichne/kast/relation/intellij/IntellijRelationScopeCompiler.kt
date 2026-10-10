@@ -20,7 +20,10 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelFailur
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import io.github.amichne.kast.workspace.intellij.read.IntellijProjectSourceMembership
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.call
 import java.nio.file.Path
 
 internal sealed interface IntellijRelationScopeFailure {
@@ -201,8 +204,11 @@ internal class IntellijRelationScopeCompiler(private val fileAdmission: (Path) -
                     libraryPolicy,
                     libraryMembership = libraryScope::contains,
                     sourceMembership = { file ->
-                        IntellijProjectSourceMembership.contains(project, file)
+                        observation.call(IntellijReadCall.RELATION_SCOPE_SOURCE_MEMBERSHIP) {
+                            IntellijProjectSourceMembership.contains(project, file)
+                        }
                     },
+                    observation = observation,
                     fileAdmission = { path ->
                         fileAdmission(path) &&
                             matchesDirectory(path, request.subject.lease.workspaceRoot.value, constraints)
@@ -271,36 +277,69 @@ private class RelationModelScope(
     private val libraryMembership: (VirtualFile) -> Boolean,
     private val sourceMembership: (VirtualFile) -> Boolean,
     private val fileAdmission: (Path) -> Boolean,
+    private val observation: IntellijReadObservation,
 ) : DelegatingGlobalSearchScope(base, paths, sourceRoots, constraints, libraries) {
     // Native-name lookup is an adapter boundary; each entry retains its proven model ownership and source kind.
     private val moduleRootsByNativeName = sourceRoots.groupBy { it.module.value }
 
-    override fun contains(file: VirtualFile): Boolean {
-        if (!super.contains(file)) return false
-        if (libraries == SymbolLibraryPolicy.INCLUDE && libraryMembership(file)) return true
-        return when (val path = relationNativePath(file)) {
-            is IntellijRelationNativePath.Absolute ->
-                sourceMembership(file) && fileAdmission(path.value) && paths.contains(path.value)
-            IntellijRelationNativePath.Relative,
-            IntellijRelationNativePath.Unavailable -> false
+    // These are all calls to this request's scope API, including provider rechecks. They are neither
+    // distinct files nor an inventory of hidden index work, and contain no file/module identities.
+    override fun contains(file: VirtualFile): Boolean =
+        observed(
+            IntellijReadCall.RELATION_SCOPE_FILE_MEMBERSHIP,
+            IntellijReadCounter.RELATION_SCOPE_FILES_ADMITTED,
+            IntellijReadCounter.RELATION_SCOPE_FILES_EXCLUDED,
+        ) {
+            if (!super.contains(file)) return@observed false
+            if (libraries == SymbolLibraryPolicy.INCLUDE && libraryMembership(file)) return@observed true
+            when (val path = relationNativePath(file)) {
+                is IntellijRelationNativePath.Absolute ->
+                    sourceMembership(file) && fileAdmission(path.value) && paths.contains(path.value)
+                IntellijRelationNativePath.Relative,
+                IntellijRelationNativePath.Unavailable -> false
+            }
         }
-    }
 
-    override fun isSearchInLibraries(): Boolean = libraries == SymbolLibraryPolicy.INCLUDE
+    override fun isSearchInLibraries(): Boolean =
+        observed(
+            IntellijReadCall.RELATION_SCOPE_LIBRARY_POLICY,
+            IntellijReadCounter.RELATION_SCOPE_LIBRARY_SEARCH_ADMITTED,
+            IntellijReadCounter.RELATION_SCOPE_LIBRARY_SEARCH_EXCLUDED,
+        ) {
+            libraries == SymbolLibraryPolicy.INCLUDE
+        }
 
     // Imported model identities originate at Module.name. Do not enumerate live modules or resolve new owners here.
-    override fun isSearchInModuleContent(module: Module): Boolean {
-        if (module.isDisposed || module.project !== project) return false
-        val name = module.name.trim()
-        return moduleRootsByNativeName.containsKey(name)
-    }
+    override fun isSearchInModuleContent(module: Module): Boolean =
+        observed(
+            IntellijReadCall.RELATION_SCOPE_MODULE_MEMBERSHIP,
+            IntellijReadCounter.RELATION_SCOPE_MODULES_ADMITTED,
+            IntellijReadCounter.RELATION_SCOPE_MODULES_EXCLUDED,
+        ) {
+            if (module.isDisposed || module.project !== project) return@observed false
+            moduleRootsByNativeName.containsKey(module.name.trim())
+        }
 
-    override fun isSearchInModuleContent(module: Module, testSources: Boolean): Boolean {
-        if (module.isDisposed || module.project !== project) return false
-        val name = module.name.trim()
-        val kind = if (testSources) WorkspaceSourceRootKind.TEST else WorkspaceSourceRootKind.PRODUCTION
-        return moduleRootsByNativeName[name].orEmpty().any { it.sourceKind == kind }
-    }
+    override fun isSearchInModuleContent(module: Module, testSources: Boolean): Boolean =
+        observed(
+            IntellijReadCall.RELATION_SCOPE_MODULE_SOURCE_KIND_MEMBERSHIP,
+            IntellijReadCounter.RELATION_SCOPE_MODULE_SOURCE_KINDS_ADMITTED,
+            IntellijReadCounter.RELATION_SCOPE_MODULE_SOURCE_KINDS_EXCLUDED,
+        ) {
+            if (module.isDisposed || module.project !== project) return@observed false
+            val kind = if (testSources) WorkspaceSourceRootKind.TEST else WorkspaceSourceRootKind.PRODUCTION
+            moduleRootsByNativeName[module.name.trim()].orEmpty().any { it.sourceKind == kind }
+        }
+
+    private inline fun observed(
+        call: IntellijReadCall,
+        admitted: IntellijReadCounter,
+        excluded: IntellijReadCounter,
+        crossinline membership: () -> Boolean,
+    ): Boolean =
+        observation.call(call) {
+            membership().also { observation.count(if (it) admitted else excluded) }
+        }
 }
 
 internal fun relationNativePath(file: VirtualFile): IntellijRelationNativePath =
