@@ -109,12 +109,12 @@ internal class EnumeratedRelationScope(
     private val observation: IntellijReadObservation,
 ) : DelegatingGlobalSearchScope(base, universe), VirtualFileEnumeration {
     /** Complete, disjoint file scopes retain the original global visibility and access-scope rules. */
-    fun referencePartitions(): Sequence<GlobalSearchScope> {
+    fun referencePartitions(admission: NativeRelationScopeAdmission): Sequence<GlobalSearchScope> {
         val owner = project ?: return sequenceOf(this)
         // Bound SDK query fanout independently of the much larger admitted inventory capacity.
         if (universe.files().size > MAX_REFERENCE_FILE_PARTITIONS) return sequenceOf(this)
         return universe.files().asSequence().mapNotNull { file ->
-            ProgressManager.checkCanceled()
+            admission.check()
             if (!delegate.contains(file)) null else GlobalSearchScope.fileScope(owner, file).intersectWith(delegate)
         }
     }
@@ -136,11 +136,17 @@ internal class EnumeratedRelationScope(
             universe.ids()
         }
 
-    override fun getFilesIfCollection(): Collection<VirtualFile> =
+    override fun getFilesIfCollection(): Collection<VirtualFile> = collectFiles(ProgressManager::checkCanceled)
+
+    /** The SDK collection materializer invokes membership itself, before provider delivery. */
+    fun getFilesIfCollection(admission: NativeRelationScopeAdmission): Collection<VirtualFile> =
+        collectFiles(admission::check)
+
+    private fun collectFiles(admit: () -> Unit): Collection<VirtualFile> =
         observation.call(IntellijReadCall.RELATION_SCOPE_FILE_COLLECTION) {
             Collections.unmodifiableList(
                 universe.files().filter { file ->
-                    ProgressManager.checkCanceled()
+                    admit()
                     delegate.contains(file)
                 }
             )

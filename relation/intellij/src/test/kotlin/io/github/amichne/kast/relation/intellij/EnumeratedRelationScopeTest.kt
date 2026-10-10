@@ -24,7 +24,16 @@ internal class EnumeratedRelationScopeTest : RelationFileEnumerationFixture() {
     fun `project independent scopes retain their original reference search`() {
         val original =
             EnumeratedRelationScope(nativeScope { it === a }, prepare(plan()).complete(), IntellijReadObservation.None)
-        assertSame(original, original.referencePartitions().single())
+        assertSame(
+            original,
+            original
+                .referencePartitions(
+                    NativeRelationScopeAdmission(IntellijReadObservation.None) {
+                        IntellijRelationProviderEnumerationAdmission.READY
+                    }
+                )
+                .single(),
+        )
     }
 
     @Test

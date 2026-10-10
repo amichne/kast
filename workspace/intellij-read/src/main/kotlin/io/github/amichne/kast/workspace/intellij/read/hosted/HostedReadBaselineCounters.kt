@@ -16,6 +16,8 @@ internal fun initialHostedReadCounters(): LinkedHashMap<Pair<IntellijReadCounter
                 IntellijReadCounter.DEPENDENCY_HASH_MEMO_HITS,
                 IntellijReadCounter.DEPENDENCY_TREE_MEMO_HITS,
                 IntellijReadCounter.DECLARATION_PSI_NODES_VISITED,
+                IntellijReadCounter.RELATION_SCOPE_ADMISSIONS_READY,
+                IntellijReadCounter.RELATION_SCOPE_ADMISSIONS_HALTED,
                 IntellijReadCounter.RELATION_SCOPE_FILES_ADMITTED,
                 IntellijReadCounter.RELATION_SCOPE_FILES_EXCLUDED,
                 IntellijReadCounter.RELATION_SCOPE_MODULES_ADMITTED,

@@ -47,6 +47,14 @@ internal class IntellijCallbackFlowContext(
             scope.admitProviderSite(file())
         }
 
+    fun admitNativeScope(): Refinement<Unit, CallbackInvocationFlowCause> {
+        com.intellij.openapi.progress.ProgressManager.checkCanceled()
+        return when (callbackExpiry()) {
+            CallbackExpiryAdmission.CURRENT -> Refinement.Refined(Unit)
+            CallbackExpiryAdmission.EXPIRED -> Refinement.Rejected(CallbackInvocationFlowCause.TIME_LIMIT_REACHED)
+        }
+    }
+
     fun permit(): Refinement<Unit, CallbackInvocationFlowCause> =
         when (admitWork()) {
             CallbackWorkAdmission.READY -> Refinement.Refined(Unit)

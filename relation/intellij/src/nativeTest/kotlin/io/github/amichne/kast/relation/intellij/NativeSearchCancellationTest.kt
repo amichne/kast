@@ -30,7 +30,11 @@ class NativeSearchCancellationTest : NativeReferenceFixtureTest() {
             ProgressManager.getInstance()
                 .runProcess(
                     {
-                        observed.forEachReference(fixture.target, compiled.nativeScope) {
+                        observed.forEachReference(
+                            fixture.target,
+                            compiled.nativeScope,
+                            nativeScopeTestAdmission(fixture.request, observed),
+                        ) {
                             fail("Cancellation must drain before the first reference callback")
                             false
                         }

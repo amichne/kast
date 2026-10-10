@@ -199,7 +199,18 @@ private class References(
     private var completion: Refinement<Unit, CallbackInvocationFlowCause> = Refinement.Refined(Unit)
 
     fun read(function: KtNamedFunction): Refinement<List<PsiReference>, CallbackInvocationFlowCause> {
-        val exhausted = context.observation.forEachReference(function, context.scope.nativeScope, false, ::visit)
+        val admission =
+            NativeRelationScopeAdmission(context.observation) {
+                when (val admitted = context.admitNativeScope()) {
+                    is Refinement.Refined -> IntellijRelationProviderEnumerationAdmission.READY
+                    is Refinement.Rejected -> {
+                        completion = admitted
+                        IntellijRelationProviderEnumerationAdmission.HALTED
+                    }
+                }
+            }
+        val exhausted =
+            context.observation.forEachReference(function, context.scope.nativeScope, admission, false, ::visit)
         when (val completed = completion) {
             is Refinement.Rejected -> return completed
             is Refinement.Refined -> Unit

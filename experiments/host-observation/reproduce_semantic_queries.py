@@ -114,6 +114,10 @@ RELATION_WORK_NATIVE_OWNERS = frozenset({
     'io.github.amichne.kast.relation.intellij.RelationFileInventory',
     'io.github.amichne.kast.relation.intellij.CompleteRelationFileUniverse',
     'io.github.amichne.kast.relation.intellij.EnumeratedRelationScope',
+    'io.github.amichne.kast.relation.intellij.NativeRelationScopeAdmission',
+    'io.github.amichne.kast.relation.intellij.NativeRelationScopeAdmission$Scope',
+    'io.github.amichne.kast.relation.intellij.NativeRelationScopeAdmission$EnumeratedScope',
+    'io.github.amichne.kast.relation.intellij.NativeRelationScopeStopped',
     'io.github.amichne.kast.relation.intellij.ObservedRelationSearchKt',
     'io.github.amichne.kast.topology.intellij.IntellijSemanticDependencyCapture',
     'io.github.amichne.kast.topology.intellij.SemanticDependencyReadInputs',
@@ -123,6 +127,7 @@ RELATION_WORK_NATIVE_OWNERS = frozenset({
     'io.github.amichne.kast.runtime.hosted.HostedReadCallbackPartitions',
     'io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadActionAccounting',
     'io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadSearchAccounting',
+    'io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadBaselineCountersKt',
     'io.github.amichne.kast.workspace.intellij.read.IntellijReadCall',
 })
 
