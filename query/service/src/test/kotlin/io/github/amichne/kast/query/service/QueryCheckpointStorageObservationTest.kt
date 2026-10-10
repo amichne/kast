@@ -42,8 +42,10 @@ class QueryCheckpointStorageObservationTest {
                 0.queryCount(),
             )
         val estimate = checkpoint.storageEstimate()
-        assertEquals(4864L, checkpoint.retainedBytes)
-        assertEquals(4864L, estimate.tasks.value)
+        // Checkpoint container + seed + discover payload/task + owner-ledger node and incoming reference.
+        val expected = 4096L + 256L + 4096L + 512L + 512L + 8L
+        assertEquals(expected, checkpoint.retainedBytes)
+        assertEquals(expected, estimate.tasks.value)
         assertEquals(0L, estimate.identityRows.value)
         assertEquals(0L, estimate.inputs.value)
         assertEquals(0L, estimate.impact.value)

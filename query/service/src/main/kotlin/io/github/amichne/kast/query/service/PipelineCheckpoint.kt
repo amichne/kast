@@ -19,6 +19,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
 private const val TASK_OVERHEAD_BYTES = 512L
+private const val CHECKPOINT_STRUCTURE_BYTES = 4096L
 private const val RETAINED_EVIDENCE_MULTIPLIER = 4L
 private const val DISCOVERY_TASK_BYTES = 4096L
 private const val RELATION_CURSOR_BYTES = 4096L
@@ -58,7 +59,9 @@ internal data class PipelineCheckpoint(
 
     fun storageEstimate(graph: QueryImpactRetainedGraph = QueryImpactRetainedGraph()): QueryCheckpointStorageEstimate =
         QueryCheckpointStorageEstimate(
-            tasks = pipelineTaskBytes(tasks, graph, saturatedAdd(4096L, seed.retainedRootBytes(graph))).storageBytes(),
+            tasks =
+                pipelineTaskBytes(tasks, graph, saturatedAdd(CHECKPOINT_STRUCTURE_BYTES, seed.retainedRootBytes(graph)))
+                    .storageBytes(),
             identityRows =
                 identityRows.values
                     .fold(0L) { total, rows ->

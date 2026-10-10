@@ -153,8 +153,10 @@ class QueryImpactBoundsTest {
         val freshBytes = seed.retainedRootBytes(fresh)
         val sharedBytes = seed.retainedRootBytes(precharged)
         assertTrue(freshBytes > sharedBytes, "Shared path proof must remain graph-aware")
-        assertEquals(840L, sharedBytes) // 256 seed + 8 root slot + 512 task + 64 shared path reference.
-        assertEquals(sharedBytes, seed.retainedRootBytes(fresh))
+        // First task owner: seed + root slot + task + owner-ledger node/reference + shared path reference.
+        assertEquals(256L + 8L + 512L + 512L + 8L + 64L, sharedBytes)
+        // The second seed read adds references to the same task, whose immutable path field remains owned.
+        assertEquals(256L + 8L + 8L, seed.retainedRootBytes(fresh))
         assertEquals(
             freshBytes,
             seed.retainedRootBytes(QueryImpactRetainedGraph()),
