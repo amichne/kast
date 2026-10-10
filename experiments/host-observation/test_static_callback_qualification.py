@@ -151,17 +151,35 @@ class StaticCallbackQualificationTest(unittest.TestCase):
                 q.native_callback_counters(call({}, diagnostics), LIVE)
 
     def test_counter_contract_admits_only_declared_integer_versions(self):
-        for version in (6, 7, 8, 9, 10, 11, 12):
+        for version in (6, 7, 8, 9, 10, 11, 12, 13):
             receipt = self.diagnostic()
             receipt['schemaVersion'] = version
             with self.subTest(version=version):
                 self.assertEqual(dict.fromkeys(q.STATIC_COUNTERS, 0),
                                  q.native_callback_counters(call({}, [receipt]), LIVE))
-        for version in (5, 13, 6.0, '9', True, None):
+        for version in (5, 14, 6.0, '9', True, None):
             receipt = self.diagnostic()
             receipt['schemaVersion'] = version
             with self.subTest(version=version), self.assertRaises(AssertionError):
                 q.native_callback_counters(call({}, [receipt]), LIVE)
+
+    def test_checkpoint_diagnostics_preserve_all_existing_counter_qualifications(self):
+        receipt = self.diagnostic()
+        receipt['schemaVersion'] = 13
+        receipt['counters'] += [dict(counter=name, contributor='NONE', count=0)
+                                for name in q.SEMANTIC_FACT_COUNTERS]
+        observed = call({'status': 'complete'}, [receipt], 'RUN')
+        self.assertEqual(dict.fromkeys(q.STATIC_COUNTERS, 0),
+                         q.native_callback_counters(observed, LIVE))
+        self.assertEqual(dict.fromkeys(q.SEMANTIC_FACT_COUNTERS, 0),
+                         q.native_semantic_fact_counters(observed, LIVE))
+        self.assertEqual(dict.fromkeys(q.POLICY_EVIDENCE_COUNTERS, 0),
+                         q.assert_policy_evidence_publication(observed, LIVE))
+        receipt['correlation']['epoch'] += 1
+        for reader in (q.native_callback_counters, q.native_semantic_fact_counters,
+                       q.assert_policy_evidence_publication):
+            with self.subTest(reader=reader.__name__), self.assertRaisesRegex(AssertionError, 'basis mismatch'):
+                reader(observed, LIVE)
 
     def test_semantic_fact_counters_require_explicit_native_observations(self):
         receipt = self.diagnostic()
