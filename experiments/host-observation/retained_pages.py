@@ -12,6 +12,7 @@ class PresentationFailure(str, Enum):
     ROW_CURSOR = 'RETAINED_PRESENTATION_ROW_CURSOR_INVALID'
     EVIDENCE = 'RETAINED_PRESENTATION_EVIDENCE_WINDOW_INVALID'
     ROW_COUNT = 'RETAINED_PRESENTATION_ROW_COUNT_MISMATCH'
+    PREVIEW_BYTES = 'RETAINED_PRESENTATION_PREVIEW_BYTES_INVALID'
     UNREAD = 'RETAINED_PRESENTATION_PAGES_UNREAD'
     REQUEST = 'RETAINED_PRESENTATION_REQUEST_CHANGED'
 
@@ -83,6 +84,9 @@ def presentation(calls):
                 (preview['type'] == 'INLINE' and (count != declared_total or first.get('next_cursor') is not None)) or
                 (preview['type'] == 'PREFIX' and count == declared_total)):
             return PresentationRejected(PresentationFailure.ROW_COUNT)
+        encoded = preview.get('encoded_bytes')
+        if type(encoded) is not int or not 2 <= encoded <= (1 << 63) - 1 or (count == 0 and encoded != 2):
+            return PresentationRejected(PresentationFailure.PREVIEW_BYTES)
         if preview['type'] == 'PREFIX' and (not cursor(first.get('next_cursor')) or first['next_cursor'] != count):
             return PresentationRejected(PresentationFailure.ROW_CURSOR)
     if window is not None and window.get('type') not in ('FINAL', 'MORE'):

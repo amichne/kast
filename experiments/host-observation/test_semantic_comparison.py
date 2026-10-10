@@ -911,6 +911,27 @@ class SemanticComparisonTest(unittest.TestCase):
         calls, _ = self.run_retained_script(original, [first])
         self.assertIsInstance(r.presentation(calls), r.PresentationComplete)
 
+    def test_preview_requires_the_contracts_integer_encoded_byte_proof(self):
+        for empty in (False, True):
+            for encoded in ('missing', None, True, 2.0, '2', -1, 0, 1, 1 << 63, *([3] if empty else [])):
+                with self.subTest(empty=empty, encoded=encoded):
+                    original, pages = self.retained_script()
+                    first = pages[0]
+                    if empty:
+                        first['items'] = []
+                        first['next_cursor'] = 0
+                        first['invocation'] = asdict(ScriptedInvocation(21, ScriptedPreview(0, 2), ScriptedStop()))
+                    preview = first['invocation']['preview']
+                    if encoded == 'missing': preview.pop('encoded_bytes')
+                    else: preview['encoded_bytes'] = encoded
+                    calls, _ = self.run_retained_script(original, pages, max_calls=1)
+                    self.assertEqual(1, len(calls))
+                    result = r.presentation(calls)
+                    self.assertIsInstance(result, r.PresentationRejected)
+                    self.assertEqual('RETAINED_PRESENTATION_PREVIEW_BYTES_INVALID', result.failure.value)
+                    trial = r.finish_trial('scoped-all', 0, False, calls, 200, None, r.WorkloadProfile.KAST_SOURCE)
+                    self.assertIs(trial.type, r.TrialState.INCOMPLETE)
+
     def test_preview_counts_and_inline_suffixes_reject_before_reading_or_admitting_completion(self):
         for changed in ('inline-suffix', 'inline-count', 'preview-count', 'boolean-count', 'prefix-total'):
             with self.subTest(changed=changed):
