@@ -360,7 +360,13 @@ def reject_native_pin(value):
 class NativePinRequest:
     project: str
     hostPid: int
-    qualificationSlice: str | None
+    qualificationSlice: QualificationSlice
+    requiredOwners: tuple[str, ...]
+
+    @classmethod
+    def create(cls, project, host_pid, slice_):
+        profile = QualificationSlice.admit(slice_)
+        return cls(project, host_pid, profile, tuple(sorted(NATIVE_COMMON_OWNERS | profile.changed_owners)))
 
 
 def pin(args):
@@ -372,8 +378,8 @@ def pin(args):
     selected = select_native_host(rows, launcher, getattr(args, 'host_pid', None))
     if isinstance(selected, RejectedNativeHost):
         raise ValueError(selected.failure.value)
-    request = NativePinRequest(project=str(args.fixture.resolve(strict=True)), hostPid=selected.pid,
-                               qualificationSlice=getattr(args, 'qualification_slice', None))
+    request = NativePinRequest.create(str(args.fixture.resolve(strict=True)), selected.pid,
+                                      getattr(args, 'qualification_slice', None))
     write(output / "input.json", asdict(request))
     script = (HERE / "semantic-reproduction-pin.kts.template").read_text().replace(
         "@INPUT_BASE64@", base64.b64encode(str(output / "input.json").encode()).decode())

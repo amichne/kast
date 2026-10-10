@@ -32,25 +32,23 @@ class TryLocalOracleTest(unittest.TestCase):
             with self.assertRaises(qualification.QualificationFailure):
                 qualification.check_local_file_address(case, address, root)
 
-    def test_native_pin_template_requests_exact_closed_owner_profiles(self):
+    def test_native_pin_template_consumes_one_encoded_owner_profile(self):
         text = (oracle.TEMPLATE.parent.parent.parent / 'semantic-reproduction-pin.kts.template').read_text()
-        sections = {}
-        for name, following in (('commonClasses', 'branchClasses'), ('branchClasses', 'localClasses'),
-                                ('localClasses', 'workClasses'), ('workClasses', 'checkpointClasses'),
-                                ('checkpointClasses', 'classes')):
-            body = text.split('val ' + name + ' =', 1)[1].split('val ' + following + ' =', 1)[0]
-            owners = re.findall(r'"(io\.github\.amichne\.kast\.[^"]+)"', body)
-            sections[name] = {owner.replace('\\$', '$') for owner in owners}
-            self.assertEqual(len(owners), len(sections[name]), name + ': duplicate pinned owner')
-        self.assertEqual(native.NATIVE_COMMON_OWNERS, sections['commonClasses'])
-        self.assertEqual(native.TRY_BRANCH_NATIVE_OWNERS, sections['branchClasses'])
-        self.assertEqual(native.LOCAL_IDENTITY_NATIVE_OWNERS, sections['localClasses'])
-        self.assertEqual(native.RELATION_WORK_NATIVE_OWNERS, sections['workClasses'])
-        self.assertEqual(native.CHECKPOINT_STORAGE_NATIVE_OWNERS, sections['checkpointClasses'])
-        self.assertFalse(sections['commonClasses'] & sections['checkpointClasses'])
-        for extra in ('localClasses', 'workClasses'):
-            groups = [sections[key] for key in ('commonClasses', 'branchClasses', extra)]
-            self.assertEqual(sum(map(len, groups)), len(set().union(*groups)), extra + ': duplicate profile owner')
+        self.assertIn('val classes = input.requiredOwners.associateWith', text)
+        self.assertNotIn('val branchClasses', text)
+        for profile in native.QualificationSlice:
+            request = native.NativePinRequest.create('/qualified-fixture', 123, profile)
+            self.assertEqual(profile, request.qualificationSlice)
+            self.assertEqual(tuple(sorted(native.NATIVE_COMMON_OWNERS | profile.changed_owners)), request.requiredOwners)
+            self.assertEqual(profile, native.admit_native_owner_profile(profile, request.requiredOwners))
+        checkpoint = native.NativePinRequest.create('/qualified-fixture', 123, 'QUERY_CHECKPOINT_STORAGE')
+        self.assertEqual(36, len(checkpoint.requiredOwners))
+        self.assertIn('io.github.amichne.kast.query.service.QueryService$Execution', checkpoint.requiredOwners)
+        unrelated = native.TRY_BRANCH_NATIVE_OWNERS - native.CHECKPOINT_STORAGE_NATIVE_OWNERS
+        self.assertEqual(6, len(unrelated))
+        self.assertFalse(unrelated & set(checkpoint.requiredOwners))
+        with self.assertRaisesRegex(ValueError, '^INVALID_QUALIFICATION_SLICE$'):
+            native.NativePinRequest.create('/qualified-fixture', 123, None)
 
     def test_relation_work_profile_requires_current_contract_and_every_work_owner(self):
         profile = native.QualificationSlice.RELATION_WORK_REDUCTION
