@@ -3,6 +3,7 @@
 package io.github.amichne.kast.runtime.hosted
 
 import com.intellij.openapi.progress.ProcessCanceledException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
@@ -97,6 +98,28 @@ class HostedSmartModeWaitTest {
             ),
             events,
         )
+    }
+
+    @Test
+    fun `suspended status admission still uses the original wait deadline`() = runTest {
+        val pending = CompletableDeferred<HostedIndexingState>()
+        val events = mutableListOf<HostedSmartModeWaitObservation>()
+        val result =
+            waitForHostedSmartMode(
+                state = pending::await,
+                observe = events::add,
+                clock = { testScheduler.currentTime * NANOS_PER_MILLI },
+            )
+        assertEquals(IndexingWait.TimedOut, result)
+        assertEquals(15_000L, testScheduler.currentTime)
+        assertEquals(
+            listOf(
+                event(HostedSmartModeWaitOutcome.STARTED, 0, 0),
+                event(HostedSmartModeWaitOutcome.TIMED_OUT, 15_000 * NANOS_PER_MILLI, 1),
+            ),
+            events,
+        )
+        assertEquals(false, pending.isCompleted)
     }
 
     @Test

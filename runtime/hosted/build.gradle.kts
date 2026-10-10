@@ -1,4 +1,5 @@
 import java.security.MessageDigest
+import support.tasks.nativefixtures.NativeFixtureJvmArguments
 
 plugins {
     id("kast.kotlin-library")
@@ -165,4 +166,82 @@ tasks.named("test") {
     inputs
         .file(rootProject.layout.projectDirectory.file("cli/src/test/resources/hosted-endpoint-failure-encodings.json"))
         .withPathSensitivity(PathSensitivity.RELATIVE)
+}
+
+// Platform status and wait cleanup have a separate effect-boundary lane.
+val nativeTest = sourceSets.create("nativeTest")
+
+configurations[nativeTest.implementationConfigurationName].extendsFrom(configurations.implementation.get())
+
+configurations[nativeTest.runtimeOnlyConfigurationName].extendsFrom(configurations.testRuntimeOnly.get())
+
+nativeTest.compileClasspath += sourceSets.main.get().output
+
+nativeTest.runtimeClasspath += sourceSets.main.get().output
+
+kotlin.target.compilations.getByName("nativeTest").associateWith(kotlin.target.compilations.getByName("main"))
+
+val nativePlatformBuild = catalog.findVersion("idea-platform-build").get().requiredVersion
+val nativeFixtureIdeaHome = providers.gradleProperty("nativeFixtureIdeaHome")
+val nativeIdeaHome =
+    objects.directoryProperty().apply {
+        if (nativeFixtureIdeaHome.isPresent) set(project.file(nativeFixtureIdeaHome.get()))
+        else set(project(":relation:intellij").layout.buildDirectory.dir("native-test/idea"))
+    }
+val nativeIdeaLibraries =
+    files(
+            nativeIdeaHome.map { home ->
+                fileTree(home) {
+                    include(
+                        "lib/**/*.jar",
+                        "plugins/java/lib/**/*.jar",
+                        "plugins/Kotlin/lib/**/*.jar",
+                        "plugins/toml/lib/**/*.jar",
+                    )
+                    exclude("plugins/Kotlin/lib/jps/**", "plugins/Kotlin/lib/kotlinc/**")
+                }
+            }
+        )
+        .apply { if (!nativeFixtureIdeaHome.isPresent) builtBy(":relation:intellij:extractNativeTestIdea") }
+
+dependencies {
+    add(nativeTest.implementationConfigurationName, nativeIdeaLibraries)
+    add(nativeTest.implementationConfigurationName, catalog.findLibrary("coroutines-test").get())
+    add(nativeTest.implementationConfigurationName, "junit:junit:4.13.2")
+    add(
+        nativeTest.implementationConfigurationName,
+        "com.jetbrains.intellij.platform:test-framework:$nativePlatformBuild",
+    )
+    add(
+        nativeTest.runtimeOnlyConfigurationName,
+        "org.junit.vintage:junit-vintage-engine:${catalog.findVersion("junit").get().requiredVersion}",
+    )
+    // The enabled Java plugin's auto-test service extends this Platform runtime class.
+    add(nativeTest.runtimeOnlyConfigurationName, "com.jetbrains.intellij.platform:test-runner:$nativePlatformBuild")
+}
+
+tasks.register<Test>("nativeFixtureTest") {
+    description = "Runs native hosted wait and cancellation fixtures in the pinned IntelliJ Platform."
+    group = "verification"
+    testClassesDirs = nativeTest.output.classesDirs
+    classpath = nativeTest.runtimeClasspath
+    dependsOn("detektNativeTest")
+    maxParallelForks = 1
+    jvmArgumentProviders.add(
+        objects.newInstance<NativeFixtureJvmArguments>().apply {
+            productInfo.set(nativeIdeaHome.file("product-info.json"))
+            pinnedBuild.set(nativePlatformBuild)
+            osName.set(providers.systemProperty("os.name"))
+        }
+    )
+    systemProperty("java.awt.headless", "true")
+    systemProperty("idea.home.path", nativeIdeaHome.get().asFile.absolutePath)
+    systemProperty("idea.config.path", layout.buildDirectory.dir("native-test/config").get().asFile.absolutePath)
+    systemProperty("idea.system.path", layout.buildDirectory.dir("native-test/system").get().asFile.absolutePath)
+    systemProperty("idea.log.path", layout.buildDirectory.dir("native-test/log").get().asFile.absolutePath)
+    systemProperty("idea.plugins.path", nativeIdeaHome.get().dir("plugins").asFile.absolutePath)
+    systemProperty("idea.load.plugins.id", "com.intellij.java,org.jetbrains.kotlin,org.toml.lang")
+    systemProperty("idea.is.unit.test", "true")
+    systemProperty("idea.force.use.core.classloader", "true")
+    systemProperty("kotlin.plugin.mode", "K2")
 }

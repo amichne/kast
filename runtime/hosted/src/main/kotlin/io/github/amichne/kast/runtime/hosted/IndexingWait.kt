@@ -1,5 +1,6 @@
 package io.github.amichne.kast.runtime.hosted
 
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochObservationFailure
@@ -40,12 +41,11 @@ private fun HostedSemanticReadResult.Rejected.isPresemanticIndexing(): Boolean =
 internal suspend fun awaitHostedSmartMode(
     project: Project,
     observe: (HostedSmartModeWaitObservation) -> Unit = {},
-): IndexingWait =
-    waitForHostedSmartMode(
-        state = {
-            if (project.isDisposed) HostedIndexingState.DISPOSED
-            else if (DumbService.isDumb(project)) HostedIndexingState.INDEXING
-            else if (project.isDisposed) HostedIndexingState.DISPOSED else HostedIndexingState.SMART
-        },
-        observe = observe,
-    )
+): IndexingWait = waitForHostedSmartMode(state = { readHostedIndexingState(project) }, observe = observe)
+
+/** One cancellable native status snapshot; no read access survives into the polling delay. */
+internal suspend fun readHostedIndexingState(project: Project): HostedIndexingState = readAction {
+    if (project.isDisposed) HostedIndexingState.DISPOSED
+    else if (DumbService.isDumb(project)) HostedIndexingState.INDEXING
+    else if (project.isDisposed) HostedIndexingState.DISPOSED else HostedIndexingState.SMART
+}

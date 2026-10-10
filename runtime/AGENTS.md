@@ -25,6 +25,7 @@ Composes semantic services inside an existing IntelliJ project and retains typed
 
 - [HostedConnectionAdmission.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt) - bounded connection ownership and post-release drain observations.
 - [HostedSmartModeWait.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSmartModeWait.kt) - bounded smart-mode retry wait outcomes and connection-correlated timing.
+- [hosted/NATIVE_FIXTURES.md](hosted/NATIVE_FIXTURES.md) - explicit native status-access, smart-mode wait and cancellation fixtures.
 - [HostedQueryContinuations.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryContinuations.kt) - one project-owned bounded query-state owner.
 - [HostedSourceStateStore.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceStateStore.kt) - source producer/output claims, immutable replay, and fitted publication under one quota.
 - [HostedQueryPublicationSession.kt](hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt) - attempt-owned allocation, encoding proof, commit, and cancellation release.
