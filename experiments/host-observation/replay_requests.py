@@ -98,8 +98,25 @@ class Run:
 
 
 @dataclass(frozen=True)
+class Resume:
+    continuation: str
+    executionBudget: ExecutionBudget
+    type: str = field(default='RESUME', init=False)
+
+
+@dataclass(frozen=True)
+class ReadResult:
+    result: str
+    cursor: int
+    output: Symbols | Occurrences
+    executionBudget: ExecutionBudget
+    evidence_cursor: int
+    type: str = field(default='READ_RESULT', init=False)
+
+
+@dataclass(frozen=True)
 class Query:
-    request: Run
+    request: Run | Resume | ReadResult
     verbose: bool = True
 
 
