@@ -40,6 +40,48 @@ import org.junit.jupiter.api.Test
 
 class RelationReferenceIdentityTest {
     @Test
+    fun `repeated accounting preserves every ownership bound and charges both retained counts`() {
+        for (meaning in listOf(RelationMeaning.References, RelationMeaning.TypeUses)) {
+            val request = request(meaning)
+            val target =
+                RelationConfirmedReferenceTarget.fromCompiler(
+                        request.subject,
+                        CompilerGroundedSymbolEvidence.fromSelector(
+                            (request.subject as RelationEndpoint.Subject).selector
+                        ),
+                    )
+                    .refined()
+            val cases = expectedAccountingBounds(request)
+            for (expected in cases) {
+                val occurrence = RelationOccurrence.fromBoundary(request.subject.file, 73, 79).refined()
+                val value =
+                    RelationReferenceOccurrence.confirmed(
+                            request,
+                            target,
+                            occurrence,
+                            if (expected.ownership is RelationReferenceOwnership.FileScoped)
+                                RelationReferenceContext.IMPORT
+                            else RelationReferenceContext.CODE,
+                            expected.ownership,
+                            RelationProvenance.K2_AUTHORED_SOURCE,
+                        )
+                        .refined()
+                val identity = value.canonicalProjection()
+                repeat(32) {
+                    assertEquals(expected.retention, value.retainedBytes)
+                    assertEquals(expected.projection, value.projectedUtf8Size())
+                    assertEquals(identity, value.canonicalProjection())
+                }
+                assertSame(request.subject, value.target)
+                assertSame(expected.ownership, value.ownership)
+                assertSame(occurrence, value.occurrence)
+                assertEquals(request.subject.lease.identity, value.authority)
+                assertEquals(RelationFactCoverage.EXACT_COMPILER_CONFIRMED, value.coverage)
+            }
+        }
+    }
+
+    @Test
     fun `same compiler signature from another exact declaration is not the selected target`() {
         val subject = request(RelationMeaning.References).subject
         val otherFile = nativeFile(subject.lease, subject.name.value, Path.of("/workspace/other/PaymentService.kt"))
@@ -205,6 +247,55 @@ class RelationReferenceIdentityTest {
         assertSame(owner, edge.source)
         assertSame(request.subject, edge.target)
         assertSame(location, edge.occurrence)
+    }
+}
+
+private data class ExpectedBounds(
+    val ownership: RelationReferenceOwnership,
+    val retention: Long,
+    val projection: Long,
+)
+
+private fun expectedAccountingBounds(request: RelationRequest): List<ExpectedBounds> {
+    // Independent pre-change bounds for these exact admitted fixtures, plus two retained Longs.
+    return when (request.meaning) {
+        RelationMeaning.References ->
+            listOf(
+                ExpectedBounds(
+                    RelationReferenceOwnership.FileScoped(RelationReferenceContext.IMPORT),
+                    1934L,
+                    5289L,
+                ),
+                ExpectedBounds(
+                    RelationReferenceOwnership.DeclarationOwned(related(request.subject)),
+                    2666L,
+                    5918L,
+                ),
+                ExpectedBounds(
+                    RelationReferenceOwnership.Unavailable(RelationOwnershipUnavailableCause.UNRESOLVED_DECLARATION),
+                    1976L,
+                    5310L,
+                ),
+            )
+        RelationMeaning.TypeUses ->
+            listOf(
+                ExpectedBounds(
+                    RelationReferenceOwnership.FileScoped(RelationReferenceContext.IMPORT),
+                    1930L,
+                    5287L,
+                ),
+                ExpectedBounds(
+                    RelationReferenceOwnership.DeclarationOwned(related(request.subject)),
+                    2662L,
+                    5916L,
+                ),
+                ExpectedBounds(
+                    RelationReferenceOwnership.Unavailable(RelationOwnershipUnavailableCause.UNRESOLVED_DECLARATION),
+                    1972L,
+                    5308L,
+                ),
+            )
+        else -> error("Unexpected reference meaning")
     }
 }
 

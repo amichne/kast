@@ -87,41 +87,52 @@ private constructor(
 ) : Comparable<RelationReferenceOccurrence> {
     val coverage = RelationFactCoverage.EXACT_COMPILER_CONFIRMED
 
-    private val detachedTextUnits: Long
-        get() =
-            canonicalProjection().length.toLong() +
-                target.detachedTextUnits() +
-                when (val owner = ownership) {
-                    is RelationReferenceOwnership.DeclarationOwned -> owner.declaration.detachedTextUnits()
-                    is RelationReferenceOwnership.FileScoped,
-                    is RelationReferenceOwnership.Unavailable -> 0L
-                }
+    private fun detachedTextUnits(): Long =
+        canonicalProjection().length.toLong() +
+            target.detachedTextUnits() +
+            when (val owner = ownership) {
+                is RelationReferenceOwnership.DeclarationOwned -> owner.declaration.detachedTextUnits()
+                is RelationReferenceOwnership.FileScoped,
+                is RelationReferenceOwnership.Unavailable -> 0L
+            }
+
+    // Admission fixes every input. Repeated checkpoint and output accounting retain these numeric proofs.
+    private val retainedByteCount =
+        RelationByteCount.parse(
+                REFERENCE_STRUCTURE_BYTES + REFERENCE_ACCOUNTING_BYTES + UTF16_UNIT_BYTES * detachedTextUnits()
+            )
+            .refinedInvariant()
 
     /** Includes endpoint proofs, scope and constraints; fingerprints alone do not account for retained authority. */
     val retainedBytes: Long
-        get() = REFERENCE_STRUCTURE_BYTES + UTF16_UNIT_BYTES * detachedTextUnits
+        get() = retainedByteCount.value
+
+    private val projectedByteCount =
+        RelationByteCount.parse(
+                REFERENCE_DOCUMENT_BYTES +
+                    canonicalProjection().projectedJsonTextBytes() +
+                    2L * target.projectedSelectorTextBytes().base64Bytes() +
+                    target.projectedDocumentTextBytes() +
+                    (target.lease.workspaceRoot.value.projectedJsonTextBytes() +
+                            authority.revisionKey.value.projectedJsonTextBytes() +
+                            occurrence.file.stableValue.projectedJsonTextBytes())
+                        .base64Bytes() +
+                    when (val owner = ownership) {
+                        is RelationReferenceOwnership.DeclarationOwned ->
+                            owner.declaration.projectedSelectorTextBytes().base64Bytes() +
+                                owner.declaration.projectedDocumentTextBytes()
+                        is RelationReferenceOwnership.FileScoped,
+                        is RelationReferenceOwnership.Unavailable -> 0L
+                    }
+            )
+            .refinedInvariant()
 
     /**
      * Bounds one full occurrence row, including inline selectors. The target selector occurs twice (row reference and
      * target document), each owner selector once, and the occurrence range selector once. Compact handles fit within
      * this inline bound. Response-envelope and separately emitted observation charges belong to their own owners.
      */
-    fun projectedUtf8Size(): Long =
-        REFERENCE_DOCUMENT_BYTES +
-            canonicalProjection().projectedJsonTextBytes() +
-            2L * target.projectedSelectorTextBytes().base64Bytes() +
-            target.projectedDocumentTextBytes() +
-            (target.lease.workspaceRoot.value.projectedJsonTextBytes() +
-                    authority.revisionKey.value.projectedJsonTextBytes() +
-                    occurrence.file.stableValue.projectedJsonTextBytes())
-                .base64Bytes() +
-            when (val owner = ownership) {
-                is RelationReferenceOwnership.DeclarationOwned ->
-                    owner.declaration.projectedSelectorTextBytes().base64Bytes() +
-                        owner.declaration.projectedDocumentTextBytes()
-                is RelationReferenceOwnership.FileScoped,
-                is RelationReferenceOwnership.Unavailable -> 0L
-            }
+    fun projectedUtf8Size(): Long = projectedByteCount.value
 
     override fun compareTo(other: RelationReferenceOccurrence): Int =
         canonicalProjection().compareTo(other.canonicalProjection())
@@ -352,6 +363,8 @@ private fun RelationRequest.admitOwnership(
 }
 
 private const val REFERENCE_STRUCTURE_BYTES = 1_024L
+/** Two retained, unboxed byte-count proofs; the conservative base structure charge remains intact. */
+private const val REFERENCE_ACCOUNTING_BYTES = 16L
 /** Row fields, enum labels, scalar numbers, token framing and base64-expanded fixed selector JSON fields. */
 private const val REFERENCE_DOCUMENT_BYTES = 4_096L
 private const val UTF16_UNIT_BYTES = 2L
