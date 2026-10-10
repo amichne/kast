@@ -8,6 +8,9 @@ internal fun initialHostedReadCounters(): LinkedHashMap<Pair<IntellijReadCounter
     linkedMapOf<Pair<IntellijReadCounter, IntellijReadContributor>, Long>().apply {
         listOf(
                 IntellijReadCounter.DEPENDENCY_TREE_ENTRIES_VISITED,
+                IntellijReadCounter.DEPENDENCY_SDK_PLANNED_FILES,
+                IntellijReadCounter.DEPENDENCY_SDK_MINIMUM_HASH_READS,
+                IntellijReadCounter.DEPENDENCY_SDK_FILE_PLANS_COMPLETED,
                 IntellijReadCounter.DEPENDENCY_HASH_BYTES_READ,
                 IntellijReadCounter.DEPENDENCY_HASHES_COMPLETED,
                 IntellijReadCounter.DEPENDENCY_HASH_MEMO_HITS,

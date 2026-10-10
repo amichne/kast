@@ -96,7 +96,7 @@ internal class SemanticNativeModuleInputs(
         sdkDigest.text(sdk.name)
         sdkDigest.text(sdk.sdkType.name)
         sdkDigest.text(version)
-        return files.roots(
+        return files.sdkRoots(
             budget.observation
                 .call(IntellijReadCall.SDK_CLASS_ROOTS) { sdk.rootProvider.getFiles(OrderRootType.CLASSES) }
                 .toList(),

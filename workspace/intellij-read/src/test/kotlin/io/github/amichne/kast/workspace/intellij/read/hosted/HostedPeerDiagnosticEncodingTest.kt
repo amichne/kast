@@ -15,7 +15,7 @@ class HostedPeerDiagnosticEncodingTest {
         val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
         HostedReadDiagnostics({ 0 }, publish = receipts::add).finish(HostedDiagnosticOutcome.Completed)
         val encoded = Json.parseToJsonElement(receipts.single().encode()).jsonObject
-        assertEquals("11", encoded.getValue("schemaVersion").jsonPrimitive.content)
+        assertEquals("12", encoded.getValue("schemaVersion").jsonPrimitive.content)
         for (counter in peerCounters) assertEquals("0", counterCount(encoded, counter))
         assertEquals("not-entered", encoded.getValue("nativePhase").jsonObject.getValue("type").jsonPrimitive.content)
     }
