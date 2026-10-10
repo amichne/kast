@@ -71,7 +71,8 @@ The fake-clock deadline test proves ordering and owner recovery only. Native rec
 
 The `replay-workloads` and `compare` modes extend this runner's pins, process
 captures, source fixtures and native receipts. They use the installed public
-Tool RPC path, without a model or API call. The older `replay` mode remains
+Tool RPC path, without a model or API call. Both profiles include four workloads.
+The older `replay` mode remains
 available for its historical matrix.
 
 The default `RELIABILITY_FIXTURE` profile is a synthetic control and cannot
@@ -82,6 +83,15 @@ references across the workspace, and public kernel functions through scoped
 required, alongside independently selected declaration/site witnesses. The
 witnesses are sufficiency checks; they do not replace comparison of every row,
 qualification, omission, failure, source range and scope.
+
+`exact-negative` searches for `KastReplayNegativeDeclaration9C22D9` with the same
+exact-name, class-kind and main-source directory constraints as the positive
+exact search. It requests name, location and signature. A usable negative answer
+must be complete, exhaustive and empty, with no failures or omissions. Partial
+emptiness and returned items fail the control. Empty output does not imply zero
+enumeration work. Every warmup and repetition must include this control before
+the suite can establish improvement.
+Older three-workload runs require recapture; the loader rejects that corpus.
 
 Use one immutable `git archive --format=tar` of a full local commit for both
 artifacts. Extract it into an owned directory, prepare its build conventions,
@@ -119,9 +129,11 @@ cache experiment.
 The log capture allows at most 250 ms for an asynchronously appended native
 receipt, under the existing 2 MiB append bound. Its policy is recorded in run
 limits and must match. It never retries a query. Missing or ambiguous receipts
-remain unavailable. Public arrival timestamps are captured before log collection;
-total elapsed time includes inter-call harness overhead. Native phase/stage
-vectors provide separate observations and must not be added together.
+remain unavailable. Public arrival timestamps are captured before log collection.
+Workload wall time excludes prior capture intervals but includes other inter-call
+driver work. Process, native-phase and stage clocks retain their own values and
+must not be added together. See [timing collection](README.md#semantic-replay-timing)
+for explicit connection joins, release evidence and version-2 trial receipts.
 
 Prepare with the existing `setup` command plus `--comparison-workloads`. This
 copies the existing dense-reference target, 1001-reference source and 64-function

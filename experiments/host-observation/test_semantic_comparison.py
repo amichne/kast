@@ -20,6 +20,67 @@ from test_hosted_timing import window as timing_window, READ
 
 
 class SemanticComparisonTest(unittest.TestCase):
+    def test_exact_negative_is_usable_only_after_complete_empty_answer_in_both_profiles(self):
+        for profile in r.WorkloadProfile:
+            with self.subTest(profile=profile):
+                trial = (self.production_trial('exact-negative') if profile == r.WorkloadProfile.KAST_SOURCE else
+                         self.workload_trial('exact-negative', 'exact:v5:negative'))
+                self.assertEqual([], trial.semantic['items'])
+                self.assertEqual([], trial.unavailable)
+                self.assertIsInstance(r.admit_exact_negative([], trial.calls[0].response), r.CompleteExactNegative)
+                self.assertTrue(r.usable_result('exact-negative', trial.calls[0].response, profile))
+                comparison = r.compare_trials(trial, trial, True)
+                self.assertEqual(r.ComparisonState.EQUIVALENT, comparison.type)
+                self.assertFalse(comparison.lessWork, 'Empty answer does not prove zero work')
+                with tempfile.TemporaryDirectory() as directory:
+                    path = Path(directory) / 'trial.json'
+                    path.write_text(json.dumps(asdict(trial)))
+                    self.assertEqual(trial, r.load_trial(path, profile))
+
+    def test_exact_negative_preserves_closed_failure_reasons_for_partial_or_nonempty_answers(self):
+        response = self.workload_trial('exact-negative', 'exact:v5:negative').calls[0].response
+        cases = [({'status': 'qualified'}, r.ExactNegativeFailure.NOT_COMPLETE),
+                 ({'coverage': {'exhaustive': False}}, r.ExactNegativeFailure.NOT_EXHAUSTIVE),
+                 ({'items': self.trial().calls[0].response['items']}, r.ExactNegativeFailure.RETURNED_ITEMS),
+                 ({'failures': [{'code': 'scripted'}]}, r.ExactNegativeFailure.FAILURES),
+                 ({'omissions': [{'code': 'scripted'}]}, r.ExactNegativeFailure.OMISSIONS),
+                 ({'items': None}, r.ExactNegativeFailure.UNAVAILABLE),
+                 ({'coverage': None}, r.ExactNegativeFailure.UNAVAILABLE)]
+        for change, expected in cases:
+            with self.subTest(expected=expected):
+                altered = {**copy.deepcopy(response), **change}
+                admitted = r.admit_exact_negative(altered.get('items'), altered)
+                self.assertEqual(r.RejectedExactNegative(expected), admitted)
+                self.assertFalse(r.usable_result('exact-negative', altered))
+
+    def test_negative_control_failure_prevents_suite_improvement_even_if_positive_work_falls(self):
+        from dataclasses import replace
+        baseline = self.workload_trial('exact-negative', 'exact:v5:negative')
+        call = baseline.calls[0]
+        wrong = {**copy.deepcopy(call.response), 'items': self.trial().calls[0].response['items']}
+        changed = replace(call, response=wrong, process={**call.process, 'stdout': json.dumps(wrong)})
+        candidate = r.finish_trial('exact-negative', 0, False, [changed], 240, None)
+        self.assertIn(r.ExactNegativeFailure.RETURNED_ITEMS.value, candidate.unavailable)
+        negative = r.compare_trials(baseline, candidate, False)
+        self.assertFalse(negative.lessWork)
+        positive = r.compare_trials(self.trial(work=20), self.trial(work=1), False)
+        self.assertTrue(positive.lessWork)
+        self.assertFalse(r.suite_reduces_work([positive, negative]))
+
+    def test_missing_negative_trial_rejects_four_workload_comparison(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            baseline = self.write_run(root / 'baseline', 'exact:v5:a')
+            candidate = self.write_run(root / 'candidate', 'exact:v5:b')
+            manifest = json.loads(candidate.read_text())
+            manifest['trials'].remove('exact-negative.json')
+            candidate.write_text(json.dumps(manifest))
+            args = argparse.Namespace(baseline=baseline, candidate=candidate, output=root / 'comparison.json')
+            self.assertEqual(2, r.compare_replays(args))
+            report = json.loads(args.output.read_text())
+            self.assertEqual('INVALID_EVIDENCE', report['type'])
+            self.assertFalse(report['lessWork'])
+
     def test_observation_capture_is_removed_once_from_subsequent_workload_wall_time(self):
         from dataclasses import replace
         first = replace(self.trial().calls[0], observationCaptureNanos=50)
@@ -278,7 +339,7 @@ class SemanticComparisonTest(unittest.TestCase):
         import jsonschema
         schema = json.loads((r.REPO / 'app-server/src/main/resources/io/github/amichne/kast/appserver/query/query_symbols.parameters.json').read_text())
         requests = r.comparison_requests()
-        self.assertEqual({'exact-source', 'dense-references', 'scoped-all'}, set(requests))
+        self.assertEqual({'exact-source', 'exact-negative', 'dense-references', 'scoped-all'}, set(requests))
         for request in requests.values():
             jsonschema.Draft202012Validator(schema).validate(request)
 
@@ -294,6 +355,9 @@ class SemanticComparisonTest(unittest.TestCase):
         budget = dict(maxElapsedMs=10000, maxWorkUnits=100000, maxResults=20, maxReturnedBytes=49152)
         fields = ['NAME', 'LOCATION', 'SIGNATURE']
         expected = {
+            'exact-negative': dict(source=dict(type='SEARCH_DECLARATIONS', declarationName='KastReplayNegativeDeclaration9C22D9',
+                nameMatch='EXACT', declarationKinds=['CLASS'], scope=scope), steps=[],
+                output=dict(type='SYMBOLS', fields=fields)),
             'exact-source': dict(source=dict(type='SEARCH_DECLARATIONS', declarationName='QueryPlanSyntax',
                 nameMatch='EXACT', declarationKinds=['CLASS'], scope=scope), steps=[],
                 output=dict(type='SYMBOLS', fields=fields + ['SOURCE'])),
@@ -341,7 +405,9 @@ class SemanticComparisonTest(unittest.TestCase):
                 qualifiedIdentity=package + '.QueryPlanSyntax'), location=dict(file=directory + 'QueryPlan.kt',
                 range=dict(startInclusive=100, endExclusive=200)),
                 source=dict(text='data class QueryPlanSyntax(val steps: List<QueryStepSyntax>)', startLine=39, endLine=39))
-            if workload == 'scoped-all':
+            if workload == 'exact-negative':
+                response['items'] = []
+            elif workload == 'scoped-all':
                 names = ['NamedRoot.Companion.parse', 'OperationId.Companion.parse',
                          'CapabilityId.Companion.parse']
                 names += [f'ScriptedContract.operation{i:02d}' for i in range(18)]
@@ -713,7 +779,9 @@ class SemanticComparisonTest(unittest.TestCase):
     def workload_trial(self, workload, token):
         template = self.trial(token)
         response = copy.deepcopy(template.calls[0].response)
-        if workload == 'scoped-all':
+        if workload == 'exact-negative':
+            response['items'] = []
+        elif workload == 'scoped-all':
             names = [f'reliability.source.pageItem{i:02d}' for i in range(64)]
             names += [f'repro.logging.FixtureLogger.{n}' for n in ('trace', 'debug', 'info', 'warn', 'error')]
             names += [f'repro.logging.Identity{n}.sharedOperation' for n in ('One', 'Two', 'Three', 'Four', 'Five')]
@@ -793,7 +861,7 @@ class SemanticComparisonTest(unittest.TestCase):
             parsed = r.load_trial(path)
             self.assertIs(r.TrialState.COMPLETE, parsed.type)
 
-    def test_three_workload_baseline_repeatability_and_machine_output(self):
+    def test_four_workload_baseline_repeatability_and_machine_output(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             a, b = self.write_run(root / 'baseline-a', 'exact:v5:first'), self.write_run(root / 'baseline-b', 'exact:v5:second')
@@ -802,7 +870,7 @@ class SemanticComparisonTest(unittest.TestCase):
             report = json.loads(args.output.read_text())
             self.assertEqual('COMPARISON', report['type'])
             self.assertEqual('SCRIPTED', report['evidenceLevel'])
-            self.assertEqual(3, len(report['trials']))
+            self.assertEqual(4, len(report['trials']))
             self.assertTrue(report['repeatability'])
             self.assertFalse(report['lessWork'])
             self.assertTrue(all(t['type'] == 'EQUIVALENT' for t in report['trials']))
