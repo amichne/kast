@@ -36,7 +36,7 @@ class TryLocalOracleTest(unittest.TestCase):
         text = (oracle.TEMPLATE.parent.parent.parent / 'semantic-reproduction-pin.kts.template').read_text()
         sections = {}
         for name, following in (('commonClasses', 'branchClasses'), ('branchClasses', 'localClasses'),
-                                ('localClasses', 'classes')):
+                                ('localClasses', 'workClasses'), ('workClasses', 'classes')):
             body = text.split('val ' + name + ' =', 1)[1].split('val ' + following + ' =', 1)[0]
             owners = re.findall(r'"(io\.github\.amichne\.kast\.[^"]+)"', body)
             sections[name] = {owner.replace('\\$', '$') for owner in owners}
@@ -44,6 +44,25 @@ class TryLocalOracleTest(unittest.TestCase):
         self.assertEqual(native.NATIVE_COMMON_OWNERS, sections['commonClasses'])
         self.assertEqual(native.TRY_BRANCH_NATIVE_OWNERS, sections['branchClasses'])
         self.assertEqual(native.LOCAL_IDENTITY_NATIVE_OWNERS, sections['localClasses'])
+        self.assertEqual(native.RELATION_WORK_NATIVE_OWNERS, sections['workClasses'])
+        for extra in ('localClasses', 'workClasses'):
+            groups = [sections[key] for key in ('commonClasses', 'branchClasses', extra)]
+            self.assertEqual(sum(map(len, groups)), len(set().union(*groups)), extra + ': duplicate profile owner')
+
+    def test_relation_work_profile_requires_current_contract_and_every_work_owner(self):
+        profile = native.QualificationSlice.RELATION_WORK_REDUCTION
+        source = (native.REPO / 'protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt').read_text()
+        current = int(re.search(r'PUBLIC_TOOL_CONTRACT_VERSION = (\d+)', source)[1])
+        self.assertEqual(current, profile.public_contract_version)
+        native.admit_public_contract_slice(profile, current)
+        owners = native.NATIVE_COMMON_OWNERS | native.TRY_BRANCH_NATIVE_OWNERS | native.RELATION_WORK_NATIVE_OWNERS
+        self.assertEqual(profile, native.admit_native_owner_profile(profile, owners))
+        for owner in native.RELATION_WORK_NATIVE_OWNERS:
+            with self.subTest(owner=owner), self.assertRaisesRegex(ValueError, '^NATIVE_OWNER_SLICE_MISMATCH$'):
+                native.admit_native_owner_profile(profile, owners - {owner})
+        for version in (6, 7, current - 1, current + 1, True, None):
+            with self.subTest(version=version), self.assertRaisesRegex(ValueError, '^PUBLIC_CONTRACT_SLICE_MISMATCH$'):
+                native.admit_public_contract_slice(profile, version)
 
     def test_preserves_authored_cases_and_shadowing_exclusions(self):
         intent = oracle.load_oracle()

@@ -22,6 +22,27 @@ python3 experiments/host-observation/reproduce_semantic_queries.py pin \
   --output /private/tmp/kast-semantic-pin
 ```
 
+When several IDEA profiles use the same executable, pass `pin --host-pid PID`
+to select an existing process. The PID must appear with the exact executable in
+the current process observation. Without this option, exactly one matching
+process is required. Set `IDEA_PROPERTIES` and `IDEA_VM_OPTIONS` for the intended
+profile before invoking its script carrier. A mismatched carrier fails native
+PID admission; the runner never launches a replacement host.
+
+`replay-workloads` retains the pinned PID for both boundary pins and requires the
+same process start identity. A changed process, reused PID or missing host
+rejects replay even when artifact bytes match. Loaded classes, project/model
+identity and effective query limits still require independent qualification.
+
+For the current relation work comparison, use
+`--qualification-slice RELATION_WORK_REDUCTION`. This profile admits only public
+contract version 14. It requires the common and branch-proof owners. It also
+requires 18 owners for admission, file enumeration, SDK capture, callback reuse
+and read accounting. Missing owners or another contract version reject the pin. The
+older version 6 and 7 profiles retain their separate requirements. Match loaded
+resources and all plugin JARs to the exact tested candidate before replay;
+profile admission alone does not prove source correspondence.
+
 One replay command runs the complete matrix, retains canonical CLI responses, and exercises the production provider without a Codex session:
 
 ```sh
