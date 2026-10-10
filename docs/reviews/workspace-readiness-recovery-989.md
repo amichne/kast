@@ -24,7 +24,7 @@ Tests execute production rules with detached identity tokens, recording ports an
 | Fresh publication and retained evidence | `validateWorkspaceEpoch`, `HostedWorkspaceReadinessHistoryTest`, `WorkspaceRefreshServiceTest` |
 | Failure containment and settlement | `WorkspaceExecutionSettlementPropertyTest`, `OutputContractRecoveryPolicyTest`, `HostedQueryLifetimeTest`, `HostedQueryExecutorTest` |
 | Reachable inspection and eventual admission | `WorkspaceDemandSettlementRecoveryTest`, `WorkspaceInspectionIngressRecoveryTest`, `WorkspaceInspectionDeadlineRecoveryTest`, `IdeLifecycleInspectionProjectionTest`, `WorkspaceReadinessInspectionTest`, `WorkspaceRefreshInspectionTest` |
-| Bounded shared refresh and retry | `WorkspaceRefreshServiceTest`, `WorkspaceRefreshGeneratedTransitionsTest`, `WorkspaceRefreshStartBoundaryTest`, `WorkspaceRefreshImportCompletionTest`, `WorkspaceRefreshModelBoundaryTest`, `WorkspaceRefreshObservationTest` |
+| Bounded shared refresh and retry | `WorkspaceRefreshServiceTest`, `WorkspaceRefreshGeneratedTransitionsTest`, `WorkspaceRefreshStartBoundaryTest`, `WorkspaceRefreshImportCompletionTest`, `WorkspaceRefreshModelBoundaryTest`, `WorkspaceRefreshObservationTest`, `WorkspaceRefreshIncrementalRejoinTest` |
 
 Generated bounded sequences assert every prefix. They cover model movement, disposal, reopening, stale callbacks, duplicate requests, cancellation around refresh and lost callbacks. The broker composition regression runs real preparation, demand and execution transitions. A companion refresh regression follows M0, refresh, fresh M1, read cancellation, delivery failure, inspection, settlement and a fresh read. Both retain uncertain-write negative controls.
 
@@ -51,6 +51,7 @@ Each mutation below was applied to production source, run against the focused te
 | Acknowledge inputs newer than the settled import's coverage | Two revision and composed-refresh assertions |
 | Accept stale success after failed import settlement | Terminal-ticket regression assertion |
 | Observe refresh on the caller's context | Explicit observation-dispatcher regression assertion |
+| Omit the selected retained incremental attempt identity | Three incremental entry-path regression assertions, including generated prefixes |
 
 ## Limits and native obligations
 
@@ -75,3 +76,11 @@ The required `run_product_gate.py` wrapper at that head selected release authori
 Fifty-four focused refresh tests pass after the follow-up. Five further production mutations each fail their focused assertions and are restored. All seven affected module checks pass: app-server 631 (three existing installed-Codex skips), hosted runtime 307, workspace contract 42, native-read 278, protocol contract 106, protocol wire 196 and CLI 404. They report zero failures. Formatting, Detekt, file-length, architecture and source-knowledge checks pass. All refresh policy tests use injected clocks. Packaged runtime admission and the exact-head product aggregate remain required before merge.
 
 The required text assessment was attempted with the bundled procedure. It reported `VALE_UNAVAILABLE`; no engine was installed for this task. The report remains a documentation-check limitation. Source-knowledge and JSON guards passed without weakening their rules.
+
+## Incremental entry-path follow-up
+
+Review of `41478df81c96f160a8e805796fa7529ceaa6a8c6` found that `refreshForRead` selected only pending waiter entries. Cancelling or expiring the sole waiter retained native capacity correctly but hid that active attempt from later read demand. The later waiter queued redundant work and could not complete from the original callback. The earlier sharing test retained a second pending waiter and did not cover this path.
+
+The correction selects the active incremental attempt under the existing service monitor and passes its exact identity and work to `add`. The explicit-demand equivalence policy and native settlement boundary are unchanged. Pure regressions call `refreshForRead` directly for cancellation and expiry at capacities one and four, including terminal-history eviction. They require the original active ID, no queued attempt, one native start, exactly one completion of the new waiter from the original callback, and the old waiter's terminal failure. A separate control proves real settlement allows a fresh attempt and a stale callback cannot release it. An independent demand/callback oracle checks every prefix of 781 bounded incremental sequences.
+
+Before correction, three of four tests failed by assertions: cancellation, expiry and bounded prefixes. All four pass with the correction. Removing the selected-attempt argument from production independently restores those three assertion failures; the mutation is restored. This adds a sixteenth actual production mutation to the proof. The full hosted runtime check passes 311 tests with no failures or skips. Formatting, Detekt, file-length, JSON (631 fingerprints), architecture and source-knowledge gates pass without rule changes. Source impact names the workspace concept; its existing equivalent-work coalescing claim remains unchanged. The exact-head product gate and independent source review remain merge requirements after this correction.

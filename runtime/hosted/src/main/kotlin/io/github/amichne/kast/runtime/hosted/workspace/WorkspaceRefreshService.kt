@@ -108,12 +108,15 @@ internal class WorkspaceRefreshService(
             return {}
         }
         val equivalent =
-            entries.values.firstOrNull {
-                it.attempt.work.effect == WorkspaceRefreshEffectKind.Incremental &&
-                    it.status is WorkspaceRefreshStatus.Pending
-            }
+            active?.takeIf { it.work.effect == WorkspaceRefreshEffectKind.Incremental }
+                ?: entries.values
+                    .firstOrNull {
+                        it.attempt.work.effect == WorkspaceRefreshEffectKind.Incremental &&
+                            it.status is WorkspaceRefreshStatus.Pending
+                    }
+                    ?.attempt
         val work =
-            equivalent?.attempt?.work
+            equivalent?.work
                 ?: when (val stamp = nextStamp()) {
                     is Refinement.Refined -> WorkspaceRefreshWork(WorkspaceRefreshEffectKind.Incremental, stamp.value)
                     is Refinement.Rejected -> {
@@ -122,7 +125,7 @@ internal class WorkspaceRefreshService(
                     }
                 }
         val waiter = WorkspaceRefreshWaiter.Read()
-        when (val added = add(waiter, work, complete)) {
+        when (val added = add(waiter, work, complete, selectedAttempt = equivalent)) {
             is Refinement.Rejected -> {
                 complete(WorkspaceRefreshStatus.Rejected(added.failure))
                 return {}
