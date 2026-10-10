@@ -9,12 +9,11 @@ import io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScopeFail
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryFailure
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryStage
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadResult
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withTimeoutOrNull
 
 internal enum class IndexingWait {
     Ready,
-    Unavailable,
+    TimedOut,
+    Disposed,
 }
 
 /** A failed presemantic admission has published no semantic result, so one retry cannot duplicate semantic effects. */
@@ -38,11 +37,15 @@ private fun HostedSemanticReadResult.Rejected.isPresemanticIndexing(): Boolean =
             else -> false
         }
 
-internal suspend fun awaitHostedSmartMode(project: Project): IndexingWait =
-    withTimeoutOrNull(INDEXING_WAIT_MILLIS) {
-        while (!project.isDisposed && DumbService.isDumb(project)) delay(INDEXING_POLL_MILLIS)
-        if (project.isDisposed) IndexingWait.Unavailable else IndexingWait.Ready
-    } ?: IndexingWait.Unavailable
-
-private const val INDEXING_WAIT_MILLIS = 15_000L
-private const val INDEXING_POLL_MILLIS = 100L
+internal suspend fun awaitHostedSmartMode(
+    project: Project,
+    observe: (HostedSmartModeWaitObservation) -> Unit = {},
+): IndexingWait =
+    waitForHostedSmartMode(
+        state = {
+            if (project.isDisposed) HostedIndexingState.DISPOSED
+            else if (DumbService.isDumb(project)) HostedIndexingState.INDEXING
+            else if (project.isDisposed) HostedIndexingState.DISPOSED else HostedIndexingState.SMART
+        },
+        observe = observe,
+    )
