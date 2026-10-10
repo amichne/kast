@@ -58,7 +58,9 @@ or GREEN. The Python wrapper includes these checks in the existing Gradle gate.
   rows/evidence are separate report fields. The controller never claims external
   oracle verification from a model sentence or a returned count.
 - Reports distinguish model proposals, harness decisions, adapter starts and
-  observed native replies. An adapter-start event alone is not proof of semantic
+  RPC versus observed native replies. Closed Tool RPC failures preserve their
+  exact code as `TOOL_RPC_REJECTION`, not a semantic completeness rejection.
+  An adapter-start event alone is not proof of semantic
   execution. No source payloads, credentials, headers or environment are logged
   in the shareable guard report. Session/event logs are private local artifacts.
 - Each case runs in one owned process group. Cancellation first requests SDK

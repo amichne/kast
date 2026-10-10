@@ -222,3 +222,18 @@ test('worker explicitly disables unaccounted warming and selects abort-safe SSE'
   assert.deepEqual(captured.extensions,[]);assert.deepEqual(captured.packages,[]);
   assert.throws(()=>isolatedSettings({inMemory:()=>({getTransport:()=> 'auto',getCacheWarmingMode:()=> 'off'})}),/policy unavailable/);
 });
+
+test('closed production RPC failures retain their code without fabricated native completion',()=>{
+  const source=readFileSync(new URL('../../pi/extension.ts',import.meta.url),'utf8');
+  const failures=source.match(/const TOOL_RPC_FAILURES = \[([\s\S]*?)\] as const;/)[1].match(/"[A-Z_]+"/g).map(value=>JSON.parse(value));
+  for(const failure of failures) {
+    const policy=new CasePolicy(config()),guard=callbacks(policy);
+    guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'}}});
+    guard.emit('tool_result',resultEvent({type:'rejected',failure}));
+    assert.equal(guard.aborted,1);assert.equal(policy.report().outcome,'TOOL_RPC_REJECTION');
+    assert.deepEqual(policy.report().rpcRejection,{failure});assert.equal(policy.report().semanticRejection,null);
+    assert.equal(policy.report().modelProposals[0].rpcReplyObserved,true);
+    assert.equal(policy.report().nativeRepliesObserved,0);assert.equal(policy.report().semanticRepliesObserved,0);
+  }
+  assert.deepEqual(decodeEnvelope([{type:'text',text:'{"type":"rejected","failure":"UNKNOWN"}'}]),{type:'invalid'});
+});

@@ -1,7 +1,8 @@
 // Pure rules; no process, filesystem, provider, Kast, clock or credential access.
 import { isDeepStrictEqual } from 'node:util';
 export const READ_TOOLS=Object.freeze(['query_symbols','check_diagnostics','health_check']);
-export const Outcome = Object.freeze({RUNNING:'RUNNING', FINAL_ANSWER:'FINAL_ANSWER', QUALIFIED_ANSWER:'QUALIFIED_ANSWER', REJECTION:'INTENTIONAL_REJECTION', BUDGET:'HARNESS_BUDGET_LIMIT', MODEL_MISMATCH:'HARNESS_MODEL_MISMATCH', TOOL_BLOCKED:'HARNESS_TOOL_BLOCKED', INVALID:'HARNESS_OBSERVATION_INVALID', MODEL_ERROR:'MODEL_ERROR', CANCELLED:'HARNESS_CANCELLED'});
+export const Outcome = Object.freeze({RUNNING:'RUNNING', FINAL_ANSWER:'FINAL_ANSWER', QUALIFIED_ANSWER:'QUALIFIED_ANSWER', REJECTION:'INTENTIONAL_REJECTION', RPC_REJECTION:'TOOL_RPC_REJECTION', BUDGET:'HARNESS_BUDGET_LIMIT', MODEL_MISMATCH:'HARNESS_MODEL_MISMATCH', TOOL_BLOCKED:'HARNESS_TOOL_BLOCKED', INVALID:'HARNESS_OBSERVATION_INVALID', MODEL_ERROR:'MODEL_ERROR', CANCELLED:'HARNESS_CANCELLED'});
+const RPC_FAILURES=Object.freeze(['INSTALLATION_STOPPED','OBSERVATION_UNAVAILABLE','CATALOG_UNAVAILABLE','INVALID_COMMAND','REQUEST_TOO_LARGE','UNKNOWN_TOOL','INVALID_ARGUMENTS','OUT_OF_SCOPE','INVOCATION_FAILED','INVALID_RESULT']);
 const emptyUsage=()=>({input:0,cacheRead:0,cacheWrite:0,output:0,reasoning:0,totalTokens:0});
 const integer=n=>Number.isSafeInteger(n)&&n>=0;
 const decision=(allow,reason,phase)=>({allow,reason,phase});
@@ -16,6 +17,7 @@ export function decodeEnvelope(content,toolName='query_symbols') {
   try {
     const envelope=JSON.parse(content[0].text);
     if(!['complete','qualified','rejected_document','rejected'].includes(envelope?.type)) return {type:'invalid'};
+    if(envelope.type==='rejected'&&!RPC_FAILURES.includes(envelope.failure)) return {type:'invalid'};
     if(envelope.type==='rejected_document'&&(envelope.document?.status!=='rejected'||typeof envelope.document?.rejection?.type!=='string')) return {type:'invalid'};
     if(envelope.type==='complete' && (!envelope.document || (toolName==='query_symbols'&&(envelope.document.status!=='complete' || typeof envelope.document.coverage?.exhaustive!=='boolean' || !Array.isArray(envelope.document.items))))) return {type:'invalid'};
     if(envelope.type==='qualified' && (envelope.document?.status!=='qualified'||envelope.document.coverage?.exhaustive!==false||!Array.isArray(envelope.document.items)||!integer(envelope.document.qualification?.knownMinimum)||!Array.isArray(envelope.document.qualification?.limitations)||!['resumable','terminal_incomplete','retention_unavailable'].includes(envelope.document.qualification?.progress?.type))) return {type:'invalid'};
@@ -74,7 +76,7 @@ export class CasePolicy {
     return decision(true,'ACCOUNTED',this.phase);
   }
   toolCall(toolName,args,callId) {
-    const proposal={callId,toolName,requestType:args?.request?.type??null,harnessDecision:undefined,adapterStartObserved:false,nativeReplyObserved:false};this.proposals.push(proposal);
+    const proposal={callId,toolName,requestType:args?.request?.type??null,harnessDecision:undefined,adapterStartObserved:false,rpcReplyObserved:false,nativeReplyObserved:false};this.proposals.push(proposal);
     let allowed=false;
     if(this.phase==='WORK') allowed=READ_TOOLS.includes(toolName) && (toolName!=='query_symbols'||args?.request?.type==='RUN') && this.tools<this.config.work.tools && !this.activeToolCall;
     if(this.phase==='DELIVERY'&&this.evidenceRequest) allowed=toolName==='query_symbols' && isDeepStrictEqual(args?.request,this.evidenceRequest) && !this.activeToolCall;
@@ -91,9 +93,10 @@ export class CasePolicy {
     if(callId!==undefined&&!proposal) return this.stop(Outcome.INVALID);
     if(callId===this.activeToolCall) this.activeToolCall=undefined;
     if(envelope.type==='invalid') return this.stop(Outcome.INVALID);
-    if(proposal) proposal.nativeReplyObserved=true;
+    if(proposal) {proposal.rpcReplyObserved=true;proposal.nativeReplyObserved=envelope.type!=='rejected';}
     if(this.toolTextBytes>this.config.maximumToolTextBytes) return this.stop(Outcome.BUDGET);
-    if(['rejected_document','rejected'].includes(envelope.type)) {
+    if(envelope.type==='rejected') {this.nativeOutcome='UNOBSERVED';this.rpcRejection={failure:envelope.failure};return this.stop(Outcome.RPC_REJECTION);}
+    if(envelope.type==='rejected_document') {
       this.nativeOutcome='REJECTED';this.rejection=structuredClone(envelope);
       const detail=envelope.document?.rejection?.detail;
       this.rejectionSummary={code:envelope.document?.rejection?.type??'TRANSPORT_REJECTION',nextAction:envelope.document?.next_action??null,
@@ -133,6 +136,6 @@ export class CasePolicy {
       // External row/oracle proof is never inferred from a final answer/row count.
       exhaustiveRowsVerified:false,requiredEvidenceVerified:false,usage:structuredClone(this.usage),phaseUsage:structuredClone(this.phaseUsage),
       bounds:{work:structuredClone(this.config.work),delivery:structuredClone(this.config.delivery),inputTokenCeiling:this.config.inputTokenCeiling,declarationByteCeiling:this.config.declarationByteCeiling,maximumToolTextBytes:this.config.maximumToolTextBytes,wallSeconds:this.config.wallSeconds},
-      qualification:structuredClone(this.qualification??null),semanticRejection:structuredClone(this.rejectionSummary??null),requestObservations:structuredClone(this.requestObservations),modelProposals:structuredClone(this.proposals),nativeRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved).length,semanticRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved&&(p.requestType==='RUN'||p.toolName==='check_diagnostics')).length,toolTextBytes:this.toolTextBytes,tokenPreflightMethod:'MAX_DECLARED_OR_MEASURED_INPUT_PLUS_CONTEXT_GROWTH_AND_OUTPUT_RESERVE',providerEnforcedTokenCap:false};
+      rpcRejection:structuredClone(this.rpcRejection??null),qualification:structuredClone(this.qualification??null),semanticRejection:structuredClone(this.rejectionSummary??null),requestObservations:structuredClone(this.requestObservations),modelProposals:structuredClone(this.proposals),nativeRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved).length,semanticRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved&&(p.requestType==='RUN'||p.toolName==='check_diagnostics')).length,toolTextBytes:this.toolTextBytes,tokenPreflightMethod:'MAX_DECLARED_OR_MEASURED_INPUT_PLUS_CONTEXT_GROWTH_AND_OUTPUT_RESERVE',providerEnforcedTokenCap:false};
   }
 }

@@ -14,6 +14,7 @@ const [piPackageRoot,kastAdapter,expectedAdapterSha256]=process.argv.slice(2);
 if(!path.isAbsolute(piPackageRoot??'')||!path.isAbsolute(kastAdapter??'')||!/^[a-f0-9]{64}$/.test(expectedAdapterSha256??'')) throw Error('Explicit installed SDK root, actual adapter path and digest required');
 const sha=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
 assert.equal(sha(fs.readFileSync(kastAdapter)),expectedAdapterSha256);
+assert.equal(process.env.KAST_TOOL_RPC_COMMAND,undefined,'Installed canonical RPC route required; no command override');
 const directory=fs.mkdtempSync(path.join(os.tmpdir(),'kast-pi-sdk-check-'));
 const originals={fetch:globalThis.fetch,WebSocket:globalThis.WebSocket};
 let fetchCalls=0,socketSends=0,sockets=0;
