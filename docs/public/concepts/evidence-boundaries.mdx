@@ -20,13 +20,13 @@ Kotlin-source coverage does not establish facts about excluded sources, librarie
 
 ## Decide whether to continue
 
-Resumable progress supplies an execution continuation. Terminal progress supplies a stopping reason. A missing continuation does not establish completeness.
+Public RESUME uses an issued output token to present already-produced facts. It does not continue semantic execution. Terminal progress supplies a stopping reason; `retention_unavailable` means a remaining output suffix was lost. A missing continuation does not establish completeness.
 
-An empty page can still advance work. Reading all saved rows preserves the original coverage limits. See [Results](/reference/responses#follow-progress-not-row-count).
+An empty retained page can still advance evidence. Reading all saved rows preserves the original coverage limits. See [Results](/reference/responses#follow-progress-not-row-count).
 
 ## Can I reuse this result later?
 
-Pass issued handles unchanged. For stale references or unavailable saved state, start a fresh query.
+Pass issued handles unchanged. Report stale references or unavailable saved state as a blocker. A fresh query requires a new decision; it cannot recover the original delivery.
 
 An exact symbol can undergo fresh compiler revalidation. Retained results and continuations require their original read state and lifetime. See [Saved state and identity](/reference/responses#saved-state-and-identity).
 

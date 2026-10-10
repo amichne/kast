@@ -213,11 +213,13 @@ right coverage. `JOIN` adds a typed mode: `INNER` with different `leftName` and
 `ANTI` requires complete right coverage. `PROJECT_BINDING` selects one named
 cell before returning to symbol steps. Never infer equality from name alone.
 
-Use `resumeQuery` only with the continuation issued for resumable execution.
-Its action carries the continuation and optional new budget, with no source or
-steps. A result reference or presentation cursor cannot resume that work. If
-the semantic basis changed, rerun the sequence rather than reconstructing or
-replaying tokens.
+Use `resumeQuery` only with an issued `query-output:v1` continuation to present
+already-produced output. Its action carries that output token and an optional
+presentation budget, with no source or steps. Public RESUME cannot continue
+semantic execution; internal execution checkpoints, result references and row
+cursors are not output tokens. If the original evidence is stale or unavailable,
+report that blocker. A fresh semantic query requires a new explicit decision;
+never rerun it merely to recover delivery.
 
 ## Source and result details
 

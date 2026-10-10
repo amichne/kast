@@ -88,7 +88,7 @@ flowchart TB
   S{"Status and coverage"} -->|Complete| C["Conclude within declared scope"]
   S -->|Qualified| Q{"Reported progress"}
   S -->|Rejected| F["Follow recovery action"]
-  Q -->|Resumable| R["RESUME issued continuation"]
+  Q -->|Retained output| R["RESUME issued output token"]
   Q -->|Terminal| T["Keep facts and report limit"]
   class C evidence;
   class Q,T limited;
@@ -100,18 +100,18 @@ flowchart TB
   classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
 ```
 
-An empty page can advance filtered input. Follow issued `next_action`. A result limit does not guarantee a continuation.
+An empty retained page can advance evidence. Follow issued `next_action`; a requested budget increase needs a new decision. A result limit does not guarantee a usable output token. `retention_unavailable` preserves a useful prefix but means its remaining output could not be retained.
 
 | Operation | Advances | Handle |
 | --- | --- | --- |
-| `RESUME` | Saved execution | Execution continuation |
-| `READ_RESULT` | Presentation of stored rows | Result reference and optional cursor |
+| `RESUME` | Presentation of already-produced output | Issued `query-output:v1` token |
+| `READ_RESULT` | Presentation of stored rows and evidence | Result reference with independent row/evidence cursors |
 
-Reading every retained page leaves original coverage unchanged. `ALL_DECLARATIONS` saves unvisited files and its position within the active file.
+Reading every retained page leaves original coverage unchanged. Public RUN requires complete execution; public RESUME does not visit unexamined files or continue a semantic scan.
 
 Exact-name discovery collects candidates within work and byte allowances, independently of output row limits. Five admitted candidates can appear as pages of two, two, and one. Native discovery limits can still leave coverage incomplete.
 
-Replaying a published continuation returns the same page and successor without repeating the scan. Concurrent unfinished execution can report `continuation-in-use`.
+Replaying an issued output token returns stored output without semantic execution or renewed expiry. Stale or unavailable saved state remains a blocker.
 
 ## Carry the correct handle forward
 
@@ -120,7 +120,7 @@ Replaying a published continuation returns the same page and successor without r
 | Exact symbol `ref` | Fresh `SYMBOL_REFS` query with current identity checks. |
 | Retained-result reference | `RESULT`, composition, or `READ_RESULT`. |
 | Row ID | Select a row from its owning result. |
-| Execution continuation | `RESUME`. |
+| Issued output continuation | Output-only `RESUME`. |
 | Result cursor | Page stored rows. |
 
 Pass handles unchanged. Token spelling, names, and locations do not establish semantic identity. Row selection preserves evidence without proving coverage of excluded rows. Retention failure can prevent reuse without erasing returned facts.
@@ -147,13 +147,13 @@ Compact output preserves facts, coverage, limitations, references, continuation,
 
 ```mermaid
 flowchart TB
-  accTitle: Exact symbols and retained execution have different reuse rules
-  accDescr: Exact symbol references can undergo fresh compiler identity checks. Retained rows and continuations require their original workspace, host, read state, and lifetime. Invalid state requires a new query.
+  accTitle: Exact symbols and retained output have different reuse rules
+  accDescr: Exact symbol references can undergo fresh compiler identity checks. Retained rows and continuations require their original workspace, host, read state, and lifetime. Invalid state blocks delivery; a fresh query requires a new decision.
   H{"Handle to reuse"} -->|Exact symbol| E["Fresh compiler identity check"]
   H -->|Result or continuation| S["Check original workspace, host, epoch, lifetime"]
   S --> V{"Valid and available?"}
   V -->|Yes| R["Restore facts and qualifications"]
-  V -->|No| N["Reject; start fresh query"]
+  V -->|No| N["Report blocker; decide whether to query again"]
   class E,S authority;
   class R evidence;
   class N rejected;
