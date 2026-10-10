@@ -172,18 +172,58 @@ class InventoryPathKind(str, Enum):
 class InventoryDirectoryRole(str, Enum):
     ROOT = 'ROOT'
     BUILD_SCRIPT_OWNER = 'BUILD_SCRIPT_OWNER'
+    GENERATED_FIXTURE_PROJECT = 'GENERATED_FIXTURE_PROJECT'
     CONTENT = 'CONTENT'
 
 
 class SourceInventoryFailure(str, Enum):
     LINKED_ENTRY = 'SOURCE_INVENTORY_LINKED_ENTRY'
     DIRECTORY_UNAVAILABLE = 'SOURCE_INVENTORY_DIRECTORY_UNAVAILABLE'
+    FIXTURE_BUILD_OWNERSHIP_UNPROVEN = 'SOURCE_INVENTORY_FIXTURE_BUILD_OWNERSHIP_UNPROVEN'
+
+
+@dataclass(frozen=True)
+class InventoryBuildOwnership:
+    projects: frozenset[Path]
+
+
+def generated_fixture_settings(projects):
+    return ('rootProject.name = "kast-semantic-fixture"\ninclude(' +
+            ', '.join(json.dumps(':' + name) for name in projects) + ')\n')
+
+
+def inventory_build_ownership(directory):
+    """Only the harness's exact generated Gradle composition admits scriptless project roots."""
+    metadata = directory / 'fixture-parameters.json'
+    if not metadata.exists() and not metadata.is_symlink():
+        return InventoryBuildOwnership(frozenset())
+    failure = SourceInventoryFailure.FIXTURE_BUILD_OWNERSHIP_UNPROVEN.value
+    files = (metadata, directory / 'settings.gradle.kts', directory / 'build.gradle.kts')
+    if any(path.is_symlink() or not path.is_file() or path.stat().st_size > 65536 for path in files):
+        raise ValueError(failure)
+    try:
+        parameters = json.loads(metadata.read_text())
+        count = parameters.get('noiseModules') if isinstance(parameters, dict) else None
+        if (type(count) is not int or not 1 <= count <= 1500 or
+                type(parameters.get('gradleProjectCount')) is not int or parameters['gradleProjectCount'] != count + 3):
+            raise ValueError(failure)
+        projects = ('core', 'logging', *(f'noise{i}' for i in range(count)))
+        if (files[1].read_text() != generated_fixture_settings(projects) or
+                files[2].read_bytes() != (FIXTURE / 'build.gradle.kts').read_bytes()):
+            raise ValueError(failure)
+    except (OSError, UnicodeError, ValueError):
+        raise ValueError(failure) from None
+    roots = frozenset(directory / name for name in projects)
+    if any(path.is_symlink() or not path.is_dir() for path in roots):
+        raise ValueError(failure)
+    return InventoryBuildOwnership(roots)
 
 
 def inventory_child_kind(name, owner):
     if name in ('.gradle', '.idea', '.kotlin', '.git'):
         return InventoryPathKind.LOCAL_OUTPUT
-    if name == 'build' and owner in (InventoryDirectoryRole.ROOT, InventoryDirectoryRole.BUILD_SCRIPT_OWNER):
+    if name == 'build' and owner in (InventoryDirectoryRole.ROOT, InventoryDirectoryRole.BUILD_SCRIPT_OWNER,
+                                    InventoryDirectoryRole.GENERATED_FIXTURE_PROJECT):
         return InventoryPathKind.LOCAL_OUTPUT
     return InventoryPathKind.SOURCE
 
@@ -191,6 +231,7 @@ def inventory_child_kind(name, owner):
 def inventory(directory):
     """Prune outputs at their owning build boundary; source/package names carry no output proof."""
     directory = Path(directory)
+    ownership = inventory_build_ownership(directory)
     result = {}
     def rejected_walk(error):
         raise ValueError(SourceInventoryFailure.DIRECTORY_UNAVAILABLE.value) from None
@@ -198,6 +239,7 @@ def inventory(directory):
         parent = Path(parent)
         owner = (InventoryDirectoryRole.ROOT if parent == directory else
                  InventoryDirectoryRole.BUILD_SCRIPT_OWNER if {'build.gradle.kts', 'build.gradle'} & set(files) else
+                 InventoryDirectoryRole.GENERATED_FIXTURE_PROJECT if parent in ownership.projects else
                  InventoryDirectoryRole.CONTENT)
         children[:] = sorted(name for name in children
                              if inventory_child_kind(name, owner) == InventoryPathKind.SOURCE)
@@ -252,8 +294,7 @@ def setup(args):
     shutil.copytree(REPO / "gradle/wrapper", root / "gradle/wrapper")
     # A fixed selected package; only unrelated Gradle projects/declarations vary.
     noise = [f"noise{i}" for i in range(args.noise_modules)]
-    (root / "settings.gradle.kts").write_text('rootProject.name = "kast-semantic-fixture"\ninclude(' +
-        ", ".join(json.dumps(":" + name) for name in ["core", "logging", *noise]) + ")\n")
+    (root / "settings.gradle.kts").write_text(generated_fixture_settings(('core', 'logging', *noise)))
     for name in noise:
         (root / name).mkdir(exist_ok=True)
     folder = root / "noise0/src/main/kotlin/repro/noise"

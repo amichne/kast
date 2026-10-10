@@ -696,6 +696,57 @@ class SemanticComparisonTest(unittest.TestCase):
                 self.assertEqual({'build', 'build.gradle.kts'}, set(r.inventory(root)))
             self.assertEqual(expected, set(calls))
 
+    def setup_scriptless_fixture(self, root):
+        root = root.resolve(strict=True)
+        args = argparse.Namespace(fixture=root / 'fixture', output=root / 'setup', noise_modules=2,
+            noise_names=3, noise_kind='class', callee='kotlin', java_references=False, comparison_workloads=False)
+        def compile_fixture(command, cwd, stdin='', timeout=60):
+            self.assertEqual([args.fixture / 'gradlew', 'classes', 'testClasses'], command)
+            self.assertEqual(args.fixture, cwd)
+            self.assertEqual(600, timeout)
+            return dict(outcome='completed', exitCode=0)
+        with patch.object(r, 'capture', side_effect=compile_fixture) as compiler:
+            self.assertEqual(0, r.setup(args))
+            compiler.assert_called_once()
+        return args.fixture
+
+    def test_scriptless_generated_fixture_projects_prune_outputs_but_keep_build_package_sources(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.setup_scriptless_fixture(Path(tmp))
+            source = root / 'noise0/src/main/kotlin/repro/build/Tracked.kt'
+            source.parent.mkdir(parents=True)
+            source.write_text('package repro.build\nclass Tracked')
+            outputs = [root / f'noise{i}/build/classes/kotlin/main/Generated.class' for i in range(2)]
+            for output in outputs:
+                output.parent.mkdir(parents=True)
+                output.write_bytes(b'generated')
+            original_digest = r.digest
+            def source_digest(path):
+                self.assertNotIn(path, outputs, 'Generated project output reached source hashing')
+                return original_digest(path)
+            with patch.object(r, 'digest', side_effect=source_digest):
+                inventory = r.inventory(root)
+            self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(),
+                             inventory['noise0/src/main/kotlin/repro/build/Tracked.kt'])
+            self.assertTrue(all(str(output.relative_to(root)) not in inventory for output in outputs))
+            self.assertFalse((root / 'noise0/build.gradle.kts').exists(), 'The boundary remains scriptless')
+
+    def test_generated_fixture_build_ownership_requires_exact_metadata_and_gradle_sources(self):
+        for changed in ('settings', 'build-script', 'boolean-count', 'project-count'):
+            with self.subTest(changed=changed), tempfile.TemporaryDirectory() as tmp:
+                root = self.setup_scriptless_fixture(Path(tmp))
+                if changed in ('settings', 'build-script'):
+                    path = root / ('settings.gradle.kts' if changed == 'settings' else 'build.gradle.kts')
+                    path.write_text(path.read_text() + '\n// unqualified change\n')
+                else:
+                    path = root / 'fixture-parameters.json'
+                    parameters = json.loads(path.read_text())
+                    parameters['noiseModules' if changed == 'boolean-count' else 'gradleProjectCount'] = (
+                        True if changed == 'boolean-count' else 6)
+                    path.write_text(json.dumps(parameters))
+                with self.assertRaisesRegex(ValueError, 'SOURCE_INVENTORY_FIXTURE_BUILD_OWNERSHIP_UNPROVEN'):
+                    r.inventory(root)
+
     def test_linked_source_does_not_retain_regular_file_inventory_proof(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / 'source'
@@ -784,6 +835,7 @@ class SemanticComparisonTest(unittest.TestCase):
         self.assertEqual(0, seen[1]['request']['evidence_cursor'])
         self.assertEqual(original.request['request']['output'], seen[1]['request']['output'])
         self.assertEqual(original.request['request']['executionBudget'], seen[1]['request']['executionBudget'])
+
         self.assertEqual(pages[0]['retention']['reference'], seen[1]['request']['result'])
         trial = r.finish_trial('scoped-all', 0, False, calls, 400, 200, r.WorkloadProfile.KAST_SOURCE)
         self.assertIs(trial.type, r.TrialState.COMPLETE)
@@ -791,6 +843,89 @@ class SemanticComparisonTest(unittest.TestCase):
         self.assertEqual([row['row_id'] for page in pages for row in page['items']],
                          [row['row_id'] for row in trial.semantic['items']])
         self.assertNotIn(r.PresentationFailure.UNREAD.value, trial.unavailable)
+
+    def test_empty_initial_prefix_can_read_the_first_row_with_the_original_grant(self):
+        original, pages = self.retained_script()
+        rows = pages[0]['items'] + pages[1]['items']
+        pages[0]['items'] = []
+        pages[0]['next_cursor'] = 0
+        pages[0]['invocation'] = asdict(ScriptedInvocation(21, ScriptedPreview(0, 2), ScriptedStop()))
+        pages[1]['items'] = rows
+        calls, seen = self.run_retained_script(original, pages)
+        self.assertEqual(2, len(calls), 'Unconsumed scripted retained read')
+        self.assertEqual(0, seen[1]['request']['cursor'])
+        self.assertEqual(original.request['request']['executionBudget'], seen[1]['request']['executionBudget'])
+        self.assertIsInstance(r.presentation(calls), r.PresentationComplete)
+        trial = r.finish_trial('scoped-all', 0, False, calls, 400, 200, r.WorkloadProfile.KAST_SOURCE)
+        self.assertIs(trial.type, r.TrialState.COMPLETE)
+        self.assertEqual([row['row_id'] for row in rows], [row['row_id'] for row in trial.semantic['items']])
+
+    def test_empty_retained_read_cannot_repeat_the_initial_cursor_pair(self):
+        original, pages = self.retained_script()
+        pages[0]['items'] = []
+        pages[0]['next_cursor'] = 0
+        pages[0]['invocation'] = asdict(ScriptedInvocation(21, ScriptedPreview(0, 2), ScriptedStop()))
+        pages[1]['items'] = []
+        pages[1]['next_cursor'] = 0
+        calls, _ = self.run_retained_script(original, pages)
+        self.assertEqual(2, len(calls))
+        self.assertEqual(r.PresentationRejected(r.PresentationFailure.ROW_CURSOR), r.presentation(calls))
+
+    def test_empty_initial_window_without_a_prefix_proof_is_not_read(self):
+        original, pages = self.retained_script()
+        pages[0]['items'] = []
+        pages[0]['next_cursor'] = 0
+        pages[0].pop('invocation')
+        calls, _ = self.run_retained_script(original, pages, max_calls=1)
+        self.assertEqual(r.PresentationRejected(r.PresentationFailure.ROW_CURSOR), r.presentation(calls))
+
+    def test_empty_retained_read_can_advance_evidence_before_the_first_row(self):
+        original, pages = self.retained_script()
+        rows = pages[0]['items'] + pages[1]['items']
+        first, evidence = pages
+        first['items'] = []
+        first['next_cursor'] = 0
+        first['invocation'] = asdict(ScriptedInvocation(21, ScriptedPreview(0, 2), ScriptedStop()))
+        evidence['items'] = []
+        evidence['next_cursor'] = 0
+        # The first retained read must consume new evidence, not repeat the preview's cursor pair.
+        first['evidence_window'] = asdict(ScriptedEvidenceWindow('MORE', 0, 1, 2))
+        evidence['evidence_window'] = asdict(ScriptedEvidenceWindow('FINAL', 1, 2, 2))
+        final = copy.deepcopy(evidence)
+        final['items'] = rows
+        final['next_cursor'] = None
+        final['evidence_window'] = asdict(ScriptedEvidenceWindow('FINAL', 2, 2, 2))
+        calls, seen = self.run_retained_script(original, [first, evidence, final])
+        self.assertEqual(3, len(calls), 'Unconsumed scripted retained read')
+        self.assertEqual([0, 0], [request['request']['cursor'] for request in seen[1:]])
+        self.assertEqual([1, 2], [request['request']['evidence_cursor'] for request in seen[1:]])
+        self.assertIsInstance(r.presentation(calls), r.PresentationComplete)
+
+    def test_consistent_inline_preview_can_complete_without_unread_rows(self):
+        original, pages = self.retained_script()
+        first = pages[0]
+        first['items'] += pages[1]['items']
+        first['next_cursor'] = None
+        first['invocation'] = asdict(ScriptedInvocation(21,
+            ScriptedPreview(21, len(json.dumps(first['items']).encode()), 'INLINE'), ScriptedStop()))
+        calls, _ = self.run_retained_script(original, [first])
+        self.assertIsInstance(r.presentation(calls), r.PresentationComplete)
+
+    def test_preview_counts_and_inline_suffixes_reject_before_reading_or_admitting_completion(self):
+        for changed in ('inline-suffix', 'inline-count', 'preview-count', 'boolean-count', 'prefix-total'):
+            with self.subTest(changed=changed):
+                original, pages = self.retained_script()
+                preview = pages[0]['invocation']['preview']
+                if changed.startswith('inline'):
+                    preview['type'] = 'INLINE'
+                    if changed == 'inline-suffix': pages[0]['invocation']['accumulated_row_count'] = 20
+                    else: pages[0]['next_cursor'] = None
+                elif changed == 'preview-count': preview['row_count'] = 19
+                elif changed == 'boolean-count': preview['row_count'] = True
+                else: pages[0]['invocation']['accumulated_row_count'] = 20
+                calls, _ = self.run_retained_script(original, pages, max_calls=1)
+                self.assertEqual(1, len(calls))
+                self.assertEqual(r.PresentationRejected(r.PresentationFailure.ROW_COUNT), r.presentation(calls))
 
     def test_retained_preview_is_incomplete_at_call_capacity(self):
         original, pages = self.retained_script()
@@ -872,6 +1007,7 @@ class SemanticComparisonTest(unittest.TestCase):
                 original, pages = self.retained_script()
                 pages[0]['next_cursor'] = None
                 pages[0]['invocation']['preview']['type'] = 'INLINE'
+                pages[0]['invocation']['accumulated_row_count'] = len(pages[0]['items'])
                 selected = (pages[0]['invocation']['preview'] if field == 'preview'
                             else pages[0]['evidence_window'])
                 selected['type'] = 'UNKNOWN'

@@ -73,6 +73,18 @@ def presentation(calls):
         return PresentationRejected(PresentationFailure.ROW_COUNT)
     if preview is not None and preview.get('type') not in ('INLINE', 'PREFIX'):
         return PresentationRejected(PresentationFailure.ROW_COUNT)
+    declared_total = invocation.get('accumulated_row_count') if invocation is not None else None
+    if declared_total is not None and (type(declared_total) is not int or declared_total < 0):
+        return PresentationRejected(PresentationFailure.ROW_COUNT)
+    if preview is not None:
+        items, count = first.get('items'), preview.get('row_count')
+        if (not isinstance(items, list) or type(count) is not int or count != len(items) or
+                declared_total is None or not 0 <= count <= declared_total or
+                (preview['type'] == 'INLINE' and (count != declared_total or first.get('next_cursor') is not None)) or
+                (preview['type'] == 'PREFIX' and count == declared_total)):
+            return PresentationRejected(PresentationFailure.ROW_COUNT)
+        if preview['type'] == 'PREFIX' and (not cursor(first.get('next_cursor')) or first['next_cursor'] != count):
+            return PresentationRejected(PresentationFailure.ROW_CURSOR)
     if window is not None and window.get('type') not in ('FINAL', 'MORE'):
         return PresentationRejected(PresentationFailure.EVIDENCE)
     has_pages = (anchor < len(calls) - 1 or first.get('next_cursor') is not None or
@@ -96,9 +108,6 @@ def presentation(calls):
         return PresentationRejected(PresentationFailure.ROWS)
     row_offset = sum(map(len, prior_rows))
     evidence_offset, evidence_total, row_ids = 0, None, set()
-    declared_total = invocation.get('accumulated_row_count') if invocation is not None else None
-    if declared_total is not None and (type(declared_total) is not int or declared_total < 0):
-        return PresentationRejected(PresentationFailure.ROW_COUNT)
     for index in range(anchor, len(calls)):
         call, response = calls[index], calls[index].response
         if (call.process.get('outcome') != 'completed' or call.process.get('exitCode') != 0 or
@@ -131,7 +140,10 @@ def presentation(calls):
             row_ids.add(identity)
         row_offset += len(items)
         next_row = response.get('next_cursor')
-        if next_row is not None and (not cursor(next_row) or next_row != row_offset or not items):
+        if next_row is not None and (not cursor(next_row) or next_row != row_offset):
+            return PresentationRejected(PresentationFailure.ROW_CURSOR)
+        if (index == anchor and next_row is not None and not items and
+                (preview is None or preview.get('type') != 'PREFIX' or preview.get('row_count') != 0)):
             return PresentationRejected(PresentationFailure.ROW_CURSOR)
         window = response.get('evidence_window')
         if (not isinstance(window, dict) or set(window) != {'type', 'start', 'end', 'total'} or
@@ -143,6 +155,8 @@ def presentation(calls):
         more_evidence = window['type'] == 'MORE'
         if more_evidence and window['end'] == evidence_offset:
             return PresentationRejected(PresentationFailure.EVIDENCE)
+        if index > anchor and next_row is not None and not items and window['end'] == evidence_offset:
+            return PresentationRejected(PresentationFailure.ROW_CURSOR)
         evidence_offset, evidence_total = window['end'], window['total']
         if index < len(calls) - 1 and next_row is None and not more_evidence:
             return PresentationRejected(PresentationFailure.ROW_CURSOR)
