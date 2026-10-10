@@ -23,7 +23,7 @@ class HostedReadSdkPlanEncodingTest {
         }
         observation.finish(HostedDiagnosticOutcome.Completed)
         val document = Json.parseToJsonElement(receipts.single().encode()).jsonObject
-        assertEquals("12", document.getValue("schemaVersion").jsonPrimitive.content)
+        assertEquals("13", document.getValue("schemaVersion").jsonPrimitive.content)
         val counters = document.getValue("counters").jsonArray.map { it.jsonObject }
         for ((counter, expected) in
             listOf(

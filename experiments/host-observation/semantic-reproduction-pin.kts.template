@@ -1,7 +1,7 @@
 // Read-only evidence from the original process. No query, import, refresh, or cache mutation.
 enum class NativePinStage { HOST_ADMISSION, PLUGIN_ADMISSION, PROJECT_ADMISSION, CONFIGURATION_CAPTURE, ARTIFACT_CAPTURE, MODEL_CAPTURE, PUBLICATION }
 enum class NativePinFailure { PIN_CAPTURE_REJECTED }
-enum class NativeQualificationSlice { TRY_BRANCH_RESULTS, TRY_LOCAL_IDENTITIES, RELATION_WORK_REDUCTION }
+enum class NativeQualificationSlice { TRY_BRANCH_RESULTS, TRY_LOCAL_IDENTITIES, RELATION_WORK_REDUCTION, QUERY_CHECKPOINT_STORAGE }
 data class NativePinInput(val project: String, val hostPid: Long, val qualificationSlice: NativeQualificationSlice?)
 data class NativePinRejection(val type: NativePinFailure = NativePinFailure.PIN_CAPTURE_REJECTED, val stage: NativePinStage)
 data class NativeProfilePin(val type: String = "NATIVE_PROFILE_PATHS", val hostPid: Long, val processStart: String,
@@ -86,7 +86,7 @@ run {
     )
     val localClasses = when (qualificationSlice) {
         NativeQualificationSlice.TRY_BRANCH_RESULTS -> emptyList()
-        NativeQualificationSlice.RELATION_WORK_REDUCTION -> emptyList()
+        NativeQualificationSlice.RELATION_WORK_REDUCTION, NativeQualificationSlice.QUERY_CHECKPOINT_STORAGE -> emptyList()
         NativeQualificationSlice.TRY_LOCAL_IDENTITIES -> listOf(
         "io.github.amichne.kast.workspace.intellij.read.IntellijLocalIdentityObservationKt",
         "io.github.amichne.kast.symbol.intellij.IntellijLocalDeclarationAddressProjectionKt",
@@ -109,6 +109,7 @@ run {
     }
     val workClasses = when (qualificationSlice) {
         NativeQualificationSlice.TRY_BRANCH_RESULTS, NativeQualificationSlice.TRY_LOCAL_IDENTITIES -> emptyList()
+        NativeQualificationSlice.QUERY_CHECKPOINT_STORAGE -> emptyList()
         NativeQualificationSlice.RELATION_WORK_REDUCTION -> listOf(
             "io.github.amichne.kast.query.service.QueryTraceTasksKt",
             "io.github.amichne.kast.relation.intellij.AdmittedRelationScopes",
@@ -130,7 +131,25 @@ run {
             "io.github.amichne.kast.workspace.intellij.read.IntellijReadCall",
         )
     }
-    val classes = (commonClasses + branchClasses + localClasses + workClasses).associateWith { name ->
+    val checkpointClasses = when (qualificationSlice) {
+        NativeQualificationSlice.QUERY_CHECKPOINT_STORAGE -> listOf(
+            "io.github.amichne.kast.query.service.QueryService",
+            "io.github.amichne.kast.query.service.QueryService\$Execution",
+            "io.github.amichne.kast.query.service.QueryCheckpointStorageAdmissionKt",
+            "io.github.amichne.kast.query.service.PipelineCheckpoint",
+            "io.github.amichne.kast.query.service.PipelineCheckpointKt",
+            "io.github.amichne.kast.query.contract.QueryCheckpointStorageBytes",
+            "io.github.amichne.kast.query.contract.QueryCheckpointStorageEstimate",
+            "io.github.amichne.kast.query.contract.QueryCheckpointStorageAdmission",
+            "io.github.amichne.kast.query.contract.QueryCheckpointStorageOutcome",
+            "io.github.amichne.kast.runtime.hosted.HostedQueryCheckpointStorageObservationKt",
+            "io.github.amichne.kast.workspace.intellij.read.IntellijReadGauge",
+            "io.github.amichne.kast.workspace.intellij.read.IntellijReadGaugeKt",
+            "io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter",
+        )
+        else -> emptyList()
+    }
+    val classes = (commonClasses + branchClasses + localClasses + workClasses + checkpointClasses).associateWith { name ->
         val resource = loader.getResource(name.replace('.', '/') + ".class")!!
         mapOf("url" to resource.toString(), "sha256" to java.security.MessageDigest.getInstance("SHA-256")
             .digest(resource.openStream().use { it.readBytes() }).joinToString("") { "%02x".format(it) })
