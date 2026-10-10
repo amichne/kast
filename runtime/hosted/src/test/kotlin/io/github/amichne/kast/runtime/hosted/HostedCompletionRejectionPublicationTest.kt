@@ -71,6 +71,53 @@ import org.junit.jupiter.api.Test
 /** Real protocol/store/encoder publication; scripted semantic observations make no native claim. */
 class HostedCompletionRejectionPublicationTest {
     @Test
+    fun `diagnostic bytes shrink only the rejection preview and preserve its retained rows`() = runTest {
+        val case = Case()
+        val trace =
+            io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadTraceObservation.Observed(
+                io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadTraceIdentity.fromBoundary(
+                    java.util.UUID.fromString("33333333-3333-4333-8333-333333333333")
+                )
+            )
+        var maximum: ReturnedByteLimit? = null
+        val rejection = case.run { page ->
+            val limit =
+                maximum
+                    ?: ReturnedByteLimit.parse(
+                            encodeHostedQueryResponse(page).document.toByteArray(Charsets.UTF_8).size.toLong()
+                        )
+                        .refined()
+                        .also { maximum = it }
+            when (encodeHostedQueryResponse(page.withQueryDiagnosticIdentity(trace), maximumBytes = limit)) {
+                is HostedResponse.Canonical<*, *, *> ->
+                    io.github.amichne.kast.query.protocol.QueryInlinePresentation.FITS
+                is HostedResponse.Oversized ->
+                    io.github.amichne.kast.query.protocol.QueryInlinePresentation.RETENTION_REQUIRED
+                else -> error("Unexpected fixture encoding failure")
+            }
+        }
+        val decorated = rejection.withQueryDiagnosticIdentity(trace).publicationPage()
+        val completion = (decorated as OperationOutcome.Rejected).reason as QueryRunRejection.CompletionUnproven
+        assertEquals(0, (completion.evidence as QueryCompletionEvidenceDocument.Retained).preview.values.size)
+        var fitted: QueryPublicationPageCharge.Encoded? = null
+        val response =
+            encodeHostedQueryResponse(decorated, maximumBytes = checkNotNull(maximum), published = { fitted = it })
+        assertInstanceOf(HostedResponse.Canonical::class.java, response)
+        assertEquals(decorated, checkNotNull(fitted).page)
+        assertEquals(
+            QueryPublicationCommit.Committed,
+            case.store.commitPublication(case.claim, checkNotNull(fitted).page, fitted),
+        )
+        case.store.releasePublication(case.claim)
+        val retained = assertInstanceOf(OperationOutcome.Qualified::class.java, case.read(rejection))
+        assertEquals(
+            1,
+            (retained.evidence.payload as io.github.amichne.kast.protocol.contract.QueryRunResult).items.values.size,
+        )
+        assertEquals(1, case.executions)
+    }
+
+    @Test
     fun `encoded strict rejection commits its retained evidence and preserves the original reason`() = runTest {
         val case = Case()
         val rejection = case.run()
@@ -321,7 +368,12 @@ class HostedCompletionRejectionPublicationTest {
             )
         }
 
-        suspend fun run(): OperationOutcome.Rejected<QueryRunRejection> {
+        suspend fun run(
+            inlinePresentation: (QueryPublishedPage) -> io.github.amichne.kast.query.protocol.QueryInlinePresentation =
+                {
+                    io.github.amichne.kast.query.protocol.QueryInlinePresentation.FITS
+                }
+        ): OperationOutcome.Rejected<QueryRunRejection> {
             val result =
                 protocol.execute(
                     request,
@@ -333,6 +385,7 @@ class HostedCompletionRejectionPublicationTest {
                         QueryByteLimit.parse(128_000_000).refined(),
                         CanonicalQueryCliDocuments::previewBytes,
                         nanoTime = { 0L },
+                        inlinePresentation = inlinePresentation,
                     ),
                 )
             assertInstanceOf(OperationOutcome.Rejected::class.java, result)
