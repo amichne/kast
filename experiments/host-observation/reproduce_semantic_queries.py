@@ -93,6 +93,7 @@ RELATION_WORK_NATIVE_OWNERS = frozenset({
     'io.github.amichne.kast.relation.intellij.IntellijRelationScopeCompiler',
     'io.github.amichne.kast.relation.intellij.RelationModelScope',
     'io.github.amichne.kast.workspace.intellij.read.IntellijProjectSourceMembership',
+    'io.github.amichne.kast.workspace.intellij.read.NamedGradleSourceScope',
     'io.github.amichne.kast.relation.intellij.CompiledRelationScope',
     'io.github.amichne.kast.relation.intellij.RelationFileEnumerationPlan',
     'io.github.amichne.kast.relation.intellij.RelationFileInventory',
