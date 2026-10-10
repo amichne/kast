@@ -15,6 +15,8 @@ import subprocess
 import time
 
 from run_host_acceptance import wait_for
+from replay_requests import (WorkloadProfile, Workload, NEGATIVE_DECLARATION_NAME,
+    KAST_DIRECTORY, KAST_SCOPED_DIRECTORY, comparison_requests, budget as request_budget)
 from hosted_timing import (OBSERVATION_POLICY, ObservationWindow, JoinedTiming, UnavailableTiming,
     TimingFailure, collect_observations, read_observations, join_timing, load_window, release_observed)
 
@@ -822,7 +824,7 @@ class ReplayComparisonReport:
 
 
 # Fixed, identical grants for RUN and every RESUME. Never enlarge a grant during replay.
-COMPARISON_BUDGET = dict(maxElapsedMs=2000, maxWorkUnits=100000, maxResults=20, maxReturnedBytes=49152)
+COMPARISON_BUDGET = asdict(request_budget(WorkloadProfile.RELIABILITY_FIXTURE))
 MEASUREMENT_KEYS = {'publicCalls', 'encodedBytes', 'firstUsableNanos', 'totalNanos',
                     'counters', 'nativePages', 'nativePhaseDurations', 'stageDurations'}
 LOCATOR_RETAINED_COUNTER = 'REVALIDATION_LOCATORS_RETAINED/NONE'
@@ -830,44 +832,12 @@ LOCATOR_REJECTED_COUNTER = 'REVALIDATION_LOCATORS_REJECTED/NONE'
 LOCATOR_OUTCOME_COUNTERS = {LOCATOR_RETAINED_COUNTER, LOCATOR_REJECTED_COUNTER}
 
 
-class WorkloadProfile(str, Enum):
-    RELIABILITY_FIXTURE = 'RELIABILITY_FIXTURE'
-    KAST_SOURCE = 'KAST_SOURCE'
-
-
 KAST_PACKAGE = 'io.github.amichne.kast.query.contract'
-KAST_DIRECTORY = 'query/contract/src/main/kotlin'
-KAST_SCOPED_DIRECTORY = 'kernel/src/main/kotlin'
-
-
-def comparison_requests(profile=WorkloadProfile.RELIABILITY_FIXTURE):
-    if not isinstance(profile, WorkloadProfile): raise ValueError('UNSUPPORTED_WORKLOAD_PROFILE')
-    selected = dict(type='DIRECTORY', relativeDirectoryPath='logging/src/main/kotlin',
-                    includeSubdirectories=True, sourceSetNames=['main'])
-    if profile == WorkloadProfile.KAST_SOURCE:
-        selected['relativeDirectoryPath'] = KAST_DIRECTORY
-    def request(source, steps, output):
-        return dict(verbose=True, request=dict(type='RUN', source=source, steps=steps, output=output,
-                                               executionBudget=comparison_budget(profile)))
-    production = profile == WorkloadProfile.KAST_SOURCE
-    exact = dict(type='SEARCH_DECLARATIONS', declarationName='QueryPlanSyntax' if production else 'FixtureLogger', nameMatch='EXACT',
-                 declarationKinds=['CLASS'], scope=selected)
-    dense = dict(type='SEARCH_DECLARATIONS', declarationName='QueryStepSyntax' if production else 'DenseReferenceTarget', nameMatch='EXACT',
-                 declarationKinds=['CLASS'], scope=selected)
-    all_scope = {**selected, 'relativeDirectoryPath': KAST_SCOPED_DIRECTORY} if production else selected
-    return {
-        'exact-source': request(exact, [], dict(type='SYMBOLS', fields=[*FIELDS, 'SOURCE'])),
-        'dense-references': request(dense, [dict(type='EXPAND_RELATION', relation='REFERENCES')],
-                                    dict(type='OCCURRENCES')),
-        'scoped-all': request(dict(type='ALL_DECLARATIONS', declarationKinds=['FUNCTION'], scope=all_scope),
-                              [dict(type='WHERE', predicate=dict(type='VISIBILITY', values=['PUBLIC']))],
-                              dict(type='SYMBOLS', fields=FIELDS)),
-    }
 
 
 def comparison_budget(profile):
-    if not isinstance(profile, WorkloadProfile): raise ValueError('UNSUPPORTED_WORKLOAD_PROFILE')
-    return {**COMPARISON_BUDGET, 'maxElapsedMs': 10000} if profile == WorkloadProfile.KAST_SOURCE else dict(COMPARISON_BUDGET)
+    return asdict(request_budget(profile))
+
 
 def workload_profile(requests):
     for profile in WorkloadProfile:
@@ -1139,6 +1109,39 @@ def native_call_counts(receipt):
     return ObservedNativeCallCounts(totals)
 
 
+class ExactNegativeFailure(str, Enum):
+    UNAVAILABLE = 'EXACT_NEGATIVE_EVIDENCE_UNAVAILABLE'
+    NOT_COMPLETE = 'EXACT_NEGATIVE_NOT_COMPLETE'
+    NOT_EXHAUSTIVE = 'EXACT_NEGATIVE_NOT_EXHAUSTIVE'
+    RETURNED_ITEMS = 'EXACT_NEGATIVE_RETURNED_ITEMS'
+    FAILURES = 'EXACT_NEGATIVE_SEMANTIC_FAILURES'
+    OMISSIONS = 'EXACT_NEGATIVE_OMISSIONS'
+
+
+@dataclass(frozen=True)
+class CompleteExactNegative:
+    pass
+
+
+@dataclass(frozen=True)
+class RejectedExactNegative:
+    failure: ExactNegativeFailure
+
+
+def admit_exact_negative(items, terminal):
+    if (not isinstance(items, list) or not isinstance(terminal, dict) or
+        not isinstance(terminal.get('coverage'), dict) or
+        not isinstance(terminal.get('failures'), list) or not isinstance(terminal.get('omissions'), list)):
+        return RejectedExactNegative(ExactNegativeFailure.UNAVAILABLE)
+    if terminal.get('status') != 'complete': return RejectedExactNegative(ExactNegativeFailure.NOT_COMPLETE)
+    if terminal['coverage'].get('exhaustive') is not True:
+        return RejectedExactNegative(ExactNegativeFailure.NOT_EXHAUSTIVE)
+    if items: return RejectedExactNegative(ExactNegativeFailure.RETURNED_ITEMS)
+    if terminal['failures']: return RejectedExactNegative(ExactNegativeFailure.FAILURES)
+    if terminal['omissions']: return RejectedExactNegative(ExactNegativeFailure.OMISSIONS)
+    return CompleteExactNegative()
+
+
 def finish_trial(workload, repetition, warmup, calls, total_nanos, first_usable, profile=WorkloadProfile.RELIABILITY_FIXTURE):
     unavailable, responses = [], [c.response for c in calls if c.response is not None]
     semantic = None
@@ -1160,6 +1163,9 @@ def finish_trial(workload, repetition, warmup, calls, total_nanos, first_usable,
         except (KeyError, TypeError):
             unavailable.append('MISSING_SEMANTIC_FIELDS')
     if semantic is None: unavailable.append('SEMANTIC_EVIDENCE_UNAVAILABLE')
+    elif state == 'COMPLETE' and workload == Workload.EXACT_NEGATIVE:
+        admitted = admit_exact_negative(semantic['items'], semantic['terminal'])
+        if isinstance(admitted, RejectedExactNegative): unavailable.append(admitted.failure.value)
     elif state == 'COMPLETE' and profile == WorkloadProfile.KAST_SOURCE:
         unavailable.extend(kast_source_evidence(workload, semantic))
     elif state == 'COMPLETE':
@@ -1667,6 +1673,9 @@ def load_run(path):
 
 
 def usable_result(workload, response, profile=WorkloadProfile.RELIABILITY_FIXTURE):
+    if workload == Workload.EXACT_NEGATIVE:
+        if not isinstance(response, dict): return False
+        return isinstance(admit_exact_negative(response.get('items'), response), CompleteExactNegative)
     if not response or response.get('status') not in ('complete', 'qualified'): return False
     for item in response.get('items', []):
         if workload == 'exact-source':
@@ -1803,7 +1812,7 @@ def main():
         command.add_argument("--fixture", type=Path, required=True)
         command.add_argument("--cli", type=Path, required=True)
         command.add_argument("--output", type=Path, required=True)
-    workload = commands.add_parser("replay-workloads", help="Drain three pinned workloads through the installed public CLI")
+    workload = commands.add_parser("replay-workloads", help="Drain four pinned workloads through the installed public CLI")
     workload.add_argument("--pin", type=Path, required=True)
     workload.add_argument("--fixture", type=Path, required=True)
     workload.add_argument("--cli", type=Path, required=True)
