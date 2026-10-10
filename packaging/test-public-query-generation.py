@@ -35,6 +35,15 @@ class PublicQueryGenerationTest(unittest.TestCase):
             block = re.search(r"const TOOL_RPC_FAILURES = \[(.*?)\]", generated[ROOT / relative], re.DOTALL).group(1)
             self.assertEqual(expected, re.findall(r'"([A-Z_]+)"', block))
 
+    def test_portable_delivery_is_one_embedded_source_for_single_file_adapters(self):
+        owner = (ROOT / "cli/src/main/js/query-delivery.mjs").read_text().rstrip()
+        generated = generator.render_tools(self.authority)
+        for relative in ("copilot/extension.mjs", "pi/extension.ts"):
+            source = generated[ROOT / relative]
+            self.assertIn(owner, source)
+            self.assertEqual(1, source.count("async function awaitQueryDelivery("))
+            self.assertNotIn("from \"../", source)
+
     def test_word_discovery_is_a_closed_scoped_source(self):
         source = self.authority["$defs"]["TextSource"]
         self.assertEqual(["SEARCH_TEXT"], source["properties"]["type"]["enum"])

@@ -39,6 +39,7 @@ tasks.named<Test>("test") {
         .files(rootProject.file("copilot/extension.mjs"), rootProject.file("pi/extension.ts"))
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir("src/test/js").withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file("src/main/js/query-delivery.mjs").withPathSensitivity(PathSensitivity.RELATIVE)
     useJUnitPlatform {
         excludeTags("native")
     }

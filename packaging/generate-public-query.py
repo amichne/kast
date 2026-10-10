@@ -482,6 +482,15 @@ def render_tools(authority: dict) -> dict[Path, str]:
         )
         if count != 1:
             raise ValueError(f'{relative}: missing unique generated RPC failures')
+        delivery = (ROOT / 'cli/src/main/js/query-delivery.mjs').read_text().rstrip()
+        delivery_block = ('// Generated query delivery; owned by cli/src/main/js/query-delivery.mjs.\n' +
+                          delivery + '\n// End generated query delivery.')
+        source, count = re.subn(
+            r'// Generated query delivery; owned by cli/src/main/js/query-delivery\.mjs\.\n.*?// End generated query delivery\.',
+            lambda _: delivery_block, source, flags=re.DOTALL,
+        )
+        if count != 1:
+            raise ValueError(f'{relative}: missing unique generated query delivery')
         outputs[adapter] = source
     registrations = []
     responses = []
