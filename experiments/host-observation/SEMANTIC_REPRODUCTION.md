@@ -117,9 +117,13 @@ Older three-workload runs require recapture; the loader rejects that corpus.
 Use one immutable `git archive --format=tar` of a full local commit for both
 artifacts. Extract it into an owned directory, prepare its build conventions,
 then import it through the existing IDE workflow. The runner verifies the
-retained archive against that Git object and every fixture file. Git metadata,
-IDE metadata and generated `build`, `.gradle` and `.kotlin` files are excluded
-from source inventory. No source file can change between captures or comparison.
+retained archive against that Git object and every tracked input. The live
+inventory prunes Git/IDE metadata, caches and generated output at the owning
+build directory. It retains source modules, packages and configuration paths
+named `build`, including `topology/build`. The Git archive never drops tracked
+inputs. A tracked input hidden by a local-output rule rejects admission. Linked
+source entries also reject admission. No source file can change between captures
+or comparison.
 For this machine's clean snapshot, preparing `build-logic:compileKotlin` with
 `--no-build-cache --rerun-tasks` repaired incomplete Kotlin DSL accessors before
 IDE import; setup is outside workload timing.

@@ -161,9 +161,53 @@ def digest(path):
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
+class InventoryPathKind(str, Enum):
+    SOURCE = 'SOURCE'
+    LOCAL_OUTPUT = 'LOCAL_OUTPUT'
+
+
+class InventoryDirectoryRole(str, Enum):
+    ROOT = 'ROOT'
+    BUILD_SCRIPT_OWNER = 'BUILD_SCRIPT_OWNER'
+    CONTENT = 'CONTENT'
+
+
+class SourceInventoryFailure(str, Enum):
+    LINKED_ENTRY = 'SOURCE_INVENTORY_LINKED_ENTRY'
+    DIRECTORY_UNAVAILABLE = 'SOURCE_INVENTORY_DIRECTORY_UNAVAILABLE'
+
+
+def inventory_child_kind(name, owner):
+    if name in ('.gradle', '.idea', '.kotlin', '.git'):
+        return InventoryPathKind.LOCAL_OUTPUT
+    if name == 'build' and owner in (InventoryDirectoryRole.ROOT, InventoryDirectoryRole.BUILD_SCRIPT_OWNER):
+        return InventoryPathKind.LOCAL_OUTPUT
+    return InventoryPathKind.SOURCE
+
+
 def inventory(directory):
-    return {p.relative_to(directory).as_posix(): digest(p) for p in sorted(directory.rglob("*"))
-            if p.is_file() and not any(x in p.relative_to(directory).parts for x in ("build", ".gradle", ".idea", ".kotlin", ".git"))}
+    """Prune outputs at their owning build boundary; source/package names carry no output proof."""
+    directory = Path(directory)
+    result = {}
+    def rejected_walk(error):
+        raise ValueError(SourceInventoryFailure.DIRECTORY_UNAVAILABLE.value) from None
+    for parent, children, files in os.walk(directory, topdown=True, followlinks=False, onerror=rejected_walk):
+        parent = Path(parent)
+        owner = (InventoryDirectoryRole.ROOT if parent == directory else
+                 InventoryDirectoryRole.BUILD_SCRIPT_OWNER if {'build.gradle.kts', 'build.gradle'} & set(files) else
+                 InventoryDirectoryRole.CONTENT)
+        children[:] = sorted(name for name in children
+                             if inventory_child_kind(name, owner) == InventoryPathKind.SOURCE)
+        files = sorted(name for name in files
+                       if inventory_child_kind(name, InventoryDirectoryRole.CONTENT) == InventoryPathKind.SOURCE)
+        for name in (*children, *files):
+            if (parent / name).is_symlink():
+                raise ValueError(SourceInventoryFailure.LINKED_ENTRY.value)
+        for name in files:
+            path = parent / name
+            if path.is_file():
+                result[path.relative_to(directory).as_posix()] = digest(path)
+    return dict(sorted(result.items()))
 
 
 def fresh(path):
@@ -899,7 +943,9 @@ def archive_inventory(path):
             name = Path(member.name)
             if name.is_absolute() or '..' in name.parts or member.issym() or member.islnk():
                 raise ValueError('SOURCE_ARCHIVE_ENTRY_REJECTED')
-            if member.isfile() and not any(x in name.parts for x in ('build', '.gradle', '.idea', '.kotlin', '.git')):
+            # The retained Git archive owns the source inventory. Never apply local-output
+            # exclusions to tracked inputs; an unsupported live layout must reject admission.
+            if member.isfile():
                 if member.name in result: raise ValueError('SOURCE_ARCHIVE_DUPLICATE_ENTRY')
                 with archive.extractfile(member) as stream:
                     result[member.name] = hashlib.file_digest(stream, 'sha256').hexdigest()

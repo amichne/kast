@@ -543,7 +543,7 @@ class SemanticComparisonTest(unittest.TestCase):
                 self.assertEqual(-19, comparison.deltas['counters']['COMPILER_REFINEMENTS/NONE'])
                 self.assertFalse(comparison.lessWork)
 
-    def scripted_source_archive(self, root):
+    def scripted_source_archive(self, root, extra_sources=None):
         """Case-owned archive metadata only; this is not a native source provenance claim."""
         fixture = root / 'source'
         fixture.mkdir()
@@ -553,6 +553,7 @@ class SemanticComparisonTest(unittest.TestCase):
             'query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySteps.kt': 'class QueryStepSyntax',
             'query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QuerySource.kt': 'class ScriptedSource',
         }
+        sources.update(extra_sources or {})
         commit = '1234567890abcdef1234567890abcdef12345678'
         archive_path = root / 'source.tar'
         with tarfile.open(archive_path, 'w', format=tarfile.PAX_FORMAT, pax_headers={'comment': commit}) as archive:
@@ -607,6 +608,84 @@ class SemanticComparisonTest(unittest.TestCase):
                 with self.subTest(mutation=mutation), self.scripted_git_archive(
                         changed, commit, original_bytes, expected_calls), self.assertRaises(ValueError):
                     r.admit_kast_source_fixture(changed)
+
+    def test_topology_build_source_is_retained_while_nested_and_root_outputs_are_excluded(self):
+        source = 'topology/build/src/main/kotlin/proof/build/Graph.kt'
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture = self.scripted_source_archive(Path(tmp), {source: 'class Graph',
+                'topology/build/build.gradle.kts': 'plugins { kotlin("jvm") }',
+                'config/detekt/baselines/topology/build/baseline.xml': '<baseline />'})
+            for output in ('build/Generated.kt', 'topology/build/build/Generated.kt', '.idea/workspace.xml'):
+                path = Path(fixture['root']) / output
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text('local output')
+            self.assertIn(source, r.inventory(Path(fixture['root'])))
+            self.assertEqual(fixture['hashes'], r.inventory(Path(fixture['root'])))
+            original = Path(fixture['sourceArchive']['path']).read_bytes()
+            with self.scripted_git_archive(fixture, fixture['sourceArchive']['commit'], original):
+                r.admit_kast_source_fixture(fixture)
+            (Path(fixture['root']) / source).write_text('class ChangedGraph')
+            with self.scripted_git_archive(fixture, fixture['sourceArchive']['commit'], original), \
+                    self.assertRaisesRegex(ValueError, 'SOURCE_ARCHIVE_CONTENT_MISMATCH'):
+                r.admit_kast_source_fixture(fixture)
+
+    def test_tracked_build_source_cannot_be_omitted_or_accepted_as_local_output(self):
+        for source in ('topology/build/src/main/kotlin/proof/Graph.kt', 'build/Tracked.kt'):
+            with self.subTest(source=source), tempfile.TemporaryDirectory() as tmp:
+                fixture = self.scripted_source_archive(Path(tmp), {source: 'class Tracked'})
+                fixture['hashes'].pop(source)
+                original = Path(fixture['sourceArchive']['path']).read_bytes()
+                self.assertIn(source, r.archive_inventory(Path(fixture['sourceArchive']['path'])))
+                with self.scripted_git_archive(fixture, fixture['sourceArchive']['commit'], original), \
+                        self.assertRaisesRegex(ValueError, 'SOURCE_ARCHIVE_CONTENT_MISMATCH'):
+                    r.admit_kast_source_fixture(fixture)
+
+    def test_source_inventory_hashes_sources_once_without_visiting_pruned_outputs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / 'source'
+            root.mkdir()
+            script = root / 'build'
+            script.write_text('tracked build command')
+            output = root / 'build.gradle.kts'
+            output.write_text('build script marker')
+            cache = root / '.gradle' / 'unrelated.txt'
+            cache.parent.mkdir()
+            cache.write_text('excluded cache')
+            calls = []
+            expected = {script, output}
+            original_digest = r.digest
+            def source_digest(path):
+                self.assertIn(path, expected, 'A pruned output reached hashing')
+                self.assertNotIn(path, calls, 'Repeated source hashing')
+                calls.append(path)
+                return original_digest(path)
+            with patch.object(r, 'digest', side_effect=source_digest):
+                self.assertEqual({'build', 'build.gradle.kts'}, set(r.inventory(root)))
+            self.assertEqual(expected, set(calls))
+
+    def test_linked_source_does_not_retain_regular_file_inventory_proof(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / 'source'
+            root.mkdir()
+            linked = Path(tmp) / 'owned-copy'
+            linked.write_text('class SameBytes')
+            (root / 'Source.kt').symlink_to(linked)
+            with self.assertRaisesRegex(ValueError, r.SourceInventoryFailure.LINKED_ENTRY.value):
+                r.inventory(root)
+
+    def test_directory_read_rejection_retains_its_finite_condition(self):
+        calls = []
+        def denied_walk(root, *, topdown, followlinks, onerror):
+            self.assertEqual(Path('/case/source'), root)
+            self.assertIs(True, topdown)
+            self.assertIs(False, followlinks)
+            calls.append(root)
+            self.assertEqual(1, len(calls), 'Unexpected or excess filesystem walk')
+            onerror(PermissionError('unrecorded external detail'))
+        with patch.object(r.os, 'walk', side_effect=denied_walk), \
+                self.assertRaisesRegex(ValueError, r.SourceInventoryFailure.DIRECTORY_UNAVAILABLE.value):
+            r.inventory(Path('/case/source'))
+        self.assertEqual([Path('/case/source')], calls)
 
     def test_nonoriginal_archive_cannot_be_relabelled_representative(self):
         with tempfile.TemporaryDirectory() as tmp:
