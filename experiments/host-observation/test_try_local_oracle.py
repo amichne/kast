@@ -36,7 +36,8 @@ class TryLocalOracleTest(unittest.TestCase):
         text = (oracle.TEMPLATE.parent.parent.parent / 'semantic-reproduction-pin.kts.template').read_text()
         sections = {}
         for name, following in (('commonClasses', 'branchClasses'), ('branchClasses', 'localClasses'),
-                                ('localClasses', 'workClasses'), ('workClasses', 'classes')):
+                                ('localClasses', 'workClasses'), ('workClasses', 'checkpointClasses'),
+                                ('checkpointClasses', 'classes')):
             body = text.split('val ' + name + ' =', 1)[1].split('val ' + following + ' =', 1)[0]
             owners = re.findall(r'"(io\.github\.amichne\.kast\.[^"]+)"', body)
             sections[name] = {owner.replace('\\$', '$') for owner in owners}
@@ -45,6 +46,8 @@ class TryLocalOracleTest(unittest.TestCase):
         self.assertEqual(native.TRY_BRANCH_NATIVE_OWNERS, sections['branchClasses'])
         self.assertEqual(native.LOCAL_IDENTITY_NATIVE_OWNERS, sections['localClasses'])
         self.assertEqual(native.RELATION_WORK_NATIVE_OWNERS, sections['workClasses'])
+        self.assertEqual(native.CHECKPOINT_STORAGE_NATIVE_OWNERS, sections['checkpointClasses'])
+        self.assertFalse(sections['commonClasses'] & sections['checkpointClasses'])
         for extra in ('localClasses', 'workClasses'):
             groups = [sections[key] for key in ('commonClasses', 'branchClasses', extra)]
             self.assertEqual(sum(map(len, groups)), len(set().union(*groups)), extra + ': duplicate profile owner')
@@ -63,6 +66,17 @@ class TryLocalOracleTest(unittest.TestCase):
         for version in (6, 7, current - 1, current + 1, True, None):
             with self.subTest(version=version), self.assertRaisesRegex(ValueError, '^PUBLIC_CONTRACT_SLICE_MISMATCH$'):
                 native.admit_public_contract_slice(profile, version)
+
+    def test_checkpoint_profile_requires_actual_execution_accounting_and_observation_owners(self):
+        profile = native.QualificationSlice.QUERY_CHECKPOINT_STORAGE
+        owners = native.NATIVE_COMMON_OWNERS | native.CHECKPOINT_STORAGE_NATIVE_OWNERS
+        self.assertEqual(profile, native.admit_native_owner_profile(profile, owners))
+        native.admit_public_contract_slice(profile, 14)
+        self.assertIn('io.github.amichne.kast.query.service.QueryService$Execution', profile.changed_owners)
+        self.assertIn('io.github.amichne.kast.query.service.PipelineCheckpointKt', profile.changed_owners)
+        for owner in native.CHECKPOINT_STORAGE_NATIVE_OWNERS:
+            with self.subTest(owner=owner), self.assertRaisesRegex(ValueError, '^NATIVE_OWNER_SLICE_MISMATCH$'):
+                native.admit_native_owner_profile(profile, owners - {owner})
 
     def test_preserves_authored_cases_and_shadowing_exclusions(self):
         intent = oracle.load_oracle()

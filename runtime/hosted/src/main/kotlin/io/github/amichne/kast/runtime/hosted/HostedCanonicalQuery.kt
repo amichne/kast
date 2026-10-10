@@ -148,6 +148,7 @@ private fun hostedCanonicalQueryProtocol(
             traversalCeiling = services.budgets.hostedTraversalBudget,
             valueFlow = services.valueFlow,
             presentation = presentation,
+            checkpointObservation = hostedQueryCheckpointStorageObservation(context.observation),
         ),
         services.readReferences,
         continuations.queryState,

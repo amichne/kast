@@ -5,6 +5,22 @@ import kotlinx.serialization.Serializable
 
 /** Snapshots and high-water marks never accumulate like work counters. */
 enum class IntellijReadGauge {
+    /** Last checkpoint admission's unchanged conservative accounting; never measured heap or wire bytes. */
+    QUERY_CHECKPOINT_ALLOWANCE,
+    QUERY_CHECKPOINT_REQUIRED_BYTES,
+    QUERY_CHECKPOINT_TASK_BYTES,
+    QUERY_CHECKPOINT_IDENTITY_ROW_BYTES,
+    QUERY_CHECKPOINT_INPUT_BYTES,
+    QUERY_CHECKPOINT_IMPACT_BYTES,
+    QUERY_CHECKPOINT_JOIN_BYTES,
+    /** Latest rejected checkpoint snapshot survives subsequent successful checkpoint admissions. */
+    QUERY_CHECKPOINT_REJECTION_ALLOWANCE,
+    QUERY_CHECKPOINT_REJECTION_REQUIRED_BYTES,
+    QUERY_CHECKPOINT_REJECTION_TASK_BYTES,
+    QUERY_CHECKPOINT_REJECTION_IDENTITY_ROW_BYTES,
+    QUERY_CHECKPOINT_REJECTION_INPUT_BYTES,
+    QUERY_CHECKPOINT_REJECTION_IMPACT_BYTES,
+    QUERY_CHECKPOINT_REJECTION_JOIN_BYTES,
     QUERY_RETAINED_BYTES,
     QUERY_RETAINED_BYTES_HIGH_WATER,
     QUERY_RETAINED_ENTRIES,
@@ -54,6 +70,20 @@ internal fun IntellijReadGauge.merge(
     observed: IntellijReadGaugeValue,
 ): IntellijReadGaugeValue =
     when (this) {
+        IntellijReadGauge.QUERY_CHECKPOINT_ALLOWANCE,
+        IntellijReadGauge.QUERY_CHECKPOINT_REQUIRED_BYTES,
+        IntellijReadGauge.QUERY_CHECKPOINT_TASK_BYTES,
+        IntellijReadGauge.QUERY_CHECKPOINT_IDENTITY_ROW_BYTES,
+        IntellijReadGauge.QUERY_CHECKPOINT_INPUT_BYTES,
+        IntellijReadGauge.QUERY_CHECKPOINT_IMPACT_BYTES,
+        IntellijReadGauge.QUERY_CHECKPOINT_JOIN_BYTES,
+        IntellijReadGauge.QUERY_CHECKPOINT_REJECTION_ALLOWANCE,
+        IntellijReadGauge.QUERY_CHECKPOINT_REJECTION_REQUIRED_BYTES,
+        IntellijReadGauge.QUERY_CHECKPOINT_REJECTION_TASK_BYTES,
+        IntellijReadGauge.QUERY_CHECKPOINT_REJECTION_IDENTITY_ROW_BYTES,
+        IntellijReadGauge.QUERY_CHECKPOINT_REJECTION_INPUT_BYTES,
+        IntellijReadGauge.QUERY_CHECKPOINT_REJECTION_IMPACT_BYTES,
+        IntellijReadGauge.QUERY_CHECKPOINT_REJECTION_JOIN_BYTES,
         IntellijReadGauge.QUERY_RETAINED_BYTES,
         IntellijReadGauge.QUERY_RETAINED_ENTRIES,
         IntellijReadGauge.RELATION_INVENTORY_RETAINED_BYTES,

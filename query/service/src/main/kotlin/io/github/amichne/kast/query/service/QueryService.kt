@@ -3,6 +3,7 @@ package io.github.amichne.kast.query.service
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.contract.AdmittedQueryPlan
 import io.github.amichne.kast.query.contract.ExactQueryStage
+import io.github.amichne.kast.query.contract.QueryCheckpointStorageObservation
 import io.github.amichne.kast.query.contract.QueryCompositionInput
 import io.github.amichne.kast.query.contract.QueryContinuationState
 import io.github.amichne.kast.query.contract.QueryCount
@@ -41,6 +42,7 @@ class QueryService(
     private val clock: QueryNanoClock = SystemQueryNanoClock,
     private val valueFlow: ValueFlowCompilerPort = unavailableValueFlowPort,
     private val presentation: QueryPresentationExecution? = null,
+    private val checkpointObservation: QueryCheckpointStorageObservation = QueryCheckpointStorageObservation.None,
 ) : QueryOperations {
     private val stages = QueryReadStages(discovery, exact, source)
     private val traceMembers = QueryTraceMembers(source, stages)
@@ -372,10 +374,7 @@ class QueryService(
             if (reason != null) return QueryContinuationState.Terminal(reason)
             if (tasks.isEmpty()) return QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE)
             if (!progressed) return QueryContinuationState.Terminal(QueryTerminalReason.NO_PROGRESS)
-            val next = checkpoint(emittedCount)
-            return if (next.retainedBytes > request.budget.checkpointBytes.value)
-                QueryContinuationState.Terminal(QueryTerminalReason.CHECKPOINT_CAPACITY_EXCEEDED)
-            else QueryContinuationState.Resumable(next)
+            return checkpoint(emittedCount).admitContinuation(request.budget.checkpointBytes, checkpointObservation)
         }
 
         private fun checkpoint(emittedCount: QueryCount): PipelineCheckpoint =

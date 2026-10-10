@@ -108,10 +108,28 @@ RELATION_WORK_NATIVE_OWNERS = frozenset({
 })
 
 
+CHECKPOINT_STORAGE_NATIVE_OWNERS = frozenset({
+    'io.github.amichne.kast.query.service.QueryService',
+    'io.github.amichne.kast.query.service.QueryService$Execution',
+    'io.github.amichne.kast.query.service.QueryCheckpointStorageAdmissionKt',
+    'io.github.amichne.kast.query.service.PipelineCheckpoint',
+    'io.github.amichne.kast.query.service.PipelineCheckpointKt',
+    'io.github.amichne.kast.query.contract.QueryCheckpointStorageBytes',
+    'io.github.amichne.kast.query.contract.QueryCheckpointStorageEstimate',
+    'io.github.amichne.kast.query.contract.QueryCheckpointStorageAdmission',
+    'io.github.amichne.kast.query.contract.QueryCheckpointStorageOutcome',
+    'io.github.amichne.kast.runtime.hosted.HostedQueryCheckpointStorageObservationKt',
+    'io.github.amichne.kast.workspace.intellij.read.IntellijReadGauge',
+    'io.github.amichne.kast.workspace.intellij.read.IntellijReadGaugeKt',
+    'io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter',
+})
+
+
 class QualificationSlice(str, Enum):
     TRY_BRANCH_RESULTS = 'TRY_BRANCH_RESULTS'
     TRY_LOCAL_IDENTITIES = 'TRY_LOCAL_IDENTITIES'
     RELATION_WORK_REDUCTION = 'RELATION_WORK_REDUCTION'
+    QUERY_CHECKPOINT_STORAGE = 'QUERY_CHECKPOINT_STORAGE'
 
     @classmethod
     def admit(cls, value):
@@ -126,12 +144,14 @@ class QualificationSlice(str, Enum):
             self.TRY_BRANCH_RESULTS: TRY_BRANCH_NATIVE_OWNERS,
             self.TRY_LOCAL_IDENTITIES: TRY_LOCAL_NATIVE_OWNERS,
             self.RELATION_WORK_REDUCTION: TRY_BRANCH_NATIVE_OWNERS | RELATION_WORK_NATIVE_OWNERS,
+            self.QUERY_CHECKPOINT_STORAGE: CHECKPOINT_STORAGE_NATIVE_OWNERS,
         }[self]
 
     @property
     def public_contract_version(self):
         return {self.TRY_BRANCH_RESULTS: 6, self.TRY_LOCAL_IDENTITIES: 7,
-                self.RELATION_WORK_REDUCTION: 14}[self]
+                self.RELATION_WORK_REDUCTION: 14,
+                self.QUERY_CHECKPOINT_STORAGE: 14}[self]
 
 
 def admit_native_owner_profile(slice_, owners):

@@ -4,6 +4,8 @@ import io.github.amichne.kast.query.contract.AdmittedQueryPlan
 import io.github.amichne.kast.query.contract.ExactQueryStage
 import io.github.amichne.kast.query.contract.QueryArrivalEvidence
 import io.github.amichne.kast.query.contract.QueryCheckpointPartialSymbols
+import io.github.amichne.kast.query.contract.QueryCheckpointStorageBytes
+import io.github.amichne.kast.query.contract.QueryCheckpointStorageEstimate
 import io.github.amichne.kast.query.contract.QueryCompositionInput
 import io.github.amichne.kast.query.contract.QueryDeclarationKinds
 import io.github.amichne.kast.query.contract.QueryImpactRetainedGraph
@@ -49,24 +51,35 @@ internal data class PipelineCheckpoint(
     override val retainedBytes: Long
         get() = retainedBytes(QueryImpactRetainedGraph())
 
-    fun retainedBytes(graph: QueryImpactRetainedGraph): Long =
-        saturatedAdd(
-            (if (plan is AdmittedQueryPlan.Impact) tasks else initialTasks(plan) + tasks).fold(0L) { total, task ->
-                saturatedAdd(total, saturatedAdd(TASK_OVERHEAD_BYTES, task.retainedBytes(graph)))
-            },
-            saturatedAdd(
-                identityRows.values.fold(0L) { total, rows ->
-                    rows.values.fold(total) { size, row ->
-                        saturatedAdd(size, saturatedMultiply(row.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER))
+    fun retainedBytes(graph: QueryImpactRetainedGraph): Long = storageEstimate(graph).required.value
+
+    fun storageEstimate(graph: QueryImpactRetainedGraph = QueryImpactRetainedGraph()): QueryCheckpointStorageEstimate =
+        QueryCheckpointStorageEstimate(
+            tasks =
+                (if (plan is AdmittedQueryPlan.Impact) tasks else initialTasks(plan) + tasks)
+                    .fold(0L) { total, task ->
+                        saturatedAdd(total, saturatedAdd(TASK_OVERHEAD_BYTES, task.retainedBytes(graph)))
                     }
-                },
-                saturatedAdd(
-                    saturatedAdd(plan.retainedInputBytes(graph), impact?.retainedBytes(graph) ?: 0L),
-                    QueryJoins(joinState).retainedBytes(),
-                ),
-            ),
+                    .storageBytes(),
+            identityRows =
+                identityRows.values
+                    .fold(0L) { total, rows ->
+                        rows.values.fold(total) { size, row ->
+                            saturatedAdd(size, saturatedMultiply(row.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER))
+                        }
+                    }
+                    .storageBytes(),
+            inputs = plan.retainedInputBytes(graph).storageBytes(),
+            impact = (impact?.retainedBytes(graph) ?: 0L).storageBytes(),
+            joins = QueryJoins(joinState).retainedBytes().storageBytes(),
         )
 }
+
+private fun Long.storageBytes(): QueryCheckpointStorageBytes =
+    when (val parsed = QueryCheckpointStorageBytes.parse(this)) {
+        is io.github.amichne.kast.kernel.Refinement.Refined -> parsed.value
+        is io.github.amichne.kast.kernel.Refinement.Rejected -> error("Checkpoint accounting produced negative storage")
+    }
 
 private fun PipelineTask.retainedBytes(graph: QueryImpactRetainedGraph): Long =
     when (this) {
