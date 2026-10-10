@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass
 
 from pathlib import Path
 import hashlib
+import errno
 import io
 import json
 import os
@@ -13,6 +14,7 @@ import shutil
 import sys
 import tarfile
 import tempfile
+import threading
 import unittest
 import zipfile
 
@@ -223,18 +225,27 @@ esac
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertIn('options=install --stage-only', result.stderr)
 
-    def developer_curl(self, directory: str, assets: Path, pointer: str):
+    def developer_curl(self, directory: str, assets: Path, pointer: str | None, *, version: str = '0.0.123'):
         binary = Path(directory) / "bin/curl"
         binary.write_text(f"""#!/usr/bin/env python3
 from pathlib import Path
 import shutil
+import shlex
 import sys
 
 arguments = sys.argv[1:]
+with Path({str(Path(directory) / 'curl.calls')!r}).open('a') as log:
+    log.write(shlex.join(arguments) + '\\n')
 url = arguments[-1]
-if url == 'https://raw.githubusercontent.com/amichne/kast/developer-latest/latest.txt':
+if url == 'https://raw.githubusercontent.com/amichne/kast/main/install.sh':
+    sys.stdout.write(Path({str(INSTALLER)!r}).read_text())
+elif url == 'https://api.github.com/repos/amichne/kast/contents/latest.txt?ref=developer-latest':
+    if 'Accept: application/vnd.github.raw+json' not in arguments or 'Cache-Control: no-cache' not in arguments:
+        raise SystemExit('pointer request must select raw content and revalidate caches')
+    if {pointer is None!r}:
+        raise SystemExit(22)
     print({pointer!r})
-elif '/developer-v0.0.123/' in url and '--output' in arguments:
+elif {f'/developer-v{version}/'!r} in url and '--output' in arguments:
     name = url.rsplit('/', 1)[-1]
     shutil.copyfile(Path({str(assets)!r}) / name, arguments[arguments.index('--output') + 1])
 else:
@@ -926,12 +937,112 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
             source = "a" * 40
             environment.update(self.developer_curl(directory, assets, f"developer-v0.0.123 0.0.123 {source}"))
             result = subprocess.run(
-                ["bash", str(INSTALLER), "--developer-latest", "--idea-home", str(idea), "--dry-run"],
+                [str(BASH), "-c", INSTALLER.read_text(), "--", "--developer-latest", "--idea-home", str(idea), "--dry-run"],
                 cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
             )
+            transfers = [shlex.split(line) for line in (Path(directory) / 'curl.calls').read_text().splitlines()][1:]
+            self.assertEqual(6, len(transfers))
+            for arguments in transfers:
+                self.assertIn('--silent', arguments)
+                self.assertNotIn('--progress-bar', arguments)
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn(f"selected developer build 0.0.123 from {source}", result.stderr)
         self.assertIn("profile=persistent mode=plan", result.stderr)
+
+    def test_developer_downloads_show_progress_on_a_terminal(self):
+        with tempfile.TemporaryDirectory(prefix="kast-developer-progress-") as directory:
+            idea, assets, environment = self.installer_fixture(directory, version="0.0.123")
+            for key in ("KAST_VERSION", "KAST_INSTALL_ASSETS_DIRECTORY", "KAST_INSTALL_ROOT", "KAST_BIN_DIR"):
+                environment.pop(key)
+            environment.update(self.developer_curl(directory, assets, "developer-v0.0.123 0.0.123 " + "a" * 40))
+            master, slave = os.openpty()
+            chunks, failures = [], []
+            def drain_terminal():
+                try:
+                    while data := os.read(master, 4096):
+                        chunks.append(data)
+                except OSError as error:
+                    if error.errno != errno.EIO:
+                        failures.append(error)
+            reader = threading.Thread(target=drain_terminal)
+            reader.start()
+            try:
+                result = subprocess.run(
+                    [str(BASH), "-c", INSTALLER.read_text(), "--", "--developer-latest", "--idea-home", str(idea), "--dry-run"],
+                    cwd=ROOT, env=environment, text=True, stdout=subprocess.PIPE, stderr=slave, timeout=10,
+                )
+            finally:
+                os.close(slave)
+                reader.join(timeout=10)
+                os.close(master)
+            self.assertFalse(reader.is_alive())
+            self.assertEqual([], failures)
+            output = b''.join(chunks).decode()
+            self.assertEqual(0, result.returncode, output)
+            transfers = [shlex.split(line) for line in (Path(directory) / 'curl.calls').read_text().splitlines()][1:]
+            self.assertEqual(6, len(transfers))
+            for arguments in transfers:
+                self.assertIn('--progress-bar', arguments)
+                self.assertNotIn('--silent', arguments)
+
+    def test_public_curl_developer_selection_is_independent_of_local_checkout(self):
+        with tempfile.TemporaryDirectory(prefix="kast-developer-stale-checkout-") as directory:
+            idea, assets, environment = self.installer_fixture(directory, version="0.0.3336")
+            for key in ("KAST_VERSION", "KAST_INSTALL_ASSETS_DIRECTORY", "KAST_INSTALL_ROOT", "KAST_BIN_DIR"):
+                environment.pop(key)
+            checkout = Path(directory) / 'old-checkout'
+            checkout.mkdir()
+            (checkout / 'gradle.properties').write_text('version=0.0.3331\n')
+            (checkout / 'install.sh').write_text('exit 91\n')
+            source = 'b' * 40
+            environment.update(self.developer_curl(directory, assets,
+                f"developer-v0.0.3336 0.0.3336 {source}", version='0.0.3336'))
+            command = ('/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"'
+                       ' -- --developer-latest --dry-run --skip-codex-mcp --idea-home ' + shlex.quote(str(idea)))
+            result = subprocess.run([str(BASH), '-c', command], cwd=checkout, env=environment,
+                text=True, capture_output=True, timeout=10)
+            calls = [shlex.split(line) for line in (Path(directory) / 'curl.calls').read_text().splitlines()]
+            self.assertEqual(8, len(calls))
+            self.assertEqual('https://raw.githubusercontent.com/amichne/kast/main/install.sh', calls[0][-1])
+            self.assertEqual('https://api.github.com/repos/amichne/kast/contents/latest.txt?ref=developer-latest', calls[1][-1])
+            self.assertIn('Accept: application/vnd.github.raw+json', calls[1])
+            self.assertIn('Cache-Control: no-cache', calls[1])
+            for arguments in calls[2:]:
+                self.assertIn('/developer-v0.0.3336/', arguments[-1])
+            self.assertEqual('version=0.0.3331\n', (checkout / 'gradle.properties').read_text())
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn(f'selected developer build 0.0.3336 from {source}', result.stderr)
+        self.assertNotIn('0.0.3331', result.stderr)
+
+    def test_developer_latest_rejects_inherited_version_before_network_or_installation(self):
+        with tempfile.TemporaryDirectory(prefix="kast-developer-inherited-version-") as directory:
+            idea, assets, environment = self.installer_fixture(directory, version="0.0.3331")
+            environment.pop('KAST_INSTALL_ASSETS_DIRECTORY')
+            environment.update(self.developer_curl(directory, assets, 'developer-v0.0.3336 0.0.3336 ' + 'a' * 40))
+            result = subprocess.run([str(BASH), '-c', INSTALLER.read_text(), '--', '--developer-latest'],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10)
+            self.assertFalse((Path(directory) / 'curl.calls').exists())
+            self.assertFalse((Path(environment['HOME']) / '.local/share/kast').exists())
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn('--developer-latest cannot be combined with --version or KAST_VERSION', result.stderr)
+
+    def test_developer_latest_unavailable_pointer_stops_before_asset_downloads(self):
+        with tempfile.TemporaryDirectory(prefix="kast-developer-pointer-unavailable-") as directory:
+            idea, assets, environment = self.installer_fixture(directory, version="0.0.123")
+            for key in ("KAST_VERSION", "KAST_INSTALL_ASSETS_DIRECTORY", "KAST_INSTALL_ROOT", "KAST_BIN_DIR"):
+                environment.pop(key)
+            environment.update(self.developer_curl(directory, assets, None))
+            result = subprocess.run(
+                [str(BASH), "-c", INSTALLER.read_text(), "--", "--developer-latest", "--idea-home", str(idea), "--dry-run"],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+            )
+            self.assertEqual(1, len((Path(directory) / 'curl.calls').read_text().splitlines()))
+            self.assertFalse((Path(environment['HOME']) / '.local/share/kast').exists())
+            self.assertFalse((Path(environment['HOME']) / 'Library').exists())
+        self.assertEqual(1, result.returncode)
+        self.assertIn("developer-latest pointer is unavailable", result.stderr)
+        self.assertNotIn("version must be", result.stderr)
+        self.assertNotIn("downloading", result.stderr)
 
     def test_developer_latest_rejects_ambiguous_pointer(self):
         with tempfile.TemporaryDirectory(prefix="kast-developer-install-") as directory:
@@ -943,8 +1054,11 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
                 ["bash", str(INSTALLER), "--developer-latest", "--idea-home", str(idea), "--dry-run"],
                 cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
             )
+            self.assertEqual(1, len((Path(directory) / 'curl.calls').read_text().splitlines()))
         self.assertNotEqual(0, result.returncode)
         self.assertIn("developer-latest pointer is invalid", result.stderr)
+        self.assertNotIn("version must be", result.stderr)
+        self.assertNotIn("downloading", result.stderr)
 
     def test_codex_mcp_flags_are_mutually_exclusive_before_installation(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-mcp-choice-") as directory:

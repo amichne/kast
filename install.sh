@@ -326,7 +326,8 @@ resolve_developer_latest() {
   local pointer tag selected_version source_revision extra
   pointer="$(curl --fail --location --silent --show-error --max-filesize 256 \
     --retry "$INSTALL_DOWNLOAD_RETRIES" --retry-delay "$((INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS / 1000))" \
-    "https://raw.githubusercontent.com/$REPOSITORY/developer-latest/latest.txt")" ||
+    --header 'Accept: application/vnd.github.raw+json' --header 'Cache-Control: no-cache' \
+    "https://api.github.com/repos/$REPOSITORY/contents/latest.txt?ref=developer-latest")" ||
     fail "developer-latest pointer is unavailable"
   [[ "$pointer" != *$'\n'* ]] || fail "developer-latest pointer has multiple records"
   IFS=' ' read -r tag selected_version source_revision extra <<< "$pointer"
@@ -340,6 +341,7 @@ fetch_asset() {
   local name="$1"
   local destination="$2"
   local unavailable="${3:-}"
+  local transfer_display=(--silent)
   if [[ -n "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]]; then
     require_absolute_path "assets directory" "$KAST_INSTALL_ASSETS_DIRECTORY"
     if [[ ! -f "$KAST_INSTALL_ASSETS_DIRECTORY/$name" || -L "$KAST_INSTALL_ASSETS_DIRECTORY/$name" ]]; then
@@ -348,7 +350,8 @@ fetch_asset() {
     fi
     cp "$KAST_INSTALL_ASSETS_DIRECTORY/$name" "$destination"
   else
-    if ! curl --fail --location --silent --show-error \
+    if [[ -t 2 ]]; then transfer_display=(--progress-bar); fi
+    if ! curl --fail --location "${transfer_display[@]}" --show-error \
       --retry "$INSTALL_DOWNLOAD_RETRIES" --retry-delay "$((INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS / 1000))" \
       --output "$destination" "$release_url/$name"; then
       [[ -z "$unavailable" ]] || fail "$unavailable"
@@ -771,7 +774,8 @@ developer_source=""
 release=""
 if [[ "$developer_latest" == 1 ]]; then
   [[ -z "${KAST_RELEASE_BASE_URL:-}" ]] || fail "--developer-latest cannot override the public release URL"
-  IFS=$'\t' read -r release version developer_source < <(resolve_developer_latest)
+  developer_selection="$(resolve_developer_latest)"
+  IFS=$'\t' read -r release version developer_source <<< "$developer_selection"
   validate_version "$version"
   info "selected developer build $version from $developer_source"
 elif [[ -z "$version" || "$version" == latest ]]; then
