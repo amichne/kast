@@ -5,14 +5,20 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 internal object LoggingHostedEndpointObserver : HostedEndpointObserver {
+    private val json = Json { encodeDefaults = true }
+
+    override fun readIdentity(observation: HostedCorrelatedReadIdentity) {
+        Logger.getInstance(HostedEndpointService::class.java)
+            .info("kast_transport_read " + json.encodeToString(observation))
+    }
+
     override fun smartModeWait(observation: HostedCorrelatedSmartModeWait) {
         Logger.getInstance(HostedEndpointService::class.java)
-            .info("kast_smart_mode_wait " + Json { encodeDefaults = true }.encodeToString(observation))
+            .info("kast_smart_mode_wait " + json.encodeToString(observation))
     }
 
     override fun transport(observation: HostedTransportObservation) {
-        Logger.getInstance(HostedEndpointService::class.java)
-            .info("kast_transport " + Json { encodeDefaults = true }.encodeToString(observation))
+        Logger.getInstance(HostedEndpointService::class.java).info("kast_transport " + json.encodeToString(observation))
     }
 
     override fun observe(stage: HostedEndpointStage, outcome: HostedEndpointOutcome) {

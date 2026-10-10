@@ -46,6 +46,8 @@ internal fun interface HostedEndpointObserver {
 
     fun smartModeWait(observation: HostedCorrelatedSmartModeWait) = Unit
 
+    fun readIdentity(observation: HostedCorrelatedReadIdentity) = Unit
+
     fun responded(response: HostedResponse) {
         when (response) {
             is HostedResponse.Rejected -> rejected(HostedEndpointStage.REQUEST, response.failure)
@@ -318,6 +320,7 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                             executionBudget = request.executionBudget(),
                             publication = hostedReadPublicationAdmission,
                             completion = request.completionPolicy(),
+                            observeReadIdentity = trace::readIdentity,
                             replay =
                                 io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadReplayPolicy
                                     .SINGLE_EVALUATION,
