@@ -20,6 +20,17 @@ from test_hosted_timing import window as timing_window, READ
 
 
 class SemanticComparisonTest(unittest.TestCase):
+    def test_observation_capture_is_removed_once_from_subsequent_workload_wall_time(self):
+        from dataclasses import replace
+        first = replace(self.trial().calls[0], observationCaptureNanos=50)
+        second = replace(first, observationCaptureNanos=70)
+        self.assertEqual(200, r.workload_wall_nanos(200, []))
+        self.assertEqual(430, r.workload_wall_nanos(480, [first]))
+        self.assertEqual(610, r.workload_wall_nanos(730, [first, second]))
+        # Raw process/stage clocks remain unchanged; observation duration is its own quantity.
+        self.assertEqual(200, first.process['elapsedNanos'])
+        self.assertEqual(120, first.diagnostics[0]['stages'][0]['durationNanos'])
+
     def with_timing(self, trial):
         # Preserve the independently authored semantic fixture, then supply bounded observation records.
         from dataclasses import replace
@@ -51,6 +62,12 @@ class SemanticComparisonTest(unittest.TestCase):
             for version in (1, 2.0, True, 3):
                 path.write_text(json.dumps({**asdict(a), 'schemaVersion': version}))
                 with self.subTest(version=version), self.assertRaisesRegex(ValueError, 'INVALID_TRIAL_VERSION'):
+                    r.load_trial(path)
+            for duration in (-1, True, 1.5):
+                malformed = asdict(a)
+                malformed['calls'][0]['observationCaptureNanos'] = duration
+                path.write_text(json.dumps(malformed))
+                with self.subTest(duration=duration), self.assertRaisesRegex(ValueError, 'INVALID_OBSERVATION_CAPTURE_DURATION'):
                     r.load_trial(path)
 
     def test_missing_or_forged_correlation_cannot_manufacture_hosted_timing(self):

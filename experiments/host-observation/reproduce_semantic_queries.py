@@ -670,6 +670,12 @@ class ReplayCall:
     correlation: str
     hostedObservations: ObservationWindow = field(default_factory=lambda:
         ObservationWindow(failures=(TimingFailure.NOT_CAPTURED,)))
+    observationCaptureNanos: int = 0
+
+
+def workload_wall_nanos(elapsed_nanos, previous_calls):
+    """The supplied monotonic elapsed interval contains every previous capture interval exactly once."""
+    return elapsed_nanos - sum(call.observationCaptureNanos for call in previous_calls)
 
 
 @dataclass(frozen=True)
@@ -1325,6 +1331,8 @@ def load_trial(path, profile=WorkloadProfile.RELIABILITY_FIXTURE):
         if set(call) != {f.name for f in fields(ReplayCall)}: raise ValueError('INVALID_CALL_FIELDS')
         if call['correlation'] not in {'MATCHED', 'UNAVAILABLE', 'AMBIGUOUS', 'MISMATCHED'}:
             raise ValueError('INVALID_CORRELATION')
+        if type(call['observationCaptureNanos']) is not int or call['observationCaptureNanos'] < 0:
+            raise ValueError('INVALID_OBSERVATION_CAPTURE_DURATION')
         calls.append(ReplayCall(**{**call, 'hostedObservations': load_window(call['hostedObservations'])}))
     parsed = ReplayTrial(**{**value, 'type': TrialState(value['type']), 'calls': calls})
     derived = finish_trial(parsed.workload, parsed.repetition, parsed.warmup, calls,
@@ -1553,22 +1561,24 @@ def replay_workloads(args):
                     try: before = args.idea_log.stat() if args.idea_log else None
                     except OSError: before = None
                     process = session.call(request) if session else capture([cli, 'call', 'query_symbols'], root, json.dumps(request), args.timeout)
-                    completion_nanos = time.monotonic_ns() - started
+                    completion_nanos = workload_wall_nanos(time.monotonic_ns() - started, calls)
                     try:
                         envelope = json.loads(process['stdout'])
                         response = envelope.get('result', {}).get('structuredContent') if session else envelope.get('document') if envelope.get('type') in ('complete', 'qualified', 'rejected_document') else envelope if envelope.get('type') == 'rejected' else None
                         if not isinstance(response, dict): response = None
                     except (json.JSONDecodeError, AttributeError): response = None
+                    observation_started = time.monotonic_ns()
                     observations = (collect_observations(args.idea_log, before,
                         ready=lambda window: response_read_released(response, window)) if before else
                         ObservationWindow(failures=(TimingFailure.LOG_UNAVAILABLE,)))
+                    observation_capture_nanos = time.monotonic_ns() - observation_started
                     diagnostics, phases = list(observations.diagnostics), list(observations.phases)
                     correlated = correlate_diagnostic(response, diagnostics)
                     if isinstance(correlated, MatchedDiagnostic):
                         diagnostics, correlation = [correlated.document], 'MATCHED'
                     else: correlation = correlated.failure.value
                     call = ReplayCall(request['request']['type'], request, process, response, diagnostics, phases,
-                                      correlation, observations)
+                                      correlation, observations, observation_capture_nanos)
                     calls.append(call)
                     if first_usable is None and process['outcome'] == 'completed' and usable_result(workload, response, profile):
                         first_usable = completion_nanos
