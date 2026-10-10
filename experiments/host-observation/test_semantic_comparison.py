@@ -15,9 +15,73 @@ import unittest
 from unittest.mock import patch
 
 import reproduce_semantic_queries as r
+import hosted_timing as timing
+from test_hosted_timing import window as timing_window, READ
 
 
 class SemanticComparisonTest(unittest.TestCase):
+    def test_observation_capture_is_removed_once_from_subsequent_workload_wall_time(self):
+        from dataclasses import replace
+        first = replace(self.trial().calls[0], observationCaptureNanos=50)
+        second = replace(first, observationCaptureNanos=70)
+        self.assertEqual(200, r.workload_wall_nanos(200, []))
+        self.assertEqual(430, r.workload_wall_nanos(480, [first]))
+        self.assertEqual(610, r.workload_wall_nanos(730, [first, second]))
+        # Raw process/stage clocks remain unchanged; observation duration is its own quantity.
+        self.assertEqual(200, first.process['elapsedNanos'])
+        self.assertEqual(120, first.diagnostics[0]['stages'][0]['durationNanos'])
+
+    def with_timing(self, trial):
+        # Preserve the independently authored semantic fixture, then supply bounded observation records.
+        from dataclasses import replace
+        call = trial.calls[0]
+        diagnostic = {**call.diagnostics[0], 'readId': READ}
+        observation = replace(timing_window(), diagnostics=(diagnostic,))
+        changed = replace(call, diagnostics=[diagnostic], hostedObservations=observation)
+        return r.finish_trial(trial.workload, trial.repetition, trial.warmup, [changed],
+                              trial.measurements['totalNanos'], trial.measurements['firstUsableNanos'])
+
+    def test_full_hosted_timing_is_compared_separately_from_work_and_round_trips_actual_receipts(self):
+        from dataclasses import replace
+        a, b = self.with_timing(self.trial()), self.with_timing(self.trial(work=20))
+        call = b.calls[0]
+        faster = tuple(replace(record, elapsedNanos=record.elapsedNanos // 2)
+                       for record in call.hostedObservations.transport)
+        changed = replace(call, hostedObservations=replace(call.hostedObservations, transport=faster))
+        b = r.finish_trial('exact-source', 0, False, [changed], 240, 200)
+        result = r.compare_trials(a, b, same_artifact=False)
+        self.assertFalse(result.lessWork, 'Lower transport elapsed time does not prove less native work')
+        self.assertIsInstance(result.hostedTimings, r.JoinedTimingComparison)
+        self.assertEqual(130, result.hostedTimings.baseline[0].transport[5].elapsedNanos)
+        self.assertEqual(65, result.hostedTimings.candidate[0].transport[5].elapsedNanos)
+        self.assertEqual(a.calls[0].diagnostics[0], result.hostedTimings.baseline[0].reads[0].diagnostic)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'trial.json'
+            path.write_text(json.dumps(asdict(a)))
+            self.assertEqual(a, r.load_trial(path))
+            for version in (1, 2.0, True, 3):
+                path.write_text(json.dumps({**asdict(a), 'schemaVersion': version}))
+                with self.subTest(version=version), self.assertRaisesRegex(ValueError, 'INVALID_TRIAL_VERSION'):
+                    r.load_trial(path)
+            for duration in (-1, True, 1.5):
+                malformed = asdict(a)
+                malformed['calls'][0]['observationCaptureNanos'] = duration
+                path.write_text(json.dumps(malformed))
+                with self.subTest(duration=duration), self.assertRaisesRegex(ValueError, 'INVALID_OBSERVATION_CAPTURE_DURATION'):
+                    r.load_trial(path)
+
+    def test_missing_or_forged_correlation_cannot_manufacture_hosted_timing(self):
+        from dataclasses import replace
+        a = self.with_timing(self.trial())
+        call = a.calls[0]
+        duplicate = {**call.diagnostics[0], 'readId': '44444444-4444-4444-8444-444444444444'}
+        forged = replace(call, hostedObservations=replace(call.hostedObservations,
+                         diagnostics=(*call.hostedObservations.diagnostics, duplicate)))
+        self.assertIsInstance(r.call_timing(forged), timing.UnavailableTiming)
+        self.assertIn(timing.TimingFailure.SEMANTIC_CORRELATION_UNAVAILABLE, r.call_timing(forged).failures)
+        self.assertIsInstance(r.compare_trials(a, self.trial(), False).hostedTimings,
+                              r.UnavailableTimingComparison)
+
     def trial(self, token='exact:v5:first', work=20):
         item = dict(type='exact-symbol', ref=token, kind='classlike', name='FixtureLogger',
                     signature=dict(type='class-like', qualifiedIdentity='repro.logging.FixtureLogger'),
@@ -554,10 +618,11 @@ class SemanticComparisonTest(unittest.TestCase):
         phase = dict(phase='EXACT_REFINEMENT', outcome='COMPLETED', durationNanos=100)
         expected = [
             ('clock', (), 12.0),
-            ('observe', (path, before), ([], [phase])),
+            ('observe', (path, before), r.ObservationWindow(phases=(phase,))),
             ('clock', (), 12.01),
             ('pause', (0.01,), None),
-            ('observe', (path, before), ([receipt], [phase])),
+            ('observe', (path, before), r.ObservationWindow(diagnostics=(receipt,), phases=(phase,))),
+            ('clock', (), 12.25),
         ]
         def step(kind, *args):
             self.assertTrue(expected, 'Unexpected or excess observation capture callback')
@@ -565,23 +630,24 @@ class SemanticComparisonTest(unittest.TestCase):
             self.assertEqual((wanted, arguments), (kind, args))
             return result
         with patch.object(r, 'capture', side_effect=AssertionError('Observation capture reinvoked a query')) as query:
-            diagnostics, phases = r.collect_observations(path, before,
+            observations = r.collect_observations(path, before,
                 observe=lambda *args: step('observe', *args), clock=lambda: step('clock'),
                 pause=lambda *args: step('pause', *args))
             query.assert_not_called()
         self.assertEqual([], expected, 'Unconsumed observation capture callback')
-        self.assertEqual([receipt], diagnostics)
-        self.assertEqual([phase], phases)
+        self.assertEqual((receipt,), observations.diagnostics)
+        self.assertEqual((phase,), observations.phases)
+        self.assertIsInstance(r.join_timing(observations, receipt.get('readId')), r.UnavailableTiming)
 
     def test_diagnostic_capture_deadline_keeps_unavailable_measurements_and_phases(self):
         path, before = object(), object()
         phase = dict(phase='EXACT_REFINEMENT', outcome='COMPLETED', durationNanos=100)
         expected = [
             ('clock', (), 5.0),
-            ('observe', (path, before), ([], [phase])),
+            ('observe', (path, before), r.ObservationWindow(phases=(phase,))),
             ('clock', (), 5.01),
             ('pause', (0.01,), None),
-            ('observe', (path, before), ([], [phase])),
+            ('observe', (path, before), r.ObservationWindow(phases=(phase,))),
             ('clock', (), 5.25),
         ]
         def step(kind, *args):
@@ -590,17 +656,17 @@ class SemanticComparisonTest(unittest.TestCase):
             self.assertEqual((wanted, arguments), (kind, args))
             return result
         with patch.object(r, 'capture', side_effect=AssertionError('Observation capture reinvoked a query')) as query:
-            diagnostics, phases = r.collect_observations(path, before,
+            observations = r.collect_observations(path, before,
                 observe=lambda *args: step('observe', *args), clock=lambda: step('clock'),
                 pause=lambda *args: step('pause', *args))
             query.assert_not_called()
         self.assertEqual([], expected, 'Unconsumed observation capture callback')
-        self.assertEqual([], diagnostics)
-        self.assertEqual([phase], phases)
+        self.assertEqual((), observations.diagnostics)
+        self.assertEqual((phase,), observations.phases)
         template = self.trial()
         original = template.calls[0]
         call = r.ReplayCall(original.action, original.request, original.process, original.response,
-                            diagnostics, phases, 'UNAVAILABLE')
+                            list(observations.diagnostics), list(observations.phases), 'UNAVAILABLE', observations)
         observed = r.finish_trial('exact-source', 0, False, [call], 240, 200)
         self.assertIn('NATIVE_DIAGNOSTICS_UNAVAILABLE_OR_UNCORRELATED', observed.unavailable)
         for measurement in ('counters', 'nativePages', 'nativePhaseDurations', 'stageDurations'):

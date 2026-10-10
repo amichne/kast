@@ -3,7 +3,7 @@
 import argparse
 import base64
 from collections import Counter
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, field, replace
 from enum import Enum
 import hashlib
 import json
@@ -15,6 +15,8 @@ import subprocess
 import time
 
 from run_host_acceptance import wait_for
+from hosted_timing import (OBSERVATION_POLICY, ObservationWindow, JoinedTiming, UnavailableTiming,
+    TimingFailure, collect_observations, read_observations, join_timing, load_window, release_observed)
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
@@ -56,6 +58,13 @@ NATIVE_COMMON_OWNERS = frozenset({
     'io.github.amichne.kast.workspace.intellij.read.LiveNamedGradleSourceScopeCapture',
     'io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryExecutorKt',
     'io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadDiagnostics',
+    'io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService',
+    'io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadTraceIdentity',
+    'io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadDiagnosticEncodingKt',
+    'io.github.amichne.kast.runtime.hosted.HostedEndpointService',
+    'io.github.amichne.kast.runtime.hosted.HostedTransportTrace',
+    'io.github.amichne.kast.runtime.hosted.LoggingHostedEndpointObserver',
+    'io.github.amichne.kast.runtime.hosted.HostedSmartModeWaitKt',
     'io.github.amichne.kast.runtime.hosted.HostedCanonicalQueryKt',
     'io.github.amichne.kast.symbol.intellij.IntellijNativeDiscoveryQueryKt',
     'io.github.amichne.kast.relation.intellij.IntellijK2RelationSearch',
@@ -558,13 +567,11 @@ def replay(args):
         write(directory / "process.json", result)
         diagnostics = []
         if args.idea_log:
-            log_after = args.idea_log.stat()
-            if log_after.st_ino == log_before.st_ino and 0 <= log_after.st_size - log_before.st_size <= 2 * 1024 * 1024:
-                diagnostics, phases = read_observations(args.idea_log, log_before)
-                write(directory / "native-diagnostics.json", diagnostics)
-                write(directory / "native-phases.json", phases)
-            else:
-                write(directory / "native-diagnostics-gap.json", dict(reason="LOG_ROTATED_OR_BOUND_EXCEEDED"))
+            observations = collect_observations(args.idea_log, log_before)
+            diagnostics, phases = list(observations.diagnostics), list(observations.phases)
+            write(directory / "native-diagnostics.json", diagnostics)
+            write(directory / "native-phases.json", phases)
+            write(directory / "hosted-observations.json", asdict(observations))
         try:
             response = json.loads(document) if document else None
         except json.JSONDecodeError:
@@ -661,6 +668,85 @@ class ReplayCall:
     diagnostics: list
     phases: list
     correlation: str
+    hostedObservations: ObservationWindow = field(default_factory=lambda:
+        ObservationWindow(failures=(TimingFailure.NOT_CAPTURED,)))
+    observationCaptureNanos: int = 0
+
+
+def workload_wall_nanos(elapsed_nanos, previous_calls):
+    """The supplied monotonic elapsed interval contains every previous capture interval exactly once."""
+    return elapsed_nanos - sum(call.observationCaptureNanos for call in previous_calls)
+
+
+@dataclass(frozen=True)
+class JoinedTimingComparison:
+    baseline: tuple[JoinedTiming, ...]
+    candidate: tuple[JoinedTiming, ...]
+    type: str = field(default='JOINED', init=False)
+
+
+@dataclass(frozen=True)
+class UnavailableTimingComparison:
+    baseline: tuple[JoinedTiming | UnavailableTiming, ...] = ()
+    candidate: tuple[JoinedTiming | UnavailableTiming, ...] = ()
+    type: str = field(default='UNAVAILABLE', init=False)
+
+
+class DiagnosticCorrelationFailure(str, Enum):
+    UNAVAILABLE = 'UNAVAILABLE'
+    AMBIGUOUS = 'AMBIGUOUS'
+    MISMATCHED = 'MISMATCHED'
+
+
+@dataclass(frozen=True)
+class MatchedDiagnostic:
+    document: dict
+
+
+@dataclass(frozen=True)
+class RejectedDiagnosticCorrelation:
+    failure: DiagnosticCorrelationFailure
+
+
+def correlate_diagnostic(response, diagnostics):
+    basis = response.get('live') if isinstance(response, dict) else None
+    if (not diagnostics or not isinstance(basis, dict) or not isinstance(basis.get('host'), str) or
+        type(basis.get('epoch')) is not int):
+        return RejectedDiagnosticCorrelation(DiagnosticCorrelationFailure.UNAVAILABLE)
+    matching = []
+    for doc in diagnostics:
+        bound = doc.get('correlation')
+        if (isinstance(bound, dict) and bound.get('type') == 'bound' and
+            isinstance(doc.get('readId'), str) and bound.get('host') == basis['host'] and
+            type(bound.get('epoch')) is int and bound['epoch'] == basis['epoch']): matching.append(doc)
+    if len(matching) == 1: return MatchedDiagnostic(matching[0])
+    return RejectedDiagnosticCorrelation(DiagnosticCorrelationFailure.AMBIGUOUS if matching else
+                                         DiagnosticCorrelationFailure.MISMATCHED)
+
+
+def response_read_released(response, window):
+    correlated = correlate_diagnostic(response, window.diagnostics)
+    return isinstance(correlated, MatchedDiagnostic) and release_observed(window, {correlated.document.get('readId')})
+
+
+def call_timing(call):
+    observations = call.hostedObservations
+    if observations.failures:
+        return UnavailableTiming(observations.failures, observations.joins, observations.transport,
+                                 observations.smartModeWaits)
+    correlated = correlate_diagnostic(call.response, observations.diagnostics)
+    if (call.correlation != 'MATCHED' or len(call.diagnostics) != 1 or
+        not isinstance(correlated, MatchedDiagnostic) or correlated.document != call.diagnostics[0]):
+        return UnavailableTiming((TimingFailure.SEMANTIC_CORRELATION_UNAVAILABLE,),
+            call.hostedObservations.joins, call.hostedObservations.transport, call.hostedObservations.smartModeWaits)
+    return join_timing(call.hostedObservations, call.diagnostics[0].get('readId'))
+
+
+def compare_hosted_timings(baseline, candidate):
+    a, b = tuple(call_timing(call) for call in baseline), tuple(call_timing(call) for call in candidate)
+    if a and b and all(isinstance(result, JoinedTiming) for result in (*a, *b)):
+        return JoinedTimingComparison(a, b)
+    return UnavailableTimingComparison(a, b)
 
 
 class TrialState(str, Enum):
@@ -688,6 +774,7 @@ class ReplayTrial:
     semantic: dict | None
     measurements: dict
     unavailable: list[str]
+    schemaVersion: int = 2
 
 
 @dataclass(frozen=True)
@@ -696,6 +783,7 @@ class TrialComparison:
     lessWork: bool
     deltas: dict
     unavailable: list[str]
+    hostedTimings: JoinedTimingComparison | UnavailableTimingComparison = field(default_factory=UnavailableTimingComparison)
 
 
 @dataclass(frozen=True)
@@ -1207,7 +1295,8 @@ def compare_trials(baseline, candidate, same_artifact):
     counters = deltas.get('counters')
     less_work = (state == 'EQUIVALENT' and not same_artifact and work_does_not_increase(counters) and
                  any(x < 0 for x in work_counter_deltas(counters).values()))
-    return TrialComparison(ComparisonState(state), less_work, deltas, sorted(set(missing)))
+    return TrialComparison(ComparisonState(state), less_work, deltas, sorted(set(missing)),
+                           compare_hosted_timings(baseline.calls, candidate.calls))
 
 
 def load_trial(path, profile=WorkloadProfile.RELIABILITY_FIXTURE):
@@ -1215,6 +1304,8 @@ def load_trial(path, profile=WorkloadProfile.RELIABILITY_FIXTURE):
     from dataclasses import fields
     value = json.loads(path.read_text())
     if set(value) != {f.name for f in fields(ReplayTrial)}: raise ValueError('INVALID_TRIAL_FIELDS')
+    if type(value['schemaVersion']) is not int or value['schemaVersion'] != 2:
+        raise ValueError('INVALID_TRIAL_VERSION')
     if value['type'] not in {'COMPLETE', 'REJECTED', 'INCOMPLETE', 'CANCELED', 'UNAVAILABLE'}:
         raise ValueError('INVALID_TRIAL_TYPE')
     if value['workload'] not in comparison_requests(): raise ValueError('INVALID_WORKLOAD')
@@ -1240,58 +1331,15 @@ def load_trial(path, profile=WorkloadProfile.RELIABILITY_FIXTURE):
         if set(call) != {f.name for f in fields(ReplayCall)}: raise ValueError('INVALID_CALL_FIELDS')
         if call['correlation'] not in {'MATCHED', 'UNAVAILABLE', 'AMBIGUOUS', 'MISMATCHED'}:
             raise ValueError('INVALID_CORRELATION')
-        calls.append(ReplayCall(**call))
+        if type(call['observationCaptureNanos']) is not int or call['observationCaptureNanos'] < 0:
+            raise ValueError('INVALID_OBSERVATION_CAPTURE_DURATION')
+        calls.append(ReplayCall(**{**call, 'hostedObservations': load_window(call['hostedObservations'])}))
     parsed = ReplayTrial(**{**value, 'type': TrialState(value['type']), 'calls': calls})
     derived = finish_trial(parsed.workload, parsed.repetition, parsed.warmup, calls,
                            parsed.measurements['totalNanos'], parsed.measurements['firstUsableNanos'], profile)
     if parsed != derived: raise ValueError('RECEIPT_DERIVATION_MISMATCH')
     return parsed
 
-
-def read_observations(path, before):
-    diagnostics, phases = [], []
-    after = path.stat()
-    if after.st_ino == before.st_ino:
-        windows = [(path, before.st_size, after.st_size - before.st_size, after.st_ino)]
-    else:
-        # IDEA's immediate rollover name is fixed. Only the exact inode observed
-        # before this invocation can supply the tail; never search older logs.
-        previous = path.with_name(path.stem + '.1' + path.suffix)
-        if previous.is_symlink() or not previous.is_file(): return diagnostics, phases
-        rolled = previous.stat()
-        if rolled.st_ino != before.st_ino: return diagnostics, phases
-        windows = [(previous, before.st_size, rolled.st_size - before.st_size, rolled.st_ino),
-                   (path, 0, after.st_size, after.st_ino)]
-    lengths = [length for _, _, length, _ in windows]
-    if any(length < 0 for length in lengths) or sum(lengths) > OBSERVATION_POLICY['maxAppendedBytes']:
-        return diagnostics, phases
-    chunks = []
-    for observed_path, offset, length, inode in windows:
-        with observed_path.open('rb') as stream:
-            opened = os.fstat(stream.fileno())
-            if opened.st_ino != inode or opened.st_size < offset + length: return [], []
-            stream.seek(offset)
-            chunk = stream.read(length)
-            if len(chunk) != length: return [], []
-            chunks.append(chunk)
-    for line in b''.join(chunks).splitlines():
-        for marker, target in ((b'kast_semantic_read ', diagnostics), (b'kast_semantic_phase ', phases)):
-            if marker in line:
-                try: target.append(json.loads(line.split(marker, 1)[1]))
-                except json.JSONDecodeError: pass  # A malformed receipt leaves correlation unavailable.
-    return diagnostics, phases
-
-
-
-OBSERVATION_POLICY = dict(maxWaitMillis=250, maxAppendedBytes=2 * 1024 * 1024, maxRotations=1)
-
-
-def collect_observations(path, before, observe=read_observations, clock=time.monotonic, pause=time.sleep):
-    deadline = clock() + OBSERVATION_POLICY['maxWaitMillis'] / 1000
-    while True:
-        diagnostics, phases = observe(path, before)
-        if diagnostics or clock() >= deadline: return diagnostics, phases
-        pause(0.01)
 
 def artifact_identity(pinned):
     return dict(executable=pinned['cli']['sha256'], cliJars=sorted(pinned['cli']['jars'].values()),
@@ -1513,22 +1561,24 @@ def replay_workloads(args):
                     try: before = args.idea_log.stat() if args.idea_log else None
                     except OSError: before = None
                     process = session.call(request) if session else capture([cli, 'call', 'query_symbols'], root, json.dumps(request), args.timeout)
-                    completion_nanos = time.monotonic_ns() - started
-                    try:
-                        diagnostics, phases = collect_observations(args.idea_log, before) if before else ([], [])
-                    except OSError:
-                        diagnostics, phases = [], []
+                    completion_nanos = workload_wall_nanos(time.monotonic_ns() - started, calls)
                     try:
                         envelope = json.loads(process['stdout'])
                         response = envelope.get('result', {}).get('structuredContent') if session else envelope.get('document') if envelope.get('type') in ('complete', 'qualified', 'rejected_document') else envelope if envelope.get('type') == 'rejected' else None
                         if not isinstance(response, dict): response = None
                     except (json.JSONDecodeError, AttributeError): response = None
-                    correlation = 'UNAVAILABLE' if not diagnostics else 'AMBIGUOUS'
-                    if len(diagnostics) == 1 and response and response.get('live'):
-                        basis = response['live']
-                        bound = diagnostics[0].get('correlation', {})
-                        correlation = 'MATCHED' if bound.get('host') == basis['host'] and bound.get('epoch') == basis['epoch'] else 'MISMATCHED'
-                    call = ReplayCall(request['request']['type'], request, process, response, diagnostics, phases, correlation)
+                    observation_started = time.monotonic_ns()
+                    observations = (collect_observations(args.idea_log, before,
+                        ready=lambda window: response_read_released(response, window)) if before else
+                        ObservationWindow(failures=(TimingFailure.LOG_UNAVAILABLE,)))
+                    observation_capture_nanos = time.monotonic_ns() - observation_started
+                    diagnostics, phases = list(observations.diagnostics), list(observations.phases)
+                    correlated = correlate_diagnostic(response, diagnostics)
+                    if isinstance(correlated, MatchedDiagnostic):
+                        diagnostics, correlation = [correlated.document], 'MATCHED'
+                    else: correlation = correlated.failure.value
+                    call = ReplayCall(request['request']['type'], request, process, response, diagnostics, phases,
+                                      correlation, observations, observation_capture_nanos)
                     calls.append(call)
                     if first_usable is None and process['outcome'] == 'completed' and usable_result(workload, response, profile):
                         first_usable = completion_nanos
@@ -1536,6 +1586,8 @@ def replay_workloads(args):
                     write(call_dir / 'process.json', process)
                     write(call_dir / 'native-diagnostics.json', diagnostics)
                     write(call_dir / 'native-phases.json', phases)
+                    write(call_dir / 'hosted-observations.json', asdict(observations))
+                    write(call_dir / 'hosted-timing.json', asdict(call_timing(call)))
                     if response is not None: write(call_dir / 'response.json', response)
                     # Persist after every call, including interrupted and incomplete executions.
                     trial = finish_trial(workload, repetition, warmup, calls, completion_nanos, first_usable, profile)
@@ -1743,7 +1795,7 @@ def main():
     play.add_argument("--pin", type=Path, required=True)
     play.add_argument("--surface", choices=("cli", "provider"), required=True)
     play.add_argument("--repeats", type=int, choices=range(1, 6), default=2)
-    play.add_argument("--idea-log", type=Path, help="Collect only bounded appended kast_semantic_read records")
+    play.add_argument("--idea-log", type=Path, help="Collect bounded appended semantic and correlated hosted timing records")
     play.add_argument("--cases", help="Optional comma-separated case-name prefixes for causal experiments")
     play.add_argument("--verify-corrections", action="store_true", help="Require complete, independently expected results for the demonstrated fix cases")
     play.set_defaults(run=replay)
