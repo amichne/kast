@@ -1,9 +1,7 @@
 package io.github.amichne.kast.topology.intellij
 
-import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.psi.PsiDocumentManager
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
@@ -19,11 +17,22 @@ internal fun captureRejected(cause: SemanticDependencyCaptureFailure) = Refineme
 
 /** File observations and memoized hashes live only inside one native read attempt. */
 internal class SemanticNativeFiles(
-    private val project: Project,
     private val limits: ReadLimits,
     private val budget: DependencyCaptureBudget,
     private val memo: SemanticNativeFileMemo = SemanticNativeFileMemo(),
+    private val documents: SemanticNativeDocumentPort,
 ) {
+    constructor(
+        project: Project,
+        limits: ReadLimits,
+        budget: DependencyCaptureBudget,
+        memo: SemanticNativeFileMemo = SemanticNativeFileMemo(),
+    ) : this(limits, budget, memo, SemanticNativeDocumentPort.Native(project, budget.observation))
+
+    fun sdkRoots(roots: List<VirtualFile>, digest: SemanticInputDigest): SemanticCapture<Unit> =
+        budget.observation.call(IntellijReadCall.SDK_FILE_PLAN) {
+            SemanticNativeSdkFilePlan.capture(roots, digest, this, memo, limits, budget)
+        }
 
     fun roots(roots: List<VirtualFile>, digest: SemanticInputDigest): SemanticCapture<Unit> {
         if (roots.isEmpty()) return captureRejected(SemanticDependencyCaptureFailure.COMPILER_CONFIGURATION_UNAVAILABLE)
@@ -63,7 +72,11 @@ internal class SemanticNativeFiles(
             }
         }
 
-    fun walk(root: VirtualFile, consume: (VirtualFile) -> SemanticCapture<Unit>): SemanticCapture<Unit> {
+    fun walk(root: VirtualFile, consume: (VirtualFile) -> SemanticCapture<Unit>): SemanticCapture<Unit> =
+        walkMetadata(root) { file -> consumeClean(file, consume) }
+
+    /** One charged visit per node; a retained SDK plan consumes these leaves without another walk. */
+    fun walkMetadata(root: VirtualFile, consume: (VirtualFile) -> SemanticCapture<Unit>): SemanticCapture<Unit> {
         val pending = ArrayDeque<VirtualFile>().apply { add(root) }
         var count = 0
         while (pending.isNotEmpty()) {
@@ -79,7 +92,7 @@ internal class SemanticNativeFiles(
                 is Refinement.Rejected -> return admitted
                 is Refinement.Refined -> Unit
             }
-            val result = if (file.isDirectory) children(file, pending, count) else consumeClean(file, consume)
+            val result = if (file.isDirectory) children(file, pending, count) else consume(file)
             if (result is Refinement.Rejected) return result
         }
         return Refinement.Refined(Unit)
@@ -103,24 +116,21 @@ internal class SemanticNativeFiles(
         return Refinement.Refined(Unit)
     }
 
-    private fun consumeClean(
+    private fun <Value> consumeClean(
         file: VirtualFile,
-        consume: (VirtualFile) -> SemanticCapture<Unit>,
-    ): SemanticCapture<Unit> {
-        val documents = FileDocumentManager.getInstance()
-        if (budget.observation.call(IntellijReadCall.DOCUMENT_DIRTY_CHECK) { documents.isFileModified(file) })
-            return captureRejected(SemanticDependencyCaptureFailure.SOURCE_DOCUMENT_DIRTY)
-        val document =
-            budget.observation.call(IntellijReadCall.DOCUMENT_CACHE_LOOKUP) { documents.getCachedDocument(file) }
-        if (
-            document != null &&
-                !budget.observation.call(IntellijReadCall.DOCUMENT_COMMIT_CHECK) {
-                    PsiDocumentManager.getInstance(project).isCommitted(document)
-                }
-        )
-            return captureRejected(SemanticDependencyCaptureFailure.SOURCE_DOCUMENT_UNCOMMITTED)
+        consume: (VirtualFile) -> SemanticCapture<Value>,
+    ): SemanticCapture<Value> {
+        when (documents.observe(file)) {
+            SemanticNativeDocumentState.DIRTY ->
+                return captureRejected(SemanticDependencyCaptureFailure.SOURCE_DOCUMENT_DIRTY)
+            SemanticNativeDocumentState.UNCOMMITTED ->
+                return captureRejected(SemanticDependencyCaptureFailure.SOURCE_DOCUMENT_UNCOMMITTED)
+            SemanticNativeDocumentState.CLEAN -> Unit
+        }
         return consume(file)
     }
+
+    fun hashClean(file: VirtualFile): SemanticCapture<WorkspaceSourceContentHash> = consumeClean(file, ::hash)
 
     fun hash(file: VirtualFile): SemanticCapture<WorkspaceSourceContentHash> =
         memo.hash(SemanticNativeFileIdentity(file.url), budget) {

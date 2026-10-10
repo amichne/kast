@@ -3,6 +3,10 @@ package io.github.amichne.kast.workspace.intellij.read
 /** Bounded vocabulary at the native effect boundary. No names, paths, references, or PSI. */
 enum class IntellijReadCounter {
     DEPENDENCY_TREE_ENTRIES_VISITED,
+    DEPENDENCY_SDK_PLANNED_FILES,
+    /** Proven minimum of future stream reads; never an actual-work or byte counter. */
+    DEPENDENCY_SDK_MINIMUM_HASH_READS,
+    DEPENDENCY_SDK_FILE_PLANS_COMPLETED,
     DEPENDENCY_HASH_BYTES_READ,
     DEPENDENCY_HASHES_COMPLETED,
     DEPENDENCY_HASH_MEMO_HITS,
