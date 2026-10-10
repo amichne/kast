@@ -11,21 +11,8 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.PosixFilePermissions
-import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.serialization.json.*
-
-@JvmInline
-internal value class BrokerWorkspaceId private constructor(val value: String) {
-    companion object {
-        fun derive(root: CanonicalBrokerDirectory): BrokerWorkspaceId =
-            BrokerWorkspaceId(
-                MessageDigest.getInstance("SHA-256")
-                    .digest(root.path.toString().toByteArray(Charsets.UTF_8))
-                    .joinToString("") { "%02x".format(it) }
-            )
-    }
-}
 
 internal data class WorkspaceRegistration(val root: CanonicalBrokerDirectory) {
     val id: BrokerWorkspaceId = BrokerWorkspaceId.derive(root)

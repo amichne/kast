@@ -131,51 +131,14 @@ class OutputContractRecoveryPolicyTest {
     }
 
     @Test
-    fun `cancelled read with unproven termination never grants queued or later work`(@TempDir root: Path) = runTest {
-        val fixture =
-            OutputContractExecutionFixture.create(
-                root = root,
-                scope = this,
-                effect = BrokerOperationEffect.Canonical(OperationEffect.INTELLIJ_READ),
-                termination = FixtureTermination.AWAIT_CANCELLATION,
-            )
-        try {
-            val first = fixture.submit("first")
-            fixture.entered.await()
-            val queued = fixture.submit("queued")
-            fixture.release.complete(Unit)
-            runCurrent()
-            fixture.cancelFirst()
-            fixture.retiring.await()
-            runCurrent()
-            assertEquals(1, fixture.active, "provider retirement gate must still be held")
-            assertRecovery(queued.await())
-            assertRecovery(fixture.submit("later").await())
-            assertEquals(listOf("first"), fixture.calls)
-            assertEquals(
-                WorkspaceExecutionResult.Rejected(WorkspaceExecutionFailure.WORKSPACE_OUTCOME_UNCERTAIN),
-                first.await(),
-            )
-            fixture.retire.complete(Unit)
-            runCurrent()
-            assertEquals(0, fixture.active)
-            assertRecovery(fixture.submit("after-retirement").await())
-        } finally {
-            fixture.close()
-        }
-    }
-
-    @Test
-    fun `timed out read keeps its permit through retirement and remains recovery required`(@TempDir root: Path) =
+    fun `cancelled read retains capacity until provider retirement then admits fresh work`(@TempDir root: Path) =
         runTest {
-            val budget = (ElapsedTimeLimitMillis.parse(100) as Refinement.Refined).value
             val fixture =
                 OutputContractExecutionFixture.create(
                     root = root,
                     scope = this,
                     effect = BrokerOperationEffect.Canonical(OperationEffect.INTELLIJ_READ),
                     termination = FixtureTermination.AWAIT_CANCELLATION,
-                    invocationBudget = budget,
                 )
             try {
                 val first = fixture.submit("first")
@@ -183,25 +146,64 @@ class OutputContractRecoveryPolicyTest {
                 val queued = fixture.submit("queued")
                 fixture.release.complete(Unit)
                 runCurrent()
-                advanceTimeBy(100)
+                fixture.cancelFirst()
+                fixture.retiring.await()
                 runCurrent()
-                assertTrue(fixture.retiring.isCompleted)
+                assertEquals(1, fixture.active, "provider retirement gate must still be held")
                 assertFalse(first.isCompleted)
                 assertFalse(queued.isCompleted)
-                assertEquals(1, fixture.active)
                 assertEquals(listOf("first"), fixture.calls)
                 fixture.retire.complete(Unit)
-                val rejection = first.await().reply()
-                assertEquals(InvocationCertainty.UNCERTAIN, rejection.certainty)
-                assertEquals(JsonPrimitive("TIMED_OUT"), rejection.failureDocument()["failure"])
-                assertRecovery(queued.await())
-                assertRecovery(fixture.submit("later").await())
+                runCurrent()
                 assertEquals(0, fixture.active)
+                assertEquals(
+                    WorkspaceExecutionResult.Rejected(WorkspaceExecutionFailure.WORKSPACE_OUTCOME_UNCERTAIN),
+                    first.await(),
+                )
+                assertSuccess(queued.await())
+                assertSuccess(fixture.submit("after-retirement").await())
                 assertEquals(1, fixture.maximumActive)
             } finally {
                 fixture.close()
             }
         }
+
+    @Test
+    fun `timed out read keeps its permit through retirement and admits fresh work`(@TempDir root: Path) = runTest {
+        val budget = (ElapsedTimeLimitMillis.parse(100) as Refinement.Refined).value
+        val fixture =
+            OutputContractExecutionFixture.create(
+                root = root,
+                scope = this,
+                effect = BrokerOperationEffect.Canonical(OperationEffect.INTELLIJ_READ),
+                termination = FixtureTermination.AWAIT_CANCELLATION,
+                invocationBudget = budget,
+            )
+        try {
+            val first = fixture.submit("first")
+            fixture.entered.await()
+            val queued = fixture.submit("queued")
+            fixture.release.complete(Unit)
+            runCurrent()
+            advanceTimeBy(100)
+            runCurrent()
+            assertTrue(fixture.retiring.isCompleted)
+            assertFalse(first.isCompleted)
+            assertFalse(queued.isCompleted)
+            assertEquals(1, fixture.active)
+            assertEquals(listOf("first"), fixture.calls)
+            fixture.retire.complete(Unit)
+            val rejection = first.await().reply()
+            assertEquals(InvocationCertainty.UNCERTAIN, rejection.certainty)
+            assertEquals(JsonPrimitive("TIMED_OUT"), rejection.failureDocument()["failure"])
+            assertSuccess(queued.await())
+            assertSuccess(fixture.submit("later").await())
+            assertEquals(0, fixture.active)
+            assertEquals(1, fixture.maximumActive)
+        } finally {
+            fixture.close()
+        }
+    }
 
     private fun assertPatternEvidence(reply: ProtocolRouting.ReplyUpstream) {
         val failure = reply.failureDocument()

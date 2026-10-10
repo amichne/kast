@@ -16,17 +16,19 @@ import com.intellij.openapi.vfs.newvfs.RefreshQueue
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure as PublicFailure
-import io.github.amichne.kast.runtime.hosted.HostedVfsRefreshOutcome
 import io.github.amichne.kast.runtime.hosted.saveProjectDocuments
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.WorkspaceCapabilityReadiness
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
-import io.github.amichne.kast.workspace.intellij.read.hosted.HostedReadinessDocument
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 /** Effect boundary for exactly the existing project's linked root; never opens or links a project. */
 internal class IntellijWorkspaceRefreshPort(
     private val project: Project,
     private val root: CanonicalWorkspaceRoot,
     private val query: HostedQueryService,
+    private val modelInputs: WorkspaceRefreshModelBoundary,
 ) : WorkspaceRefreshPort {
     private sealed interface LinkState {
         data object Existing : LinkState
@@ -90,42 +92,51 @@ internal class IntellijWorkspaceRefreshPort(
                     complete(outcome)
                 }
             } else complete
-        try {
-            when (val admitted = admission()) {
-                is Refinement.Rejected -> {
-                    observedComplete(
-                        when (admitted.failure) {
-                            PublicFailure.UNSAVED_DOCUMENTS -> WorkspaceRefreshEffectResult.UNSAVED_DOCUMENTS
-                            PublicFailure.UNLINKED_BUILD -> WorkspaceRefreshEffectResult.UNLINKED_BUILD
-                            PublicFailure.NEWER_CHANGE -> WorkspaceRefreshEffectResult.BUSY
-                            PublicFailure.DISPOSED -> WorkspaceRefreshEffectResult.DISPOSED
-                            else -> WorkspaceRefreshEffectResult.FAILED
-                        }
-                    )
-                    return
-                }
-                is Refinement.Refined -> Unit
+        val boundary = WorkspaceRefreshStartBoundary()
+        boundary.run(::startFailure, observedComplete, ::observeUnsettledStart) {
+            if (observeExisting(effect, observedComplete, boundary)) return@run
+            val admitted = admission()
+            if (admitted is Refinement.Rejected) {
+                observedComplete(admitted.failure.startResult())
+                return@run
             }
             when (effect) {
-                WorkspaceRefreshEffect.FILE_REFRESH -> refreshFiles(observedComplete)
-                WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD -> reloadModel(observedComplete)
+                WorkspaceRefreshEffect.FILE_REFRESH -> refreshFiles(observedComplete, boundary)
+                WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD -> reloadModel(observedComplete, boundary)
             }
-        } catch (_: ProcessCanceledException) {
-            observedComplete(WorkspaceRefreshEffectResult.CANCELLED)
-        } catch (_: RuntimeException) {
-            observedComplete(WorkspaceRefreshEffectResult.FAILED)
         }
     }
 
-    override fun readiness(): WorkspaceRefreshReadiness =
-        if (project.isDisposed) WorkspaceRefreshReadiness.DISPOSED
-        else
-            when (query.readiness(root)) {
-                HostedReadinessDocument.AdmissionReady -> WorkspaceRefreshReadiness.READY
-                is HostedReadinessDocument.Unavailable -> WorkspaceRefreshReadiness.NOT_READY
+    private fun observeExisting(
+        effect: WorkspaceRefreshEffect,
+        complete: (WorkspaceRefreshEffectResult) -> Unit,
+        boundary: WorkspaceRefreshStartBoundary,
+    ): Boolean {
+        if (effect != WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD || linkState != LinkState.Existing) return false
+        if (project.isDisposed || project.basePath != root.value || !TrustedProjects.isProjectTrusted(project))
+            return false
+        val linked =
+            ExternalSystemApiUtil.getSettings(project, GRADLE).linkedProjectsSettings.any {
+                it.externalProjectPath == root.value
             }
+        if (!linked) return false
+        return observeExistingWorkspaceImport(project, root, complete, boundary::mayHaveStarted)
+    }
 
-    private fun refreshFiles(complete: (WorkspaceRefreshEffectResult) -> Unit) {
+    private fun observeUnsettledStart(failure: WorkspaceRefreshEffectResult) {
+        // A thrown scheduling call cannot establish that partially started native work terminated.
+        Logger.getInstance(IntellijWorkspaceRefreshPort::class.java)
+            .info("kast_workspace_refresh_start_unsettled outcome=" + Json.encodeToString(failure))
+    }
+
+    override fun readiness(): WorkspaceCapabilityReadiness = modelInputs.readiness(query.workspaceReadiness(root))
+
+    fun needsModelReload(): Boolean = modelInputs.needsModelReload()
+
+    private fun refreshFiles(
+        complete: (WorkspaceRefreshEffectResult) -> Unit,
+        boundary: WorkspaceRefreshStartBoundary,
+    ) {
         val directory = LocalFileSystem.getInstance().findFileByPath(root.value)
         if (directory == null) {
             complete(WorkspaceRefreshEffectResult.FAILED)
@@ -133,57 +144,81 @@ internal class IntellijWorkspaceRefreshPort(
         }
         // Explicit disk refresh cannot depend on the native watcher having reported the change yet.
         VfsUtil.markDirty(true, false, directory)
-        RefreshQueue.getInstance()
-            .refresh(
-                true,
-                true,
-                {
-                    val outcome =
-                        if (project.isDisposed) WorkspaceRefreshEffectResult.DISPOSED
-                        else WorkspaceRefreshEffectResult.SUCCEEDED
-                    complete(outcome)
-                },
-                directory,
-            )
+        val queue = RefreshQueue.getInstance()
+        boundary.mayHaveStarted()
+        queue.refresh(
+            true,
+            true,
+            {
+                val outcome =
+                    if (project.isDisposed) WorkspaceRefreshEffectResult.DISPOSED
+                    else WorkspaceRefreshEffectResult.SUCCEEDED
+                complete(outcome)
+            },
+            directory,
+        )
     }
 
     /** Automatic read admission waits for native recursive refresh without forcing every descendant dirty. */
-    fun refreshForRead(complete: (HostedVfsRefreshOutcome) -> Unit) {
+    override fun startIncremental(complete: (WorkspaceRefreshEffectResult) -> Unit) {
+        ApplicationManager.getApplication().invokeLater {
+            val boundary = WorkspaceRefreshStartBoundary()
+            boundary.run(::startFailure, complete, ::observeUnsettledStart) {
+                startIncrementalOnEdt(complete, boundary)
+            }
+        }
+    }
+
+    private fun startIncrementalOnEdt(
+        complete: (WorkspaceRefreshEffectResult) -> Unit,
+        boundary: WorkspaceRefreshStartBoundary,
+    ) {
         if (project.isDisposed) {
-            complete(HostedVfsRefreshOutcome.PROJECT_DISPOSED)
+            complete(WorkspaceRefreshEffectResult.DISPOSED)
+            return
+        }
+        if (!saveProjectDocuments(root)) {
+            complete(WorkspaceRefreshEffectResult.UNSAVED_DOCUMENTS)
             return
         }
         val directory = LocalFileSystem.getInstance().findFileByPath(root.value)
         if (directory == null) {
-            complete(HostedVfsRefreshOutcome.ROOT_UNAVAILABLE)
+            complete(WorkspaceRefreshEffectResult.ROOT_UNAVAILABLE)
             return
         }
         // Native incremental refresh retains recursive coverage and reports completion through its callback.
-        RefreshQueue.getInstance()
-            .refresh(
-                true,
-                true,
-                {
-                    complete(
-                        if (project.isDisposed) HostedVfsRefreshOutcome.PROJECT_DISPOSED
-                        else HostedVfsRefreshOutcome.READY
-                    )
-                },
-                directory,
-            )
+        val queue = RefreshQueue.getInstance()
+        boundary.mayHaveStarted()
+        queue.refresh(
+            true,
+            true,
+            {
+                complete(
+                    if (project.isDisposed) WorkspaceRefreshEffectResult.DISPOSED
+                    else WorkspaceRefreshEffectResult.SUCCEEDED
+                )
+            },
+            directory,
+        )
     }
 
     private fun observeForcedRefresh(outcome: WorkspaceRefreshEffectResult) {
         Logger.getInstance(IntellijWorkspaceRefreshPort::class.java).info(outcome.refreshObservation())
     }
 
-    private fun reloadModel(complete: (WorkspaceRefreshEffectResult) -> Unit) {
+    private fun reloadModel(complete: (WorkspaceRefreshEffectResult) -> Unit, boundary: WorkspaceRefreshStartBoundary) {
         when (val link = linkState) {
             LinkState.Existing -> importModel(link, complete)
-            is LinkState.Initial ->
-                com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsManager.getInstance(project)
-                    .runWhenInitialized {
-                        ApplicationManager.getApplication().invokeLater {
+            is LinkState.Initial -> {
+                val manager =
+                    com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsManager.getInstance(
+                        project
+                    )
+                boundary.mayHaveStarted()
+                manager.runWhenInitialized {
+                    ApplicationManager.getApplication().invokeLater {
+                        val initialBoundary = WorkspaceRefreshStartBoundary()
+                        initialBoundary.run(::startFailure, complete, ::observeUnsettledStart) {
                             when (val admitted = admission()) {
                                 is Refinement.Rejected ->
                                     complete(
@@ -199,13 +234,37 @@ internal class IntellijWorkspaceRefreshPort(
                             }
                         }
                     }
+                }
+            }
         }
     }
 
     private fun importModel(link: LinkState, complete: (WorkspaceRefreshEffectResult) -> Unit) {
-        val callback = WorkspaceRefreshImportCallback(project, root, complete)
-        try {
-            val spec = quietWorkspaceImport(project, callback)
+        val boundary = WorkspaceRefreshStartBoundary()
+        var callback: WorkspaceRefreshImportCallback? = null
+        val importTicket =
+            java.util.concurrent.atomic.AtomicReference<
+                io.github.amichne.kast.runtime.hosted.HostedGradleRevision.ImportTicket?
+            >(
+                null
+            )
+        boundary.run(
+            ::startFailure,
+            { outcome ->
+                callback?.abortBeforeStart()
+                complete(outcome)
+            },
+            { outcome -> callback?.failedStartCall(outcome) ?: observeUnsettledStart(outcome) },
+        ) {
+            val preparedCallback =
+                WorkspaceRefreshImportCallback(project, root) { outcome ->
+                    importTicket.get()?.settled(outcome)
+                    complete(outcome)
+                }
+            callback = preparedCallback
+            val spec = quietWorkspaceImport(project, preparedCallback)
+            importTicket.set(modelInputs.beginOwnedImport())
+            boundary.mayHaveStarted()
             when (link) {
                 LinkState.Existing -> ExternalSystemUtil.refreshProject(root.value, spec)
                 is LinkState.Initial -> {
@@ -213,12 +272,12 @@ internal class IntellijWorkspaceRefreshPort(
                     ExternalSystemUtil.linkExternalProject(link.settings, spec)
                 }
             }
-        } catch (_: ProcessCanceledException) {
-            callback.failedToStart(WorkspaceRefreshEffectResult.CANCELLED)
-        } catch (_: RuntimeException) {
-            callback.failedToStart(WorkspaceRefreshEffectResult.FAILED)
         }
     }
+
+    private fun startFailure(exception: RuntimeException): WorkspaceRefreshEffectResult =
+        if (exception is ProcessCanceledException) WorkspaceRefreshEffectResult.CANCELLED
+        else WorkspaceRefreshEffectResult.FAILED
 
     companion object {
         val GRADLE = ProjectSystemId("GRADLE")
@@ -240,3 +299,12 @@ internal fun quietWorkspaceImport(
         .withActivateToolWindowOnFailure(false)
         .dontNavigateToError()
         .withCallback(callback)
+
+private fun PublicFailure.startResult(): WorkspaceRefreshEffectResult =
+    when (this) {
+        PublicFailure.UNSAVED_DOCUMENTS -> WorkspaceRefreshEffectResult.UNSAVED_DOCUMENTS
+        PublicFailure.UNLINKED_BUILD -> WorkspaceRefreshEffectResult.UNLINKED_BUILD
+        PublicFailure.NEWER_CHANGE -> WorkspaceRefreshEffectResult.BUSY
+        PublicFailure.DISPOSED -> WorkspaceRefreshEffectResult.DISPOSED
+        else -> WorkspaceRefreshEffectResult.FAILED
+    }

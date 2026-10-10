@@ -26,7 +26,12 @@ class HostedVfsRefreshTest {
     @Test
     fun `read admission waits for refresh callback before reporting ready`() = runTest {
         var complete: ((HostedVfsRefreshOutcome) -> Unit)? = null
-        val pending = async { awaitVfsRefresh({ false }) { callback -> complete = callback } }
+        val pending = async {
+            awaitVfsRefresh({ false }) { callback ->
+                complete = callback
+                return@awaitVfsRefresh {}
+            }
+        }
         runCurrent()
         assertNull(pending.getCompletedOrNull())
         complete!!(HostedVfsRefreshOutcome.READY)
@@ -35,7 +40,7 @@ class HostedVfsRefreshTest {
 
     @Test
     fun `uncompleted refresh fails closed at its bounded deadline`() = runTest {
-        val pending = async { awaitVfsRefresh({ false }) {} }
+        val pending = async { awaitVfsRefresh({ false }) { {} } }
         runCurrent()
         advanceTimeBy(10_000)
         runCurrent()
@@ -50,7 +55,10 @@ class HostedVfsRefreshTest {
         )
         assertEquals(
             HostedVfsRefreshOutcome.ROOT_UNAVAILABLE,
-            awaitVfsRefresh({ false }) { it(HostedVfsRefreshOutcome.ROOT_UNAVAILABLE) },
+            awaitVfsRefresh({ false }) {
+                it(HostedVfsRefreshOutcome.ROOT_UNAVAILABLE)
+                return@awaitVfsRefresh {}
+            },
         )
         assertEquals(null, HostedVfsRefreshOutcome.READY.failure())
         assertEquals(HostedEndpointFailure.IO_UNAVAILABLE, HostedVfsRefreshOutcome.ROOT_UNAVAILABLE.failure())
@@ -65,16 +73,42 @@ class HostedVfsRefreshTest {
         var started = false
         assertEquals(
             HostedVfsRefreshOutcome.PROJECT_DISPOSED,
-            awaitVfsRefresh({ disposed }) { started = true },
+            awaitVfsRefresh({ disposed }) {
+                started = true
+                return@awaitVfsRefresh {}
+            },
         )
         assertEquals(false, started)
         disposed = false
         var complete: ((HostedVfsRefreshOutcome) -> Unit)? = null
-        val pending = async { awaitVfsRefresh({ disposed }) { callback -> complete = callback } }
+        val pending = async {
+            awaitVfsRefresh({ disposed }) { callback ->
+                complete = callback
+                return@awaitVfsRefresh {}
+            }
+        }
         runCurrent()
         disposed = true
         complete!!(HostedVfsRefreshOutcome.READY)
         assertEquals(HostedVfsRefreshOutcome.PROJECT_DISPOSED, pending.await())
+    }
+
+    @Test
+    fun `wait cancellation detaches its waiter while late native completion remains harmless`() = runTest {
+        var complete: ((HostedVfsRefreshOutcome) -> Unit)? = null
+        var cancellations = 0
+        val pending = async {
+            awaitVfsRefresh({ false }) { callback ->
+                complete = callback
+                return@awaitVfsRefresh { cancellations++ }
+            }
+        }
+        runCurrent()
+        pending.cancel()
+        runCurrent()
+        assertEquals(1, cancellations)
+        complete!!(HostedVfsRefreshOutcome.READY)
+        assertEquals(true, pending.isCancelled)
     }
 
     private fun <T> kotlinx.coroutines.Deferred<T>.getCompletedOrNull(): T? = if (isCompleted) getCompleted() else null

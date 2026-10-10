@@ -24,6 +24,8 @@ object CanonicalCallbackSchemaDocuments {
     val serializers: Map<String, KSerializer<*>>
         get() =
             mapOf(
+                "compilerSymbolEvidence" to
+                    io.github.amichne.kast.protocol.wire.CompilerSymbolEvidenceWireDocument.serializer(),
                 "immutableCallbackValue" to QueryImmutableCallbackValueWireDocument.serializer(),
                 "immutableCallbackValueNode" to QueryImmutableCallbackValueNodeWireDocument.serializer(),
                 "immutableCallbackFlow" to QueryImmutableCallbackFlowWireDocument.serializer(),

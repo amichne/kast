@@ -355,6 +355,12 @@ internal class BrokerSessionHub(
                                                 )
                                             )
                                         is io.github.amichne.kast.kernel.Refinement.Refined -> {
+                                            val access =
+                                                workspaceInvocationAccess(
+                                                    params,
+                                                    options.broker,
+                                                    options.sessionBootstrap?.tools?.definitions.orEmpty(),
+                                                )
                                             val submit:
                                                 (BrokerInvocationApproval) -> Deferred<WorkspaceExecutionResult> =
                                                 { approval ->
@@ -367,11 +373,24 @@ internal class BrokerSessionHub(
                                                             identity.call,
                                                         ),
                                                         interactionLimit,
+                                                        access,
                                                     ) {
                                                         try {
                                                             val dispatched = adapter.fromUpstream(message, approval)
                                                             currentCoroutineContext().ensureActive()
-                                                            invocation.settle(dispatched)
+                                                            val observed =
+                                                                projectWorkspaceInspection(
+                                                                    dispatched,
+                                                                    access,
+                                                                    { workspaceExecution.observation(bound.value.id) },
+                                                                    options.maximumMessageBytes,
+                                                                    options.broker.limits.maximumToolResultBytes,
+                                                                ) { failure ->
+                                                                    ProtocolRouting.ReplyUpstream(
+                                                                        toolFailure(doc, failure.name)
+                                                                    )
+                                                                }
+                                                            invocation.settle(observed)
                                                         } catch (failure: Exception) {
                                                             invocation.settle(
                                                                 messages.rejectedInvocation(

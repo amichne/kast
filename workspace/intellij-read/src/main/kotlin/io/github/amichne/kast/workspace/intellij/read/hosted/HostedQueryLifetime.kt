@@ -2,12 +2,14 @@ package io.github.amichne.kast.workspace.intellij.read.hosted
 
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.workspace.contract.WorkspaceNativeReadSettlement
+import io.github.amichne.kast.workspace.contract.WorkspaceReadOperationIdentity
 
 /** Identity capability for exactly one in-process endpoint incarnation. Never reconstructed. */
 class HostedQueryEndpoint internal constructor()
 
 /** Exactly one admitted invocation; identity is preserved until publication or abandonment. */
-internal class HostedQueryPermit
+internal class HostedQueryPermit(val identity: WorkspaceReadOperationIdentity = WorkspaceReadOperationIdentity.Opaque())
 
 internal sealed interface HostedQueryAdmission {
     data class Admitted(val permit: HostedQueryPermit) : HostedQueryAdmission
@@ -27,16 +29,20 @@ internal class HostedQueryLifetime {
     private var state: State = State.Active(mutableSetOf())
 
     @Synchronized
-    fun begin(requested: HostedQueryEndpoint, limits: ReadLimits = ReadLimits.Default): HostedQueryAdmission {
+    fun begin(
+        requested: HostedQueryEndpoint,
+        limits: ReadLimits = ReadLimits.Default,
+        identity: WorkspaceReadOperationIdentity = WorkspaceReadOperationIdentity.Opaque(),
+    ): HostedQueryAdmission {
         val current = state
         return when (current) {
-            State.Retired -> HostedQueryAdmission.Rejected(HostedQueryFailure.RETIRED)
+            is State.Retired -> HostedQueryAdmission.Rejected(HostedQueryFailure.RETIRED)
             is State.Active -> {
                 if (requested !== endpoint) return HostedQueryAdmission.Rejected(HostedQueryFailure.WRONG_ENDPOINT)
                 if (current.permits.size >= limits[ReadLimitParameter.HOST_READERS].value) {
                     HostedQueryAdmission.Rejected(HostedQueryFailure.BUSY)
                 } else {
-                    val permit = HostedQueryPermit()
+                    val permit = HostedQueryPermit(identity)
                     current.permits.add(permit)
                     HostedQueryAdmission.Admitted(permit)
                 }
@@ -47,7 +53,10 @@ internal class HostedQueryLifetime {
     @Synchronized
     fun complete(permit: HostedQueryPermit): HostedQueryCompletion =
         when (val current = state) {
-            State.Retired -> HostedQueryCompletion.Rejected(HostedQueryFailure.RETIRED)
+            is State.Retired -> {
+                current.permits.remove(permit)
+                HostedQueryCompletion.Rejected(HostedQueryFailure.RETIRED)
+            }
             is State.Active ->
                 if (current.permits.remove(permit)) HostedQueryCompletion.Published
                 else HostedQueryCompletion.Rejected(HostedQueryFailure.STALE_REQUEST)
@@ -55,13 +64,26 @@ internal class HostedQueryLifetime {
 
     @Synchronized
     fun retire() {
-        state = State.Retired
+        when (val current = state) {
+            is State.Active -> state = State.Retired(current.permits)
+            is State.Retired -> Unit
+        }
     }
+
+    /** Permits remain owned during cancellation drainage, including after endpoint retirement. */
+    @Synchronized
+    fun settlement(): WorkspaceNativeReadSettlement =
+        when (val current = state) {
+            is State.Active ->
+                if (current.permits.isEmpty()) WorkspaceNativeReadSettlement.Quiescent
+                else WorkspaceNativeReadSettlement.Running(current.permits.map { it.identity })
+            is State.Retired -> WorkspaceNativeReadSettlement.Retired(current.permits.map { it.identity })
+        }
 
     private sealed interface State {
         class Active(val permits: MutableSet<HostedQueryPermit>) : State
 
-        data object Retired : State
+        class Retired(val permits: MutableSet<HostedQueryPermit>) : State
     }
 }
 

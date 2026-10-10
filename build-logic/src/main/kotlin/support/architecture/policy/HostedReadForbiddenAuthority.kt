@@ -65,7 +65,7 @@ internal enum class HostedReadForbiddenAuthority(
     VIRTUAL_FILE_REFRESH(ForbiddenEffect.RECURSIVE_VFS_REFRESH, "com/intellij/openapi/vfs/VirtualFile", "refresh"),
     VIRTUAL_FILE_MANAGER_ASYNC_REFRESH(ForbiddenEffect.RECURSIVE_VFS_REFRESH, "com/intellij/openapi/vfs/VirtualFileManager", "asyncRefresh"),
     VIRTUAL_FILE_MANAGER_SYNC_REFRESH(ForbiddenEffect.RECURSIVE_VFS_REFRESH, "com/intellij/openapi/vfs/VirtualFileManager", "syncRefresh"),
-    REFRESH_QUEUE(ForbiddenEffect.RECURSIVE_VFS_REFRESH, "com/intellij/openapi/vfs/newvfs/RefreshQueue", "refresh"),
+    REFRESH_QUEUE(ForbiddenEffect.RECURSIVE_VFS_REFRESH, "com/intellij/openapi/vfs/newvfs/RefreshQueue", "refresh", roles = ALL_ROLES),
     REFRESH_SESSION_LAUNCH(ForbiddenEffect.RECURSIVE_VFS_REFRESH, "com/intellij/openapi/vfs/newvfs/RefreshSession", "launch"),
     FILE_INDEX_REBUILD(ForbiddenEffect.INDEXING_CYCLE, "com/intellij/util/indexing/FileBasedIndex", "requestRebuild"),
     DUMB_QUEUE_TASK(ForbiddenEffect.INDEXING_CYCLE, "com/intellij/openapi/project/DumbService", "queueTask"),

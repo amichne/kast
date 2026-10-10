@@ -6,16 +6,14 @@ import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
+import io.github.amichne.kast.protocol.contract.HostedContractDocument
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeLifecycleStage
 import io.github.amichne.kast.protocol.contract.IdeProjectTarget
 import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
-import io.github.amichne.kast.protocol.wire.CanonicalHostedContract
 import java.nio.file.Path
-import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -27,33 +25,52 @@ internal class WorkspaceAvailabilityRecoveryFailureTest {
     private val root = CanonicalRoot(Path.of("/workspace"))
     private val firstId = id("00000000-0000-0000-0000-000000000001")
     private val retryId = id("00000000-0000-0000-0000-000000000002")
+    private val laterId = id("00000000-0000-0000-0000-000000000005")
     private val target =
         IdeProjectTarget("00000000-0000-0000-0000-000000000003", "00000000-0000-0000-0000-000000000004", "/workspace")
 
     @Test
-    fun `nonavailability failures remain terminal without inspection or semantic execution`() = runTest {
-        val excluded =
-            setOf(
-                IdeLifecycleFailure.HOST_UNAVAILABLE,
-                IdeLifecycleFailure.PLUGIN_UNAVAILABLE,
-                IdeLifecycleFailure.COMPATIBILITY_REJECTED,
-            )
-        for (reason in IdeLifecycleFailure.entries.filterNot { it in excluded }) {
-            val script = Script(listOf(open(firstId) to IdeLifecycleResult.Blocked(reason)))
-            val preparations = WorkspacePreparations(this, script::exchange, newId = { firstId })
-            val entry = (preparations.prepare(root) as Refinement.Refined).value
-            runCurrent()
-            val demand = rejectedDemand(preparations)
-            repeat(2) {
-                val result = async { demand.query(root, ExistingIdeOperation.Status) }
+    fun `nonavailability failures never automatically replay and later demands observe current native refusal`() =
+        runTest {
+            val excluded =
+                setOf(
+                    IdeLifecycleFailure.HOST_UNAVAILABLE,
+                    IdeLifecycleFailure.PLUGIN_UNAVAILABLE,
+                    IdeLifecycleFailure.COMPATIBILITY_REJECTED,
+                )
+            for (reason in IdeLifecycleFailure.entries.filterNot { it in excluded }) {
+                val script =
+                    Script(
+                        listOf(
+                            open(firstId) to IdeLifecycleResult.Blocked(reason),
+                            WorkspaceLifecycleRequest.Inspect to IdeLifecycleResult.Blocked(reason),
+                            WorkspaceLifecycleRequest.Inspect to IdeLifecycleResult.Blocked(reason),
+                        )
+                    )
+                val ids = ArrayDeque(listOf(firstId, retryId, laterId))
+                val preparations = WorkspacePreparations(this, script::exchange, newId = { ids.removeFirst() })
+                val entry = (preparations.prepare(root) as Refinement.Refined).value
                 runCurrent()
-                assertEquals(WorkspaceDemandCause.Lifecycle(reason), operationFailure(result.await()).cause)
+                val held = entry.state.value
+                assertEquals(WorkspacePreparationOutcome.Blocked(reason), held)
+                advanceTimeBy(1000)
+                runCurrent()
+                assertEquals(1, script.exchanges, "terminal failure alone must not schedule recovery")
+                val demand = rejectedDemand(preparations)
+                for ((index, expectedId) in listOf(retryId, laterId).withIndex()) {
+                    val result = async { demand.query(root, ExistingIdeOperation.Status) }
+                    runCurrent()
+                    val failure = operationFailure(result.await())
+                    assertEquals(expectedId, failure.id)
+                    assertEquals(WorkspaceDemandCause.Lifecycle(reason), failure.cause)
+                    assertEquals(index + 2, script.exchanges, "one current observation per authorized demand")
+                    assertSame(held, entry.state.value)
+                }
+                assertSame(entry, (preparations.observe(firstId) as Refinement.Refined).value)
+                script.assertDrained()
+                preparations.close()
             }
-            assertSame(entry, (preparations.prepare(root) as Refinement.Refined).value)
-            script.assertDrained()
-            preparations.close()
         }
-    }
 
     @Test
     fun `fresh inspection refusal retains its exact reason and never reopens the project`() = runTest {
@@ -185,45 +202,6 @@ internal class WorkspaceAvailabilityRecoveryFailureTest {
         preparations.close()
     }
 
-    @Test
-    fun `inspection deadline remains terminal and cannot repeat the uncertain request`() = runTest {
-        val ids = ArrayDeque(listOf(firstId, retryId))
-        val requests = mutableListOf<WorkspaceLifecycleRequest>()
-        val preparations =
-            WorkspacePreparations(
-                scope = this,
-                exchange = { request ->
-                    requests += request
-                    when (requests.size) {
-                        1 -> {
-                            assertEquals(open(firstId), request)
-                            IdeLifecycleResult.Blocked(IdeLifecycleFailure.PLUGIN_UNAVAILABLE)
-                        }
-                        2 -> {
-                            assertEquals(WorkspaceLifecycleRequest.Inspect, request)
-                            awaitCancellation()
-                        }
-                        else -> error("Unexpected lifecycle exchange")
-                    }
-                },
-                budget = 1.seconds,
-                newId = { ids.removeFirst() },
-            )
-        preparations.prepare(root)
-        runCurrent()
-        val demand = rejectedDemand(preparations)
-        val first = async { demand.query(root, ExistingIdeOperation.Status) }
-        runCurrent()
-        advanceTimeBy(1000)
-        runCurrent()
-        val failure = WorkspaceDemandCause.Preparation(WorkspacePreparationFailure.DEADLINE_EXCEEDED)
-        assertEquals(failure, operationFailure(first.await()).cause)
-        val repeated = demand.query(root, ExistingIdeOperation.Status)
-        assertEquals(failure, operationFailure(repeated).cause)
-        assertEquals(2, requests.size)
-        preparations.close()
-    }
-
     private fun rejectedDemand(preparations: WorkspacePreparations) =
         PreparedWorkspaceDemand(
             preparations,
@@ -245,7 +223,13 @@ internal class WorkspaceAvailabilityRecoveryFailureTest {
                     ideBuild = "262.1.1",
                     kotlinPluginBuild = "262.1.1-IJ",
                     hostedPluginVersion = "0.50.0",
-                    hostedContract = CanonicalHostedContract.document,
+                    hostedContract =
+                        HostedContractDocument(
+                            runtimeProtocolIdentity = "kast.ide-hosted.runtime.v3",
+                            operationRegistryDigest = "a".repeat(64),
+                            wireSchemaDigest = "b".repeat(64),
+                            capabilities = listOf("query.run"),
+                        ),
                 ),
         )
 
@@ -256,12 +240,15 @@ internal class WorkspaceAvailabilityRecoveryFailureTest {
     private class Script(expectations: List<Pair<WorkspaceLifecycleRequest, IdeLifecycleResult>>) {
         private val remaining = ArrayDeque(expectations)
         private var unexpected = 0
+        var exchanges = 0
+            private set
 
         fun exchange(request: WorkspaceLifecycleRequest): IdeLifecycleResult {
             if (remaining.isEmpty() || remaining.first().first != request) {
                 unexpected++
                 error("Unexpected lifecycle request: $request")
             }
+            exchanges++
             return remaining.removeFirst().second
         }
 

@@ -170,7 +170,7 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
                 state.host.toString(),
                 home.toString(),
                 ApplicationInfo.getInstance().build.asString(),
-                state.inspect(),
+                native.inspectProjects(),
                 io.github.amichne.kast.runtime.hosted.HostedCompatibilityMetadata.document,
             )
         if (received is IdeLifecycleCommand.Status) {
