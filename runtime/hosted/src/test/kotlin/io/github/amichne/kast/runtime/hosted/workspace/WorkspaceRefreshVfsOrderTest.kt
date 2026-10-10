@@ -23,7 +23,8 @@ class WorkspaceRefreshVfsOrderTest {
                             signature: String?,
                             exceptions: Array<out String>?,
                         ): MethodVisitor? {
-                            if (!name.startsWith("dispatch-") && !name.startsWith("lifecycleVfsRefresh-")) return null
+                            val lifecycleRefresh = name.substringBefore('$') == "lifecycleVfsRefresh"
+                            if (!name.startsWith("dispatch-") && !lifecycleRefresh) return null
                             val callerMethod = name
                             return object : MethodVisitor(Opcodes.ASM9) {
                                 override fun visitMethodInsn(
@@ -35,10 +36,16 @@ class WorkspaceRefreshVfsOrderTest {
                                 ) {
                                     if (
                                         owner == "io/github/amichne/kast/runtime/hosted/HostedVfsRefreshOutcomeKt" &&
-                                            name.startsWith("awaitHostedVfsRefresh-")
+                                            name == "awaitHostedVfsRefresh"
                                     ) {
+                                        assertEquals(
+                                            "(Lcom/intellij/openapi/project/Project;" +
+                                                "Lkotlin/jvm/functions/Function1;" +
+                                                "Lkotlin/coroutines/Continuation;)Ljava/lang/Object;",
+                                            descriptor,
+                                        )
                                         val caller =
-                                            if (callerMethod.startsWith("lifecycleVfsRefresh-")) "lifecycle"
+                                            if (callerMethod.substringBefore('$') == "lifecycleVfsRefresh") "lifecycle"
                                             else "dispatch"
                                         callers += caller
                                     }
@@ -66,7 +73,7 @@ class WorkspaceRefreshVfsOrderTest {
 
     @Test
     fun `automatic read refresh uses native recursive refresh without forced dirty marking`() {
-        val trace = vfsCalls("refreshForRead")
+        val trace = vfsCalls("startIncrementalOnEdt")
         assertEquals(listOf("refresh"), trace.calls)
         assertEquals(listOf(Opcodes.ICONST_1, Opcodes.ICONST_1), trace.refreshFlags)
     }

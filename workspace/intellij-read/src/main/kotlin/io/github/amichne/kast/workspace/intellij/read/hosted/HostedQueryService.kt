@@ -51,16 +51,7 @@ private constructor(
             Logger.getInstance(HostedQueryService::class.java).info(it)
         }
     val readConfiguration: Refinement<ReadLimits, ReadLimitFailure> = readHostedConfiguration()
-    private val configuredSession =
-        when (val settings = readConfiguration) {
-            is Refinement.Refined ->
-                ConfiguredHostedSession.Ready(
-                    settings.value,
-                    AdmittedIdeProjectSession(owner, settings.value, epochSignalDiagnostics::record),
-                )
-            is Refinement.Rejected ->
-                ConfiguredHostedSession.Rejected(HostedQueryFailure.Configuration(settings.failure))
-        }
+    private val configuredSession = configuredHostedSession(readConfiguration, owner, epochSignalDiagnostics)
     private val liveAuthorities = HostedLiveReadAuthoritySession(hostLifetime)
     private val epochDiagnostics = HostedEpochVfsDiagnostics(project, owner, hostLifetime)
     private val freshnessOwner = HostedReadFreshnessOwner(project, owner, liveAuthorities)
@@ -68,30 +59,24 @@ private constructor(
     // A policy is retained admission authority, not just equal metadata. Reuse its
     // original proof for every request in this endpoint lifetime.
     private val packagedCompatibility by lazy(::packagedHostedCompatibility)
+    private val workspaceObservations =
+        HostedWorkspaceObservationOwner(
+            project,
+            owner,
+            hostLifetime,
+            session = { configuredSession.readinessSession() },
+            compatibility = { packagedCompatibility },
+            settlement = executor::settlement,
+        )
     val endpoint: HostedQueryEndpoint
         get() = executor.endpoint
 
     /** Fresh passive project admission checks; this does not enter the semantic executor or its budget. */
-    fun readiness(root: CanonicalWorkspaceRoot): HostedReadinessDocument {
-        when (val state = configuredSession) {
-            is ConfiguredHostedSession.Rejected ->
-                return state.failure.readinessRejection(HostedQueryStage.REQUEST_ADMISSION)
-            is ConfiguredHostedSession.Ready -> Unit
-        }
-        val compatibility =
-            when (val admitted = packagedCompatibility) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return admitted.failure.readinessRejection(HostedQueryStage.PROJECT_ADMISSION)
-            }
-        return observeHostedReadiness {
-            io.github.amichne.kast.workspace.intellij.read.ExistingProjectValidation.validate(
-                project,
-                root,
-                compatibility.candidate,
-                compatibility.policy,
-            )
-        }
-    }
+    fun readiness(root: CanonicalWorkspaceRoot): HostedReadinessDocument = workspaceObservations.readiness(root)
+
+    /** Detached current preparation and settlement facts; history is informational only. */
+    fun workspaceReadiness(root: CanonicalWorkspaceRoot): WorkspaceCapabilityReadiness =
+        workspaceObservations.workspaceReadiness(root)
 
     /** One permit and deadline for the complete plan; each adapter owns its individual short read. */
     suspend fun <Value> read(
@@ -349,6 +334,27 @@ private fun rejectUnadmittedHostedRead(
 enum class HostedQueryRetirement {
     RETIRED
 }
+
+private fun configuredHostedSession(
+    configuration: Refinement<ReadLimits, ReadLimitFailure>,
+    owner: Disposable,
+    diagnostics: ProjectReadEpochDiagnostics,
+): ConfiguredHostedSession =
+    when (val settings = configuration) {
+        is Refinement.Refined ->
+            ConfiguredHostedSession.Ready(
+                settings.value,
+                AdmittedIdeProjectSession(owner, settings.value, diagnostics::record),
+            )
+        is Refinement.Rejected -> ConfiguredHostedSession.Rejected(HostedQueryFailure.Configuration(settings.failure))
+    }
+
+private fun ConfiguredHostedSession.readinessSession():
+    Refinement<AdmittedIdeProjectSession, HostedQueryFailure.Configuration> =
+    when (this) {
+        is ConfiguredHostedSession.Ready -> Refinement.Refined(session)
+        is ConfiguredHostedSession.Rejected -> Refinement.Rejected(failure)
+    }
 
 private sealed interface ConfiguredHostedSession {
     data class Ready(val limits: ReadLimits, val session: AdmittedIdeProjectSession) : ConfiguredHostedSession

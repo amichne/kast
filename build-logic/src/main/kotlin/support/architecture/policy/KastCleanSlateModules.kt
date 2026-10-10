@@ -327,6 +327,7 @@ internal object KastCleanSlateModules {
             ModuleId.APP_SERVER,
             ModuleRole.APP_SERVER,
             ModuleId.KERNEL,
+            ModuleId.WORKSPACE_CONTRACT,
             ModuleId.DISTRIBUTION_CONTRACT,
             ModuleId.DISTRIBUTION_MANAGED,
             ModuleId.PROTOCOL_CONTRACT,

@@ -24,6 +24,8 @@ dependencies {
     implementation(libs.json.schema.validator)
     implementation(libs.bundles.ktor.broker)
     implementation(project(":kernel"))
+    implementation(project(":workspace:contract"))
+    testImplementation(testFixtures(project(":workspace:contract")))
     implementation(project(":distribution:contract"))
     implementation(project(":distribution:managed"))
     implementation(project(":protocol:contract"))

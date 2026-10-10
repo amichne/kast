@@ -2,7 +2,6 @@ package io.github.amichne.kast.appserver.runtime
 
 import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
 import java.util.UUID
@@ -62,23 +61,17 @@ internal class WorkspacePreparations(
         return create(root)
     }
 
-    /** Demand rechecks terminal availability; held prior outcomes remain immutable. */
+    /** A terminal failure is history, not current native authority. The native owner admits each authorized retry. */
     @Synchronized
     fun prepareForDemand(root: CanonicalRoot): Refinement<WorkspacePreparation, WorkspacePreparationFailure> {
         if (closed || !worker.isActive) return Refinement.Rejected(WorkspacePreparationFailure.CLOSED)
         val previous = entries[root] ?: return create(root)
-        val outcome = previous.state.value
-        return if (
-            outcome is WorkspacePreparationOutcome.Blocked &&
-                outcome.reason in
-                    setOf(
-                        IdeLifecycleFailure.HOST_UNAVAILABLE,
-                        IdeLifecycleFailure.PLUGIN_UNAVAILABLE,
-                        IdeLifecycleFailure.COMPATIBILITY_REJECTED,
-                    )
-        )
-            create(root, previous.id)
-        else Refinement.Refined(previous)
+        return when (previous.state.value) {
+            is WorkspacePreparationOutcome.Pending,
+            is WorkspacePreparationOutcome.Complete -> Refinement.Refined(previous)
+            is WorkspacePreparationOutcome.Blocked,
+            is WorkspacePreparationOutcome.Rejected -> create(root, previous.id)
+        }
     }
 
     private fun create(

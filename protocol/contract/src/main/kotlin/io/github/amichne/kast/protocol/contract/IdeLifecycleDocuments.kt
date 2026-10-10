@@ -114,7 +114,13 @@ enum class IdeLifecycleFailure : OperationRejection {
 }
 
 @Serializable
-data class IdeProjectDescription(val target: IdeProjectTarget, val ownership: IdeProjectOwnership, val users: Int)
+data class IdeProjectDescription(
+    val target: IdeProjectTarget,
+    val ownership: IdeProjectOwnership,
+    val users: Int,
+    val readiness: WorkspaceReadinessInspectionDocument = WorkspaceReadinessInspectionDocument.Unknown,
+    val refresh: WorkspaceRefreshInspectionDocument = WorkspaceRefreshInspectionDocument.Unknown,
+)
 
 @Serializable sealed interface IdeLifecycleRejection
 

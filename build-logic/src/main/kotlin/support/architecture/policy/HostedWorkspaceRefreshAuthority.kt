@@ -24,11 +24,15 @@ internal object HostedWorkspaceRefreshAuthority {
             "(ZZ[Lcom/intellij/openapi/vfs/VirtualFile;)Ljava/util/List;"),
     )
 
+    /** A scoped policy allowance cannot grant a second native lifecycle or widen its entry points. */
     fun retainsBoundary(effect: EffectObservation): Boolean {
-        if (effect.caller.owner !in setOf(owner, specOwner)) return true
         return when (effect.effect) {
-            ForbiddenEffect.GRADLE_IMPORT -> effect.target in importTargets
-            ForbiddenEffect.RECURSIVE_VFS_REFRESH -> effect.target in fileTargets
+            ForbiddenEffect.GRADLE_IMPORT ->
+                effect.module == ModuleId.RUNTIME_HOSTED &&
+                    effect.caller.owner in setOf(owner, specOwner) && effect.target in importTargets
+            ForbiddenEffect.RECURSIVE_VFS_REFRESH ->
+                effect.module == ModuleId.RUNTIME_HOSTED &&
+                    effect.caller.owner == owner && effect.target in fileTargets
             else -> true
         }
     }

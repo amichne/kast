@@ -2,11 +2,34 @@ package io.github.amichne.kast.workspace.intellij.read.hosted
 
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.workspace.contract.WorkspaceNativeReadSettlement
+import io.github.amichne.kast.workspace.contract.WorkspaceReadOperationIdentity
+import java.util.UUID
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class HostedQueryLifetimeTest {
     private val capacity = ReadLimits.Default[ReadLimitParameter.HOST_READERS].value
+
+    @Test
+    fun `settlement snapshot retains exact outstanding operations across retirement`() {
+        val lifetime = HostedQueryLifetime()
+        assertSame(WorkspaceNativeReadSettlement.Quiescent, lifetime.settlement())
+        val identity = WorkspaceReadOperationIdentity.Traced(UUID(0, 1))
+        val permit = (lifetime.begin(lifetime.endpoint, identity = identity) as HostedQueryAdmission.Admitted).permit
+        val active = assertInstanceOf(WorkspaceNativeReadSettlement.Running::class.java, lifetime.settlement())
+        assertEquals(listOf(identity), active.operations)
+        lifetime.retire()
+        val retired = assertInstanceOf(WorkspaceNativeReadSettlement.Retired::class.java, lifetime.settlement())
+        assertEquals(listOf(identity), retired.operations)
+        // A foreign completion cannot claim that this invocation settled.
+        lifetime.complete(HostedQueryPermit())
+        assertEquals(listOf(identity), (lifetime.settlement() as WorkspaceNativeReadSettlement.Retired).operations)
+        assertEquals(HostedQueryCompletion.Rejected(HostedQueryFailure.RETIRED), lifetime.complete(permit))
+        assertTrue((lifetime.settlement() as WorkspaceNativeReadSettlement.Retired).operations.isEmpty())
+        assertEquals(listOf(identity), retired.operations, "Detached observations must not mutate with the owner")
+        assertEquals(HostedQueryAdmission.Rejected(HostedQueryFailure.RETIRED), lifetime.begin(lifetime.endpoint))
+    }
 
     @Test
     fun `detach invalidates the exact endpoint and every outstanding publication`() {

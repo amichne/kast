@@ -2,67 +2,20 @@ package io.github.amichne.kast.appserver.runtime
 
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.BrokerWorkspaceId
-import io.github.amichne.kast.appserver.core.BrokerCallId
 import io.github.amichne.kast.appserver.core.BrokerThreadId
 import io.github.amichne.kast.appserver.core.BrokerTurnId
 import io.github.amichne.kast.appserver.protocol.codex.InvocationCertainty
 import io.github.amichne.kast.appserver.protocol.codex.ProtocolRouting
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.workspace.contract.WorkspaceExecutionCertainty
+import io.github.amichne.kast.workspace.contract.WorkspaceExecutionDisposition
+import io.github.amichne.kast.workspace.contract.WorkspaceExecutionSettlement
+import io.github.amichne.kast.workspace.contract.workspaceExecutionDisposition
 import kotlin.time.Duration
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
-
-internal data class WorkspaceExecutionIdentity(
-    val workspace: BrokerWorkspaceId,
-    val connection: ClientConnectionId,
-    val thread: BrokerThreadId,
-    val turn: BrokerTurnId,
-    val call: BrokerCallId,
-)
-
-internal enum class WorkspaceExecutionFailure(val certainty: InvocationCertainty) {
-    WORKSPACE_QUEUE_CAPACITY_EXCEEDED(InvocationCertainty.KNOWN),
-    WORKSPACE_QUEUE_TIMED_OUT(InvocationCertainty.KNOWN),
-    CANCELLED_BEFORE_EXECUTION(InvocationCertainty.KNOWN),
-    CANCELLED_AFTER_RECOVERY(InvocationCertainty.KNOWN),
-    WORKSPACE_RECOVERY_REQUIRED(InvocationCertainty.KNOWN),
-    WORKSPACE_INTERACTION_TIMED_OUT(InvocationCertainty.UNCERTAIN),
-    WORKSPACE_OUTCOME_UNCERTAIN(InvocationCertainty.UNCERTAIN),
-}
-
-internal sealed interface WorkspaceExecutionResult {
-    data class Completed(val routing: ProtocolRouting) : WorkspaceExecutionResult
-
-    data class Rejected(val failure: WorkspaceExecutionFailure) : WorkspaceExecutionResult
-}
-
-internal enum class WorkspaceExecutionStage {
-    ADMISSION,
-    QUEUE,
-    EXECUTION,
-}
-
-internal enum class WorkspaceExecutionOutcome {
-    ACCEPTED,
-    STARTED,
-    COMPLETED,
-    REJECTED,
-    CANCELLED,
-    TIMED_OUT,
-    UNCERTAIN,
-}
-
-internal data class WorkspaceExecutionEvent(
-    val request: WorkspaceExecutionIdentity,
-    val stage: WorkspaceExecutionStage,
-    val outcome: WorkspaceExecutionOutcome,
-    val elapsed: Duration,
-    val queued: Duration,
-    val interactionLimit: ElapsedTimeLimitMillis,
-    val failure: WorkspaceExecutionFailure? = null,
-)
 
 /** One semantic permit and a bounded waiting set per workspace. Locks only change in-memory ownership. */
 internal class WorkspaceExecution(
@@ -80,6 +33,7 @@ internal class WorkspaceExecution(
     private class Request(
         val identity: WorkspaceExecutionIdentity,
         val interactionLimit: ElapsedTimeLimitMillis,
+        val access: WorkspaceExecutionAccess,
         timeSource: TimeSource,
     ) {
         val enqueuedAt: TimeMark = timeSource.markNow()
@@ -105,14 +59,18 @@ internal class WorkspaceExecution(
     fun submit(
         identity: WorkspaceExecutionIdentity,
         interactionLimit: ElapsedTimeLimitMillis = policy.interaction,
+        access: WorkspaceExecutionAccess =
+            WorkspaceExecutionAccess.Operation(io.github.amichne.kast.appserver.core.BrokerOperationEffect.Unknown),
         operation: suspend () -> ProtocolRouting,
     ): Deferred<WorkspaceExecutionResult> {
         val request =
             Request(
                 identity,
                 if (interactionLimit.value < policy.interaction.value) interactionLimit else policy.interaction,
+                access,
                 timeSource,
             )
+        if (access == WorkspaceExecutionAccess.Observation) return observe(request, operation)
         val job = scope.launch(start = CoroutineStart.LAZY) { perform(request, operation) }
         val execution = Execution(request, job)
         val accepted =
@@ -146,6 +104,24 @@ internal class WorkspaceExecution(
             job.start()
         } else job.cancel()
         return request.result
+    }
+
+    /** Observation has its own bounded execution and can report a semantic fence while it is held. */
+    private fun observe(
+        request: Request,
+        operation: suspend () -> ProtocolRouting,
+    ): Deferred<WorkspaceExecutionResult> = scope.async {
+        try {
+            withTimeout(request.interactionLimit.value) {
+                WorkspaceExecutionResult.Completed(operation())
+            }
+        } catch (_: TimeoutCancellationException) {
+            WorkspaceExecutionResult.Rejected(WorkspaceExecutionFailure.WORKSPACE_INTERACTION_TIMED_OUT)
+        } catch (_: CancellationException) {
+            WorkspaceExecutionResult.Rejected(WorkspaceExecutionFailure.CANCELLED_BEFORE_EXECUTION)
+        } catch (_: Exception) {
+            WorkspaceExecutionResult.Rejected(WorkspaceExecutionFailure.WORKSPACE_OUTCOME_UNCERTAIN)
+        }
     }
 
     /** Caller supplies a workspace and turn only after validating the current controller's authority. */
@@ -243,27 +219,13 @@ internal class WorkspaceExecution(
         if (request.phase == RequestPhase.RETIRED) return
         val executing = request.phase == RequestPhase.EXECUTING
         if (!executing) request.queued = request.enqueuedAt.elapsedNow()
-        val uncertain =
-            when (result) {
-                is WorkspaceExecutionResult.Completed ->
-                    result.routing !is ProtocolRouting.ReplyUpstream ||
-                        result.routing.certainty == InvocationCertainty.UNCERTAIN
-                is WorkspaceExecutionResult.Rejected -> result.failure.certainty == InvocationCertainty.UNCERTAIN
-            }
+        val uncertain = result.certainty() == InvocationCertainty.UNCERTAIN
         request.phase = RequestPhase.RETIRED
         val failure = (result as? WorkspaceExecutionResult.Rejected)?.failure
         publish(
             request,
             if (executing) WorkspaceExecutionStage.EXECUTION else WorkspaceExecutionStage.QUEUE,
-            when {
-                failure == WorkspaceExecutionFailure.WORKSPACE_INTERACTION_TIMED_OUT ||
-                    failure == WorkspaceExecutionFailure.WORKSPACE_QUEUE_TIMED_OUT ->
-                    WorkspaceExecutionOutcome.TIMED_OUT
-                uncertain -> WorkspaceExecutionOutcome.UNCERTAIN
-                failure == WorkspaceExecutionFailure.CANCELLED_BEFORE_EXECUTION -> WorkspaceExecutionOutcome.CANCELLED
-                failure != null -> WorkspaceExecutionOutcome.REJECTED
-                else -> WorkspaceExecutionOutcome.COMPLETED
-            },
+            result.outcome(),
             failure,
         )
         request.result.complete(result)
@@ -272,7 +234,13 @@ internal class WorkspaceExecution(
             lane.pending.removeAll { it.request === request }
             return
         }
-        if (uncertain) {
+        val disposition =
+            workspaceExecutionDisposition(
+                request.access.requestEffect(),
+                if (uncertain) WorkspaceExecutionCertainty.UNCERTAIN else WorkspaceExecutionCertainty.KNOWN,
+                WorkspaceExecutionSettlement.PROVIDER_TERMINATED,
+            )
+        if (disposition == WorkspaceExecutionDisposition.RECONCILE_MUTATION) {
             lanes[request.identity.workspace] = Lane.RecoveryRequired(request.identity)
             lane.pending.forEach { waiting ->
                 rejectAdmission(waiting.request, WorkspaceExecutionFailure.WORKSPACE_RECOVERY_REQUIRED)
@@ -331,59 +299,33 @@ internal class WorkspaceExecution(
             .toSet()
 
     @Synchronized
-    fun snapshot(): JsonObject = buildJsonObject {
-        put("maximumQueuedPerWorkspace", policy.maximumQueued)
-        put("queueWaitMillis", policy.queueWait.value)
-        put("interactionLimitMillis", policy.interaction.value)
-        put(
-            "lanes",
-            buildJsonArray {
-                lanes.forEach { (workspace, lane) ->
-                    add(
-                        buildJsonObject {
-                            put("workspaceId", workspace.value)
-                            put(
-                                "state",
-                                when (lane) {
-                                    Lane.Idle -> "idle"
-                                    is Lane.Busy -> "busy"
-                                    is Lane.RecoveryRequired -> "recovery_required"
-                                },
-                            )
-                            put("queued", if (lane is Lane.Busy) lane.pending.size else 0)
-                        }
-                    )
-                }
-            },
-        )
-        put(
-            "events",
-            buildJsonArray {
-                events.forEach { event ->
-                    add(
-                        buildJsonObject {
-                            put("workspaceId", event.request.workspace.value)
-                            put("connectionId", event.request.connection.value)
-                            put("threadId", event.request.thread.value)
-                            put("turnId", event.request.turn.value)
-                            put("callId", event.request.call.value)
-                            put("stage", event.stage.name.lowercase())
-                            put("outcome", event.outcome.name.lowercase())
-                            put("elapsedMillis", event.elapsed.inWholeMilliseconds)
-                            put("queueAgeMillis", event.queued.inWholeMilliseconds)
-                            put("interactionLimitMillis", event.interactionLimit.value)
-                            put(
-                                "remainingMillis",
-                                (event.interactionLimit.value - event.elapsed.inWholeMilliseconds).coerceAtLeast(0),
-                            )
-                            event.failure?.let {
-                                put("failure", it.name)
-                                put("certainty", it.certainty.name.lowercase())
-                            }
-                        }
-                    )
-                }
-            },
-        )
-    }
+    fun observation(workspace: BrokerWorkspaceId): WorkspaceExecutionLaneSnapshot =
+        when (val lane = lanes[workspace] ?: Lane.Idle) {
+            Lane.Idle ->
+                WorkspaceExecutionLaneSnapshot(
+                    workspace.value,
+                    WorkspaceExecutionLaneState.IDLE,
+                    0,
+                    nextAction = WorkspaceExecutionNextAction.REOBSERVE_NATIVE_AUTHORITY,
+                )
+            is Lane.Busy ->
+                WorkspaceExecutionLaneSnapshot(
+                    workspace.value,
+                    WorkspaceExecutionLaneState.BUSY,
+                    lane.pending.size,
+                    lane.active.request.identity.document(),
+                    WorkspaceExecutionNextAction.OBSERVE_PROVIDER_SETTLEMENT,
+                )
+            is Lane.RecoveryRequired ->
+                WorkspaceExecutionLaneSnapshot(
+                    workspace.value,
+                    WorkspaceExecutionLaneState.RECOVERY_REQUIRED,
+                    0,
+                    lane.request.document(),
+                    WorkspaceExecutionNextAction.RECONCILE_UNCERTAIN_MUTATION,
+                )
+        }
+
+    @Synchronized
+    fun snapshot(): JsonObject = serializeWorkspaceExecutionSnapshot(policy, lanes.keys.map(::observation), events)
 }
