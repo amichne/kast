@@ -23,6 +23,10 @@ disabled. Its loaded class must match the pinned distribution's class bytes.
 Each case enforces the SDK's read-access contract and restores that setting.
 A case-scoped error processor makes every logged platform error fail the test,
 including errors that the stock framework reports only through TeamCity output.
+The shared fixture applies those same guards to `NativePeerDisconnectTest`.
+The native lane excludes the SDK's bundled serialization core and Ktor utility
+JARs, as production compilation does. Typed fixture documents then use the
+project's versioned serialization runtime.
 
 The five cases prove:
 
@@ -48,3 +52,12 @@ These cases qualify native SDK status access and wait cleanup. The controlled
 dumb-mode task does not run an indexing payload. They do not qualify an installed
 Kast plugin, full semantic-query drainage, latency, or a private incident.
 Unix-socket connection correlation has separate hosted JVM tests.
+
+`NativePeerDisconnectTest` joins the socket and native status-access boundaries.
+It holds an actual write action and submits a status read through the hosted
+listener. The peer disconnects only after the SDK call suspends. Cancellation
+finishes before the sole connection slot is released, while the writer remains
+held. An invalid-request control gets the finite `INVALID_REQUEST` rejection on
+that freed slot. After the writer joins, a fresh connection completes a native
+smart-mode wait. The case owns its socket directory, caller threads and listener.
+It supplies no semantic evaluator and makes no full-query drainage claim.
