@@ -42,7 +42,7 @@ internal data class HostedCorrelatedSmartModeWait(
 // Native platform status providers may throw unchecked exceptions; classify and rethrow at this effect boundary.
 @Suppress("TooGenericExceptionCaught")
 internal suspend fun waitForHostedSmartMode(
-    state: () -> HostedIndexingState,
+    state: suspend () -> HostedIndexingState,
     observe: (HostedSmartModeWaitObservation) -> Unit,
     clock: () -> Long = System::nanoTime,
 ): IndexingWait {
