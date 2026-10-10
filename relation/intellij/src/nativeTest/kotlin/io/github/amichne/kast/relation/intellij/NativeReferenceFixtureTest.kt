@@ -10,6 +10,10 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.HeavyPlatformTestCase
 import com.intellij.testFramework.IndexingTestUtil
 import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.symbol.contract.CanonicalWorkspaceFilePath
+import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
+import io.github.amichne.kast.symbol.contract.SymbolSearchScope
+import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.workspace.contract.ImportedWorkspaceModelState
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
@@ -103,6 +107,29 @@ internal constructor(
     val request: RelationRequest,
     private val model: WorkspaceSearchScopeModelCompilation,
 ) {
+    internal fun targetFileOnly(): NativeReferenceFixture {
+        val file = target.containingFile.virtualFile.toNioPath()
+        val scope =
+            SymbolSearchScope.ExactFile(
+                CanonicalWorkspaceFilePath.fromCanonicalPath(request.subject.lease.workspaceRoot, file).nativeRefined(),
+                SymbolSourceKindPolicy.PRODUCTION_ONLY,
+                SymbolGeneratedSourcePolicy.EXCLUDE,
+            )
+        return NativeReferenceFixture(
+            project = project,
+            target = target,
+            callerFile = callerFile,
+            request =
+                nativeRelationRequest(
+                    root = java.nio.file.Path.of(request.subject.lease.workspaceRoot.value),
+                    file = file,
+                    offset = checkNotNull(target.nameIdentifier).textRange.startOffset,
+                    scope = scope,
+                ),
+            model = model,
+        )
+    }
+
     internal fun scope(observation: IntellijReadObservation): CompiledRelationScope =
         (IntellijRelationScopeCompiler()
                 .compile(
