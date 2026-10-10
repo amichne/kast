@@ -378,15 +378,9 @@ class QueryService(
             return checkpoint(emittedCount).admitContinuation(request.budget.checkpointBytes, checkpointObservation)
         }
 
-        private fun checkpoint(emittedCount: QueryCount): PipelineCheckpoint {
-            val accounted =
-                when (val current = seed) {
-                    PipelineSeed.Unmeasured -> PipelineSeed.Accounted.create(request.plan)
-                    is PipelineSeed.Accounted -> current
-                }
-            seed = accounted
-            return PipelineCheckpoint(
-                accounted,
+        private fun checkpoint(emittedCount: QueryCount): PipelineCheckpoint =
+            PipelineCheckpoint(
+                seed.accounted(request.plan).also { seed = it },
                 request.lease,
                 tasks.toList(),
                 identityRows.snapshot(),
@@ -402,6 +396,5 @@ class QueryService(
                 emittedCount,
                 if (request.plan is AdmittedQueryPlan.Impact) impactTasks.snapshot() else null,
             )
-        }
     }
 }

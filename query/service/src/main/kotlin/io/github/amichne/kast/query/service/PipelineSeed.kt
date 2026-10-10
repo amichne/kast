@@ -57,6 +57,12 @@ internal sealed interface PipelineSeed {
     }
 }
 
+internal fun PipelineSeed.accounted(plan: AdmittedQueryPlan): PipelineSeed.Accounted =
+    when (this) {
+        PipelineSeed.Unmeasured -> PipelineSeed.Accounted.create(plan)
+        is PipelineSeed.Accounted -> this
+    }
+
 // Includes the accounted seed, its proof variant and collection metadata. Shared roots also charge each slot.
 private const val SEED_STRUCTURE_BYTES = 256L
 private const val ROOT_SLOT_BYTES = 8L
