@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CasePolicy } from './pi_evaluation_policy.mjs';
+import { CasePolicy, decodeEnvelope, Outcome } from './pi_evaluation_policy.mjs';
 import { evaluationGuard } from './pi_evaluation_guard.mjs';
+import negativeDocument from './pi-fixtures/complete-document.json' with {type:'json'};
 
 const config = () => ({name:'payload',expectedSemanticCalls:1,inputTokenCeiling:20000,declarationByteCeiling:80000,maximumProviderPayloadBytes:1048576,work:{reportedTokens:30000,requests:2,tools:2,outputReserve:2000},delivery:{reportedTokens:25000,requests:1,outputReserve:2000},maximumToolTextBytes:1048576});
 const fresh = () => ({model:'gpt-6.1-sol',store:false,stream:true,instructions:'Fixed instructions',input:[{role:'user',content:[{type:'input_text',text:'Fixed request'}]}],reasoning:{effort:'high',summary:'auto'},text:{verbosity:'low'},include:['reasoning.encrypted_content'],tool_choice:'auto',parallel_tool_calls:true});
@@ -107,6 +108,57 @@ test('cached measured floor changes admission for a different fully calibrated r
   // Without the measured floor, ceiling1200 + reserve2000 would fit remaining4500.
   const other=calibratedPolicy(first,config(),{ceiling:4000});boundary(other,first);other.modelUsage({input:200,cacheRead:2300,cacheWrite:500,output:100,totalTokens:3100});
   assert.equal(boundary(other,second).aborts,1);assert.equal(other.report().outcome,'HARNESS_INPUT_BOUND_UNAVAILABLE');
+});
+
+test('dynamic negative result lacks a next-request input bound despite unused delivery allowance',()=>{
+  // Only the first full request has an explicitly synthetic offline receipt.
+  // This regression proves denial; it is not dynamic E2E or provider readiness.
+  const first=fresh();first.tools=[tool()];
+  const callId='dynamic-negative-call-1',argumentsValue={request:{type:'RUN'}};
+  const content=[{type:'text',text:JSON.stringify({type:'complete',document:negativeDocument})}];
+  const envelope=decodeEnvelope(content);
+  assert.equal(envelope.type,'complete');assert.equal(envelope.document.coverage.exhaustive,true);
+  assert.deepEqual(envelope.document.items,[]);
+  const next=structuredClone(first);
+  next.input.push({type:'function_call',call_id:callId,name:'query_symbols',arguments:JSON.stringify(argumentsValue)},
+    {type:'function_call_output',call_id:callId,output:content[0].text});
+  const observation=body=>({provider:'openai-codex',model:'gpt-6.1-sol',thinking:'high',
+    payload:inspectProviderPayload({...body,max_output_tokens:2000},1048576)});
+  const initial=observation(first),delivery=observation(next);
+  assert.equal(initial.payload.type,'admitted-payload');assert.equal(delivery.payload.type,'admitted-payload');
+  assert.notEqual(initial.payload.payloadSha256,delivery.payload.payloadSha256);
+  const completedWork=()=>{
+    const policy=calibratedPolicy(first);
+    assert.deepEqual(policy.beforeProvider(initial),{allow:true,reason:'ADMITTED',phase:'WORK'});
+    assert.deepEqual(policy.modelUsage({input:400,cacheRead:600,cacheWrite:0,output:100,reasoning:50,totalTokens:1100},'toolUse'),
+      {allow:true,reason:'ACCOUNTED',phase:'WORK'});
+    assert.deepEqual(policy.toolCall('query_symbols',argumentsValue,callId),{allow:true,reason:'ADMITTED',phase:'WORK'});
+    policy.adapterStarted(callId);
+    assert.deepEqual(policy.toolResult(envelope,Buffer.byteLength(content[0].text),callId,false),
+      {allow:true,reason:'RESULT_RECEIVED',phase:'DELIVERY'});
+    const report=policy.report();
+    assert.equal(report.nativeOutcome,'EXHAUSTIVE_RESULT');assert.equal(report.nativeRepliesObserved,1);
+    assert.equal(report.modelProposals[0].callId,callId);assert.equal(report.modelProposals[0].adapterStartObserved,true);
+    assert.equal(report.toolTextBytes,Buffer.byteLength(content[0].text));
+    assert.equal(report.phaseUsage.WORK.totalTokens,1100);assert.equal(report.phaseUsage.DELIVERY.totalTokens,0);
+    assert.equal(report.bounds.delivery.reportedTokens-report.phaseUsage.DELIVERY.totalTokens,25000);
+    return policy;
+  };
+  const policy=completedWork();
+  assert.deepEqual(policy.beforeProvider(delivery),{allow:false,reason:Outcome.INPUT_BOUND_UNAVAILABLE,phase:'STOPPED'});
+  const denied=policy.report().requestObservations[1];
+  assert.equal(denied.phase,'DELIVERY');assert.equal(denied.remaining,25000);
+  assert.equal(denied.inputEstimate,null);assert.equal(denied.required,null);assert.equal(denied.measuredInputFloor,1000);
+  assert.equal(denied.payloadSha256,delivery.payload.payloadSha256);
+  const lateBytes=receipt(next),lateCalibration=verifyInputCalibration(lateBytes,digest(lateBytes));
+  assert.equal(lateCalibration.type,'verified-input-calibration');
+  assert.deepEqual(policy.registerInputCalibration(lateCalibration),{allow:false,reason:Outcome.INPUT_BOUND_UNAVAILABLE,phase:'STOPPED'},
+    'A stopped case preserves its first input-bound failure');
+  const attemptedLateRegistration=completedWork();
+  assert.deepEqual(attemptedLateRegistration.registerInputCalibration(lateCalibration),{allow:false,reason:Outcome.INVALID,phase:'STOPPED'});
+  assert.deepEqual(attemptedLateRegistration.beforeProvider(delivery),{allow:false,reason:Outcome.INVALID,phase:'STOPPED'});
+  assert.deepEqual(attemptedLateRegistration.registerInputCalibration(lateCalibration),{allow:false,reason:Outcome.INVALID,phase:'STOPPED'});
+  assert.equal(attemptedLateRegistration.report().phaseUsage.DELIVERY.totalTokens,0);
 });
 
 test('declaration total and complete payload byte ceilings deny without trimming',()=>{

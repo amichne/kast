@@ -186,6 +186,28 @@ instructions alone cannot admit a new fresh or restored full request. The public
 model context ceiling is too large for the frozen phase grants and is not an
 attestation of the Codex OAuth route; it supplies denial evidence only.
 
+This receipt path supports a pre-observed request identity only. It cannot
+bootstrap a novel first request or a changed post-tool request: dynamic call IDs,
+tool results and reasoning items change the digest, and registration closes
+before execution. Such a sequence fails with `HARNESS_INPUT_BOUND_UNAVAILABLE`
+even if the DELIVERY grant remains unused. No positive dynamic sequence or
+usable live admission is established by the synthetic SDK checks.
+
+The installed Pi Codex provider exposes an awaited full-payload hook, but no
+input counter or tokenizer. OpenAI documents an exact
+[Platform Responses input-count endpoint](https://developers.openai.com/api/docs/guides/token-counting);
+its equivalence and availability on Pi's legacy ChatGPT OAuth backend are
+unproven. The documented
+[ChatGPT token-sharing flow](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference)
+uses a different route, and its
+[preview limitations](https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations)
+list `max_output_tokens` as unsupported. This does not prove the legacy backend
+rejects that parameter; actual backend cap acceptance remains unqualified.
+Live readiness requires an authoritative complete-input bound on the selected
+route and qualified output-cap support. A different provider/authentication route
+requires an explicit decision. Do not substitute byte estimates, synthetic
+receipts or increased grants for these missing prerequisites.
+
 The preflight recipe below uses private digest-pinned captures of each complete
 SDK body. It loads no SDK, credentials, model catalog or native service and sends
 no request. The manifest selects each case and WORK or DELIVERY grant explicitly.

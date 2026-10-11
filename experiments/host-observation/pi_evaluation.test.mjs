@@ -56,6 +56,21 @@ function callbacks(policy,recordResult) {
 const providerEvent=()=>({payload:providerPayload()});
 const resultEvent=envelope=>({toolName:'query_symbols',toolCallId:'call-1',content:[{type:'text',text:JSON.stringify(envelope)}]});
 
+test('local output cap admission and denial never qualify backend enforcement',()=>{
+  for(const [policy,allow] of [[makePolicy(config()),true],[new CasePolicy(config()),false]]) {
+    const guard=callbacks(policy),projected=guard.emit('before_provider_request',providerEvent());
+    assert.equal(projected.max_output_tokens,2000);
+    const report=policy.report();
+    assert.equal(report.requestObservations[0].allow,allow);
+    assert.equal(guard.aborted,allow?0:1);
+    assert.equal(Object.hasOwn(report,'providerEnforcedTokenCap'),false);
+    assert.equal(Object.hasOwn(policy,'providerEnforcedTokenCap'),false);
+    assert.equal(report.outputCapApplied,true);
+    assert.equal(report.backendOutputCapQualification,'UNQUALIFIED');
+    assert.equal(report.usage.totalTokens,0,'Callbacks perform no provider send or inference');
+  }
+});
+
 test('provider projection replaces saved-message byte growth and enforces the output reserve',()=>{
   const policy=makePolicy(config());
   assert.equal(policy.restoreReceivedResult(qualified,238968).allow,true);
@@ -63,7 +78,7 @@ test('provider projection replaces saved-message byte growth and enforces the ou
   const projected=guard.emit('before_provider_request',event);
   assert.equal(guard.aborted,0,'SDK-omitted details must not consume delivery input budget');
   assert.equal(projected.max_output_tokens,2000);
-  assert.equal(policy.report().providerEnforcedTokenCap,true);
+  assert.equal(policy.report().outputCapApplied,true);
   assert.equal(policy.report().requestObservations[0].inputEstimate,20000);
   const tooLarge=makePolicy({...config(),maximumProviderPayloadBytes:1000}),denied=callbacks(tooLarge);
   const largeEvent=providerEvent();largeEvent.payload.input=[{role:'user',content:'x'.repeat(30000)}];

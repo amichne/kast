@@ -85,6 +85,22 @@ class QueryDeliveryContractTest(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     render_contract(schema)
 
+    def test_projection_rejects_typeless_container_assertions(self):
+        for container in ['object', 'array']:
+            with self.subTest(container=container):
+                schema = copy.deepcopy(self.schema)
+                value = self.envelope('DELIVERED')
+                if container == 'object':
+                    del schema['$defs']['CanonicalReply']['type']
+                    value['initial'] = {}
+                else:
+                    del schema['oneOf'][0]['properties']['pages']['type']
+                    value['pages'] = [None]
+                Draft202012Validator.check_schema(schema)
+                self.assertFalse(Draft202012Validator(schema).is_valid(value))
+                with self.assertRaises(ValueError):
+                    render_contract(schema)
+
 
 if __name__ == '__main__':
     unittest.main()

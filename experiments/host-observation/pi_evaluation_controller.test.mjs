@@ -4,10 +4,10 @@ import { runOwnedWorker } from './pi_evaluation_controller.mjs';
 
 const options={cwd:process.cwd(),env:{},wallMillis:5000,graceMillis:0,terminateMillis:0};
 const child=async(messages,onEvent=()=>assert.fail('Failure IPC must not cross the raw observer boundary'))=>{
-  const script=`async function sendAll(){for(const message of ${JSON.stringify(messages)})
+  const script=`async function sendAll(){for(const message of JSON.parse(process.argv[1]))
 await new Promise((resolve,reject)=>process.send(message,error=>error?reject(error):resolve()));process.disconnect();}
 sendAll().catch(()=>{process.exitCode=1;});`;
-  return runOwnedWorker(process.execPath,['-e',script],{...options,onEvent});
+  return runOwnedWorker(process.execPath,['-e',script,JSON.stringify(messages)],{...options,onEvent});
 };
 const controllerFailure=(operation,reason)=>({stage:'WORKER_CONTROLLER',operation,reason});
 

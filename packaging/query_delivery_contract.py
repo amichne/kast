@@ -23,6 +23,10 @@ def render_contract(schema: dict) -> str:
             raise ValueError('Delivery additionalProperties must remain boolean')
         if isinstance(node.get('type'), list) and any(kind in ('object', 'array') for kind in node['type']):
             raise ValueError('Delivery object and array constraints require direct types')
+        if set(node) & {'required', 'properties', 'additionalProperties'} and node.get('type') != 'object':
+            raise ValueError('Delivery object assertions require a direct object type')
+        if set(node) & {'items', 'maxItems'} and node.get('type') != 'array':
+            raise ValueError('Delivery array assertions require a direct array type')
         assertions = {'$ref', 'oneOf', 'type', 'required', 'properties', 'additionalProperties',
                       'enum', 'const', 'minimum', 'maximum', 'maxItems', 'items'}
         for exclusive in ('$ref', 'oneOf'):

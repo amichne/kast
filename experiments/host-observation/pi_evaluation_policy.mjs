@@ -43,7 +43,7 @@ export class CasePolicy {
     this.config=structuredClone(config);this.phase='WORK';this.outcome=Outcome.RUNNING;this.nativeOutcome='UNOBSERVED';
     this.usage=emptyUsage();this.phaseUsage={WORK:emptyUsage(),DELIVERY:emptyUsage()};this.requests={WORK:0,DELIVERY:0};this.requestObservations=[];
     this.proposals=[];this.tools=0;this.resultCount=0;this.toolTextBytes=0;this.finalAnswer=false;this.exhaustiveEvidence=false;this.evidenceRequest=undefined;this.providerInFlight=false;
-    this.lastMeasuredInput=0;this.inputCalibrations=new Map();this.providerEnforcedTokenCap=false;this.queryDeliveries=[];
+    this.lastMeasuredInput=0;this.inputCalibrations=new Map();this.outputCapApplied=false;this.queryDeliveries=[];
   }
   stop(outcome) {this.outcome=outcome;this.phase='STOPPED';return decision(false,outcome,this.phase);}
   restoreReceivedResult(envelope,textBytes) {
@@ -70,6 +70,8 @@ export class CasePolicy {
     if(payload.payloadModel!=='gpt-6.1-sol'||payload.effort!=='high') return this.stop(Outcome.MODEL_MISMATCH);
     const bound=this.phase==='WORK'?this.config.work:this.config.delivery;
     if(payload.outputTokenCap!==this.providerOutputCap()) return this.stop(Outcome.INVALID);
+    // This proves the local payload setting only; no transport/backend fact follows.
+    this.outputCapApplied=true;
     const calibration=this.inputCalibrations.get(payload.payloadSha256);
     const remaining=bound.reportedTokens-this.phaseUsage[this.phase].totalTokens;
     const fallbackRequired=MODEL_CONTEXT_WINDOW.inputTokens+bound.outputReserve;
@@ -81,7 +83,7 @@ export class CasePolicy {
     const reason=!withinBytes?Outcome.BUDGET:!calibration?Outcome.INPUT_BOUND_UNAVAILABLE:this.requests[this.phase]>=bound.requests||!integer(required)||required>remaining||inputEstimate>this.config.inputTokenCeiling?Outcome.BUDGET:'ADMITTED';
     this.requestObservations.push({...payload,phase:this.phase,inputEstimate,measuredInputFloor:this.lastMeasuredInput,required,remaining,allow:reason==='ADMITTED',reason,boundMethod:calibration?.method??'NO_VERIFIED_INPUT_BOUND',boundQualification:calibration?.qualification??'MODEL_CONTEXT_WINDOW_EXCEEDS_ALLOWANCE_OR_ROUTE_UNATTESTED',calibrationSourceSha256:calibration?.sourceSha256??null,modelContextWindow:MODEL_CONTEXT_WINDOW.inputTokens,modelContextWindowRequired:fallbackRequired});
     if(reason!=='ADMITTED') return this.stop(reason);
-    this.requests[this.phase]++;this.providerInFlight=true;this.lastRequestPhase=this.phase;this.activeInputCalibration=calibration;this.providerEnforcedTokenCap=true;
+    this.requests[this.phase]++;this.providerInFlight=true;this.lastRequestPhase=this.phase;this.activeInputCalibration=calibration;
     return decision(true,'ADMITTED',this.phase);
   }
   modelUsage(raw,stopReason) {
@@ -182,6 +184,6 @@ export class CasePolicy {
       // External row/oracle proof is never inferred from a final answer/row count.
       exhaustiveRowsVerified:false,requiredEvidenceVerified:false,usage:structuredClone(this.usage),phaseUsage:structuredClone(this.phaseUsage),inputCalibrationFailure:structuredClone(this.inputCalibrationFailure??null),measuredInputFloor:this.lastMeasuredInput,
       bounds:{work:structuredClone(this.config.work),delivery:structuredClone(this.config.delivery),inputTokenCeiling:this.config.inputTokenCeiling,maximumProviderPayloadBytes:this.maximumProviderPayloadBytes,declarationByteCeiling:this.config.declarationByteCeiling,maximumToolTextBytes:this.config.maximumToolTextBytes,wallSeconds:this.config.wallSeconds},
-      queryDeliveries:structuredClone(this.queryDeliveries),deliveryPhysicalRpcCountReported:this.queryDeliveries.filter(d=>d.observation==='TOOL_RESULT').reduce((sum,d)=>sum+d.rpcCount,0),savedDeliveryPhysicalRpcCountReported:this.queryDeliveries.filter(d=>d.observation==='SAVED_RESULT').reduce((sum,d)=>sum+d.rpcCount,0),rpcRejection:structuredClone(this.rpcRejection??null),qualification:structuredClone(this.qualification??null),semanticRejection:structuredClone(this.rejectionSummary??null),requestObservations:structuredClone(this.requestObservations),modelProposals:structuredClone(this.proposals),nativeRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved).length,semanticRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved&&(p.requestType==='RUN'||p.toolName==='check_diagnostics')).length,toolTextBytes:this.toolTextBytes,tokenPreflightMethod:'VERIFIED_FULL_PAYLOAD_CALIBRATION_AND_MEASURED_INPUT_FLOOR_PLUS_OUTPUT_RESERVE',providerEnforcedTokenCap:this.providerEnforcedTokenCap};
+      queryDeliveries:structuredClone(this.queryDeliveries),deliveryPhysicalRpcCountReported:this.queryDeliveries.filter(d=>d.observation==='TOOL_RESULT').reduce((sum,d)=>sum+d.rpcCount,0),savedDeliveryPhysicalRpcCountReported:this.queryDeliveries.filter(d=>d.observation==='SAVED_RESULT').reduce((sum,d)=>sum+d.rpcCount,0),rpcRejection:structuredClone(this.rpcRejection??null),qualification:structuredClone(this.qualification??null),semanticRejection:structuredClone(this.rejectionSummary??null),requestObservations:structuredClone(this.requestObservations),modelProposals:structuredClone(this.proposals),nativeRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved).length,semanticRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved&&(p.requestType==='RUN'||p.toolName==='check_diagnostics')).length,toolTextBytes:this.toolTextBytes,tokenPreflightMethod:'VERIFIED_FULL_PAYLOAD_CALIBRATION_AND_MEASURED_INPUT_FLOOR_PLUS_OUTPUT_RESERVE',outputCapApplied:this.outputCapApplied,backendOutputCapQualification:'UNQUALIFIED'};
   }
 }
