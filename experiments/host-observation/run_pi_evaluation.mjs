@@ -14,6 +14,12 @@ export function validatePlan(plan) {
   for(const item of plan.cases) {
     if(!/^[a-z0-9-]+$/.test(item.name)||!Number.isSafeInteger(item.wallSeconds)||item.wallSeconds<1||item.wallSeconds>480) throw Error('Safe case name and finite wall bound required');
     new CasePolicy(item);
+    if(item.inputCalibrations!==undefined) {
+      if(!Array.isArray(item.inputCalibrations)||item.inputCalibrations.length>64||new Set(item.inputCalibrations.map(value=>value.sha256)).size!==item.inputCalibrations.length) throw Error('Bounded unique offline input calibration references required');
+      for(const reference of item.inputCalibrations) {
+        if(!reference||Object.keys(reference).some(key=>!['type','path','sha256'].includes(key))||reference.type!=='OFFLINE_FULL_PAYLOAD_CALIBRATION'||typeof reference.path!=='string'||!path.isAbsolute(reference.path)||! /^[a-f0-9]{64}$/.test(reference.sha256)) throw Error('Absolute digest-pinned offline full-payload calibration required');
+      }
+    }
     if(item.mode==='fresh') {
       if(typeof item.prompt!=='string'||!item.prompt.length||item.receivedSessionFile!==undefined) throw Error('Fresh case requires its fixed prompt');
     } else if(item.mode==='received-result') {
@@ -28,7 +34,7 @@ export async function main(args) {
   const planFile=path.resolve(args[1]);
   const plan=validatePlan(JSON.parse(fs.readFileSync(planFile,'utf8')));
   if(args[0]==='--plan') {
-    console.log(JSON.stringify({mode:'NO_INFERENCE',cases:plan.cases.map(c=>({name:c.name,work:c.work,delivery:c.delivery,inputTokenCeiling:c.inputTokenCeiling}))},null,2));return;
+    console.log(JSON.stringify({mode:'NO_INFERENCE',cases:plan.cases.map(c=>({name:c.name,work:c.work,delivery:c.delivery,inputTokenCeiling:c.inputTokenCeiling,inputBoundMethod:'VERIFIED_FULL_PAYLOAD_CALIBRATION_REQUIRED',inputCalibrationReferences:(c.inputCalibrations??[]).length}))},null,2));return;
   }
   // Existing pilot logs are never overwritten. Each execution owns a new root.
   fs.mkdirSync(plan.outputRoot,{mode:0o700});

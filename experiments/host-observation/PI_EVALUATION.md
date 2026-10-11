@@ -18,7 +18,11 @@ or claim that the pilot's denied request reached a provider or incurred usage.
 Run deterministic checks without Pi, authentication, IDEs or inference:
 
 ```sh
-node --test experiments/host-observation/pi_evaluation.test.mjs
+node --test experiments/host-observation/pi_evaluation.test.mjs \
+  experiments/host-observation/pi_evaluation_payload.test.mjs \
+  experiments/host-observation/pi_evaluation_records.test.mjs \
+  experiments/host-observation/pi_evaluation_calibrations.test.mjs \
+  experiments/host-observation/pi_evaluation_preflight.test.mjs
 python3 -m unittest discover -s experiments/host-observation -p test_pi_evaluation.py
 ```
 
@@ -35,10 +39,16 @@ or GREEN. The Python wrapper includes these checks in the existing Gradle gate.
   context and whole-request byte sizes. Admission uses the actual SDK projection.
   Saved message metadata does not enter that projection. Restored `additional_tools`
   declarations and instructions share the declaration bound and its input calibration.
-  They do not also count as context growth. Admission takes the greater of the
-  declared calibration plus projected context bytes and the latest measured input
-  plus projected growth. It then adds the output reserve. These are estimates;
-  bytes are not tokenizer counts.
+  Admission requires an offline receipt bound to the complete projected request,
+  including instructions, top-level tools, restored declarations and input.
+  The receipt retains finalized cached-inclusive input usage and an explicit
+  calibrated input ceiling. The ceiling must fit the case's input allowance.
+  Admission takes the greater of that ceiling and the previous measured input,
+  then adds the phase output reserve. Missing or changed calibration is
+  `HARNESS_INPUT_BOUND_UNAVAILABLE`; unsupported structures fail closed.
+  Serialized byte caps remain independent limits. No bytes-to-tokens conversion
+  is used. Calibration is empirical evidence, not tokenizer proof or an
+  attestation that future backend accounting cannot change.
 - Finalized API usage keeps uncached input, cached input read/write, generated
   output and reasoning subset separate. Total usage includes cached input on
   each request. Reasoning is not an extra additive category. There is no claim
@@ -46,6 +56,10 @@ or GREEN. The Python wrapper includes these checks in the existing Gradle gate.
   provider hook sets `max_output_tokens` to at most 2,000, within the declared
   reserve. The SDK check asserts this field at the actual SSE fetch boundary.
   Usage beyond that reserve is `HARNESS_BUDGET_LIMIT` and stops further requests.
+  Actual input above its calibrated ceiling is
+  `HARNESS_INPUT_CALIBRATION_EXCEEDED`. The controller retains the actual
+  cached-inclusive debit and permanently stops that case; later calibration
+  cannot rehabilitate it.
 - A semantic rejection aborts at `tool_result`. The isolated SSE transport
   checks the abort before fetch; abort intent alone is not transport evidence.
   The default outcome is `INTENTIONAL_REJECTION`. Optional, explicitly declared
@@ -67,7 +81,13 @@ or GREEN. The Python wrapper includes these checks in the existing Gradle gate.
   exact code as `TOOL_RPC_REJECTION`, not a semantic completeness rejection.
   An adapter-start event alone is not proof of semantic
   execution. No source payloads, credentials, headers or environment are logged
-  in the shareable guard report. Session/event logs are private local artifacts.
+  in the shareable summaries. Guard and event records share one 64-KiB cap,
+  including one reserved `RECORDS_TRUNCATED` marker. Only allowlisted stages,
+  outcomes, counts and hashes are retained. Record failures remain typed sticky
+  failures and abort further work. Exact replay is separate: owned0700 directories
+  and0600 files, with scoped umask077. Restored sessions open an owned copy;
+  the original transcript is not opened for SDK mutation. The policy report
+  and exact replay remain private; summaries are the export surface.
 - Each case runs in one owned process group. Cancellation first requests SDK
   abort, then terminates and reaps an unresponsive worker and its descendants.
   Existing IDEs and user sessions are never owned or restarted by this controller.
@@ -104,28 +124,113 @@ Each case declares `name`, `mode`, `expectedSemanticCalls`, `inputTokenCeiling`,
 
 Use `mode: "fresh"` with the fixed public question in `prompt`. A negative case
 can declare one semantic call, WORK 30,000, and independent DELIVERY 25,000.
-The previous measured declaration array was 73,716 bytes; a declared 80,000-byte
-ceiling and 20,000-token initial input ceiling leave explicit space for that
-context. Validate new schema/context measurements before selecting bounds.
+The prior declaration array measured73,716 bytes. This observation establishes
+only a byte measurement. Neither an80,000-byte declaration limit nor a20,000-token
+input ceiling proves that a new complete request fits. Keep the frozen phase
+allowances and obtain qualified full-request calibration before admission.
 
 For `mode: "received-result"`, provide the exact `receivedSessionFile` and
 `receivedResultEntryId`, the expected `receivedContextSha256`, and omit `prompt`.
 The saved workspace and exact restored context are checked before inference.
-Public `SessionManager.open` and
-`branch` select the saved tool-result leaf in memory; the next appended entry
+Public `SessionManager.open` opens a private owned copy, and
+`branch` selects the saved tool-result leaf in memory; the next appended entry
 persists that branch without replacing older entries. `session.agent.continue()`
 consumes it without a new task, trimming, summary, reissued query or coaching.
 The original session entries remain intact. DELIVERY blocks all new tool calls.
 
-`test_pi_evaluation_mutations.py` kills seventeen changes to the real rules: removing
+`test_pi_evaluation_mutations.py` kills nineteen changes to the real rules: removing
 the provider output cap, charging inline declarations twice, removing the
 terminal gate, sharing the final budget, dropping cached-input accounting,
 allowing semantic work in DELIVERY, weakening exact evidence-read admission,
 adding a coaching prompt, rejecting valid qualified replies, losing original
-coverage, ignoring measured input, selecting unsafe automatic transport, and
+coverage, dropping the cached input floor, admitting a different complete payload,
+ignoring calibration overshoot, selecting unsafe automatic transport, and
 enabling unaccounted warming, upgrading initial delivery qualification, erasing a
 delivery blocker, collapsing physical RPC count and rejecting a failed-RPC count. A syntax/import
 or provisioning failure does not count as a killed mutation.
+
+## Full-request calibration and no-inference preflight
+
+A case may supply at most64 `inputCalibrations`, each an exact object:
+
+```json
+{"type":"OFFLINE_FULL_PAYLOAD_CALIBRATION","path":"/private/receipts/request.json","sha256":"<64 lowercase hex characters>"}
+```
+
+Receipt files must be owned regular files, with one link, mode0400 or0600, inside
+an owned0700 directory. Symlinks, identity changes, extra reference fields and
+files above4MiB are rejected. Descriptors close before verification/registration.
+The worker loads and verifies all references before creating the SDK session.
+It records finite `INPUT_CALIBRATION` preparation/failure evidence without paths
+or request content. Receipt authority is explicit:
+
+```json
+{
+  "type":"FULL_PAYLOAD_CALIBRATION",
+  "provider":"openai-codex",
+  "model":"gpt-6.1-sol",
+  "request":{"model":"gpt-6.1-sol","instructions":"fixed","input":[],"tools":[],"reasoning":{"effort":"high"},"max_output_tokens":2000},
+  "usage":{"input":100,"cacheRead":0,"cacheWrite":0,"output":10,"totalTokens":110},
+  "calibratedInputCeiling":100,
+  "method":"EXACT_PROJECTED_REQUEST_FINALIZED_USAGE",
+  "qualification":"CALIBRATION_NOT_TOKENIZER_PROOF"
+}
+```
+
+This layout is illustrative; request and usage must come from the exact qualified
+full-request observation. Do not use these sample values as live calibration.
+The request identity omits only store, stream, cache key and enforced output cap.
+Source authenticity and backend stability remain external provenance obligations.
+A synthetic finalized-usage receipt is test evidence only. Existing receipts for
+instructions alone cannot admit a new fresh or restored full request. The public
+model context ceiling is too large for the frozen phase grants and is not an
+attestation of the Codex OAuth route; it supplies denial evidence only.
+
+The preflight recipe below uses private digest-pinned captures of each complete
+SDK body. It loads no SDK, credentials, model catalog or native service and sends
+no request. The manifest selects each case and WORK or DELIVERY grant explicitly.
+Admission is independent per request; the receipt says so and cannot establish
+sequence accounting, same-session restoration or live output-cap acceptance.
+
+```sh
+node experiments/host-observation/run_pi_evaluation.mjs --plan /private/plan.json
+node experiments/host-observation/pi_evaluation_preflight.mjs \
+  --plan /private/plan.json --manifest /private/requests/manifest.json \
+  --sha256 "$MANIFEST_SHA256"
+```
+
+The private manifest binds the private plan digest and at most64 unique
+case/phase entries. It must cover WORK for each fresh case and DELIVERY for each
+received-result case; fresh DELIVERY can be checked independently as well:
+
+```json
+{
+  "type":"FULL_PROVIDER_REQUEST_PREFLIGHT",
+  "planSha256":"<plan SHA256>",
+  "requests":[
+    {"case":"fresh-control","phase":"WORK","body":{"type":"FULL_PROVIDER_PAYLOAD","path":"/private/fresh-body.json","sha256":"<body SHA256>"}},
+    {"case":"received-control","phase":"DELIVERY","body":{"type":"FULL_PROVIDER_PAYLOAD","path":"/private/received-body.json","sha256":"<body SHA256>"}}
+  ]
+}
+```
+
+Plan, manifest and body files use the same private ownership/mode/size boundary
+as receipts. Full body files must already contain the enforced output cap;
+preflight never adds fields, trims context or rewrites declarations. The report
+retains hashes and finite admissions only. A declared received-result identity
+is validated by the plan parser; actual session restoration remains a later SDK
+check. Structural parsing is bounded at depth64 and32768 JSON nodes, with at
+most1024 input items and64 tools. The installed declaration schema requires
+depth33; the larger finite depth supports that complete schema and its receipt
+without changing any token or semantic-work allowance.
+
+Changed declarations, instructions, input or restored `additional_tools` require
+another exact qualified calibration; unsupported payloads and missing receipts
+deny before transport. The separate installed SDK check verifies the awaited
+hook and synthetic transport. Final usability additionally requires the actual
+`openai-codex/gpt-6.1-sol` high provider to accept the enforced output cap,
+matching live usage receipts, and independently qualified native evidence.
+These remain lifecycle-owned checks; this source change performs no inference.
 
 ## Installed SDK check without inference
 

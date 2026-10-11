@@ -10,6 +10,7 @@ import argparse
 import json
 import re
 from pathlib import Path
+from query_delivery_contract import MODULE as DELIVERY_MODULE, SCHEMA as DELIVERY_SCHEMA, embed_contract, render_contract
 
 ROOT = Path(__file__).resolve().parents[1]
 RESOURCES = ROOT / 'app-server/src/main/resources/io/github/amichne/kast/appserver/query'
@@ -462,6 +463,11 @@ def render_tools(authority: dict) -> dict[Path, str]:
     failures = [entry.strip() for entry in failure_match.group(1).split(',') if entry.strip()]
     if not failures or len(failures) != len(set(failures)):
         raise ValueError('ToolRpcFailure must have unique finite entries')
+    contract = render_contract(json.loads(DELIVERY_SCHEMA.read_text()))
+    outputs[DELIVERY_MODULE] = contract + 'export { admitQueryDeliveryEnvelope, createQueryDeliveryEnvelope, encodeQueryDeliveryEnvelope };\n'
+    delivery_owner = ROOT / 'cli/src/main/js/query-delivery.mjs'
+    delivery = embed_contract(delivery_owner.read_text(), contract).rstrip()
+    outputs[delivery_owner] = delivery + '\n'
     # Registration installs each adapter as one file; generate its marked constants in place.
     for relative in ('copilot/extension.mjs', 'pi/extension.ts'):
         adapter = ROOT / relative
@@ -482,7 +488,6 @@ def render_tools(authority: dict) -> dict[Path, str]:
         )
         if count != 1:
             raise ValueError(f'{relative}: missing unique generated RPC failures')
-        delivery = (ROOT / 'cli/src/main/js/query-delivery.mjs').read_text().rstrip()
         delivery_block = ('// Generated query delivery; owned by cli/src/main/js/query-delivery.mjs.\n' +
                           delivery + '\n// End generated query delivery.')
         source, count = re.subn(

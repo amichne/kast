@@ -16,9 +16,9 @@ class PiEvaluationMutationTest(unittest.TestCase):
              "{...event.payload,max_output_tokens:policy.providerOutputCap()}",
              "{...event.payload}",
              "provider projection replaces"),
-            ("inline-declarations-charged-twice", "pi_evaluation_guard.mjs",
-             "inputs.filter(item=>!declarations.includes(item))",
-             "inputs",
+            ("inline-declarations-charged-twice", "pi_evaluation_payload.mjs",
+             "payload.input.filter(item=>item.type!=='additional_tools')",
+             "payload.input",
              "inline SDK declarations consume"),
             ("terminal-rejection-gate", "pi_evaluation_policy.mjs",
              "return this.stop(Outcome.REJECTION);",
@@ -53,9 +53,17 @@ class PiEvaluationMutationTest(unittest.TestCase):
              "knownMinimum:detail?.coverage?.knownMinimum??null",
              "canonical rejection preserves originalCoverage"),
             ("measured-input-ignored", "pi_evaluation_policy.mjs",
-             "Math.max(this.config.inputTokenCeiling+contextBytes,measuredInputFloor)",
-             "this.config.inputTokenCeiling+contextBytes",
+             "Math.max(calibration.calibratedInputCeiling,this.lastMeasuredInput)",
+             "calibration.calibratedInputCeiling",
+             "cached measured floor changes", "pi_evaluation_payload.test.mjs"),
+            ("calibration-overrun-ignored", "pi_evaluation_policy.mjs",
+             "if(this.lastMeasuredInput>this.activeInputCalibration.calibratedInputCeiling)",
+             "if(false)",
              "measured input above calibration"),
+            ("different-full-payload-admitted", "pi_evaluation_policy.mjs",
+             "this.inputCalibrations.get(payload.payloadSha256)",
+             "this.inputCalibrations.values().next().value",
+             "changed fresh context", "pi_evaluation_payload.test.mjs"),
             ("unsafe-automatic-transport", "pi_evaluation_worker.mjs",
              "transport:'sse',cacheWarming:'off'",
              "transport:'auto',cacheWarming:'off'",
@@ -76,14 +84,19 @@ class PiEvaluationMutationTest(unittest.TestCase):
              "rpcCount:d.rpc_count",
              "rpcCount:1",
              "actual shared-client delivered complete and qualified"),
-            ("failed-rpc-count-rejected", "pi_evaluation_delivery.mjs",
-             "value.pages.length+1>d.rpc_count",
-             "value.pages.length+1!==d.rpc_count",
+            ("failed-rpc-count-rejected", "../../cli/src/main/js/query-delivery-contract.mjs",
+             "value.pages.length + 1 > value.delivery.rpc_count",
+             "value.pages.length + 1 !== value.delivery.rpc_count",
              "actual shared-client blockers cancellation"),
         ]
-        for name, filename, original, replacement, selection in mutations:
+        for entry in mutations:
+            name, filename, original, replacement, selection, *suite = entry
             with self.subTest(mutation=name), tempfile.TemporaryDirectory(prefix="kast-pi-mutation-") as directory:
-                root = Path(directory)
+                root = Path(directory) / "experiments" / "host-observation"
+                root.mkdir(parents=True)
+                contract = Path(directory) / "cli" / "src" / "main" / "js" / "query-delivery-contract.mjs"
+                contract.parent.mkdir(parents=True)
+                shutil.copyfile(here.parent.parent / "cli/src/main/js/query-delivery-contract.mjs", contract)
                 for source in here.glob("pi_evaluation*.mjs"):
                     shutil.copyfile(source, root / source.name)
                 shutil.copyfile(here / "run_pi_evaluation.mjs", root / "run_pi_evaluation.mjs")
@@ -93,7 +106,7 @@ class PiEvaluationMutationTest(unittest.TestCase):
                 self.assertEqual(1, text.count(original), "Mutation must change exactly one owning rule")
                 target.write_text(text.replace(original, replacement))
                 result = subprocess.run([node, "--test", "--test-name-pattern", selection,
-                                         "pi_evaluation.test.mjs"], cwd=root,
+                                         suite[0] if suite else "pi_evaluation.test.mjs"], cwd=root,
                                         capture_output=True, text=True, timeout=10)
                 output = result.stdout + result.stderr
                 self.assertNotEqual(0, result.returncode, f"Surviving mutation {name}\n{output}")

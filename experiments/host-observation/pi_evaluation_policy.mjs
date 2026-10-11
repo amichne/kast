@@ -1,8 +1,9 @@
 // Pure rules; no process, filesystem, provider, Kast, clock or credential access.
 import { isDeepStrictEqual } from 'node:util';
+import { isAdmittedPayload, isVerifiedInputCalibration, PayloadFailure, MODEL_CONTEXT_WINDOW } from './pi_evaluation_payload.mjs';
 import { decodeQueryDelivery, deliverySummary } from './pi_evaluation_delivery.mjs';
 export const READ_TOOLS=Object.freeze(['query_symbols','check_diagnostics','health_check']);
-export const Outcome = Object.freeze({RUNNING:'RUNNING', FINAL_ANSWER:'FINAL_ANSWER', QUALIFIED_ANSWER:'QUALIFIED_ANSWER', REJECTION:'INTENTIONAL_REJECTION', RPC_REJECTION:'TOOL_RPC_REJECTION', DELIVERY_BLOCKED:'CLIENT_DELIVERY_BLOCKED', BUDGET:'HARNESS_BUDGET_LIMIT', MODEL_MISMATCH:'HARNESS_MODEL_MISMATCH', TOOL_BLOCKED:'HARNESS_TOOL_BLOCKED', INVALID:'HARNESS_OBSERVATION_INVALID', MODEL_ERROR:'MODEL_ERROR', CANCELLED:'HARNESS_CANCELLED'});
+export const Outcome = Object.freeze({RUNNING:'RUNNING', FINAL_ANSWER:'FINAL_ANSWER', QUALIFIED_ANSWER:'QUALIFIED_ANSWER', REJECTION:'INTENTIONAL_REJECTION', RPC_REJECTION:'TOOL_RPC_REJECTION', DELIVERY_BLOCKED:'CLIENT_DELIVERY_BLOCKED', BUDGET:'HARNESS_BUDGET_LIMIT', MODEL_MISMATCH:'HARNESS_MODEL_MISMATCH', TOOL_BLOCKED:'HARNESS_TOOL_BLOCKED', INVALID:'HARNESS_OBSERVATION_INVALID', PAYLOAD_UNSUPPORTED:PayloadFailure.UNSUPPORTED, INPUT_BOUND_UNAVAILABLE:PayloadFailure.UNPROVEN, INPUT_CALIBRATION_EXCEEDED:'HARNESS_INPUT_CALIBRATION_EXCEEDED', MODEL_ERROR:'MODEL_ERROR', CANCELLED:'HARNESS_CANCELLED'});
 const RPC_FAILURES=Object.freeze(['INSTALLATION_STOPPED','OBSERVATION_UNAVAILABLE','CATALOG_UNAVAILABLE','INVALID_COMMAND','REQUEST_TOO_LARGE','UNKNOWN_TOOL','INVALID_ARGUMENTS','OUT_OF_SCOPE','INVOCATION_FAILED','INVALID_RESULT']);
 const emptyUsage=()=>({input:0,cacheRead:0,cacheWrite:0,output:0,reasoning:0,totalTokens:0});
 const integer=n=>Number.isSafeInteger(n)&&n>=0;
@@ -37,10 +38,12 @@ export class CasePolicy {
       if(!b || ![b.reportedTokens,b.requests,b.outputReserve].every(n=>integer(n)&&n>0)) throw Error('Explicit per-case work and delivery bounds required');
     }
     if(!integer(config.work.tools)||config.work.tools<=0 || !integer(config.inputTokenCeiling)||config.inputTokenCeiling<=0 || !integer(config.declarationByteCeiling)||config.declarationByteCeiling<=0 || !integer(config.expectedSemanticCalls)||config.expectedSemanticCalls<=0 || !integer(config.maximumToolTextBytes)||config.maximumToolTextBytes<=0) throw Error('Explicit input/context, semantic and byte bounds required');
+    this.maximumProviderPayloadBytes=config.maximumProviderPayloadBytes??(config.maximumToolTextBytes+config.declarationByteCeiling);
+    if(!integer(this.maximumProviderPayloadBytes)||this.maximumProviderPayloadBytes<1||this.maximumProviderPayloadBytes>4194304) throw Error('Finite provider payload byte limit required');
     this.config=structuredClone(config);this.phase='WORK';this.outcome=Outcome.RUNNING;this.nativeOutcome='UNOBSERVED';
     this.usage=emptyUsage();this.phaseUsage={WORK:emptyUsage(),DELIVERY:emptyUsage()};this.requests={WORK:0,DELIVERY:0};this.requestObservations=[];
     this.proposals=[];this.tools=0;this.resultCount=0;this.toolTextBytes=0;this.finalAnswer=false;this.exhaustiveEvidence=false;this.evidenceRequest=undefined;this.providerInFlight=false;
-    this.lastMeasuredInput=0;this.lastProviderInputBytes=0;this.providerEnforcedTokenCap=false;this.queryDeliveries=[];
+    this.lastMeasuredInput=0;this.inputCalibrations=new Map();this.providerEnforcedTokenCap=false;this.queryDeliveries=[];
   }
   stop(outcome) {this.outcome=outcome;this.phase='STOPPED';return decision(false,outcome,this.phase);}
   restoreReceivedResult(envelope,textBytes) {
@@ -53,39 +56,53 @@ export class CasePolicy {
     return decision(true,'SAVED_RESULT_DELIVERY',this.phase);
   }
   providerOutputCap() {return Math.min(2000,(this.phase==='WORK'?this.config.work:this.config.delivery).outputReserve);}
+  registerInputCalibration(calibration) {
+    if(this.phase==='STOPPED') return decision(false,this.outcome,this.phase);
+    if(!isVerifiedInputCalibration(calibration) || this.requests.WORK || this.requests.DELIVERY || calibration.calibratedInputCeiling>this.config.inputTokenCeiling || this.inputCalibrations.size>=64 || this.inputCalibrations.has(calibration.payloadSha256)) return this.stop(Outcome.INVALID);
+    this.inputCalibrations.set(calibration.payloadSha256,calibration);
+    return decision(true,'CALIBRATION_REGISTERED',this.phase);
+  }
   beforeProvider(observation) {
     if(this.phase==='STOPPED') return decision(false,this.outcome,this.phase);
-    if(observation.provider!=='openai-codex'||observation.model!=='gpt-6.1-sol'||observation.thinking!=='high'||observation.payloadModel!=='gpt-6.1-sol'||observation.effort!=='high') return this.stop(Outcome.MODEL_MISMATCH);
-    if(!['payloadBytes','toolsBytes','instructionsBytes','inputBytes'].every(k=>integer(observation[k]))) return this.stop(Outcome.INVALID);
-    const contextBytes=observation.contextBytes??observation.inputBytes;
-    if(!integer(contextBytes)||contextBytes>observation.inputBytes) return this.stop(Outcome.INVALID);
+    if(observation.provider!=='openai-codex'||observation.model!=='gpt-6.1-sol'||observation.thinking!=='high') return this.stop(Outcome.MODEL_MISMATCH);
+    const payload=observation.payload;
+    if(!isAdmittedPayload(payload)) return this.stop(Object.values(PayloadFailure).includes(payload?.reason)?payload.reason:Outcome.INVALID);
+    if(payload.payloadModel!=='gpt-6.1-sol'||payload.effort!=='high') return this.stop(Outcome.MODEL_MISMATCH);
     const bound=this.phase==='WORK'?this.config.work:this.config.delivery;
-    if(observation.outputTokenCap!==this.providerOutputCap()) return this.stop(Outcome.INVALID);
-    // Count the SDK's actual input projection, not saved message details or a
-    // second copy of tool text. Bytes remain a conservative estimate, not tokens.
-    // The declared ceiling covers instructions/tools; measured usage retains a
-    // larger observed floor, with only growth since that request added once.
-    const measuredInputFloor=this.lastMeasuredInput+Math.max(0,contextBytes-this.lastProviderInputBytes);
-    const inputEstimate=Math.max(this.config.inputTokenCeiling+contextBytes,measuredInputFloor);
-    const required=inputEstimate+bound.outputReserve;
+    if(payload.outputTokenCap!==this.providerOutputCap()) return this.stop(Outcome.INVALID);
+    const calibration=this.inputCalibrations.get(payload.payloadSha256);
     const remaining=bound.reportedTokens-this.phaseUsage[this.phase].totalTokens;
-    const allow=this.requests[this.phase]<bound.requests && required<=remaining && observation.toolsBytes+observation.instructionsBytes<=this.config.declarationByteCeiling;
-    this.requestObservations.push({...observation,phase:this.phase,inputEstimate,measuredInputFloor,required,remaining,allow});
-    if(!allow) return this.stop(Outcome.BUDGET);
-    this.requests[this.phase]++;this.providerInFlight=true;this.lastRequestPhase=this.phase;this.lastProviderInputBytes=contextBytes;this.providerEnforcedTokenCap=true;
+    const fallbackRequired=MODEL_CONTEXT_WINDOW.inputTokens+bound.outputReserve;
+    // Exact complete input calibration replaces all byte-to-token arithmetic.
+    // Reported cached input retains a floor but never proves changed input fits.
+    const inputEstimate=calibration ? Math.max(calibration.calibratedInputCeiling,this.lastMeasuredInput) : null;
+    const required=inputEstimate===null?null:inputEstimate+bound.outputReserve;
+    const withinBytes=payload.payloadBytes<=this.maximumProviderPayloadBytes && payload.toolsBytes+payload.declarationInputBytes+payload.instructionsBytes<=this.config.declarationByteCeiling;
+    const reason=!withinBytes?Outcome.BUDGET:!calibration?Outcome.INPUT_BOUND_UNAVAILABLE:this.requests[this.phase]>=bound.requests||!integer(required)||required>remaining||inputEstimate>this.config.inputTokenCeiling?Outcome.BUDGET:'ADMITTED';
+    this.requestObservations.push({...payload,phase:this.phase,inputEstimate,measuredInputFloor:this.lastMeasuredInput,required,remaining,allow:reason==='ADMITTED',reason,boundMethod:calibration?.method??'NO_VERIFIED_INPUT_BOUND',boundQualification:calibration?.qualification??'MODEL_CONTEXT_WINDOW_EXCEEDS_ALLOWANCE_OR_ROUTE_UNATTESTED',calibrationSourceSha256:calibration?.sourceSha256??null,modelContextWindow:MODEL_CONTEXT_WINDOW.inputTokens,modelContextWindowRequired:fallbackRequired});
+    if(reason!=='ADMITTED') return this.stop(reason);
+    this.requests[this.phase]++;this.providerInFlight=true;this.lastRequestPhase=this.phase;this.activeInputCalibration=calibration;this.providerEnforcedTokenCap=true;
     return decision(true,'ADMITTED',this.phase);
   }
-  modelUsage(raw) {
+  modelUsage(raw,stopReason) {
     if(this.phase==='STOPPED'&&!this.providerInFlight) return decision(false,this.outcome,this.phase);
     const decoded=decodeUsage(raw);
     if(decoded.type==='invalid') return this.stop(Outcome.INVALID);
     const usage=decoded.value;
-    if(usage.totalTokens===0) return decision(true,'ZERO_USAGE',this.phase);
+    if(usage.totalTokens===0) {
+      this.providerInFlight=false;
+      if(this.phase==='STOPPED') return decision(false,this.outcome,this.phase);
+      return this.stop(stopReason==='error'?Outcome.MODEL_ERROR:stopReason==='aborted'?Outcome.CANCELLED:Outcome.INVALID);
+    }
     if(!this.providerInFlight) return this.stop(Outcome.INVALID);
     this.providerInFlight=false;
     for(const key of Object.keys(usage)) {this.usage[key]+=usage[key];this.phaseUsage[this.lastRequestPhase][key]+=usage[key];}
     this.lastMeasuredInput=usage.input+usage.cacheRead+usage.cacheWrite;
     const bound=this.lastRequestPhase==='WORK'?this.config.work:this.config.delivery;
+    if(this.lastMeasuredInput>this.activeInputCalibration.calibratedInputCeiling) {
+      this.inputCalibrationFailure={type:Outcome.INPUT_CALIBRATION_EXCEEDED,payloadSha256:this.activeInputCalibration.payloadSha256,sourceSha256:this.activeInputCalibration.sourceSha256,calibratedInputCeiling:this.activeInputCalibration.calibratedInputCeiling,observedInput:this.lastMeasuredInput};
+      return this.stop(Outcome.INPUT_CALIBRATION_EXCEEDED);
+    }
     if(usage.output>Math.min(2000,bound.outputReserve)||this.phaseUsage[this.lastRequestPhase].totalTokens>bound.reportedTokens) return this.stop(Outcome.BUDGET);
     return decision(true,'ACCOUNTED',this.phase);
   }
@@ -163,8 +180,8 @@ export class CasePolicy {
   report() {
     return {case:this.config.name,outcome:this.outcome,phase:this.phase,nativeOutcome:this.nativeOutcome,finalAnswer:this.finalAnswer,finalTextObserved:this.finalTextObserved??false,exhaustiveEvidence:this.exhaustiveEvidence,
       // External row/oracle proof is never inferred from a final answer/row count.
-      exhaustiveRowsVerified:false,requiredEvidenceVerified:false,usage:structuredClone(this.usage),phaseUsage:structuredClone(this.phaseUsage),
-      bounds:{work:structuredClone(this.config.work),delivery:structuredClone(this.config.delivery),inputTokenCeiling:this.config.inputTokenCeiling,declarationByteCeiling:this.config.declarationByteCeiling,maximumToolTextBytes:this.config.maximumToolTextBytes,wallSeconds:this.config.wallSeconds},
-      queryDeliveries:structuredClone(this.queryDeliveries),deliveryPhysicalRpcCountReported:this.queryDeliveries.filter(d=>d.observation==='TOOL_RESULT').reduce((sum,d)=>sum+d.rpcCount,0),savedDeliveryPhysicalRpcCountReported:this.queryDeliveries.filter(d=>d.observation==='SAVED_RESULT').reduce((sum,d)=>sum+d.rpcCount,0),rpcRejection:structuredClone(this.rpcRejection??null),qualification:structuredClone(this.qualification??null),semanticRejection:structuredClone(this.rejectionSummary??null),requestObservations:structuredClone(this.requestObservations),modelProposals:structuredClone(this.proposals),nativeRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved).length,semanticRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved&&(p.requestType==='RUN'||p.toolName==='check_diagnostics')).length,toolTextBytes:this.toolTextBytes,tokenPreflightMethod:'MAX_DECLARED_PLUS_PROJECTED_INPUT_BYTES_OR_MEASURED_PLUS_PROJECTED_GROWTH_AND_OUTPUT_RESERVE',providerEnforcedTokenCap:this.providerEnforcedTokenCap};
+      exhaustiveRowsVerified:false,requiredEvidenceVerified:false,usage:structuredClone(this.usage),phaseUsage:structuredClone(this.phaseUsage),inputCalibrationFailure:structuredClone(this.inputCalibrationFailure??null),measuredInputFloor:this.lastMeasuredInput,
+      bounds:{work:structuredClone(this.config.work),delivery:structuredClone(this.config.delivery),inputTokenCeiling:this.config.inputTokenCeiling,maximumProviderPayloadBytes:this.maximumProviderPayloadBytes,declarationByteCeiling:this.config.declarationByteCeiling,maximumToolTextBytes:this.config.maximumToolTextBytes,wallSeconds:this.config.wallSeconds},
+      queryDeliveries:structuredClone(this.queryDeliveries),deliveryPhysicalRpcCountReported:this.queryDeliveries.filter(d=>d.observation==='TOOL_RESULT').reduce((sum,d)=>sum+d.rpcCount,0),savedDeliveryPhysicalRpcCountReported:this.queryDeliveries.filter(d=>d.observation==='SAVED_RESULT').reduce((sum,d)=>sum+d.rpcCount,0),rpcRejection:structuredClone(this.rpcRejection??null),qualification:structuredClone(this.qualification??null),semanticRejection:structuredClone(this.rejectionSummary??null),requestObservations:structuredClone(this.requestObservations),modelProposals:structuredClone(this.proposals),nativeRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved).length,semanticRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved&&(p.requestType==='RUN'||p.toolName==='check_diagnostics')).length,toolTextBytes:this.toolTextBytes,tokenPreflightMethod:'VERIFIED_FULL_PAYLOAD_CALIBRATION_AND_MEASURED_INPUT_FLOOR_PLUS_OUTPUT_RESERVE',providerEnforcedTokenCap:this.providerEnforcedTokenCap};
   }
 }

@@ -1,15 +1,10 @@
 // Observation of #995's envelope only. The production client owns pagination,
 // identity/cursor validation, transport effects, cancellation and its limits.
-const stops=new Set(['DELIVERED','CANCELLED','TIME_LIMIT','PAGE_LIMIT','BYTE_LIMIT','DELIVERY_UNAVAILABLE','BUDGET_INCREASE_REQUIRED','MALFORMED_PAGE','IDENTITY_MISMATCH','NON_ADVANCING']);
-const rpcTypes=new Set(['complete','qualified','rejected_document','rejected']);
-const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
-const integer=value=>Number.isSafeInteger(value)&&value>=0;
+import { admitQueryDeliveryEnvelope } from '../../cli/src/main/js/query-delivery-contract.mjs';
 export function decodeQueryDelivery(value,decodeCanonical) {
-  const d=value.delivery;
-  if(!object(d)||!stops.has(d.stop)||!integer(d.rpc_count)||d.rpc_count<1||d.rpc_count>64||!integer(d.request_bytes)||!integer(d.response_bytes)||!(d.result===null||typeof d.result==='string')||!Array.isArray(value.pages)||value.pages.length+1>d.rpc_count)return {type:'invalid'};
-  if(value.initial===null) {
-    if(d.stop!=='BYTE_LIMIT'||value.pages.length!==0||!rpcTypes.has(d.original_outcome))return {type:'invalid'};
-  } else if(decodeCanonical(value.initial).type==='invalid')return {type:'invalid'};
+  const admitted=admitQueryDeliveryEnvelope(value);
+  if(admitted.type==='invalid')return admitted;
+  if(value.initial!==null&&decodeCanonical(value.initial).type==='invalid')return {type:'invalid'};
   if(value.pages.some(page=>decodeCanonical(page).type==='invalid'))return {type:'invalid'};
   return value;
 }
