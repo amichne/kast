@@ -63,19 +63,28 @@ private constructor(
         get() = RelationProviderPosition.parse(nextLocator.value.toLong()).refinedInvariant()
 
     val retainedBytes: Long
+        get() = inventoryBytes + confirmationBytes
+
+    /** Share the actual immutable inventory owner, while charging each advancing state and proof in full. */
+    fun retainedBytes(graph: RelationProviderRetainedGraph): Long =
+        graph
+            .inventory(locators, inventoryBytes)
+            .addStorageBytes(PROVIDER_STATE_STORAGE_BYTES)
+            .addStorageBytes(confirmationBytes)
+
+    private val confirmationBytes: Long
         get() =
-            inventoryBytes +
-                when (val proof = lastConfirmation) {
-                    is RelationProviderConsumption.Confirmed -> proof.occurrence.retainedBytes
-                    is RelationProviderConsumption.GraphConfirmed ->
-                        REFERENCE_INVENTORY_PROOF_BYTES +
-                            2L *
-                                (proof.fact.subject.detachedTextUnits() +
-                                    proof.fact.source.detachedTextUnits() +
-                                    proof.fact.target.detachedTextUnits() +
-                                    proof.fact.canonicalProjection().length)
-                    RelationProviderConsumption.Unconfirmed -> 0L
-                }
+            when (val proof = lastConfirmation) {
+                is RelationProviderConsumption.Confirmed -> proof.occurrence.retainedBytes
+                is RelationProviderConsumption.GraphConfirmed ->
+                    REFERENCE_INVENTORY_PROOF_BYTES +
+                        2L *
+                            (proof.fact.subject.detachedTextUnits() +
+                                proof.fact.source.detachedTextUnits() +
+                                proof.fact.target.detachedTextUnits() +
+                                proof.fact.canonicalProjection().length)
+                RelationProviderConsumption.Unconfirmed -> 0L
+            }
 
     val prepared: List<RelationProviderLocator>
         get() = locators.subList(nextLocator.value, locators.size)

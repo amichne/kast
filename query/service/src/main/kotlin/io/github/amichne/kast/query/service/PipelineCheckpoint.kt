@@ -19,6 +19,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDescription
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
 private const val TASK_OVERHEAD_BYTES = 512L
+private const val CHECKPOINT_STRUCTURE_BYTES = 4096L
 private const val RETAINED_EVIDENCE_MULTIPLIER = 4L
 private const val DISCOVERY_TASK_BYTES = 4096L
 private const val RELATION_CURSOR_BYTES = 4096L
@@ -54,11 +55,13 @@ internal data class PipelineCheckpoint(
     override val retainedBytes: Long
         get() = retainedBytes(QueryImpactRetainedGraph())
 
-    fun retainedBytes(graph: QueryImpactRetainedGraph): Long = storageEstimate(graph).required.value
+    override fun retainedBytes(graph: QueryImpactRetainedGraph): Long = storageEstimate(graph).required.value
 
     fun storageEstimate(graph: QueryImpactRetainedGraph = QueryImpactRetainedGraph()): QueryCheckpointStorageEstimate =
         QueryCheckpointStorageEstimate(
-            tasks = pipelineTaskBytes(tasks, graph, seed.retainedRootBytes(graph)).storageBytes(),
+            tasks =
+                pipelineTaskBytes(tasks, graph, saturatedAdd(CHECKPOINT_STRUCTURE_BYTES, seed.retainedRootBytes(graph)))
+                    .storageBytes(),
             identityRows =
                 identityRows.values
                     .fold(0L) { total, rows ->
@@ -85,10 +88,13 @@ internal fun pipelineTaskBytes(
     initial: Long = 0L,
 ): Long =
     tasks.fold(initial) { total, task ->
-        saturatedAdd(total, saturatedAdd(TASK_OVERHEAD_BYTES, task.retainedBytes(graph)))
+        saturatedAdd(total, graph.checkpointTask(task))
     }
 
-private fun PipelineTask.retainedBytes(graph: QueryImpactRetainedGraph): Long =
+internal fun PipelineTask.retainedOwnerBytes(graph: QueryImpactRetainedGraph): Long =
+    saturatedAdd(TASK_OVERHEAD_BYTES, retainedPayloadBytes(graph))
+
+private fun PipelineTask.retainedPayloadBytes(graph: QueryImpactRetainedGraph): Long =
     when (this) {
         is PipelineTask.TraceTask -> retainedTraceBytes()
         is PipelineTask.ImpactExplore -> route.retainedBytes(graph)
@@ -107,7 +113,7 @@ private fun PipelineTask.retainedBytes(graph: QueryImpactRetainedGraph): Long =
         is PipelineTask.Related ->
             saturatedAdd(
                 saturatedMultiply(value.projectedUtf8Size(), RETAINED_EVIDENCE_MULTIPLIER),
-                saturatedAdd(RELATION_CURSOR_BYTES, cursor?.providerState?.retainedBytes ?: 0L),
+                saturatedAdd(RELATION_CURSOR_BYTES, cursor?.providerState?.let(graph::providerState) ?: 0L),
             )
         is PipelineTask.Walk ->
             saturatedAdd(

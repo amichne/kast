@@ -12,6 +12,7 @@ import io.github.amichne.kast.query.contract.QueryContinuationState
 import io.github.amichne.kast.query.contract.QueryExactReferences
 import io.github.amichne.kast.query.contract.QueryExecutionRequest
 import io.github.amichne.kast.query.contract.QueryExecutionResult
+import io.github.amichne.kast.query.contract.QueryImpactRetainedGraph
 import io.github.amichne.kast.query.contract.QueryOccurrence
 import io.github.amichne.kast.query.contract.QueryOutputSyntax
 import io.github.amichne.kast.query.contract.QueryRows
@@ -120,6 +121,37 @@ class QueryDenseReferenceRetentionTest {
             unexpectedQueryTraversal(),
             queryTestTraversalCeiling(),
         )
+
+    @Test
+    fun `real checkpoint snapshots share pending owners while detached copies retain full charges`() = runTest {
+        val firstPage = service.run(request()) as QueryExecutionResult.Qualified
+        val first = (firstPage.continuation as QueryContinuationState.Resumable).checkpoint as PipelineCheckpoint
+        val secondPage =
+            service.run(QueryExecutionRequest.create(plan, lease, request().budget, first).value())
+                as QueryExecutionResult.Qualified
+        val second = (secondPage.continuation as QueryContinuationState.Resumable).checkpoint as PipelineCheckpoint
+        val shared =
+            first.tasks.filterIsInstance<PipelineTask.Occurrence>().first { candidate ->
+                second.tasks.any { it === candidate }
+            }
+        val expectedOwner = 512L + 512L + 8L + shared.value.projectedUtf8Size() * 4L
+        val graph = QueryImpactRetainedGraph()
+        assertEquals(expectedOwner, graph.checkpointTask(shared))
+        assertEquals(8L, graph.checkpointTask(shared))
+        assertEquals(expectedOwner, graph.checkpointTask(shared.copy()))
+
+        val retained = QueryImpactRetainedGraph()
+        val rejected = retained.transaction()
+        assertEquals(expectedOwner, rejected.graph.checkpointTask(shared))
+        val accepted = retained.transaction()
+        assertEquals(expectedOwner, accepted.graph.checkpointTask(shared))
+        accepted.commit()
+        assertEquals(8L, retained.checkpointTask(shared))
+
+        val checkpoints = QueryImpactRetainedGraph()
+        assertEquals(first.retainedBytes, first.retainedBytes(checkpoints))
+        assertTrue(second.retainedBytes(checkpoints) < second.retainedBytes)
+    }
 
     @Test
     fun `prepared inventory plus pending confirmed rows has a bounded checkpoint estimate`() = runTest {

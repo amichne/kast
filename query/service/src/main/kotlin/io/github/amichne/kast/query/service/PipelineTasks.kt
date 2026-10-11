@@ -2,8 +2,10 @@ package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.query.contract.ExactQueryStage
 import io.github.amichne.kast.query.contract.QueryBindingRow
+import io.github.amichne.kast.query.contract.QueryCheckpointStorageOwner
 import io.github.amichne.kast.query.contract.QueryContainingDeclaration
 import io.github.amichne.kast.query.contract.QueryDiscoverySyntax
+import io.github.amichne.kast.query.contract.QueryImpactRetainedGraph
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryRelationOmission
 import io.github.amichne.kast.query.contract.QuerySymbol
@@ -15,7 +17,9 @@ import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.traversal.contract.TraversalContinuation
 
 /** A detached depth-first ordered pipeline. Stage identity retains each distinct operator's own history. */
-internal sealed interface PipelineTask {
+internal sealed interface PipelineTask : QueryCheckpointStorageOwner {
+    override fun retainedBytes(graph: QueryImpactRetainedGraph): Long = retainedOwnerBytes(graph)
+
     sealed interface TraceTask : PipelineTask
 
     data class TraceMembers(

@@ -32,6 +32,7 @@ class QueryInvocationPolicy(
     val nanoTime: () -> Long = System::nanoTime,
     val cancelled: () -> Boolean = { false },
     val inlinePresentation: (QueryPublishedPage) -> QueryInlinePresentation = { QueryInlinePresentation.FITS },
+    val retentionObservation: QueryInvocationRetentionObservation = QueryInvocationRetentionObservation.None,
 )
 
 enum class QueryInlinePresentation {
@@ -129,9 +130,11 @@ internal class AutomaticSymbolQueryRunner(
             if (page.work.count.value > remainingWork) return invalidInvocation()
             remainingWork -= page.work.count.value
             val capacity =
-                policy.retainedBytes.value -
-                    state.invocationRetainedBytes(issued).value -
-                    request.accountedRequestBytes()
+                when (val admitted = retentionAdmission(QueryInvocationRetentionStage.BEFORE_FACTS).capacity) {
+                    is QueryInvocationRetentionCapacity.Available -> admitted.bytes.value + facts.retainedBytes
+                    QueryInvocationRetentionCapacity.Exhausted ->
+                        return QueryInvocationTransition.Stopped(QueryInvocationStop.RETAINED_BYTES_LIMIT)
+                }
             when (val appended = facts.append(page, capacity)) {
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return appended.failure
@@ -146,10 +149,11 @@ internal class AutomaticSymbolQueryRunner(
             if (millis <= 0L) return stopped(QueryInvocationStop.TIME_LIMIT)
             if (remainingWork <= 1L) return stopped(QueryInvocationStop.WORK_LIMIT)
             val bytes =
-                policy.retainedBytes.value -
-                    facts.retainedBytes -
-                    state.invocationRetainedBytes(issued).value -
-                    request.accountedRequestBytes()
+                when (val admitted = retentionAdmission(QueryInvocationRetentionStage.BEFORE_EXECUTION).capacity) {
+                    is QueryInvocationRetentionCapacity.Available -> admitted.bytes.value
+                    QueryInvocationRetentionCapacity.Exhausted ->
+                        return stopped(QueryInvocationStop.RETAINED_BYTES_LIMIT)
+                }
             val checkpoint = bytes / 2
             val output = (bytes - checkpoint - QUERY_PAGE_RESERVATION_OVERHEAD) / QUERY_PAGE_RESERVATION_MULTIPLIER
             if (output < 1L || checkpoint < 1L) return stopped(QueryInvocationStop.RETAINED_BYTES_LIMIT)
@@ -169,6 +173,16 @@ internal class AutomaticSymbolQueryRunner(
                 )
             )
         }
+
+        private fun retentionAdmission(stage: QueryInvocationRetentionStage): QueryInvocationRetentionAdmission =
+            QueryInvocationRetentionAdmission(
+                    stage,
+                    policy.retainedBytes,
+                    QueryRetentionByteCount.measured(facts.retainedBytes),
+                    state.invocationRetainedBytes(issued),
+                    QueryRetentionByteCount.measured(request.accountedRequestBytes()),
+                )
+                .also(policy.retentionObservation::observe)
 
         private fun advance(page: SymbolInvocationPage): QueryInvocationTransition =
             when (page) {
