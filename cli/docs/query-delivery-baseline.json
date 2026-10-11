@@ -101,12 +101,12 @@
         "semanticExecutions": 1,
         "requestBytes": 350,
         "responseBytes": 1475,
-        "modelVisibleBytes": 1233
+        "modelVisibleBytes": 1240
       },
       "canonicalEquality": true,
       "stop": "DELIVERY_UNAVAILABLE",
       "deliveredUniqueReferences": 1,
-      "modelVisibleBytesSaved": 446
+      "modelVisibleBytesSaved": 439
     },
     {
       "name": "unavailable",

@@ -337,8 +337,8 @@ function queryPresentation(result, verbose = false) {
   if (detailAvailable) lines.push('Details:', JSON.stringify({ request: { type: 'READ_RESULT', result: retained,
     cursor: 0, evidence_cursor: 0, ...(output ? { output } : {}) }, verbose: true }),
   'Details use the original live authority and may expire or become stale. An unavailable handle is not rerun.');
-  else if (retained) lines.push(`Details: result ${JSON.stringify(retained)} is known unavailable; all received evidence is inline.`,
-    'An unavailable handle is not rerun. Use the canonical recovery action above.');
+  else if (retained) lines.push(`Details: detail delivery unavailable for result ${JSON.stringify(retained)}; all received evidence is inline.`,
+    'Delivery does not retry RUN. Follow any canonical recovery action above.');
   else lines.push('Details: no retained handle; all available evidence is inline.');
   const text = lines.join('\n');
   // Preserve existing presentation bounds. A projection never buys a larger drain or erases a large failure.

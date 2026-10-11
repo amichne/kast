@@ -174,7 +174,7 @@ for (const [name, stop] of [['expired', 'DELIVERY_UNAVAILABLE'], ['cancelled', '
     if (name === 'expired') {
       assert.ok(view.text.includes('"reason":"result-unavailable"'));
       assert.ok(view.text.includes('"next_action":"restart_read"'));
-      assert.ok(view.text.includes('An unavailable handle is not rerun'));
+      assert.ok(view.text.includes('Delivery does not retry RUN'));
     }
   });
 }
@@ -306,7 +306,8 @@ test('expired detail authority preserves every already-received observation with
   assert.ok(view.text.includes('"reason":"result-unavailable"'));
   assert.ok(view.text.includes('"next_action":"restart_read"'));
   assert.equal(view.details, undefined, 'A known-dead handle cannot be offered as usable detail authority');
-  assert.ok(view.text.includes('known unavailable'));
+  assert.ok(view.text.includes('detail delivery unavailable'));
+  assert.equal(view.text.includes('known unavailable'), false);
   assert.equal(JSON.stringify(result.pages[0]), JSON.stringify(expired));
 });
 
@@ -370,3 +371,30 @@ test('Pi provider input contains the exact compact projection and excludes canon
       sourceSha256: Object.fromEntries([messagesPath, converterPath].map(path =>
         [path, createHash('sha256').update(readFileSync(path)).digest('hex')])), observations }));
   });
+
+
+test('a transient thrown detail read preserves received evidence without asserting handle invalidation', async () => {
+  const initial = native.cases.retainedEvidence.reply, requests = [];
+  const result = await awaitQueryDelivery({ request: { type: 'RUN', source: { type: 'ALL_DECLARATIONS' },
+    output: { type: 'OCCURRENCES' } } }, async (request, policy) => {
+    requests.push(request);
+    if (requests.length === 1) {
+      policy.onResponseBytes(Buffer.byteLength(JSON.stringify(initial)));
+      return initial;
+    }
+    assert.equal(requests.length, 2, 'A lost detail read cannot retry RUN');
+    throw new Error('fixture transient transport loss');
+  }, { callTimeoutMillis: 1000 }, undefined, () => 0);
+  assert.deepEqual(requests.map(request => request.request.type), ['RUN', 'READ_RESULT']);
+  assert.equal(result.delivery.stop, 'DELIVERY_UNAVAILABLE');
+  assert.deepEqual(result.pages, []);
+  const view = projected(result);
+  assert.deepEqual(view.evidence.discovery_observations, initial.document.discovery_observations);
+  assert.deepEqual(view.evidence.relation_observations, initial.document.relation_observations);
+  assert.equal(view.summary.invocation.accumulated_row_count, 185);
+  assert.deepEqual(view.summary.coverage, initial.document.coverage);
+  assert.equal(view.details, undefined);
+  assert.ok(view.text.includes('detail delivery unavailable'));
+  assert.equal(view.text.includes('known unavailable'), false);
+  assert.equal(view.text.includes('fixture transient transport loss'), false);
+});

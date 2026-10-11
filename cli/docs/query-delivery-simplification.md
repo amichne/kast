@@ -79,7 +79,7 @@ this track does not claim an exhaustive visible answer or expand the original by
 
 Passed `:cli:check verifyJsonContracts verifyArchitecture knowledgeImpact
 verifyKnowledgeBase`, public adapter generation parity and 15 generator tests.
-CLI verification includes 417 JVM tests, 36 required pure Node presentation/session tests,
+CLI verification includes 417 JVM tests, 37 required pure Node presentation/session tests,
 and 116 passing adapter tests with one opt-in installed-harness loader skipped.
 The real JVM-child bridge fixture preserves exact replies and issued authority with
 scripted providers. Cases cover complete/empty/qualified/rejected, multiple pages,
@@ -142,3 +142,9 @@ request bytes and 9,351 response bytes; fallback adds no new semantics or descri
 The old catalog reads 75,819 bytes and the supported catalog 75,839; total child stdout
 is 85,170 versus 85,190. Sessions add three request framing bytes. These byte boundaries
 exclude SDK/provider serialization and must not be inferred as transport latency savings.
+
+
+A thrown retained read can also yield `DELIVERY_UNAVAILABLE` without a canonical
+handle rejection. The text therefore says "detail delivery unavailable" and does
+not infer invalid authority from transport loss. An exact zero-rejection-page
+regression keeps already-received observations inline and forbids semantic retry.
