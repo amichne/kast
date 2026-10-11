@@ -20,6 +20,7 @@ internal fun initialHostedReadCounters(): LinkedHashMap<Pair<IntellijReadCounter
                 IntellijReadCounter.DECLARATION_AST_PSI_REQUESTS,
                 IntellijReadCounter.DECLARATION_AST_PSI_FALLBACKS,
                 IntellijReadCounter.DECLARATION_AST_LEGACY_FALLBACKS,
+                IntellijReadCounter.DECLARATION_AST_STARTUP_AGENT_FALLBACKS,
                 IntellijReadCounter.DECLARATION_AST_MAPPING_PSI_PROBES,
                 IntellijReadCounter.DECLARATION_AST_BINDING_BYTES_READ,
                 IntellijReadCounter.DISCOVERY_SCOPE_FILES_ADMITTED,

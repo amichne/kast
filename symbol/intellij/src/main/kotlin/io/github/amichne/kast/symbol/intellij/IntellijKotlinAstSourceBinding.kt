@@ -6,6 +6,7 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import java.io.IOException
 import java.io.InputStream
+import java.lang.management.ManagementFactory
 import java.net.URISyntaxException
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -20,10 +21,14 @@ import org.jetbrains.kotlin.psi.stubs.elements.KtStubElementType
 internal enum class KotlinAstSourceBinding {
     SUPPORTED,
     UNSUPPORTED,
+    STARTUP_AGENT,
     HALTED,
 }
 
-/** Byte witnesses for the audited platform and Host bundles, not an IDEA version/name guess. */
+/**
+ * Compatibility witnesses under a trusted, semantically unmodified parser/platform runtime precondition. Archive bytes
+ * do not attest arbitrary transformed definitions or absence of later agent attachment.
+ */
 internal object IntellijKotlinAstSourceBinding {
     private const val MAX_CLASS_BYTES = 65_536L
     private const val READ_CHUNK_BYTES = 1024
@@ -57,6 +62,8 @@ internal object IntellijKotlinAstSourceBinding {
 
     private fun inspectOrigins(observe: () -> Boolean, observation: IntellijReadObservation): KotlinAstSourceBinding {
         if (!observe()) return KotlinAstSourceBinding.HALTED
+        if (ManagementFactory.getRuntimeMXBean().inputArguments.any { it.startsWith("-javaagent:") })
+            return KotlinAstSourceBinding.STARTUP_AGENT
         val pending = witnesses().toMutableList()
         val bound = linkedMapOf<Class<*>, Pair<Witness, IntellijClassArchiveOrigin>>()
         var position = 0

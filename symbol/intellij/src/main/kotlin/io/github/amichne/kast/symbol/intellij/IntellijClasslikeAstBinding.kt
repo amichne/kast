@@ -30,6 +30,8 @@ internal enum class ClasslikeAstPsiAdmission {
 internal sealed interface IntellijClasslikeAstBinding {
     data object Unsupported : IntellijClasslikeAstBinding
 
+    data object StartupAgent : IntellijClasslikeAstBinding
+
     data object Halted : IntellijClasslikeAstBinding
 
     class Supported private constructor(private val nonClasslike: Set<IElementType>) : IntellijClasslikeAstBinding {
@@ -138,6 +140,7 @@ internal sealed interface IntellijClasslikeAstBinding {
                 when (IntellijKotlinAstSourceBinding.inspect(observe, observation)) {
                     KotlinAstSourceBinding.HALTED -> Halted
                     KotlinAstSourceBinding.UNSUPPORTED -> Unsupported
+                    KotlinAstSourceBinding.STARTUP_AGENT -> StartupAgent
                     KotlinAstSourceBinding.SUPPORTED -> Supported.inspect(definition, observe, observation)
                 }
             if (result != Halted) cached.compareAndSet(null, result)

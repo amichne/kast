@@ -221,6 +221,10 @@ internal class ScopedKotlinDeclarationVisitor(
         return when (val binding = IntellijClasslikeAstBinding.acquire(observe, observation)) {
             IntellijClasslikeAstBinding.Halted -> false
             IntellijClasslikeAstBinding.Unsupported -> legacyVisit(file)
+            IntellijClasslikeAstBinding.StartupAgent -> {
+                observation.count(IntellijReadCounter.DECLARATION_AST_STARTUP_AGENT_FALLBACKS)
+                legacyVisit(file)
+            }
             is IntellijClasslikeAstBinding.Supported ->
                 IntellijClasslikeAstTraversal(binding, observe, observation, ::admit).visit(file)
         }
