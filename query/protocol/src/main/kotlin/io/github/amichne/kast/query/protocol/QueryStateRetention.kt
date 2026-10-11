@@ -62,6 +62,15 @@ internal class QueryStateRetention(
         return true
     }
 
+    /** Private publication supplies allocation identity; normal dependency and active-claim pins still apply. */
+    fun discardInvocation(key: QueryStateKey, invocation: QueryInvocationPublication) {
+        if (invocationUnpinned(key, invocation)) entries.remove(key)
+    }
+
+    /** Transfer and release both require an exclusive lifetime; another owner may already depend on this key. */
+    fun invocationUnpinned(key: QueryStateKey, invocation: QueryInvocationPublication): Boolean =
+        entries[key]?.invocationOwner === invocation && evictable(key)
+
     private fun evictable(key: QueryStateKey): Boolean {
         val entry = entries[key] ?: return false
         if (
