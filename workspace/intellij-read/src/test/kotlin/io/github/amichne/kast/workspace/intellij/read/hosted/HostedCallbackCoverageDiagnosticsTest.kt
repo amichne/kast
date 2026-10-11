@@ -6,7 +6,6 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
 
 class HostedCallbackCoverageDiagnosticsTest {
@@ -38,7 +37,7 @@ class HostedCallbackCoverageDiagnosticsTest {
     }
 
     @Test
-    fun `encoded standalone callback capabilities omit unsupported path probes`() {
+    fun `encoded integrated capabilities preserve ownership and callback zero observations`() {
         val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
         val diagnostics = HostedReadDiagnostics({ 0L }, publish = receipts::add)
         diagnostics.finish(HostedDiagnosticOutcome.Completed)
@@ -46,11 +45,10 @@ class HostedCallbackCoverageDiagnosticsTest {
             Json.parseToJsonElement(receipts.single().encode()).jsonObject.getValue("counters").jsonArray.map {
                 it.jsonObject
             }
-        assertFalse(
-            encoded.any {
-                it.getValue("counter").jsonPrimitive.content == IntellijReadCounter.RELATION_PATH_OWNERSHIP_PROBES.name
-            }
-        )
+        val ownershipCounters = encoded.filter {
+            it.getValue("counter").jsonPrimitive.content == IntellijReadCounter.RELATION_PATH_OWNERSHIP_PROBES.name
+        }
+        assertEquals(listOf("0"), ownershipCounters.map { it.getValue("count").jsonPrimitive.content })
         val callbackCounters = encoded.filter { value ->
             counters.any { it.name == value.getValue("counter").jsonPrimitive.content }
         }
