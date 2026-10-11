@@ -73,11 +73,37 @@ for(const fixture of cases) {
   denyMutation(result,e=>{
     for(const page of e.pages)page.document.impact_accounting={type:'EVIDENCE_ONLY',pagePathCount:999};
   });
+  for(const limitation of ['STATIC_MODEL_UNPROVEN','RETENTION_LIMIT_REACHED'])denyMutation(result,e=>{
+    const original=e.initial.document.rejection.detail.originalCoverage;original.limitations.push(limitation);
+    for(const page of e.pages) {
+      page.document.interpretation.originalCoverage=structuredClone(original);
+      if(limitation==='RETENTION_LIMIT_REACHED')page.document.qualification.limitations.push('retention-limit-reached');
+    }
+  });
   const proof=initial.document.rejection.detail.evidence,last=result.pages.at(-1).document;
   assert.equal(proof.seedQuery!=null,fixture.name.startsWith('exact-symbol'));
   if(fixture.name.endsWith('evidence')) {
     assert.equal(last.next_cursor??null,null);assert.equal(last.evidence_window.type,'MORE');
     assert.ok(!last.qualification.limitations.includes('result-limit-reached'));
+    assert.equal(result.pages.reduce((n,p)=>n+p.document.items.length,0),fixture.rowCount);
+    for(const minimum of [fixture.rowCount-1,fixture.rowCount+1])denyMutation(result,e=>{
+      e.initial.document.rejection.detail.originalCoverage.knownMinimum=minimum;
+      for(const page of e.pages) {
+        page.document.interpretation.originalCoverage.knownMinimum=minimum;
+        page.document.qualification.knownMinimum=minimum;
+      }
+    });
+    if(fixture.name==='location-occurrence-evidence') {
+      assert.equal(new Set(allRows.map(row=>row.ref)).size,1,'Distinct occurrences share one target');
+      const legacy=structuredClone(result);
+      for(const row of legacy.initial.document.rejection.detail.evidence.preview)row.row_id=null;
+      for(const page of legacy.pages)for(const row of page.document.items)row.row_id=null;
+      for(const saved of [false,true]) {
+        const policy=new CasePolicy(config);
+        assert.equal(receive(policy,JSON.stringify(legacy),saved).allow,true);
+        assert.equal(policy.report().partialEvidence.receivedRows,fixture.rowCount);
+      }
+    }
   } else assert.ok(last.next_cursor!=null);
   console.log(JSON.stringify({case:fixture.name,pages:result.pages.length,rows:result.pages.reduce((n,p)=>n+p.document.items.length,0),
     bytes:Buffer.byteLength(canonical),rpcCalls:calls.length,semanticExecutions:0,providerSends:0}));

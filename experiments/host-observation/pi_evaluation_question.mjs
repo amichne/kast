@@ -1,6 +1,7 @@
 import schema from './pi-fixtures/query-question.schema.json' with {type:'json'};
 import qualificationSchema from './pi-fixtures/query-qualification.schema.json' with {type:'json'};
 import resultSchema from './pi-fixtures/query-result.schema.json' with {type:'json'};
+import originalLimitations from './pi-fixtures/query-original-limitations.json' with {type:'json'};
 import {isDeepStrictEqual} from 'node:util';
 
 // Pure admission against the owning canonical serializer's generated schema.
@@ -54,3 +55,4 @@ export function admittedQueryDocument(value) {
   try {return matches(value,resultSchema);}catch{return false;}
 }
 export const canonicalQueryLimitations=Object.freeze(qualificationSchema.properties.limitations.items.enum.map(value=>value.toUpperCase().replaceAll('-','_')));
+export const canonicalOriginalQueryLimitations=Object.freeze(originalLimitations);

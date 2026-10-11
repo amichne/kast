@@ -2,7 +2,7 @@
 // identity/cursor validation, transport effects, cancellation and its limits.
 import { admitQueryDeliveryEnvelope } from '../../cli/src/main/js/query-delivery-contract.mjs';
 import { isDeepStrictEqual } from 'node:util';
-import { admittedQueryDocument,canonicalQueryLimitations } from './pi_evaluation_question.mjs';
+import { admittedQueryDocument,canonicalQueryLimitations,canonicalOriginalQueryLimitations } from './pi_evaluation_question.mjs';
 export function decodeQueryDelivery(value,decodeCanonical) {
   const admitted=admitQueryDeliveryEnvelope(value);
   if(admitted.type==='invalid')return admitted;
@@ -57,7 +57,7 @@ export function partialEvidenceSummary(envelope) {
   // and translates evidence-read progress to upstream-incomplete. Retained page
   // selection can additionally contribute RESULT_LIMIT_REACHED (pageCoverage).
   const limitations=canonicalQueryLimitations;
-  if(!isDeepStrictEqual(coverage.limitations,limitations.filter(value=>coverage.limitations.includes(value))))return null;
+  if(!isDeepStrictEqual(coverage.limitations,canonicalOriginalQueryLimitations.filter(value=>coverage.limitations.includes(value))))return null;
   const expectedQualification=extraResultLimit=>({knownMinimum:coverage.knownMinimum,
     limitations:limitations.filter(value=>coverage.limitations.includes(value)||value==='STATIC_MODEL_UNPROVEN'||extraResultLimit&&value==='RESULT_LIMIT_REACHED').map(value=>value.toLowerCase().replaceAll('_','-')),
     progress:{type:'terminal_incomplete',reason:'upstream-incomplete'}});
@@ -122,6 +122,10 @@ export function partialEvidenceSummary(envelope) {
     if(next===null)rowsEnded=true;
     evidenceCursor=w.end;evidenceTotal=w.total;
   }
+  // Public RUN's QueryInvocationFacts.finish counts every accumulated item;
+  // Symbols/Occurrences retain those rows without deduplication or truncation.
+  // This is scoped to that rejection prefix, not arbitrary semantic page minima.
+  if(rowCursor>coverage.knownMinimum||rowsEnded&&rowCursor!==coverage.knownMinimum)return null;
   // The producer preview is the ordered prefix at cursor zero, with the same
   // issued identities. A conflicting copy must not be unioned into another row.
   if(proof.preview.length>receivedPrefix.length||!proof.preview.every((row,index)=>isDeepStrictEqual(row,receivedPrefix[index])))return null;

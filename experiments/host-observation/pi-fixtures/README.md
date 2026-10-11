@@ -25,6 +25,14 @@ The independent Python JSON Schema oracle checks the pure Node shape admission
 against authoritative documents and recursive type/unknown-property mutations.
 These offline assets never become provider tool declarations or response bytes.
 
+`query-original-limitations.json` is an optional fourth export: the actual
+`query/contract` QueryLimitation enum names serialized with the existing JSON
+library. It excludes read-only wire qualifications. The required producer test
+checks exact equality with the current enum and declares the asset as an input.
+To export it, add `query/contract/build/libs/*` to the classpath above and pass
+its destination after the three schema paths. Existing three-argument export
+remains supported. No CLI production dependency or public wire enum is added.
+
 The three `*-document.json` files are public/synthetic query document DTOs,
 serialized offline by the installed release's **actual Kotlin serializers** with
 `PiCanonicalFixture.java`. No services, IDEs, compiler queries or models were

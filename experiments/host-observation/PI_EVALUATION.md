@@ -487,6 +487,13 @@ A required Kotlin/Node fixture uses actual retained presentation, canonical
 recovery projection and the shared client's unchanged byte cap in five supported
 combinations. Shape and consistency do not prove native origin or current liveness.
 
+Original limitations use the exported domain QueryLimitation vocabulary, separately
+from the broader read-qualification wire enum. For this public logical RUN prefix,
+received rows cannot exceed the aggregate minimum and must equal it once rows end.
+This follows invocation aggregation and complete retained storage, not a general
+rule about low-level page minima. The six-case producer check preserves distinct
+occurrences sharing a target and rejects coupled count/vocabulary mutations.
+
 `queryDeliveries` records stop, physical rpc_count and UTF-8 byte counts separately
 from logical model proposals and semantic replies. A failed RPC can increase
 rpc_count without adding a page. Saved-result continuation reports historical

@@ -36,6 +36,7 @@ tasks.test {
             "experiments/host-observation/pi-fixtures/query-question.schema.json",
             "experiments/host-observation/pi-fixtures/query-qualification.schema.json",
             "experiments/host-observation/pi-fixtures/query-result.schema.json",
+            "experiments/host-observation/pi-fixtures/query-original-limitations.json",
             "cli/src/main/js/query-delivery.mjs",
             "cli/src/main/js/query-delivery-contract.mjs",
         )

@@ -24,7 +24,7 @@ are recorded as historical observations, rather than reconstructed from a prefix
 | Initial next_action | `QueryRunRejection.recoveryAction` in `ReadRecoveryAction` | Exactly report_failure |
 | Detail model/policy progress | `QueryCompletionRejectionCliDocument` | Closed model; EVIDENCE_ONLY; model agrees with pages |
 | Detail cause | `completionProof(QueryRetainedResult)` in `QueryCompletionFailure` | INCOMPLETE_EXECUTION: qualified original coverage precedes item failures/omissions for these outputs |
-| Original coverage | `QueryCoverage` / `QueryCompletionEvidenceRead` | Qualified, positive minimum, terminal incomplete; equal in all interpretations. Historical minimum/limitations/progress retained, not derived from received rows |
+| Original coverage | `QueryCoverage` / `QueryCompletionEvidenceRead` | Qualified, positive minimum, terminal incomplete; equal in all interpretations. Limitations use the exported/parity-checked domain QueryLimitation vocabulary, excluding read-only static-model-unproven/retention-limit-reached. Historical coverage is retained, never rewritten |
 | Detail stop/original failure/diagnostic read ID; initial execution budget | Completion/protocol failure and scoped trace owners | Typed historical data preserved. Prefix cannot reconstruct execution or replay a diagnostic handle |
 | Proof result/question/preview | `QueryCompletionEvidenceDocument.Retained` | Same issued result throughout; same full question; preview equals ordered cursor-zero received prefix, including IDs |
 | Proof nextQuery | `QueryCompletionRejectionCliDocument` | READ_RESULT, same result, cursor zero, public output derived from question |
@@ -40,7 +40,7 @@ are recorded as historical observations, rather than reconstructed from a prefix
 | Occurrences | `QueryItemProjector` / relation contract | Target selector equals row reference, ordered source range, canonical ownership/provenance shape; no compiler reconstruction |
 | Six evidence arrays | `QueryEvidencePresentation.Partition.select` | Typed failures/omissions/walk/reference/discovery/relation observations preserved and counted; family order cannot move backwards. Nested semantic claims remain producer observations |
 | Evidence window | `QueryEvidencePresentation` | Contiguous from zero; fixed total; bounded start/end; MORE iff evidence remains; entry count equals advance |
-| Row cursor | `RetainedQueryPresentation` / shared client | Contiguous row count; no revival after row exhaustion; legacy absent/null final cursor preserves its meaning |
+| Row cursor | `RetainedQueryPresentation` / shared client | Contiguous row count; no revival after row exhaustion; received count cannot exceed original aggregate minimum and equals it once rows end. Legacy absent/null final cursor preserves its meaning |
 | Every page's progress/successor | `awaitQueryDelivery` | Advances rows or evidence and retains row/MORE-evidence successor; no nonadvancing or intermediate terminal page the client could not traverse |
 | Full page progress | `QueryPageProgressCliDocument` | Exact rows/evidence counts, including nested records/callbacks/exclusions/failures/omissions |
 | Retention | `QueryResultEnvelope` | Reference equals proof/delivery; invalid or stale outcome cannot enable exception |
@@ -53,6 +53,20 @@ Owners are under `protocol/contract`, `protocol/wire/presentation`,
 native semantic authority. Unsupported outputs stay blocked. This inventory is
 not a general validator of every canonical semantic combination or proof of native
 origin. Coupled historical mutations can require facts absent from the prefix.
+
+The row-count check is scoped to public logical RUN rejection. Low-level
+`QueryPageCompletion.completePage` may count previously emitted rows plus this
+page, so its minimum can exceed local page size. Public `SymbolInvocationPage`
+admission requires semantic row count to equal projected item count;
+`QueryInvocationFacts.finish` combines those collections and computes minimum
+from all items. `QueryRows.Symbols.of` and `Occurrences.of` preserve multiplicity,
+and final invocation retention captures that aggregate. Result issuance stores
+the entire retained result or fails; presentation byte fitting retains a row
+successor until the stored row count is exhausted. Hence a received prefix cannot
+exceed that aggregate and equals it when no row cursor remains. This is not a
+general lower-bound rule for arbitrary semantic pages or value-path accounting.
+Different occurrences sharing one target count independently; no target deduplication
+is used. Original retention failure never manufactures a shortened usable result.
 
 ## Producer-backed executable check
 
@@ -72,7 +86,12 @@ producer output reject contradictory recovery action, cause and accounting. No
 provider send occurs. The synthetic minimal body does not prove full SDK context
 fit. The preexisting guard cases separately test complete-body byte rejection.
 
-About 2.5 MB of generated fixtures remain only in owned build reports. One test
+Six cases now include exhausted symbol rows and three distinct reference
+occurrences sharing one target while evidence remains. Original vocabulary and
+coupled coverage/qualification minimum mutations are checked on actual producer
+output. Issued and legacy-null occurrence IDs preserve all three rows.
+
+Generated fixtures remain only in owned build reports. One test
 child has a 30-second wait and five-second owned teardown. All consumed JS/schema
 files are declared Gradle inputs. There is no new shipped fixture asset, model-path
 process/RPC or inference dependency. Checks use existing runners:

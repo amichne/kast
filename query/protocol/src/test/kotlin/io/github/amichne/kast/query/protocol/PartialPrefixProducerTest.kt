@@ -70,6 +70,14 @@ class PartialPrefixProducerTest {
     @Test
     fun `production retained pages and recovery projection admit bounded prefixes without semantic execution`() =
         runTest {
+            assertEquals(
+                QueryLimitation.entries.map { it.name },
+                Json.decodeFromString<List<String>>(
+                    Files.readString(
+                        Path.of("../../experiments/host-observation/pi-fixtures/query-original-limitations.json")
+                    )
+                ),
+            )
             val cases =
                 listOf(
                     produce("exact-symbol-row", exactName = true),
@@ -77,6 +85,7 @@ class PartialPrefixProducerTest {
                     produce("fuzzy-symbol-row", fuzzy = true),
                     produce("exact-symbol-evidence", exactName = true, evidenceOnly = true),
                     produce("location-occurrence-row", occurrences = true),
+                    produce("location-occurrence-evidence", occurrences = true, evidenceOnly = true),
                 )
             val report = Path.of("build/reports/partial-prefix-producer")
             Files.createDirectories(report)
@@ -178,7 +187,9 @@ class PartialPrefixProducerTest {
         val rows =
             if (occurrences)
                 QueryRows.Occurrences.of(
-                    selectors.mapIndexed { i, s -> QueryOccurrence.Reference(occurrence(fixture, s, i)) }
+                    selectors.mapIndexed { i, s ->
+                        QueryOccurrence.Reference(occurrence(fixture, if (evidenceOnly) selectors.first() else s, i))
+                    }
                 )
             else QueryRows.Symbols.of(selectors.map { QuerySymbol(SymbolDescription.from(it), emptyList()) })
         val result =

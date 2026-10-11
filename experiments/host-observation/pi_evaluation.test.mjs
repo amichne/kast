@@ -454,6 +454,39 @@ function exactNamePrefix() {
   proof.seedQuery={request:{type:'RUN',source:{type:'SYMBOL_REFS',symbolRefs:[proof.preview[0].ref]},output:structuredClone(proof.nextQuery.request.output)}};
   return envelope;
 }
+function setOriginalMinimum(envelope,minimum) {
+  envelope.initial.document.rejection.detail.originalCoverage.knownMinimum=minimum;
+  for(const page of envelope.pages) {
+    page.document.interpretation.originalCoverage.knownMinimum=minimum;
+    page.document.qualification.knownMinimum=minimum;
+  }
+  return envelope;
+}
+function exhaustedPrefix() {
+  const envelope=partialPrefix();delete envelope.pages[0].document.next_cursor;
+  return setOriginalMinimum(envelope,3);
+}
+test('original retained coverage excludes limitations owned only by read presentation',()=>{
+  for(const limitation of ['STATIC_MODEL_UNPROVEN','RETENTION_LIMIT_REACHED']) {
+    const envelope=partialPrefix(),detail=envelope.initial.document.rejection.detail;
+    detail.originalCoverage.limitations.push(limitation);
+    envelope.pages[0].document.interpretation.originalCoverage=structuredClone(detail.originalCoverage);
+    if(limitation==='RETENTION_LIMIT_REACHED')envelope.pages[0].document.qualification.limitations.push('retention-limit-reached');
+    denyPartialPrefix(envelope,limitation);
+  }
+});
+test('exhausted retained rows equal the public invocation original minimum across supported families',()=>{
+  const valid=exhaustedPrefix();
+  for(const saved of [false,true]) {
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true}),decoded=decodeEnvelope(resultEvent(valid).content);
+    assert.equal((saved?policy.restoreReceivedResult(decoded,10000):policy.toolResult(decoded,10000)).allow,true);
+    assert.equal(policy.report().partialEvidence.receivedRows,3);
+  }
+  for(const minimum of [2,4,194])denyPartialPrefix(setOriginalMinimum(exhaustedPrefix(),minimum),`exhausted minimum=${minimum}`);
+  denyPartialPrefix(setOriginalMinimum(partialPrefix(),2),'received prefix exceeds retained aggregate');
+  const pending=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(pending.restoreReceivedResult(decodeEnvelope(resultEvent(partialPrefix()).content),10000).allow,true,'A shorter prefix with row successor remains eligible');
+});
 test('completion rejection requires its producer report failure recovery action',()=>{
   for(const action of ['restart_read','correct_request','adjust_budget_or_scope','wait_for_workspace']) {
     const envelope=partialPrefix();envelope.initial.document.next_action=action;denyPartialPrefix(envelope,action);
@@ -479,7 +512,7 @@ test('retained seed suggestions agree with exact discovery question preview and 
   }
 });
 test('only a row successor permits adding a retained page result limitation',()=>{
-  const invalid=partialPrefix();delete invalid.pages[0].document.next_cursor;
+  const invalid=exhaustedPrefix();
   invalid.pages[0].document.qualification.limitations.unshift('result-limit-reached');denyPartialPrefix(invalid,'evidence-only successor');
   const inherited=structuredClone(invalid),detail=inherited.initial.document.rejection.detail;
   detail.originalCoverage.limitations.unshift('RESULT_LIMIT_REACHED');
@@ -578,7 +611,7 @@ test('terminal FINAL pages cannot be relabeled as a byte-limited prefix',async()
 });
 test('byte-limited prefixes retain either a row successor or an evidence MORE successor',()=>{
   for(const successor of ['row','evidence'])for(const saved of [false,true]) {
-    const envelope=partialPrefix(),page=envelope.pages[0].document;
+    const envelope=successor==='row'?partialPrefix():exhaustedPrefix(),page=envelope.pages[0].document;
     if(successor==='row')page.evidence_window={type:'FINAL',start:0,end:0,total:0};
     else delete page.next_cursor;
     const policy=makePolicy({...config(),evidenceOnlyDelivery:true}),decoded=decodeEnvelope(resultEvent(envelope).content),before=JSON.stringify(envelope);
