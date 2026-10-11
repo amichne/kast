@@ -151,15 +151,19 @@ await publishWorkerResult({type:'report',report:policy.report()});`;
   assert.deepEqual(result.resultDelivery,{stage:'PARENT_IPC_MESSAGE',outcome:'REPORT_RECEIVED'});
 });
 
-test('production terminal IPC callback failure and timeout leave finite exits and reap owned children',async()=>{
+test('production terminal IPC callback failure and timeout leave finite exits and reap owned children',async t=>{
+  // Hold the parent cancellation timer: the real child's publication deadline
+  // must settle first. Cancel-first precedence is proved in the cleanup cases.
+  t.mock.timers.enable({apis:['setTimeout']});
   const script=`const {publishWorkerResult}=await import(process.argv[1]);
 process.send=process.argv[2]==='callback'?(_message,callback)=>{callback(Error('PRIVATE-SEND-ERROR'));return false;}:()=>false;
 await publishWorkerResult({type:'report',report:{outcome:'SYNTHETIC'}});`;
   for(const [mode,code,reason] of [['callback',71,'SEND_FAILED'],['timeout',72,'SEND_TIMEOUT']]) {
     const result=await runOwnedWorker(process.execPath,['--input-type=module','-e',script,
-      new URL('./pi_evaluation_worker.mjs',import.meta.url).href,mode],{...options,wallMillis:300,graceMillis:1000});
+      new URL('./pi_evaluation_worker.mjs',import.meta.url).href,mode],{...options,wallMillis:mode==='timeout'?300:5000,graceMillis:1000});
     assert.equal(result.type,'worker_failed');assert.equal(result.exitCode,code);assert.equal(result.ownedChildReaped,true);
     assert.equal(result.report,undefined);assert.deepEqual(result.failure,{stage:'WORKER_IPC',operation:'RESULT_SEND',reason});
+    assert.equal(result.cancellationRequested,false);assert.equal(result.cleanupFailure,undefined);
     assert.deepEqual(result.resultDelivery,{stage:'PARENT_CHILD_EXIT',outcome:'IPC_SEND_FAILED'});
     assert.equal(JSON.stringify(result).includes('PRIVATE-'),false);
   }
