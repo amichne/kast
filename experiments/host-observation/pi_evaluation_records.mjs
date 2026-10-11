@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { Outcome, READ_TOOLS } from './pi_evaluation_policy.mjs';
 import { isAdmittedPayload, PayloadFailure } from './pi_evaluation_payload.mjs';
 
@@ -175,44 +176,83 @@ export function createEvaluationRecords(directory,{maximumBytes=maximumSummaryBy
   });
 }
 
-function copyReplay(source,destination) {
-  const inspected=effect('COPY_SOURCE_INSPECT',()=>fs.lstatSync(source));
+// The transcript ceiling is separate from the provider request-body ceiling.
+// Pin and authenticate the complete bounded source before publishing a copy.
+const maximumReplaySourceBytes=4*1024*1024;
+const sameSource=(left,right)=>['dev','ino','size','mtimeNs','ctimeNs','mode','uid','nlink']
+  .every(field=>left[field]===right[field]);
+function copyReplay(source,destination,sourceSha256) {
+  if(digest(sourceSha256)===null) return failure('COPY_SOURCE_INSPECT','REFERENCE_REJECTED');
+  const inspected=effect('COPY_SOURCE_INSPECT',()=>fs.lstatSync(source,{bigint:true}));
   if(rejected(inspected)) return inspected;
-  if(!inspected.value.isFile() || inspected.value.isSymbolicLink())
+  const original=inspected.value;
+  if(!original.isFile() || original.isSymbolicLink() || original.uid!==BigInt(process.getuid())
+      || original.nlink!==1n || (original.mode&0o022n)!==0n)
     return failure('COPY_SOURCE_INSPECT','PATH_UNSAFE');
+  if(original.size<0n || original.size>BigInt(maximumReplaySourceBytes))
+    return failure('COPY_SOURCE_INSPECT','SIZE_REJECTED');
   const opened=effect('COPY_SOURCE_OPEN',()=>fs.openSync(source,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW));
   if(rejected(opened)) return opened;
   const input=opened.value;
-  let output,result=prepared;
+  let result=prepared,bytes;
   try {
-    const destinationResult=effect('COPY_DESTINATION_OPEN',()=>fs.openSync(destination,'wx',0o600));
-    if(rejected(destinationResult)) result=destinationResult;
-    else {
-      output=destinationResult.value;
-      const buffer=Buffer.alloc(64*1024);
-      while(!rejected(result)) {
-        const read=effect('COPY_READ',()=>fs.readSync(input,buffer,0,buffer.length,null));
-        if(rejected(read)) {result=read;break;}
-        if(read.value===0) break;
-        let offset=0;
-        while(offset<read.value) {
-          const wrote=effect('COPY_WRITE',()=>fs.writeSync(output,buffer,offset,read.value-offset));
-          if(rejected(wrote)) {result=wrote;break;}
-          if(wrote.value===0) {result=failure('COPY_WRITE','NO_PROGRESS');break;}
-          offset+=wrote.value;
+    const identity=effect('COPY_SOURCE_IDENTITY',()=>fs.fstatSync(input,{bigint:true}));
+    if(rejected(identity)) result=identity;
+    else if(!sameSource(original,identity.value)) result=failure('COPY_SOURCE_IDENTITY','FILE_CHANGED');
+    if(!rejected(result)) {
+      const allocated=effect('COPY_READ',()=>Buffer.alloc(Number(original.size)));
+      if(rejected(allocated)) result=allocated;
+      else {
+        bytes=allocated.value;let offset=0;
+        while(offset<bytes.length && !rejected(result)) {
+          const read=effect('COPY_READ',()=>fs.readSync(input,bytes,offset,Math.min(64*1024,bytes.length-offset),null));
+          if(rejected(read)) result=read;
+          else if(read.value===0) result=failure('COPY_READ','FILE_CHANGED');
+          else offset+=read.value;
+        }
+        if(!rejected(result)) {
+          const ceiling=effect('COPY_READ_CEILING',()=>fs.readSync(input,Buffer.alloc(1),0,1,null));
+          if(rejected(ceiling)) result=ceiling;
+          else if(ceiling.value!==0) result=failure('COPY_READ_CEILING','FILE_CHANGED');
+        }
+        if(!rejected(result)) {
+          const final=effect('COPY_SOURCE_FINAL',()=>({descriptor:fs.fstatSync(input,{bigint:true}),
+            pathname:fs.lstatSync(source,{bigint:true})}));
+          if(rejected(final)) result=final;
+          else if(!sameSource(original,final.value.descriptor)||!sameSource(original,final.value.pathname))
+            result=failure('COPY_SOURCE_FINAL','FILE_CHANGED');
         }
       }
     }
   } finally {
-    for(const fd of [input,output].filter(value=>value!==undefined)) {
-      const closed=effect('COPY_CLOSE',()=>fs.closeSync(fd));
-      if(!rejected(result) && rejected(closed)) result=closed;
+    const closed=effect('COPY_CLOSE',()=>fs.closeSync(input));
+    if(!rejected(result) && rejected(closed)) result=closed;
+  }
+  if(rejected(result)) return result;
+  if(createHash('sha256').update(bytes).digest('hex')!==sourceSha256)
+    return failure('COPY_SOURCE_DIGEST','DIGEST_MISMATCH');
+
+  const destinationResult=effect('COPY_DESTINATION_OPEN',()=>fs.openSync(destination,'wx',0o600));
+  if(rejected(destinationResult)) return destinationResult;
+  const output=destinationResult.value;
+  try {
+    let offset=0;
+    while(offset<bytes.length && !rejected(result)) {
+      const wrote=effect('COPY_WRITE',()=>fs.writeSync(output,bytes,offset,bytes.length-offset));
+      if(rejected(wrote)) result=wrote;
+      else if(wrote.value===0) result=failure('COPY_WRITE','NO_PROGRESS');
+      else offset+=wrote.value;
     }
+  } finally {
+    const closed=effect('COPY_CLOSE',()=>fs.closeSync(output));
+    if(!rejected(result) && rejected(closed)) result=closed;
+    // Only our exclusive copy is removed. Cleanup cannot erase the first failure.
+    if(rejected(result)) effect('COPY_CLEANUP',()=>fs.unlinkSync(destination));
   }
   return result;
 }
 
-function prepareReplay(SessionManager,{directory,workspaceRoot,sourceFile}) {
+function prepareReplay(SessionManager,{directory,workspaceRoot,sourceFile,sourceSha256}) {
   for(const current of [directory,path.join(directory,'private-replay')]) {
     const result=privateDirectory(current);if(rejected(result)) return result;
   }
@@ -230,7 +270,7 @@ function prepareReplay(SessionManager,{directory,workspaceRoot,sourceFile}) {
   }
   if(sourceFile!==undefined) {
     const ownedCopy=path.join(archive,'received-session.jsonl');
-    const copied=copyReplay(sourceFile,ownedCopy);if(rejected(copied)) return copied;
+    const copied=copyReplay(sourceFile,ownedCopy,sourceSha256);if(rejected(copied)) return copied;
     try {return {type:'prepared',manager:SessionManager.open(ownedCopy,archive)};}
     catch {return failure('SESSION_OPEN','SDK_FAILED');}
   }

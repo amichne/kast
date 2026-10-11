@@ -127,7 +127,8 @@ export async function worker(planFile,index) {
       if(failed(runtime))return runtime;
       stage='REPLAY_ARCHIVE';
       const archive=await withPrivateReplaySession(sdk.SessionManager,{directory,workspaceRoot:plan.workspaceRoot,
-        sourceFile:item.mode==='received-result'?item.receivedSessionFile:undefined},async manager=>{
+        sourceFile:item.mode==='received-result'?item.receivedSessionFile:undefined,
+        sourceSha256:item.mode==='received-result'?item.receivedSessionSha256:undefined},async manager=>{
         const runSession=async()=>{
         const replaySignal=lifecycle('REPLAY_ARCHIVE',item.mode==='received-result'?'RESTORED':'FRESH');
         if(failed(replaySignal))return replaySignal;

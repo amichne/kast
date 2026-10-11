@@ -34,7 +34,7 @@ function fixture(t,configure=()=>{}) {
     {type:'function_call',call_id:'received',name:'query_symbols',arguments:'PRIVATE-ARGUMENTS'},
     {type:'function_call_output',call_id:'received',output:'PRIVATE-RECEIVED-RESULT'});
   const freshCase=caseConfig(),savedCase={...caseConfig('saved'),mode:'received-result',
-    receivedSessionFile:path.join(directory,'unread-private-session'),receivedResultEntryId:'received',receivedContextSha256:'a'.repeat(64)};
+    receivedSessionFile:path.join(directory,'unread-private-session'),receivedResultEntryId:'received',receivedContextSha256:'a'.repeat(64),receivedSessionSha256:'b'.repeat(64)};
   delete savedCase.prompt;
   freshCase.inputCalibrations=[write('fresh-calibration',receipt(fresh),'OFFLINE_FULL_PAYLOAD_CALIBRATION')];
   savedCase.inputCalibrations=[write('saved-calibration',receipt(restored),'OFFLINE_FULL_PAYLOAD_CALIBRATION')];

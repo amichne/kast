@@ -216,6 +216,11 @@ test('explicit plans reject duplicated cases accidental fresh continuation and m
   assert.throws(()=>validatePlan({...plan,cases:[...plan.cases,...plan.cases]}),/Independent/);
   assert.throws(()=>validatePlan({...plan,cases:[{...plan.cases[0],mode:'received-result',receivedSessionFile:'/saved/session',receivedResultEntryId:'result'}]}),/Continuation/);
   assert.throws(()=>validatePlan({...plan,cases:[{...plan.cases[0],mode:'received-result',prompt:undefined,receivedSessionFile:'/saved/session',receivedResultEntryId:'result'}]}),/Continuation/);
+  const restored={...plan.cases[0],mode:'received-result',prompt:undefined,receivedSessionFile:'/saved/session',
+    receivedResultEntryId:'result',receivedContextSha256:'b'.repeat(64),receivedSessionSha256:'c'.repeat(64)};
+  const receivedPlan={...plan,cases:[restored]};assert.equal(validatePlan(receivedPlan),receivedPlan);
+  for(const receivedSessionSha256 of [undefined,null,'not-a-digest',['c'.repeat(64)]])
+    assert.throws(()=>validatePlan({...plan,cases:[{...restored,receivedSessionSha256}]}),/Continuation/);
 });
 
 test('evidence-only delivery preserves JSON meaning while exact scope cursor and grants stay pinned',()=>{

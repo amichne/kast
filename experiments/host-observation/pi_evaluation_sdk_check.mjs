@@ -76,7 +76,8 @@ try {
   }});
   const privateStage=async(name,sourceFile,run)=>{
     let callbackError;
-    const result=await withPrivateReplaySession(sdk.SessionManager,{directory:path.join(directory,name),workspaceRoot:directory,sourceFile},async manager=>{
+    const result=await withPrivateReplaySession(sdk.SessionManager,{directory:path.join(directory,name),workspaceRoot:directory,sourceFile,
+      sourceSha256:sourceFile===undefined?undefined:sha(fs.readFileSync(sourceFile))},async manager=>{
       try {return await run(manager);} catch(error) {callbackError=error;throw error;}
     });
     assert.equal(result.type,'completed',callbackError?.stack??JSON.stringify(result.failure));

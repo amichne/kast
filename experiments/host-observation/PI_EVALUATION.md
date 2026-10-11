@@ -154,7 +154,18 @@ byte, response and deadline limits. Calibration is optional and cannot turn
 post-response thresholds into pre-request token or spend guarantees.
 
 For `mode: "received-result"`, provide the exact `receivedSessionFile` and
-`receivedResultEntryId`, the expected `receivedContextSha256`, and omit `prompt`.
+`receivedResultEntryId`, the full original file's `receivedSessionSha256`, the
+expected restored `receivedContextSha256`, and omit `prompt`. The original must
+be a current-user-owned, regular, nonsymlink, single-link file without group or
+world write permission. Ordinary Pi `0644` sources and their existing parents
+remain unchanged. The source has a separate 4 MiB ceiling; the 256 KiB provider
+body ceiling does not limit the original transcript. An `O_NOFOLLOW` opened
+descriptor and the pathname must retain the same identity, size and nanosecond
+modification metadata throughout the bounded read. Growth, truncation, identity
+changes and a full-file digest mismatch fail before creating the replay copy or
+opening it through the SDK. Only authenticated bytes are copied to an exclusive
+`0600` file in the owned `0700` archive; copy failures remove that owned copy,
+and cleanup failure preserves the first finite failure.
 The saved workspace and exact restored context are checked before inference.
 Public `SessionManager.open` opens a private owned copy, and
 `branch` selects the saved tool-result leaf in memory; the next appended entry

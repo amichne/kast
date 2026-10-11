@@ -250,6 +250,7 @@ export class SessionManager { static open(){return {getCwd(){return '/synthetic-
   const plan={piPackageRoot:pi,kastAdapter:adapter,workspaceRoot:root,outputRoot:output,authPath:auth,modelsStorePath:models,
     kastAdapterSha256:createHash('sha256').update('SYNTHETIC-ADAPTER').digest('hex'),piVersion:'synthetic-pinned',
     cases:[{name:'received',mode:'received-result',receivedSessionFile:source,receivedResultEntryId:'synthetic-entry',
+      receivedSessionSha256:createHash('sha256').update('PRIVATE-EXACT-REPLAY\n').digest('hex'),
       receivedContextSha256:'0'.repeat(64),wallSeconds:1,work:{reportedTokens:2000,requests:1,outputReserve:100,tools:1},
       delivery:{reportedTokens:2000,requests:1,outputReserve:100},inputTokenCeiling:300,declarationByteCeiling:4096,
       expectedSemanticCalls:1,maximumToolTextBytes:4096}]};

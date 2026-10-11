@@ -19,6 +19,10 @@ test('finite worker calibration and records failure IPC survives owned child exi
     {stage:'WORKER_SETUP',operation:'INSTALLATION_PIN',reason:'PIN_MISMATCH'},
     {stage:'INPUT_CALIBRATION',operation:'VERIFY_DIGEST',reason:'DIGEST_MISMATCH'},
     {stage:'RECORD_CLOSE',reason:'IO_FAILED'},
+    ...[['COPY_SOURCE_INSPECT','SIZE_REJECTED'],['COPY_SOURCE_INSPECT','REFERENCE_REJECTED'],
+      ['COPY_SOURCE_IDENTITY','FILE_CHANGED'],['COPY_READ','FILE_CHANGED'],['COPY_READ_CEILING','FILE_CHANGED'],
+      ['COPY_SOURCE_FINAL','FILE_CHANGED'],['COPY_SOURCE_DIGEST','DIGEST_MISMATCH'],['COPY_CLEANUP','IO_FAILED']]
+      .map(([stage,reason])=>({stage,reason})),
   ]) {
     const result=await child([{type:'worker_failure',failure}]);
     assert.equal(result.type,'worker_failed');assert.deepEqual(result.failure,failure);

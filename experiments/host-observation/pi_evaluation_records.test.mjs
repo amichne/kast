@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { inspectProviderPayload } from './pi_evaluation_payload.mjs';
 import { evaluationGuard } from './pi_evaluation_guard.mjs';
 import { CasePolicy } from './pi_evaluation_policy.mjs';
@@ -17,6 +18,7 @@ const read=directory=>['guard.jsonl','events.jsonl'].flatMap(name=>
   fs.readFileSync(path.join(directory,name),'utf8').split('\n').filter(Boolean).map(line=>JSON.parse(line)));
 const allowedDecision={allow:true,reason:'ADMITTED',phase:'WORK'};
 const failed=(stage,reason)=>({type:'failure',failure:{stage,reason}});
+const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 async function completed(...args) {
   const result=await withPrivateReplaySession(...args);
   assert.equal(result.type,'completed',JSON.stringify(result));return result.value;
@@ -146,7 +148,7 @@ test('restored continuation opens only exact owned copy, leaves original unchang
     {role:'toolResult',toolName:'query_symbols',content:[{type:'text',text:'private source result'}]}];
   const original=messages.map((message,i)=>JSON.stringify({type:'message',id:String(i),message})).join('\n');
   fs.writeFileSync(source,original,{mode:0o400});
-  await completed(syntheticSDK,{directory,workspaceRoot:'/fixture',sourceFile:source},async manager=>{
+  await completed(syntheticSDK,{directory,workspaceRoot:'/fixture',sourceFile:source,sourceSha256:sha(original)},async manager=>{
     assert.notEqual(manager.file,source);manager.branch('1');
     assert.deepEqual(manager.buildSessionContext().messages,messages);
     assert.equal(manager.leaf,'1');manager.append({role:'assistant',content:'continued exact context'});
@@ -154,6 +156,152 @@ test('restored continuation opens only exact owned copy, leaves original unchang
   });
   assert.equal(fs.readFileSync(source,'utf8'),original);assert.equal(mode(source),0o400);
   assert.match(fs.readFileSync(path.join(directory,'private-replay','received-session.jsonl'),'utf8'),/continued exact context/);
+});
+
+function replaySource(t,bytes=Buffer.from('{"type":"message","id":"original","message":{"role":"user","content":"synthetic replay"}}\n')) {
+  const directory=owned(t),parent=path.join(directory,'source-parent'),output=path.join(directory,'output');
+  fs.mkdirSync(parent,{mode:0o755});fs.mkdirSync(output,{mode:0o700});
+  const source=path.join(parent,'original.jsonl');fs.writeFileSync(source,bytes,{mode:0o644});
+  return {directory,parent,output,source,bytes};
+}
+async function deniedReplay(fixture,expected) {
+  let opens=0,callbacks=0;
+  const result=await withPrivateReplaySession({open(){opens++;return {};},create(){opens++;return {};}},
+    {directory:fixture.output,workspaceRoot:'/fixture',sourceFile:fixture.source,
+      sourceSha256:Object.hasOwn(fixture,'sourceSha256')?fixture.sourceSha256:sha(fixture.bytes)},async()=>{callbacks++;});
+  assert.deepEqual(result,expected);assert.equal(opens,0,'SDK open must follow complete source admission');
+  assert.equal(callbacks,0);return result;
+}
+
+test('ordinary Pi 0644 replay source is copied exactly without hardening the original or its 0755 parent',async t=>{
+  const fixture=replaySource(t);let opened=0;
+  const sdk={...syntheticSDK,open(file,directory){opened++;return syntheticSDK.open(file,directory);}};
+  await completed(sdk,{directory:fixture.output,workspaceRoot:'/fixture',sourceFile:fixture.source,sourceSha256:sha(fixture.bytes)},async manager=>{
+    assert.deepEqual(fs.readFileSync(manager.file),fixture.bytes);
+    assert.equal(mode(manager.file),0o600);assert.equal(mode(path.dirname(manager.file)),0o700);
+    manager.append({type:'message',message:{role:'assistant',content:'synthetic continuation'}});
+  });
+  assert.equal(opened,1);assert.deepEqual(fs.readFileSync(fixture.source),fixture.bytes);
+  assert.equal(mode(fixture.source),0o644);assert.equal(mode(fixture.parent),0o755);
+});
+
+test('oversize replay source rejects before source open or copy reads and never opens SDK',async t=>{
+  const fixture=replaySource(t);fs.truncateSync(fixture.source,4*1024*1024+1);
+  const before=fs.statSync(fixture.source,{bigint:true}),open=fs.openSync,read=fs.readSync;let opens=0,reads=0;
+  try {
+    fs.openSync=(file,...args)=>{if(file===fixture.source)opens++;return open(file,...args);};
+    fs.readSync=(...args)=>{reads++;return read(...args);};
+    await deniedReplay(fixture,failed('COPY_SOURCE_INSPECT','SIZE_REJECTED'));
+  } finally {fs.openSync=open;fs.readSync=read;}
+  assert.equal(opens,0);assert.equal(reads,0);assert.equal(fs.statSync(fixture.source,{bigint:true}).size,before.size);
+  assert.deepEqual(fs.readFileSync(fixture.source).subarray(0,fixture.bytes.length),fixture.bytes);
+  assert.equal(mode(fixture.source),0o644);
+});
+
+test('unsafe replay source links owner and writable modes reject without repairing originals',async t=>{
+  for(const unsafe of ['symlink','hardlink','owner','group-write','world-write']) {
+    const fixture=replaySource(t),other=path.join(fixture.parent,'other'),lstat=fs.lstatSync;
+    const originalSource=fixture.source;
+    if(unsafe==='symlink'){fs.symlinkSync(fixture.source,other);fixture.source=other;}
+    if(unsafe==='hardlink')fs.linkSync(fixture.source,other);
+    if(unsafe==='group-write')fs.chmodSync(fixture.source,0o664);
+    if(unsafe==='world-write')fs.chmodSync(fixture.source,0o646);
+    const permissions=mode(originalSource);
+    try {
+      if(unsafe==='owner')fs.lstatSync=(file,options)=>{const stat=lstat(file,options);
+        if(file===fixture.source)stat.uid=typeof stat.uid==='bigint'?BigInt(process.getuid()+1):process.getuid()+1;
+        return stat;};
+      await deniedReplay(fixture,failed('COPY_SOURCE_INSPECT','PATH_UNSAFE'));
+    } finally {fs.lstatSync=lstat;}
+    assert.deepEqual(fs.readFileSync(originalSource),fixture.bytes);assert.equal(mode(originalSource),permissions);
+  }
+});
+
+test('replay source replacement before open rejects descriptor identity without opening SDK',async t=>{
+  const fixture=replaySource(t),saved=path.join(fixture.parent,'saved-original'),open=fs.openSync;let replaced=false;
+  try {
+    fs.openSync=(file,...args)=>{
+      if(file===fixture.source&&!replaced){replaced=true;fs.renameSync(file,saved);fs.writeFileSync(file,fixture.bytes,{mode:0o644});fs.chmodSync(file,0o644);}
+      return open(file,...args);
+    };
+    await deniedReplay(fixture,failed('COPY_SOURCE_IDENTITY','FILE_CHANGED'));
+  } finally {fs.openSync=open;}
+  assert.equal(replaced,true);assert.deepEqual(fs.readFileSync(saved),fixture.bytes);assert.equal(mode(saved),0o644);
+  assert.deepEqual(fs.readFileSync(fixture.source),fixture.bytes);
+});
+
+test('replay source same-size mutation and pathname replacement during read cannot reach SDK open',async t=>{
+  for(const change of ['mutation','replacement']) {
+    const fixture=replaySource(t,Buffer.alloc(128*1024,0x61)),saved=path.join(fixture.parent,'saved-original');
+    const read=fs.readSync;let changed=false;
+    try {
+      fs.readSync=(...args)=>{const count=read(...args);
+        if(!changed){changed=true;
+          if(change==='replacement'){fs.renameSync(fixture.source,saved);fs.writeFileSync(fixture.source,fixture.bytes,{mode:0o644});fs.chmodSync(fixture.source,0o644);}
+          else {const fd=fs.openSync(fixture.source,'r+');try{fs.writeSync(fd,Buffer.from('b'),0,1,fixture.bytes.length-1);}finally{fs.closeSync(fd);}}
+        }return count;};
+      await deniedReplay(fixture,failed('COPY_SOURCE_FINAL','FILE_CHANGED'));
+    } finally {fs.readSync=read;}
+    assert.equal(changed,true);assert.equal(mode(fixture.source),0o644);
+    if(change==='replacement'){assert.deepEqual(fs.readFileSync(saved),fixture.bytes);assert.equal(mode(saved),0o644);}
+    else {const mutated=fs.readFileSync(fixture.source);assert.deepEqual(mutated.subarray(0,-1),fixture.bytes.subarray(0,-1));assert.equal(mutated.at(-1),0x62);}
+  }
+});
+
+test('replay source growth during read is bounded by admitted size and rejects before SDK open',async t=>{
+  const fixture=replaySource(t),read=fs.readSync;let grown=false,bytesRead=0;
+  try {
+    fs.readSync=(...args)=>{const count=read(...args);bytesRead+=count;
+      if(!grown){grown=true;fs.appendFileSync(fixture.source,Buffer.alloc(4*1024*1024,0x62));}return count;};
+    await deniedReplay(fixture,failed('COPY_READ_CEILING','FILE_CHANGED'));
+  } finally {fs.readSync=read;}
+  assert.equal(grown,true);assert.equal(bytesRead,fixture.bytes.length+1);
+  assert.deepEqual(fs.readFileSync(fixture.source).subarray(0,fixture.bytes.length),fixture.bytes);
+  assert.equal(mode(fixture.source),0o644);
+  assert.equal(fs.existsSync(path.join(fixture.output,'private-replay/received-session.jsonl')),false);
+});
+
+test('replay source truncation during bounded read fails as a short read before SDK open',async t=>{
+  const fixture=replaySource(t,Buffer.alloc(128*1024,0x61)),read=fs.readSync;let truncated=false,bytesRead=0;
+  try {
+    fs.readSync=(fd,buffer,offset,length,position)=>{
+      const count=read(fd,buffer,offset,Math.min(length,64*1024),position);bytesRead+=count;
+      if(!truncated){truncated=true;fs.truncateSync(fixture.source,64*1024);}return count;
+    };
+    await deniedReplay(fixture,failed('COPY_READ','FILE_CHANGED'));
+  } finally {fs.readSync=read;}
+  assert.equal(truncated,true);assert.equal(bytesRead,64*1024);
+  assert.deepEqual(fs.readFileSync(fixture.source),fixture.bytes.subarray(0,64*1024));
+  assert.equal(mode(fixture.source),0o644);
+  assert.equal(fs.existsSync(path.join(fixture.output,'private-replay/received-session.jsonl')),false);
+});
+
+test('missing malformed and mismatched replay digests fail before destination writes or SDK open',async t=>{
+  for(const sourceSha256 of [undefined,null,'not-a-digest','a'.repeat(65),'0'.repeat(64)]) {
+    const fixture={...replaySource(t),sourceSha256},open=fs.openSync,write=fs.writeSync;let destinationOpens=0,writes=0;
+    const destination=path.join(fixture.output,'private-replay/received-session.jsonl');
+    try {
+      fs.openSync=(file,...args)=>{if(file===destination)destinationOpens++;return open(file,...args);};
+      fs.writeSync=(...args)=>{writes++;return write(...args);};
+      const expected=sourceSha256==='0'.repeat(64)?failed('COPY_SOURCE_DIGEST','DIGEST_MISMATCH'):
+        failed('COPY_SOURCE_INSPECT','REFERENCE_REJECTED');
+      await deniedReplay(fixture,expected);
+    } finally {fs.openSync=open;fs.writeSync=write;}
+    assert.equal(destinationOpens,0);assert.equal(writes,0);assert.equal(fs.existsSync(destination),false);
+    assert.deepEqual(fs.readFileSync(fixture.source),fixture.bytes);assert.equal(mode(fixture.source),0o644);
+  }
+});
+
+test('replay copy cleanup failure retains the earlier copy failure and never opens SDK',async t=>{
+  const fixture=replaySource(t),write=fs.writeSync,unlink=fs.unlinkSync;
+  const destination=path.join(fixture.output,'private-replay/received-session.jsonl'),cleanups=[];
+  try {
+    fs.writeSync=()=>{throw Error('PRIVATE-COPY-WRITE');};
+    fs.unlinkSync=file=>{cleanups.push(file);throw Error('PRIVATE-CLEANUP');};
+    const result=await deniedReplay(fixture,failed('COPY_WRITE','IO_FAILED'));
+    assert.equal(JSON.stringify(result).includes('PRIVATE-'),false);
+  } finally {fs.writeSync=write;fs.unlinkSync=unlink;}
+  assert.deepEqual(cleanups,[destination]);assert.deepEqual(fs.readFileSync(fixture.source),fixture.bytes);assert.equal(mode(fixture.source),0o644);
 });
 
 test('existing owned archive directories and regular files are hardened before SDK effects',async t=>{
@@ -177,7 +325,7 @@ test('unsafe archive and source symlinks fail closed before SDK open and preserv
   fs.unlinkSync(path.join(directory,'private-replay'));
   const original=path.join(directory,'original');fs.writeFileSync(original,'unchanged');
   const source=path.join(directory,'source');fs.symlinkSync(original,source);
-  assert.deepEqual(await withPrivateReplaySession(sdk,{directory,workspaceRoot:'/fixture',sourceFile:source},async()=>{}),
+  assert.deepEqual(await withPrivateReplaySession(sdk,{directory,workspaceRoot:'/fixture',sourceFile:source,sourceSha256:sha('unchanged')},async()=>{}),
     failed('COPY_SOURCE_INSPECT','PATH_UNSAFE'));
   assert.equal(calls,0);assert.equal(fs.readFileSync(original,'utf8'),'unchanged');
   assert.equal(process.umask(),mask);
@@ -193,7 +341,7 @@ test('umask restores after SDK setup and continuation failures; existing copy is
   assert.equal(process.umask(),mask);
   const copy=path.join(directory,'private-replay','received-session.jsonl');fs.writeFileSync(copy,'owned prior');
   const source=path.join(directory,'original');fs.writeFileSync(source,'source');
-  assert.deepEqual(await withPrivateReplaySession(syntheticSDK,{directory,workspaceRoot:'/fixture',sourceFile:source},async()=>{}),
+  assert.deepEqual(await withPrivateReplaySession(syntheticSDK,{directory,workspaceRoot:'/fixture',sourceFile:source,sourceSha256:sha('source')},async()=>{}),
     failed('COPY_DESTINATION_OPEN','IO_FAILED'));
   assert.equal(fs.readFileSync(copy,'utf8'),'owned prior');assert.equal(fs.readFileSync(source,'utf8'),'source');
   assert.equal(process.umask(),mask);
@@ -271,13 +419,13 @@ test('copy read and SDK open failures retain exact stage and original file',asyn
   const readOriginal=fs.readSync;
   try {
     fs.readSync=()=>{throw Error('secret read text');};
-    assert.deepEqual(await withPrivateReplaySession(syntheticSDK,{directory,workspaceRoot:'/fixture',sourceFile:source},async()=>{}),
+    assert.deepEqual(await withPrivateReplaySession(syntheticSDK,{directory,workspaceRoot:'/fixture',sourceFile:source,sourceSha256:sha('original content')},async()=>{}),
       failed('COPY_READ','IO_FAILED'));
   } finally {fs.readSync=readOriginal;}
   assert.equal(fs.readFileSync(source,'utf8'),'original content');
-  fs.unlinkSync(path.join(directory,'private-replay','received-session.jsonl'));
+  assert.equal(fs.existsSync(path.join(directory,'private-replay','received-session.jsonl')),false);
   assert.deepEqual(await withPrivateReplaySession({open(){throw Error('secret SDK text');}},
-    {directory,workspaceRoot:'/fixture',sourceFile:source},async()=>{}),failed('SESSION_OPEN','SDK_FAILED'));
+    {directory,workspaceRoot:'/fixture',sourceFile:source,sourceSha256:sha('original content')},async()=>{}),failed('SESSION_OPEN','SDK_FAILED'));
   assert.equal(fs.readFileSync(source,'utf8'),'original content');
 });
 
@@ -316,7 +464,7 @@ test('copy write and close signals remain finite and protect original bytes',asy
         if(operation==='closeSync') original(...args);
         throw Error('private copy error');
       };
-      assert.deepEqual(await withPrivateReplaySession(syntheticSDK,{directory,workspaceRoot:'/fixture',sourceFile:source},async()=>{}),
+      assert.deepEqual(await withPrivateReplaySession(syntheticSDK,{directory,workspaceRoot:'/fixture',sourceFile:source,sourceSha256:sha('exact source')},async()=>{}),
         failed(stage,'IO_FAILED'));
     } finally {fs[operation]=original;}
     assert.equal(fs.readFileSync(source,'utf8'),'exact source');
