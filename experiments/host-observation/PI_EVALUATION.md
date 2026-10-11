@@ -297,7 +297,12 @@ second request reaches neither fetch nor a socket. A separate real-SDK cached
 WebSocket session reproduces one send after its guard denied the second request.
 A fresh sequence also uses the actual installed SDK to project a new tool call
 and complete canonical result into its second request. Only tool execution is
-replaced with a synthetic reply; declarations and instructions remain intact.
+replaced with a Kotlin-serialized canonical fixture in both text and `details`.
+WORK keeps the complete adapter declarations. Final DELIVERY omits top-level
+tools; its instructions and canonical reply stay intact. The check compares the
+guarded final body with the body received by the synthetic transport to reject
+SDK reintroduction. Historical inline declarations in restored input remain
+preserved and counted; omission is scoped to the top-level field.
 Both requests admit without a prior calibration and end in `FINAL_ANSWER`.
 This is SDK projection and guard proof, not native or backend enforcement proof.
 A saved transcript then continues through the same SDK without a new user prompt
