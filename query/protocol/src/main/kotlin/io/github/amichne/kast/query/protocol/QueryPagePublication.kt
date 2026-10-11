@@ -15,12 +15,7 @@ internal class QueryPagePublication(
         var prepared = false
         return try {
             val page = compute()
-            if (
-                page is OperationOutcome.Rejected &&
-                    (page.reason as? QueryRunRejection.CompletionUnproven)?.evidence !is
-                        io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument.Retained
-            )
-                page
+            if (page is OperationOutcome.Rejected && page.dependencies().isEmpty()) page
             else
                 when (val published = publication.prepare(state, claim, page)) {
                     QueryExecutionPublicationResult.COMMITTED -> page

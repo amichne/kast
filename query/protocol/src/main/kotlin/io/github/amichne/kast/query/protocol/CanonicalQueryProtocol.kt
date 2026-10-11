@@ -40,38 +40,56 @@ class CanonicalQueryProtocol(
             if (request.output is QueryOutputDocument.ImpactWitness)
                 request.copy(output = QueryOutputDocument.ValuePaths)
             else request
+        val invocation = QueryInvocationPublication()
+        return try {
+            val accumulated =
+                when (val execution = accumulate(semanticRequest, lease, budget, policy, invocation)) {
+                    is Refinement.Refined -> execution.value
+                    is Refinement.Rejected -> return OperationOutcome.Rejected(execution.failure)
+                }
+            when (val acquired = state.acquireInitial(lease)) {
+                is QueryInitialAcquisition.Acquired -> {
+                    state.finishInvocation(
+                        invocation,
+                        accumulated.issuedProgress?.continuationToken as? QueryExecutionContinuation.Pipeline,
+                        acquired.claim,
+                    )
+                    pagePublication.execute(acquired.claim) {
+                        QueryInvocationProjection(authority, state, retentionObservation)
+                            .project(request, lease, accumulated, policy, acquired.claim)
+                    }
+                }
+                QueryInitialAcquisition.Unavailable ->
+                    rejected(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE)
+                QueryInitialAcquisition.CapacityExceeded ->
+                    rejected(QueryExecutionRejectionDocument.CONTINUATION_CAPACITY_EXCEEDED)
+            }
+        } finally {
+            state.finishInvocation(invocation, null)
+        }
+    }
+
+    private suspend fun accumulate(
+        request: QueryRunRequest.Run,
+        lease: SemanticReadAuthority,
+        budget: QueryBudget,
+        policy: QueryInvocationPolicy,
+        invocation: QueryInvocationPublication,
+    ): Refinement<AccumulatedSymbolQuery, QueryRunRejection> {
         val recording = QueryInvocationExecution(operations)
         val pages =
             CanonicalQueryProtocol(
-                operations = recording,
-                authority = authority,
-                state = state,
-                publication = QueryExecutionPublication.Immediate,
-                producerSeeds = producerSeeds,
+                recording,
+                authority,
+                state,
+                invocation,
+                producerSeeds,
                 peerSiteAdmissions = peerSiteAdmissions,
             )
-
-        val accumulated =
-            when (
-                val execution =
-                    AutomaticSymbolQueryRunner(state, lease, policy) { action, remaining ->
-                            recording.page(remaining) { pages.executePage(action, lease, remaining) }
-                        }
-                        .run(semanticRequest, budget)
-            ) {
-                is Refinement.Refined -> execution.value
-                is Refinement.Rejected -> return OperationOutcome.Rejected(execution.failure)
+        return AutomaticSymbolQueryRunner(state, lease, policy) { action, remaining ->
+                recording.page(remaining) { pages.executePage(action, lease, remaining) }
             }
-        return when (val acquired = state.acquireInitial(lease)) {
-            is QueryInitialAcquisition.Acquired ->
-                pagePublication.execute(acquired.claim) {
-                    QueryInvocationProjection(authority, state, retentionObservation)
-                        .project(request, lease, accumulated, policy, acquired.claim)
-                }
-            QueryInitialAcquisition.Unavailable -> rejected(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE)
-            QueryInitialAcquisition.CapacityExceeded ->
-                rejected(QueryExecutionRejectionDocument.CONTINUATION_CAPACITY_EXCEEDED)
-        }
+            .run(request, budget)
     }
 
     internal suspend fun executePage(

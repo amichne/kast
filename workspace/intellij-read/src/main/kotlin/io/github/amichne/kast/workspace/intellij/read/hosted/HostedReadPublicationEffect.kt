@@ -2,14 +2,17 @@ package io.github.amichne.kast.workspace.intellij.read.hosted
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
+import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 
-/** A fitted policy rejection may publish its exact retained evidence without changing its semantic verdict. */
+/** A fitted policy rejection may publish exact retained evidence or progress without changing its verdict. */
 sealed interface HostedReadRejectedPublication {
     data object Discard : HostedReadRejectedPublication
 
     data class RetainedEvidence(val evidence: QueryCompletionEvidenceDocument.Retained) : HostedReadRejectedPublication
+
+    data class RetainedProgress(val checkpoint: QueryExecutionContinuation.Pipeline) : HostedReadRejectedPublication
 }
 
 /** One attempt's detached store publication, committed only after freshness, deadline and permit completion. */
@@ -70,13 +73,14 @@ internal class HostedReadPublicationOwner(
         }
     }
 
-    /** Semantic rejection alone never authorizes storage; the fitted owner must retain exact policy evidence. */
+    /** Semantic rejection alone never authorizes storage; the fitted owner must retain exact evidence or progress. */
     @Synchronized
     fun commitRetainedRejection(): Refinement<Unit, HostedQueryFailure> =
         when (val current = state) {
             is State.Prepared ->
                 when (current.effect.rejectedPublication) {
-                    is HostedReadRejectedPublication.RetainedEvidence -> commit()
+                    is HostedReadRejectedPublication.RetainedEvidence,
+                    is HostedReadRejectedPublication.RetainedProgress -> commit()
                     HostedReadRejectedPublication.Discard -> {
                         discard()
                         Refinement.Refined(Unit)

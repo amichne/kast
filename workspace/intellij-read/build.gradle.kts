@@ -4,6 +4,7 @@ import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
+    `java-test-fixtures`
     id("kast.kotlin-library")
     kotlin("plugin.serialization")
     id("kast.role.ide-read-only")
@@ -94,6 +95,9 @@ dependencies {
     testImplementation(kotlinPluginLibraries)
     testImplementation(catalog.findLibrary("serialization-json").get())
     testImplementation(testFixtures(project(":workspace:contract")))
+    testFixturesApi(project(":workspace:contract"))
+    testFixturesImplementation(project(":symbol:contract"))
+    testFixturesImplementation(testFixtures(project(":workspace:contract")))
 }
 
 private val workspaceContractFriendPath =

@@ -46,6 +46,7 @@ internal sealed interface QueryStateEntry {
         override val bytes: Long,
         override val owner: QueryExecutionClaim? = null,
         override val execution: QueryCheckpointExecution.Pending = QueryCheckpointExecution.Ready,
+        val privateInvocation: QueryInvocationPublication? = null,
     ) : Pending {
         override val lease: SemanticReadAuthority = checkpoint.lease
     }
@@ -68,6 +69,7 @@ internal sealed interface QueryStateEntry {
         val dependencies: Set<QueryStateKey>,
         override val createdAt: Long,
         override val bytes: Long,
+        val privateInvocation: QueryInvocationPublication? = null,
     ) : Producer {
         override val owner: QueryExecutionClaim? = null
         override val execution: QueryCheckpointExecution.Published =
@@ -301,6 +303,7 @@ internal fun Map<QueryStateKey, QueryStateEntry>.reusableCheckpoint(
     ttlMillis: Long,
 ): Boolean =
     entry is QueryStateEntry.Checkpoint &&
+        entry.privateInvocation == null &&
         entry.execution == QueryCheckpointExecution.Ready &&
         entry.withinLifetime(now, ttlMillis) &&
         (key in liveDependencyClosure(now, ttlMillis) || owner != null && entry.owner === owner)

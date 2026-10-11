@@ -78,11 +78,7 @@ private fun encodeHostedQueryResponseDocument(
             val completion =
                 semantic.reason.reason()
                     as? io.github.amichne.kast.protocol.contract.QueryRunRejection.CompletionUnproven
-            return if (
-                completion?.evidence
-                    is io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument.Retained
-            )
-                original.publishEncodedPage(semantic.publicationPage(), published)
+            return if (completion != null) original.publishEncodedPage(semantic.publicationPage(), published)
             else original
         }
     }
