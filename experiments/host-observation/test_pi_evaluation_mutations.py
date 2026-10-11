@@ -12,6 +12,18 @@ class PiEvaluationMutationTest(unittest.TestCase):
         node = shutil.which("node")
         self.assertIsNotNone(node, "Node.js is required; missing tooling is not mutation proof")
         mutations = [
+            ("final-answer-declarations-retained", "pi_evaluation_guard.mjs",
+             "if(policy.isFinalAnswerDelivery())delete payload.tools;",
+             "if(false)delete payload.tools;",
+             "final answer declaration ownership"),
+            ("work-declarations-removed", "pi_evaluation_guard.mjs",
+             "if(policy.isFinalAnswerDelivery())delete payload.tools;",
+             "if(true)delete payload.tools;",
+             "WORK and issued evidence-read"),
+            ("issued-evidence-declarations-removed", "pi_evaluation_policy.mjs",
+             "this.phase==='DELIVERY'&&this.evidenceRequest===undefined",
+             "this.phase==='DELIVERY'",
+             "WORK and issued evidence-read"),
             ("provider-output-cap-removed", "pi_evaluation_guard.mjs",
              "{...event.payload,max_output_tokens:policy.providerOutputCap()}",
              "{...event.payload}",

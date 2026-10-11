@@ -174,11 +174,13 @@ test('fresh question dynamic canonical tool result and final answer complete wit
     {type:'function_call_output',call_id:callId,output});
   const delivered=request(next);
   assert.equal(aborts,0);assert.equal(admitted.length,2);
-  assert.deepEqual(delivered,{...next,max_output_tokens:2000});
+  const {tools,...retained}=next;
+  assert.deepEqual(delivered,{...retained,max_output_tokens:2000});
   const deliveredOutput=delivered.input.find(item=>item.type==='function_call_output');
   assert.equal(deliveredOutput.call_id,callId);assert.equal(deliveredOutput.output,output);
   assert.deepEqual(JSON.parse(deliveredOutput.output),canonical);
-  assert.equal(delivered.tools[0].description,first.tools[0].description);
+  assert.deepEqual(admitted[0].tools,first.tools);
+  assert.equal(Object.hasOwn(delivered,'tools'),false);
   assert.equal(delivered.instructions,first.instructions);
   emit('message_end',{message:{role:'assistant',stopReason:'stop',content:[{type:'text',text:'No matching symbols were found in the complete result.'}],usage:{input:1600,cacheRead:100,output:100,totalTokens:1800}}});
   const report=policy.report();

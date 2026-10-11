@@ -193,6 +193,7 @@ try {
   assert.equal(projected.input.filter(item=>item.role==='user').length,1,'Continuation adds no coached user prompt');
   assert.equal(admission.inputBytes,Buffer.byteLength(JSON.stringify(projected.input)));
   assert.equal(admission.outputTokenCap,2000);
+  assert.equal(Object.hasOwn(projected,'tools'),false,'Saved final DELIVERY has no top-level tool declarations');
   assert.equal(savedPolicy.report().nativeOutcome,'REJECTED');assert.equal(savedPolicy.report().exhaustiveEvidence,false);
   assert.equal(savedPolicy.report().semanticRepliesObserved,0);assert.equal(savedPolicy.report().modelProposals.length,0);
   assert.equal(savedPolicy.report().finalAnswer,true);assert.equal(savedPolicy.report().outcome,'INTENTIONAL_REJECTION');
@@ -235,7 +236,7 @@ try {
     const customTools=definitions.map(definition=>({...definition,execute:async()=>{
       assert.equal(definition.name,'query_symbols','No other native capability may execute');
       syntheticToolCalls++;
-      return {content:[{type:'text',text:canonicalText}],details:{qualification:'SYNTHETIC_CANONICAL_REPLY_NOT_NATIVE_PROOF'}};
+      return {content:[{type:'text',text:canonicalText}],details:structuredClone(canonicalNegative)};
     }}));
     return sdk.createAgentSession({...options,customTools});
   },DefaultResourceLoader:class extends sdk.DefaultResourceLoader {
@@ -258,7 +259,9 @@ try {
     assert.equal(dynamicPolicy.report().outcome,'FINAL_ANSWER',JSON.stringify(dynamicPolicy.report()));
     assert.equal(fetchCalls-fetchBeforeDynamic,2);assert.equal(syntheticToolCalls,1);
     assert.equal(dynamicBodies.length,2);assert.notEqual(inspectProviderPayload(dynamicBodies[0],262144).payloadSha256,inspectProviderPayload(dynamicBodies[1],262144).payloadSha256);
-    assert.deepEqual(dynamicBodies[1].tools,dynamicBodies[0].tools,'Complete original tool declarations remain unchanged');
+    assert.deepEqual(dynamicBodies[0].tools,bodies[0].tools,'WORK keeps the complete original adapter declarations');
+    assert.equal(Object.hasOwn(dynamicBodies[1],'tools'),false,'Final DELIVERY has no top-level tool declarations');
+    assert.equal(JSON.stringify(bodies.at(-1)),JSON.stringify(dynamicBodies[1]),'The SDK sends the serialized guarded body without reintroducing tools');
     assert.equal(dynamicBodies[1].instructions,dynamicBodies[0].instructions);
     const outputs=dynamicBodies[1].input.filter(item=>item.type==='function_call_output');
     assert.equal(outputs.length,1);assert.equal(outputs[0].call_id,callId);assert.equal(outputs[0].output,canonicalText);
@@ -267,7 +270,7 @@ try {
     activeSession.dispose();activeSession=undefined;cleanupSocket(manager.getSessionId());
   });
   assert.equal(expectedFetchHashes.length,0);assert.equal(scriptedResponses.length,0);
-  const dynamicSequence={qualification:'REAL_INSTALLED_SDK_SYNTHETIC_TRANSPORT_AND_CANONICAL_TOOL_REPLY_NOT_NATIVE_OR_BACKEND_PROOF',priorCalibrationReceipts:0,admittedSseFetchCalls:fetchCalls-fetchBeforeDynamic,syntheticToolExecutions:syntheticToolCalls,newCallIdAndCanonicalResultPreserved:true,fullDeclarationsPreserved:true,newUserMessages:1,report:dynamicPolicy.report()};
+  const dynamicSequence={qualification:'REAL_INSTALLED_SDK_SYNTHETIC_TRANSPORT_AND_CANONICAL_TOOL_REPLY_NOT_NATIVE_OR_BACKEND_PROOF',priorCalibrationReceipts:0,admittedSseFetchCalls:fetchCalls-fetchBeforeDynamic,syntheticToolExecutions:syntheticToolCalls,newCallIdAndCanonicalResultPreserved:true,workDeclarationsPreserved:true,finalDeliveryToolsOmitted:true,newUserMessages:1,report:dynamicPolicy.report()};
   const identity={};
   for(const [name,files] of Object.entries({'pi-coding-agent':['dist/core/sdk.js','dist/core/session-manager.js','dist/core/resource-loader.js','dist/core/extensions/runner.js'],'pi-ai':['dist/api/openai-codex-responses.js'],'pi-agent-core':['dist/agent.js']})) {
     const root=name==='pi-coding-agent'?piPackageRoot:path.join(piPackageRoot,'..',name);

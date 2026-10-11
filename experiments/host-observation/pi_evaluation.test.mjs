@@ -61,6 +61,95 @@ function callbacks(policy,recordResult) {
 const providerEvent=()=>({payload:providerPayload()});
 const resultEvent=envelope=>({toolName:'query_symbols',toolCallId:'call-1',content:[{type:'text',text:JSON.stringify(envelope)}]});
 
+const declaredPayload=()=>({...providerPayload(),tools:[{type:'function',name:'query_symbols',description:'Synthetic declaration',parameters:{type:'object',properties:{},additionalProperties:false}}]});
+test('final answer declaration ownership follows complete qualified rejected and partial results on fresh and saved paths',()=>{
+  for(const envelope of [negativeComplete,qualified,deliveryCases.rejectedProof.result,partialPrefix()]) {
+    for(const saved of [false,true]) {
+      const policy=makePolicy({...config(),evidenceOnlyDelivery:true}),guard=callbacks(policy);
+      const event=resultEvent(envelope),canonical=JSON.stringify(envelope);
+      if(saved)assert.equal(policy.restoreReceivedResult(decodeEnvelope(event.content),10000).allow,true);
+      else {
+        guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'}}});
+        guard.emit('tool_result',event);
+      }
+      assert.equal(policy.report().phase,'DELIVERY');
+      const input=[{type:'function_call_output',call_id:'call-1',output:canonical}];
+      const original={...declaredPayload(),input},snapshot=structuredClone(original);
+      const actual=guard.emit('before_provider_request',{payload:original});
+      assert.equal(Object.hasOwn(actual,'tools'),false);
+      const {tools,...retained}=snapshot;
+      assert.deepEqual(actual,{...retained,instructions:snapshot.instructions+(policy.deliveryInstruction()?'\n'+policy.deliveryInstruction():''),max_output_tokens:2000});
+      assert.deepEqual(original,snapshot);assert.equal(JSON.stringify(envelope),canonical);
+      assert.equal(guard.aborted,0);assert.equal(policy.report().providerRequests,1);
+      assert.equal(policy.report().requestObservations[0].payloadBytes,Buffer.byteLength(JSON.stringify(actual)));
+    }
+  }
+});
+
+test('WORK and issued evidence-read DELIVERY keep their exact declarations and execution permission',()=>{
+  for(const pending of [false,true]) {
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true}),guard=callbacks(policy);
+    if(pending)assert.equal(policy.toolResult(denseRejected).allow,true);
+    const original=declaredPayload(),snapshot=structuredClone(original);
+    const actual=guard.emit('before_provider_request',{payload:original});
+    assert.deepEqual(actual,{...snapshot,max_output_tokens:2000});
+    assert.deepEqual(original,snapshot);assert.equal(guard.aborted,0);
+    assert.equal(policy.report().phase,pending?'DELIVERY':'WORK');
+    const request=pending?denseRejected.document.rejection.detail.evidence.nextQuery.request:{type:'RUN'};
+    assert.equal(policy.toolCall('query_symbols',{request},'permitted').allow,true);
+  }
+});
+
+test('declaration removal never raises final answer bounds or permits a second request',()=>{
+  const settings={...config(),evidenceOnlyDelivery:true,delivery:{...config().delivery,requests:3},maximumProviderPayloadBytes:2000};
+  const policy=makePolicy(settings),guard=callbacks(policy);
+  policy.restoreReceivedResult(decodeEnvelope(resultEvent(partialPrefix()).content),10000);
+  const actual=guard.emit('before_provider_request',{payload:{...declaredPayload(),tools:[{...declaredPayload().tools[0],description:'x'.repeat(3000)}]}});
+  assert.equal(Object.hasOwn(actual,'tools'),false);assert.equal(guard.aborted,0);
+  guard.emit('message_end',{message:{role:'assistant',stopReason:'stop',content:[{type:'text',text:'Received subset; rejected query; missing evidence.'}],usage:{input:100,output:50,totalTokens:150}}});
+  assert.equal(policy.report().outcome,'INTENTIONAL_REJECTION');
+  assert.equal(policy.report().providerRequests,1);assert.equal(policy.report().usage.totalTokens,150);
+  guard.emit('before_provider_request',{payload:declaredPayload()});
+  assert.equal(policy.report().outcome,'INTENTIONAL_REJECTION');assert.equal(policy.report().providerRequests,1);
+  assert.equal(policy.maximumProviderPayloadBytes,2000);
+  const large=makePolicy(settings),blocked=callbacks(large);
+  large.restoreReceivedResult(qualified,10000);
+  blocked.emit('before_provider_request',{payload:{...declaredPayload(),input:[{role:'user',content:'x'.repeat(3000)}]}});
+  assert.equal(large.report().outcome,'HARNESS_BUDGET_LIMIT');assert.equal(large.report().providerRequests,0);
+  assert.equal(blocked.aborted,1);
+});
+
+test('final answer declarations grant no tool execution and preserve the first terminal failure',()=>{
+  for(const [toolName,request] of [['query_symbols',{type:'RUN'}],['query_symbols',{type:'RESUME'}],['query_symbols',denseRejected.document.rejection.detail.evidence.nextQuery.request],['check_diagnostics',undefined],['health_check',undefined]]) {
+    const policy=makePolicy(config()),guard=callbacks(policy);
+    policy.restoreReceivedResult(qualified,10000);
+    guard.emit('before_provider_request',{payload:declaredPayload()});
+    const rejected=guard.emit('tool_call',{toolName,toolCallId:'forbidden',input:{request}});
+    assert.equal(rejected.block,true);assert.equal(rejected.reason,'HARNESS_TOOL_BLOCKED');
+    assert.equal(guard.aborted,1);assert.equal(policy.report().modelProposals[0].adapterStartObserved,false);
+    assert.equal(policy.report().semanticRepliesObserved,0);
+    guard.emit('before_provider_request',{payload:declaredPayload()});
+    assert.equal(policy.report().outcome,'HARNESS_TOOL_BLOCKED');assert.equal(policy.report().providerRequests,1);
+  }
+});
+
+test('final answer declaration removal preserves cancellation output usage and response limits',()=>{
+  for(const [message,expected] of [
+    [{stopReason:'aborted',content:[],usage:{input:100,output:1,totalTokens:101}},'HARNESS_CANCELLED'],
+    [{stopReason:'stop',content:[{type:'text',text:'Too much output.'}],usage:{input:100,output:2001,totalTokens:2101}},'HARNESS_BUDGET_LIMIT'],
+    [{stopReason:'stop',content:[{type:'text',text:'Too much usage.'}],usage:{input:54900,output:100,totalTokens:55000}},'HARNESS_BUDGET_LIMIT'],
+    [{stopReason:'stop',content:[{type:'text',text:'x'.repeat(65536)}],usage:{input:100,output:1,totalTokens:101}},'HARNESS_BUDGET_LIMIT'],
+  ]) {
+    const policy=makePolicy(config()),guard=callbacks(policy);
+    policy.restoreReceivedResult(qualified,10000);
+    assert.equal(Object.hasOwn(guard.emit('before_provider_request',{payload:declaredPayload()}),'tools'),false);
+    guard.emit('message_end',{message:{role:'assistant',...message}});
+    assert.equal(policy.report().outcome,expected);assert.equal(policy.report().providerRequests,1);
+    guard.emit('before_provider_request',{payload:declaredPayload()});
+    assert.equal(policy.report().outcome,expected);assert.equal(policy.report().providerRequests,1);
+  }
+});
+
 test('local output cap admission and denial never qualify backend enforcement',()=>{
   for(const [policy,event,allow] of [[empiricallyCalibratedPolicy(config()),providerEvent(),true],
     [makePolicy(config()),providerEvent(),true],
@@ -88,7 +177,8 @@ test('provider projection replaces saved-message byte growth and enforces the ou
   assert.equal(projected.max_output_tokens,2000);
   assert.equal(policy.report().outputCapApplied,true);
   const estimate=policy.report().requestObservations[0];
-  assert.equal(estimate.inputEstimate,Buffer.byteLength(JSON.stringify({...event.payload,max_output_tokens:2000})));
+  const {tools,...retained}=event.payload;
+  assert.equal(estimate.inputEstimate,Buffer.byteLength(JSON.stringify({...retained,max_output_tokens:2000})));
   assert.equal(estimate.inputEstimateMethod,'FULL_SERIALIZED_UTF8_BYTES_ONE_TOKEN_PER_BYTE_ESTIMATE');
   assert.equal(estimate.inputEstimateQualification,'CONSERVATIVE_ESTIMATE_UNCERTAIN_NOT_TOKENIZER_OR_SPEND_PROOF');
   const tooLarge=makePolicy({...config(),maximumProviderPayloadBytes:1000}),denied=callbacks(tooLarge);

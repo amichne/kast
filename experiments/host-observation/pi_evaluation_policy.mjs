@@ -67,6 +67,7 @@ export class CasePolicy {
     return decision(true,'SAVED_RESULT_DELIVERY',this.phase);
   }
   providerOutputCap() {return Math.min(2000,(this.phase==='WORK'?this.config.work:this.config.delivery).outputReserve);}
+  isFinalAnswerDelivery() {return this.phase==='DELIVERY'&&this.evidenceRequest===undefined;}
   deliveryInstruction() {
     if(!this.partialEvidence)return '';
     const p=this.partialEvidence;
