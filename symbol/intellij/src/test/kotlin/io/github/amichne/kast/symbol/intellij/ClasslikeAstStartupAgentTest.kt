@@ -1,9 +1,11 @@
 package io.github.amichne.kast.symbol.intellij
 
+import com.intellij.openapi.project.Project
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.intellij.ClasslikeAstDispatcherFixture.Controls
 import io.github.amichne.kast.symbol.intellij.ClasslikeAstDispatcherFixture.discover
+import io.github.amichne.kast.symbol.intellij.ClasslikeAstDispatcherFixture.withParserDefinition
 import io.github.amichne.kast.symbol.intellij.ClasslikeAstDispatcherFixture.withUnsupportedParser
 import io.github.amichne.kast.symbol.intellij.IntellijDeclarationDiscoveryTestFixture.batch
 import io.github.amichne.kast.symbol.intellij.IntellijDeclarationDiscoveryTestFixture.fixture
@@ -91,35 +93,49 @@ object ClasslikeAstStartupAgentWitness {
         val home = Path.of(arguments[0])
         val agent = arguments[1].toBooleanStrict()
         withParser(home) { project ->
-            val binding = IntellijClasslikeAstBinding.Owner().acquire({ true }, IntellijReadObservation.None)
-            if (agent) assertSame(IntellijClasslikeAstBinding.StartupAgent, binding)
-            else assertTrue(binding is IntellijClasslikeAstBinding.Supported)
-            val source =
-                fixture(
-                    project,
-                    home.resolve("source"),
-                    mapOf("Input.kt" to "class Target\nfun outer() { class Target }"),
-                    setOf(CompilerSymbolKind.CLASSLIKE),
-                )
-            repeat(2) {
-                val candidate = discover(project, source, "Target", Controls(indexed = false))
-                assertTrue(candidate.outcome is SymbolDiscoveryOutcome.Complete)
-                assertEquals(listOf("Target", "Target"), candidate.outcome.batch().candidates.map { it.name.value })
-                val baseline = withUnsupportedParser { discover(project, source, "Target", Controls(indexed = false)) }
-                assertEquals(baseline.outcome, candidate.outcome)
-                val counters = candidate.observation.counters
-                assertEquals(
-                    if (agent) 1 else 0,
-                    counters[IntellijReadCounter.DECLARATION_AST_STARTUP_AGENT_FALLBACKS] ?: 0,
-                )
-                if (agent) {
-                    assertEquals(1, counters[IntellijReadCounter.DECLARATION_AST_LEGACY_FALLBACKS])
-                    assertEquals(0, counters[IntellijReadCounter.DECLARATION_AST_NODES_VISITED] ?: 0)
-                    assertEquals(0, counters[IntellijReadCounter.DECLARATION_AST_BINDING_BYTES_READ] ?: 0)
-                    assertEquals(0, counters[IntellijReadCounter.DECLARATION_AST_MAPPING_PSI_PROBES] ?: 0)
-                    assertTrue((counters[IntellijReadCounter.DECLARATION_PSI_NODES_VISITED] ?: 0) > 0)
-                } else assertTrue((counters[IntellijReadCounter.DECLARATION_AST_NODES_VISITED] ?: 0) > 0)
+            for (variant in KotlinAstParserVariant.entries) {
+                withParserDefinition(ClasslikeAstK2ParserFixture.definition(variant)) {
+                    verify(project, home.resolve(variant.name), agent)
+                }
             }
+        }
+    }
+
+    private fun verify(project: Project, home: Path, agent: Boolean) {
+        val binding = IntellijClasslikeAstBinding.Owner().acquire({ true }, IntellijReadObservation.None)
+        if (agent) assertSame(IntellijClasslikeAstBinding.StartupAgent, binding)
+        else assertTrue(binding is IntellijClasslikeAstBinding.Supported)
+        val source =
+            fixture(
+                project,
+                home.resolve("source"),
+                mapOf("Input.kt" to "class Target\nfun outer() { class Target }"),
+                setOf(CompilerSymbolKind.CLASSLIKE),
+            )
+        repeat(2) {
+            val candidate = discover(project, source, "Target", Controls(indexed = false))
+            assertTrue(candidate.outcome is SymbolDiscoveryOutcome.Complete)
+            assertEquals(
+                listOf("Target", "Target"),
+                candidate.outcome.batch().candidates.map { it.name.value },
+            )
+            val baseline = withUnsupportedParser {
+                discover(project, source, "Target", Controls(indexed = false))
+            }
+            assertEquals(baseline.outcome, candidate.outcome)
+            val counters = candidate.observation.counters
+            assertEquals(
+                if (agent) 1 else 0,
+                counters[IntellijReadCounter.DECLARATION_AST_STARTUP_AGENT_FALLBACKS] ?: 0,
+            )
+            assertEquals(0, counters[IntellijReadCounter.DECLARATION_AST_PARSER_FALLBACKS] ?: 0)
+            if (agent) {
+                assertEquals(1, counters[IntellijReadCounter.DECLARATION_AST_LEGACY_FALLBACKS])
+                assertEquals(0, counters[IntellijReadCounter.DECLARATION_AST_NODES_VISITED] ?: 0)
+                assertEquals(0, counters[IntellijReadCounter.DECLARATION_AST_BINDING_BYTES_READ] ?: 0)
+                assertEquals(0, counters[IntellijReadCounter.DECLARATION_AST_MAPPING_PSI_PROBES] ?: 0)
+                assertTrue((counters[IntellijReadCounter.DECLARATION_PSI_NODES_VISITED] ?: 0) > 0)
+            } else assertTrue((counters[IntellijReadCounter.DECLARATION_AST_NODES_VISITED] ?: 0) > 0)
         }
     }
 }

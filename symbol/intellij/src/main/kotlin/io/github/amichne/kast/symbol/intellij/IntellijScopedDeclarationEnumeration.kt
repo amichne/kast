@@ -218,9 +218,17 @@ internal class ScopedKotlinDeclarationVisitor(
 
     private fun visitExactClasslikes(file: KtFile): Boolean {
         if (!supportsExactClasslikeAst(file)) return legacyVisit(file)
-        return when (val binding = IntellijClasslikeAstBinding.acquire(observe, observation)) {
+        val binding =
+            observation.call(IntellijReadCall.DECLARATION_AST_BINDING) {
+                IntellijClasslikeAstBinding.acquire(observe, observation)
+            }
+        return when (binding) {
             IntellijClasslikeAstBinding.Halted -> false
             IntellijClasslikeAstBinding.Unsupported -> legacyVisit(file)
+            IntellijClasslikeAstBinding.UnsupportedParser -> {
+                observation.count(IntellijReadCounter.DECLARATION_AST_PARSER_FALLBACKS)
+                legacyVisit(file)
+            }
             IntellijClasslikeAstBinding.StartupAgent -> {
                 observation.count(IntellijReadCounter.DECLARATION_AST_STARTUP_AGENT_FALLBACKS)
                 legacyVisit(file)
