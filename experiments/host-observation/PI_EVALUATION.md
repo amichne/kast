@@ -320,15 +320,26 @@ steps are in `pi-fixtures/README.md`.
 
 ## Terminal report delivery
 
-The worker publishes one terminal message and waits at most1,000ms for its send
-callback. Backpressure is not delivery failure. After settlement it disconnects
-and exits naturally; it does not truncate, retry or exit before publication.
-A closed channel, send failure or timeout is finite data. The controller records
-whether it received a report or worker failure, or observed an IPC failure exit.
-These are parent receipt/exit facts, not a claim about an unseen child callback.
-An earlier worker failure remains the primary failure through publication.
+The parent pins one overall deadline before spawning the owned worker and
+passes it through the owned process environment. Startup and terminal publication
+consume that same bound. The worker publishes once and waits for its callback
+only within the parent's remaining time. Backpressure is not delivery failure.
+An independent one-second send allowance is not used. After settlement the
+worker disconnects and exits naturally, without truncation or retry. A closed
+channel, send failure or deadline expiry is finite data.
 
-Real owned-child tests preserve exact300k/1MB reports and a policy-accepted
+The controller preserves a complete report received before cancellation and
+deadline expiry, even when later publication cleanup fails. `ipcCleanupFailure`
+records the finite secondary failure; it cannot erase an authoritative received
+report or the original worker failure. A missing terminal message remains subject
+to finite overall cancellation and owned-child reaping. Report/worker-failure
+receipt and child exit are separate observations. Neither claims an unseen child
+callback. A nonzero child exit still gives the CLI a failure status; the private
+aggregate retains the received report and cleanup observation.
+
+Real owned-child tests include a delayed1,200ms callback within the overall5s
+bound, charged startup, never-completing publication and sticky semantic failure.
+They preserve exact300k/1MB reports and a policy-accepted
 synthetic rejection summary whose limitations fit the300,000-byte tool allowance.
 The latter establishes accepted-shape transport reliability; it does not prove
 that a native producer or normal pilot creates14,000 repeated limitations.

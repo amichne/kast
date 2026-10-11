@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 
 export const WorkerIpcExitCodes=Object.freeze({CHANNEL_CLOSED:70,SEND_FAILED:71,SEND_TIMEOUT:72});
+export const WorkerDeadlineEnvironmentKey='KAST_EVALUATION_DEADLINE_MS';
 const controllerFailure=(operation,reason)=>Object.freeze({stage:'WORKER_CONTROLLER',operation,reason});
 const resultDelivery=(stage,outcome)=>Object.freeze({stage,outcome});
 // IPC is a separate trust boundary. Admit only exact failure variants emitted
@@ -71,15 +72,19 @@ function decodeWorkerFailure(message) {
 // Cancellation is first cooperative; an unresponsive worker is terminated and
 // reaped. No existing IDE/provider/configuration lifecycle is managed here.
 export function runOwnedWorker(command,args,{cwd,env,signal,wallMillis,graceMillis=5000,terminateMillis=1000,onEvent=()=>{}}) {
+  const invalidTiming=()=>Promise.resolve({type:'worker_failed',failure:controllerFailure('CONTROLLER_POLICY','INVALID_TIMING'),
+    resultDelivery:resultDelivery('PARENT_CHILD_CONSTRUCTION','TERMINAL_RESULT_UNAVAILABLE'),
+    ownedChildReaped:false,cancellationRequested:false,stderrBytes:0});
   if(!Number.isSafeInteger(wallMillis)||wallMillis<=0||wallMillis>2147483647
       ||!Number.isSafeInteger(graceMillis)||graceMillis<0||graceMillis>2147483647
-      ||!Number.isSafeInteger(terminateMillis)||terminateMillis<0||terminateMillis>2147483647)return Promise.resolve({type:'worker_failed',
-        failure:controllerFailure('CONTROLLER_POLICY','INVALID_TIMING'),
-        resultDelivery:resultDelivery('PARENT_CHILD_CONSTRUCTION','TERMINAL_RESULT_UNAVAILABLE'),
-        ownedChildReaped:false,cancellationRequested:false,stderrBytes:0});
+      ||!Number.isSafeInteger(terminateMillis)||terminateMillis<0||terminateMillis>2147483647)return invalidTiming();
+  let deadlineEpochMillis;
+  try {deadlineEpochMillis=Date.now()+wallMillis;}catch{return invalidTiming();}
+  if(!Number.isSafeInteger(deadlineEpochMillis)||deadlineEpochMillis<=0)return invalidTiming();
   return new Promise(resolve=>{
     let child;
-    try {child=spawn(command,args,{cwd,env,detached:process.platform!=='win32',stdio:['ignore','ignore','pipe','ipc']});}
+    try {child=spawn(command,args,{cwd,env:{...env,[WorkerDeadlineEnvironmentKey]:String(deadlineEpochMillis)},
+      detached:process.platform!=='win32',stdio:['ignore','ignore','pipe','ipc']});}
     catch {resolve({type:'worker_failed',failure:controllerFailure('CHILD_SPAWN','SPAWN_FAILED'),
       resultDelivery:resultDelivery('PARENT_CHILD_CONSTRUCTION','TERMINAL_RESULT_UNAVAILABLE'),
       ownedChildReaped:false,cancellationRequested:false,stderrBytes:0});return;}
@@ -110,7 +115,8 @@ export function runOwnedWorker(command,args,{cwd,env,signal,wallMillis,graceMill
     child.on('message',message=>{
       if(message?.type==='worker_failure'){receivedFailure=true;retain(decodeWorkerFailure(message));}
       else if(message?.type==='report') {
-        if(message.report===null||typeof message.report!=='object'||Array.isArray(message.report)||Object.getPrototypeOf(message.report)!==Object.prototype)
+        if(cancelling||Date.now()>=deadlineEpochMillis)cancel();
+        else if(message.report===null||typeof message.report!=='object'||Array.isArray(message.report)||Object.getPrototypeOf(message.report)!==Object.prototype)
           retain(controllerFailure('IPC_FAILURE','REPORT_REJECTED'));
         else if(firstFailure===undefined)result=message.report;
       }
@@ -121,18 +127,20 @@ export function runOwnedWorker(command,args,{cwd,env,signal,wallMillis,graceMill
     child.once('close',(code,childSignal)=>{
       closed=true;cleanup();kill('SIGKILL');
       const ipcReason=Object.entries(WorkerIpcExitCodes).find(([,exitCode])=>exitCode===code)?.[0];
-      if(ipcReason)retain(Object.freeze({stage:'WORKER_IPC',operation:'RESULT_SEND',reason:ipcReason}));
+      const ipcCleanupFailure=ipcReason?Object.freeze({stage:'WORKER_IPC',operation:'RESULT_SEND',reason:ipcReason}):undefined;
+      if(ipcCleanupFailure&&result===undefined)retain(ipcCleanupFailure);
       if(firstFailure===undefined&&result===undefined&&!cancelling)
         retain(controllerFailure('RESULT_DELIVERY','REPORT_UNAVAILABLE'));
-      const delivery=ipcReason?resultDelivery('PARENT_CHILD_EXIT','IPC_SEND_FAILED'):
-        receivedFailure?resultDelivery('PARENT_IPC_MESSAGE','WORKER_FAILURE_RECEIVED'):
+      const delivery=receivedFailure?resultDelivery('PARENT_IPC_MESSAGE','WORKER_FAILURE_RECEIVED'):
         result!==undefined?resultDelivery('PARENT_IPC_MESSAGE','REPORT_RECEIVED'):
+        ipcReason?resultDelivery('PARENT_CHILD_EXIT','IPC_SEND_FAILED'):
         resultDelivery('PARENT_CHILD_EXIT','TERMINAL_RESULT_UNAVAILABLE');
       resolve({type:firstFailure?'worker_failed':result!==undefined?'report':cancelling?'cancelled':'worker_failed',
-        report:firstFailure?undefined:result,...(firstFailure?{failure:firstFailure}:{}),resultDelivery:delivery,exitCode:code,signal:childSignal,
+        report:firstFailure?undefined:result,...(firstFailure?{failure:firstFailure}:{}),
+        ...(ipcCleanupFailure?{ipcCleanupFailure}:{}),resultDelivery:delivery,exitCode:code,signal:childSignal,
         ownedChildReaped:ownsChild(),cancellationRequested:cancelling,stderrBytes});
     });
-    timers.push(setTimeout(cancel,wallMillis));
+    timers.push(setTimeout(cancel,Math.min(wallMillis,Math.max(0,deadlineEpochMillis-Date.now()))));
     signal?.addEventListener('abort',cancel,{once:true});if(signal?.aborted)cancel();
   });
 }

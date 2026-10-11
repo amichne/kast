@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { CasePolicy, Outcome, decodeEnvelope } from './pi_evaluation_policy.mjs';
 import { evaluationGuard } from './pi_evaluation_guard.mjs';
-import { driveSession, WorkerIpcExitCodes } from './pi_evaluation_controller.mjs';
+import { driveSession, WorkerIpcExitCodes, WorkerDeadlineEnvironmentKey } from './pi_evaluation_controller.mjs';
 import { createEvaluationRecords, withPrivateReplaySession } from './pi_evaluation_records.mjs';
 import { loadInputCalibrations } from './pi_evaluation_calibrations.mjs';
 import { validatePlan } from './run_pi_evaluation.mjs';
@@ -210,16 +210,25 @@ export async function worker(planFile,index) {
   }
   return firstFailure??result;
 }
-// One terminal publication owns its callback, timeout and listeners. The send
+// One terminal publication owns its callback, remaining deadline and listeners. The send
 // return value is backpressure evidence, not delivery; only its callback admits
 // publication. Exit codes carry finite IPC failures when the channel cannot.
-export async function publishWorkerResult(result,ipc=process,{sendTimeoutMillis=1000}={}) {
+export async function publishWorkerResult(result,ipc=process,{deadlineEpochMillis}={}) {
   const originalFailure=result.type==='report'?null:result.failure;
   const message=originalFailure===null?result:{type:'worker_failure',failure:originalFailure};
   const ipcFailure=reason=>Object.freeze({stage:'WORKER_IPC',operation:'RESULT_SEND',reason});
+  // The real process consumes only the parent's deadline. An explicit deadline
+  // is a test capability for a separate IPC object and cannot widen production.
+  const usesParentDeadline=ipc===process||deadlineEpochMillis===undefined;
+  const suppliedDeadline=usesParentDeadline?process.env[WorkerDeadlineEnvironmentKey]:deadlineEpochMillis;
+  const deadline=usesParentDeadline && typeof suppliedDeadline==='string' && /^[1-9]\d{0,15}$/.test(suppliedDeadline)
+    ? Number(suppliedDeadline):usesParentDeadline?undefined:suppliedDeadline;
+  const validDeadline=Number.isSafeInteger(deadline)&&deadline>0;
+  const remaining=validDeadline?deadline-Date.now():undefined;
   let observed;
-  if(!Number.isSafeInteger(sendTimeoutMillis)||sendTimeoutMillis<1||sendTimeoutMillis>1000)
+  if(!validDeadline||remaining>2147483647)
     observed=ipcFailure('SEND_FAILED');
+  else if(remaining<=0) observed=ipcFailure('SEND_TIMEOUT');
   else if(!ipc.connected || typeof ipc.send!=='function') observed=ipcFailure('CHANNEL_CLOSED');
   else observed=await new Promise(resolve=>{
     let settled=false;
@@ -231,7 +240,7 @@ export async function publishWorkerResult(result,ipc=process,{sendTimeoutMillis=
     };
     const closed=()=>finish(ipcFailure('CHANNEL_CLOSED'));
     const errored=()=>finish(ipcFailure('SEND_FAILED'));
-    const timer=setTimeout(()=>finish(ipcFailure('SEND_TIMEOUT')),sendTimeoutMillis);
+    const timer=setTimeout(()=>finish(ipcFailure('SEND_TIMEOUT')),remaining);
     ipc.once('disconnect',closed);ipc.once('error',errored);
     try {ipc.send(message,error=>finish(error?ipcFailure('SEND_FAILED'):null));}
     catch {finish(ipcFailure('SEND_FAILED'));}

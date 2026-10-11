@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { runOwnedWorker } from './pi_evaluation_controller.mjs';
+import { runOwnedWorker, WorkerDeadlineEnvironmentKey } from './pi_evaluation_controller.mjs';
 import { CasePolicy, decodeEnvelope, Outcome } from './pi_evaluation_policy.mjs';
 
 const options={cwd:process.cwd(),env:{},wallMillis:5000,graceMillis:0,terminateMillis:0};
@@ -90,7 +90,9 @@ test('owned child signal failure remains finite while escalation reaps the same 
 });
 
 test('unsupported timing bounds resolve finite policy rejection before spawning',async()=>{
-  for(const timing of [{wallMillis:0},{wallMillis:2147483648},{graceMillis:-1},{terminateMillis:NaN}]) {
+  for(const timing of [{wallMillis:0},{wallMillis:2147483648},{graceMillis:-1},{terminateMillis:NaN},
+    {wallMillis:Symbol('invalid')},{wallMillis:{[Symbol.toPrimitive](){throw Error('Unexpected timing coercion');}}},
+    {graceMillis:{}},{terminateMillis:Symbol('invalid')}]) {
     const result=await runOwnedWorker(process.execPath,[],{...options,...timing});
     assert.equal(result.type,'worker_failed');assert.deepEqual(result.failure,controllerFailure('CONTROLLER_POLICY','INVALID_TIMING'));
     assert.equal(result.ownedChildReaped,false);
@@ -151,10 +153,10 @@ await publishWorkerResult({type:'report',report:policy.report()});`;
 test('production terminal IPC callback failure and timeout leave finite exits and reap owned children',async()=>{
   const script=`const {publishWorkerResult}=await import(process.argv[1]);
 process.send=process.argv[2]==='callback'?(_message,callback)=>{callback(Error('PRIVATE-SEND-ERROR'));return false;}:()=>false;
-await publishWorkerResult({type:'report',report:{outcome:'SYNTHETIC'}},process,{sendTimeoutMillis:1});`;
+await publishWorkerResult({type:'report',report:{outcome:'SYNTHETIC'}});`;
   for(const [mode,code,reason] of [['callback',71,'SEND_FAILED'],['timeout',72,'SEND_TIMEOUT']]) {
     const result=await runOwnedWorker(process.execPath,['--input-type=module','-e',script,
-      new URL('./pi_evaluation_worker.mjs',import.meta.url).href,mode],options);
+      new URL('./pi_evaluation_worker.mjs',import.meta.url).href,mode],{...options,wallMillis:300,graceMillis:1000});
     assert.equal(result.type,'worker_failed');assert.equal(result.exitCode,code);assert.equal(result.ownedChildReaped,true);
     assert.equal(result.report,undefined);assert.deepEqual(result.failure,{stage:'WORKER_IPC',operation:'RESULT_SEND',reason});
     assert.deepEqual(result.resultDelivery,{stage:'PARENT_CHILD_EXIT',outcome:'IPC_SEND_FAILED'});
@@ -171,18 +173,67 @@ test('primitive null and array reports fail closed with finite delivery evidence
   }
 });
 
-test('reserved IPC failure exits reject a partial report and preserve the first domain failure',async()=>{
+test('complete received report and first domain failure survive later finite IPC cleanup failures',async()=>{
   const script=`const message=JSON.parse(process.argv[1]);
 process.send(message,error=>{if(error)process.exitCode=1;else{process.exitCode=Number(process.argv[2]);process.disconnect();}});`;
   for(const [code,reason] of [[70,'CHANNEL_CLOSED'],[71,'SEND_FAILED'],[72,'SEND_TIMEOUT']]) {
-    const result=await runOwnedWorker(process.execPath,['-e',script,JSON.stringify({type:'report',report:{partial:true}}),String(code)],options);
-    assert.equal(result.type,'worker_failed');assert.equal(result.report,undefined);assert.equal(result.ownedChildReaped,true);
-    assert.deepEqual(result.failure,{stage:'WORKER_IPC',operation:'RESULT_SEND',reason});
-    assert.deepEqual(result.resultDelivery,{stage:'PARENT_CHILD_EXIT',outcome:'IPC_SEND_FAILED'});
+    const report={outcome:'INTENTIONAL_REJECTION',case:'complete-receipt'};
+    const result=await runOwnedWorker(process.execPath,['-e',script,JSON.stringify({type:'report',report}),String(code)],options);
+    assert.equal(result.type,'report');assert.deepEqual(result.report,report);assert.equal(result.ownedChildReaped,true);
+    assert.equal(result.failure,undefined);assert.deepEqual(result.ipcCleanupFailure,{stage:'WORKER_IPC',operation:'RESULT_SEND',reason});
+    assert.deepEqual(result.resultDelivery,{stage:'PARENT_IPC_MESSAGE',outcome:'REPORT_RECEIVED'});
   }
   const original={stage:'WORKER_SETUP',operation:'INSTALLATION_PIN',reason:'PIN_MISMATCH'};
   const preserved=await runOwnedWorker(process.execPath,['-e',script,JSON.stringify({type:'worker_failure',failure:original}),'72'],options);
   assert.deepEqual(preserved.failure,original);assert.equal(preserved.type,'worker_failed');assert.equal(preserved.ownedChildReaped,true);
+  assert.deepEqual(preserved.ipcCleanupFailure,{stage:'WORKER_IPC',operation:'RESULT_SEND',reason:'SEND_TIMEOUT'});
+  assert.deepEqual(preserved.resultDelivery,{stage:'PARENT_IPC_MESSAGE',outcome:'WORKER_FAILURE_RECEIVED'});
+});
+
+test('real owned child preserves exact 300k report with 1200ms false-backpressure callback inside parent deadline',async()=>{
+  const script=`const {publishWorkerResult}=await import(process.argv[1]);const originalSend=process.send.bind(process);
+process.send=(message,callback)=>{originalSend(message,error=>setTimeout(()=>callback(error),1200));return false;};
+await publishWorkerResult({type:'report',report:{case:'delayed-callback',payload:'R'.repeat(300000),outcome:'INTENTIONAL_REJECTION'}});`;
+  const before=Date.now(),expected={case:'delayed-callback',payload:'R'.repeat(300000),outcome:'INTENTIONAL_REJECTION'};
+  const result=await runOwnedWorker(process.execPath,['--input-type=module','-e',script,
+    new URL('./pi_evaluation_worker.mjs',import.meta.url).href],options);
+  assert.equal(result.type,'report');assert.deepEqual(result.report,expected);assert.equal(result.exitCode,0);
+  assert.equal(result.ownedChildReaped,true);assert.equal(result.cancellationRequested,false);assert.equal(result.ipcCleanupFailure,undefined);
+  assert.equal(Date.now()-before>=1200,true);
+  assert.equal(createHash('sha256').update(JSON.stringify(result.report)).digest('hex'),
+    createHash('sha256').update(JSON.stringify(expected)).digest('hex'));
+  assert.deepEqual(result.resultDelivery,{stage:'PARENT_IPC_MESSAGE',outcome:'REPORT_RECEIVED'});
+});
+
+test('parent deadline overrides child environment and already elapsed setup is charged before spawn completion',async()=>{
+  const script=`process.send({type:'report',report:{deadline:Number(process.env.KAST_EVALUATION_DEADLINE_MS),started:Date.now()}},()=>process.disconnect());`;
+  const before=Date.now(),pending=runOwnedWorker(process.execPath,['-e',script],{...options,
+    env:{[WorkerDeadlineEnvironmentKey]:String(before+60000)}}),dispatched=Date.now();
+  const received=await pending;
+  assert.equal(received.type,'report');assert.ok(received.report.deadline>=before+5000);
+  assert.ok(received.report.deadline<=dispatched+5000);assert.ok(received.report.deadline<received.report.started+5000);
+  const now=Date.now,epoch=now();let current=epoch,result;
+  const env={get SYNTHETIC_SETUP(){current+=5000;return 'elapsed';}};
+  try {
+    Date.now=()=>current;
+    result=await runOwnedWorker(process.execPath,['-e',"process.on('SIGTERM',()=>{});setInterval(()=>{},1000);"],
+      {...options,env,wallMillis:5000,graceMillis:1000});
+  } finally {Date.now=now;}
+  assert.equal(result.type,'cancelled');assert.equal(result.cancellationRequested,true);assert.equal(result.ownedChildReaped,true);
+  assert.ok(now()-epoch<4000,'Already consumed setup budget must not receive a new 5s parent timer');
+  assert.equal(result.report,undefined);assert.deepEqual(result.resultDelivery,{stage:'PARENT_CHILD_EXIT',outcome:'TERMINAL_RESULT_UNAVAILABLE'});
+});
+
+test('never-callback child remains bounded and post-cancellation report cannot manufacture earlier receipt',async()=>{
+  const script=`const {publishWorkerResult}=await import(process.argv[1]);const originalSend=process.send.bind(process);
+process.on('SIGTERM',()=>{});setInterval(()=>{},1000);
+process.on('message',message=>{if(message.type==='cancel')originalSend({type:'report',report:{outcome:'TOO_LATE'}});});
+process.send=()=>false;await publishWorkerResult({type:'report',report:{outcome:'NOT_SENT'}});`;
+  const result=await runOwnedWorker(process.execPath,['--input-type=module','-e',script,
+    new URL('./pi_evaluation_worker.mjs',import.meta.url).href],{...options,wallMillis:150,graceMillis:100,terminateMillis:0});
+  assert.equal(result.type,'cancelled');assert.equal(result.report,undefined);assert.equal(result.ownedChildReaped,true);
+  assert.equal(result.cancellationRequested,true);assert.equal(result.signal,'SIGKILL');
+  assert.deepEqual(result.resultDelivery,{stage:'PARENT_CHILD_EXIT',outcome:'TERMINAL_RESULT_UNAVAILABLE'});
 });
 
 test('a child exiting without a terminal receipt leaves finite delivery evidence',async()=>{

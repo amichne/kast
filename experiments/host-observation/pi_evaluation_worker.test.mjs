@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { isolatedSettings, createEvaluationSession, worker, publishWorkerResult } from './pi_evaluation_worker.mjs';
 import { CasePolicy, Outcome } from './pi_evaluation_policy.mjs';
+import { WorkerDeadlineEnvironmentKey } from './pi_evaluation_controller.mjs';
 
 const failure=(operation,reason)=>({type:'failure',failure:{stage:'WORKER_SETUP',operation,reason}});
 function terminalChannel() {
@@ -16,11 +17,21 @@ function terminalChannel() {
   return {ipc,effects};
 }
 
+test('terminal publication uses remaining overall deadline beyond the former one second cutoff',async t=>{
+  t.mock.timers.enable({apis:['Date','setTimeout'],now:10000});
+  const {ipc}=terminalChannel();let complete;
+  ipc.send=(_message,callback)=>{complete=callback;return false;};
+  const pending=publishWorkerResult({type:'report',report:{outcome:'SYNTHETIC'}},ipc,{deadlineEpochMillis:15000});
+  t.mock.timers.tick(1200);
+  complete(null);
+  assert.deepEqual(await pending,{type:'published',exitCode:0,originalFailure:null,ipcFailure:null});
+});
+
 test('terminal publication awaits callback even with false backpressure and removes only owned listeners',async()=>{
   const {ipc,effects}=terminalChannel(),report={outcome:'SYNTHETIC'},existing=()=>{};let complete,sends=0,settled=false;
   ipc.on('disconnect',existing);ipc.on('error',existing);
   ipc.send=(message,callback)=>{sends++;assert.deepEqual(message,{type:'report',report});complete=callback;return false;};
-  const pending=publishWorkerResult({type:'report',report},ipc).then(receipt=>{settled=true;return receipt;});
+  const pending=publishWorkerResult({type:'report',report},ipc,{deadlineEpochMillis:Date.now()+5000}).then(receipt=>{settled=true;return receipt;});
   await Promise.resolve();assert.equal(settled,false);assert.equal(ipc.connected,true);assert.deepEqual(effects,[]);
   complete(null);
   assert.deepEqual(await pending,{type:'published',exitCode:0,originalFailure:null,ipcFailure:null});
@@ -43,7 +54,7 @@ test('terminal effect failures retain the original closed worker failure without
       if(mode==='disconnect'){ipc.connected=false;ipc.emit('disconnect');}
       return false;
     };
-    const receipt=await publishWorkerResult(original,ipc);
+    const receipt=await publishWorkerResult(original,ipc,{deadlineEpochMillis:Date.now()+5000});
     assert.deepEqual(receipt,{type:'failed',exitCode,originalFailure:original.failure,
       ipcFailure:{stage:'WORKER_IPC',operation:'RESULT_SEND',reason}});
     assert.equal(sends,1);assert.equal(ipc.exitCode,exitCode);assert.equal(ipc.connected,false);
@@ -56,25 +67,29 @@ test('terminal effect failures retain the original closed worker failure without
 test('published worker failure keeps its original receipt while unavailable channels fail before sending',async()=>{
   const original=failure('INSTALLATION_PIN','PIN_MISMATCH'),ready=terminalChannel();let sends=0;
   ready.ipc.send=(_message,callback)=>{sends++;callback(null);return true;};
-  assert.deepEqual(await publishWorkerResult(original,ready.ipc),
+  assert.deepEqual(await publishWorkerResult(original,ready.ipc,{deadlineEpochMillis:Date.now()+5000}),
     {type:'published',exitCode:1,originalFailure:original.failure,ipcFailure:null});
   assert.equal(sends,1);assert.deepEqual(ready.effects,['disconnect']);
-  for(const invalid of ['closed','missing-send','invalid-timeout']) {
-    const {ipc}=terminalChannel();ipc.send=()=>assert.fail('Unavailable publication must not send');
+  for(const invalid of ['closed','missing-send','invalid-deadline','symbol-deadline','object-deadline']) {
+    const {ipc}=terminalChannel();let invalidSends=0,coercions=0;
+    ipc.send=()=>{invalidSends++;assert.fail('Unavailable publication must not send');};
     if(invalid==='closed')ipc.connected=false;if(invalid==='missing-send')delete ipc.send;
-    const receipt=await publishWorkerResult(original,ipc,invalid==='invalid-timeout'?{sendTimeoutMillis:1001}:{});
-    const reason=invalid==='invalid-timeout'?'SEND_FAILED':'CHANNEL_CLOSED';
+    const deadlineEpochMillis=invalid==='invalid-deadline'?'5000':invalid==='symbol-deadline'?Symbol('deadline'):
+      invalid==='object-deadline'?{valueOf:()=>{coercions++;return 15000;}}:Date.now()+5000;
+    const receipt=await publishWorkerResult(original,ipc,{deadlineEpochMillis});
+    const reason=invalid.endsWith('deadline')?'SEND_FAILED':'CHANNEL_CLOSED';
     assert.deepEqual(receipt,{type:'failed',exitCode:reason==='SEND_FAILED'?71:70,originalFailure:original.failure,
       ipcFailure:{stage:'WORKER_IPC',operation:'RESULT_SEND',reason}});
     assert.equal(ipc.connected,false);
+    assert.equal(invalidSends,0);assert.equal(coercions,0);
   }
 });
 
 test('terminal timeout preserves the original worker failure and disposes its pending callback authority',async t=>{
-  t.mock.timers.enable({apis:['setTimeout']});
+  t.mock.timers.enable({apis:['Date','setTimeout'],now:10000});
   const original=failure('INSTALLATION_PIN','PIN_MISMATCH'),{ipc,effects}=terminalChannel();let callback,sends=0;
   ipc.send=(_message,complete)=>{sends++;callback=complete;return false;};
-  const pending=publishWorkerResult(original,ipc,{sendTimeoutMillis:1000});
+  const pending=publishWorkerResult(original,ipc,{deadlineEpochMillis:11000});
   t.mock.timers.tick(1000);
   const receipt=await pending;
   assert.deepEqual(receipt,{type:'failed',exitCode:72,originalFailure:original.failure,
@@ -82,6 +97,37 @@ test('terminal timeout preserves the original worker failure and disposes its pe
   assert.equal(sends,1);assert.deepEqual(effects,['disconnect']);assert.equal(ipc.exitCode,72);
   assert.equal(ipc.listenerCount('error'),0);assert.equal(ipc.listenerCount('disconnect'),0);
   callback(null);assert.equal(ipc.exitCode,72);assert.equal(receipt.type,'failed');
+});
+
+test('parent deadline rejects absent malformed oversized and expired values without a send',async t=>{
+  t.mock.timers.enable({apis:['Date','setTimeout'],now:10000});
+  const previous=process.env[WorkerDeadlineEnvironmentKey];
+  t.after(()=>{if(previous===undefined)delete process.env[WorkerDeadlineEnvironmentKey];
+    else process.env[WorkerDeadlineEnvironmentKey]=previous;});
+  for(const [value,reason] of [[undefined,'SEND_FAILED'],['15000x','SEND_FAILED'],['015000','SEND_FAILED'],
+    ['15000.0','SEND_FAILED'],['9007199254740992','SEND_FAILED'],[String(10000+2147483648),'SEND_FAILED'],
+    ['10000','SEND_TIMEOUT'],['9999','SEND_TIMEOUT']]) {
+    if(value===undefined)delete process.env[WorkerDeadlineEnvironmentKey];else process.env[WorkerDeadlineEnvironmentKey]=value;
+    const {ipc}=terminalChannel();ipc.send=()=>assert.fail('Unproven or expired deadline must not send');
+    const receipt=await publishWorkerResult({type:'report',report:{outcome:'SYNTHETIC'}},ipc);
+    assert.equal(receipt.type,'failed');assert.deepEqual(receipt.ipcFailure,
+      {stage:'WORKER_IPC',operation:'RESULT_SEND',reason});
+    assert.equal(ipc.connected,false);assert.equal(ipc.listenerCount('error'),0);
+    assert.equal(ipc.listenerCount('disconnect'),0);
+  }
+});
+
+test('production process cannot widen missing or expired parent deadline through a test option',async t=>{
+  assert.notEqual(process.connected,true,'This case requires a test process without an owned IPC channel');
+  t.mock.timers.enable({apis:['Date','setTimeout'],now:10000});
+  const previous=process.env[WorkerDeadlineEnvironmentKey],previousExitCode=process.exitCode;
+  t.after(()=>{process.exitCode=previousExitCode;
+    if(previous===undefined)delete process.env[WorkerDeadlineEnvironmentKey];else process.env[WorkerDeadlineEnvironmentKey]=previous;});
+  for(const [value,reason] of [[undefined,'SEND_FAILED'],['10000','SEND_TIMEOUT']]) {
+    if(value===undefined)delete process.env[WorkerDeadlineEnvironmentKey];else process.env[WorkerDeadlineEnvironmentKey]=value;
+    const receipt=await publishWorkerResult({type:'report',report:{outcome:'SYNTHETIC'}},process,{deadlineEpochMillis:15000});
+    assert.equal(receipt.type,'failed');assert.equal(receipt.ipcFailure.reason,reason);
+  }
 });
 function construction(options={}) {
   const effects=[],model={id:options.model??'gpt-6.1-sol',provider:'openai-codex'};
