@@ -1,0 +1,121 @@
+package io.github.amichne.kast.symbol.intellij
+
+import com.intellij.util.lang.PathClassLoader
+import com.intellij.util.lang.UrlClassLoader
+import java.nio.file.Files
+import java.nio.file.Path
+import java.security.CodeSource
+import java.security.SecureClassLoader
+import java.security.cert.Certificate
+import java.util.jar.JarEntry
+import java.util.jar.JarOutputStream
+import org.jetbrains.kotlin.KtNodeTypes
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+
+class ClasslikeAstArchiveOriginTest {
+    @Test
+    fun `unqualified loader cannot claim an audited archive for changed definitions`(@TempDir home: Path) {
+        val archive = archive(home)
+        val original =
+            requireNotNull(ClasslikeAstOriginWitness::class.java.getResourceAsStream("ClasslikeAstOriginWitness.class"))
+                .use { it.readBytes() }
+        val changed =
+            String(original, Charsets.ISO_8859_1).replace("original", "modified").toByteArray(Charsets.ISO_8859_1)
+        val source = CodeSource(archive.toUri().toURL(), null as Array<Certificate>?)
+        val loader =
+            object : SecureClassLoader(null) {
+                fun define(): Class<*> =
+                    defineClass(ClasslikeAstOriginWitness::class.java.name, changed, 0, changed.size, source)
+            }
+        val witness = loader.define()
+        assertEquals("modified", witness.getMethod("getMarker").invoke(witness.getConstructor().newInstance()))
+        assertEquals(archive.toUri().toURL(), witness.protectionDomain.codeSource.location)
+        assertNull(IntellijClassArchiveOrigin.resolve(witness))
+    }
+
+    @Test
+    fun `actual bundled SDK loader has a qualified source archive`() {
+        val owner = KtNodeTypes::class.java
+        val loader = owner.classLoader.javaClass
+        println("SDK_DEFINING_LOADER type=${loader.name}")
+        val origin = requireNotNull(IntellijClassArchiveOrigin.resolve(owner))
+        assertEquals("kotlinc.kotlin-compiler-common.jar", origin.archive.fileName.toString())
+    }
+
+    @Test
+    fun `IDEA URL loader origin binds its own archive despite null code source`(@TempDir home: Path) {
+        val archive = archive(home)
+        val parent =
+            object : ClassLoader(null) {
+                override fun getResource(name: String) = throw AssertionError("parent resource delegation is unproven")
+            }
+        val loader = UrlClassLoader.build().files(listOf(archive)).parent(parent).get()
+        val witness = loader.loadClass(ClasslikeAstOriginWitness::class.java.name)
+        assertSame(loader, witness.classLoader)
+        assertNull(witness.protectionDomain.codeSource?.location)
+        val origin = requireNotNull(IntellijClassArchiveOrigin.resolve(witness))
+        assertEquals(archive, origin.archive)
+        assertEquals(
+            setOf(loader.javaClass, UrlClassLoader::class.java, com.intellij.util.lang.ClassPath::class.java),
+            origin.loaderWitnesses,
+        )
+    }
+
+    @Test
+    fun `IDEA path loader without transformer binds the same owned class archive`(@TempDir home: Path) {
+        val archive = archive(home)
+        val loader = PathClassLoader(UrlClassLoader.build().files(listOf(archive)))
+        val witness = loader.loadClass(ClasslikeAstOriginWitness::class.java.name)
+        assertSame(loader, witness.classLoader)
+        assertNull(witness.protectionDomain.codeSource?.location)
+        assertEquals(archive, IntellijClassArchiveOrigin.resolve(witness)?.archive)
+    }
+
+    @Test
+    fun `active IDEA path transformer stays unproven even when returning original bytes`(@TempDir home: Path) {
+        val archive = archive(home)
+        val loader = PathClassLoader(UrlClassLoader.build().files(listOf(archive)))
+        loader.setTransformer(
+            object : PathClassLoader.BytecodeTransformer {
+                override fun isApplicable(name: String, loader: ClassLoader): Boolean = true
+
+                override fun transform(loader: ClassLoader, name: String, bytes: ByteArray): ByteArray = bytes
+            }
+        )
+        val witness = loader.loadClass(ClasslikeAstOriginWitness::class.java.name)
+        assertSame(loader, witness.classLoader)
+        assertNull(IntellijClassArchiveOrigin.resolve(witness))
+    }
+
+    @Test
+    fun `unknown URL loader implementation retains unsupported origin`() {
+        val loader = object : UrlClassLoader(UrlClassLoader.build().files(emptyList()), null, true) {}
+        val bytes =
+            requireNotNull(ClasslikeAstOriginWitness::class.java.getResourceAsStream("ClasslikeAstOriginWitness.class"))
+                .use { it.readBytes() }
+        val witness = loader.consumeClassData(ClasslikeAstOriginWitness::class.java.name, bytes)
+        assertSame(loader, witness.classLoader)
+        assertNull(IntellijClassArchiveOrigin.resolve(witness))
+    }
+
+    private fun archive(home: Path): Path {
+        val owner = ClasslikeAstOriginWitness::class.java
+        val bytes = requireNotNull(owner.getResourceAsStream("ClasslikeAstOriginWitness.class")).use { it.readBytes() }
+        val archive = home.resolve("owned witness #.jar")
+        JarOutputStream(Files.newOutputStream(archive)).use { output ->
+            output.putNextEntry(JarEntry(owner.name.replace('.', '/') + ".class"))
+            output.write(bytes)
+            output.closeEntry()
+        }
+        return archive
+    }
+}
+
+/** Pure classloading witness; no product or IDE services. */
+class ClasslikeAstOriginWitness {
+    val marker: String = "original"
+}

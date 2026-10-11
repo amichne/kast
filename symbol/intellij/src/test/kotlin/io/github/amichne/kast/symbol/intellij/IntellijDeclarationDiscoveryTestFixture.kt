@@ -116,8 +116,10 @@ internal object IntellijDeclarationDiscoveryTestFixture {
                     terminations += reason
                 }
             }
-        val leafCount: Long = files.sumOf { file ->
-            generateSequence(file.findElementAt(0)) { PsiTreeUtil.nextLeaf(it, true) }.count().toLong()
+        val leafCount: Long by lazy {
+            files.sumOf { file ->
+                generateSequence(file.findElementAt(0)) { PsiTreeUtil.nextLeaf(it, true) }.count().toLong()
+            }
         }
 
         fun adapter(
