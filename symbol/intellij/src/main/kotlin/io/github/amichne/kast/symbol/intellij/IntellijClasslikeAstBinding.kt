@@ -122,9 +122,8 @@ internal sealed interface IntellijClasslikeAstBinding {
         }
     }
 
-    companion object {
-        private val CLASSLIKE_TYPES = setOf(KtNodeTypes.CLASS, KtNodeTypes.OBJECT_DECLARATION)
-        private val SELF_PSI_LEAVES: Set<Class<*>> = setOf(LeafPsiElement::class.java, PsiWhiteSpaceImpl::class.java)
+    /** One metadata cache per loaded plugin; a cancelled or halted qualification establishes no cache entry. */
+    class Owner {
         private val cached = AtomicReference<IntellijClasslikeAstBinding?>()
 
         fun acquire(observe: () -> Boolean, observation: IntellijReadObservation): IntellijClasslikeAstBinding {
@@ -144,5 +143,14 @@ internal sealed interface IntellijClasslikeAstBinding {
             if (result != Halted) cached.compareAndSet(null, result)
             return result
         }
+    }
+
+    companion object {
+        private val CLASSLIKE_TYPES = setOf(KtNodeTypes.CLASS, KtNodeTypes.OBJECT_DECLARATION)
+        private val SELF_PSI_LEAVES: Set<Class<*>> = setOf(LeafPsiElement::class.java, PsiWhiteSpaceImpl::class.java)
+        private val owner = Owner()
+
+        fun acquire(observe: () -> Boolean, observation: IntellijReadObservation): IntellijClasslikeAstBinding =
+            owner.acquire(observe, observation)
     }
 }

@@ -11,6 +11,10 @@ internal data class IntellijClassArchiveOrigin(val archive: Path, val loaderWitn
         fun resolve(owner: Class<*>): IntellijClassArchiveOrigin? {
             val loader = owner.classLoader
             if (loader is UrlClassLoader) return fromPlatformLoader(owner, loader)
+            // CodeSource alone cannot attest an arbitrary loader's definitions. This bootstrap-defined
+            // JDK loader and the audited IDEA loaders are the supported runtime paths.
+            val applicationLoader = Class.forName("jdk.internal.loader.ClassLoaders\$AppClassLoader", false, null)
+            if (loader?.javaClass != applicationLoader) return null
             val location = owner.protectionDomain?.codeSource?.location?.toURI() ?: return null
             return location.takeIf { it.scheme == "file" }?.let { IntellijClassArchiveOrigin(Path.of(it), emptySet()) }
         }

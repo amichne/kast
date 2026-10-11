@@ -4,8 +4,12 @@ import com.intellij.util.lang.PathClassLoader
 import com.intellij.util.lang.UrlClassLoader
 import java.nio.file.Files
 import java.nio.file.Path
+import java.security.CodeSource
+import java.security.SecureClassLoader
+import java.security.cert.Certificate
 import java.util.jar.JarEntry
 import java.util.jar.JarOutputStream
+import org.jetbrains.kotlin.KtNodeTypes
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
@@ -13,6 +17,35 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class ClasslikeAstArchiveOriginTest {
+    @Test
+    fun `unqualified loader cannot claim an audited archive for changed definitions`(@TempDir home: Path) {
+        val archive = archive(home)
+        val original =
+            requireNotNull(ClasslikeAstOriginWitness::class.java.getResourceAsStream("ClasslikeAstOriginWitness.class"))
+                .use { it.readBytes() }
+        val changed =
+            String(original, Charsets.ISO_8859_1).replace("original", "modified").toByteArray(Charsets.ISO_8859_1)
+        val source = CodeSource(archive.toUri().toURL(), null as Array<Certificate>?)
+        val loader =
+            object : SecureClassLoader(null) {
+                fun define(): Class<*> =
+                    defineClass(ClasslikeAstOriginWitness::class.java.name, changed, 0, changed.size, source)
+            }
+        val witness = loader.define()
+        assertEquals("modified", witness.getMethod("getMarker").invoke(witness.getConstructor().newInstance()))
+        assertEquals(archive.toUri().toURL(), witness.protectionDomain.codeSource.location)
+        assertNull(IntellijClassArchiveOrigin.resolve(witness))
+    }
+
+    @Test
+    fun `actual bundled SDK loader has a qualified source archive`() {
+        val owner = KtNodeTypes::class.java
+        val loader = owner.classLoader.javaClass
+        println("SDK_DEFINING_LOADER type=${loader.name}")
+        val origin = requireNotNull(IntellijClassArchiveOrigin.resolve(owner))
+        assertEquals("kotlinc.kotlin-compiler-common.jar", origin.archive.fileName.toString())
+    }
+
     @Test
     fun `IDEA URL loader origin binds its own archive despite null code source`(@TempDir home: Path) {
         val archive = archive(home)
@@ -83,4 +116,6 @@ class ClasslikeAstArchiveOriginTest {
 }
 
 /** Pure classloading witness; no product or IDE services. */
-class ClasslikeAstOriginWitness
+class ClasslikeAstOriginWitness {
+    val marker: String = "original"
+}
