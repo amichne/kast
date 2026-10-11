@@ -7,7 +7,6 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import java.io.IOException
 import java.io.InputStream
 import java.net.URISyntaxException
-import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.HexFormat
 import java.util.jar.JarFile
@@ -27,6 +26,18 @@ internal enum class KotlinAstSourceBinding {
 internal object IntellijKotlinAstSourceBinding {
     private const val MAX_CLASS_BYTES = 65_536L
     private const val READ_CHUNK_BYTES = 1024
+    private const val MAX_BOUND_CLASSES = 14
+
+    private val loaderHashes =
+        mapOf(
+            "com.intellij.util.lang.UrlClassLoader" to
+                "37269a386f2eacf9cffe7d53b76100ec529f1931b809e1873c65a0f64dc5f97c",
+            "com.intellij.util.lang.ClassPath" to "247e4ab0d9b34f486a2e9972660d87a6a851e5954612f6426836bb0ed34521d9",
+            "com.intellij.util.lang.PathClassLoader" to
+                "bc1ec6c7aa0ee2f36dbfc384a27bb5a8bdc1d1b73dd3aea4ba944f7f4bacfd84",
+            "com.intellij.ide.plugins.cl.PluginClassLoader" to
+                "2c46bd00993d842eddaac025d223b21f28608a4cd5e89f6032883ed2944a4508",
+        )
 
     private data class Witness(val owner: Class<*>, val sha256: String)
 
@@ -39,23 +50,40 @@ internal object IntellijKotlinAstSourceBinding {
             KotlinAstSourceBinding.UNSUPPORTED
         } catch (_: SecurityException) {
             KotlinAstSourceBinding.UNSUPPORTED
-        } catch (_: ClassNotFoundException) {
+        } catch (_: ReflectiveOperationException) {
             KotlinAstSourceBinding.UNSUPPORTED
         }
 
     private fun inspectOrigins(observe: () -> Boolean, observation: IntellijReadObservation): KotlinAstSourceBinding {
         if (!observe()) return KotlinAstSourceBinding.HALTED
-        val origins =
-            witnesses().groupBy { witness ->
-                val location = witness.owner.protectionDomain?.codeSource?.location?.toURI()
-                location?.takeIf { it.scheme == "file" }?.let(Path::of)
+        val pending = witnesses().toMutableList()
+        val bound = linkedMapOf<Class<*>, Pair<Witness, IntellijClassArchiveOrigin>>()
+        var position = 0
+        while (position < pending.size) {
+            if (!observe()) return KotlinAstSourceBinding.HALTED
+            val witness = pending[position++]
+            if (witness.owner in bound) continue
+            if (bound.size >= MAX_BOUND_CLASSES) return KotlinAstSourceBinding.UNSUPPORTED
+            val origin = IntellijClassArchiveOrigin.resolve(witness.owner) ?: return KotlinAstSourceBinding.UNSUPPORTED
+            bound[witness.owner] = witness to origin
+            for (loader in origin.loaderWitnesses) {
+                val hash = loaderHashes[loader.name] ?: return KotlinAstSourceBinding.UNSUPPORTED
+                pending += Witness(loader, hash)
             }
-        if (null in origins) return KotlinAstSourceBinding.UNSUPPORTED
-        for ((origin, group) in origins) {
+        }
+        return inspectArchives(bound, observe, observation)
+    }
+
+    private fun inspectArchives(
+        bound: Map<Class<*>, Pair<Witness, IntellijClassArchiveOrigin>>,
+        observe: () -> Boolean,
+        observation: IntellijReadObservation,
+    ): KotlinAstSourceBinding {
+        for ((origin, group) in bound.values.groupBy { it.second.archive }) {
             if (!observe()) return KotlinAstSourceBinding.HALTED
             val result =
-                JarFile(requireNotNull(origin).toFile()).use { jar ->
-                    inspectGroup(jar, group, observe, observation)
+                JarFile(origin.toFile()).use { jar ->
+                    inspectGroup(jar, group.map { it.first }, observe, observation)
                 }
             if (result != KotlinAstSourceBinding.SUPPORTED) return result
         }
