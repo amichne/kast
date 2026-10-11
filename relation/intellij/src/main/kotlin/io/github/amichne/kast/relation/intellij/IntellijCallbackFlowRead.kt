@@ -91,16 +91,10 @@ internal class IntellijCallbackFlowRead(
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return CallbackInvocationFlowRead.ContractRejected(admitted.failure)
             }
-        var evidence =
-            observeCallbackCoverage(
-                context.observation,
-                CallbackCoverageStage.SUPPLIER,
-                { supplied -> Refinement.Refined(supplied) },
-            ) {
+        val evidence =
+            observeCallbackSupplierCoverage(context.observation) {
                 observeSupplier(staged.evidence)
             }
-        if (evidence.invocations.isEmpty() && evidence.scan == CallbackInvocationScan.INCOMPLETE)
-            evidence = evidence.withSupplier(setOf(CallbackInvocationFlowCause.NO_INVOCATION_PROVEN))
         val result =
             context.observed(
                 body,

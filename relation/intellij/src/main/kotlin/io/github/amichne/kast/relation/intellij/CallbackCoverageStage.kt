@@ -56,3 +56,16 @@ internal fun <Value> observeCallbackCoverage(
         observation.count(outcome)
     }
 }
+
+/** Retain the supplier's final invocation qualification at the observation boundary. */
+internal fun observeCallbackSupplierCoverage(
+    observation: IntellijReadObservation,
+    read: () -> CallbackFormalScanSnapshot,
+): CallbackFormalScanSnapshot {
+    return observeCallbackCoverage(observation, CallbackCoverageStage.SUPPLIER, { Refinement.Refined(it) }) {
+        val evidence = read()
+        if (evidence.invocations.isEmpty() && evidence.scan == CallbackInvocationScan.INCOMPLETE)
+            evidence.withSupplier(setOf(CallbackInvocationFlowCause.NO_INVOCATION_PROVEN))
+        else evidence
+    }
+}

@@ -64,7 +64,10 @@ class NativeCallbackCoverageTest : NativeReferenceFixtureTest() {
         val cache = MissOnlyCache()
         val (observed, counters) = read(fixture, cache)
         cache.assertConsumed(expectedRetains = 0)
-        assertTrue(observed.flow.obligations.contains(CallbackInvocationFlowCause.PARAMETER_ESCAPES))
+        assertEquals(
+            setOf(CallbackInvocationFlowCause.PARAMETER_ESCAPES, CallbackInvocationFlowCause.NO_INVOCATION_PROVEN),
+            observed.flow.obligations,
+        )
         assertEquals(
             listOf(
                 IntellijReadCounter.CALLBACK_FORMAL_COVERAGE_INCOMPLETE,
@@ -72,7 +75,14 @@ class NativeCallbackCoverageTest : NativeReferenceFixtureTest() {
             ),
             counters.coverage,
         )
-        assertEquals(IntellijReadTermination.CALLBACK_SUPPLIER_PARAMETER_ESCAPES, counters.reasons.first())
+        assertEquals(
+            listOf(
+                IntellijReadTermination.CALLBACK_SUPPLIER_PARAMETER_ESCAPES,
+                IntellijReadTermination.CALLBACK_SUPPLIER_PARAMETER_ESCAPES,
+                IntellijReadTermination.CALLBACK_SUPPLIER_NO_INVOCATION_PROVEN,
+            ),
+            counters.reasons,
+        )
     }
 
     private fun callbackFixture(wrapperBody: String): NativeReferenceFixture {
