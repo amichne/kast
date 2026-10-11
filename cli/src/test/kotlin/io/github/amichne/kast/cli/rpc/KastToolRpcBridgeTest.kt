@@ -126,18 +126,25 @@ class KastToolRpcBridgeTest {
         Files.writeString(catalog, Json.encodeToString<ToolRpcReply>(KastToolRpcBridge(session).catalog()))
         val failures = temporary.resolve("failures.json")
         Files.writeString(failures, Json.encodeToString(ToolRpcFailure.entries.toList()))
-        val output = temporary.resolve("adapter-test.log")
+        val delivery = temporary.resolve("query-delivery.json")
+        Files.writeString(delivery, QueryDeliveryFixtures.serialized())
+        val output = Path.of("build/reports/query-delivery/adapter-test.log")
+        Files.createDirectories(output.parent)
         val process =
-            ProcessBuilder("node", "--experimental-vm-modules", "--test", "src/test/js/harness-adapters.test.mjs")
+            ProcessBuilder("node", "--experimental-vm-modules", "src/test/js/harness-adapters.test.mjs")
                 .redirectErrorStream(true)
                 .redirectOutput(output.toFile())
                 .apply {
                     environment()["KAST_ADAPTER_TEST_CATALOG"] = catalog.toString()
                     environment()["KAST_ADAPTER_TEST_FAILURES"] = failures.toString()
+                    environment()["KAST_ADAPTER_TEST_DELIVERY"] = delivery.toString()
                 }
                 .start()
         try {
-            org.junit.jupiter.api.Assertions.assertTrue(process.waitFor(30, java.util.concurrent.TimeUnit.SECONDS))
+            org.junit.jupiter.api.Assertions.assertTrue(
+                process.waitFor(30, java.util.concurrent.TimeUnit.SECONDS),
+                Files.readString(output),
+            )
             assertEquals(0, process.exitValue(), Files.readString(output))
         } finally {
             process.destroyForcibly()

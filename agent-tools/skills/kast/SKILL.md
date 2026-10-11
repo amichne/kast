@@ -84,7 +84,7 @@ Keep these issued values in their owning operations:
 | Issued `candidateSelector` | `READ_SOURCE.candidateRef` for its exact anchored source range. |
 | Retained result reference | `RESULT` source, set/join right input, or `READ_RESULT`. |
 | Issued row ID | Select a row from its owning retained result. |
-| Execution continuation | `RESUME` without resending source or steps. |
+| Issued output continuation | `RESUME` to present produced output without resending source or steps. |
 | Result cursor | Page the same immutable retained result with `READ_RESULT`. |
 
 Retained rows and continuations require the same semantic basis and available

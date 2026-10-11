@@ -222,17 +222,18 @@ so two distinct call sites remain two results. A page-result allowance does not
 change relationship or scope semantics. Byte fitting measures the complete
 canonical response, including this metadata and any cursor.
 
-Query execution continuation can resume with a changed execution budget. Each
-resume admits a new grant while the source, steps, output, authority, and epoch
-remain bound. A separate result cursor pages one immutable retained result
+Public query RUN requires complete execution. Public RESUME accepts only issued
+`query-output:v1` tokens and presents already-produced output; an optional page
+budget changes its presentation allowance, never the original semantic grant.
+Internal pipeline checkpoints are not admitted public RESUME tokens. READ_RESULT
+uses one immutable retained result with independent row and evidence cursors,
 without running semantic providers. Storage capacity and expiry retain their
 operator limits. Query result units are emitted symbol, occurrence, or traversal
 record rows; work units include candidate refinement and child relation or walk
-reads. Query output suffixes and pipeline checkpoints exclude execution allowances
-from their request identity. Reissuing the same checkpoint reuses its token
-without renewing expiry; replay is non-consuming. Each output page retains known
-item failures, and its full canonical encoding includes the current grant.
+reads. Output replay preserves the original query identity and evidence and does
+not renew retention expiry. A lost output suffix or unavailable checkpoint remains
+an explicit delivery blocker; a tokenless qualified prefix is not a complete answer.
 
 Source entity continuations remain owned by the original project. `SOURCE_CONTINUATIONS` bounds entries, `SOURCE_CONTINUATION_BYTES` bounds charged retention (default 32 MiB), and `SOURCE_CONTINUATION_TTL_MILLIS` bounds original token age (default ten minutes). The byte charge conservatively includes detached identity text, scope constraints, and object/container overhead; it is not a heap measurement. The store retains no source text or PSI. Replay and deduplication preserve the original creation time. Each output page also requires every referenced dependency to remain within its original age bound, so a younger page cannot extend an older cursor's validity. An active claim preserves physical storage until release; it does not permit fresh admission or publication after expiry. Expired or evicted tokens are rejected; reacquire a source selection and start a fresh read. A checkpoint that cannot fit is rejected before issuance.
 
-Source result units are structural entities. Native source work units are visited PSI elements, checked before another unit starts; setup time and final-unit overruns remain charged. The query walk consumes relation records and attenuates each one-hop read under its aggregate work and time grant. Its semantic depth and strategy remain fixed across query resume. The source output cap and query's final encoded-byte guard measure their respective responses.
+Source result units are structural entities. Native source work units are visited PSI elements, checked before another unit starts; setup time and final-unit overruns remain charged. The query walk consumes relation records and attenuates each one-hop read under its aggregate work and time grant. Its semantic depth and strategy remain fixed across internal semantic checkpoints. The source output cap and query's final encoded-byte guard measure their respective responses.

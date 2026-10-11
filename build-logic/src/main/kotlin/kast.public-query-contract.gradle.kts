@@ -8,6 +8,7 @@ val verifyPublicQueryGeneratorRules = tasks.register<Exec>("verifyPublicQueryGen
     val generator = rootProject.layout.projectDirectory.file("packaging/generate-public-query.py")
     val tests = rootProject.layout.projectDirectory.file("packaging/test-public-query-generation.py")
     inputs.files(generator, tests)
+    inputs.file(rootProject.file("cli/src/main/js/query-delivery.mjs"))
     inputs.file(rootProject.file("cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt"))
     inputs.file(layout.projectDirectory.file("src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json"))
     workingDir(rootProject.projectDir)
@@ -19,6 +20,7 @@ val verifyPublicQueryGeneration = tasks.register<Exec>("verifyPublicQueryGenerat
     description = "Rejects drift between the public query schema, Kotlin syntax/defaults, and provider projections."
     val generator = rootProject.layout.projectDirectory.file("packaging/generate-public-query.py")
     inputs.file(generator)
+    inputs.file(rootProject.file("cli/src/main/js/query-delivery.mjs"))
     inputs.file(rootProject.file("cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt"))
     inputs.files(rootProject.file("copilot/extension.mjs"), rootProject.file("pi/extension.ts"))
     inputs.file(rootProject.layout.projectDirectory.file("protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt"))

@@ -79,3 +79,62 @@ For every catalog tool marked `WRITE`, including `add_declaration` and
 `replace_body`, it asks for interactive approval and refuses the call without an
 approving UI. Both clients pass their current workspace to the same RPC
 command, so one Kast installation serves different repositories and worktrees.
+
+## Client-owned query delivery
+
+Pi and Copilot invoke `query_symbols` once at the model boundary. Their shared
+portable delivery rule may then make output-only `RESUME` or retained
+`READ_RESULT` calls internally. Row and evidence offsets advance independently;
+an empty row page can carry evidence, and a retained prefix with zero rows
+starts reading at row zero. The exact original request is submitted once.
+Delivery preserves its issued result identity, original question, output and
+bounded execution grant. The retained token's canonical owner checks workspace,
+epoch, lifetime and scope on every physical read.
+
+An inline reply stays unchanged. When delivery needs further calls, the adapter
+returns `type: "query_delivery"`, with the unchanged `initial` RPC reply, the
+ordered canonical suffix `pages`, and a `delivery` observation containing `stop`,
+`rpc_count`, `request_bytes`, `response_bytes`, and the issued `result` reference when available.
+`DELIVERED` means that the selected output and evidence have arrived. The
+original reply still owns semantic completion and rejection. A rejection's
+preview is a preview of proof, not an extra page: count its `pages` once, starting
+at zero. Ordinary retained prefixes combine initial items with suffix pages.
+Every qualification, omission, failure and evidence observation remains in its
+own canonical reply. Retained `COMPLETION_UNPROVEN` evidence remains a tool error
+even when its delivery finishes. No narrower RUN or increased semantic grant is
+submitted to recover output.
+
+One model/tool turn can therefore require three physical RPCs. These are
+separate metrics. The byte fields count UTF-8 physical request and response bytes, including
+response framing; they do not measure model tokens or savings. Catalog discovery is outside the invocation's
+RPC count.
+
+Delivery permits at most 64 physical invocation RPCs and 262,144 UTF-8 bytes in
+its aggregate presentation, within one catalog call deadline. Reaching a limit
+returns `PAGE_LIMIT`, `BYTE_LIMIT`, or `TIME_LIMIT`; a requested budget increase
+returns `BUDGET_INCREASE_REQUIRED` without raising the original grant. The result reference remains
+available under the existing bounded host retention lifetime. An initial reply
+that alone exceeds the presentation ceiling returns a small `BYTE_LIMIT`
+observation with `initial: null`, `original_outcome`, and the reference if issued.
+This is an explicit delivery blocker, never a complete inline answer. No new
+artifact or persistent job service is created. The raw RPC and canonical
+advanced paging APIs remain available.
+
+Cancellation stops the current child and prevents further delivery calls.
+Malformed pages, changed question/result identities, and nonadvancing cursors
+terminate with `MALFORMED_PAGE`, `IDENTITY_MISMATCH`, or `NON_ADVANCING`. An expired,
+evicted, stale or disposed handle retains its exact canonical rejection in the
+last delivered page and stops with `DELIVERY_UNAVAILABLE`. A qualified prefix with
+`retention_unavailable` also stops with that blocker: its tokenless response does
+not prove delivery of the lost suffix. A lost delivery reply
+also stops without retry. If the initial submission response is lost, its bounded
+transport error is surfaced and the client never blindly resubmits. Public query
+transport currently has no cancellation/reattachment identity that proves the
+remote invocation was stopped; terminating the child does not establish remote
+semantic settlement. Retained data expires under its existing owner.
+
+This portable adapter pilot does not change Codex MCP/App Server delivery or the
+canonical protocol. Durable reattachment and remote cancellation settlement need
+an explicit protocol decision and separate evidence. Deterministic fixtures prove
+client behavior only; they do not establish native provider work, production
+retention capacity, or live model usability.

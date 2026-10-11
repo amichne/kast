@@ -23,7 +23,9 @@ async function load(harness, reply = catalog, outcome = { type: 'complete', docu
     child.stderr = new EventEmitter();
     child.stderr.resume = () => {};
     child.kill = () => queueMicrotask(() => child.emit('close', null, 'SIGKILL'));
-    child.stdin = { on: () => {}, end: () => queueMicrotask(() => {
+    child.stdin = { on: () => {}, end: (input) => { calls.at(-1).input = input; queueMicrotask(() => {
+      if (args[0] === 'call' && Array.isArray(outcome?.sequence)) assert.ok(calls.length - 2 < outcome.sequence.length, 'unexpected excess physical RPC');
+      if (args[0] === 'call' && outcome?.onCall?.(calls.length - 1, child) === false) return;
       if (args[0] === 'call' && ['timeout', 'cancel'].includes(failure)) return;
       if (args[0] === 'call' && failure === 'overflow') {
         child.stdout.emit('data', Buffer.alloc(reply.catalog.maxResponseBytes + 1));
@@ -31,10 +33,10 @@ async function load(harness, reply = catalog, outcome = { type: 'complete', docu
         child.stderr.emit('data', Buffer.from('kast_change stage=APPLICATION outcome=STARTED\nexact:v3:private-source-token\n'));
         child.emit('close', 7);
       } else {
-        child.stdout.emit('data', args[0] === 'catalog' ? Buffer.from(JSON.stringify(reply)) : Buffer.isBuffer(outcome) ? outcome : Buffer.from(JSON.stringify(outcome)));
+        child.stdout.emit('data', args[0] === 'catalog' ? Buffer.from(JSON.stringify(reply)) : Buffer.isBuffer(outcome) ? outcome : Buffer.from(JSON.stringify(Array.isArray(outcome?.sequence) ? outcome.sequence[calls.length - 2] : outcome)));
         child.emit('close', 0);
       }
-    }) };
+    }); } };
     return child;
   };
   const modules = {
@@ -261,3 +263,264 @@ test('Pi write approval shows bounded workspace target and intent with cancellat
   assert.ok(prompts.at(-1)[1].includes('truncated'));
   assert.equal(loaded.calls.length,1);
 });
+
+// Fixtures are production-serialized by QueryDeliveryFixtures, then traverse the real subprocess adapter.
+if (process.env.KAST_ADAPTER_TEST_DELIVERY) {
+  const fixture = JSON.parse(readFileSync(process.env.KAST_ADAPTER_TEST_DELIVERY, 'utf8'));
+  const params = { request: { type: 'RUN', source: { type: 'ALL_DECLARATIONS' },
+    output: { type: 'SYMBOLS', fields: ['NAME'] }, executionBudget: { maxResults: 43 } } };
+  for (const harness of ['pi', 'copilot']) {
+    const execute = async (outcomes, signal, arguments_ = params) => {
+      const loaded = await load(harness, catalog, {sequence:outcomes});
+      assert.ifError(loaded.error);
+      const tool = loaded.registered.find(t => t.name === 'query_symbols');
+      const result = harness === 'pi'
+        ? await tool.execute('one-logical-invocation', arguments_, signal, undefined, { cwd: '/fixture' })
+        : await tool.handler(arguments_, { signal });
+      assert.equal(loaded.calls.length - 1, outcomes.length, 'unconsumed fixture responses');
+      const delivered = JSON.parse(harness === 'pi' ? result.content[0].text : result.textResultForLlm);
+      return { loaded, result, delivered };
+    };
+    test(`${harness} INLINE remains one physical call and unchanged canonical evidence`, async () => {
+      const {loaded, delivered} = await execute([fixture.inline]);
+      assert.deepEqual(delivered, fixture.inline);
+      assert.equal(loaded.calls.length - 1, 1);
+    });
+    for (const [name, outcomes, expectedCursors] of [
+      ['PREFIX with independent evidence-only tail', [fixture.prefix, fixture.rows, fixture.tail], [[1, 0], [43, 1]]],
+      ['empty first prefix', [fixture.emptyPrefix, fixture.allRows, fixture.tail], [[0, 0], [43, 1]]],
+      ['empty advancing evidence page', [fixture.emptyPrefix, fixture.emptyAdvancing, fixture.rowsAfterEvidence], [[0, 0], [0, 1]]],
+    ]) {
+      test(`${harness} owns ${name} with exact rows and proof in one tool turn`, async () => {
+        const {loaded, delivered} = await execute(outcomes);
+        assert.equal(delivered.delivery.stop, 'DELIVERED');
+        assert.equal(delivered.delivery.rpc_count, 3);
+        assert.equal(loaded.calls.length - 1, 3);
+        assert.deepEqual(delivered.initial, outcomes[0]);
+        assert.deepEqual(delivered.pages, outcomes.slice(1));
+        assert.equal(delivered.pages.every(r => JSON.stringify(r.document.live) === JSON.stringify(delivered.initial.document.live)), true);
+        assert.deepEqual([delivered.initial, ...delivered.pages].flatMap(r => r.document.items).map(r => r.ref),
+          fixture.inline.document.items.map(r => r.ref));
+        assert.deepEqual(delivered.pages.flatMap(r => r.document.failures ?? []),
+          [fixture.rows, fixture.tail].flatMap(r => r.document.failures ?? []));
+        for (const [index, [cursor, evidence_cursor]] of expectedCursors.entries()) {
+          const input = JSON.parse(loaded.calls[index + 2].input);
+          assert.deepEqual(input, {request:{ type:'READ_RESULT', result:fixture.prefix.document.retention.reference,
+            cursor, evidence_cursor, output:params.request.output, executionBudget:params.request.executionBudget }});
+          assert.equal(Object.hasOwn(input.request, 'source'), false);
+        }
+        const visibleBytes = Buffer.byteLength(JSON.stringify(delivered), 'utf8');
+        assert.ok(visibleBytes <= 262144);
+        console.log(JSON.stringify({contract:name, harness, logicalInvocations:1, toolTurns:1,
+          physicalRpcs:delivered.delivery.rpc_count, requestBytes:delivered.delivery.request_bytes, responseBytes:delivered.delivery.response_bytes,
+          visibleBytes, rows:43, evidence:2, semanticReruns:0}));
+      });
+    }
+    test(`${harness} initial READ_RESULT at a nonzero row cursor drains its independent evidence tail`, async () => {
+      const request = {request:{type:'READ_RESULT',result:fixture.prefix.document.retention.reference,
+        cursor:1,evidence_cursor:0,output:params.request.output,executionBudget:params.request.executionBudget}};
+      assert.equal(Object.hasOwn(fixture.rows.document, 'next_cursor'), false);
+      assert.equal(Object.hasOwn(fixture.rows.document, 'invocation'), false);
+      assert.equal(fixture.rows.document.evidence_window.type, 'MORE');
+      const {loaded, delivered} = await execute([fixture.rows,fixture.tail], undefined, request);
+      assert.equal(delivered.delivery.stop, 'DELIVERED');
+      assert.equal(delivered.delivery.rpc_count, 2);
+      assert.deepEqual(delivered.initial, fixture.rows);
+      assert.deepEqual(delivered.pages, [fixture.tail]);
+      assert.deepEqual(JSON.parse(loaded.calls[1].input), request);
+      assert.deepEqual(JSON.parse(loaded.calls[2].input), {request:{...request.request,cursor:43,evidence_cursor:1}});
+      assert.deepEqual([delivered.initial,...delivered.pages].flatMap(r=>r.document.items), fixture.inline.document.items.slice(1));
+      assert.deepEqual([delivered.initial,...delivered.pages].flatMap(r=>r.document.failures ?? []),
+        [fixture.rows,fixture.tail].flatMap(r=>r.document.failures ?? []));
+      assert.deepEqual(loaded.calls.slice(1).map(call=>JSON.parse(call.input).request.type), ['READ_RESULT','READ_RESULT']);
+    });
+    test(`${harness} drains retained rejection proof and preserves the original blocker`, async () => {
+      const {loaded, result, delivered} = await execute([fixture.rejected, fixture.proof, fixture.proofTail]);
+      assert.equal(delivered.delivery.stop, 'DELIVERED');
+      assert.deepEqual(delivered.initial, fixture.rejected);
+      assert.equal(delivered.initial.document.rejection.type, 'COMPLETION_UNPROVEN');
+      assert.equal(harness === 'pi' ? result.isError : result.resultType === 'failure', true);
+      assert.deepEqual(delivered.pages.flatMap(r => r.document.items).map(r => r.ref), fixture.inline.document.items.map(r => r.ref));
+      assert.equal(delivered.pages.every(r => r.document.interpretation.type === 'POLICY_REJECTED_EVIDENCE'), true);
+      assert.deepEqual(loaded.calls.slice(2).map(call => JSON.parse(call.input).request.type), ['READ_RESULT','READ_RESULT']);
+    });
+    test(`${harness} RESUME is output-only and preserves the original grant`, async () => {
+      const {loaded, delivered} = await execute([fixture.outputPrefix, fixture.outputFinal]);
+      assert.equal(delivered.delivery.stop, 'DELIVERED');
+      assert.deepEqual(JSON.parse(loaded.calls[2].input), {request:{type:'RESUME',
+        continuation:fixture.outputPrefix.document.qualification.progress.checkpoint.token,
+        executionBudget:params.request.executionBudget}});
+      assert.equal(delivered.delivery.rpc_count, 2);
+    });
+    for (const [name, blocker, stop] of [
+      ['suffix retention unavailable', fixture.outputUnavailable, 'DELIVERY_UNAVAILABLE'],
+      ['increased allowance required', fixture.outputBudget, 'BUDGET_INCREASE_REQUIRED'],
+    ]) {
+      for (const initial of [true, false]) {
+        test(`${harness} ${initial ? 'initial' : 'RESUME'} ${name} preserves its qualification and stops`, async () => {
+          const outcomes = initial ? [blocker] : [fixture.outputPrefix, blocker];
+          const {loaded, result, delivered} = await execute(outcomes);
+          assert.equal(delivered.delivery.stop, stop);
+          assert.deepEqual(delivered.initial, outcomes[0]);
+          assert.deepEqual(delivered.pages, outcomes.slice(1));
+          assert.equal(delivered.delivery.rpc_count, outcomes.length);
+          assert.equal(harness === 'pi' ? result.isError : result.resultType === 'failure', true);
+          if (!initial) assert.deepEqual(JSON.parse(loaded.calls[2].input), {request:{type:'RESUME',
+            continuation:fixture.outputPrefix.document.qualification.progress.checkpoint.token,
+            executionBudget:params.request.executionBudget}});
+          if (stop === 'DELIVERY_UNAVAILABLE') assert.equal(Object.hasOwn(blocker.document, 'continuation'), false);
+          else assert.equal(blocker.document.qualification.progress.next_action, 'increase_execution_budget');
+        });
+      }
+    }
+    test(`${harness} later READ_RESULT budget blocker stops before any cursor progression`, async () => {
+      const blocker = fixture.readBudget;
+      const {loaded, result, delivered} = await execute([fixture.prefix, blocker]);
+      assert.equal(delivered.delivery.stop, 'BUDGET_INCREASE_REQUIRED');
+      assert.deepEqual(delivered.pages, [blocker]);
+      assert.equal(delivered.delivery.rpc_count, 2);
+      assert.equal(harness === 'pi' ? result.isError : result.resultType === 'failure', true);
+      assert.deepEqual(JSON.parse(loaded.calls[2].input), {request:{type:'READ_RESULT',
+        result:fixture.prefix.document.retention.reference,cursor:1,evidence_cursor:0,
+        output:params.request.output,executionBudget:params.request.executionBudget}});
+    });
+    test(`${harness} stale handles terminate with their exact canonical rejection`, async () => {
+      const {loaded, result, delivered} = await execute([fixture.prefix, fixture.stale]);
+      assert.equal(delivered.delivery.stop, 'DELIVERY_UNAVAILABLE');
+      assert.deepEqual(delivered.pages, [fixture.stale]);
+      assert.equal(loaded.calls.length - 1, 2);
+      assert.equal(harness === 'pi' ? result.isError : result.resultType === 'failure', true);
+    });
+    for (const [name, initial, received, unavailable, action, reason] of [
+      ['result expires before first read', fixture.prefix, [], fixture.expiredResult, 'READ_RESULT', 'result-unavailable'],
+      ['result disposed while waiting for evidence tail', fixture.prefix, [fixture.rows], fixture.disposedResult, 'READ_RESULT', 'result-unavailable'],
+      ['output token expires before RESUME', fixture.outputPrefix, [], fixture.expiredOutput, 'RESUME', 'continuation-unavailable'],
+      ['output owner disposed before RESUME', fixture.outputPrefix, [], fixture.disposedOutput, 'RESUME', 'continuation-unavailable'],
+      ['rejected proof owner disposed during evidence tail', fixture.rejected, [fixture.proof], fixture.disposedResult, 'READ_RESULT', 'result-unavailable'],
+    ]) {
+      test(`${harness} ${name} preserves proof and stops without revival`, async () => {
+        const {loaded, result, delivered} = await execute([initial, ...received, unavailable]);
+        assert.equal(delivered.delivery.stop, 'DELIVERY_UNAVAILABLE');
+        assert.deepEqual(delivered.initial, initial);
+        assert.deepEqual(delivered.pages, [...received, unavailable]);
+        assert.equal(delivered.pages.at(-1).document.rejection.reason, reason);
+        assert.deepEqual(loaded.calls.slice(2).map(call => JSON.parse(call.input).request.type),
+          Array(received.length + 1).fill(action));
+        assert.equal(harness === 'pi' ? result.isError : result.resultType === 'failure', true);
+        if (received.length) {
+          const last = JSON.parse(loaded.calls.at(-1).input).request;
+          assert.equal(last.cursor, 43);
+          assert.equal(last.evidence_cursor, 1);
+          assert.equal(received[0].document.items.length + (initial.document.items?.length ?? 0), 43);
+        }
+      });
+    }
+    test(`${harness} cancellation of an in-flight delivery child preserves the initial reply`, async () => {
+      const controller = new AbortController();
+      const loaded = await load(harness, catalog, {sequence:[fixture.prefix, fixture.rows],
+        onCall: ordinal => {if (ordinal === 2) {controller.abort();return false;}}});
+      assert.ifError(loaded.error);
+      const tool = loaded.registered.find(t => t.name === 'query_symbols');
+      const result = harness === 'pi'
+        ? await tool.execute('one-invocation', params, controller.signal, undefined, {cwd:'/fixture'})
+        : await tool.handler(params, {signal:controller.signal});
+      const delivered = JSON.parse(harness === 'pi' ? result.content[0].text : result.textResultForLlm);
+      assert.equal(delivered.delivery.stop, 'CANCELLED');
+      assert.equal(delivered.delivery.rpc_count, 2);
+      assert.equal(loaded.calls.length - 1, 2);
+      assert.deepEqual(delivered.initial, fixture.prefix);
+      assert.deepEqual(delivered.pages, []);
+      assert.equal(harness === 'pi' ? result.isError : result.resultType === 'failure', true);
+    });
+    test(`${harness} transient delivery loss never retries or reexecutes RUN`, async () => {
+      const {loaded, delivered} = await execute([fixture.prefix, {type:'invalid-response'}]);
+      assert.equal(delivered.delivery.stop, 'DELIVERY_UNAVAILABLE');
+      assert.equal(loaded.calls.length - 1, 2);
+      assert.deepEqual(delivered.initial, fixture.prefix);
+    });
+    for (const [name, mutate, stop] of [
+      ['nonadvancing', page => {page.items=[]; page.next_cursor=1; page.evidence_window={type:'MORE',start:0,end:0,total:2};page.failures=[];}, 'NON_ADVANCING'],
+      ['malformed row cursor', page => {page.next_cursor=9;}, 'MALFORMED_PAGE'],
+      ['malformed evidence window', page => {page.evidence_window.start=1;}, 'MALFORMED_PAGE'],
+      ['changed question', page => {page.question.from={type:'invented'};}, 'IDENTITY_MISMATCH'],
+      ['changed live epoch', page => {page.live.epoch=8;}, 'IDENTITY_MISMATCH'],
+      ['wrong retained owner', page => {page.retention.reference='result:v1:00000000-0000-0000-0000-000000000009';}, 'IDENTITY_MISMATCH'],
+    ]) {
+      test(`${harness} ${name} terminates without accepting the page`, async () => {
+        const page = structuredClone(fixture.rows); mutate(page.document);
+        const {loaded, delivered} = await execute([fixture.prefix, page]);
+        assert.equal(delivered.delivery.stop, stop);
+        assert.deepEqual(delivered.pages, []);
+        assert.equal(loaded.calls.length - 1, 2);
+      });
+    }
+    test(`${harness} repeated output continuation terminates`, async () => {
+      const {loaded, delivered} = await execute([fixture.outputPrefix, fixture.outputPrefix]);
+      assert.equal(delivered.delivery.stop, 'NON_ADVANCING');
+      assert.equal(loaded.calls.length - 1, 2);
+    });
+  }
+  const deliveryModule = new SourceTextModule(
+    readFileSync(new URL('../' + '../main/js/query-delivery.mjs', import.meta.url), 'utf8') +
+      '\nexport { awaitQueryDelivery };', {context:createContext({Buffer, Date, JSON, Error})});
+  await deliveryModule.link(() => { throw new Error('Delivery core must have no external imports'); });
+  await deliveryModule.evaluate();
+  const awaitDelivery = deliveryModule.namespace.awaitQueryDelivery;
+  const policy = {callTimeoutMillis:100, maxResponseBytes:4194304};
+  test('shared production delivery cancels after submission without any continuation effect', async () => {
+    const controller = new AbortController(); let calls = 0;
+    const result = await awaitDelivery(params, async () => {calls++;controller.abort();return fixture.prefix;}, policy, controller.signal);
+    assert.equal(result.delivery.stop, 'CANCELLED');
+    assert.equal(calls, 1);
+    assert.deepEqual(result.initial, fixture.prefix);
+  });
+  test('shared production delivery cancellation before submission has zero physical calls', async () => {
+    const controller = new AbortController();controller.abort();let calls = 0;
+    await assert.rejects(() => awaitDelivery(params, async () => {calls++;}, policy, controller.signal), /CANCELLED/);
+    assert.equal(calls, 0);
+  });
+  test('shared production delivery deadline is one aggregate allowance', async () => {
+    let time = 0; const allowances = []; const replies = [fixture.prefix,fixture.rows];
+    const result = await awaitDelivery(params, async (_, budget) => {
+      allowances.push(budget.callTimeoutMillis);time += allowances.length === 1 ? 30 : 70;
+      return replies.shift();
+    }, policy, undefined, () => time);
+    assert.equal(result.delivery.stop, 'TIME_LIMIT');
+    assert.deepEqual(allowances, [100,70]);
+    assert.equal(result.delivery.rpc_count, 2);
+    assert.equal(result.pages.length, 1);
+  });
+  for (const phase of ['disconnected before reply','submission succeeded but reply lost']) {
+    test(`shared production delivery ${phase} never blindly resubmits`, async () => {
+      let calls = 0;
+      await assert.rejects(() => awaitDelivery(params, async () => {calls++;throw new Error('AMBIGUOUS_SUBMISSION');}, policy), /AMBIGUOUS_SUBMISSION/);
+      assert.equal(calls, 1);
+    });
+  }
+  test('shared production delivery bounds aggregate bytes and exposes the existing retained reference', async () => {
+    const huge = structuredClone(fixture.prefix);
+    huge.document.items[0].name = 'x'.repeat(262145);
+    let calls = 0;
+    const result = await awaitDelivery(params, async () => {calls++;return huge;}, policy);
+    assert.equal(result.delivery.stop, 'BYTE_LIMIT');
+    assert.equal(result.initial, null);
+    assert.equal(result.delivery.original_outcome, 'complete');
+    assert.equal(result.delivery.result, fixture.prefix.document.retention.reference);
+    assert.ok(Buffer.byteLength(JSON.stringify(result),'utf8') < 1024);
+    assert.equal(calls, 1);
+  });
+  test('shared production delivery bounds physical output RPCs even when every page advances', async () => {
+    let calls = 0;
+    const result = await awaitDelivery(params, async () => {
+      const reply = structuredClone(fixture.outputPrefix);
+      reply.document.qualification.progress.checkpoint.token =
+        'query-output:v1:00000000-0000-0000-0000-' + String(++calls).padStart(12,'0');
+      delete reply.document.continuation;
+      return reply;
+    }, policy);
+    assert.equal(result.delivery.stop, 'PAGE_LIMIT');
+    assert.equal(calls, 64);
+    assert.equal(result.delivery.rpc_count, 64);
+  });
+
+}
