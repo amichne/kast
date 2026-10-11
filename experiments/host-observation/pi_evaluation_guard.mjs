@@ -1,10 +1,10 @@
 import { decodeEnvelope, READ_TOOLS, Outcome } from './pi_evaluation_policy.mjs';
 
 import { inspectProviderPayload } from './pi_evaluation_payload.mjs';
-import { finalQueryPresentation } from './pi_evaluation_presentation.mjs';
+import { finalQueryPresentation, finalProviderIdentity } from './pi_evaluation_presentation.mjs';
 // The same exported factory is loaded by the real SDK worker and callback tests.
 // It observes provider settings/byte sizes; it never logs payloads or credentials.
-export function evaluationGuard(policy,record) {
+export function evaluationGuard(policy,record,projectProviderInput) {
   return pi=>{
     let finalProjection;
     const observe=(value,ctx)=>{
@@ -20,11 +20,12 @@ export function evaluationGuard(policy,record) {
       finalProjection=undefined;
       if(policy.config.finalPresentation!=='compact'||!policy.isFinalAnswerDelivery())return;
       const view=finalQueryPresentation(event.messages,policy.finalQuery,policy.config.maximumToolTextBytes);
-      const admission=view.type==='failure'?policy.stop(Outcome.INVALID):{allow:true,reason:'ADMITTED',phase:policy.phase};
-      const recorded=observe({type:'final_projection',...(view.observation??{}),failure:view.failure??null,decision:admission},ctx);
+      const identity=view.type==='failure'?view:finalProviderIdentity(view,ctx.model,projectProviderInput);
+      const admission=identity.type==='failure'?policy.stop(Outcome.INVALID):{allow:true,reason:'ADMITTED',phase:policy.phase};
+      const recorded=observe({type:'final_projection',...(view.observation??{}),...(identity.observation??{}),failure:identity.failure??null,decision:admission},ctx);
       if(recorded.type==='failure')return;
       if(!admission.allow) {ctx.abort();return;}
-      finalProjection=view.text;
+      finalProjection={text:view.text,callId:identity.callId};
       return {messages:view.messages};
     });
     pi.on('before_provider_request',(event,ctx)=>{
@@ -34,9 +35,11 @@ export function evaluationGuard(policy,record) {
       if(policy.isFinalAnswerDelivery())delete payload.tools;
       const instruction=policy.deliveryInstruction();
       if(instruction&&typeof payload.instructions==='string')payload.instructions+='\n'+instruction;
-      if(policy.config.finalPresentation==='compact'&&policy.isFinalAnswerDelivery()&&
-        (finalProjection===undefined||!Array.isArray(payload.input)||
-          payload.input.filter(item=>item?.type==='function_call_output'&&item.output===finalProjection).length!==1))policy.stop(Outcome.INVALID);
+      if(policy.config.finalPresentation==='compact'&&policy.isFinalAnswerDelivery()) {
+        const selected=finalProjection&&Array.isArray(payload.input)?payload.input.filter(item=>
+          item?.type==='function_call_output'&&item.call_id===finalProjection.callId):[];
+        if(selected.length!==1||selected[0].output!==finalProjection.text)policy.stop(Outcome.INVALID);
+      }
       const inspected=inspectProviderPayload(payload,policy.maximumProviderPayloadBytes);
       const observation={provider:ctx.model?.provider,model:ctx.model?.id,thinking:pi.getThinkingLevel(),payload:inspected};
       const admission=policy.beforeProvider(observation);

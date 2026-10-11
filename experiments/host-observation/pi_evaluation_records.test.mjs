@@ -65,11 +65,11 @@ test('guard allowlist preserves finite admissions and rejects arbitrary names, I
 
 test('final projection records keep bounded source binding and byte facts without raw identity or contents',()=>{
   const secret='PRIVATE-CALL-SOURCE';
-  const observed={type:'final_projection',canonicalSha256:'a'.repeat(64),callIdSha256:'b'.repeat(64),
+  const observed={type:'final_projection',canonicalSha256:'a'.repeat(64),callIdSha256:'b'.repeat(64),providerCallIdSha256:'d'.repeat(64),
     projectedTextSha256:'c'.repeat(64),originalTextBytes:227363,projectedTextBytes:134723,failure:null,
-    decision:{allow:true,reason:'ADMITTED',phase:'DELIVERY'},callId:secret,canonical:secret,text:secret};
+    decision:{allow:true,reason:'ADMITTED',phase:'DELIVERY'},callId:secret,providerCallId:secret,canonical:secret,text:secret};
   assert.deepEqual(summarizeGuard(observed),{stage:'FINAL_PROJECTION',canonicalSha256:'a'.repeat(64),
-    callIdSha256:'b'.repeat(64),projectedTextSha256:'c'.repeat(64),originalTextBytes:227363,
+    callIdSha256:'b'.repeat(64),providerCallIdSha256:'d'.repeat(64),projectedTextSha256:'c'.repeat(64),originalTextBytes:227363,
     projectedTextBytes:134723,failure:null,decision:observed.decision});
   const rejected=summarizeGuard({...observed,failure:secret,canonicalSha256:secret,originalTextBytes:Infinity});
   assert.equal(rejected.failure,'OBSERVATION_INVALID');assert.equal(rejected.canonicalSha256,null);

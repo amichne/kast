@@ -51,11 +51,23 @@ test('recorded negative work usage leaves the separate delivery stop threshold u
   assert.equal(policy.beforeProvider(pinned).allow,true,'Byte/request admission does not reserve or guarantee token spend');
 });
 
-function callbacks(policy,recordResult) {
+// Explicit pure fixture observation at the provider-conversion seam. Installed
+// converter tests below establish normalization; this fixture preserves its IDs.
+function fixtureProviderInput(_model,messages) {
+  const call=messages[0].content[0],result=messages[1];
+  assert.equal(call.id,result.toolCallId);assert.equal(call.name,'query_symbols');
+  return [{type:'function_call',call_id:call.id,name:call.name,arguments:JSON.stringify(call.arguments)},
+    {type:'function_call_output',call_id:result.toolCallId,output:result.content[0].text}];
+}
+function issuedHistory(result) {
+  return [{role:'assistant',provider:'openai-codex',api:'openai-codex-responses',model:'gpt-6.1-sol',
+    content:[{type:'toolCall',id:result.toolCallId,name:'query_symbols',arguments:{request:{type:'RUN'},verbose:true}}]},result];
+}
+function callbacks(policy,recordResult,projectProviderInput=fixtureProviderInput) {
   const handlers=new Map(),records=[];let aborted=0;
   const pi={on:(name,handler)=>handlers.set(name,handler),setActiveTools:()=>{},getActiveTools:()=>['query_symbols','check_diagnostics','health_check'],getThinkingLevel:()=> 'high'};
-  const ctx={model:{provider:'openai-codex',id:'gpt-6.1-sol'},abort:()=>{aborted++;}};
-  evaluationGuard(policy,value=>{records.push(value);return recordResult;})(pi);
+  const ctx={model:{provider:'openai-codex',api:'openai-codex-responses',id:'gpt-6.1-sol',input:['text'],reasoning:true,compat:{}},abort:()=>{aborted++;}};
+  evaluationGuard(policy,value=>{records.push(value);return recordResult;},projectProviderInput)(pi);
   return {emit:(name,event)=>handlers.get(name)(event,ctx),records,get aborted(){return aborted;}};
 }
 const providerEvent=()=>({payload:providerPayload()});
@@ -1222,15 +1234,20 @@ test('explicit compact final context preserves original verbose messages and can
 
 test('compact context binds the exact admitted source and rejects unsupported families before provider admission',()=>{
   for(const change of [
-    messages=>messages[0].toolCallId='different-call',
-    messages=>messages[0].details=structuredClone(qualified),
-    messages=>messages.push(structuredClone(messages[0])),
-    messages=>messages[0].toolName='health_check',
+    messages=>messages[1].toolCallId='different-call',
+    messages=>messages[1].details=structuredClone(qualified),
+    messages=>messages.push(structuredClone(messages[1])),
+    messages=>messages[1].toolName='health_check',
+    messages=>messages[0].content=[],
+    messages=>messages[0].content[0].id='different-issued-call',
+    messages=>messages[0].content[0].name='health_check',
+    messages=>messages.unshift(structuredClone(messages[0])),
   ]) {
     const policy=makePolicy({...config(),finalPresentation:'compact'}),guard=callbacks(policy);
     policy.restoreReceivedResult(negativeComplete,10000,'call-1');
-    const messages=[{role:'toolResult',...resultEvent(negativeComplete),details:negativeComplete}];change(messages);
+    const messages=issuedHistory({role:'toolResult',...resultEvent(negativeComplete),details:negativeComplete});change(messages);
     assert.equal(guard.emit('context',{messages}),undefined);
+    assert.equal(guard.records.at(-1).failure,'SOURCE_IDENTITY_MISMATCH');
     assert.equal(policy.report().outcome,'HARNESS_OBSERVATION_INVALID');
     assert.equal(guard.emit('before_provider_request',providerEvent()).max_output_tokens,2000);
     assert.equal(guard.records.at(-1).decision.allow,false);
@@ -1239,7 +1256,7 @@ test('compact context binds the exact admitted source and rejects unsupported fa
   const unsupported=structuredClone(negativeComplete);unsupported.document.question.output={type:'trace'};
   const policy=makePolicy({...config(),finalPresentation:'compact'}),guard=callbacks(policy);
   assert.equal(policy.restoreReceivedResult(unsupported,10000,'call-1').allow,true);
-  assert.equal(guard.emit('context',{messages:[{role:'toolResult',...resultEvent(unsupported),details:unsupported}]}),undefined);
+  assert.equal(guard.emit('context',{messages:issuedHistory({role:'toolResult',...resultEvent(unsupported),details:unsupported})}),undefined);
   assert.equal(guard.records.at(-1).failure,'UNSUPPORTED_FAMILY');
   assert.equal(policy.report().providerRequests,0);
 });
@@ -1251,14 +1268,41 @@ test('compact final presentation requires context-before-payload order and prese
     const envelope=negativeComplete;
     policy.restoreReceivedResult(envelope,scenario==='source-bound'?1:10000,'call-1');
     if(scenario==='cancelled')policy.stop('HARNESS_CANCELLED');
-    const messages=[{role:'toolResult',...resultEvent(envelope),details:envelope}];
+    const messages=issuedHistory({role:'toolResult',...resultEvent(envelope),details:envelope});
     const view=scenario==='missing-context'?undefined:guard.emit('context',{messages});
-    const text=scenario==='changed-body'?'Unbound replacement':view?.messages[0].content[0].text??JSON.stringify(envelope);
+    const text=scenario==='changed-body'?'Unbound replacement':view?.messages.at(-1).content[0].text??JSON.stringify(envelope);
     guard.emit('before_provider_request',{payload:{...declaredPayload(),input:[{type:'function_call_output',call_id:'call-1',output:text}]}});
     assert.equal(guard.records.at(-1).decision.allow,false,scenario);
     assert.equal(policy.report().providerRequests,0);
     if(scenario==='cancelled')assert.equal(policy.report().outcome,'HARNESS_CANCELLED');
     else assert.equal(policy.report().outcome,scenario==='body-bound'?'HARNESS_BUDGET_LIMIT':'HARNESS_OBSERVATION_INVALID');
+  }
+});
+
+test('compact provider output belongs to the selected call exactly once while unrelated history survives',()=>{
+  for(const saved of [false,true])for(const scenario of ['wrong-call','repeated-bound-canonical','repeated-bound-view','unrelated-history']) {
+    const policy=makePolicy({...config(),finalPresentation:'compact'}),guard=callbacks(policy);
+    const result={role:'toolResult',...resultEvent(negativeComplete),details:negativeComplete};
+    const messages=[{role:'assistant',content:[{type:'toolCall',id:'call-1',name:'query_symbols',arguments:{request:{type:'RUN'},verbose:true}}]},result];
+    if(saved)assert.equal(policy.restoreReceivedResult(negativeComplete,10000,'call-1').allow,true);
+    else {
+      guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'},verbose:true}});
+      guard.emit('tool_result',result);
+    }
+    const view=guard.emit('context',{messages}),text=view.messages.at(-1).content[0].text;
+    const selected={type:'function_call_output',call_id:scenario==='wrong-call'?'unrelated-call':'call-1',output:text};
+    const input=[selected];
+    if(scenario.startsWith('repeated-bound'))input.push({type:'function_call_output',call_id:'call-1',output:scenario.endsWith('canonical')?JSON.stringify(negativeComplete):text});
+    if(scenario==='unrelated-history')input.unshift({type:'function_call_output',call_id:'older-call',output:'Original unrelated history'});
+    const before=JSON.stringify(input),payload=guard.emit('before_provider_request',{payload:{...declaredPayload(),input}});
+    assert.equal(JSON.stringify(input),before);
+    assert.deepEqual(payload.input,input);
+    if(scenario==='unrelated-history') {
+      assert.equal(guard.records.at(-1).decision.allow,true);assert.equal(policy.report().providerRequests,1);assert.equal(guard.aborted,0);
+    } else {
+      assert.equal(guard.records.at(-1).decision.allow,false,scenario);
+      assert.equal(policy.report().providerRequests,0,scenario);assert.equal(guard.aborted,1,scenario);
+    }
   }
 });
 
@@ -1291,7 +1335,8 @@ test('installed Pi request-time context runner preserves raw state and serialize
     for(const saved of [false,true]) {
       const envelope=partialPrefix(),policy=makePolicy({...config(),finalPresentation:'compact',evidenceOnlyDelivery:true});
       const handlers=new Map(),records=[];
-      evaluationGuard(policy,value=>records.push(value))({on:(name,handler)=>handlers.set(name,[handler]),getThinkingLevel:()=> 'high'});
+      evaluationGuard(policy,value=>records.push(value),(target,messages)=>convertResponsesMessages(target,
+        {messages:convertToLlm(messages)},new Set(['openai-codex']),{includeSystemPrompt:false}))({on:(name,handler)=>handlers.set(name,[handler]),getThinkingLevel:()=> 'high'});
       const result={role:'toolResult',...resultEvent(envelope),details:envelope,isError:true,timestamp:0};
       const messages=[{role:'assistant',provider:model.provider,api:model.api,model:model.id,
         content:[{type:'toolCall',id:'call-1',name:'query_symbols',arguments:{request:{type:'RUN'},verbose:true}}],stopReason:'toolUse',timestamp:0},result];
@@ -1302,6 +1347,8 @@ test('installed Pi request-time context runner preserves raw state and serialize
         handlers.get('tool_result')[0](result,ctx);
       }
       const runner=new ExtensionRunner([{path:'synthetic-source-guard',handlers}],{getThinkingLevel:()=> 'high'},'/public/synthetic-fixture',{},{});
+      // Supply the runner's model observation without constructing a session.
+      runner.getModel=()=>model;
       const transformed=await runner.emitContext(messages);
       const input=convertResponsesMessages(model,{messages:convertToLlm(transformed)},new Set(['openai-codex']),{includeSystemPrompt:false});
       const body=handlers.get('before_provider_request')[0]({payload:{...declaredPayload(),input}},ctx);
@@ -1313,3 +1360,57 @@ test('installed Pi request-time context runner preserves raw state and serialize
     }
     assert.deepEqual(bodies[0],bodies[1]);
   });
+
+test('installed converter binds normalized selected provider identity on fresh and saved paths',
+  {skip:!process.env.KAST_PI_PACKAGE},async()=>{
+    const {pathToFileURL}=await import('node:url'),{join}=await import('node:path');
+    const root=process.env.KAST_PI_PACKAGE;
+    const {convertToLlm}=await import(pathToFileURL(join(root,'dist/core/messages.js')));
+    const {convertResponsesMessages}=await import(pathToFileURL(join(root,'../pi-ai/dist/api/openai-responses-shared.js')));
+    const model={id:'gpt-6.1-sol',provider:'openai-codex',api:'openai-codex-responses',input:['text'],reasoning:true,compat:{}};
+    const project=(target,messages)=>convertResponsesMessages(target,{messages:convertToLlm(messages)},new Set(['openai-codex']),{includeSystemPrompt:false});
+    const sources=[
+      {provider:model.provider,api:model.api,model:model.id,id:'call_selected|fc_selected'},
+      {provider:model.provider,api:model.api,model:'different-source-model',id:`call odd?!${'x'.repeat(70)}|item odd?!`},
+      {provider:'foreign-fixture',api:'foreign-api',model:'foreign-model',id:`call odd?!${'x'.repeat(70)}|foreign item?!`},
+    ];
+    for(const source of sources)for(const saved of [false,true])for(const scenario of ['unchanged','wrong-call','repeated-canonical','repeated-view','unrelated-history']) {
+      const policy=makePolicy({...config(),finalPresentation:'compact'}),guard=callbacks(policy,undefined,project);
+      const result={role:'toolResult',...resultEvent(negativeComplete),toolCallId:source.id,details:negativeComplete,timestamp:0};
+      const messages=issuedHistory(result);Object.assign(messages[0],source,{stopReason:'toolUse',timestamp:0});
+      const before=JSON.stringify(messages);
+      if(saved)assert.equal(policy.restoreReceivedResult(negativeComplete,10000,source.id).allow,true);
+      else {
+        guard.emit('tool_call',{toolName:'query_symbols',toolCallId:source.id,input:{request:{type:'RUN'},verbose:true}});
+        guard.emit('tool_result',result);
+      }
+      const transformed=guard.emit('context',{messages});
+      assert.ok(transformed,JSON.stringify(guard.records));
+      const input=project(model,transformed.messages),selected=input.find(item=>item.type==='function_call_output');
+      const wireId=selected.call_id;
+      assert.equal(wireId,input.find(item=>item.type==='function_call').call_id);
+      assert.notEqual(wireId,source.id,'Provider identity is the converter observation, not the raw composite ID');
+      if(source.model!==model.id)assert.notEqual(wireId,source.id.split('|')[0],'Foreign source IDs are normalized by the real converter');
+      assert.equal(guard.records.at(-1).providerCallIdSha256,createHash('sha256').update(wireId).digest('hex'));
+      if(scenario==='wrong-call')selected.call_id=`${wireId}_unrelated`;
+      if(scenario.startsWith('repeated'))input.push({type:'function_call_output',call_id:wireId,
+        output:scenario==='repeated-canonical'?JSON.stringify(negativeComplete):selected.output});
+      if(scenario==='unrelated-history')input.unshift({type:'function_call_output',call_id:'earlier_unrelated',output:'Original unrelated history'});
+      const originalInput=structuredClone(input),payload=guard.emit('before_provider_request',{payload:{...declaredPayload(),input}});
+      assert.deepEqual(payload.input,originalInput);assert.equal(JSON.stringify(messages),before);
+      const allowed=['unchanged','unrelated-history'].includes(scenario);
+      assert.equal(guard.records.at(-1).decision.allow,allowed,`${source.model} / ${saved} / ${scenario}`);
+      assert.equal(policy.report().providerRequests,allowed?1:0);
+      assert.equal(guard.aborted,allowed?0:1);
+    }
+  });
+
+test('compact final identity has no guessed fallback when the runtime converter is missing or unsupported',()=>{
+  for(const project of [null,()=>{throw Error('Private SDK error');},()=>[],()=>[{type:'function_call_output',call_id:'guessed',output:'guessed'}]]) {
+    const policy=makePolicy({...config(),finalPresentation:'compact'}),guard=callbacks(policy,undefined,project);
+    policy.restoreReceivedResult(negativeComplete,10000,'call-1');
+    assert.equal(guard.emit('context',{messages:issuedHistory({role:'toolResult',...resultEvent(negativeComplete),details:negativeComplete})}),undefined);
+    assert.equal(policy.report().outcome,'HARNESS_OBSERVATION_INVALID');
+    assert.equal(policy.report().providerRequests,0);assert.equal(guard.aborted,1);
+  }
+});

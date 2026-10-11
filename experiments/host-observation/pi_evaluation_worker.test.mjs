@@ -144,7 +144,9 @@ function construction(options={}) {
       return {session,modelFallbackMessage:options.fallback};}};
   return {effects,session,settings,input:{sdk,plan:{workspaceRoot:'/synthetic-workspace',kastAdapter:'/synthetic-adapter'},
     directory:'/synthetic-private',modelRuntime:{getPhysicalModel:(provider,id)=>{effects.push(['model',provider,id]);return options.missingModel?undefined:model;}},
-    policy:{},record:()=>({type:'recorded'}),manager:{}}};
+    policy:new CasePolicy({name:'construction',expectedSemanticCalls:1,inputTokenCeiling:20000,declarationByteCeiling:100000,
+      work:{reportedTokens:30000,requests:1,tools:1,outputReserve:2000},delivery:{reportedTokens:25000,requests:1,outputReserve:2000},
+      maximumToolTextBytes:1048576,finalPresentation:options.finalPresentation}),record:()=>({type:'recorded'}),manager:{}}};
 }
 
 test('isolated settings retain exact policy or return finite unavailable failure',()=>{
@@ -171,6 +173,12 @@ test('session construction preserves settings model resources and binding withou
   assert.equal(created.model,fixture.session.model);assert.equal(created.thinkingLevel,'high');
   assert.deepEqual(created.tools,['query_symbols','check_diagnostics','health_check']);
   assert.equal(created.sessionManager,fixture.input.manager);
+});
+
+test('compact session construction requires the runtime converter before any SDK setup effects',async()=>{
+  const fixture=construction({finalPresentation:'compact'});
+  assert.deepEqual(await createEvaluationSession(fixture.input),failure('FINAL_PROVIDER_PROJECTION','PROJECTION_UNAVAILABLE'));
+  assert.deepEqual(fixture.effects,[]);
 });
 
 test('missing model and extension load failures stop construction at their finite boundaries',async()=>{
