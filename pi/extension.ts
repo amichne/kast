@@ -244,6 +244,7 @@ function run(args: string[], input: string, cwd: string, policy?: {callTimeoutMi
     if (signal?.aborted) return reject(new Error("Kast invocation CANCELLED before launch"));
     const childEnvironment = { ...process.env };
     delete childEnvironment.KAST_TOOL_RPC_COMMAND;
+    delete childEnvironment.KAST_EVALUATION_DEADLINE_MS;
     const child = spawn(command, args, { cwd: cwd, env: childEnvironment, stdio: ["pipe", "pipe", "pipe"] });
     const chunks : Buffer[] = [];
     let size = 0;
