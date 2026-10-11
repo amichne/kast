@@ -20,6 +20,10 @@ class QueryImpactRetainedGraph private constructor(private val parent: QueryImpa
 
     private val providers: RelationProviderRetainedGraph = RelationProviderRetainedGraph(parent?.providers)
 
+    /** Shared inventory owners only; state structures and confirmation proofs remain separate conservative components. */
+    fun providerRetentionLedger(): io.github.amichne.kast.relation.contract.RelationProviderRetentionLedger =
+        providers.retentionLedger()
+
     fun providerState(value: RelationProviderState): Long = value.retainedBytes(providers)
 
     fun checkpointTask(value: QueryCheckpointStorageOwner): Long = node(value) { value.retainedBytes(this) }
