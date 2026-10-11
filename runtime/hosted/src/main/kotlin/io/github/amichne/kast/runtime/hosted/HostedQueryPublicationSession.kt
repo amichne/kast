@@ -2,6 +2,9 @@ package io.github.amichne.kast.runtime.hosted
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryCheckpointDocument
+import io.github.amichne.kast.protocol.contract.QueryCompletionCoverageDocument
+import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.WireEncoding
@@ -158,7 +161,7 @@ internal class HostedQueryPublicationSession(
     }
 }
 
-/** Only the exact encoded page prepared by this owner can preserve rejected policy evidence. */
+/** Only the exact encoded page prepared by this owner can preserve rejected policy evidence or progress. */
 internal fun fittedRejectedQueryPublication(
     prepared: QueryPublishedPage,
     encoded: QueryPublicationPageCharge.Encoded,
@@ -173,8 +176,13 @@ internal fun fittedRejectedQueryPublication(
     return when (val evidence = completion.evidence) {
         is io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument.Retained ->
             HostedReadRejectedPublication.RetainedEvidence(evidence)
-        is io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument.Unavailable ->
-            HostedReadRejectedPublication.Discard
+        is io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument.Unavailable -> {
+            val coverage = completion.originalCoverage as? QueryCompletionCoverageDocument.Qualified
+            val progress = coverage?.progress as? QueryQualifiedProgressDocument.Resumable
+            val checkpoint = progress?.checkpoint as? QueryCheckpointDocument.Upstream
+            if (checkpoint == null) HostedReadRejectedPublication.Discard
+            else HostedReadRejectedPublication.RetainedProgress(checkpoint.token)
+        }
     }
 }
 

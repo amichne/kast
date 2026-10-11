@@ -2,6 +2,7 @@ package io.github.amichne.kast.workspace.intellij.read.hosted
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
+import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
@@ -12,6 +13,42 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class HostedRejectedPublicationEffectTest {
+    @Test
+    fun `fitted progress rejection commits its owner without claiming retained row evidence`() = runTest {
+        val events = mutableListOf<String>()
+        val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
+        val executor =
+            HostedQueryExecutor(backgroundScope, { 0L }) { limits ->
+                HostedReadDiagnostics({ 0L }, limits, publish = receipts::add)
+            }
+        val token =
+            (QueryExecutionContinuation.Pipeline.parse("query:v1:00000000-0000-0000-0000-000000000001")
+                    as Refinement.Refined)
+                .value
+        try {
+            val result =
+                executor.execute(
+                    executor.endpoint,
+                    outcome = { HostedDiagnosticOutcome.Evaluated(HostedEvaluationOutcome.REJECTED) },
+                ) { progress ->
+                    progress.publicationEffects.prepare(
+                        RecordingPublication(
+                            events,
+                            rejectedPublication = HostedReadRejectedPublication.RetainedProgress(token),
+                        )
+                    )
+                    7
+                }
+            assertEquals(HostedExecution.Completed(7), result)
+            assertEquals(listOf("commit"), events)
+            assertEquals(HostedDiagnosticOutcome.Evaluated(HostedEvaluationOutcome.REJECTED), receipts.single().outcome)
+            assertPolicyEvidenceCounts(receipts.single(), committed = 0, rejected = 0, discarded = 0)
+        } finally {
+            executor.retire()
+            executor.drain()
+        }
+    }
+
     @Test
     fun `fitted policy rejection commits retained evidence while preserving rejected diagnostics`() = runTest {
         val events = mutableListOf<String>()

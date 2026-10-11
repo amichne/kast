@@ -79,7 +79,9 @@ internal class QueryInvocationProjection(
         private fun retainedProgress(): QueryQualifiedProgressDocument {
             val issued = accumulated.issuedProgress ?: return unavailableProgress()
             val token = (issued.checkpoint as? QueryCheckpointDocument.Upstream)?.token
-            return if (token != null && state.restoreCheckpoint(token, lease) is QueryCheckpointRestoration.Restored)
+            return if (
+                token != null && state.restoreCheckpoint(token, lease, owner) is QueryCheckpointRestoration.Restored
+            )
                 issued
             else unavailableProgress()
         }

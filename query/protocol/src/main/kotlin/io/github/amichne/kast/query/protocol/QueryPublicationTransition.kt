@@ -146,6 +146,7 @@ private fun Map<QueryStateKey, QueryStateEntry>.admitProducer(
                 java.util.Set.copyOf(page.dependencies()),
                 entry.createdAt,
                 bytes,
+                entry.invocationOwner,
             ),
         )
     )
