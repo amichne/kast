@@ -16,6 +16,8 @@ Defines canonical workspace identity and read evidence, and admits bounded seman
 
 - [HostedReadCompletion.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadCompletion.kt) - typed operation-selected caller deadline through final freshness and publication.
 
+- [HostedReadPublicationEffect.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationEffect.kt) - attempt-owned final publication and exact fitted rejection evidence or progress.
+
 - [HostedReadPublicationAdmission.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationAdmission.kt) - pre-provider containment capacity and candidate-versus-admitted budget evidence.
 
 - [HostedReadinessDocument.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadinessDocument.kt) - passive fresh model admission status.

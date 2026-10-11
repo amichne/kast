@@ -62,7 +62,10 @@ internal fun MutableMap<QueryStateKey, QueryStateEntry>.finishInvocation(
     val retainedKey = retained?.key()
     if (retainedKey != null && owner != null) {
         val checkpoint = this[retainedKey] as? QueryStateEntry.Checkpoint
-        if (checkpoint?.execution == QueryCheckpointExecution.Ready && checkpoint.privateInvocation === invocation) {
+        if (
+            checkpoint?.execution == QueryCheckpointExecution.Ready &&
+                retention.invocationUnpinned(retainedKey, invocation)
+        ) {
             this[retainedKey] = checkpoint.copy(owner = owner, privateInvocation = null)
         }
     }

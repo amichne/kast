@@ -31,8 +31,9 @@ Alternatives: lowering multipliers without allocation evidence would weaken the
 bound; raising quotas would hide finite demand; deduplicating equal detached
 objects would lose true allocation identity. This change will do none of those.
 Dropping semantic checkpoint history would weaken the non-advancing proof and is
-outside this slice. Public hosted page fitting and client delivery belong to
-separate owners.
+outside this slice. Presentation serialization, client delivery and discovery
+telemetry belong to separate owners. Final hosted publication ownership is part
+of this lifetime change; fitting policy and diagnostic schema stay unchanged.
 
 No incorrect charge was established. This source option removes retained state
 whose private lifetime has ended. Its matched pure fixture proves semantic
@@ -66,7 +67,7 @@ Completion rejection may advertise progress through `originalCoverage` even
 when retained evidence is unavailable. Publication now follows actual page
 dependencies, so that progress receives the same final commit/discard boundary.
 
-The focused fixtures cover sixteen cases through the production protocol,
+The focused fixtures cover nineteen cases through the production protocol,
 runner and store. A reused public checkpoint exposes an entire public replay
 chain; ancestors replay unchanged while its final successor is running and
 after automatic completion. A private Ready checkpoint cannot be reissued or
@@ -87,6 +88,39 @@ producer's 408,352-byte allocation and reservation. The guard now preserves that
 exact charge, rejects concurrent acquisition as InUse, and permits the peer's
 rollback followed by immutable public replay. Existing claim/dependency pins
 continue to govern release; final transfer cannot take over an active producer.
+
+Independent review identified two concrete final-publication gaps at published
+head `f85e0b4bc9ea6190e5c1af0b9010cd0b677bad39`. Both were reproduced before
+repair. First, the actual hosted encoder notified the publication session only
+when a completion rejection retained rows. A rejection with unavailable rows
+and resumable original coverage remained PREPARED; even a fitted page would
+classify as Discard. The actual hosted owner discarded the staged checkpoint
+while returning a rejection advertising its deleted token. A pure fixture
+composes the production protocol, encoder, session, owner and store around one
+scripted semantic observation and an original owned detached read basis. Four
+cases passed and the advertised-progress case failed with expected Restored
+versus Unavailable.
+
+The repair admits successful completion-rejection encoding to the existing
+session and classifies the exact fitted upstream checkpoint as RetainedProgress.
+The owner then commits through the existing claim, authority, dependency and
+original-expiry checks. No encoding fit grants semantic success. Six composed
+cases cover retained rows/progress, discard, unavailable rows with progress,
+missing encoder admission, a foreign fitted page and expired final commit. A
+real executor regression also preserves rejected diagnostics without claiming
+retained-row evidence counters for a progress-only commit. No native project or
+provider inference is used.
+
+Second, possession of a private checkpoint token permits another store claim
+to commit output depending on that checkpoint. Ready-only final transfer could
+take this dependency and final rollback would delete it. Separate pending-output
+and immutable-replay controls failed: retained charge fell from 10,460 and
+412,508 bytes respectively to a 256-byte revocation receipt. Transfer now requires
+the same unpinned allocation proof as private release. Existing dependency and
+active-claim pins preserve/promote the checkpoint's lifetime instead. Pending
+output, immutable public replay and an active replay claim retain their exact
+charges, reference validity and one original semantic call after final rollback.
+This is a store-capability counterexample; public tool exposure was not proven.
 
 | Pure boundary | Before | Working source |
 | --- | ---: | ---: |
@@ -132,11 +166,19 @@ the historical replay-owner control. Broader validation ran
 verifyKnowledgeBase`; all passed. OpenWiki reported affected concepts and zero
 citation issues. Generated pages remain owned by its scheduled lifecycle.
 
-Final PREPARED cases exercise the real store and publication capability at the
-protocol boundary. Existing hosted encoder and rejection publication tests pass;
-the new fixtures do not instantiate a native `HostedSemanticReadContext` or
-claim a live `HostedQueryPublicationSession` composition. Parent owns independent
-review, merge, exact-head CI qualification and later rollout.
+After both final-publication repairs, the owner/consumer check also includes
+`:workspace:intellij-read:check`. The 166-task run passed with 289 protocol,
+179 service, 82 contract, 283 workspace read and 322 hosted tests, zero failures,
+errors or skips, plus JSON, architecture and knowledge verification. The nineteen
+focused protocol cases and six actual hosted composition cases passed. The full
+product gate is required again at the replacement committed head.
+
+The composed hosted proof runs with `./gradlew :runtime:hosted:test --tests
+'*HostedAutomaticPublicationSessionTest' :workspace:intellij-read:test --tests
+'*HostedRejectedPublicationEffectTest'`. Final PREPARED cases also exercise the
+real store and publication capability at the protocol boundary. These proofs
+cover actual detached hosted composition without claiming native execution.
+Parent owns independent review, merge, exact-head CI qualification and rollout.
 
 ## Separate observed boundaries
 

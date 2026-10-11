@@ -99,6 +99,7 @@ dependencies {
     compileOnly(platform)
     testImplementation(testFixtures(project(":query:protocol")))
     testImplementation(testFixtures(project(":workspace:contract")))
+    testImplementation(testFixtures(project(":workspace:intellij-read")))
     testImplementation(platform)
     testImplementation(libs.json.schema.validator)
 }
