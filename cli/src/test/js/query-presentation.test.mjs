@@ -250,7 +250,7 @@ test('fixed result oracle reproduces saved work and byte measurements without se
   }
 });
 
-test('presentation serialization counters expose both saved work and dense dictionary overhead', async () => {
+test('presentation serialization avoids full declaration keys while preserving exact text', async () => {
   let calls = 0, bytes = 0, dictionaryCalls = 0, dictionaryBytes = 0;
   const dictionaryObjects = new Set(native.cases.occurrences.reply.document.items.flatMap(row =>
     [row.occurrence.target, row.occurrence.ownership.declaration]));
@@ -272,11 +272,99 @@ test('presentation serialization counters expose both saved work and dense dicti
     const result = fixtures[measurement.name];
     calls = bytes = dictionaryCalls = dictionaryBytes = 0;
     assert.equal(instrumented.namespace.queryPresentation(result), queryPresentation(result));
+    if (measurement.name === 'occurrencesPrefix')
+      assert.equal(createHash('sha256').update(queryPresentation(result)).digest('hex'),
+        'faa2cb563ad42d980c22ab93a401b3565a0a64839528ee4a6b311c83a26447a2',
+        'Dictionary implementation cannot change one byte of the merged compact projection');
     assert.deepEqual({ calls, bytes }, measurement.after);
     if (measurement.dictionaryKeyConstruction)
       assert.deepEqual({ calls: dictionaryCalls, bytes: dictionaryBytes }, measurement.dictionaryKeyConstruction);
     assert.deepEqual({ calls: 1, bytes: Buffer.byteLength(JSON.stringify(result)) }, measurement.before);
   }
+});
+
+test('shared declaration identity is only a candidate bucket, never proof of equal descriptions', () => {
+  const initial = structuredClone(native.cases.occurrences.reply);
+  const original = initial.document.items[0];
+  const variants = [
+    target => { target.name += 'Different'; },
+    target => { target.range.endExclusive++; },
+    target => { target.compilerEvidence.identity += '-different'; },
+    target => { target.compilerEvidence.signature.qualifiedIdentity += '.Different'; },
+    target => { target.file += '.other.kt'; },
+    target => { const name = target.name; delete target.name; target.name = name; },
+  ];
+  const rows = [original, structuredClone(original)];
+  for (const change of variants) {
+    const row = structuredClone(original);
+    change(row.occurrence.target);
+    rows.push(row, structuredClone(row));
+  }
+  rows.forEach((row, index) => { row.row_id = `result-row:v1:fixture-${index}`; });
+  initial.document.items = rows;
+  const view = projected(initial);
+  assert.equal(view.rows.length, rows.length, 'Distinct occurrence rows are never deduplicated');
+  assert.deepEqual(view.rows.map(row => expand(row, view.shared)), rows);
+  assert.equal(Object.keys(view.shared).length, variants.length + 2,
+    'Every different target shape/order and the shared owner have separate exact descriptions');
+  assert.equal(new Set(view.rows.map(row => row.row_id)).size, rows.length);
+});
+
+test('smaller description-key work cannot buy extra canonical envelope drainage', async () => {
+  // Synthetic admitted-provider pages reuse pinned declaration shapes; this is not a native capacity claim.
+  const source = native.cases.occurrences.reply;
+  const oracle = Array.from({ length: 185 }, (_, index) => {
+    const row = structuredClone(source.document.items[index % 20]);
+    row.row_id = `result-row:v1:00000000-0000-0000-0000-${String(index).padStart(12, '0')}`;
+    return row;
+  });
+  const replies = [];
+  for (let start = 0; start < oracle.length; start += 20) {
+    const reply = structuredClone(source), end = Math.min(start + 20, oracle.length);
+    reply.document.items = oracle.slice(start, end);
+    reply.document.evidence_window = { type: 'FINAL', start: 0, end: 0, total: 0 };
+    if (end < oracle.length) reply.document.next_cursor = end;
+    else delete reply.document.next_cursor;
+    if (start === 0) reply.document.invocation = {
+      accumulated_row_count: oracle.length, stop: { type: 'COMPLETED' },
+      preview: { type: 'PREFIX', row_count: 20 },
+    };
+    replies.push(reply);
+  }
+  const requests = [];
+  let readBytes = 0;
+  const result = await awaitQueryDelivery({ request: { type: 'RUN', source: { type: 'ALL_DECLARATIONS' },
+    output: { type: 'OCCURRENCES' } } }, async (request, policy) => {
+    requests.push(request);
+    assert.ok(requests.length <= replies.length, 'No unexpected semantic or output work');
+    const reply = replies[requests.length - 1], bytes = Buffer.byteLength(JSON.stringify(reply));
+    readBytes += bytes; policy.onResponseBytes(bytes);
+    return reply;
+  }, { callTimeoutMillis: 1000 }, undefined, () => 0);
+  assert.equal(result.delivery.stop, 'BYTE_LIMIT');
+  assert.equal(result.delivery.rpc_count, 7);
+  assert.deepEqual(requests.slice(1).map(request => request.request.cursor), [20, 40, 60, 80, 100, 120]);
+  assert.equal(requests.filter(request => request.request.type === 'RUN').length, 1);
+  assert.equal(result.delivery.response_bytes, readBytes, 'Read-but-excluded page bytes remain accounted');
+  assert.equal(result.delivery.rpc_count, result.pages.length + 2, 'One received page did not fit');
+  const view = projected(result), received = [result.initial, ...result.pages].flatMap(reply => reply.document.items);
+  assert.equal(received.length, 120);
+  assert.deepEqual(received, oracle.slice(0, received.length));
+  assert.deepEqual(view.rows.map(row => expand(row, view.shared)), received);
+  assert.equal(view.summary.invocation.accumulated_row_count, oracle.length);
+  assert.equal(view.summary.invocation.stop.type, 'COMPLETED');
+  assert.ok(received.length < oracle.length);
+  assert.ok(view.text.includes('Output is incomplete'));
+  assert.equal(view.details.request.result, source.document.retention.reference);
+  assert.equal(queryPresentation(result, true), JSON.stringify(result));
+  assert.ok(Buffer.byteLength(JSON.stringify(result)) <= 262144);
+  assert.equal(Buffer.byteLength(JSON.stringify(result)), 239645);
+  assert.equal(Buffer.byteLength(view.text), 92614);
+  assert.equal(readBytes, 279333);
+  console.log(JSON.stringify({ boundary: 'Synthetic pure canonical-envelope drainage',
+    rpcCount: result.delivery.rpc_count, includedPages: result.pages.length + 1, rows: received.length,
+    originalRows: oracle.length, canonicalBytes: Buffer.byteLength(JSON.stringify(result)),
+    visibleBytes: Buffer.byteLength(view.text), readBytes, semanticExecutions: 1, semanticReruns: 0 }));
 });
 
 test('expired detail authority preserves every already-received observation without semantic replay', async () => {

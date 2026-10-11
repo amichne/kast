@@ -238,14 +238,25 @@ function queryPresentation(result, verbose = false) {
     delete summary.rejection.detail.evidence.preview;
     delete summary.rejection.detail.evidence.nextQuery;
   }
-  const descriptions = new Map(), descriptionKeys = new WeakMap();
+  // Admitted JSON declarations are compared exactly, including field order and nested proof.
+  // A selector narrows candidates only; it never substitutes for full description equality.
+  const sameDescription = (left, right) => {
+    if (left === right) return true;
+    if (left === null || right === null || typeof left !== 'object' || typeof right !== 'object' ||
+        Array.isArray(left) !== Array.isArray(right)) return false;
+    const keys = Object.keys(left), otherKeys = Object.keys(right);
+    return keys.length === otherKeys.length && keys.every((key, index) =>
+      key === otherKeys[index] && sameDescription(left[key], right[key]));
+  };
+  const descriptions = [], candidates = new Map(), descriptionEntries = new WeakMap();
   const consider = value => {
     if (!deliveryObject(value)) return;
-    const key = JSON.stringify(value);
-    descriptionKeys.set(value, key);
-    const entry = descriptions.get(key);
+    let bucket = candidates.get(value.selector);
+    if (!bucket) { bucket = []; candidates.set(value.selector, bucket); }
+    let entry = bucket.find(candidate => sameDescription(candidate.value, value));
     if (entry) entry.count++;
-    else descriptions.set(key, { count: 1, value });
+    else { entry = { count: 1, value }; bucket.push(entry); descriptions.push(entry); }
+    descriptionEntries.set(value, entry);
   };
   for (const row of rows) {
     if (row.type === 'reference-occurrence') {
@@ -259,7 +270,7 @@ function queryPresentation(result, verbose = false) {
     shared.push(entry);
   }
   const describe = value => {
-    const entry = descriptions.get(descriptionKeys.get(value));
+    const entry = descriptionEntries.get(value);
     return entry?.label ? { $description: entry.label } : value;
   };
   const rowPresentation = row => {
