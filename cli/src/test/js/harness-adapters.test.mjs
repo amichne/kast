@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { spawn as spawnChild } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { EventEmitter } from 'node:events';
 import { stripTypeScriptTypes } from 'node:module';
 import { SourceTextModule, SyntheticModule, createContext } from 'node:vm';
@@ -10,12 +13,12 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const catalog = JSON.parse(readFileSync(process.env.KAST_ADAPTER_TEST_CATALOG, 'utf8'));
 const failures = JSON.parse(readFileSync(process.env.KAST_ADAPTER_TEST_FAILURES, 'utf8'));
 const root = process.env.KAST_PACKAGED_ADAPTER_ROOT ? pathToFileURL(process.env.KAST_PACKAGED_ADAPTER_ROOT + '/share/kast/adapters/') : new URL('../../../../', import.meta.url);
-async function load(harness, reply = catalog, outcome = { type: 'complete', document: {} }, failure, env = {KAST_TOOL_RPC_COMMAND: '/fixture/kast-tool-rpc'}) {
+async function load(harness, reply = catalog, outcome = { type: 'complete', document: {} }, failure, env = {KAST_TOOL_RPC_COMMAND: '/fixture/kast-tool-rpc'}, effects = {}) {
   const registered = [], calls = [];
   const context = createContext({ Buffer, TextDecoder, setTimeout: (callback, millis) => {
     if (failure === 'timeout' && calls.length > 1) { queueMicrotask(callback); return 0; }
     return setTimeout(callback, millis);
-  }, clearTimeout, process: { env, cwd: () => '/fixture' } });
+  }, clearTimeout, process: { env, cwd: () => effects.cwd ?? '/fixture' } });
   const spawn = (command, args, options) => {
     calls.push({ command, args, options });
     const child = new EventEmitter();
@@ -40,7 +43,9 @@ async function load(harness, reply = catalog, outcome = { type: 'complete', docu
     return child;
   };
   const modules = {
-    'node:child_process': { spawn }, 'node:fs': { existsSync: () => true },
+    'node:child_process': { spawn: effects.spawn ? (command, args, options) => {
+      calls.push({ command, args, options });return effects.spawn(command, args, options);
+    } : spawn }, 'node:fs': { existsSync: () => true },
     'node:os': { homedir: () => '/fixture' }, 'node:path': { join: (...parts) => parts.join('/') },
     '@github/copilot-sdk/extension': { joinSession: async ({tools}) => registered.push(...tools) },
     typebox: { Type: { Unsafe: (value) => value } },
@@ -62,6 +67,46 @@ async function load(harness, reply = catalog, outcome = { type: 'complete', docu
   } catch (failure) { error = failure; }
   return { registered, calls, error };
 }
+
+test('Pi private orchestration deadline stays outside actual tool subprocess environment', async t => {
+  const directory = mkdtempSync(join(tmpdir(), 'kast-pi-environment-'));
+  t.after(() => rmSync(directory, {recursive:true, force:true}));
+  const command = join(directory, 'kast-tool-rpc'),proof = join(directory, 'environment.jsonl');
+  // The real child records only this case's explicit synthetic environment.
+  // Catalog bytes remain the production Kotlin RPC serialization fixture.
+  writeFileSync(command, String.raw`#!/usr/bin/env node
+const fs=require('node:fs');
+const phase=process.argv[2];
+fs.appendFileSync(process.env.ADAPTER_ENVIRONMENT_PROOF_FILE,JSON.stringify({phase,
+deadlinePresent:Object.hasOwn(process.env,'KAST_EVALUATION_DEADLINE_MS'),
+selectorPresent:Object.hasOwn(process.env,'KAST_TOOL_RPC_COMMAND'),
+ideaHome:process.env.KAST_INSTALL_IDEA_HOME,javaHome:process.env.JAVA_HOME,javaOptions:process.env.JAVA_OPTS,
+path:process.env.PATH,unknownConfiguration:process.env.KAST_UNKNOWN_CONFIGURATION})+'\n');
+if(phase==='catalog')process.stdout.write(fs.readFileSync(process.env.ADAPTER_CATALOG_FIXTURE_FILE));
+else if(phase==='call'){process.stdin.resume();process.stdin.on('end',()=>process.stdout.write(JSON.stringify({type:'complete',document:{status:'complete'}})));}
+else process.exitCode=9;
+`, {mode:0o700});
+  const environment = { KAST_TOOL_RPC_COMMAND:command,KAST_EVALUATION_DEADLINE_MS:String(Date.now()+5000),
+    KAST_INSTALL_IDEA_HOME:'/owned/idea',JAVA_HOME:'/owned/jbr',JAVA_OPTS:'-Duser.home=/owned/home',
+    PATH:`${dirname(process.execPath)}:${process.env.PATH}`,KAST_UNKNOWN_CONFIGURATION:'must-remain-for-strict-admission',
+    ADAPTER_ENVIRONMENT_PROOF_FILE:proof,ADAPTER_CATALOG_FIXTURE_FILE:process.env.KAST_ADAPTER_TEST_CATALOG };
+  const original = {...environment},children=[];
+  const loaded = await load('pi', catalog, undefined, undefined, environment, {cwd:directory,
+    spawn:(command,args,options)=>{const child=spawnChild(command,args,options);children.push(child);return child;}});
+  assert.ifError(loaded.error);
+  await loaded.registered.find(tool=>tool.name==='query_symbols').execute('call',{request:{type:'RUN'}},undefined,undefined,{cwd:directory});
+  const observations=readFileSync(proof,'utf8').trim().split('\n').map(line=>JSON.parse(line));
+  assert.deepEqual(observations.map(value=>value.phase),['catalog','call']);
+  for(const observed of observations) {
+    assert.equal(observed.deadlinePresent,false);assert.equal(observed.selectorPresent,false);
+    assert.equal(observed.ideaHome,environment.KAST_INSTALL_IDEA_HOME);assert.equal(observed.javaHome,environment.JAVA_HOME);
+    assert.equal(observed.javaOptions,environment.JAVA_OPTS);assert.equal(observed.path,environment.PATH);
+    assert.equal(observed.unknownConfiguration,environment.KAST_UNKNOWN_CONFIGURATION);
+  }
+  assert.equal(loaded.calls.length,2);assert.equal(children.length,2);
+  assert.ok(children.every(child=>Number.isSafeInteger(child.pid)&&child.pid>0&&child.exitCode===0));
+  assert.deepEqual(environment,original,'Parent/worker deadline and required environment remain unchanged');
+});
 for (const harness of ['copilot', 'pi']) {
   test(`${harness} keeps its RPC selector outside product configuration`, async () => {
     const environment = { KAST_TOOL_RPC_COMMAND: '/selected/kast-tool-rpc',
