@@ -83,6 +83,13 @@ Queries prepare IDEA automatically. Reuse issued references unchanged. For stale
 or unavailable state, query again. See [query examples](https://kast.michne.com/search/)
 and [evidence boundaries](https://kast.michne.com/concepts/evidence-boundaries/).
 
+Exact classlike AST discovery assumes trusted, semantically unmodified bundled
+parser/platform behavior. An observed startup `-javaagent:` selects the existing
+PSI visitor and reports a distinct fallback counter. Archive qualification is
+compatibility evidence under that precondition; it does not attest arbitrary
+transformed definitions or absence of later attachment. See the
+[runtime qualification](docs/reviews/classlike-ast-runtime-qualification.md).
+
 ## Upgrade and recover
 
 Control owns the command, coordinator, adapters, and sessions. Host owns the IDEA
