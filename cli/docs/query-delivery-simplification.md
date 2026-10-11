@@ -79,7 +79,7 @@ this track does not claim an exhaustive visible answer or expand the original by
 
 Passed `:cli:check verifyJsonContracts verifyArchitecture knowledgeImpact
 verifyKnowledgeBase`, public adapter generation parity and 15 generator tests.
-CLI verification includes 417 JVM tests, 37 required pure Node presentation/session tests,
+CLI verification includes 417 JVM tests, 39 required pure Node presentation/session tests,
 and 116 passing adapter tests with one opt-in installed-harness loader skipped.
 The real JVM-child bridge fixture preserves exact replies and issued authority with
 scripted providers. Cases cover complete/empty/qualified/rejected, multiple pages,
@@ -148,3 +148,13 @@ A thrown retained read can also yield `DELIVERY_UNAVAILABLE` without a canonical
 handle rejection. The text therefore says "detail delivery unavailable" and does
 not infer invalid authority from transport loss. An exact zero-rejection-page
 regression keeps already-received observations inline and forbids semantic retry.
+
+
+Detail request availability is separate from evidence presentation: only canonical
+`execution-rejected` with `result-unavailable`/`result-stale-basis`, or explicit
+qualified `retention_unavailable`, removes the
+retained READ_RESULT request. Transport/decoder loss keeps that exact structured
+request while displaying all received observations inline. A field/cursor rejection
+also leaves the original result authority available. Recovery text refers to an
+action only when a canonical reply supplied it. Explicit expiry, stale basis,
+field rejection and zero-page transient loss have separate assertions.

@@ -306,7 +306,7 @@ test('expired detail authority preserves every already-received observation with
   assert.ok(view.text.includes('"reason":"result-unavailable"'));
   assert.ok(view.text.includes('"next_action":"restart_read"'));
   assert.equal(view.details, undefined, 'A known-dead handle cannot be offered as usable detail authority');
-  assert.ok(view.text.includes('detail delivery unavailable'));
+  assert.ok(view.text.includes('canonical retained detail authority unavailable'));
   assert.equal(view.text.includes('known unavailable'), false);
   assert.equal(JSON.stringify(result.pages[0]), JSON.stringify(expired));
 });
@@ -394,8 +394,46 @@ test('a transient thrown detail read preserves received evidence without asserti
   assert.deepEqual(view.evidence.relation_observations, initial.document.relation_observations);
   assert.equal(view.summary.invocation.accumulated_row_count, 185);
   assert.deepEqual(view.summary.coverage, initial.document.coverage);
-  assert.equal(view.details, undefined);
-  assert.ok(view.text.includes('detail delivery unavailable'));
-  assert.equal(view.text.includes('known unavailable'), false);
+  assert.deepEqual(view.details, { request: { type: 'READ_RESULT', result: initial.document.retention.reference,
+    cursor: 0, evidence_cursor: 0, output: { type: 'OCCURRENCES' } }, verbose: true });
+  assert.ok(view.text.includes('Detail delivery unavailable; authority was not rejected'));
+  assert.equal(view.text.includes('canonical retained detail authority unavailable'), false);
+  assert.equal(view.text.includes('recovery action above'), false);
   assert.equal(view.text.includes('fixture transient transport loss'), false);
+});
+
+
+test('explicit result-stale-basis removes detail authority while a field rejection retains it', () => {
+  const initial = native.cases.retainedEvidence.reply;
+  for (const [reason, authorityRejected] of [['result-stale-basis', true], ['result-field-unavailable', false]]) {
+    const rejection = { type: 'rejected_document', document: { status: 'rejected',
+      rejection: { type: 'execution-rejected', reason } } };
+    const result = createQueryDeliveryEnvelope(initial, [rejection], { stop: 'DELIVERY_UNAVAILABLE', rpc_count: 2,
+      request_bytes: 0, response_bytes: Buffer.byteLength(JSON.stringify(initial)) + Buffer.byteLength(JSON.stringify(rejection)),
+      result: initial.document.retention.reference });
+    const view = projected(result);
+    assert.deepEqual(view.evidence.discovery_observations, initial.document.discovery_observations);
+    assert.deepEqual(view.evidence.relation_observations, initial.document.relation_observations);
+    assert.equal(view.summary.invocation.accumulated_row_count, 185);
+    assert.deepEqual(view.summary.coverage, initial.document.coverage);
+    assert.ok(view.text.includes(reason));
+    assert.equal(view.text.includes('recovery action above'), false, 'No recovery action can be invented');
+    if (authorityRejected) assert.equal(view.details, undefined);
+    else assert.equal(view.details.request.result, initial.document.retention.reference);
+  }
+});
+
+
+test('canonical retention-unavailable removes the detail request while preserving prior received evidence', () => {
+  const initial = native.cases.retainedEvidence.reply;
+  const unavailable = captured.cases.unavailable.result.pages[0];
+  assert.equal(unavailable.document.qualification.progress.type, 'retention_unavailable');
+  const result = createQueryDeliveryEnvelope(initial, [unavailable], { stop: 'DELIVERY_UNAVAILABLE', rpc_count: 2,
+    request_bytes: 0, response_bytes: Buffer.byteLength(JSON.stringify(initial)) + Buffer.byteLength(JSON.stringify(unavailable)),
+    result: initial.document.retention.reference });
+  const view = projected(result);
+  assert.deepEqual(view.evidence.discovery_observations, initial.document.discovery_observations);
+  assert.deepEqual(view.evidence.relation_observations, initial.document.relation_observations);
+  assert.equal(view.details, undefined);
+  assert.ok(view.text.includes('canonical retained detail authority unavailable'));
 });
