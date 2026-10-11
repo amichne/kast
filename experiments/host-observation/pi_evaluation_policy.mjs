@@ -22,10 +22,12 @@ function decodeCanonical(envelope,toolName='query_symbols') {
     if(envelope.type==='qualified' && (envelope.document?.status!=='qualified'||envelope.document.coverage?.exhaustive!==false||!Array.isArray(envelope.document.items)||!integer(envelope.document.qualification?.knownMinimum)||!Array.isArray(envelope.document.qualification?.limitations)||!['resumable','terminal_incomplete','retention_unavailable'].includes(envelope.document.qualification?.progress?.type))) return {type:'invalid'};
     return envelope;
 }
-export function decodeEnvelope(content,toolName='query_symbols') {
+export function decodeEnvelope(content,toolName='query_symbols',canonicalDetails) {
   if(!Array.isArray(content)||content.length!==1||content[0]?.type!=='text') return {type:'invalid'};
   try {
-    const envelope=JSON.parse(content[0].text);
+    // SDK details retain the canonical query independently of its human presentation.
+    // Validate them with the same closed decoder; unavailable details keep legacy text support.
+    const envelope=toolName==='query_symbols'&&canonicalDetails!==undefined?canonicalDetails:JSON.parse(content[0].text);
     if(envelope?.type==='query_delivery')return toolName==='query_symbols'?decodeQueryDelivery(envelope,reply=>decodeCanonical(reply,toolName)):{type:'invalid'};
     return decodeCanonical(envelope,toolName);
   } catch {return {type:'invalid'};}

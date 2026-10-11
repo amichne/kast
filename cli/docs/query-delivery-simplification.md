@@ -87,6 +87,9 @@ oversize replies, bounded cancellation/deadline/pipe cleanup, invalid/stale hand
 duplicate occurrences, detail reads with zero RUNs, and first-terminal preservation.
 
 Machine consumers parsing adapter text as JSON must request `verbose: true`.
+The offline Pi evaluator validates existing canonical SDK details for compact query
+text (including saved-result continuation), with the same closed decoders, while
+counting only actual visible text bytes. Legacy JSON-only records remain supported.
 Raw RPC, public query inputs, wire outcomes and retained authority remain canonical.
 Absent/false session capability keeps one-shot transport; invalid capability types
 reject catalog admission. The generated callable reference includes the finite

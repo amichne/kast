@@ -147,7 +147,7 @@ export async function worker(planFile,index) {
           const receivedSignal=record({type:'received_context',contextSha256:sha(JSON.stringify(context.value)),toolResultSha256:sha(JSON.stringify(received.message)),newUserMessages:0});
           if(failed(receivedSignal))return receivedSignal;
           // Continuation uses its separate declared delivery allowance.
-          const restored=effect('RECEIVED_POLICY',()=>policy.restoreReceivedResult(decodeEnvelope(received.message.content),received.message.content.reduce((sum,block)=>sum+(block.type==='text'?Buffer.byteLength(block.text):0),0)));
+          const restored=effect('RECEIVED_POLICY',()=>policy.restoreReceivedResult(decodeEnvelope(received.message.content,received.message.toolName,received.message.details),received.message.content.reduce((sum,block)=>sum+(block.type==='text'?Buffer.byteLength(block.text):0),0)));
           if(failed(restored))return restored;
           if(!restored.value.allow)return failure('RECEIVED_POLICY','RECEIVED_RESULT_REJECTED');
         }
