@@ -387,7 +387,8 @@ test('a transient thrown detail read preserves received evidence without asserti
   }, { callTimeoutMillis: 1000 }, undefined, () => 0);
   assert.deepEqual(requests.map(request => request.request.type), ['RUN', 'READ_RESULT']);
   assert.equal(result.delivery.stop, 'DELIVERY_UNAVAILABLE');
-  assert.deepEqual(result.pages, []);
+  assert.equal(Array.isArray(result.pages), true);
+  assert.equal(result.pages.length, 0);
   const view = projected(result);
   assert.deepEqual(view.evidence.discovery_observations, initial.document.discovery_observations);
   assert.deepEqual(view.evidence.relation_observations, initial.document.relation_observations);
