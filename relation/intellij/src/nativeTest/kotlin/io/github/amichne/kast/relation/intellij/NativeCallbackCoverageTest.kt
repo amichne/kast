@@ -1,10 +1,12 @@
 package io.github.amichne.kast.relation.intellij
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.IndexingTestUtil
+import io.github.amichne.kast.relation.contract.CallbackForwardingEvidence
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowRead
 import io.github.amichne.kast.relation.contract.CallbackParameterIdentity
@@ -29,8 +31,23 @@ class NativeCallbackCoverageTest : NativeReferenceFixtureTest() {
     fun testFreshCompilerCallbackCoverageSurvivesOptionalCacheMiss() {
         val fixture = callbackFixture("action()")
         val disabled = read(fixture, CallbackSummaryCachePort.Disabled)
-        val missed = read(fixture, MissOnlyCache())
-        assertEquals(disabled.first.flow, missed.first.flow)
+        val cache = MissOnlyCache()
+        val missed = read(fixture, cache)
+        cache.assertConsumed(expectedRetains = 1)
+        val expected = disabled.first.flow
+        val actual = missed.first.flow
+        assertEquals(expected.basis, actual.basis)
+        assertEquals(expected.body, actual.body)
+        assertEquals(expected.binding, actual.binding)
+        assertEquals(expected.invocations, actual.invocations)
+        assertEquals(expected.obligations, actual.obligations)
+        assertEquals(expected.ownerBindings, actual.ownerBindings)
+        assertEquals(expected.scan, actual.scan)
+        val expectedGraph = (expected.forwarding as CallbackForwardingEvidence.ExhaustedGraph).graph
+        val actualGraph = (actual.forwarding as CallbackForwardingEvidence.ExhaustedGraph).graph
+        assertEquals(expectedGraph.root, actualGraph.root)
+        assertEquals(expectedGraph.formals, actualGraph.formals)
+        assertEquals(expectedGraph.forwardings, actualGraph.forwardings)
         assertEquals(emptySet<CallbackInvocationFlowCause>(), missed.first.flow.obligations)
         assertEquals(1, missed.first.flow.invocations.size)
         assertEquals(
@@ -44,7 +61,9 @@ class NativeCallbackCoverageTest : NativeReferenceFixtureTest() {
 
     fun testEscapingFormalIsTheFirstIncompleteCompilerTransition() {
         val fixture = callbackFixture("var stored = action")
-        val (observed, counters) = read(fixture, MissOnlyCache())
+        val cache = MissOnlyCache()
+        val (observed, counters) = read(fixture, cache)
+        cache.assertConsumed(expectedRetains = 0)
         assertTrue(observed.flow.obligations.contains(CallbackInvocationFlowCause.PARAMETER_ESCAPES))
         assertEquals(
             listOf(
@@ -57,15 +76,18 @@ class NativeCallbackCoverageTest : NativeReferenceFixtureTest() {
     }
 
     private fun callbackFixture(wrapperBody: String): NativeReferenceFixture {
-        val fixture = prepareReferenceFixture()
-        WriteCommandAction.runWriteCommandAction(project) {
-            fixture.callerFile.setBinaryContent(
-                "package consumer\nfun wrapper(action: () -> Unit) { $wrapperBody }\nfun caller() { wrapper { proof.target() } }\n"
-                    .toByteArray()
-            )
+        lateinit var fixture: NativeReferenceFixture
+        ApplicationManager.getApplication().invokeAndWait {
+            fixture = prepareReferenceFixture()
+            WriteCommandAction.runWriteCommandAction(project) {
+                fixture.callerFile.setBinaryContent(
+                    "package consumer\nfun wrapper(action: () -> Unit) { $wrapperBody }\nfun caller() { wrapper { proof.target() } }\n"
+                        .toByteArray()
+                )
+            }
+            PsiDocumentManager.getInstance(project).commitAllDocuments()
+            IndexingTestUtil.waitUntilIndexesAreReady(project)
         }
-        PsiDocumentManager.getInstance(project).commitAllDocuments()
-        IndexingTestUtil.waitUntilIndexesAreReady(project)
         return fixture
     }
 
@@ -103,14 +125,29 @@ class NativeCallbackCoverageTest : NativeReferenceFixtureTest() {
 }
 
 private class MissOnlyCache : CallbackSummaryCachePort {
+    private var finds = 0
+    private var retains = 0
+
     override fun find(
         formal: CallbackParameterIdentity,
         readmit: (CallbackParameterSummary) -> CallbackReadmission<CallbackParameterSummary>,
-    ) = CallbackSummaryCacheLookup.Miss
+    ): CallbackSummaryCacheLookup {
+        finds++
+        if (finds > 1) throw AssertionError("Only the selected formal may query optional reuse")
+        return CallbackSummaryCacheLookup.Miss
+    }
 
-    override fun retain(summary: CallbackParameterSummary) = Unit
+    override fun retain(summary: CallbackParameterSummary) {
+        retains++
+        if (retains > 1) throw AssertionError("Only one fresh exhaustive formal may be published")
+    }
 
     override fun admitted(summary: CallbackParameterSummary) = error("Miss-only cache cannot supply admitted facts")
+
+    fun assertConsumed(expectedRetains: Int) {
+        org.junit.Assert.assertEquals("Optional cache lookup count", 1, finds)
+        org.junit.Assert.assertEquals("Optional fresh publication count", expectedRetains, retains)
+    }
 }
 
 private class NativeCoverageObservation : IntellijReadObservation {
