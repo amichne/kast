@@ -69,7 +69,7 @@ export class CasePolicy {
     const inputEstimate=Math.max(this.config.inputTokenCeiling+contextBytes,measuredInputFloor);
     const required=inputEstimate+bound.outputReserve;
     const remaining=bound.reportedTokens-this.phaseUsage[this.phase].totalTokens;
-    const allow=this.requests[this.phase]<bound.requests && required<=remaining && observation.toolsBytes<=this.config.declarationByteCeiling;
+    const allow=this.requests[this.phase]<bound.requests && required<=remaining && observation.toolsBytes+observation.instructionsBytes<=this.config.declarationByteCeiling;
     this.requestObservations.push({...observation,phase:this.phase,inputEstimate,measuredInputFloor,required,remaining,allow});
     if(!allow) return this.stop(Outcome.BUDGET);
     this.requests[this.phase]++;this.providerInFlight=true;this.lastRequestPhase=this.phase;this.lastProviderInputBytes=contextBytes;this.providerEnforcedTokenCap=true;

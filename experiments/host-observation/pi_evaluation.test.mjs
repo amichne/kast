@@ -99,6 +99,7 @@ test('each case keeps independent usage including cached input and newly generat
 
 test('preflight declaration overhead and insufficient final reserve are harness budget limits',()=>{
   const oversized=new CasePolicy(config());assert.equal(oversized.beforeProvider({...pinned,toolsBytes:90000}).reason,'HARNESS_BUDGET_LIMIT');
+  const instructions=new CasePolicy(config());assert.equal(instructions.beforeProvider({...pinned,instructionsBytes:90000}).reason,'HARNESS_BUDGET_LIMIT');
   const small=new CasePolicy({...config(),delivery:{...config().delivery,reportedTokens:18000}});
   small.beforeProvider(pinned);small.modelUsage({input:17139,output:89,totalTokens:17228});small.toolResult(negativeComplete,2141);
   assert.equal(small.beforeProvider(pinned).reason,'HARNESS_BUDGET_LIMIT');

@@ -34,7 +34,7 @@ or GREEN. The Python wrapper includes these checks in the existing Gradle gate.
   effective `high` effort, and records serialized declaration, instruction,
   context and whole-request byte sizes. Admission uses the actual SDK projection.
   Saved message metadata does not enter that projection. Restored `additional_tools`
-  declarations count against the declaration bound and its input calibration.
+  declarations and instructions share the declaration bound and its input calibration.
   They do not also count as context growth. Admission takes the greater of the
   declared calibration plus projected context bytes and the latest measured input
   plus projected growth. It then adds the output reserve. These are estimates;
