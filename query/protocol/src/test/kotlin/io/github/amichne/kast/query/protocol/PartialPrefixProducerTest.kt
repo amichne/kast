@@ -23,6 +23,7 @@ import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.QueryScopeDocument
 import io.github.amichne.kast.protocol.contract.QueryStaticModelDocument
 import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
@@ -114,99 +115,123 @@ class PartialPrefixProducerTest {
     ): PartialPrefixProducerCase {
         val fixture = RelationPagingFixture.live()
         val count = if (evidenceOnly) 3 else 40
-        val selectors =
-            (0 until count).map { index ->
-                SymbolSelector.issue(
-                    fixture.authority,
-                    fixture.selector.scope,
-                    CompilerGroundedSymbolEvidence.fromBoundary(
-                            fixture.selector.file,
-                            index * 10,
-                            index * 10 + 6,
-                            "subject",
-                            "sample.subject",
-                            CompilerSymbolKind.FUNCTION,
-                            CanonicalCompilerSignature.function(
-                                    "sample.subject",
-                                    null,
-                                    List(1000) { "T" },
-                                    emptyList(),
-                                    0,
-                                )
-                                .value(),
-                        )
-                        .value(),
-                )
-            }
-        fun occurrence(selector: SymbolSelector, index: Int): RelationReferenceOccurrence {
-            val request = RelationRequest.start(selector, RelationMeaning.References, fixture.budget)
-            val target =
-                RelationConfirmedReferenceTarget.fromCompiler(
-                        request.subject,
-                        CompilerGroundedSymbolEvidence.fromSelector(selector),
+        val selectors = selectors(fixture, count)
+        val retained = retained(fixture, selectors, evidenceOnly, occurrences)
+        val run =
+            QueryRunRequest.Run(
+                source(exactName, fuzzy),
+                bounded(emptyList()),
+                output(occurrences),
+                QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
+            )
+        return drain(name, fixture, run, retained, count)
+    }
+
+    private fun selectors(fixture: RelationPagingFixture, count: Int): List<SymbolSelector> =
+        (0 until count).map { index ->
+            SymbolSelector.issue(
+                fixture.authority,
+                fixture.selector.scope,
+                CompilerGroundedSymbolEvidence.fromBoundary(
+                        fixture.selector.file,
+                        index * 10,
+                        index * 10 + 6,
+                        "subject",
+                        "sample.subject",
+                        CompilerSymbolKind.FUNCTION,
+                        CanonicalCompilerSignature.function("sample.subject", null, List(1000) { "T" }, emptyList(), 0)
+                            .value(),
                     )
-                    .value()
-            return RelationReferenceOccurrence.confirmed(
-                    request,
-                    target,
-                    RelationOccurrence.fromBoundary(selector.file, index * 2, index * 2 + 1).value(),
-                    RelationReferenceContext.IMPORT,
-                    RelationReferenceOwnership.FileScoped(RelationReferenceContext.IMPORT),
-                    RelationProvenance.K2_AUTHORED_SOURCE,
+                    .value(),
+            )
+        }
+
+    private fun occurrence(
+        fixture: RelationPagingFixture,
+        selector: SymbolSelector,
+        index: Int,
+    ): RelationReferenceOccurrence {
+        val request = RelationRequest.start(selector, RelationMeaning.References, fixture.budget)
+        val target =
+            RelationConfirmedReferenceTarget.fromCompiler(
+                    request.subject,
+                    CompilerGroundedSymbolEvidence.fromSelector(selector),
                 )
                 .value()
-        }
+        return RelationReferenceOccurrence.confirmed(
+                request,
+                target,
+                RelationOccurrence.fromBoundary(selector.file, index * 2, index * 2 + 1).value(),
+                RelationReferenceContext.IMPORT,
+                RelationReferenceOwnership.FileScoped(RelationReferenceContext.IMPORT),
+                RelationProvenance.K2_AUTHORED_SOURCE,
+            )
+            .value()
+    }
+
+    private fun retained(
+        fixture: RelationPagingFixture,
+        selectors: List<SymbolSelector>,
+        evidenceOnly: Boolean,
+        occurrences: Boolean,
+    ): QueryRetainedResult {
         val rows =
             if (occurrences)
-                QueryRows.Occurrences.of(selectors.mapIndexed { i, s -> QueryOccurrence.Reference(occurrence(s, i)) })
+                QueryRows.Occurrences.of(
+                    selectors.mapIndexed { i, s -> QueryOccurrence.Reference(occurrence(fixture, s, i)) }
+                )
             else QueryRows.Symbols.of(selectors.map { QuerySymbol(SymbolDescription.from(it), emptyList()) })
         val result =
             QueryResult(
                 rows,
                 emptyList(),
                 referenceObservations =
-                    if (evidenceOnly) (0 until 40).map { occurrence(selectors.first(), it) } else emptyList(),
+                    if (evidenceOnly) (0 until 40).map { occurrence(fixture, selectors.first(), it) } else emptyList(),
             )
         val execution =
             QueryExecutionResult.Qualified(
                 result,
                 QueryCoverage.Qualified.create(
-                        QueryCount.parse(count).value(),
+                        QueryCount.parse(selectors.size).value(),
                         setOf(QueryLimitation.TIME_LIMIT_REACHED),
                     )
                     .value(),
             )
-        val retained = QueryRetainedResult.capture(fixture.authority, execution).value()
-        val output =
-            if (occurrences) QueryOutputDocument.Occurrences
-            else
-                QueryOutputDocument.Symbols(
-                    bounded(
-                        listOf(
-                            QuerySymbolFieldDocument.NAME,
-                            QuerySymbolFieldDocument.LOCATION,
-                            QuerySymbolFieldDocument.SIGNATURE,
-                        )
+        return QueryRetainedResult.capture(fixture.authority, execution).value()
+    }
+
+    private fun output(occurrences: Boolean): QueryOutputDocument =
+        if (occurrences) QueryOutputDocument.Occurrences
+        else
+            QueryOutputDocument.Symbols(
+                bounded(
+                    listOf(
+                        QuerySymbolFieldDocument.NAME,
+                        QuerySymbolFieldDocument.LOCATION,
+                        QuerySymbolFieldDocument.SIGNATURE,
                     )
                 )
-        val from =
-            if (exactName || fuzzy)
-                QueryFromDocument.Symbols(
-                    QueryMatchDocument.Name(
-                        text("subject"),
-                        if (fuzzy) SymbolDiscoveryMatchDocument.FUZZY else SymbolDiscoveryMatchDocument.EXACT_NAME,
-                    ),
-                    QueryScopeDocument(bounded(listOf(text("main"))), null, null),
-                    bounded(listOf(QueryDeclarationKindDocument.FUNCTION)),
-                )
-            else QueryFromDocument.Location(text("Subject.kt"), ProtocolOffset.parse(0).value())
-        val run =
-            QueryRunRequest.Run(
-                from,
-                bounded(emptyList()),
-                output,
-                QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
             )
+
+    private fun source(exactName: Boolean, fuzzy: Boolean): QueryFromDocument =
+        if (exactName || fuzzy)
+            QueryFromDocument.Symbols(
+                QueryMatchDocument.Name(
+                    text("subject"),
+                    if (fuzzy) SymbolDiscoveryMatchDocument.FUZZY else SymbolDiscoveryMatchDocument.EXACT_NAME,
+                ),
+                QueryScopeDocument(bounded(listOf(text("main"))), null, null),
+                bounded(listOf(QueryDeclarationKindDocument.FUNCTION)),
+            )
+        else QueryFromDocument.Location(text("Subject.kt"), ProtocolOffset.parse(0).value())
+
+    private suspend fun drain(
+        name: String,
+        fixture: RelationPagingFixture,
+        run: QueryRunRequest.Run,
+        retained: QueryRetainedResult,
+        count: Int,
+    ): PartialPrefixProducerCase {
         val state = QueryStateStore(clock = { 0L })
         val issued = state.issueResult(run, retained) as QueryResultIssuance.Issued
         val protocol =
@@ -229,50 +254,67 @@ class PartialPrefixProducerTest {
         val pages = mutableListOf<String>()
         var initial: String? = null
         do {
-            val read =
-                if (occurrences)
-                    QueryRunRequest.ReadResult.occurrences(
-                        issued.reference,
-                        QueryResultCursor.parse(row).value(),
-                        evidenceCursor = QueryEvidenceCursor.parse(evidence).value(),
-                    )
-                else
-                    QueryRunRequest.ReadResult.symbols(
-                        issued.reference,
-                        QueryResultCursor.parse(row).value(),
-                        output as QueryOutputDocument.Symbols,
-                        evidenceCursor = QueryEvidenceCursor.parse(evidence).value(),
-                    )
-            val page = protocol.executePage(read, fixture.authority, budget) as OperationOutcome.Qualified
+            val page =
+                protocol.executePage(readRequest(issued, run.output, row, evidence), fixture.authority, budget)
+                    as OperationOutcome.Qualified
             val payload = page.evidence.payload
-            if (initial == null) {
-                val interpretation = payload.interpretation as QueryResultInterpretationDocument.EvidenceOnly
-                val cause = (completionProof(retained) as Refinement.Rejected).failure.protocolCompletionCause()
-                assertEquals(cause, interpretation.cause)
-                val rejected =
-                    QueryRunRejection.CompletionUnproven(
-                        QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1,
-                        cause,
-                        interpretation.originalCoverage,
-                        QueryInvocationStop.TERMINAL_INCOMPLETE,
-                        QueryCompletionEvidenceDocument.Retained(
-                            issued.reference,
-                            bounded(payload.items.values.take(1)),
-                            payload.question,
-                        ),
-                    )
-                initial =
-                    (CanonicalQueryCliDocuments.project(OperationOutcome.Rejected(rejected))
-                            as ProjectedOperationOutcome.Rejected)
-                        .document
-                        .value
-            }
+            if (initial == null) initial = initialRejection(payload, retained, issued)
             pages += (CanonicalQueryCliDocuments.project(page) as ProjectedOperationOutcome.Qualified).document.value
+            assertTrue(pages.size <= count + 40, "Case-owned retained drainage must remain finite")
             row += payload.items.values.size
             evidence = requireNotNull(payload.evidenceWindow).end.value
         } while (payload.nextCursor != null || evidence < requireNotNull(payload.evidenceWindow).total.value)
         assertEquals(count, row)
         return PartialPrefixProducerCase(name, requireNotNull(initial), pages, count)
+    }
+
+    private fun readRequest(
+        issued: QueryResultIssuance.Issued,
+        output: QueryOutputDocument,
+        row: Int,
+        evidence: Int,
+    ): QueryRunRequest.ReadResult =
+        when (output) {
+            is QueryOutputDocument.Symbols ->
+                QueryRunRequest.ReadResult.symbols(
+                    issued.reference,
+                    QueryResultCursor.parse(row).value(),
+                    output,
+                    evidenceCursor = QueryEvidenceCursor.parse(evidence).value(),
+                )
+            QueryOutputDocument.Occurrences ->
+                QueryRunRequest.ReadResult.occurrences(
+                    issued.reference,
+                    QueryResultCursor.parse(row).value(),
+                    evidenceCursor = QueryEvidenceCursor.parse(evidence).value(),
+                )
+            else -> error("Unsupported fixture output")
+        }
+
+    private fun initialRejection(
+        payload: QueryRunResult,
+        retained: QueryRetainedResult,
+        issued: QueryResultIssuance.Issued,
+    ): String {
+        val interpretation = payload.interpretation as QueryResultInterpretationDocument.EvidenceOnly
+        val cause = (completionProof(retained) as Refinement.Rejected).failure.protocolCompletionCause()
+        assertEquals(cause, interpretation.cause)
+        val rejected =
+            QueryRunRejection.CompletionUnproven(
+                QueryStaticModelDocument.COMPILER_RESOLVED_STATIC_V1,
+                cause,
+                interpretation.originalCoverage,
+                QueryInvocationStop.TERMINAL_INCOMPLETE,
+                QueryCompletionEvidenceDocument.Retained(
+                    issued.reference,
+                    bounded(payload.items.values.take(1)),
+                    payload.question,
+                ),
+            )
+        return (CanonicalQueryCliDocuments.project(OperationOutcome.Rejected(rejected))
+                as ProjectedOperationOutcome.Rejected)
+            .document
+            .value
     }
 
     private fun text(value: String) = ProtocolText.parse(value).value()
