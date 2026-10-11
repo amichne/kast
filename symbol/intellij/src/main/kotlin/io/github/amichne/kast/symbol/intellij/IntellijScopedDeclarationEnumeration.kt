@@ -5,8 +5,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
-import com.intellij.psi.search.FileTypeIndex
-import com.intellij.psi.stubs.StubIndex
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
@@ -18,9 +16,9 @@ import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadSearch
 import io.github.amichne.kast.workspace.intellij.read.call
-import org.jetbrains.kotlin.idea.KotlinFileType
-import org.jetbrains.kotlin.idea.stubindex.KotlinExactPackagesIndex
+import io.github.amichne.kast.workspace.intellij.read.search
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
@@ -74,6 +72,7 @@ internal fun collectScopedKotlinDeclarations(
     callbacks: ScopedDeclarationCallbacks,
     limits: io.github.amichne.kast.kernel.ReadLimits = io.github.amichne.kast.kernel.ReadLimits.Default,
     localOnly: Boolean = false,
+    indexes: IntellijDeclarationIndexes = NativeIntellijDeclarationIndexes(project),
 ): Boolean {
     val fileLimit =
         (io.github.amichne.kast.kernel.WorkUnitLimit.parse(
@@ -94,20 +93,18 @@ internal fun collectScopedKotlinDeclarations(
         if (packageConstraint?.containment == SymbolDiscoveryContainment.DIRECT) {
             // Exact package membership is authoritative index evidence before file capacity; no package PSI in
             // callbacks.
-            callbacks.observation.call(IntellijReadCall.EXACT_PACKAGE_INDEX) {
-                StubIndex.getInstance().processElements(
-                    KotlinExactPackagesIndex.NAME,
-                    packageConstraint.packageName.value,
-                    project,
-                    scope.nativeScope,
-                    KtFile::class.java,
-                ) { file ->
-                    files.accept(file.virtualFile)
+            callbacks.observation.search(IntellijReadSearch.EXACT_PACKAGE_FILES) { search ->
+                indexes.packageFiles(packageConstraint.packageName.value, scope.nativeScope) { file ->
+                    search.callbackEntered()
+                    files.accept(file)
                 }
             }
         } else
-            callbacks.observation.call(IntellijReadCall.SCOPED_FILE_INDEX) {
-                FileTypeIndex.processFiles(KotlinFileType.INSTANCE, files::accept, scope.nativeScope)
+            callbacks.observation.search(IntellijReadSearch.SCOPED_FILES) { search ->
+                indexes.kotlinFiles(scope.nativeScope) { file ->
+                    search.callbackEntered()
+                    files.accept(file)
+                }
             }
     if (!complete && files.stop == ScopedFileCollectionStop.NONE)
         callbacks.qualify(SymbolDiscoveryQualification.PROVIDER_FAILURE)

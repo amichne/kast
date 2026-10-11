@@ -18,6 +18,7 @@ internal fun IntellijNativeDiscoveryQuery.discoverNative(
     scope: CompiledIntellijSearchScope,
     request: SymbolDiscoveryRequest,
     allowance: IntellijDeclarationDiscoveryAllowance = IntellijDeclarationDiscoveryAllowance(request),
+    indexes: IntellijDeclarationIndexes = NativeIntellijDeclarationIndexes(project),
 ): IntellijNativeDiscoveryExecution {
     if (scope.population == IntellijScopePopulation.KNOWN_EMPTY) return discover(scope, request, emptyList())
     val target = request.target
@@ -35,7 +36,16 @@ internal fun IntellijNativeDiscoveryQuery.discoverNative(
             request = request,
             contributor = IntellijReadContributor.EXACT_INDEX,
             process = { observe, qualify, accept ->
-                collectIndexedNamedDeclarations(project, scope, request, observe, qualify, limits) {
+                collectIndexedNamedDeclarations(
+                    project,
+                    scope,
+                    request,
+                    observe,
+                    qualify,
+                    limits,
+                    indexes,
+                    observation,
+                ) {
                     accept(IntellijDiscoveryDeclarationInput.Indexed(it))
                 }
             },
@@ -53,6 +63,7 @@ internal fun IntellijNativeDiscoveryQuery.discoverNative(
                         },
                     ),
                     limits,
+                    indexes = indexes,
                     localOnly = scope.scope.libraryPolicy() == SymbolLibraryPolicy.INCLUDE,
                 )
             },
@@ -65,12 +76,22 @@ internal fun IntellijNativeDiscoveryQuery.discoverNative(
                 request = request,
                 callbacks = ScopedDeclarationCallbacks(observe, qualify, accept, observation),
                 limits = limits,
+                indexes = indexes,
             )
         }
     } else if (target is SymbolDiscoveryTarget.Name && target.kind != SymbolNameDiscoveryKind.FILE) {
         discoverMixedDeclarations(scope, request) { observe, qualify, accept ->
             val complete =
-                collectIndexedNamedDeclarations(project, scope, request, observe, qualify, limits) {
+                collectIndexedNamedDeclarations(
+                    project,
+                    scope,
+                    request,
+                    observe,
+                    qualify,
+                    limits,
+                    indexes,
+                    observation,
+                ) {
                     accept(IntellijDiscoveryDeclarationInput.Indexed(it))
                 }
             complete &&
@@ -87,6 +108,7 @@ internal fun IntellijNativeDiscoveryQuery.discoverNative(
                         },
                     ),
                     limits,
+                    indexes = indexes,
                     localOnly = true,
                 )
         }

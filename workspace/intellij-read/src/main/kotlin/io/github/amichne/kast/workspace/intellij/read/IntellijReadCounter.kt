@@ -36,6 +36,9 @@ enum class IntellijReadCounter {
     LEXICAL_CANDIDATES_DROPPED,
     CANDIDATES_COLLECTED,
     SCOPE_FILTERED,
+    /** Returned discovery scope decisions, including repeated native pre-callback probes. */
+    DISCOVERY_SCOPE_FILES_ADMITTED,
+    DISCOVERY_SCOPE_FILES_EXCLUDED,
     /** Returned scope API decisions; repeated visits count separately, exceptions have no decision. */
     RELATION_SCOPE_ADMISSIONS_READY,
     RELATION_SCOPE_ADMISSIONS_HALTED,
