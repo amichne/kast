@@ -16,6 +16,9 @@ export function evaluationGuard(policy,record) {
     });
     pi.on('before_provider_request',(event,ctx)=>{
       const payload={...event.payload,max_output_tokens:policy.providerOutputCap()};
+      // Pi reconstructs declarations from transcript history. Final answers have
+      // no remaining tool capability; retain history and omit only this field.
+      if(policy.isFinalAnswerDelivery())delete payload.tools;
       const instruction=policy.deliveryInstruction();
       if(instruction&&typeof payload.instructions==='string')payload.instructions+='\n'+instruction;
       const inspected=inspectProviderPayload(payload,policy.maximumProviderPayloadBytes);
