@@ -61,6 +61,8 @@ internal class AutomaticDenseRetentionTest : AutomaticDenseRetentionCase() {
         assertEquals(starts.size, qualified.coverage.knownMinimum.value)
         assertEquals((0 until positions.size).map { it * 20L }, positions)
         assertEquals(QueryCheckpointStorageOutcome.CAPACITY_EXCEEDED, checkpointAdmissions.last().outcome)
+        val last = checkpointAdmissions.last()
+        println("DenseCheckpoint(rows=${starts.size}, required=${last.estimate.required.value}, allowance=${last.allowance.value}, components=${last.estimate})")
         assertTrue(checkpointAdmissions.all { it.allowance.value <= grant.checkpointBytes.value })
         assertTrue(ledger.all { it.total.value <= invocationPolicy.retainedBytes.value })
         assertTrue(ledger.all { it.total.value == it.facts.value + it.issuedState.value + it.request.value })
