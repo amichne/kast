@@ -32,7 +32,7 @@ internal enum class KotlinAstSourceBinding {
 internal object IntellijKotlinAstSourceBinding {
     private const val MAX_CLASS_BYTES = 65_536L
     private const val READ_CHUNK_BYTES = 1024
-    private const val MAX_BOUND_CLASSES = 14
+    private const val MAX_BOUND_CLASSES = 15
 
     private val loaderHashes =
         mapOf(
@@ -48,8 +48,15 @@ internal object IntellijKotlinAstSourceBinding {
     private data class Witness(val owner: Class<*>, val sha256: String)
 
     fun inspect(observe: () -> Boolean, observation: IntellijReadObservation): KotlinAstSourceBinding =
+        inspect(observe, observation, KotlinAstParserVariant.BASE)
+
+    fun inspect(
+        observe: () -> Boolean,
+        observation: IntellijReadObservation,
+        parser: KotlinAstParserVariant,
+    ): KotlinAstSourceBinding =
         try {
-            inspectOrigins(observe, observation)
+            inspectOrigins(observe, observation, parser)
         } catch (_: IOException) {
             KotlinAstSourceBinding.UNSUPPORTED
         } catch (_: URISyntaxException) {
@@ -60,11 +67,26 @@ internal object IntellijKotlinAstSourceBinding {
             KotlinAstSourceBinding.UNSUPPORTED
         }
 
-    private fun inspectOrigins(observe: () -> Boolean, observation: IntellijReadObservation): KotlinAstSourceBinding {
+    private fun inspectOrigins(
+        observe: () -> Boolean,
+        observation: IntellijReadObservation,
+        parser: KotlinAstParserVariant,
+    ): KotlinAstSourceBinding {
         if (!observe()) return KotlinAstSourceBinding.HALTED
         if (ManagementFactory.getRuntimeMXBean().inputArguments.any { it.startsWith("-javaagent:") })
             return KotlinAstSourceBinding.STARTUP_AGENT
         val pending = witnesses().toMutableList()
+        if (parser == KotlinAstParserVariant.IDE_K2) {
+            pending +=
+                Witness(
+                    Class.forName(
+                        IntellijKotlinAstParserBinding.Qualified.IDE_K2_CLASS,
+                        false,
+                        KotlinParserDefinition::class.java.classLoader,
+                    ),
+                    "b63bd58b0258bc6e2c3629587e5e3c61249a3364370cecf315d5d1cd1b829ddb",
+                )
+        }
         val bound = linkedMapOf<Class<*>, Pair<Witness, IntellijClassArchiveOrigin>>()
         var position = 0
         while (position < pending.size) {

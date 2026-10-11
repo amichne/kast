@@ -12,7 +12,7 @@ import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import java.lang.reflect.Modifier
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.kotlin.KtNodeType
 import org.jetbrains.kotlin.KtNodeTypes
 import org.jetbrains.kotlin.idea.KotlinLanguage
@@ -29,6 +29,8 @@ internal enum class ClasslikeAstPsiAdmission {
 /** Immutable factory metadata only: no file, PSI, read epoch or absence result survives a read. */
 internal sealed interface IntellijClasslikeAstBinding {
     data object Unsupported : IntellijClasslikeAstBinding
+
+    data object UnsupportedParser : IntellijClasslikeAstBinding
 
     data object StartupAgent : IntellijClasslikeAstBinding
 
@@ -126,24 +128,33 @@ internal sealed interface IntellijClasslikeAstBinding {
 
     /** One metadata cache per loaded plugin; a cancelled or halted qualification establishes no cache entry. */
     class Owner {
-        private val cached = AtomicReference<IntellijClasslikeAstBinding?>()
+        private val cached = ConcurrentHashMap<KotlinAstParserVariant, IntellijClasslikeAstBinding>()
 
         fun acquire(observe: () -> Boolean, observation: IntellijReadObservation): IntellijClasslikeAstBinding {
             if (!observe()) return Halted
             val definition = LanguageParserDefinitions.INSTANCE.forLanguage(KotlinLanguage.INSTANCE)
-            if (definition !is KotlinParserDefinition || definition.javaClass != KotlinParserDefinition::class.java)
-                return Unsupported
-            cached.get()?.let {
+            return when (val parser = IntellijKotlinAstParserBinding.Qualified.inspect(definition)) {
+                IntellijKotlinAstParserBinding.Unsupported -> UnsupportedParser
+                is IntellijKotlinAstParserBinding.Qualified -> acquire(parser, observe, observation)
+            }
+        }
+
+        private fun acquire(
+            parser: IntellijKotlinAstParserBinding.Qualified,
+            observe: () -> Boolean,
+            observation: IntellijReadObservation,
+        ): IntellijClasslikeAstBinding {
+            cached[parser.variant]?.let {
                 return it
             }
             val result =
-                when (IntellijKotlinAstSourceBinding.inspect(observe, observation)) {
+                when (IntellijKotlinAstSourceBinding.inspect(observe, observation, parser.variant)) {
                     KotlinAstSourceBinding.HALTED -> Halted
                     KotlinAstSourceBinding.UNSUPPORTED -> Unsupported
                     KotlinAstSourceBinding.STARTUP_AGENT -> StartupAgent
-                    KotlinAstSourceBinding.SUPPORTED -> Supported.inspect(definition, observe, observation)
+                    KotlinAstSourceBinding.SUPPORTED -> Supported.inspect(parser.definition, observe, observation)
                 }
-            if (result != Halted) cached.compareAndSet(null, result)
+            if (result != Halted) cached.putIfAbsent(parser.variant, result)
             return result
         }
     }

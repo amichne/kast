@@ -56,6 +56,8 @@ enum class IntellijReadCall {
     PSI_FIND_ELEMENT,
     PSI_REFERENCES,
     DECLARATION_PSI_SCAN,
+    /** Parser identity, cache lookup and source/factory qualification; excludes subsequent source traversal. */
+    DECLARATION_AST_BINDING,
 }
 
 /** RETURNED proves only that control returned; a typed domain rejection is still RETURNED. */

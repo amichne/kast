@@ -24,6 +24,8 @@ enum class IntellijReadCounter {
     DECLARATION_AST_LEGACY_FALLBACKS,
     /** Whole-file legacy fallback for positively observed startup -javaagent; never proof of later-agent absence. */
     DECLARATION_AST_STARTUP_AGENT_FALLBACKS,
+    /** Whole-file legacy fallback because the active parser is not an exact audited variant. */
+    DECLARATION_AST_PARSER_FALLBACKS,
     /** One-time immutable factory qualification work; not source traversal or eligible candidate capacity. */
     DECLARATION_AST_MAPPING_PSI_PROBES,
     DECLARATION_AST_BINDING_BYTES_READ,

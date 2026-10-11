@@ -137,8 +137,10 @@ internal object ClasslikeAstDispatcherFixture {
         }
     }
 
-    fun <T> withUnsupportedParser(action: () -> T): T {
-        val definition = object : KotlinParserDefinition() {}
+    fun <T> withUnsupportedParser(action: () -> T): T =
+        withParserDefinition(object : KotlinParserDefinition() {}, action)
+
+    fun <T> withParserDefinition(definition: KotlinParserDefinition, action: () -> T): T {
         val original = requireNotNull(LanguageParserDefinitions.INSTANCE.forLanguage(KotlinLanguage.INSTANCE))
         LanguageParserDefinitions.INSTANCE.removeExplicitExtension(KotlinLanguage.INSTANCE, original)
         LanguageParserDefinitions.INSTANCE.addExplicitExtension(KotlinLanguage.INSTANCE, definition)
