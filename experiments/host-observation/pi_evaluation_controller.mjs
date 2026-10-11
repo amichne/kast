@@ -88,8 +88,14 @@ export function runOwnedWorker(command,args,{cwd,env,signal,wallMillis,graceMill
     catch {resolve({type:'worker_failed',failure:controllerFailure('CHILD_SPAWN','SPAWN_FAILED'),
       resultDelivery:resultDelivery('PARENT_CHILD_CONSTRUCTION','TERMINAL_RESULT_UNAVAILABLE'),
       ownedChildReaped:false,cancellationRequested:false,stderrBytes:0});return;}
-    let result,firstFailure,receivedFailure=false,closed=false,cancelling=false,stderrBytes=0;
-    const retain=failure=>{if(firstFailure===undefined)firstFailure=failure;};
+    // The first admitted terminal receipt seals authority. Later frames and
+    // effects can add one finite diagnostic but can never replace that proof.
+    let terminal=Object.freeze({type:'awaiting'}),cleanupFailure,closed=false,cancelling=false,stderrBytes=0;
+    const rememberCleanup=failure=>{cleanupFailure??=failure;};
+    const retain=(failure,receipt=resultDelivery('PARENT_CHILD_EXIT','TERMINAL_RESULT_UNAVAILABLE'))=>{
+      if(terminal.type==='awaiting')terminal=Object.freeze({type:'failure',failure,receipt});
+      else rememberCleanup(failure);
+    };
     const ownsChild=()=>Number.isSafeInteger(child.pid)&&child.pid>0;
     const timers=[];
     const kill=signalName=>{
@@ -113,14 +119,23 @@ export function runOwnedWorker(command,args,{cwd,env,signal,wallMillis,graceMill
     };
     child.stderr.on('data',data=>{stderrBytes+=data.length;if(stderrBytes>65536) cancel();});
     child.on('message',message=>{
-      if(message?.type==='worker_failure'){receivedFailure=true;retain(decodeWorkerFailure(message));}
+      if(message?.type==='worker_failure')retain(decodeWorkerFailure(message),resultDelivery('PARENT_IPC_MESSAGE','WORKER_FAILURE_RECEIVED'));
       else if(message?.type==='report') {
-        if(cancelling||Date.now()>=deadlineEpochMillis)cancel();
-        else if(message.report===null||typeof message.report!=='object'||Array.isArray(message.report)||Object.getPrototypeOf(message.report)!==Object.prototype)
+        const rejected=message.report===null||typeof message.report!=='object'||Array.isArray(message.report)
+          ||Object.getPrototypeOf(message.report)!==Object.prototype;
+        if(terminal.type!=='awaiting')rememberCleanup(controllerFailure('IPC_FAILURE',rejected?'REPORT_REJECTED':'TERMINAL_ALREADY_RECEIVED'));
+        else if(cancelling||Date.now()>=deadlineEpochMillis)cancel();
+        else if(rejected)
           retain(controllerFailure('IPC_FAILURE','REPORT_REJECTED'));
-        else if(firstFailure===undefined)result=message.report;
+        else terminal=Object.freeze({type:'report',report:message.report,
+          receipt:resultDelivery('PARENT_IPC_MESSAGE','REPORT_RECEIVED')});
       }
-      else observe(message);
+      // Production emits only terminal frames. The bounded ready observation
+      // supports the existing owned-child lifecycle observer without admitting
+      // arbitrary messages or payloads as control evidence.
+      else if(message?.type==='ready'&&(exactFields(message,['type'])
+          ||(exactFields(message,['type','pid'])&&Number.isSafeInteger(message.pid)&&message.pid>0)))observe(message);
+      else retain(controllerFailure('IPC_FAILURE','MESSAGE_REJECTED'));
     });
     child.once('error',()=>{retain(controllerFailure(ownsChild()?'CHILD_RUNTIME':'CHILD_SPAWN',ownsChild()?'PROCESS_FAILED':'SPAWN_FAILED'));});
     const cleanup=()=>{for(const timer of timers)clearTimeout(timer);signal?.removeEventListener('abort',cancel);};
@@ -128,16 +143,14 @@ export function runOwnedWorker(command,args,{cwd,env,signal,wallMillis,graceMill
       closed=true;cleanup();kill('SIGKILL');
       const ipcReason=Object.entries(WorkerIpcExitCodes).find(([,exitCode])=>exitCode===code)?.[0];
       const ipcCleanupFailure=ipcReason?Object.freeze({stage:'WORKER_IPC',operation:'RESULT_SEND',reason:ipcReason}):undefined;
-      if(ipcCleanupFailure&&result===undefined)retain(ipcCleanupFailure);
-      if(firstFailure===undefined&&result===undefined&&!cancelling)
+      if(ipcCleanupFailure)retain(ipcCleanupFailure,resultDelivery('PARENT_CHILD_EXIT','IPC_SEND_FAILED'));
+      if(terminal.type==='awaiting'&&!cancelling)
         retain(controllerFailure('RESULT_DELIVERY','REPORT_UNAVAILABLE'));
-      const delivery=receivedFailure?resultDelivery('PARENT_IPC_MESSAGE','WORKER_FAILURE_RECEIVED'):
-        result!==undefined?resultDelivery('PARENT_IPC_MESSAGE','REPORT_RECEIVED'):
-        ipcReason?resultDelivery('PARENT_CHILD_EXIT','IPC_SEND_FAILED'):
-        resultDelivery('PARENT_CHILD_EXIT','TERMINAL_RESULT_UNAVAILABLE');
-      resolve({type:firstFailure?'worker_failed':result!==undefined?'report':cancelling?'cancelled':'worker_failed',
-        report:firstFailure?undefined:result,...(firstFailure?{failure:firstFailure}:{}),
-        ...(ipcCleanupFailure?{ipcCleanupFailure}:{}),resultDelivery:delivery,exitCode:code,signal:childSignal,
+      const delivery=terminal.type==='awaiting'?resultDelivery('PARENT_CHILD_EXIT','TERMINAL_RESULT_UNAVAILABLE'):terminal.receipt;
+      resolve({type:terminal.type==='failure'?'worker_failed':terminal.type==='report'?'report':'cancelled',
+        report:terminal.type==='report'?terminal.report:undefined,...(terminal.type==='failure'?{failure:terminal.failure}:{}),
+        ...(cleanupFailure?{cleanupFailure}:{}),...(ipcCleanupFailure?{ipcCleanupFailure}:{}),
+        resultDelivery:delivery,exitCode:code,signal:childSignal,
         ownedChildReaped:ownsChild(),cancellationRequested:cancelling,stderrBytes});
     });
     timers.push(setTimeout(cancel,Math.min(wallMillis,Math.max(0,deadlineEpochMillis-Date.now()))));

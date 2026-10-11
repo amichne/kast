@@ -328,17 +328,22 @@ An independent one-second send allowance is not used. After settlement the
 worker disconnects and exits naturally, without truncation or retry. A closed
 channel, send failure or deadline expiry is finite data.
 
-The controller preserves a complete report received before cancellation and
-deadline expiry, even when later publication cleanup fails. `ipcCleanupFailure`
-records the finite secondary failure; it cannot erase an authoritative received
-report or the original worker failure. A missing terminal message remains subject
-to finite overall cancellation and owned-child reaping. Report/worker-failure
+The controller seals the first accepted terminal report or failure in an immutable
+receipt. A complete report received before cancellation and deadline expiry
+cannot be replaced by a later report, malformed frame, worker failure or cleanup
+error. A failure established before that report remains primary. `cleanupFailure`
+retains one finite secondary diagnostic; `ipcCleanupFailure` separately records
+a reserved IPC exit failure. Neither can change the sealed outcome or its receipt
+authority. A missing terminal message remains subject to finite overall
+cancellation and owned-child reaping. Report/worker-failure
 receipt and child exit are separate observations. Neither claims an unseen child
 callback. A nonzero child exit still gives the CLI a failure status; the private
 aggregate retains the received report and cleanup observation.
 
 Real owned-child tests include a delayed1,200ms callback within the overall5s
 bound, charged startup, never-completing publication and sticky semantic failure.
+Deterministic ordering cases cover cancellation-send, observer and process-kill
+errors, duplicate and conflicting reports, and malformed or failed later frames.
 They preserve exact300k/1MB reports and a policy-accepted
 synthetic rejection summary whose limitations fit the300,000-byte tool allowance.
 The latter establishes accepted-shape transport reliability; it does not prove

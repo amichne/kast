@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { createRequire, syncBuiltinESMExports } from 'node:module';
 import { runOwnedWorker, WorkerDeadlineEnvironmentKey } from './pi_evaluation_controller.mjs';
 import { CasePolicy, decodeEnvelope, Outcome } from './pi_evaluation_policy.mjs';
 
@@ -224,14 +225,17 @@ test('parent deadline overrides child environment and already elapsed setup is c
   assert.equal(result.report,undefined);assert.deepEqual(result.resultDelivery,{stage:'PARENT_CHILD_EXIT',outcome:'TERMINAL_RESULT_UNAVAILABLE'});
 });
 
-test('never-callback child remains bounded and post-cancellation report cannot manufacture earlier receipt',async()=>{
+test('never-callback child remains bounded and post-cancellation report cannot manufacture earlier receipt',async t=>{
+  t.mock.timers.enable({apis:['Date','setTimeout'],now:Date.now()});let controls=0;
   const script=`const {publishWorkerResult}=await import(process.argv[1]);const originalSend=process.send.bind(process);
 process.on('SIGTERM',()=>{});setInterval(()=>{},1000);
-process.on('message',message=>{if(message.type==='cancel')originalSend({type:'report',report:{outcome:'TOO_LATE'}});});
-process.send=()=>false;await publishWorkerResult({type:'report',report:{outcome:'NOT_SENT'}});`;
+process.on('message',message=>{if(message.type==='cancel')originalSend({type:'report',report:{outcome:'TOO_LATE'}},()=>originalSend({type:'ready'}));});
+process.send=()=>false;originalSend({type:'ready'});await publishWorkerResult({type:'report',report:{outcome:'NOT_SENT'}});`;
   const result=await runOwnedWorker(process.execPath,['--input-type=module','-e',script,
-    new URL('./pi_evaluation_worker.mjs',import.meta.url).href],{...options,wallMillis:150,graceMillis:100,terminateMillis:0});
-  assert.equal(result.type,'cancelled');assert.equal(result.report,undefined);assert.equal(result.ownedChildReaped,true);
+    new URL('./pi_evaluation_worker.mjs',import.meta.url).href],{...options,wallMillis:1000,graceMillis:100,terminateMillis:0,onEvent:event=>{
+      if(event.type==='ready'){if(++controls===1)t.mock.timers.tick(1000);else{t.mock.timers.tick(100);t.mock.timers.tick(1);}}
+    }});
+  assert.equal(controls,2);assert.equal(result.type,'cancelled');assert.equal(result.report,undefined);assert.equal(result.ownedChildReaped,true);
   assert.equal(result.cancellationRequested,true);assert.equal(result.signal,'SIGKILL');
   assert.deepEqual(result.resultDelivery,{stage:'PARENT_CHILD_EXIT',outcome:'TERMINAL_RESULT_UNAVAILABLE'});
 });
@@ -241,4 +245,95 @@ test('a child exiting without a terminal receipt leaves finite delivery evidence
   assert.equal(result.type,'worker_failed');assert.equal(result.exitCode,0);assert.equal(result.ownedChildReaped,true);
   assert.deepEqual(result.failure,controllerFailure('RESULT_DELIVERY','REPORT_UNAVAILABLE'));
   assert.deepEqual(result.resultDelivery,{stage:'PARENT_CHILD_EXIT',outcome:'TERMINAL_RESULT_UNAVAILABLE'});
+});
+
+test('first terminal IPC authority survives duplicate conflicting malformed and unknown later frames',async()=>{
+  const first={case:'first-authority',outcome:'INTENTIONAL_REJECTION'},semantic={stage:'WORKER_SETUP',operation:'INSTALLATION_PIN',reason:'PIN_MISMATCH'};
+  for(const [later,cleanup] of [
+    [{type:'report',report:{case:'second-authority'}},controllerFailure('IPC_FAILURE','TERMINAL_ALREADY_RECEIVED')],
+    [{type:'report',report:null},controllerFailure('IPC_FAILURE','REPORT_REJECTED')],
+    [{type:'worker_failure',failure:semantic},semantic],
+    [{type:'worker_failure',failure:{...semantic,error:'PRIVATE-ERROR'}},controllerFailure('IPC_FAILURE','FAILURE_REJECTED')],
+    [{type:'unknown',error:'PRIVATE-ERROR'},controllerFailure('IPC_FAILURE','MESSAGE_REJECTED')],
+  ]) {
+    const result=await child([{type:'report',report:first},later,{type:'report',report:{case:'third-authority'}}]);
+    assert.equal(result.type,'report');assert.deepEqual(result.report,first);assert.equal(result.failure,undefined);
+    assert.deepEqual(result.cleanupFailure,cleanup);assert.equal(result.ownedChildReaped,true);
+    assert.deepEqual(result.resultDelivery,{stage:'PARENT_IPC_MESSAGE',outcome:'REPORT_RECEIVED'});
+    assert.equal(JSON.stringify(result).includes('PRIVATE-'),false);
+  }
+  const rejected=await child([{type:'unknown',payload:'PRIVATE-ERROR'},{type:'report',report:first}]);
+  assert.equal(rejected.type,'worker_failed');assert.equal(rejected.report,undefined);
+  assert.deepEqual(rejected.failure,controllerFailure('IPC_FAILURE','MESSAGE_REJECTED'));
+  assert.deepEqual(rejected.cleanupFailure,controllerFailure('IPC_FAILURE','TERMINAL_ALREADY_RECEIVED'));
+  assert.equal(JSON.stringify(rejected).includes('PRIVATE-'),false);
+});
+
+test('timely real child terminal receipt survives timed cancel send kill runtime and observer cleanup permutations',async t=>{
+  const semantic={stage:'WORKER_SETUP',operation:'INSTALLATION_PIN',reason:'PIN_MISMATCH'};
+  const script=`const {publishWorkerResult}=await import(process.argv[1]);const mode=process.argv[2],first=JSON.parse(process.argv[3]);
+const send=process.send.bind(process),hold=setInterval(()=>{},1000);process.on('SIGTERM',()=>{});
+process.on('message',message=>{if(message.type==='cancel'&&mode!=='kill'){clearInterval(hold);process.disconnect();}});
+process.send=(message,_callback)=>{send(message,()=>send({type:'ready',pid:process.pid}));return false;};
+await publishWorkerResult(first);`;
+  for(const first of [{type:'report',report:{case:'terminal-authority',payload:'R'.repeat(300000),outcome:'INTENTIONAL_REJECTION'}},
+    {type:'failure',failure:semantic}]) {
+    for(const [mode,expectedCleanup] of [
+      ['cancel-send',controllerFailure('CHILD_CANCEL','SEND_FAILED')],
+      ['kill',controllerFailure('CHILD_SIGTERM','KILL_FAILED')],
+      ['runtime',controllerFailure('CHILD_RUNTIME','PROCESS_FAILED')],
+      ['observer',controllerFailure('CONTROLLER_OBSERVER','OBSERVER_FAILED')],
+    ]) {
+      const processes=createRequire(import.meta.url)('node:child_process'),spawn=processes.spawn,kill=process.kill,signals=[];let ownedPid,result;
+      t.mock.timers.enable({apis:['Date','setTimeout'],now:Date.now()});
+      try {
+        processes.spawn=(...args)=>{
+          const owned=spawn(...args),send=owned.send;
+          owned.send=function(message,callback){
+          if(message.type!=='cancel')return send.call(this,message,callback);
+          if(mode==='runtime')this.emit('error',Error('PRIVATE-RUNTIME'));
+          if(mode==='cancel-send')this.once('disconnect',()=>callback(Error('PRIVATE-CANCEL')));
+          return send.call(this,message,error=>{
+            if(mode!=='cancel-send')callback(error);
+            if(mode==='kill'){t.mock.timers.tick(100);t.mock.timers.tick(1);}
+          });
+          };return owned;
+        };syncBuiltinESMExports();
+        process.kill=(pid,signal)=>{
+          signals.push([pid,signal]);
+          if(mode==='kill'&&signal==='SIGTERM')throw Object.assign(Error('PRIVATE-KILL'),{code:'EPERM'});
+          return kill(pid,signal);
+        };
+        result=await runOwnedWorker(process.execPath,['--input-type=module','-e',script,
+          new URL('./pi_evaluation_worker.mjs',import.meta.url).href,mode,JSON.stringify(first)],
+        {...options,wallMillis:1000,graceMillis:100,terminateMillis:0,onEvent:event=>{
+          if(event.type==='ready'){ownedPid=event.pid;t.mock.timers.tick(1000);}
+          if(event.type==='controller_cancel'&&mode==='observer')throw Error('PRIVATE-OBSERVER');
+        }});
+      } finally {processes.spawn=spawn;syncBuiltinESMExports();process.kill=kill;t.mock.timers.reset();}
+      assert.equal(result.type,first.type==='report'?'report':'worker_failed');
+      assert.deepEqual(result.report,first.report);assert.deepEqual(result.failure,first.failure);
+      assert.deepEqual(result.cleanupFailure,expectedCleanup);assert.equal(result.cancellationRequested,true);
+      assert.equal(result.ownedChildReaped,true);assert.ok(signals.every(([pid])=>pid===-ownedPid));
+      assert.deepEqual(result.resultDelivery,{stage:'PARENT_IPC_MESSAGE',outcome:first.type==='report'?'REPORT_RECEIVED':'WORKER_FAILURE_RECEIVED'});
+      assert.equal(JSON.stringify(result).includes('PRIVATE-'),false);
+    }
+  }
+});
+
+test('sealed report observes malformed and conflicting late frames after cancellation without replacement',async t=>{
+  t.mock.timers.enable({apis:['Date','setTimeout'],now:Date.now()});
+  const script=`const {publishWorkerResult}=await import(process.argv[1]);const send=process.send.bind(process),hold=setInterval(()=>{},1000);
+process.on('message',message=>{if(message.type==='cancel')send({type:'report',report:null},()=>
+send({type:'report',report:{case:'late-conflict'}},()=>{clearInterval(hold);process.disconnect();}));});
+process.send=(message,_callback)=>{send(message,()=>send({type:'ready'}));return false;};
+await publishWorkerResult({type:'report',report:{case:'first-authority',outcome:'INTENTIONAL_REJECTION'}});`;
+  const result=await runOwnedWorker(process.execPath,['--input-type=module','-e',script,
+    new URL('./pi_evaluation_worker.mjs',import.meta.url).href],{...options,wallMillis:1000,graceMillis:100,onEvent:event=>{
+      if(event.type==='ready')t.mock.timers.tick(1000);
+    }});
+  assert.equal(result.type,'report');assert.deepEqual(result.report,{case:'first-authority',outcome:'INTENTIONAL_REJECTION'});
+  assert.deepEqual(result.cleanupFailure,controllerFailure('IPC_FAILURE','REPORT_REJECTED'));
+  assert.equal(result.cancellationRequested,true);assert.equal(result.ownedChildReaped,true);
+  assert.deepEqual(result.resultDelivery,{stage:'PARENT_IPC_MESSAGE',outcome:'REPORT_RECEIVED'});
 });
