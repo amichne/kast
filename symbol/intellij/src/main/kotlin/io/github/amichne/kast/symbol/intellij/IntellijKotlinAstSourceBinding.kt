@@ -7,6 +7,7 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import java.io.IOException
 import java.io.InputStream
 import java.net.URISyntaxException
+import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.HexFormat
 import java.util.jar.JarFile
@@ -80,14 +81,26 @@ internal object IntellijKotlinAstSourceBinding {
         observation: IntellijReadObservation,
     ): KotlinAstSourceBinding {
         for ((origin, group) in bound.values.groupBy { it.second.archive }) {
-            if (!observe()) return KotlinAstSourceBinding.HALTED
             val result =
-                JarFile(origin.toFile()).use { jar ->
+                inspectArchive(origin, observe) { jar ->
                     inspectGroup(jar, group.map { it.first }, observe, observation)
                 }
             if (result != KotlinAstSourceBinding.SUPPORTED) return result
         }
         return KotlinAstSourceBinding.SUPPORTED
+    }
+
+    internal fun inspectArchive(
+        origin: Path,
+        observe: () -> Boolean,
+        inspect: (JarFile) -> KotlinAstSourceBinding,
+    ): KotlinAstSourceBinding {
+        if (!observe()) return KotlinAstSourceBinding.HALTED
+        return JarFile(origin.toFile()).use { jar ->
+            // Base-entry hashes do not attest runtime-versioned definitions. None of the audited
+            // SDK/Host witness archives is multi-release; other layouts retain the legacy visitor.
+            if (jar.isMultiRelease) KotlinAstSourceBinding.UNSUPPORTED else inspect(jar)
+        }
     }
 
     private fun inspectGroup(
