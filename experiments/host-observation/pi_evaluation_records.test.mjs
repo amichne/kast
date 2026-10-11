@@ -49,7 +49,9 @@ test('guard allowlist preserves finite admissions and rejects arbitrary names, I
     instructionsBytes:Buffer.byteLength(secret),inputBytes:p.inputBytes,contextBytes:p.contextBytes,
     declarationInputBytes:0,inputItems:1,topLevelTools:0,restoredDeclarations:0,outputTokenCap:2000,
     decision:allowedDecision});
-  const types=['session_settings','model_tool_proposal','native_reply','model_response','received_context',secret];
+  assert.deepEqual(summarizeGuard({type:'provider_response_bytes',bytes:65537,decision:{allow:false,reason:'HARNESS_BUDGET_LIMIT',phase:'STOPPED'},content:secret}),{stage:'PROVIDER_RESPONSE_BYTES',bytes:65537,decision:{allow:false,reason:'HARNESS_BUDGET_LIMIT',phase:'STOPPED'}});
+  assert.deepEqual(summarizeGuard({type:'provider_response_bytes',bytes:64,decision:{allow:true,reason:'RESPONSE_WITHIN_BYTES',phase:'WORK'},content:secret}),{stage:'PROVIDER_RESPONSE_BYTES',bytes:64,decision:{allow:true,reason:'RESPONSE_WITHIN_BYTES',phase:'WORK'}});
+  const types=['session_settings','model_tool_proposal','native_reply','model_response','provider_response_bytes','received_context',secret];
   for(const type of types) {
     const value=summarizeGuard({type,provider:secret,model:secret,thinking:secret,toolNames:[secret],
       callId:secret,sessionId:secret,toolName:secret,requestType:secret,content:secret,envelopeType:secret,

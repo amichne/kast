@@ -58,7 +58,11 @@ export function preflightProviderRequests(options) {
   const requests=[];
   for(const request of manifest.requests) {
     const item=cases.get(request.case),grant=request.phase==='WORK'?item.work:item.delivery;
-    const policy=new CasePolicy({...item,work:{...grant,tools:item.work.tools}});
+    const modeRequestLimit=item.mode==='received-result'?1:3;
+    const policy=new CasePolicy({...item,work:{...grant,tools:item.work.tools},
+      maximumReportedTokens:item.maximumReportedTokens??(item.work.reportedTokens+item.delivery.reportedTokens),
+      maximumProviderRequests:Math.min(item.maximumProviderRequests??modeRequestLimit,modeRequestLimit),
+      wallSeconds:Math.min(item.wallSeconds,item.mode==='received-result'?60:120)});
     const calibration=loadInputCalibrations(item.inputCalibrations,policy);
     if(calibration.type==='failure') return {...calibration,mode,qualification,source:'CALIBRATION'};
     const body=readJson(privateReference(request.body.path,request.body.sha256),'BODY');
@@ -66,13 +70,23 @@ export function preflightProviderRequests(options) {
     const outputTokenCap=policy.providerOutputCap();
     const payload=inspectProviderPayload(body.value,policy.maximumProviderPayloadBytes);
     const admission=policy.beforeProvider({provider:'openai-codex',model:'gpt-6.1-sol',thinking:'high',payload});
-    const observation=policy.report().requestObservations[0];
+    const report=policy.report(),observation=report.requestObservations[0];
     requests.push({case:item.name,phase:request.phase,sourceSha256:body.sourceSha256,
       payloadSha256:payload.payloadSha256??null,method:observation?.boundMethod??'NO_VERIFIED_INPUT_BOUND',
       boundQualification:observation?.boundQualification??'NO_VERIFIED_INPUT_BOUND',
+      calibrationMethod:observation?.calibrationMethod??null,
+      calibrationQualification:observation?.calibrationQualification??null,
       calibrationSourceSha256:observation?.calibrationSourceSha256??null,
-      calibratedInputCeiling:observation?.inputEstimate??null,
+      inputEstimate:observation?.inputEstimate??null,
+      inputEstimateMethod:observation?.inputEstimateMethod??null,
+      inputEstimateQualification:observation?.inputEstimateQualification??null,
+      calibratedInputCeiling:observation?.calibratedInputCeiling??null,
       allowance:grant.reportedTokens,requestCeiling:grant.requests,outputReserve:grant.outputReserve,outputTokenCap,
+      outputCapRequested:outputTokenCap,outputCapApplied:report.outputCapApplied,
+      backendOutputCapQualification:'UNQUALIFIED',
+      maximumReportedTokens:report.bounds.maximumReportedTokens,
+      maximumProviderRequests:policy.maximumProviderRequests,
+      maximumProviderResponseBytes:policy.maximumProviderResponseBytes,wallSeconds:policy.config.wallSeconds,
       required:observation?.required??null,inputTokenCeiling:item.inputTokenCeiling,
       maximumProviderPayloadBytes:policy.maximumProviderPayloadBytes,declarationByteCeiling:item.declarationByteCeiling,
       payloadBytes:payload.payloadBytes??null,allow:admission.allow,reason:admission.reason});

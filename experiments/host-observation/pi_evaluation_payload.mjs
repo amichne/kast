@@ -48,8 +48,8 @@ export function inspectProviderPayload(payload,maximumPayloadBytes) {
   return result;
 }
 
-// Public Responses model maximum is conservative denial evidence here. It is not
-// an attestation of the Codex OAuth route, nor a usable 20k calibration.
+// Public Responses model maximum bounds optional empirical receipt values.
+// It is not an attestation of the Codex OAuth route or an admission oracle.
 export const MODEL_CONTEXT_WINDOW = Object.freeze({model:'gpt-6.1-sol',inputTokens:1050000,source:'https://developers.openai.com/api/docs/models/gpt-6.1-sol'});
 const calibrations = new WeakSet();
 export const isVerifiedInputCalibration = value => calibrations.has(value);

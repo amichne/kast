@@ -15,7 +15,7 @@ const digest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value
 const phases = ['WORK','DELIVERY','STOPPED'];
 const reasons = [...Object.values(Outcome),'ADMITTED','SAVED_RESULT_DELIVERY','ZERO_USAGE','ACCOUNTED',
   'READ_TOOL_REPLY','DECLARED_ALREADY_DELIVERED_PROOF','DECLARED_EVIDENCE_ONLY_DELIVERY',
-  'QUALIFIED_RESULT_RECEIVED','RESULT_RECEIVED','TOOL_PROPOSAL_PENDING'];
+  'QUALIFIED_RESULT_RECEIVED','RESULT_RECEIVED','TOOL_PROPOSAL_PENDING','RESPONSE_WITHIN_BYTES'];
 const deliveryStops = ['DELIVERED','CANCELLED','TIME_LIMIT','PAGE_LIMIT','BYTE_LIMIT','DELIVERY_UNAVAILABLE',
   'BUDGET_INCREASE_REQUIRED','MALFORMED_PAGE','IDENTITY_MISMATCH','NON_ADVANCING'];
 const stopReasons = ['stop','length','toolUse','error','aborted'];
@@ -60,6 +60,7 @@ export function summarizeGuard(value) {
         hostIsError:bool(value.hostIsError),deliveryStop:value.deliveryStop == null ? null
           : choice(value.deliveryStop,deliveryStops),physicalRpcsReported:count(value.physicalRpcsReported),
         textBytes:count(value.textBytes),decision:decision(value.decision)};
+      case 'provider_response_bytes': return {stage:'PROVIDER_RESPONSE_BYTES',bytes:count(value.bytes),decision:decision(value.decision)};
       case 'model_response': return {stage:'MODEL_RESPONSE',usage:usage(value.usage),
         stopReason:choice(value.stopReason,stopReasons),accounting:decision(value.accounting),
         decision:decision(value.decision)};

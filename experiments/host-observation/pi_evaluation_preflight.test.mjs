@@ -60,9 +60,17 @@ test('private pinned fresh and restored complete bodies admit independently with
     [['fresh','WORK',1000,300,100,'ADMITTED'],['saved','DELIVERY',2000,300,100,'ADMITTED']]);
   for(let i=0;i<result.requests.length;i++) {
     const row=result.requests[i];assert.equal(row.sourceSha256,f.manifest.requests[i].body.sha256);
-    assert.match(row.payloadSha256,/^[a-f0-9]{64}$/);assert.equal(row.method,'EXACT_PROJECTED_REQUEST_FINALIZED_USAGE');
-    assert.equal(row.boundQualification,'CALIBRATION_NOT_TOKENIZER_PROOF');
+    assert.match(row.payloadSha256,/^[a-f0-9]{64}$/);assert.equal(row.method,'EXACT_SERIALIZED_REQUEST_BYTES_AND_FINITE_CALLS');
+    assert.equal(row.boundQualification,'POST_RESPONSE_TOKEN_THRESHOLD_ONE_RESPONSE_MAY_OVERSHOOT');
+    assert.equal(row.calibrationMethod,'EXACT_PROJECTED_REQUEST_FINALIZED_USAGE');
+    assert.equal(row.calibrationQualification,'CALIBRATION_NOT_TOKENIZER_PROOF');
     assert.equal(row.calibratedInputCeiling,200);assert.equal(row.inputTokenCeiling,300);
+    assert.equal(row.inputEstimate,200);assert.equal(row.inputEstimateMethod,'VERIFIED_FULL_PAYLOAD_EMPIRICAL_CALIBRATION');
+    assert.equal(row.inputEstimateQualification,'CALIBRATION_NOT_TOKENIZER_PROOF');
+    assert.equal(row.maximumProviderPayloadBytes,262144);assert.equal(row.maximumProviderResponseBytes,65536);
+    assert.equal(row.maximumProviderRequests,i===0?3:1);assert.equal(row.maximumReportedTokens,3000);
+    assert.equal(row.wallSeconds,10);assert.equal(row.outputCapRequested,100);
+    assert.equal(row.outputCapApplied,true);assert.equal(row.backendOutputCapQualification,'UNQUALIFIED');
     assert.deepEqual(fs.readFileSync(f.manifest.requests[i].body.path),before[i]);
   }
   const encoded=JSON.stringify(result);assert.equal(encoded.includes('PRIVATE-'),false);
@@ -75,15 +83,21 @@ for(const [name,change] of [
   ['top-level declaration',request=>request.tools[0].description+=' changed'],
   ['restored declaration',request=>request.input[1].tools[0].description+=' changed'],
   ['received result',request=>request.input.at(-1).output+=' changed'],
-]) test(`changed ${name} cannot reuse full-body calibration even with a newly pinned body`,t=>{
+]) test(`changed ${name} admits within byte and request limits without reusing an empirical estimate`,t=>{
   const f=fixture(t,state=>{
     const request=structuredClone(state.restored);change(request);
     state.manifest.requests[1].body=state.write('changed-body',request,'FULL_PROVIDER_PAYLOAD');
   });
   const result=preflightProviderRequests(f.options);
-  assert.equal(result.type,'completed');assert.equal(result.allow,false);
-  assert.equal(result.requests[1].reason,'HARNESS_INPUT_BOUND_UNAVAILABLE');
-  assert.equal(result.requests[1].method,'NO_VERIFIED_INPUT_BOUND');
+  assert.equal(result.type,'completed');assert.equal(result.allow,true);
+  assert.equal(result.requests[1].reason,'ADMITTED');
+  assert.equal(result.requests[1].calibratedInputCeiling,null);
+  const estimateBytes=fs.readFileSync(f.manifest.requests[1].body.path).length;
+  assert.equal(result.requests[1].inputEstimate,estimateBytes);
+  assert.equal(result.requests[1].inputEstimateMethod,'FULL_SERIALIZED_UTF8_BYTES_ONE_TOKEN_PER_BYTE_ESTIMATE');
+  assert.equal(result.requests[1].inputEstimateQualification,'CONSERVATIVE_ESTIMATE_UNCERTAIN_NOT_TOKENIZER_OR_SPEND_PROOF');
+  assert.equal(result.requests[1].required,estimateBytes+100);
+  assert.equal(result.requests[1].calibrationSourceSha256,null);
 });
 
 test('unknown full payload fields and input variants deny rather than being trimmed',t=>{
@@ -97,9 +111,18 @@ test('unknown full payload fields and input variants deny rather than being trim
   }
 });
 
-test('absent real calibration remains unproven and output cap mismatch is denied unchanged',t=>{
+test('absent calibration admits a bounded request and output cap mismatch remains denied unchanged',t=>{
   const uncalibrated=fixture(t,state=>{delete state.plan.cases[0].inputCalibrations;});
-  assert.equal(preflightProviderRequests(uncalibrated.options).requests[0].reason,'HARNESS_INPUT_BOUND_UNAVAILABLE');
+  const uncalibratedResult=preflightProviderRequests(uncalibrated.options);
+  assert.equal(uncalibratedResult.allow,true);assert.equal(uncalibratedResult.requests[0].reason,'ADMITTED');
+  assert.equal(uncalibratedResult.requests[0].calibratedInputCeiling,null);
+  const estimateBytes=fs.readFileSync(uncalibrated.manifest.requests[0].body.path).length;
+  assert.equal(uncalibratedResult.requests[0].inputEstimate,estimateBytes);
+  assert.equal(uncalibratedResult.requests[0].inputEstimateMethod,'FULL_SERIALIZED_UTF8_BYTES_ONE_TOKEN_PER_BYTE_ESTIMATE');
+  assert.equal(uncalibratedResult.requests[0].inputEstimateQualification,'CONSERVATIVE_ESTIMATE_UNCERTAIN_NOT_TOKENIZER_OR_SPEND_PROOF');
+  assert.equal(uncalibratedResult.requests[0].required,estimateBytes+100);
+  assert.equal(uncalibratedResult.requests[0].calibrationMethod,null);
+  assert.equal(uncalibratedResult.requests[0].calibrationQualification,null);
   const wrongCap=fixture(t,state=>{
     const request=body();request.max_output_tokens=99;
     state.manifest.requests[0].body=state.write('wrong-cap',request,'FULL_PROVIDER_PAYLOAD');
@@ -120,7 +143,32 @@ test('fresh delivery uses its separate grant and exact cap without simulating ea
   assert.equal(result.allow,true);assert.equal(delivery.phase,'DELIVERY');
   assert.equal(delivery.allowance,2000);assert.equal(delivery.outputReserve,200);
   assert.equal(delivery.outputTokenCap,200);assert.equal(delivery.required,400);
+  assert.equal(delivery.maximumReportedTokens,3000,'Independent delivery projection cannot inflate the original global token stop threshold');
   assert.equal(result.qualification,qualification);
+});
+
+test('offline reported request response and deadline limits cannot widen beyond execution caps',t=>{
+  const f=fixture(t,state=>{
+    for(const item of state.plan.cases) {
+      item.maximumProviderRequests=99;item.maximumProviderPayloadBytes=1048576;
+      item.maximumProviderResponseBytes=1048576;item.wallSeconds=480;
+    }
+  });
+  const result=preflightProviderRequests(f.options);assert.equal(result.allow,true);
+  assert.deepEqual(result.requests.map(row=>[row.case,row.maximumProviderRequests,row.maximumProviderPayloadBytes,
+    row.maximumProviderResponseBytes,row.wallSeconds,row.maximumReportedTokens]),
+    [['fresh',3,262144,65536,120,3000],['saved',1,262144,65536,60,3000]]);
+  assert.equal(result.qualification,qualification,'Independent admissions remain explicitly separate from sequence/live proof');
+  const narrower=fixture(t,state=>{
+    for(const item of state.plan.cases) {
+      item.maximumProviderRequests=1;item.maximumProviderPayloadBytes=1024;
+      item.maximumProviderResponseBytes=512;item.maximumReportedTokens=777;item.wallSeconds=5;
+    }
+  });
+  const narrowResult=preflightProviderRequests(narrower.options);assert.equal(narrowResult.allow,true);
+  assert.deepEqual(narrowResult.requests.map(row=>[row.case,row.maximumProviderRequests,row.maximumProviderPayloadBytes,
+    row.maximumProviderResponseBytes,row.wallSeconds,row.maximumReportedTokens]),
+    [['fresh',1,1024,512,5,777],['saved',1,1024,512,5,777]],'Explicit smaller limits survive mode normalization');
 });
 
 test('manifest shape uniqueness known case phase and required coverage fail closed',t=>{

@@ -98,7 +98,10 @@ export async function worker(planFile,index) {
       const version=effect('INSTALLATION_READ',()=>JSON.parse(fs.readFileSync(path.join(plan.piPackageRoot,'package.json'))).version);
       if(failed(version))return version;
       if(sha(adapter.value)!==plan.kastAdapterSha256||version.value!==plan.piVersion)return failure('INSTALLATION_PIN','PIN_MISMATCH');
-      const policy=new CasePolicy(item);
+      const modeRequestLimit=item.mode==='received-result'?1:3;
+      const policy=new CasePolicy({...item,
+        maximumProviderRequests:Math.min(item.maximumProviderRequests??modeRequestLimit,modeRequestLimit),
+        wallSeconds:Math.min(item.wallSeconds,item.mode==='received-result'?60:120)});
       stage='INPUT_CALIBRATION';
       const calibration=retain(loadInputCalibrations(item.inputCalibrations,policy));
       const calibrationSignal=lifecycle('INPUT_CALIBRATION',failed(calibration)?'FAILED':'PREPARED');
@@ -168,7 +171,7 @@ export async function worker(planFile,index) {
                 const cancel=()=>{policy.stop(Outcome.CANCELLED);retain(effect('SESSION_ABORT',()=>session.agent.abort(),stage));};
                 const message=m=>{if(m?.type==='cancel')cancel();};
                 process.on('message',message);process.once('SIGTERM',cancel);
-                const timer=setTimeout(cancel,item.wallSeconds*1000);
+                const timer=setTimeout(cancel,policy.config.wallSeconds*1000);
                 try {
                   const driven=await asyncEffect('SESSION_DRIVE',()=>driveSession(session,{mode:item.mode,prompt:item.prompt}),stage);
                   if(failed(driven))sessionResult=retain(driven);

@@ -37,9 +37,21 @@ export function evaluationGuard(policy,record) {
       const recorded=observe({type:'native_reply',callId:event.toolCallId,envelopeType:envelope.type,hostIsError:typeof event.isError==='boolean'?event.isError:null,deliveryStop:envelope.delivery?.stop??null,physicalRpcsReported:envelope.delivery?.rpc_count??null,textBytes,decision:admission},ctx);
       if(recorded.type!=='failure'&&!admission.allow) ctx.abort();
     });
+    const observeResponse=(message,ctx)=>{
+      let bytes;
+      try {bytes=Buffer.byteLength(JSON.stringify(message));} catch {bytes=undefined;}
+      const admission=policy.providerResponseBytes(bytes);
+      const recorded=observe({type:'provider_response_bytes',bytes,decision:admission},ctx);
+      if(recorded.type!=='failure'&&!admission.allow) ctx.abort();
+      return admission;
+    };
+    pi.on('message_update',(event,ctx)=>{
+      if(event.message?.role==='assistant') observeResponse(event.message,ctx);
+    });
     pi.on('message_end',(event,ctx)=>{
       const m=event.message;
       if(m.role!=='assistant') return;
+      observeResponse(m,ctx);
       const accounted=policy.modelUsage(m.usage,m.stopReason);
       const ended=policy.assistantEnded(m);
       const recorded=observe({type:'model_response',usage:policy.report().usage,stopReason:m.stopReason,accounting:accounted,decision:ended},ctx);

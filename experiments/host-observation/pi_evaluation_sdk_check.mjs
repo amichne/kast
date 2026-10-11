@@ -22,7 +22,9 @@ assert.equal(process.env.KAST_TOOL_RPC_COMMAND,undefined,'Installed canonical RP
 const directory=fs.mkdtempSync(path.join(os.tmpdir(),'kast-pi-sdk-check-'));
 const originals={fetch:globalThis.fetch,WebSocket:globalThis.WebSocket};
 let fetchCalls=0,socketSends=0,sockets=0;const bodies=[],expectedFetchHashes=[],socketBodies=[];
+const scriptedResponses=[];
 const events=()=>{
+  if(scriptedResponses.length) return scriptedResponses.shift();
   const item={id:'synthetic-message',type:'message',role:'assistant',status:'completed',content:[{type:'output_text',text:'Synthetic transport response; no inference occurred.'}]};
   return [{type:'response.created',response:{id:'synthetic-response'}},{type:'response.output_item.added',output_index:0,item:{...item,content:[]}},{type:'response.output_item.done',output_index:0,item},{type:'response.completed',response:{id:'synthetic-response',status:'completed',output:[item],usage:{input_tokens:100,output_tokens:10,total_tokens:110,input_tokens_details:{cached_tokens:0}}}}];
 };
@@ -45,7 +47,7 @@ globalThis.fetch=async(_url,options)=>{
   assert.equal(body.max_output_tokens,2000,'Every admitted SDK request must carry the provider output cap');
   const payload=inspectProviderPayload(body,4194304);
   assert.equal(payload.type,'admitted-payload');
-  assert.equal(payload.payloadSha256,expectedFetchHashes.shift(),'Fetch must carry the entire calibrated projection');
+  assert.equal(payload.payloadSha256,expectedFetchHashes.shift(),'Fetch must carry the entire inspected projection');
   bodies.push(body);fetchCalls++;
   return new Response(events().map(e=>`data: ${JSON.stringify(e)}\n\n`).join(''),{headers:{'content-type':'text/event-stream'}});
 };
@@ -63,7 +65,7 @@ try {
   const access=`synthetic.${Buffer.from(JSON.stringify({'https://api.openai.com/auth':{chatgpt_account_id:'synthetic-account'}})).toString('base64url')}.unsigned`;
   const credentials=AuthStorage.inMemory({'openai-codex':{type:'oauth',access,refresh:'synthetic-never-refresh',expires:Date.now()+86400000}});
   const runtime=await sdk.ModelRuntime.create({credentials,modelsStore,modelsPath:null,allowModelNetwork:false});
-  const makePolicy=()=>new CasePolicy({name:'sdk-check',expectedSemanticCalls:1,inputTokenCeiling:20000,declarationByteCeiling:100000,work:{reportedTokens:30000,requests:1,tools:1,outputReserve:2000},delivery:{reportedTokens:25000,requests:1,outputReserve:2000},maximumToolTextBytes:1048576});
+  const makePolicy=(overrides={})=>new CasePolicy({name:'sdk-check',expectedSemanticCalls:1,inputTokenCeiling:20000,declarationByteCeiling:100000,work:{reportedTokens:30000,requests:1,tools:1,outputReserve:2000},delivery:{reportedTokens:25000,requests:1,outputReserve:2000},maximumToolTextBytes:1048576,...overrides});
   const plan={workspaceRoot:directory,kastAdapter};
   // Public inline extension observation leaves the committed guard and session
   // construction intact. It observes the final payload after the guard's cap.
@@ -93,7 +95,7 @@ try {
     return calibration;
   };
   const preflight=async(name,sourceFile,makeCasePolicy,action)=>{
-    const captured=[],policy=makeCasePolicy(),records=[],fetchBefore=fetchCalls,sendsBefore=socketSends;
+    const captured=[],policy=makeCasePolicy({maximumProviderPayloadBytes:1000}),records=[],fetchBefore=fetchCalls,sendsBefore=socketSends;
     await privateStage(`${name}-preflight`,sourceFile,async manager=>{
       const created=await createEvaluationSession({sdk:observingSdk(captured),plan,directory,modelRuntime:runtime,policy,record:e=>records.push(e),manager});
       if(created.type==='failure')return created;
@@ -111,13 +113,13 @@ try {
       };
       visit(body,0);return {nodes,depth,anomalies:anomalies.slice(0,3)};
     };
-    assert.equal(policy.report().outcome,'HARNESS_INPUT_BOUND_UNAVAILABLE',JSON.stringify({records,capturedFacts:captured.map(body=>inspectProviderPayload(body,4194304)),shape:captured.map(shape)}));
+    assert.equal(policy.report().outcome,'HARNESS_BUDGET_LIMIT',JSON.stringify({records,capturedFacts:captured.map(body=>inspectProviderPayload(body,4194304)),shape:captured.map(shape)}));
     assert.equal(captured.length,1);
-    assert.equal(fetchCalls,fetchBefore,'Uncalibrated preflight must deny before fetch');
+    assert.equal(fetchCalls,fetchBefore,'Oversize preflight must deny before fetch');
     assert.equal(socketSends,sendsBefore);
     const admission=records.find(e=>e.type==='provider_admission');
     assert.equal(admission.decision.allow,false);
-    assert.equal(admission.decision.reason,'HARNESS_INPUT_BOUND_UNAVAILABLE');
+    assert.equal(admission.decision.reason,'HARNESS_BUDGET_LIMIT');
     const structure=shape(captured[0]);
     assert.deepEqual(structure.anomalies,[]);
     assert.ok(structure.nodes<=32768);assert.ok(structure.depth<=64);
@@ -128,7 +130,7 @@ try {
   assert.equal(freshPreflight.structure.depth,33,'Pinned SDK declarations retain their complete nested schema');
   assert.equal(freshPreflight.structure.nodes,3895);
   const policy=makePolicy(),records=[];
-  assert.equal(policy.registerInputCalibration(freshPreflight.calibration).allow,true);
+
   const startup=await privateStage('fresh-admitted',undefined,async manager=>{
     const created=await createEvaluationSession({sdk,plan,directory,modelRuntime:runtime,policy,record:e=>records.push(e),manager});
     if(created.type==='failure')return created;
@@ -158,8 +160,8 @@ try {
     return {sourceFile:manager.getSessionFile(),context:structuredClone(manager.buildSessionContext().messages)};
   });
   const savedSourceHash=sha(fs.readFileSync(saved.sourceFile));
-  const makeSavedPolicy=()=>{
-    const result=new CasePolicy({...makePolicy().config,delivery:{reportedTokens:64000,requests:1,outputReserve:2000},evidenceOnlyDelivery:true});
+  const makeSavedPolicy=(overrides={})=>{
+    const result=new CasePolicy({...makePolicy().config,delivery:{reportedTokens:64000,requests:1,outputReserve:2000},evidenceOnlyDelivery:true,...overrides});
     assert.equal(result.restoreReceivedResult(decodeEnvelope(content),Buffer.byteLength(content[0].text)).allow,true);
     return result;
   };
@@ -172,7 +174,7 @@ try {
   assert.equal(savedPreflight.structure.depth,35,'Restored declarations preserve their complete inline schema');
   assert.equal(savedPreflight.structure.nodes,3908);
   const savedPolicy=makeSavedPolicy(),savedRecords=[];
-  assert.equal(savedPolicy.registerInputCalibration(savedPreflight.calibration).allow,true);
+
   await privateStage('restored-admitted',saved.sourceFile,async manager=>{
     const created=await createEvaluationSession({sdk,plan,directory,modelRuntime:runtime,policy:savedPolicy,record:e=>savedRecords.push(e),manager});
     if(created.type==='failure')return created;
@@ -182,7 +184,7 @@ try {
   });
   assert.equal(sha(fs.readFileSync(saved.sourceFile)),savedSourceHash,'Replay must preserve the received source archive');
   const projected=bodies.at(-1),admission=savedPolicy.report().requestObservations[0];
-  assert.equal(admission.allow,true,JSON.stringify(admission));
+  assert.equal(admission.allow,true,JSON.stringify(admission));assert.equal(admission.calibrationSourceSha256,null,'No calibration receipt is needed for bounded novel input');assert.equal(admission.inputEstimateQualification,'CONSERVATIVE_ESTIMATE_UNCERTAIN_NOT_TOKENIZER_OR_SPEND_PROOF');
   assert.equal(fetchCalls,2,'Saved result continuation makes one admitted request');
   assert.equal(projected.input.filter(item=>item.type==='function_call_output').length,1);
   assert.equal(projected.input.find(item=>item.type==='function_call_output').output,content[0].text);
@@ -196,14 +198,14 @@ try {
   const savedProjection={storedContextBytes:Buffer.byteLength(JSON.stringify(saved.context)),providerInputBytes:admission.inputBytes,providerContextBytes:admission.contextBytes,declarationInputBytes:admission.declarationInputBytes,requiredEstimate:admission.required,budget:admission.remaining,outputTokenCap:projected.max_output_tokens,newUserMessages:0,semanticToolCalls:0,sourceArchiveUnchanged:true};
   const calibrationProof=(preflight,report)=>({qualification:'SYNTHETIC_FINALIZED_USAGE',payloadSha256:preflight.calibration.payloadSha256,calibrationSourceSha256:preflight.calibration.sourceSha256,structure:preflight.structure,
     calibratedInputCeiling:preflight.calibration.calibratedInputCeiling,boundQualification:preflight.calibration.qualification,
-    uncalibratedAdmission:preflight.report.requestObservations[0],uncalibratedTransports:{fetchCalls:0,socketSends:0},
-    admitted:report.requestObservations[0],admittedTransports:{fetchCalls:1,socketSends:0},finalizedUsage:report.usage});
+    oversizeAdmission:preflight.report.requestObservations[0]??{allow:false,reason:preflight.report.outcome},oversizeTransports:{fetchCalls:0,socketSends:0},
+    admittedWithoutCalibration:report.requestObservations[0],admittedTransports:{fetchCalls:1,socketSends:0},finalizedUsage:report.usage});
   // Reproduce the installed SDK's cached-WebSocket abort defect independently
   // using its real provider and guard, with synthetic transport only. This is
   // why the committed isolated worker selects supported SSE explicitly.
   const legacySettings=sdk.SettingsManager.inMemory({transport:'websocket',cacheWarming:'off',compaction:{enabled:false},retry:{enabled:false}});
   const legacyManager=sdk.SessionManager.inMemory(directory),legacyPolicy=makePolicy(),legacyRecords=[];
-  assert.equal(legacyPolicy.registerInputCalibration(freshPreflight.calibration).allow,true);
+
   const {evaluationGuard}=await import('./pi_evaluation_guard.mjs');
   const loader=new sdk.DefaultResourceLoader({cwd:directory,agentDir:directory,settingsManager:legacySettings,noExtensions:true,additionalExtensionPaths:[kastAdapter],extensionFactories:[evaluationGuard(legacyPolicy,e=>legacyRecords.push(e))],noSkills:true,noPromptTemplates:true,noThemes:true,noContextFiles:true});
   await loader.reload();assert.equal(loader.getExtensions().errors.length,0);
@@ -219,10 +221,56 @@ try {
   for(const report of [policy.report(),savedPolicy.report(),legacyPolicy.report()])assert.equal(report.modelProposals.length,0);
   activeSession.dispose();activeSession=undefined;cleanupSocket(legacyManager.getSessionId());
   assert.equal(expectedFetchHashes.length,0);
+  // A complete real-SDK fresh -> newly generated tool result -> final-answer
+  // sequence. Preserve the actual adapter declarations; replace only execute
+  // capabilities at this test boundary, and fail if any other tool is invoked.
+  const canonicalNegative={type:'complete',document:JSON.parse(fs.readFileSync(new URL('./pi-fixtures/complete-document.json',import.meta.url),'utf8'))};
+  const canonicalText=JSON.stringify(canonicalNegative);
+  const dynamicPolicy=makePolicy({work:{reportedTokens:30000,requests:2,tools:1,outputReserve:2000},maximumProviderRequests:3});
+  const dynamicRecords=[],dynamicBodies=[];let syntheticToolCalls=0;
+  const dynamicSdk={...observingSdk(dynamicBodies),createAgentSession:async options=>{
+    const definitions=options.resourceLoader.getExtensions().extensions.flatMap(extension=>[...extension.tools.values()].map(tool=>tool.definition));
+    assert.equal(definitions.filter(tool=>tool.name==='query_symbols').length,1);
+    const customTools=definitions.map(definition=>({...definition,execute:async()=>{
+      assert.equal(definition.name,'query_symbols','No other native capability may execute');
+      syntheticToolCalls++;
+      return {content:[{type:'text',text:canonicalText}],details:{qualification:'SYNTHETIC_CANONICAL_REPLY_NOT_NATIVE_PROOF'}};
+    }}));
+    return sdk.createAgentSession({...options,customTools});
+  },DefaultResourceLoader:class extends sdk.DefaultResourceLoader {
+    constructor(options){super({...options,extensionFactories:[...options.extensionFactories,pi=>{
+      pi.on('before_provider_request',event=>{
+        const body=structuredClone(event.payload);dynamicBodies.push(body);
+        expectedFetchHashes.push(inspectProviderPayload(body,262144).payloadSha256);
+      });
+    }]});}
+  }};
+  const fetchBeforeDynamic=fetchCalls;
+  await privateStage('fresh-dynamic-no-calibration',undefined,async manager=>{
+    const created=await createEvaluationSession({sdk:dynamicSdk,plan,directory,modelRuntime:runtime,policy:dynamicPolicy,record:event=>dynamicRecords.push(event),manager});
+    if(created.type==='failure')return created;
+    activeSession=created.session;
+    const callId=`synthetic-new-call-${fetchCalls+1}`;
+    const item={id:'synthetic-new-function-id',type:'function_call',call_id:callId,name:'query_symbols',arguments:JSON.stringify({request:{type:'RUN',source:{type:'SYMBOL_REFS',symbolRefs:['exact:v2:synthetic-negative']}}}),status:'completed'};
+    scriptedResponses.push([{type:'response.created',response:{id:'synthetic-new-tool-response'}},{type:'response.output_item.added',output_index:0,item:{...item,arguments:''}},{type:'response.output_item.done',output_index:0,item},{type:'response.completed',response:{id:'synthetic-new-tool-response',status:'completed',output:[item],usage:{input_tokens:100,output_tokens:10,total_tokens:110,input_tokens_details:{cached_tokens:0}}}}]);
+    await activeSession.prompt('Find the exact synthetic negative target and describe its qualified result.',{source:'rpc',expandPromptTemplates:false});
+    assert.equal(dynamicPolicy.report().outcome,'FINAL_ANSWER',JSON.stringify(dynamicPolicy.report()));
+    assert.equal(fetchCalls-fetchBeforeDynamic,2);assert.equal(syntheticToolCalls,1);
+    assert.equal(dynamicBodies.length,2);assert.notEqual(inspectProviderPayload(dynamicBodies[0],262144).payloadSha256,inspectProviderPayload(dynamicBodies[1],262144).payloadSha256);
+    assert.deepEqual(dynamicBodies[1].tools,dynamicBodies[0].tools,'Complete original tool declarations remain unchanged');
+    assert.equal(dynamicBodies[1].instructions,dynamicBodies[0].instructions);
+    const outputs=dynamicBodies[1].input.filter(item=>item.type==='function_call_output');
+    assert.equal(outputs.length,1);assert.equal(outputs[0].call_id,callId);assert.equal(outputs[0].output,canonicalText);
+    assert.equal(dynamicBodies[1].input.filter(item=>item.role==='user').length,1);
+    for(const observation of dynamicPolicy.report().requestObservations){assert.equal(observation.calibrationSourceSha256,null);assert.equal(observation.inputEstimateQualification,'CONSERVATIVE_ESTIMATE_UNCERTAIN_NOT_TOKENIZER_OR_SPEND_PROOF');assert.equal(observation.outputTokenCap,2000);assert.ok(observation.payloadBytes<=262144);}
+    activeSession.dispose();activeSession=undefined;cleanupSocket(manager.getSessionId());
+  });
+  assert.equal(expectedFetchHashes.length,0);assert.equal(scriptedResponses.length,0);
+  const dynamicSequence={qualification:'REAL_INSTALLED_SDK_SYNTHETIC_TRANSPORT_AND_CANONICAL_TOOL_REPLY_NOT_NATIVE_OR_BACKEND_PROOF',priorCalibrationReceipts:0,admittedSseFetchCalls:fetchCalls-fetchBeforeDynamic,syntheticToolExecutions:syntheticToolCalls,newCallIdAndCanonicalResultPreserved:true,fullDeclarationsPreserved:true,newUserMessages:1,report:dynamicPolicy.report()};
   const identity={};
   for(const [name,files] of Object.entries({'pi-coding-agent':['dist/core/sdk.js','dist/core/session-manager.js','dist/core/resource-loader.js','dist/core/extensions/runner.js'],'pi-ai':['dist/api/openai-codex-responses.js'],'pi-agent-core':['dist/agent.js']})) {
     const root=name==='pi-coding-agent'?piPackageRoot:path.join(piPackageRoot,'..',name);
     identity[name]={version:JSON.parse(fs.readFileSync(path.join(root,'package.json'))).version,sha256:Object.fromEntries(['package.json',...files].map(file=>[file,sha(fs.readFileSync(path.join(root,file)))]))};
   }
-  console.log(JSON.stringify({mode:'NO_INFERENCE_REAL_SDK_SYNTHETIC_TRANSPORT',startup,adapterSha256:expectedAdapterSha256,identity,savedProjection,calibrationProof:{fresh:calibrationProof(freshPreflight,policy.report()),restored:calibrationProof(savedPreflight,savedPolicy.report())},sse:{admittedFetchCalls:fetchCalls,deniedSecondFetchCalls:0,socketSends:0},cachedWebSocket:{connections:sockets,admittedSends:1,deniedSecondSends:1},semanticToolCalls:0,realProviderRequests:0},null,2));
+  console.log(JSON.stringify({mode:'NO_INFERENCE_REAL_SDK_SYNTHETIC_TRANSPORT',startup,dynamicSequence,adapterSha256:expectedAdapterSha256,identity,savedProjection,calibrationProof:{fresh:calibrationProof(freshPreflight,policy.report()),restored:calibrationProof(savedPreflight,savedPolicy.report())},sse:{admittedFetchCalls:fetchCalls,deniedSecondFetchCalls:0,socketSends:0},cachedWebSocket:{connections:sockets,admittedSends:1,deniedSecondSends:1},semanticToolCalls:0,realProviderRequests:0},null,2));
 } finally {activeSession?.dispose();cleanupSocket?.();globalThis.fetch=originals.fetch;globalThis.WebSocket=originals.WebSocket;fs.rmSync(directory,{recursive:true,force:true});}
