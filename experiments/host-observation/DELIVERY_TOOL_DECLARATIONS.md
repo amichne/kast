@@ -86,3 +86,19 @@ removal during WORK and removal during an issued evidence read. The existing
 complete-body preflight rejects baseline and excess-context bodies and admits the
 255,158-byte after body under the unchanged plan. The required product gate and
 exact-head CI results are recorded in the PR and owned evidence receipts.
+
+Independent review found a stale opt-in SDK-check assertion that expected final
+DELIVERY declarations to equal WORK declarations. A real installed SDK run first
+exposed a preexisting fixture mismatch: synthetic noncanonical `details` were
+rejected by the canonical decoder. Supplying the existing Kotlin-serialized
+canonical fixture in both text and details then reproduced the declaration
+assertion failure. The corrected check preserves full WORK declarations, requires
+absent final top-level tools, and compares the actual synthetic transport body
+against the guarded body. Its report distinguishes these two declaration states.
+The full no-inference check passed with coding-agent 1.0.2 and resolved pi-ai /
+pi-agent-core 1.1.0. It used four synthetic SSE requests and one synthetic tool
+reply, with zero actual provider requests or semantic tool calls. Its separate
+cached-WebSocket defect control remains reproduced; supported SSE still sends no
+denied request. Restored inline declarations remain preserved and counted. The
+pure suite remains at 180 passing tests. Production policy and guards were not
+changed by this qualification correction.
