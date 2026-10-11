@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { inspectProviderPayload, verifyInputCalibration } from './pi_evaluation_payload.mjs';
 import { CasePolicy, decodeEnvelope, decodeUsage } from './pi_evaluation_policy.mjs';
 import { evaluationGuard } from './pi_evaluation_guard.mjs';
+import { summarizeGuard } from './pi_evaluation_records.mjs';
 import { driveSession, runOwnedWorker } from './pi_evaluation_controller.mjs';
 import { validatePlan } from './run_pi_evaluation.mjs';
 import { isolatedSettings } from './pi_evaluation_worker.mjs';
@@ -410,6 +411,158 @@ function deliveredCase(name,options={}) {
   guard.emit('tool_result',{...resultEvent(fixture.result),isError:fixture.hostFailure});
   return {policy,guard,fixture};
 }
+// A small received-prefix policy case derived from the owning Kotlin-serialized
+// rejection/page fixture. The changed finite observations are synthetic; these
+// counts and identities do not establish native semantics or live authority.
+function partialPrefix() {
+  const envelope=structuredClone(deliveryCases.rejectedProof.result);
+  const detail=envelope.initial.document.rejection.detail;
+  detail.originalCoverage.knownMinimum=194;
+  detail.originalCoverage.limitations=['BYTE_LIMIT_REACHED'];
+  detail.originalCoverage.progress.reason='checkpoint-capacity-exceeded';
+  detail.stop='BYTE_LIMIT';
+  const page=envelope.pages[0].document;
+  page.items=page.items.slice(0,3);
+  for(const key of ['failures','omissions','walk_observations','reference_observations','discovery_observations','relation_observations'])page[key]=[];
+  page.interpretation.originalCoverage=structuredClone(detail.originalCoverage);
+  page.qualification.knownMinimum=194;
+  page.qualification.limitations=['byte-limit-reached','static-model-unproven'];
+  page.page_progress.rows=3;page.page_progress.failures=0;
+  page.evidence_window={type:'MORE',start:0,end:0,total:3};
+  page.next_cursor=3;
+  envelope.pages=envelope.pages.slice(0,1);
+  envelope.delivery.stop='BYTE_LIMIT';envelope.delivery.rpc_count=3;
+  return envelope;
+}
+test('explicit evidence-only BYTE_LIMIT prefix permits one honest answer and preserves native rejection',()=>{
+  const envelope=partialPrefix(),before=JSON.stringify(envelope);
+  const policy=makePolicy({...config(),evidenceOnlyDelivery:true,delivery:{...config().delivery,requests:3}});
+  const decoded=decodeEnvelope(resultEvent(envelope).content);
+  assert.equal(policy.restoreReceivedResult(decoded,Buffer.byteLength(before)).allow,true);
+  const report=policy.report();
+  assert.equal(report.nativeOutcome,'REJECTED');assert.equal(report.exhaustiveEvidence,false);
+  assert.equal(report.semanticRejection.knownMinimum,194);
+  assert.equal(report.semanticRejection.progress.reason,'checkpoint-capacity-exceeded');
+  assert.deepEqual(report.partialEvidence,{stop:'BYTE_LIMIT',receivedRows:3,duplicatePreviewRows:1,
+    evidence:{received:0,total:3},knownMinimum:194,question:envelope.pages[0].document.question,
+    live:envelope.pages[0].document.live,result:envelope.delivery.result,maximumAnswerRequests:1});
+  assert.equal(report.semanticRepliesObserved,0);assert.equal(report.providerRequests,0);
+  assert.equal(report.requiredEvidenceVerified,false);assert.equal(report.exhaustiveRowsVerified,false);
+  assert.equal(JSON.stringify(envelope),before);
+  assert.equal(policy.beforeProvider(pinned).allow,true);
+  policy.modelUsage({input:100,output:50,totalTokens:150});
+  policy.assistantEnded({stopReason:'stop',content:[{type:'text',text:'Three received rows only. Native query rejected; evidence remains incomplete.'}]});
+  assert.equal(policy.report().outcome,'INTENTIONAL_REJECTION');assert.equal(policy.report().finalAnswer,true);
+  assert.equal(policy.beforeProvider(pinned).allow,false);
+});
+test('partial prefix false policy and other client blockers preserve their first terminal result',()=>{
+  for(const stop of ['BYTE_LIMIT','DELIVERED']) {
+    const envelope=partialPrefix();envelope.delivery.stop=stop;
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:false});
+    assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).reason,'INTENTIONAL_REJECTION');
+    assert.equal(policy.report().partialEvidence,null);assert.equal(policy.report().nativeOutcome,'REJECTED');
+    assert.equal(policy.beforeProvider(pinned).allow,false);
+    assert.equal(policy.toolResult(negativeComplete).reason,'INTENTIONAL_REJECTION');
+    assert.equal(policy.report().nativeOutcome,'REJECTED');
+  }
+  for(const stop of ['CANCELLED','TIME_LIMIT','PAGE_LIMIT','DELIVERY_UNAVAILABLE','BUDGET_INCREASE_REQUIRED','MALFORMED_PAGE','IDENTITY_MISMATCH','NON_ADVANCING']) {
+    const envelope=partialPrefix();envelope.delivery.stop=stop;
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).reason,'CLIENT_DELIVERY_BLOCKED',stop);
+    assert.equal(policy.beforeProvider(pinned).allow,false);assert.equal(policy.report().partialEvidence,null);
+  }
+});
+test('partial-prefix admission rejects lost stale malformed and mismatched scope authority or evidence',()=>{
+  const changes=[
+    e=>{e.initial=null;e.pages=[];e.delivery.original_outcome='rejected_document';},
+    e=>e.pages=[],
+    e=>e.pages[0].document.retention.reference='result:v1:00000000-0000-4000-8000-000000000002',
+    e=>e.pages[0].document.question.steps.push({type:'changed-scope'}),
+    e=>delete e.pages[0].document.live,
+    e=>e.pages[0].document.live.contentView='UNKNOWN',
+    e=>e.pages[0].document.live.epoch=-1,
+    e=>e.pages[0].document.qualification.progress.type='retention_unavailable',
+    e=>e.pages.push({type:'rejected_document',document:{status:'rejected',rejection:{type:'execution-rejected',reason:'result-stale-basis'}}}),
+    e=>e.pages[0].document.interpretation.originalCoverage.knownMinimum=1001,
+    e=>e.pages[0].document.next_cursor=4,
+    e=>e.pages[0].document.evidence_window.start=1,
+    e=>e.pages[0].document.evidence_window.end=1,
+    e=>e.pages[0].document.evidence_window.total=-1,
+    e=>e.pages[0].document.items[0]=null,
+    e=>e.pages[0].document.items[0].type='unknown',
+    e=>e.pages[0].document.items[0].row_id='invalid',
+    e=>delete e.pages[0].document.failures,
+    e=>e.initial.document.rejection.detail.evidence.nextQuery.request.type='RUN',
+    e=>{e.pages[0].document.items=[];e.pages[0].document.page_progress.rows=0;e.pages[0].document.next_cursor=0;e.initial.document.rejection.detail.evidence.preview=[];},
+  ];
+  for(const [index,change] of changes.entries()) {
+    const envelope=partialPrefix();change(envelope);
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,false,index);
+    assert.equal(policy.report().partialEvidence,null,index);assert.equal(policy.beforeProvider(pinned).allow,false,index);
+  }
+  for(const key of ['host','epoch','root']) {
+    const envelope=partialPrefix(),page=structuredClone(envelope.pages[0]);
+    page.document.items=[];page.document.page_progress.rows=0;
+    page.document.live[key]=key==='epoch'?2:'changed';envelope.pages.push(page);
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,false,key);
+  }
+});
+test('partial prefix preserves contiguous evidence counts across multiple pages',()=>{
+  const envelope=partialPrefix(),first=envelope.pages[0].document,last=structuredClone(envelope.pages[0]);
+  first.failures=[{type:'exact-reference',ref:'exact:v2:fixture-0',reason:'compiler-identity-unavailable'}];
+  first.evidence_window.end=1;
+  last.document.items=[];last.document.page_progress.rows=0;
+  last.document.failures=structuredClone(first.failures);
+  last.document.evidence_window={type:'MORE',start:1,end:2,total:3};
+  envelope.pages.push(last);
+  const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,true);
+  assert.deepEqual(policy.report().partialEvidence.evidence,{received:2,total:3});
+  assert.deepEqual(envelope.pages[0].document.failures,first.failures);
+  last.document.evidence_window.total=4;
+  const inconsistent=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(inconsistent.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,false);
+});
+test('partial prefix occurrence identity retains distinct rows and rejects conflicting copies',()=>{
+  const envelope=partialPrefix(),rows=envelope.pages[0].document.items;
+  rows[1].ref=rows[0].ref;
+  for(const [index,row] of rows.entries())row.row_id=`result-row:v1:00000000-0000-4000-8000-00000000000${index+1}`;
+  envelope.initial.document.rejection.detail.evidence.preview=[structuredClone(rows[0])];
+  const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,true);
+  assert.equal(policy.report().partialEvidence.receivedRows,3);assert.equal(policy.report().partialEvidence.duplicatePreviewRows,1);
+  envelope.initial.document.rejection.detail.evidence.preview[0].name='conflicting description';
+  const conflict=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(conflict.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,false);
+});
+test('fresh partial prefix guard counts full instructions and body permits one request and forbids every further tool',()=>{
+  const policy=makePolicy({...config(),evidenceOnlyDelivery:true,delivery:{...config().delivery,requests:3}}),guard=callbacks(policy);
+  const envelope=partialPrefix();
+  guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'}}});
+  guard.emit('tool_result',{...resultEvent(envelope),isError:true});
+  assert.equal(guard.aborted,0);assert.equal(policy.report().semanticRepliesObserved,1);
+  assert.equal(summarizeGuard(guard.records.at(-1)).decision.reason,'DECLARED_RECEIVED_PARTIAL_EVIDENCE');
+  const payload=guard.emit('before_provider_request',{payload:{...providerPayload(),input:[{type:'function_call_output',call_id:'call-1',output:JSON.stringify(envelope)}]}});
+  assert.match(payload.instructions,/query remains rejected \(COMPLETION_UNPROVEN; checkpoint-capacity-exceeded\)/);
+  assert.match(payload.instructions,/received evidence entries: 0\/3/);
+  assert.equal(policy.report().requestObservations[0].payloadBytes,Buffer.byteLength(JSON.stringify(payload)));
+  policy.modelUsage({input:100,output:50,totalTokens:150});
+  assert.equal(policy.beforeProvider(pinned).reason,'HARNESS_BUDGET_LIMIT');
+  for(const request of [{type:'RUN'},{type:'RESUME'},envelope.initial.document.rejection.detail.evidence.nextQuery.request]) {
+    const p=makePolicy({...config(),evidenceOnlyDelivery:true});
+    p.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000);
+    assert.equal(p.toolCall('query_symbols',{request},'new-call').reason,'HARNESS_TOOL_BLOCKED');
+    assert.equal(p.report().nativeOutcome,'REJECTED');
+  }
+  const bounded=makePolicy({...config(),evidenceOnlyDelivery:true,maximumProviderPayloadBytes:500}),blocked=callbacks(bounded);
+  bounded.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000);
+  blocked.emit('before_provider_request',providerEvent());
+  assert.equal(blocked.aborted,1);assert.equal(bounded.report().providerRequests,0);
+  assert.equal(bounded.report().outcome,'HARNESS_BUDGET_LIMIT');
+  assert.equal(bounded.report().nativeOutcome,'REJECTED');
+});
 test('actual shared-client delivered complete and qualified preserve initial semantics and count physical RPCs separately',()=>{
   for(const [name,nativeOutcome,finalOutcome] of [['complete','EXHAUSTIVE_RESULT','FINAL_ANSWER'],['qualified','QUALIFIED_RESULT','QUALIFIED_ANSWER']]) {
     const {policy,guard,fixture}=deliveredCase(name);

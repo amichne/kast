@@ -16,6 +16,8 @@ export function evaluationGuard(policy,record) {
     });
     pi.on('before_provider_request',(event,ctx)=>{
       const payload={...event.payload,max_output_tokens:policy.providerOutputCap()};
+      const instruction=policy.deliveryInstruction();
+      if(instruction&&typeof payload.instructions==='string')payload.instructions+='\n'+instruction;
       const inspected=inspectProviderPayload(payload,policy.maximumProviderPayloadBytes);
       const observation={provider:ctx.model?.provider,model:ctx.model?.id,thinking:pi.getThinkingLevel(),payload:inspected};
       const admission=policy.beforeProvider(observation);
