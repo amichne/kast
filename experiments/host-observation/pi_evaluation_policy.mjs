@@ -1,7 +1,7 @@
 // Pure rules; no process, filesystem, provider, Kast, clock or credential access.
 import { isDeepStrictEqual } from 'node:util';
 import { isAdmittedPayload, isVerifiedInputCalibration, PayloadFailure } from './pi_evaluation_payload.mjs';
-import { decodeQueryDelivery, deliverySummary } from './pi_evaluation_delivery.mjs';
+import { decodeQueryDelivery, deliverySummary, partialEvidenceSummary } from './pi_evaluation_delivery.mjs';
 export const READ_TOOLS=Object.freeze(['query_symbols','check_diagnostics','health_check']);
 export const Outcome = Object.freeze({RUNNING:'RUNNING', FINAL_ANSWER:'FINAL_ANSWER', QUALIFIED_ANSWER:'QUALIFIED_ANSWER', REJECTION:'INTENTIONAL_REJECTION', RPC_REJECTION:'TOOL_RPC_REJECTION', DELIVERY_BLOCKED:'CLIENT_DELIVERY_BLOCKED', BUDGET:'HARNESS_BUDGET_LIMIT', MODEL_MISMATCH:'HARNESS_MODEL_MISMATCH', TOOL_BLOCKED:'HARNESS_TOOL_BLOCKED', INVALID:'HARNESS_OBSERVATION_INVALID', PAYLOAD_UNSUPPORTED:PayloadFailure.UNSUPPORTED, INPUT_BOUND_UNAVAILABLE:PayloadFailure.UNPROVEN, INPUT_CALIBRATION_EXCEEDED:'HARNESS_INPUT_CALIBRATION_EXCEEDED', MODEL_ERROR:'MODEL_ERROR', CANCELLED:'HARNESS_CANCELLED'});
 const RPC_FAILURES=Object.freeze(['INSTALLATION_STOPPED','OBSERVATION_UNAVAILABLE','CATALOG_UNAVAILABLE','INVALID_COMMAND','REQUEST_TOO_LARGE','UNKNOWN_TOOL','INVALID_ARGUMENTS','OUT_OF_SCOPE','INVOCATION_FAILED','INVALID_RESULT','QUERY_SESSION_TRANSITION_REJECTED']);
@@ -67,6 +67,11 @@ export class CasePolicy {
     return decision(true,'SAVED_RESULT_DELIVERY',this.phase);
   }
   providerOutputCap() {return Math.min(2000,(this.phase==='WORK'?this.config.work:this.config.delivery).outputReserve);}
+  deliveryInstruction() {
+    if(!this.partialEvidence)return '';
+    const p=this.partialEvidence;
+    return `Interpret only the already received partial query evidence. The native query remains rejected (${this.rejectionSummary.code}; ${this.rejectionSummary.progress.reason}), with known minimum ${p.knownMinimum}. Client delivery stopped at ${p.stop}. Received unique rows: ${p.receivedRows}; duplicate preview rows: ${p.duplicatePreviewRows}; received evidence entries: ${p.evidence.received}/${p.evidence.total}. State the exact received question/scope and observed authority, missing evidence, and limitations. Coverage is not exhaustive; observed authority is not a fresh liveness check. No further tools or semantic work are allowed.`;
+  }
   registerInputCalibration(calibration) {
     if(this.phase==='STOPPED') return decision(false,this.outcome,this.phase);
     if(!isVerifiedInputCalibration(calibration) || this.requests.WORK || this.requests.DELIVERY || calibration.calibratedInputCeiling>this.config.inputTokenCeiling || this.inputCalibrations.size>=64 || this.inputCalibrations.has(calibration.payloadSha256)) return this.stop(Outcome.INVALID);
@@ -94,7 +99,7 @@ export class CasePolicy {
     const required=inputEstimate+bound.outputReserve;
     const withinBytes=payload.payloadBytes<=this.maximumProviderPayloadBytes && payload.toolsBytes+payload.declarationInputBytes+payload.instructionsBytes<=this.config.declarationByteCeiling;
     const totalRequests=this.requests.WORK+this.requests.DELIVERY;
-    const reason=!withinBytes||this.providerInFlight||this.requests[this.phase]>=bound.requests||totalRequests>=this.maximumProviderRequests||remaining<=0?Outcome.BUDGET:'ADMITTED';
+    const reason=!withinBytes||this.providerInFlight||this.requests[this.phase]>=bound.requests||this.partialEvidence&&this.requests.DELIVERY>=1||totalRequests>=this.maximumProviderRequests||remaining<=0?Outcome.BUDGET:'ADMITTED';
     this.requestObservations.push({...payload,phase:this.phase,inputEstimate,inputEstimateMethod,inputEstimateQualification,measuredInputFloor:this.lastMeasuredInput,required,remaining,allow:reason==='ADMITTED',reason,boundMethod:'EXACT_SERIALIZED_REQUEST_BYTES_AND_FINITE_CALLS',boundQualification:'POST_RESPONSE_TOKEN_THRESHOLD_ONE_RESPONSE_MAY_OVERSHOOT',calibratedInputCeiling:calibration?.calibratedInputCeiling??null,calibrationMethod:calibration?.method??null,calibrationQualification:calibration?.qualification??null,calibrationSourceSha256:calibration?.sourceSha256??null});
     if(reason!=='ADMITTED') return this.stop(reason);
     this.requests[this.phase]++;this.providerInFlight=true;this.lastRequestPhase=this.phase;this.activeInputCalibration=calibration;
@@ -157,7 +162,12 @@ export class CasePolicy {
       // invoke the client's continuation machinery again from this harness.
       if(envelope.initial===null) {this.nativeOutcome='UNOBSERVED';this.exhaustiveEvidence=false;return this.stop(Outcome.DELIVERY_BLOCKED);}
       const observed=this.acceptQuery(envelope.initial,true);
-      if(envelope.delivery.stop!=='DELIVERED') {this.exhaustiveEvidence=false;this.evidenceRequest=undefined;return this.stop(Outcome.DELIVERY_BLOCKED);}
+      if(envelope.delivery.stop!=='DELIVERED') {
+        this.exhaustiveEvidence=false;this.evidenceRequest=undefined;
+        const prefix=observed.allow&&this.config.evidenceOnlyDelivery===true?partialEvidenceSummary(envelope):null;
+        if(prefix) {this.partialEvidence=prefix;this.phase='DELIVERY';return decision(true,'DECLARED_RECEIVED_PARTIAL_EVIDENCE',this.phase);}
+        return this.stop(Outcome.DELIVERY_BLOCKED);
+      }
       return observed;
     }
     if(proposal&&proposal.toolName!=='query_symbols'&&envelope.type==='complete')return decision(true,'READ_TOOL_REPLY',this.phase);
@@ -202,6 +212,7 @@ export class CasePolicy {
   }
   report() {
     return {case:this.config.name,outcome:this.outcome,phase:this.phase,nativeOutcome:this.nativeOutcome,finalAnswer:this.finalAnswer,finalTextObserved:this.finalTextObserved??false,exhaustiveEvidence:this.exhaustiveEvidence,
+      partialEvidence:structuredClone(this.partialEvidence??null),
       // External row/oracle proof is never inferred from a final answer/row count.
       exhaustiveRowsVerified:false,requiredEvidenceVerified:false,usage:structuredClone(this.usage),phaseUsage:structuredClone(this.phaseUsage),inputCalibrationFailure:structuredClone(this.inputCalibrationFailure??null),measuredInputFloor:this.lastMeasuredInput,
       bounds:{work:structuredClone(this.config.work),delivery:structuredClone(this.config.delivery),inputTokenCeiling:this.config.inputTokenCeiling,maximumProviderPayloadBytes:this.maximumProviderPayloadBytes,maximumProviderRequests:this.maximumProviderRequests,maximumReportedTokens:this.maximumReportedTokens,maximumProviderResponseBytes:this.maximumProviderResponseBytes,declarationByteCeiling:this.config.declarationByteCeiling,maximumToolTextBytes:this.config.maximumToolTextBytes,wallSeconds:this.config.wallSeconds},

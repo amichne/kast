@@ -6,9 +6,11 @@ import { createHash } from 'node:crypto';
 import { inspectProviderPayload, verifyInputCalibration } from './pi_evaluation_payload.mjs';
 import { CasePolicy, decodeEnvelope, decodeUsage } from './pi_evaluation_policy.mjs';
 import { evaluationGuard } from './pi_evaluation_guard.mjs';
+import { summarizeGuard } from './pi_evaluation_records.mjs';
 import { driveSession, runOwnedWorker } from './pi_evaluation_controller.mjs';
 import { validatePlan } from './run_pi_evaluation.mjs';
 import { isolatedSettings } from './pi_evaluation_worker.mjs';
+import { admittedQueryDocument } from './pi_evaluation_question.mjs';
 
 const config=()=>({name:'negative',expectedSemanticCalls:1,inputTokenCeiling:20000,declarationByteCeiling:80000,work:{reportedTokens:30000,requests:2,tools:2,outputReserve:2000},delivery:{reportedTokens:25000,requests:1,outputReserve:2000},maximumToolTextBytes:1048576});
 const providerPayload=()=>({model:'gpt-6.1-sol',reasoning:{effort:'high'},tools:[],instructions:'unchanged synthetic instructions',input:[]});
@@ -410,6 +412,558 @@ function deliveredCase(name,options={}) {
   guard.emit('tool_result',{...resultEvent(fixture.result),isError:fixture.hostFailure});
   return {policy,guard,fixture};
 }
+// A small received-prefix policy case derived from the owning Kotlin-serialized
+// rejection/page fixture. The changed finite observations are synthetic; these
+// counts and identities do not establish native semantics or live authority.
+function partialPrefix() {
+  const envelope=structuredClone(deliveryCases.rejectedProof.result);
+  const detail=envelope.initial.document.rejection.detail;
+  detail.originalCoverage.knownMinimum=194;
+  detail.originalCoverage.limitations=['BYTE_LIMIT_REACHED'];
+  detail.originalCoverage.progress.reason='checkpoint-capacity-exceeded';
+  detail.stop='TERMINAL_INCOMPLETE';
+  const page=envelope.pages[0].document;
+  page.items=page.items.slice(0,3);
+  for(const key of ['failures','omissions','walk_observations','reference_observations','discovery_observations','relation_observations'])page[key]=[];
+  page.interpretation.originalCoverage=structuredClone(detail.originalCoverage);
+  page.qualification.knownMinimum=194;
+  page.qualification.limitations=['byte-limit-reached','static-model-unproven'];
+  page.page_progress.rows=3;page.page_progress.failures=0;
+  page.evidence_window={type:'MORE',start:0,end:0,total:3};
+  page.next_cursor=3;
+  envelope.pages=envelope.pages.slice(0,1);
+  envelope.delivery.stop='BYTE_LIMIT';envelope.delivery.rpc_count=3;
+  return envelope;
+}
+function denyPartialPrefix(envelope,label) {
+  const before=JSON.stringify(envelope);
+  assert.ok([envelope.initial,...envelope.pages].every(reply=>admittedQueryDocument(reply.document)),`${label}: counterexample must be schema-valid`);
+  for(const saved of [false,true]) {
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true}),decoded=decodeEnvelope(resultEvent(envelope).content);
+    assert.equal((saved?policy.restoreReceivedResult(decoded,10000):policy.toolResult(decoded,10000)).allow,false,`${label}, saved=${saved}`);
+    assert.equal(policy.report().partialEvidence,null);assert.equal(policy.report().providerRequests,0);
+    assert.equal(policy.beforeProvider(pinned).allow,false);assert.equal(policy.report().nativeOutcome,'REJECTED');
+  }
+  assert.equal(JSON.stringify(envelope),before);
+}
+function exactNamePrefix() {
+  const envelope=partialPrefix(),proof=envelope.initial.document.rejection.detail.evidence;
+  proof.question.from={type:'symbols',match:{type:'name',text:'function0',matching:'exact-name'},
+    scope:{sourceSets:['main'],directory:null,packageName:null},declarationKinds:['function']};
+  envelope.pages[0].document.question=structuredClone(proof.question);
+  proof.seedQuery={request:{type:'RUN',source:{type:'SYMBOL_REFS',symbolRefs:[proof.preview[0].ref]},output:structuredClone(proof.nextQuery.request.output)}};
+  return envelope;
+}
+function setOriginalMinimum(envelope,minimum) {
+  envelope.initial.document.rejection.detail.originalCoverage.knownMinimum=minimum;
+  for(const page of envelope.pages) {
+    page.document.interpretation.originalCoverage.knownMinimum=minimum;
+    page.document.qualification.knownMinimum=minimum;
+  }
+  return envelope;
+}
+function exhaustedPrefix() {
+  const envelope=partialPrefix();delete envelope.pages[0].document.next_cursor;
+  return setOriginalMinimum(envelope,3);
+}
+test('original retained coverage excludes limitations owned only by read presentation',()=>{
+  for(const limitation of ['STATIC_MODEL_UNPROVEN','RETENTION_LIMIT_REACHED']) {
+    const envelope=partialPrefix(),detail=envelope.initial.document.rejection.detail;
+    detail.originalCoverage.limitations.push(limitation);
+    envelope.pages[0].document.interpretation.originalCoverage=structuredClone(detail.originalCoverage);
+    if(limitation==='RETENTION_LIMIT_REACHED')envelope.pages[0].document.qualification.limitations.push('retention-limit-reached');
+    denyPartialPrefix(envelope,limitation);
+  }
+});
+test('exhausted retained rows equal the public invocation original minimum across supported families',()=>{
+  const valid=exhaustedPrefix();
+  for(const saved of [false,true]) {
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true}),decoded=decodeEnvelope(resultEvent(valid).content);
+    assert.equal((saved?policy.restoreReceivedResult(decoded,10000):policy.toolResult(decoded,10000)).allow,true);
+    assert.equal(policy.report().partialEvidence.receivedRows,3);
+  }
+  for(const minimum of [2,4,194])denyPartialPrefix(setOriginalMinimum(exhaustedPrefix(),minimum),`exhausted minimum=${minimum}`);
+  denyPartialPrefix(setOriginalMinimum(partialPrefix(),2),'received prefix exceeds retained aggregate');
+  const pending=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(pending.restoreReceivedResult(decodeEnvelope(resultEvent(partialPrefix()).content),10000).allow,true,'A shorter prefix with row successor remains eligible');
+});
+test('completion rejection requires its producer report failure recovery action',()=>{
+  for(const action of ['restart_read','correct_request','adjust_budget_or_scope','wait_for_workspace']) {
+    const envelope=partialPrefix();envelope.initial.document.next_action=action;denyPartialPrefix(envelope,action);
+  }
+});
+test('retained seed suggestions agree with exact discovery question preview and output',()=>{
+  const valid=exactNamePrefix(),proof=valid.initial.document.rejection.detail.evidence;
+  for(const seed of [proof.seedQuery,null,undefined]) {
+    const envelope=structuredClone(valid);envelope.initial.document.rejection.detail.evidence.seedQuery=seed;
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,true);
+  }
+  for(const [label,change] of [
+    ['different seed',p=>p.seedQuery.request.source.symbolRefs=['exact:v2:other']],
+    ['different output',p=>p.seedQuery.request.output.fields=['LOCATION']],
+    ['location question',p=>p.question.from={type:'location',file:'Fixture.kt',offset:0}],
+    ['fuzzy question',p=>p.question.from.match.matching='fuzzy'],
+    ['nonempty steps',p=>p.question.steps=[{type:'distinct'}]],
+    ['empty preview',p=>p.preview=[]],
+  ]) {
+    const envelope=exactNamePrefix(),p=envelope.initial.document.rejection.detail.evidence;change(p);
+    envelope.pages[0].document.question=structuredClone(p.question);denyPartialPrefix(envelope,label);
+  }
+});
+test('only a row successor permits adding a retained page result limitation',()=>{
+  const invalid=exhaustedPrefix();
+  invalid.pages[0].document.qualification.limitations.unshift('result-limit-reached');denyPartialPrefix(invalid,'evidence-only successor');
+  const inherited=structuredClone(invalid),detail=inherited.initial.document.rejection.detail;
+  detail.originalCoverage.limitations.unshift('RESULT_LIMIT_REACHED');
+  inherited.pages[0].document.interpretation.originalCoverage=structuredClone(detail.originalCoverage);
+  const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(inherited).content),10000).allow,true,'An inherited source limitation survives row exhaustion');
+});
+test('supported partial outputs require the producer non impact accounting',()=>{
+  const envelope=partialPrefix();envelope.pages[0].document.impact_accounting={type:'EVIDENCE_ONLY',pagePathCount:999};
+  denyPartialPrefix(envelope,'accounting for non-value output');
+});
+test('qualified supported retained coverage fixes coupled completion causes to incomplete execution',()=>{
+  for(const type of ['ITEM_FAILURE','OMITTED_EVIDENCE']) {
+    const envelope=partialPrefix();envelope.initial.document.rejection.detail.cause={type};
+    envelope.pages[0].document.interpretation.cause={type};denyPartialPrefix(envelope,type);
+  }
+});
+test('real delivery rejects nonadvancing successors before a relabeled saved prefix can admit them',async()=>{
+  const awaitDelivery=runInNewContext(readFileSync(new URL('../../cli/src/main/js/query-delivery.mjs',import.meta.url),'utf8')+';awaitQueryDelivery',{Buffer});
+  const envelope=partialPrefix(),stalled=structuredClone(envelope.pages[0]);
+  stalled.document.items=[];stalled.document.page_progress.rows=0;
+  const replies=[envelope.initial,...envelope.pages,stalled],calls=[];
+  const actual=await awaitDelivery({request:{type:'RUN'}},async request=>{
+    calls.push(structuredClone(request));assert.ok(replies.length,'No call follows the stalled reply');return replies.shift();
+  },{callTimeoutMillis:1000},undefined,()=>0);
+  assert.equal(replies.length,0);assert.equal(calls.length,3);assert.equal(actual.delivery.stop,'NON_ADVANCING');
+  assert.equal(actual.pages.length,1);assert.equal(calls[2].request.cursor,3);assert.equal(calls[2].request.evidence_cursor,0);
+  const relabeled=JSON.parse(JSON.stringify(actual));relabeled.pages.push(stalled);relabeled.delivery.stop='BYTE_LIMIT';
+  denyPartialPrefix(relabeled,'nonadvancing retained page');
+  stalled.document.failures=[{type:'exact-reference',ref:'exact:v2:fixture-0',reason:'compiler-identity-unavailable'}];
+  stalled.document.page_progress.failures=1;stalled.document.evidence_window.end=1;
+  const advancing=structuredClone(envelope);advancing.pages.push(stalled);
+  const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(advancing).content),10000).allow,true);
+  assert.deepEqual(policy.report().partialEvidence.evidence,{received:1,total:3});
+});
+test('retained prefix inventory binds projected symbol fields and excludes invocation metadata',()=>{
+  for(const [label,change] of [
+    ['unrequested name',e=>{e.initial.document.rejection.detail.evidence.question.output.fields=[];e.initial.document.rejection.detail.evidence.nextQuery.request.output.fields=[];e.pages[0].document.question.output.fields=[];}],
+    ['unrequested location',e=>{e.pages[0].document.items[0].location={file:'Fixture.kt',range:{startInclusive:0,endExclusive:1}};e.initial.document.rejection.detail.evidence.preview=[structuredClone(e.pages[0].document.items[0])];}],
+    ['invocation',e=>{e.pages[0].document.invocation=structuredClone(deliveryCases.complete.result.initial.document.invocation);}],
+  ]) {
+    const envelope=partialPrefix();change(envelope);denyPartialPrefix(envelope,label);
+  }
+});
+test('retained evidence families cannot regress across a contiguous prefix',()=>{
+  const envelope=partialPrefix(),first=envelope.pages[0].document,last=structuredClone(envelope.pages[0]);
+  const reference=JSON.parse(readFileSync(new URL('../../cli/src/test/resources/query-presentation-native.json',import.meta.url),'utf8')).cases.occurrences.reply.document.items[0].occurrence;
+  first.reference_observations=[reference];first.page_progress.reference_evidence=1;first.evidence_window.end=1;
+  last.document.items=[];last.document.page_progress.rows=0;last.document.next_cursor=null;
+  last.document.failures=[{type:'exact-reference',ref:'exact:v2:fixture-0',reason:'compiler-identity-unavailable'}];
+  last.document.page_progress.failures=1;last.document.evidence_window={type:'MORE',start:1,end:2,total:3};
+  envelope.pages.push(last);denyPartialPrefix(envelope,'reference evidence before earlier failure family');
+});
+test('retained row exhaustion cannot revive or traverse an intermediate terminal page',()=>{
+  for(const terminal of [false,true]) {
+    const envelope=partialPrefix(),first=envelope.pages[0].document,last=structuredClone(envelope.pages[0]);
+    first.next_cursor=null;if(terminal)first.evidence_window={type:'FINAL',start:0,end:0,total:0};
+    last.document.items=[];last.document.page_progress.rows=0;last.document.next_cursor=3;
+    last.document.evidence_window=structuredClone(first.evidence_window);
+    envelope.pages.push(last);denyPartialPrefix(envelope,`terminal=${terminal}`);
+  }
+});
+test('terminal FINAL pages cannot be relabeled as a byte-limited prefix',async()=>{
+  const awaitDelivery=runInNewContext(readFileSync(new URL('../../cli/src/main/js/query-delivery.mjs',import.meta.url),'utf8')+';awaitQueryDelivery',{Buffer});
+  for(const omitted of [false,true]) {
+    const envelope=partialPrefix(),page=envelope.pages[0].document,detail=envelope.initial.document.rejection.detail;
+    detail.originalCoverage.knownMinimum=3;page.qualification.knownMinimum=3;
+    page.interpretation.originalCoverage=structuredClone(detail.originalCoverage);
+    page.evidence_window={type:'FINAL',start:0,end:0,total:0};
+    if(omitted)delete page.next_cursor;else page.next_cursor=null;
+    const replies=[envelope.initial,...envelope.pages],calls=[];
+    const delivered=await awaitDelivery({request:{type:'RUN'}},async request=>{
+      calls.push(structuredClone(request));
+      assert.ok(replies.length,'No call may follow the terminal received page');
+      return replies.shift();
+    },{callTimeoutMillis:1000},undefined,()=>0);
+    assert.equal(replies.length,0);assert.equal(calls.length,2);
+    assert.equal(calls[1].request.type,'READ_RESULT');
+    assert.equal(calls[1].request.cursor,0);assert.equal(calls[1].request.evidence_cursor,0);
+    assert.equal(delivered.delivery.stop,'DELIVERED');
+    assert.deepEqual(JSON.parse(JSON.stringify(delivered.pages)),envelope.pages);
+    delivered.delivery.stop='BYTE_LIMIT';
+    const before=JSON.stringify(delivered);
+    for(const saved of [false,true]) {
+      const policy=makePolicy({...config(),evidenceOnlyDelivery:true}),decoded=decodeEnvelope(resultEvent(delivered).content);
+      assert.equal((saved?policy.restoreReceivedResult(decoded,10000):policy.toolResult(decoded,10000)).reason,'CLIENT_DELIVERY_BLOCKED',`omitted=${omitted}, saved=${saved}`);
+      assert.equal(policy.report().partialEvidence,null);assert.equal(policy.beforeProvider(pinned).allow,false);
+      assert.equal(policy.report().nativeOutcome,'REJECTED');
+    }
+    const strict=makePolicy({...config(),evidenceOnlyDelivery:false});
+    assert.equal(strict.restoreReceivedResult(decodeEnvelope(resultEvent(delivered).content),10000).reason,'INTENTIONAL_REJECTION');
+    assert.equal(strict.report().partialEvidence,null);assert.equal(strict.beforeProvider(pinned).allow,false);
+    assert.equal(JSON.stringify(delivered),before);
+  }
+});
+test('byte-limited prefixes retain either a row successor or an evidence MORE successor',()=>{
+  for(const successor of ['row','evidence'])for(const saved of [false,true]) {
+    const envelope=successor==='row'?partialPrefix():exhaustedPrefix(),page=envelope.pages[0].document;
+    if(successor==='row')page.evidence_window={type:'FINAL',start:0,end:0,total:0};
+    else delete page.next_cursor;
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true}),decoded=decodeEnvelope(resultEvent(envelope).content),before=JSON.stringify(envelope);
+    assert.equal((saved?policy.restoreReceivedResult(decoded,10000):policy.toolResult(decoded,10000)).allow,true,`${successor}, saved=${saved}`);
+    assert.equal(policy.report().partialEvidence.receivedRows,3);
+    assert.equal(policy.report().nativeOutcome,'REJECTED');
+    assert.equal(policy.report().requiredEvidenceVerified,false);assert.equal(policy.report().exhaustiveRowsVerified,false);
+    assert.equal(policy.report().providerRequests,0);
+    assert.equal(policy.beforeProvider(pinned).allow,true);
+    assert.equal(JSON.stringify(envelope),before);
+  }
+});
+test('explicit evidence-only BYTE_LIMIT prefix permits one honest answer and preserves native rejection',()=>{
+  const envelope=partialPrefix(),before=JSON.stringify(envelope);
+  const policy=makePolicy({...config(),evidenceOnlyDelivery:true,delivery:{...config().delivery,requests:3}});
+  const decoded=decodeEnvelope(resultEvent(envelope).content);
+  assert.equal(policy.restoreReceivedResult(decoded,Buffer.byteLength(before)).allow,true);
+  const report=policy.report();
+  assert.equal(report.nativeOutcome,'REJECTED');assert.equal(report.exhaustiveEvidence,false);
+  assert.equal(report.semanticRejection.knownMinimum,194);
+  assert.equal(report.semanticRejection.progress.reason,'checkpoint-capacity-exceeded');
+  assert.deepEqual(report.partialEvidence,{stop:'BYTE_LIMIT',receivedRows:3,duplicatePreviewRows:1,
+    evidence:{received:0,total:3},knownMinimum:194,question:envelope.pages[0].document.question,
+    live:envelope.pages[0].document.live,result:envelope.delivery.result,maximumAnswerRequests:1});
+  assert.equal(report.semanticRepliesObserved,0);assert.equal(report.providerRequests,0);
+  assert.equal(report.requiredEvidenceVerified,false);assert.equal(report.exhaustiveRowsVerified,false);
+  assert.equal(JSON.stringify(envelope),before);
+  assert.equal(policy.beforeProvider(pinned).allow,true);
+  policy.modelUsage({input:100,output:50,totalTokens:150});
+  policy.assistantEnded({stopReason:'stop',content:[{type:'text',text:'Three received rows only. Native query rejected; evidence remains incomplete.'}]});
+  assert.equal(policy.report().outcome,'INTENTIONAL_REJECTION');assert.equal(policy.report().finalAnswer,true);
+  assert.equal(policy.beforeProvider(pinned).allow,false);
+});
+test('partial prefix false policy and other client blockers preserve their first terminal result',()=>{
+  for(const stop of ['BYTE_LIMIT','DELIVERED']) {
+    const envelope=partialPrefix();envelope.delivery.stop=stop;
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:false});
+    assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).reason,'INTENTIONAL_REJECTION');
+    assert.equal(policy.report().partialEvidence,null);assert.equal(policy.report().nativeOutcome,'REJECTED');
+    assert.equal(policy.beforeProvider(pinned).allow,false);
+    assert.equal(policy.toolResult(negativeComplete).reason,'INTENTIONAL_REJECTION');
+    assert.equal(policy.report().nativeOutcome,'REJECTED');
+  }
+  for(const stop of ['CANCELLED','TIME_LIMIT','PAGE_LIMIT','DELIVERY_UNAVAILABLE','BUDGET_INCREASE_REQUIRED','MALFORMED_PAGE','IDENTITY_MISMATCH','NON_ADVANCING']) {
+    const envelope=partialPrefix();envelope.delivery.stop=stop;
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).reason,'CLIENT_DELIVERY_BLOCKED',stop);
+    assert.equal(policy.beforeProvider(pinned).allow,false);assert.equal(policy.report().partialEvidence,null);
+  }
+});
+test('partial-prefix admission rejects lost stale malformed and mismatched scope authority or evidence',()=>{
+  const changes=[
+    e=>{e.initial=null;e.pages=[];e.delivery.original_outcome='rejected_document';},
+    e=>e.pages=[],
+    e=>e.pages[0].document.retention.reference='result:v1:00000000-0000-4000-8000-000000000002',
+    e=>e.pages[0].document.question.steps.push({type:'changed-scope'}),
+    e=>delete e.pages[0].document.live,
+    e=>e.pages[0].document.live.contentView='UNKNOWN',
+    e=>e.pages[0].document.live.epoch=-1,
+    e=>e.pages[0].document.qualification.progress.type='retention_unavailable',
+    e=>e.pages.push({type:'rejected_document',document:{status:'rejected',rejection:{type:'execution-rejected',reason:'result-stale-basis'}}}),
+    e=>e.pages[0].document.interpretation.originalCoverage.knownMinimum=1001,
+    e=>e.pages[0].document.next_cursor=4,
+    e=>e.pages[0].document.evidence_window.start=1,
+    e=>e.pages[0].document.evidence_window.end=1,
+    e=>e.pages[0].document.evidence_window.total=-1,
+    e=>e.pages[0].document.items[0]=null,
+    e=>e.pages[0].document.items[0].type='unknown',
+    e=>e.pages[0].document.items[0].row_id='invalid',
+    e=>delete e.pages[0].document.failures,
+    e=>e.initial.document.rejection.detail.evidence.nextQuery.request.type='RUN',
+    e=>{e.pages[0].document.items=[];e.pages[0].document.page_progress.rows=0;e.pages[0].document.next_cursor=0;e.initial.document.rejection.detail.evidence.preview=[];},
+  ];
+  for(const [index,change] of changes.entries()) {
+    const envelope=partialPrefix();change(envelope);
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,false,index);
+    assert.equal(policy.report().partialEvidence,null,index);assert.equal(policy.beforeProvider(pinned).allow,false,index);
+  }
+  for(const key of ['host','epoch','root']) {
+    const envelope=partialPrefix(),page=structuredClone(envelope.pages[0]);
+    page.document.items=[];page.document.page_progress.rows=0;
+    page.document.live[key]=key==='epoch'?2:'changed';envelope.pages.push(page);
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,false,key);
+  }
+});
+test('partial prefix preserves contiguous evidence counts across multiple pages',()=>{
+  const envelope=partialPrefix(),first=envelope.pages[0].document,last=structuredClone(envelope.pages[0]);
+  first.failures=[{type:'exact-reference',ref:'exact:v2:fixture-0',reason:'compiler-identity-unavailable'}];
+  first.page_progress.failures=1;
+  first.evidence_window.end=1;
+  last.document.items=[];last.document.page_progress.rows=0;
+  last.document.failures=structuredClone(first.failures);
+  last.document.page_progress.failures=1;
+  last.document.evidence_window={type:'MORE',start:1,end:2,total:3};
+  envelope.pages.push(last);
+  const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,true);
+  assert.deepEqual(policy.report().partialEvidence.evidence,{received:2,total:3});
+  assert.deepEqual(envelope.pages[0].document.failures,first.failures);
+  last.document.evidence_window.total=4;
+  const inconsistent=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(inconsistent.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,false);
+});
+test('partial prefix occurrence identity retains distinct rows and rejects conflicting copies',()=>{
+  const envelope=partialPrefix(),rows=envelope.pages[0].document.items;
+  rows[1].ref=rows[0].ref;
+  for(const [index,row] of rows.entries())row.row_id=`result-row:v1:00000000-0000-4000-8000-00000000000${index+1}`;
+  envelope.initial.document.rejection.detail.evidence.preview=[structuredClone(rows[0])];
+  const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,true);
+  assert.equal(policy.report().partialEvidence.receivedRows,3);assert.equal(policy.report().partialEvidence.duplicatePreviewRows,1);
+  envelope.initial.document.rejection.detail.evidence.preview[0].name='conflicting description';
+  const conflict=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(conflict.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,false);
+});
+test('missing row IDs use symbol or occurrence identity and conflicting preview descriptions fail closed',()=>{
+  const symbol=partialPrefix();symbol.initial.document.rejection.detail.evidence.preview[0].name='conflicting name';
+  const rejected=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(rejected.restoreReceivedResult(decodeEnvelope(resultEvent(symbol).content),10000).allow,false);
+  // Existing pinned, sanitized canonical reference rows supply actual occurrence
+  // shape. Missing IDs deliberately exercise the compatible optional-ID boundary.
+  const native=JSON.parse(readFileSync(new URL('../../cli/src/test/resources/query-presentation-native.json',import.meta.url),'utf8')).cases.occurrences.reply.document;
+  const references=partialPrefix(),page=references.pages[0].document,proof=references.initial.document.rejection.detail.evidence;
+  page.items=structuredClone(native.items.slice(0,3));
+  for(const row of page.items)delete row.row_id;
+  assert.equal(new Set(page.items.map(row=>row.ref)).size,1,'Same target can have distinct source occurrences');
+  page.question=structuredClone(native.question);page.live=structuredClone(native.live);
+  proof.question=structuredClone(native.question);proof.preview=[structuredClone(page.items[0])];
+  proof.nextQuery.request.output={type:'OCCURRENCES'};
+  const valid=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(valid.restoreReceivedResult(decodeEnvelope(resultEvent(references).content),10000).allow,true);
+  assert.equal(valid.report().partialEvidence.receivedRows,3);
+  assert.equal(valid.report().partialEvidence.duplicatePreviewRows,1);
+  proof.preview[0].occurrence.target.name='conflicting target description';
+  const conflict=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(conflict.restoreReceivedResult(decodeEnvelope(resultEvent(references).content),10000).allow,false);
+});
+test('malformed terminal reason cannot enter partial interpretation and legitimate differing reasons remain eligible',()=>{
+  for(const reason of ['result-stale-basis','result-unavailable','UNKNOWN',null,undefined]) {
+    const envelope=partialPrefix();envelope.pages[0].document.qualification.progress.reason=reason;
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,false,reason);
+  }
+  const envelope=partialPrefix();
+  assert.equal(envelope.pages[0].document.qualification.progress.reason,'upstream-incomplete');
+  assert.equal(envelope.initial.document.rejection.detail.originalCoverage.progress.reason,'checkpoint-capacity-exceeded');
+  const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,true);
+});
+test('retained preview must match the ordered received prefix including its issued row IDs',()=>{
+  for(const change of [
+    p=>p[0].row_id='result-row:v1:00000000-0000-4000-8000-000000000004',
+    p=>delete p[0].row_id,
+    p=>p.reverse(),
+    p=>p.push({...p.at(-1),row_id:'result-row:v1:00000000-0000-4000-8000-000000000004'}),
+  ]) {
+    const envelope=partialPrefix(),rows=envelope.pages[0].document.items;
+    for(const [i,row] of rows.entries())row.row_id=`result-row:v1:00000000-0000-4000-8000-00000000000${i+1}`;
+    const proof=envelope.initial.document.rejection.detail.evidence;proof.preview=structuredClone(rows);
+    change(proof.preview);
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,false);
+    assert.equal(policy.report().partialEvidence,null);
+  }
+});
+test('matching previews cannot admit noncanonical received row DTOs',()=>{
+  for(const [label,change] of [
+    ['boolean name',row=>row.name=true],
+    ['unknown symbol kind',row=>row.kind='UNKNOWN'],
+    ['malformed location',row=>row.location={file:true,range:{startInclusive:0,endExclusive:1}}],
+    ['malformed signature',row=>row.signature={type:'UNKNOWN'}],
+    ['malformed connection',row=>row.connections=[true]],
+    ['malformed source',row=>row.source={text:true,startLine:1,endLine:2}],
+    ['malformed text matches',row=>row.matches=[true]],
+    ['unknown row property',row=>row.extra='unknown'],
+  ]) {
+    const envelope=partialPrefix();change(envelope.pages[0].document.items[0]);
+    envelope.initial.document.rejection.detail.evidence.preview=[structuredClone(envelope.pages[0].document.items[0])];
+    for(const saved of [false,true]) {
+      const policy=makePolicy({...config(),evidenceOnlyDelivery:true}),decoded=decodeEnvelope(resultEvent(envelope).content);
+      assert.equal((saved?policy.restoreReceivedResult(decoded,10000):policy.toolResult(decoded,10000)).allow,false,label);
+      assert.equal(policy.report().partialEvidence,null,label);
+      assert.equal(policy.beforeProvider(pinned).allow,false,label);
+    }
+  }
+});
+test('received positions must not repeat issued row identity within or across pages',()=>{
+  for(const acrossPages of [false,true]) {
+    const envelope=partialPrefix(),first=envelope.pages[0].document;
+    for(const [index,row] of first.items.entries())row.row_id=`result-row:v1:00000000-0000-4000-8000-00000000000${index+1}`;
+    const duplicate=structuredClone(first.items[0]);
+    if(acrossPages) {
+      const last=structuredClone(envelope.pages[0]);last.document.items=[duplicate];
+      last.document.page_progress.rows=1;last.document.next_cursor=4;envelope.pages.push(last);
+    } else first.items[1]=duplicate;
+    envelope.initial.document.rejection.detail.evidence.preview=structuredClone(first.items);
+    for(const saved of [false,true]) {
+      const policy=makePolicy({...config(),evidenceOnlyDelivery:true}),decoded=decodeEnvelope(resultEvent(envelope).content);
+      assert.equal((saved?policy.restoreReceivedResult(decoded,10000):policy.toolResult(decoded,10000)).allow,false,`acrossPages=${acrossPages}`);
+      assert.equal(policy.report().partialEvidence,null);
+    }
+  }
+});
+test('legacy optional nullable IDs preserve distinct rows and reject repeated semantic identities',()=>{
+  for(const nullable of [false,true]) {
+    const envelope=partialPrefix(),rows=envelope.pages[0].document.items;
+    for(const row of rows)if(nullable)row.row_id=null;else delete row.row_id;
+    envelope.initial.document.rejection.detail.evidence.preview=[structuredClone(rows[0])];
+    const valid=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(valid.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,true);
+    assert.equal(valid.report().partialEvidence.receivedRows,3);
+    rows[1]=structuredClone(rows[0]);
+    envelope.initial.document.rejection.detail.evidence.preview=structuredClone(rows);
+    const duplicate=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(duplicate.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,false);
+  }
+});
+test('canonical omitted or null final cursors permit only later evidence-only pages',()=>{
+  for(const omitted of [false,true]) {
+    const envelope=partialPrefix(),first=envelope.pages[0].document,coverage=envelope.initial.document.rejection.detail.originalCoverage;
+    coverage.knownMinimum=3;first.qualification.knownMinimum=3;first.interpretation.originalCoverage=structuredClone(coverage);
+    if(omitted)delete first.next_cursor;else first.next_cursor=null;
+    const last=structuredClone(envelope.pages[0]);last.document.items=[];last.document.page_progress.rows=0;
+    last.document.failures=[{type:'exact-reference',ref:'exact:v2:fixture-0',reason:'compiler-identity-unavailable'}];
+    last.document.page_progress.failures=1;last.document.evidence_window.end=1;
+    envelope.pages.push(last);
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,true);
+    assert.equal(policy.report().partialEvidence.receivedRows,3);
+  }
+});
+test('matching reference previews require canonical target ownership occurrence and evidence DTOs',()=>{
+  const native=JSON.parse(readFileSync(new URL('../../cli/src/test/resources/query-presentation-native.json',import.meta.url),'utf8')).cases.occurrences.reply.document;
+  for(const [label,change] of [
+    ['target name',r=>r.target.name=true],['target kind',r=>r.target.kind='UNKNOWN'],
+    ['compiler signature',r=>r.target.compilerEvidence.signature=true],
+    ['ownership variant',r=>r.ownership={type:'UNKNOWN'}],
+    ['occurrence file',r=>r.occurrence.file=true],['context',r=>r.context='UNKNOWN'],
+    ['meaning',r=>r.meaning='UNKNOWN'],['provenance',r=>r.provenance='UNKNOWN'],['coverage',r=>r.coverage=true],
+  ]) {
+    const envelope=partialPrefix(),page=envelope.pages[0].document,proof=envelope.initial.document.rejection.detail.evidence;
+    page.items=structuredClone(native.items.slice(0,3));page.question=structuredClone(native.question);page.live=structuredClone(native.live);
+    proof.question=structuredClone(native.question);proof.nextQuery.request.output={type:'OCCURRENCES'};
+    change(page.items[0].occurrence);proof.preview=[structuredClone(page.items[0])];
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,false,label);
+    assert.equal(policy.report().partialEvidence,null,label);
+  }
+});
+test('partial interpretation admits the complete rejection and page DTO boundary',()=>{
+  for(const [label,change] of [
+    ['rejection operation',e=>e.initial.document.operation='UNKNOWN'],
+    ['rejection recovery',e=>e.initial.document.next_action={type:'UNKNOWN'}],
+    ['rejection model',e=>{e.initial.document.rejection.detail.model='UNKNOWN';e.pages[0].document.interpretation.model='UNKNOWN';}],
+    ['rejection cause',e=>{e.initial.document.rejection.detail.cause={type:'UNKNOWN'};e.pages[0].document.interpretation.cause={type:'UNKNOWN'};}],
+    ['rejection stop',e=>e.initial.document.rejection.detail.stop='UNKNOWN'],
+    ['original failure',e=>e.initial.document.rejection.detail.originalFailure=true],
+    ['next read output',e=>e.initial.document.rejection.detail.evidence.nextQuery.request.output=true],
+    ['seed query',e=>e.initial.document.rejection.detail.evidence.seedQuery={request:{type:'RUN'}}],
+    ['page operation',e=>e.pages[0].document.operation='UNKNOWN'],
+    ['impact accounting',e=>e.pages[0].document.impact_accounting={type:'UNKNOWN'}],
+    ['page progress type',e=>e.pages[0].document.page_progress.omissions=true],
+    ['evidence item type',e=>{e.pages[0].document.failures=[true];e.pages[0].document.evidence_window.end=1;}],
+    ['budget DTO',e=>e.pages[0].document.execution_budget=true],
+    ['authority unknown field',e=>e.pages[0].document.live.extra='unknown'],
+    ['retention unknown field',e=>e.pages[0].document.retention.extra='unknown'],
+  ]) {
+    const envelope=partialPrefix();change(envelope);
+    for(const saved of [false,true]) {
+      const policy=makePolicy({...config(),evidenceOnlyDelivery:true}),decoded=decodeEnvelope(resultEvent(envelope).content);
+      assert.equal((saved?policy.restoreReceivedResult(decoded,10000):policy.toolResult(decoded,10000)).allow,false,label);
+      assert.equal(policy.report().partialEvidence,null,label);
+    }
+  }
+});
+test('schema-valid partial DTOs still require consistent output progress and cursor facts',()=>{
+  for(const [label,change] of [
+    ['contradictory terminal reason',e=>e.pages[0].document.terminal_reason='no-progress'],
+    ['terminal evidence with a continuation',e=>e.pages[0].document.continuation='query-output:v1:unissued'],
+    ['contradictory failure count',e=>e.pages[0].document.page_progress.failures=1],
+    ['contradictory recovery output',e=>e.initial.document.rejection.detail.evidence.nextQuery.request.output.fields=['SIGNATURE']],
+    ['question output disagrees with rows',e=>{
+      const proof=e.initial.document.rejection.detail.evidence;proof.question.output={type:'occurrences'};
+      e.pages[0].document.question=structuredClone(proof.question);proof.nextQuery.request.output={type:'OCCURRENCES'};
+    }],
+    ['rows after final row cursor',e=>{
+      const first=e.pages[0].document,last=structuredClone(e.pages[0]);first.next_cursor=null;
+      last.document.items=[structuredClone(first.items[0])];last.document.items[0].ref='exact:v2:fixture-next';
+      last.document.page_progress.rows=1;last.document.next_cursor=4;e.pages.push(last);
+    }],
+  ]) {
+    const envelope=partialPrefix();change(envelope);
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,false,label);
+    assert.equal(policy.report().partialEvidence,null,label);
+  }
+});
+test('internally consistent malformed questions and contradictory evidence qualification cannot enable partial delivery',()=>{
+  for(const change of [
+    q=>q.from=true,q=>q.output=true,q=>q.completion.model='UNKNOWN',q=>q.from.offset=-1,
+    q=>q.output.fields=['invalid'],q=>q.output.fields=['name','name'],q=>q.steps=[true],
+    q=>q.steps=[{type:'related',relation:'references',expansion_scope:{type:'SOURCE_DOMAIN',source_sets:[],directory:null,source_policy:'production-and-test',generated_sources:'exclude'}}],
+  ]) {
+    const envelope=partialPrefix(),question=envelope.initial.document.rejection.detail.evidence.question;change(question);
+    for(const page of envelope.pages)page.document.question=structuredClone(question);
+    for(const saved of [false,true]) {
+      const policy=makePolicy({...config(),evidenceOnlyDelivery:true}),decoded=decodeEnvelope(resultEvent(envelope).content);
+      assert.equal((saved?policy.restoreReceivedResult(decoded,10000):policy.toolResult(decoded,10000)).allow,false);
+      assert.equal(policy.report().partialEvidence,null);
+    }
+  }
+  for(const change of [
+    q=>q.limitations=[],q=>q.limitations=['static-model-unproven'],q=>q.limitations=['time-limit-reached','static-model-unproven'],
+    q=>q.limitations=['byte-limit-reached','UNKNOWN','static-model-unproven'],
+    q=>q.progress.reason='checkpoint-capacity-exceeded',q=>q.progress.extra='unknown',
+  ]) {
+    const envelope=partialPrefix();change(envelope.pages[0].document.qualification);
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,false);
+  }
+  const pageLimited=partialPrefix();pageLimited.pages[0].document.qualification.limitations.unshift('result-limit-reached');
+  const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(pageLimited).content),10000).allow,true,'Retained page selection may add its own result limit');
+});
+test('fresh partial prefix guard counts full instructions and body permits one request and forbids every further tool',()=>{
+  const policy=makePolicy({...config(),evidenceOnlyDelivery:true,delivery:{...config().delivery,requests:3}}),guard=callbacks(policy);
+  const envelope=partialPrefix();
+  guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'}}});
+  guard.emit('tool_result',{...resultEvent(envelope),isError:true});
+  assert.equal(guard.aborted,0);assert.equal(policy.report().semanticRepliesObserved,1);
+  assert.equal(summarizeGuard(guard.records.at(-1)).decision.reason,'DECLARED_RECEIVED_PARTIAL_EVIDENCE');
+  const payload=guard.emit('before_provider_request',{payload:{...providerPayload(),input:[{type:'function_call_output',call_id:'call-1',output:JSON.stringify(envelope)}]}});
+  assert.match(payload.instructions,/query remains rejected \(COMPLETION_UNPROVEN; checkpoint-capacity-exceeded\)/);
+  assert.match(payload.instructions,/received evidence entries: 0\/3/);
+  assert.equal(policy.report().requestObservations[0].payloadBytes,Buffer.byteLength(JSON.stringify(payload)));
+  policy.modelUsage({input:100,output:50,totalTokens:150});
+  assert.equal(policy.beforeProvider(pinned).reason,'HARNESS_BUDGET_LIMIT');
+  for(const request of [{type:'RUN'},{type:'RESUME'},envelope.initial.document.rejection.detail.evidence.nextQuery.request]) {
+    const p=makePolicy({...config(),evidenceOnlyDelivery:true});
+    p.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000);
+    assert.equal(p.toolCall('query_symbols',{request},'new-call').reason,'HARNESS_TOOL_BLOCKED');
+    assert.equal(p.report().nativeOutcome,'REJECTED');
+  }
+  const bounded=makePolicy({...config(),evidenceOnlyDelivery:true,maximumProviderPayloadBytes:500}),blocked=callbacks(bounded);
+  bounded.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000);
+  blocked.emit('before_provider_request',providerEvent());
+  assert.equal(blocked.aborted,1);assert.equal(bounded.report().providerRequests,0);
+  assert.equal(bounded.report().outcome,'HARNESS_BUDGET_LIMIT');
+  assert.equal(bounded.report().nativeOutcome,'REJECTED');
+});
 test('actual shared-client delivered complete and qualified preserve initial semantics and count physical RPCs separately',()=>{
   for(const [name,nativeOutcome,finalOutcome] of [['complete','EXHAUSTIVE_RESULT','FINAL_ANSWER'],['qualified','QUALIFIED_RESULT','QUALIFIED_ANSWER']]) {
     const {policy,guard,fixture}=deliveredCase(name);

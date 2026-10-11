@@ -377,12 +377,122 @@ Initial rejected proof remains an intentional rejection. The explicitly enabled
 evidence-only interpretation mode may interpret already delivered proof under
 its bounded DELIVERY allowance, but cannot read that proof again.
 
-Non-DELIVERED statuses are `CLIENT_DELIVERY_BLOCKED` with the exact client stop,
+By default, non-DELIVERED statuses are `CLIENT_DELIVERY_BLOCKED` with the exact client stop,
 including unavailable delivery, required budget increase and cancellation. No
 RUN, RESUME, retained read or provider continuation can recover that blocked
 case. A BYTE_LIMIT envelope with a null initial reply preserves original_outcome
 as a hint, without inventing native coverage. No remote cancellation settlement
 is inferred from the client's CANCELLED observation.
+
+### Explicit received-prefix interpretation
+
+`evidenceOnlyDelivery: true` also permits one DELIVERY answer when `BYTE_LIMIT`
+leaves an intact retained `COMPLETION_UNPROVEN` rejection and a consistent,
+nonempty prefix of exact-symbol or reference-occurrence rows. All received pages
+must retain the original question, result identity, coverage interpretation and
+live observation. Row cursors and evidence windows must be contiguous. The last
+received page must retain a row cursor or a `MORE` evidence window. A page with
+neither successor finishes `DELIVERED` in the production client and cannot be
+relabeled as this exceptional `BYTE_LIMIT` prefix. Unknown
+rows, repeated or conflicting row identities, missing authority, stale/expired rejection,
+retention loss, cancellation and other client stops remain blocked. The false
+policy keeps its existing rejection behavior.
+
+The report's nullable `partialEvidence` records unique received rows, duplicate
+preview rows, received/total evidence entries, original known minimum, exact
+question, observed live authority, result identity and one-answer limit. Row
+identity preserves distinct occurrences even when they share a target selector.
+The retained preview must match the ordered received prefix, including issued
+row IDs; conflicting or uncovered previews fail this narrow opt-in. Legacy rows
+with absent or null IDs use exact symbol identity or the occurrence's target, meaning, site,
+context, ownership and provenance. Descriptions never invent another identity.
+Any repeated received identity is rejected, even when its description matches.
+Only the preview is a permitted copy of already received positions.
+Canonical documents, all qualifications, failure entries and byte/RPC counts
+remain unchanged. A native minimum is not an exhaustive total.
+
+The actual guard appends a bounded interpretation instruction before measuring
+the complete provider body. It requires the answer to state the native rejection,
+client stop, received facts, missing evidence, exact scope and observed authority.
+This instruction guides an answer; it does not verify prose correctness or fresh
+authority. The policy permits no further tool, retained read, RUN or RESUME.
+Provider bytes, response bytes, output reserve, cumulative usage and wall bounds
+still apply. Saved continuation keeps its pinned context with no new user prompt.
+A final answer retains `INTENTIONAL_REJECTION` and `nativeOutcome: REJECTED`;
+external row/evidence verification remains false until separately established.
+
+Decision: constrain this exception to byte-limited rejection evidence. Other
+partial outcome families and resource stops require separate counterexamples.
+The harness changes no production client, generated schema owner, native retention,
+semantic budget, transport limit, adapter presentation or installation.
+
+Launch-free evidence from the sealed dense envelope, inspected without replaying
+its authority handles:
+
+| Observation | Before | After |
+|---|---|---|
+| True-policy saved prefix | `CLIENT_DELIVERY_BLOCKED` | One bounded DELIVERY answer eligible |
+| False-policy saved prefix | `INTENTIONAL_REJECTION` | Unchanged |
+| Native result | Rejected; minimum 194 | Unchanged |
+| Received unique / duplicate preview rows | 100 / 17 | 100 / 17 |
+| Received / total evidence entries | 0 / 3 | 0 / 3 |
+| Canonical UTF-8 bytes | 227,363 | 227,363 |
+| New semantic work / transport RPCs / provider sends | 0 / 0 / 0 | 0 / 0 / 0 |
+
+The independent fixture expects 1,001 rows; that total is external oracle data,
+not inferred from the native minimum or received prefix. The received scope is
+`main,test`, production-and-test, direct containment of
+`src/main/kotlin/reliability`. It differs from the earlier control's scope and
+cannot establish a controlled speed result. A synthetic complete provider body
+containing only this received canonical result and the new instruction measures
+247,261 bytes. It fits the existing 262,144-byte cap, but does not establish that
+the historical SDK context fits, or that any future request is admitted.
+
+Validation starts with the named failing policy case, then exercises production
+policy and guard callbacks for false-policy controls, malformed/stale evidence,
+scope/authority changes, duplicate identities, multi-page evidence counts, first
+terminal result preservation, complete-body byte rejection and the one-request
+limit. The existing Node suites run without inference or IDEA.
+Independent review and installed combined qualification remain separate gates.
+
+Review hardening admits the complete rejection and every qualified page against
+the existing `installedSemanticResultSchema(QUERY_RUN)`. Its actual canonical
+serializers and local output definitions cover rows, nested evidence, budgets,
+recovery and authority. No handwritten row or rejection schema is added.
+JVM parity prevents snapshot drift; an independent JSON Schema oracle compares
+the pure Node admission on canonical documents and recursive type/unknown-field
+mutations. Existing finite schema depth and provider bounds remain unchanged.
+Schema admission does not restore compiler or current liveness authority.
+
+Cross-field checks bind recovery output to the original question, row families to
+that output, and full page progress to the returned evidence groups. Terminal
+reason must match evidence-read qualification; a terminal page cannot issue a
+continuation or return new rows after its final row cursor. Canonical omitted or
+null row IDs/cursors retain their owning DTO meaning. The synthetic prefix uses
+native `TERMINAL_INCOMPLETE` separately from client `BYTE_LIMIT`.
+Evidence-read qualification preserves the
+original minimum and limitations, adds `static-model-unproven`, and uses
+`upstream-incomplete` progress, as `completionEvidenceRead` specifies. Retained
+selection may additionally add `result-limit-reached` while a row cursor remains, as
+`RetainedQueryPresentation.pageCoverage` specifies. Qualification does not copy
+the original producer progress reason. Unknown enums, missing limitations and
+contradictory qualifications remain blocked.
+
+The [partial-prefix invariant inventory](PARTIAL_PREFIX_INVARIANTS.md) records
+native derivation owners, checks and historical facts that a prefix cannot
+reconstruct. Recovery action, optional exact-name seed, incomplete completion
+cause, non-value accounting, output field mask, evidence partition order and
+advancing client successors are checked before the one-answer exception.
+A required Kotlin/Node fixture uses actual retained presentation, canonical
+recovery projection and the shared client's unchanged byte cap in five supported
+combinations. Shape and consistency do not prove native origin or current liveness.
+
+Original limitations use the exported domain QueryLimitation vocabulary, separately
+from the broader read-qualification wire enum. For this public logical RUN prefix,
+received rows cannot exceed the aggregate minimum and must equal it once rows end.
+This follows invocation aggregation and complete retained storage, not a general
+rule about low-level page minima. The six-case producer check preserves distinct
+occurrences sharing a target and rejects coupled count/vocabulary mutations.
 
 `queryDeliveries` records stop, physical rpc_count and UTF-8 byte counts separately
 from logical model proposals and semantic replies. A failed RPC can increase
