@@ -216,6 +216,10 @@
         "after": {
           "calls": 50,
           "bytes": 6124
+        },
+        "priorCompact": {
+          "calls": 50,
+          "bytes": 6124
         }
       },
       {
@@ -225,14 +229,23 @@
           "bytes": 40084
         },
         "after": {
+          "calls": 28,
+          "bytes": 27191
+        },
+        "dictionaryKeyConstruction": {
+          "calls": 0,
+          "bytes": 0
+        },
+        "priorCompact": {
           "calls": 68,
           "bytes": 53320
         },
-        "dictionaryKeyConstruction": {
+        "priorDictionaryKeyConstruction": {
           "calls": 40,
           "bytes": 26129
         }
       }
-    ]
+    ],
+    "followUpBaseRevision": "059d7cdc57d45a5404c3a31d8d6dcaa7e3f00dde"
   }
 }
