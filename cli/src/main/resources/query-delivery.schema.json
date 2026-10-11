@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kast.dev/contracts/query-delivery.schema.json",
+  "title": "Outer query output delivery",
+  "description": "Client output delivery only; DELIVERED does not establish canonical semantic completion. Physical RPC accounting may exceed the number of received replies.",
+  "x-page-count-within-rpc-count": true,
+  "$defs": {
+    "CanonicalReply": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "complete",
+            "qualified",
+            "rejected_document",
+            "rejected"
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "description": "Opaque canonical RPC reply: the owning RPC decoder admits all inner semantics separately."
+    }
+  },
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "initial",
+        "pages",
+        "delivery"
+      ],
+      "properties": {
+        "type": {
+          "const": "query_delivery"
+        },
+        "initial": {
+          "$ref": "#/$defs/CanonicalReply"
+        },
+        "pages": {
+          "type": "array",
+          "maxItems": 63,
+          "items": {
+            "$ref": "#/$defs/CanonicalReply"
+          }
+        },
+        "delivery": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "stop",
+            "rpc_count",
+            "request_bytes",
+            "response_bytes",
+            "result"
+          ],
+          "properties": {
+            "stop": {
+              "enum": [
+                "DELIVERED",
+                "CANCELLED",
+                "TIME_LIMIT",
+                "PAGE_LIMIT",
+                "BYTE_LIMIT",
+                "DELIVERY_UNAVAILABLE",
+                "BUDGET_INCREASE_REQUIRED",
+                "MALFORMED_PAGE",
+                "IDENTITY_MISMATCH",
+                "NON_ADVANCING"
+              ]
+            },
+            "rpc_count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 64
+            },
+            "request_bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "response_bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "result": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "initial",
+        "pages",
+        "delivery"
+      ],
+      "properties": {
+        "type": {
+          "const": "query_delivery"
+        },
+        "initial": {
+          "type": "null"
+        },
+        "pages": {
+          "type": "array",
+          "maxItems": 0,
+          "items": {
+            "$ref": "#/$defs/CanonicalReply"
+          }
+        },
+        "delivery": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "stop",
+            "rpc_count",
+            "request_bytes",
+            "response_bytes",
+            "result",
+            "original_outcome"
+          ],
+          "properties": {
+            "stop": {
+              "const": "BYTE_LIMIT"
+            },
+            "rpc_count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 64
+            },
+            "request_bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "response_bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "result": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "original_outcome": {
+              "enum": [
+                "complete",
+                "qualified",
+                "rejected_document",
+                "rejected"
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}
