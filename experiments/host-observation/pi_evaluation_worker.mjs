@@ -61,7 +61,7 @@ export async function worker(planFile,index) {
     record({type:'received_context',sessionId:manager.getSessionId(),contextSha256:sha(JSON.stringify(context)),toolResultSha256:sha(JSON.stringify(result.message)),newUserMessages:0});
     // Continuation starts with a separate explicitly declared delivery allowance.
     // It cannot replay the saved semantic request or issue a new tool call.
-    const restored=policy.restoreReceivedResult(decodeEnvelope(result.message.content),Buffer.byteLength(JSON.stringify(result.message)));
+    const restored=policy.restoreReceivedResult(decodeEnvelope(result.message.content),result.message.content.reduce((sum,block)=>sum+(block.type==='text'?Buffer.byteLength(block.text):0),0));
     if(!restored.allow)throw Error('Saved result cannot be interpreted under this plan');
   } else manager=SessionManager.create(plan.workspaceRoot,path.join(directory,'sessions'));
   const {session,settingsManager}=await createEvaluationSession({sdk,plan,directory,modelRuntime,policy,record,manager});

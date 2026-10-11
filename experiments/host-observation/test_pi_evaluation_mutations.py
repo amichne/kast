@@ -12,6 +12,14 @@ class PiEvaluationMutationTest(unittest.TestCase):
         node = shutil.which("node")
         self.assertIsNotNone(node, "Node.js is required; missing tooling is not mutation proof")
         mutations = [
+            ("provider-output-cap-removed", "pi_evaluation_guard.mjs",
+             "{...event.payload,max_output_tokens:policy.providerOutputCap()}",
+             "{...event.payload}",
+             "provider projection replaces"),
+            ("inline-declarations-charged-twice", "pi_evaluation_guard.mjs",
+             "inputs.filter(item=>!declarations.includes(item))",
+             "inputs",
+             "inline SDK declarations consume"),
             ("terminal-rejection-gate", "pi_evaluation_policy.mjs",
              "return this.stop(Outcome.REJECTION);",
              "return decision(true,'RESULT_RECEIVED',this.phase);",
@@ -45,8 +53,8 @@ class PiEvaluationMutationTest(unittest.TestCase):
              "knownMinimum:detail?.coverage?.knownMinimum??null",
              "canonical rejection preserves originalCoverage"),
             ("measured-input-ignored", "pi_evaluation_policy.mjs",
-             "Math.max(this.config.inputTokenCeiling+this.contextGrowthCeiling,measuredInputFloor)",
-             "this.config.inputTokenCeiling+this.contextGrowthCeiling",
+             "Math.max(this.config.inputTokenCeiling+contextBytes,measuredInputFloor)",
+             "this.config.inputTokenCeiling+contextBytes",
              "measured input above calibration"),
             ("unsafe-automatic-transport", "pi_evaluation_worker.mjs",
              "transport:'sse',cacheWarming:'off'",

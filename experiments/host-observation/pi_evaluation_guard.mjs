@@ -10,12 +10,19 @@ export function evaluationGuard(policy,record) {
       record({type:'session_settings',provider:ctx.model?.provider,model:ctx.model?.id,thinking:pi.getThinkingLevel(),toolNames:pi.getActiveTools()});
     });
     pi.on('before_provider_request',(event,ctx)=>{
-      const payload=event.payload;
+      const payload={...event.payload,max_output_tokens:policy.providerOutputCap()};
+      // Pi restores transcript tool declarations as additional_tools input items.
+      // The declared input ceiling already reserves their calibration. Count
+      // those declarations in the declaration bound, not again as context growth.
+      const inputs=payload.input??[];
+      const declarations=inputs.filter(item=>item.type==='additional_tools'&&item.role==='developer'&&Array.isArray(item.tools));
+      const context=inputs.filter(item=>!declarations.includes(item));
       const observation={provider:ctx.model?.provider,model:ctx.model?.id,thinking:pi.getThinkingLevel(),payloadModel:payload?.model,effort:payload?.reasoning?.effort,
-        payloadBytes:bytes(payload),toolsBytes:bytes(payload.tools??[]),instructionsBytes:Buffer.byteLength(payload.instructions??''),inputBytes:bytes(payload.input??[])};
+        payloadBytes:bytes(payload),toolsBytes:bytes(payload.tools??[])+declarations.reduce((sum,item)=>sum+bytes(item),0),instructionsBytes:Buffer.byteLength(payload.instructions??''),inputBytes:bytes(inputs),contextBytes:bytes(context),declarationInputBytes:declarations.reduce((sum,item)=>sum+bytes(item),0),outputTokenCap:payload.max_output_tokens};
       const admission=policy.beforeProvider(observation);
       record({type:'provider_admission',observation,decision:admission});
       if(!admission.allow) ctx.abort();
+      return payload;
     });
     pi.on('tool_call',(event,ctx)=>{
       const admission=policy.toolCall(event.toolName,event.input,event.toolCallId);

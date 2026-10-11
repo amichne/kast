@@ -8,7 +8,7 @@ import { validatePlan } from './run_pi_evaluation.mjs';
 import { isolatedSettings } from './pi_evaluation_worker.mjs';
 
 const config=()=>({name:'negative',expectedSemanticCalls:1,inputTokenCeiling:20000,declarationByteCeiling:80000,work:{reportedTokens:30000,requests:2,tools:2,outputReserve:2000},delivery:{reportedTokens:25000,requests:1,outputReserve:2000},maximumToolTextBytes:1048576});
-const pinned={provider:'openai-codex',model:'gpt-6.1-sol',thinking:'high',payloadModel:'gpt-6.1-sol',effort:'high',payloadBytes:79339,toolsBytes:73716,instructionsBytes:1920,inputBytes:3357};
+const pinned={provider:'openai-codex',model:'gpt-6.1-sol',thinking:'high',payloadModel:'gpt-6.1-sol',effort:'high',payloadBytes:79339,toolsBytes:73716,instructionsBytes:1920,inputBytes:3357,outputTokenCap:2000};
 // Public synthetic facts and usage shapes from the 2026-10-10 pilot. No logs,
 // source dumps, live handles, credential fields or personal paths are fixtures.
 const fixture=name=>JSON.parse(readFileSync(new URL(`./pi-fixtures/${name}-document.json`,import.meta.url),'utf8'));
@@ -31,7 +31,7 @@ test('recorded 30k negative work target cannot silently consume its separate fin
   assert.equal(policy.beforeProvider({...pinned,inputBytes:304,payloadBytes:76286}).allow,true);
   policy.modelUsage({input:17139,cacheRead:0,cacheWrite:0,output:89,totalTokens:17228});
   policy.toolResult(negativeComplete);
-  assert.equal(policy.beforeProvider(pinned).allow,true,'unchanged measured declaration/context fits the explicitly separate 25k delivery allowance');
+  assert.equal(policy.beforeProvider({...pinned,inputBytes:2445}).allow,true,'unchanged measured declaration/context fits the explicitly separate 25k delivery allowance');
 });
 
 function callbacks(policy) {
@@ -43,6 +43,37 @@ function callbacks(policy) {
 }
 const providerEvent=()=>({payload:{model:'gpt-6.1-sol',reasoning:{effort:'high'},tools:[],instructions:'unchanged synthetic instructions',input:[]}});
 const resultEvent=envelope=>({toolName:'query_symbols',toolCallId:'call-1',content:[{type:'text',text:JSON.stringify(envelope)}]});
+
+test('provider projection replaces saved-message byte growth and enforces the output reserve',()=>{
+  const policy=new CasePolicy(config());
+  assert.equal(policy.restoreReceivedResult(qualified,238968).allow,true);
+  const guard=callbacks(policy),event=providerEvent();
+  const projected=guard.emit('before_provider_request',event);
+  assert.equal(guard.aborted,0,'SDK-omitted details must not consume delivery input budget');
+  assert.equal(projected.max_output_tokens,2000);
+  assert.equal(policy.report().providerEnforcedTokenCap,true);
+  assert.equal(policy.report().requestObservations[0].inputEstimate,20002);
+  const tooLarge=new CasePolicy(config()),denied=callbacks(tooLarge);
+  const largeEvent=providerEvent();largeEvent.payload.input=[{text:'x'.repeat(30000)}];
+  denied.emit('before_provider_request',largeEvent);
+  assert.equal(tooLarge.report().outcome,'HARNESS_BUDGET_LIMIT');
+  assert.equal(denied.aborted,1,'Actual provider-visible growth remains bounded');
+});
+
+test('inline SDK declarations consume the declaration bound once and unknown input stays context',()=>{
+  const policy=new CasePolicy(config()),guard=callbacks(policy),event=providerEvent();
+  event.payload.input=[{type:'additional_tools',role:'developer',tools:[{name:'synthetic',description:'x'.repeat(10000)}]}];
+  guard.emit('before_provider_request',event);
+  const observation=policy.report().requestObservations[0];
+  assert.equal(observation.contextBytes,2);assert.ok(observation.declarationInputBytes>10000);
+  assert.equal(observation.inputEstimate,20002);assert.equal(observation.allow,true);
+  const oversized=new CasePolicy(config()),denied=callbacks(oversized);
+  event.payload.input[0].tools[0].description='x'.repeat(90000);denied.emit('before_provider_request',event);
+  assert.equal(oversized.report().outcome,'HARNESS_BUDGET_LIMIT');
+  const unknown=new CasePolicy(config()),uncertain=callbacks(unknown);
+  event.payload.input=[{type:'additional_tools',data:'x'.repeat(30000)}];uncertain.emit('before_provider_request',event);
+  assert.equal(unknown.report().outcome,'HARNESS_BUDGET_LIMIT','Unproven declaration shape cannot evade context accounting');
+});
 
 test('actual guard aborts in tool_result before any provider continuation or changed-scope tool',()=>{
   const policy=new CasePolicy({...config(),name:'positive',expectedSemanticCalls:2});const guard=callbacks(policy);
@@ -58,11 +89,11 @@ test('actual guard aborts in tool_result before any provider continuation or cha
 
 test('each case keeps independent usage including cached input and newly generated output',()=>{
   const positive=new CasePolicy({...config(),name:'positive'}),negative=new CasePolicy(config());
-  positive.beforeProvider(pinned);positive.modelUsage({input:1000,cacheRead:30000,cacheWrite:0,output:9000,reasoning:100,totalTokens:40000});
+  positive.beforeProvider(pinned);positive.modelUsage({input:1000,cacheRead:30000,cacheWrite:0,output:900,reasoning:100,totalTokens:31900});
   assert.equal(positive.report().outcome,'HARNESS_BUDGET_LIMIT');
   assert.equal(negative.beforeProvider(pinned).allow,true);
   assert.deepEqual(negative.report().usage,{input:0,cacheRead:0,cacheWrite:0,output:0,reasoning:0,totalTokens:0});
-  assert.equal(positive.report().usage.totalTokens,40000);
+  assert.equal(positive.report().usage.totalTokens,31900);
   assert.equal(positive.report().usage.reasoning,100);
 });
 
@@ -125,7 +156,7 @@ test('unknown envelopes usage and model/effort stay finite failures without weak
 
 test('received-result policy preserves qualification and forbids all new semantic work',()=>{
   const policy=new CasePolicy(config());assert.equal(policy.restoreReceivedResult(negativeComplete,2141).allow,true);
-  assert.equal(policy.beforeProvider(pinned).allow,true);
+  assert.equal(policy.beforeProvider({...pinned,inputBytes:2141}).allow,true);
   policy.modelUsage({input:153,cacheRead:17664,cacheWrite:0,output:88,totalTokens:17905});
   policy.assistantEnded({stopReason:'stop',content:[{type:'text',text:'Exact absent identity, within qualified scope.'}]});
   assert.equal(policy.report().usage.totalTokens,17905);assert.equal(policy.report().semanticRepliesObserved,0);
@@ -149,7 +180,7 @@ test('evidence-only delivery preserves JSON meaning while exact scope cursor and
 });
 
 test('model response beyond its reserve remains harness budget limit even if final text arrived',()=>{
-  const policy=new CasePolicy(config());policy.restoreReceivedResult(negativeComplete,2141);policy.beforeProvider(pinned);
+  const policy=new CasePolicy(config());policy.restoreReceivedResult(negativeComplete,2141);policy.beforeProvider({...pinned,inputBytes:2141});
   policy.modelUsage({input:17000,cacheRead:0,output:9000,totalTokens:26000});
   policy.assistantEnded({stopReason:'stop',content:[{type:'text',text:'Model final text received beyond the declared bound.'}]});
   const report=policy.report();assert.equal(report.outcome,'HARNESS_BUDGET_LIMIT');assert.equal(report.finalTextObserved,true);assert.equal(report.finalAnswer,false);
@@ -187,7 +218,7 @@ test('measured input above calibration prevents an unaffordable final request be
   const policy=new CasePolicy(config());assert.equal(policy.beforeProvider(pinned).allow,true);
   policy.modelUsage({input:26000,cacheRead:0,output:100,totalTokens:26100});
   policy.toolResult(negativeComplete,2141);
-  assert.equal(policy.beforeProvider(pinned).reason,'HARNESS_BUDGET_LIMIT');
+  assert.equal(policy.beforeProvider({...pinned,inputBytes:2141}).reason,'HARNESS_BUDGET_LIMIT');
 });
 
 test('canonical qualified producer reply permits bounded delivery without exhaustive success',()=>{
@@ -197,7 +228,7 @@ test('canonical qualified producer reply permits bounded delivery without exhaus
   assert.equal(guard.aborted,0);assert.equal(policy.report().phase,'DELIVERY');
   assert.equal(policy.report().nativeOutcome,'QUALIFIED_RESULT');assert.equal(policy.report().exhaustiveEvidence,false);
   assert.deepEqual(policy.report().qualification,{knownMinimum:56,limitations:['byte-limit-reached'],progress:{type:'terminal_incomplete',reason:'checkpoint-capacity-exceeded'}});
-  policy.beforeProvider(pinned);policy.modelUsage({input:17000,output:100,totalTokens:17100});
+  policy.beforeProvider({...pinned,inputBytes:2141});policy.modelUsage({input:17000,output:100,totalTokens:17100});
   policy.assistantEnded({stopReason:'stop',content:[{type:'text',text:'A qualified prefix; completeness is unproven.'}]});
   assert.equal(policy.report().outcome,'QUALIFIED_ANSWER');assert.equal(policy.report().finalAnswer,true);
   const received=new CasePolicy(config());assert.equal(received.restoreReceivedResult(qualified,2141).allow,true);

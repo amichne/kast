@@ -39,8 +39,8 @@ export class CasePolicy {
     if(!integer(config.work.tools)||config.work.tools<=0 || !integer(config.inputTokenCeiling)||config.inputTokenCeiling<=0 || !integer(config.declarationByteCeiling)||config.declarationByteCeiling<=0 || !integer(config.expectedSemanticCalls)||config.expectedSemanticCalls<=0 || !integer(config.maximumToolTextBytes)||config.maximumToolTextBytes<=0) throw Error('Explicit input/context, semantic and byte bounds required');
     this.config=structuredClone(config);this.phase='WORK';this.outcome=Outcome.RUNNING;this.nativeOutcome='UNOBSERVED';
     this.usage=emptyUsage();this.phaseUsage={WORK:emptyUsage(),DELIVERY:emptyUsage()};this.requests={WORK:0,DELIVERY:0};this.requestObservations=[];
-    this.proposals=[];this.tools=0;this.resultCount=0;this.toolTextBytes=0;this.contextGrowthCeiling=0;this.finalAnswer=false;this.exhaustiveEvidence=false;this.evidenceRequest=undefined;this.providerInFlight=false;
-    this.lastMeasuredInput=0;this.growthSinceMeasured=0;this.queryDeliveries=[];
+    this.proposals=[];this.tools=0;this.resultCount=0;this.toolTextBytes=0;this.finalAnswer=false;this.exhaustiveEvidence=false;this.evidenceRequest=undefined;this.providerInFlight=false;
+    this.lastMeasuredInput=0;this.lastProviderInputBytes=0;this.providerEnforcedTokenCap=false;this.queryDeliveries=[];
   }
   stop(outcome) {this.outcome=outcome;this.phase='STOPPED';return decision(false,outcome,this.phase);}
   restoreReceivedResult(envelope,textBytes) {
@@ -52,24 +52,31 @@ export class CasePolicy {
     this.phase='DELIVERY';
     return decision(true,'SAVED_RESULT_DELIVERY',this.phase);
   }
+  providerOutputCap() {return Math.min(2000,(this.phase==='WORK'?this.config.work:this.config.delivery).outputReserve);}
   beforeProvider(observation) {
     if(this.phase==='STOPPED') return decision(false,this.outcome,this.phase);
     if(observation.provider!=='openai-codex'||observation.model!=='gpt-6.1-sol'||observation.thinking!=='high'||observation.payloadModel!=='gpt-6.1-sol'||observation.effort!=='high') return this.stop(Outcome.MODEL_MISMATCH);
     if(!['payloadBytes','toolsBytes','instructionsBytes','inputBytes'].every(k=>integer(observation[k]))) return this.stop(Outcome.INVALID);
+    const contextBytes=observation.contextBytes??observation.inputBytes;
+    if(!integer(contextBytes)||contextBytes>observation.inputBytes) return this.stop(Outcome.INVALID);
     const bound=this.phase==='WORK'?this.config.work:this.config.delivery;
-    // Declared input ceiling + conservative context-byte growth + generation
-    // reserve. This is explicitly an estimate, never an exact tokenizer claim.
-    const measuredInputFloor=this.lastMeasuredInput+this.growthSinceMeasured;
-    const inputEstimate=Math.max(this.config.inputTokenCeiling+this.contextGrowthCeiling,measuredInputFloor);
+    if(observation.outputTokenCap!==this.providerOutputCap()) return this.stop(Outcome.INVALID);
+    // Count the SDK's actual input projection, not saved message details or a
+    // second copy of tool text. Bytes remain a conservative estimate, not tokens.
+    // The declared ceiling covers instructions/tools; measured usage retains a
+    // larger observed floor, with only growth since that request added once.
+    const measuredInputFloor=this.lastMeasuredInput+Math.max(0,contextBytes-this.lastProviderInputBytes);
+    const inputEstimate=Math.max(this.config.inputTokenCeiling+contextBytes,measuredInputFloor);
     const required=inputEstimate+bound.outputReserve;
     const remaining=bound.reportedTokens-this.phaseUsage[this.phase].totalTokens;
     const allow=this.requests[this.phase]<bound.requests && required<=remaining && observation.toolsBytes<=this.config.declarationByteCeiling;
     this.requestObservations.push({...observation,phase:this.phase,inputEstimate,measuredInputFloor,required,remaining,allow});
     if(!allow) return this.stop(Outcome.BUDGET);
-    this.requests[this.phase]++;this.providerInFlight=true;this.lastRequestPhase=this.phase;
+    this.requests[this.phase]++;this.providerInFlight=true;this.lastRequestPhase=this.phase;this.lastProviderInputBytes=contextBytes;this.providerEnforcedTokenCap=true;
     return decision(true,'ADMITTED',this.phase);
   }
   modelUsage(raw) {
+    if(this.phase==='STOPPED'&&!this.providerInFlight) return decision(false,this.outcome,this.phase);
     const decoded=decodeUsage(raw);
     if(decoded.type==='invalid') return this.stop(Outcome.INVALID);
     const usage=decoded.value;
@@ -77,10 +84,9 @@ export class CasePolicy {
     if(!this.providerInFlight) return this.stop(Outcome.INVALID);
     this.providerInFlight=false;
     for(const key of Object.keys(usage)) {this.usage[key]+=usage[key];this.phaseUsage[this.lastRequestPhase][key]+=usage[key];}
-    this.contextGrowthCeiling+=usage.output;
-    this.lastMeasuredInput=usage.input+usage.cacheRead+usage.cacheWrite;this.growthSinceMeasured=usage.output;
+    this.lastMeasuredInput=usage.input+usage.cacheRead+usage.cacheWrite;
     const bound=this.lastRequestPhase==='WORK'?this.config.work:this.config.delivery;
-    if(this.phaseUsage[this.lastRequestPhase].totalTokens>bound.reportedTokens) return this.stop(Outcome.BUDGET);
+    if(usage.output>Math.min(2000,bound.outputReserve)||this.phaseUsage[this.lastRequestPhase].totalTokens>bound.reportedTokens) return this.stop(Outcome.BUDGET);
     return decision(true,'ACCOUNTED',this.phase);
   }
   toolCall(toolName,args,callId) {
@@ -96,7 +102,7 @@ export class CasePolicy {
   toolResult(envelope,textBytes=0,callId,hostIsError) {
     if(this.phase==='STOPPED') return decision(false,this.outcome,this.phase);
     if(!integer(textBytes)) return this.stop(Outcome.INVALID);
-    this.toolTextBytes+=textBytes;this.contextGrowthCeiling+=textBytes;this.growthSinceMeasured+=textBytes;
+    this.toolTextBytes+=textBytes;
     const proposal=this.proposals.find(p=>p.callId===callId);
     if(callId!==undefined&&!proposal) return this.stop(Outcome.INVALID);
     if(callId===this.activeToolCall) this.activeToolCall=undefined;
@@ -159,6 +165,6 @@ export class CasePolicy {
       // External row/oracle proof is never inferred from a final answer/row count.
       exhaustiveRowsVerified:false,requiredEvidenceVerified:false,usage:structuredClone(this.usage),phaseUsage:structuredClone(this.phaseUsage),
       bounds:{work:structuredClone(this.config.work),delivery:structuredClone(this.config.delivery),inputTokenCeiling:this.config.inputTokenCeiling,declarationByteCeiling:this.config.declarationByteCeiling,maximumToolTextBytes:this.config.maximumToolTextBytes,wallSeconds:this.config.wallSeconds},
-      queryDeliveries:structuredClone(this.queryDeliveries),deliveryPhysicalRpcCountReported:this.queryDeliveries.filter(d=>d.observation==='TOOL_RESULT').reduce((sum,d)=>sum+d.rpcCount,0),savedDeliveryPhysicalRpcCountReported:this.queryDeliveries.filter(d=>d.observation==='SAVED_RESULT').reduce((sum,d)=>sum+d.rpcCount,0),rpcRejection:structuredClone(this.rpcRejection??null),qualification:structuredClone(this.qualification??null),semanticRejection:structuredClone(this.rejectionSummary??null),requestObservations:structuredClone(this.requestObservations),modelProposals:structuredClone(this.proposals),nativeRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved).length,semanticRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved&&(p.requestType==='RUN'||p.toolName==='check_diagnostics')).length,toolTextBytes:this.toolTextBytes,tokenPreflightMethod:'MAX_DECLARED_OR_MEASURED_INPUT_PLUS_CONTEXT_GROWTH_AND_OUTPUT_RESERVE',providerEnforcedTokenCap:false};
+      queryDeliveries:structuredClone(this.queryDeliveries),deliveryPhysicalRpcCountReported:this.queryDeliveries.filter(d=>d.observation==='TOOL_RESULT').reduce((sum,d)=>sum+d.rpcCount,0),savedDeliveryPhysicalRpcCountReported:this.queryDeliveries.filter(d=>d.observation==='SAVED_RESULT').reduce((sum,d)=>sum+d.rpcCount,0),rpcRejection:structuredClone(this.rpcRejection??null),qualification:structuredClone(this.qualification??null),semanticRejection:structuredClone(this.rejectionSummary??null),requestObservations:structuredClone(this.requestObservations),modelProposals:structuredClone(this.proposals),nativeRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved).length,semanticRepliesObserved:this.proposals.filter(p=>p.nativeReplyObserved&&(p.requestType==='RUN'||p.toolName==='check_diagnostics')).length,toolTextBytes:this.toolTextBytes,tokenPreflightMethod:'MAX_DECLARED_PLUS_PROJECTED_INPUT_BYTES_OR_MEASURED_PLUS_PROJECTED_GROWTH_AND_OUTPUT_RESERVE',providerEnforcedTokenCap:this.providerEnforcedTokenCap};
   }
 }
