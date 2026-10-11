@@ -4,10 +4,85 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { isolatedSettings, createEvaluationSession, worker } from './pi_evaluation_worker.mjs';
+import { EventEmitter } from 'node:events';
+import { isolatedSettings, createEvaluationSession, worker, publishWorkerResult } from './pi_evaluation_worker.mjs';
 import { CasePolicy, Outcome } from './pi_evaluation_policy.mjs';
 
 const failure=(operation,reason)=>({type:'failure',failure:{stage:'WORKER_SETUP',operation,reason}});
+function terminalChannel() {
+  const ipc=new EventEmitter(),effects=[];
+  ipc.connected=true;
+  ipc.disconnect=()=>{effects.push('disconnect');ipc.connected=false;ipc.emit('disconnect');};
+  return {ipc,effects};
+}
+
+test('terminal publication awaits callback even with false backpressure and removes only owned listeners',async()=>{
+  const {ipc,effects}=terminalChannel(),report={outcome:'SYNTHETIC'},existing=()=>{};let complete,sends=0,settled=false;
+  ipc.on('disconnect',existing);ipc.on('error',existing);
+  ipc.send=(message,callback)=>{sends++;assert.deepEqual(message,{type:'report',report});complete=callback;return false;};
+  const pending=publishWorkerResult({type:'report',report},ipc).then(receipt=>{settled=true;return receipt;});
+  await Promise.resolve();assert.equal(settled,false);assert.equal(ipc.connected,true);assert.deepEqual(effects,[]);
+  complete(null);
+  assert.deepEqual(await pending,{type:'published',exitCode:0,originalFailure:null,ipcFailure:null});
+  assert.equal(sends,1);assert.deepEqual(effects,['disconnect']);assert.equal(ipc.exitCode,0);
+  assert.deepEqual(ipc.listeners('disconnect'),[existing]);assert.deepEqual(ipc.listeners('error'),[existing]);
+  complete(Error('PRIVATE-LATE-CALLBACK'));assert.equal(ipc.exitCode,0);
+});
+
+test('terminal effect failures retain the original closed worker failure without retries or raw text',async()=>{
+  const original=failure('INSTALLATION_PIN','PIN_MISMATCH');
+  for(const [mode,reason,exitCode] of [
+    ['callback','SEND_FAILED',71],['throw','SEND_FAILED',71],['error','SEND_FAILED',71],['disconnect','CHANNEL_CLOSED',70],
+  ]) {
+    const {ipc,effects}=terminalChannel();let sends=0;
+    ipc.send=(message,callback)=>{
+      sends++;assert.deepEqual(message,{type:'worker_failure',failure:original.failure});
+      if(mode==='throw')throw Error('PRIVATE-SEND');
+      if(mode==='callback')callback(Error('PRIVATE-CALLBACK'));
+      if(mode==='error')ipc.emit('error',Error('PRIVATE-CHANNEL'));
+      if(mode==='disconnect'){ipc.connected=false;ipc.emit('disconnect');}
+      return false;
+    };
+    const receipt=await publishWorkerResult(original,ipc);
+    assert.deepEqual(receipt,{type:'failed',exitCode,originalFailure:original.failure,
+      ipcFailure:{stage:'WORKER_IPC',operation:'RESULT_SEND',reason}});
+    assert.equal(sends,1);assert.equal(ipc.exitCode,exitCode);assert.equal(ipc.connected,false);
+    assert.equal(effects.length,mode==='disconnect'?0:1);
+    assert.equal(ipc.listenerCount('disconnect'),0);assert.equal(ipc.listenerCount('error'),0);
+    assert.equal(JSON.stringify(receipt).includes('PRIVATE-'),false);
+  }
+});
+
+test('published worker failure keeps its original receipt while unavailable channels fail before sending',async()=>{
+  const original=failure('INSTALLATION_PIN','PIN_MISMATCH'),ready=terminalChannel();let sends=0;
+  ready.ipc.send=(_message,callback)=>{sends++;callback(null);return true;};
+  assert.deepEqual(await publishWorkerResult(original,ready.ipc),
+    {type:'published',exitCode:1,originalFailure:original.failure,ipcFailure:null});
+  assert.equal(sends,1);assert.deepEqual(ready.effects,['disconnect']);
+  for(const invalid of ['closed','missing-send','invalid-timeout']) {
+    const {ipc}=terminalChannel();ipc.send=()=>assert.fail('Unavailable publication must not send');
+    if(invalid==='closed')ipc.connected=false;if(invalid==='missing-send')delete ipc.send;
+    const receipt=await publishWorkerResult(original,ipc,invalid==='invalid-timeout'?{sendTimeoutMillis:1001}:{});
+    const reason=invalid==='invalid-timeout'?'SEND_FAILED':'CHANNEL_CLOSED';
+    assert.deepEqual(receipt,{type:'failed',exitCode:reason==='SEND_FAILED'?71:70,originalFailure:original.failure,
+      ipcFailure:{stage:'WORKER_IPC',operation:'RESULT_SEND',reason}});
+    assert.equal(ipc.connected,false);
+  }
+});
+
+test('terminal timeout preserves the original worker failure and disposes its pending callback authority',async t=>{
+  t.mock.timers.enable({apis:['setTimeout']});
+  const original=failure('INSTALLATION_PIN','PIN_MISMATCH'),{ipc,effects}=terminalChannel();let callback,sends=0;
+  ipc.send=(_message,complete)=>{sends++;callback=complete;return false;};
+  const pending=publishWorkerResult(original,ipc,{sendTimeoutMillis:1000});
+  t.mock.timers.tick(1000);
+  const receipt=await pending;
+  assert.deepEqual(receipt,{type:'failed',exitCode:72,originalFailure:original.failure,
+    ipcFailure:{stage:'WORKER_IPC',operation:'RESULT_SEND',reason:'SEND_TIMEOUT'}});
+  assert.equal(sends,1);assert.deepEqual(effects,['disconnect']);assert.equal(ipc.exitCode,72);
+  assert.equal(ipc.listenerCount('error'),0);assert.equal(ipc.listenerCount('disconnect'),0);
+  callback(null);assert.equal(ipc.exitCode,72);assert.equal(receipt.type,'failed');
+});
 function construction(options={}) {
   const effects=[],model={id:options.model??'gpt-6.1-sol',provider:'openai-codex'};
   const settings={getTransport:()=>options.transport??'sse',getCacheWarmingMode:()=>options.warming??'off'};

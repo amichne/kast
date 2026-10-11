@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { CasePolicy, Outcome, decodeEnvelope } from './pi_evaluation_policy.mjs';
 import { evaluationGuard } from './pi_evaluation_guard.mjs';
-import { driveSession } from './pi_evaluation_controller.mjs';
+import { driveSession, WorkerIpcExitCodes } from './pi_evaluation_controller.mjs';
 import { createEvaluationRecords, withPrivateReplaySession } from './pi_evaluation_records.mjs';
 import { loadInputCalibrations } from './pi_evaluation_calibrations.mjs';
 import { validatePlan } from './run_pi_evaluation.mjs';
@@ -209,11 +209,43 @@ export async function worker(planFile,index) {
   }
   return firstFailure??result;
 }
-if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
-  worker(process.argv[2],Number(process.argv[3])).then(result=>{
-    if(result.type==='report') {process.send?.(result);process.exit(0);}
-    else {process.send?.({type:'worker_failure',failure:result.failure});process.exit(1);}
-  }).catch(()=>{
-    process.send?.({type:'worker_failure',failure:failure('WORKER_BOUNDARY','EFFECT_FAILED').failure});process.exit(1);
+// One terminal publication owns its callback, timeout and listeners. The send
+// return value is backpressure evidence, not delivery; only its callback admits
+// publication. Exit codes carry finite IPC failures when the channel cannot.
+export async function publishWorkerResult(result,ipc=process,{sendTimeoutMillis=1000}={}) {
+  const originalFailure=result.type==='report'?null:result.failure;
+  const message=originalFailure===null?result:{type:'worker_failure',failure:originalFailure};
+  const ipcFailure=reason=>Object.freeze({stage:'WORKER_IPC',operation:'RESULT_SEND',reason});
+  let observed;
+  if(!Number.isSafeInteger(sendTimeoutMillis)||sendTimeoutMillis<1||sendTimeoutMillis>1000)
+    observed=ipcFailure('SEND_FAILED');
+  else if(!ipc.connected || typeof ipc.send!=='function') observed=ipcFailure('CHANNEL_CLOSED');
+  else observed=await new Promise(resolve=>{
+    let settled=false;
+    const finish=value=>{
+      if(settled)return;
+      settled=true;clearTimeout(timer);
+      ipc.removeListener('disconnect',closed);ipc.removeListener('error',errored);
+      resolve(value);
+    };
+    const closed=()=>finish(ipcFailure('CHANNEL_CLOSED'));
+    const errored=()=>finish(ipcFailure('SEND_FAILED'));
+    const timer=setTimeout(()=>finish(ipcFailure('SEND_TIMEOUT')),sendTimeoutMillis);
+    ipc.once('disconnect',closed);ipc.once('error',errored);
+    try {ipc.send(message,error=>finish(error?ipcFailure('SEND_FAILED'):null));}
+    catch {finish(ipcFailure('SEND_FAILED'));}
   });
+  try {if(ipc.connected)ipc.disconnect();}
+  catch {observed??=ipcFailure('SEND_FAILED');}
+  const exitCode=observed===null?(originalFailure===null?0:1):
+    WorkerIpcExitCodes[observed.reason];
+  ipc.exitCode=exitCode;
+  return Object.freeze({type:observed===null?'published':'failed',exitCode,originalFailure,ipcFailure:observed});
+}
+
+if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
+  let result;
+  try {result=await worker(process.argv[2],Number(process.argv[3]));}
+  catch {result=failure('WORKER_BOUNDARY','EFFECT_FAILED');}
+  await publishWorkerResult(result);
 }

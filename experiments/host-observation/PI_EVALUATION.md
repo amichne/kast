@@ -307,6 +307,22 @@ actually ran a cache-warming request. SDK `tools: string[]` is the supported
 public contract. Fixture provenance and offline owning Kotlin serialization
 steps are in `pi-fixtures/README.md`.
 
+## Terminal report delivery
+
+The worker publishes one terminal message and waits at most1,000ms for its send
+callback. Backpressure is not delivery failure. After settlement it disconnects
+and exits naturally; it does not truncate, retry or exit before publication.
+A closed channel, send failure or timeout is finite data. The controller records
+whether it received a report or worker failure, or observed an IPC failure exit.
+These are parent receipt/exit facts, not a claim about an unseen child callback.
+An earlier worker failure remains the primary failure through publication.
+
+Real owned-child tests preserve exact300k/1MB reports and a policy-accepted
+synthetic rejection summary whose limitations fit the300,000-byte tool allowance.
+The latter establishes accepted-shape transport reliability; it does not prove
+that a native producer or normal pilot creates14,000 repeated limitations.
+Callback-error and timeout cases retain finite failures and reap owned children.
+
 ## Minimal next live validation (not run by this change)
 
 After explicit authorization and matched installation/native admission, run one
