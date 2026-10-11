@@ -1,5 +1,8 @@
 # Manual IntelliJ host observation
 
+For opt-in, bounded model-driven Pi checks and launch-free controller regressions,
+use [PI_EVALUATION.md](PI_EVALUATION.md).
+
 For the opt-in synthetic semantic-query matrix, use [SEMANTIC_REPRODUCTION.md](SEMANTIC_REPRODUCTION.md).
 
 This experiment implements the observer-first slice through safe replacement. It runs the checked-in carrier in IDEA's bundled Kotlin scripting engine and observes one explicitly admitted open project. It does not participate in Kast readiness, workspace publication, VFS refresh scheduling, or index retention decisions.

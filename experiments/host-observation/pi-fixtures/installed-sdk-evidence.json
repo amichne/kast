@@ -1,0 +1,52 @@
+{
+  "mode": "NO_INFERENCE_REAL_SDK_SYNTHETIC_TRANSPORT",
+  "startup": {
+    "transport": "sse",
+    "cacheWarming": "off",
+    "provider": "openai-codex",
+    "model": "gpt-6.1-sol",
+    "thinking": "high",
+    "tools": [
+      "query_symbols",
+      "check_diagnostics",
+      "health_check"
+    ]
+  },
+  "adapterSha256": "0a94c048c920c44425f817fe8e1f02db47df1f0150fa352d48d843d98c336975",
+  "identity": {
+    "pi-coding-agent": {
+      "version": "1.0.2",
+      "sha256": {
+        "package.json": "17739a1faa0f13a6d43a6db5b9ec57d7210e0b3ad6eacd0e46614224908bd3d2",
+        "dist/core/sdk.js": "fe643170de3d259c7e06179d9e18270a009dfb54df915f6e3de515425b8d009b",
+        "dist/core/session-manager.js": "046b6a1109ac3f0ed893bb85bf0648709362fa926a5da75761216cf2fcf9d926"
+      }
+    },
+    "pi-ai": {
+      "version": "1.1.0",
+      "sha256": {
+        "package.json": "a8f10d5157b335379ae00edf9c25ae7a15bfc0f3a76107d4376a3779bb5b2995",
+        "dist/api/openai-codex-responses.js": "b185956e11a5c5cb522e5cad77daf21ce31c3c304e86a8333ffcb49ff78466ea"
+      }
+    },
+    "pi-agent-core": {
+      "version": "1.1.0",
+      "sha256": {
+        "package.json": "424f45867d4aacd6466729cb915bdfc145c1160bcfbf83ece429ed0982fa606b",
+        "dist/agent.js": "163ad28551f1c38b8eb899a5c9dd89cd9d9005fb7dd9c4abeb008ee380e98c51"
+      }
+    }
+  },
+  "sse": {
+    "admittedFetchCalls": 1,
+    "deniedSecondFetchCalls": 0,
+    "socketSends": 0
+  },
+  "cachedWebSocket": {
+    "connections": 1,
+    "admittedSends": 1,
+    "deniedSecondSends": 1
+  },
+  "semanticToolCalls": 0,
+  "realProviderRequests": 0
+}
