@@ -38,6 +38,7 @@ internal class QueryInvocationFacts(
     private val selectedPaths = Collections.newSetFromMap(IdentityHashMap<QueryImpactPath, Boolean>())
     var retentionEstimate = QueryInvocationFactsRetentionEstimate.Empty
         private set
+
     val retainedBytes: Long
         get() = retentionEstimate.total.value
 
