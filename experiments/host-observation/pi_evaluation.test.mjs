@@ -434,6 +434,54 @@ function partialPrefix() {
   envelope.delivery.stop='BYTE_LIMIT';envelope.delivery.rpc_count=3;
   return envelope;
 }
+test('terminal FINAL pages cannot be relabeled as a byte-limited prefix',async()=>{
+  const awaitDelivery=runInNewContext(readFileSync(new URL('../../cli/src/main/js/query-delivery.mjs',import.meta.url),'utf8')+';awaitQueryDelivery',{Buffer});
+  for(const omitted of [false,true]) {
+    const envelope=partialPrefix(),page=envelope.pages[0].document,detail=envelope.initial.document.rejection.detail;
+    detail.originalCoverage.knownMinimum=3;page.qualification.knownMinimum=3;
+    page.interpretation.originalCoverage=structuredClone(detail.originalCoverage);
+    page.evidence_window={type:'FINAL',start:0,end:0,total:0};
+    if(omitted)delete page.next_cursor;else page.next_cursor=null;
+    const replies=[envelope.initial,...envelope.pages],calls=[];
+    const delivered=await awaitDelivery({request:{type:'RUN'}},async request=>{
+      calls.push(structuredClone(request));
+      assert.ok(replies.length,'No call may follow the terminal received page');
+      return replies.shift();
+    },{callTimeoutMillis:1000},undefined,()=>0);
+    assert.equal(replies.length,0);assert.equal(calls.length,2);
+    assert.equal(calls[1].request.type,'READ_RESULT');
+    assert.equal(calls[1].request.cursor,0);assert.equal(calls[1].request.evidence_cursor,0);
+    assert.equal(delivered.delivery.stop,'DELIVERED');
+    assert.deepEqual(JSON.parse(JSON.stringify(delivered.pages)),envelope.pages);
+    delivered.delivery.stop='BYTE_LIMIT';
+    const before=JSON.stringify(delivered);
+    for(const saved of [false,true]) {
+      const policy=makePolicy({...config(),evidenceOnlyDelivery:true}),decoded=decodeEnvelope(resultEvent(delivered).content);
+      assert.equal((saved?policy.restoreReceivedResult(decoded,10000):policy.toolResult(decoded,10000)).reason,'CLIENT_DELIVERY_BLOCKED',`omitted=${omitted}, saved=${saved}`);
+      assert.equal(policy.report().partialEvidence,null);assert.equal(policy.beforeProvider(pinned).allow,false);
+      assert.equal(policy.report().nativeOutcome,'REJECTED');
+    }
+    const strict=makePolicy({...config(),evidenceOnlyDelivery:false});
+    assert.equal(strict.restoreReceivedResult(decodeEnvelope(resultEvent(delivered).content),10000).reason,'INTENTIONAL_REJECTION');
+    assert.equal(strict.report().partialEvidence,null);assert.equal(strict.beforeProvider(pinned).allow,false);
+    assert.equal(JSON.stringify(delivered),before);
+  }
+});
+test('byte-limited prefixes retain either a row successor or an evidence MORE successor',()=>{
+  for(const successor of ['row','evidence'])for(const saved of [false,true]) {
+    const envelope=partialPrefix(),page=envelope.pages[0].document;
+    if(successor==='row')page.evidence_window={type:'FINAL',start:0,end:0,total:0};
+    else delete page.next_cursor;
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true}),decoded=decodeEnvelope(resultEvent(envelope).content),before=JSON.stringify(envelope);
+    assert.equal((saved?policy.restoreReceivedResult(decoded,10000):policy.toolResult(decoded,10000)).allow,true,`${successor}, saved=${saved}`);
+    assert.equal(policy.report().partialEvidence.receivedRows,3);
+    assert.equal(policy.report().nativeOutcome,'REJECTED');
+    assert.equal(policy.report().requiredEvidenceVerified,false);assert.equal(policy.report().exhaustiveRowsVerified,false);
+    assert.equal(policy.report().providerRequests,0);
+    assert.equal(policy.beforeProvider(pinned).allow,true);
+    assert.equal(JSON.stringify(envelope),before);
+  }
+});
 test('explicit evidence-only BYTE_LIMIT prefix permits one honest answer and preserves native rejection',()=>{
   const envelope=partialPrefix(),before=JSON.stringify(envelope);
   const policy=makePolicy({...config(),evidenceOnlyDelivery:true,delivery:{...config().delivery,requests:3}});

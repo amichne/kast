@@ -104,6 +104,10 @@ export function partialEvidenceSummary(envelope) {
     if(next===null)rowsEnded=true;
     evidenceCursor=w.end;evidenceTotal=w.total;
   }
+  // awaitQueryDelivery finishes DELIVERED when a received page has no output
+  // successor. BYTE_LIMIT can retain this prefix only while a successor remains.
+  const last=envelope.pages.at(-1).document;
+  if(last.next_cursor==null&&last.evidence_window.type==='FINAL')return null;
   // The producer preview is the ordered prefix at cursor zero, with the same
   // issued identities. A conflicting copy must not be unioned into another row.
   if(proof.preview.length>receivedPrefix.length||!proof.preview.every((row,index)=>isDeepStrictEqual(row,receivedPrefix[index])))return null;

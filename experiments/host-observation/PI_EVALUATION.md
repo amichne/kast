@@ -390,7 +390,10 @@ is inferred from the client's CANCELLED observation.
 leaves an intact retained `COMPLETION_UNPROVEN` rejection and a consistent,
 nonempty prefix of exact-symbol or reference-occurrence rows. All received pages
 must retain the original question, result identity, coverage interpretation and
-live observation. Row cursors and evidence windows must be contiguous. Unknown
+live observation. Row cursors and evidence windows must be contiguous. The last
+received page must retain a row cursor or a `MORE` evidence window. A page with
+neither successor finishes `DELIVERED` in the production client and cannot be
+relabeled as this exceptional `BYTE_LIMIT` prefix. Unknown
 rows, repeated or conflicting row identities, missing authority, stale/expired rejection,
 retention loss, cancellation and other client stops remain blocked. The false
 policy keeps its existing rejection behavior.
