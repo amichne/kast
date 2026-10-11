@@ -113,16 +113,31 @@ internal class AutomaticSymbolQueryLimitsTest : AutomaticSymbolQueryCase() {
     @Test
     fun `aggregate retained bytes stop without skipping a consumed page through a continuation`() = runTest {
         val script = Script(listOf(listOf(row), List(100) { row }))
+        val observations = mutableListOf<QueryInvocationRetentionAdmission>()
+        val base = policy(retainedBytes = 50_000)
+        val observedPolicy =
+            QueryInvocationPolicy(
+                base.previewRows,
+                base.previewBytesLimit,
+                base.retainedBytes,
+                base.previewBytes,
+                nanoTime = base.nanoTime,
+                retentionObservation = QueryInvocationRetentionObservation(observations::add),
+            )
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
         val result =
             protocol.execute(
                 request,
                 fixture.authority,
                 budget.copy(resources = budget.resources.copy(resultLimit = ResultLimit.parse(100).refined())),
-                policy(retainedBytes = 50_000),
+                observedPolicy,
             )
         val rejection = completionRejection(result)
         assertEquals(QueryInvocationStop.RETAINED_BYTES_LIMIT, rejection.stop)
+        assertEquals(QueryInvocationRetentionStage.FACTS_REJECTED, observations.last().stage)
+        assertEquals(QueryInvocationRetentionStage.BEFORE_FACTS, observations[observations.lastIndex - 1].stage)
+        assertEquals(observations[observations.lastIndex - 1].facts, observations.last().facts)
+        assertEquals(observations[observations.lastIndex - 1].total, observations.last().total)
         assertEquals(1, originalCoverage(rejection).knownMinimum.value)
         assertEquals(1, retainedEvidence(rejection).preview.values.size)
         assertNull(originalCoverage(rejection).progress.continuationToken)
