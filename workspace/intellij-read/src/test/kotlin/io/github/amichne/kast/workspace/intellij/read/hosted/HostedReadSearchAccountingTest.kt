@@ -153,12 +153,11 @@ class HostedReadSearchAccountingTest {
     }
 
     @Test
-    fun `encoded search aggregates declare zero entries and exact fixed fields`() {
+    fun `encoded discovery decisions declare explicit zero capability`() {
         val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
         val observation = HostedReadDiagnostics({ 0L }, publish = receipts::add)
         observation.finish(HostedDiagnosticOutcome.Completed)
         val encoded = Json.parseToJsonElement(receipts.single().encode()).jsonObject
-        assertEquals("14", encoded.getValue("schemaVersion").jsonPrimitive.content)
         val discoveryDecisions =
             encoded.getValue("counters").jsonArray.filter {
                 it.jsonObject.getValue("counter").jsonPrimitive.content in
@@ -169,6 +168,15 @@ class HostedReadSearchAccountingTest {
             assertEquals("NONE", it.jsonObject.getValue("contributor").jsonPrimitive.content)
             assertEquals("0", it.jsonObject.getValue("count").jsonPrimitive.content)
         }
+    }
+
+    @Test
+    fun `encoded search aggregates declare zero entries and exact fixed fields`() {
+        val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
+        val observation = HostedReadDiagnostics({ 0L }, publish = receipts::add)
+        observation.finish(HostedDiagnosticOutcome.Completed)
+        val encoded = Json.parseToJsonElement(receipts.single().encode()).jsonObject
+        assertEquals("14", encoded.getValue("schemaVersion").jsonPrimitive.content)
         val searches = encoded.getValue("nativeSearches").jsonArray
         assertEquals(
             listOf("REFERENCES", "DEFINITIONS", "SCOPED_FILES", "EXACT_PACKAGE_FILES"),
