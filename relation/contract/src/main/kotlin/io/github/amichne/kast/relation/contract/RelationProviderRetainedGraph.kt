@@ -7,7 +7,10 @@ class RelationProviderRetainedGraph(private val parent: RelationProviderRetained
     private val inventories = IdentityHashMap<List<RelationProviderLocator>, RelationInventoryRetentionCharge>()
     private var nextOwnerOrdinal: Long = parent?.nextOwnerOrdinal ?: 1L
 
-    /** Retains metadata only for identities already needed by accounting; never retains source payloads or event history. */
+    /**
+     * Retains metadata only for identities already needed by accounting; never retains source payloads or event
+     * history.
+     */
     fun retentionLedger(): RelationProviderRetentionLedger =
         RelationProviderRetentionLedger(allInventories().values.sortedBy { it.owner.value })
 
@@ -25,11 +28,12 @@ class RelationProviderRetainedGraph(private val parent: RelationProviderRetained
             return REFERENCE_BYTES
         }
         val ordinal = nextOwnerOrdinal++
-        inventories[values] = RelationInventoryRetentionCharge(
-            RelationRetainedInventoryOwnerId.issue(ordinal),
-            bytes.ledgerBytes(),
-            RelationRetainedReferenceCount.First,
-        )
+        inventories[values] =
+            RelationInventoryRetentionCharge(
+                RelationRetainedInventoryOwnerId.issue(ordinal),
+                bytes.ledgerBytes(),
+                RelationRetainedReferenceCount.First,
+            )
         return bytes.addStorageBytes(OWNER_LEDGER_BYTES).addStorageBytes(REFERENCE_BYTES)
     }
 

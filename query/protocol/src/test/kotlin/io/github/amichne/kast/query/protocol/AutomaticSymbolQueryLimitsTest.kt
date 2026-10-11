@@ -115,14 +115,15 @@ internal class AutomaticSymbolQueryLimitsTest : AutomaticSymbolQueryCase() {
         val script = Script(listOf(listOf(row), List(100) { row }))
         val observations = mutableListOf<QueryInvocationRetentionAdmission>()
         val base = policy(retainedBytes = 50_000)
-        val observedPolicy = QueryInvocationPolicy(
-            base.previewRows,
-            base.previewBytesLimit,
-            base.retainedBytes,
-            base.previewBytes,
-            nanoTime = base.nanoTime,
-            retentionObservation = QueryInvocationRetentionObservation(observations::add),
-        )
+        val observedPolicy =
+            QueryInvocationPolicy(
+                base.previewRows,
+                base.previewBytesLimit,
+                base.retainedBytes,
+                base.previewBytes,
+                nanoTime = base.nanoTime,
+                retentionObservation = QueryInvocationRetentionObservation(observations::add),
+            )
         val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
         val result =
             protocol.execute(

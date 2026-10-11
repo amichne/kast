@@ -10,7 +10,9 @@ data class QueryInvocationFactsRetentionEstimate(
     val rowReferenceCells: QueryRetentionByteCount,
 ) {
     val total: QueryRetentionByteCount =
-        QueryRetentionByteCount.measured(semantic.value.saturatedAdd(preview.value).saturatedAdd(rowReferenceCells.value))
+        QueryRetentionByteCount.measured(
+            semantic.value.saturatedAdd(preview.value).saturatedAdd(rowReferenceCells.value)
+        )
 
     operator fun plus(other: QueryInvocationFactsRetentionEstimate): QueryInvocationFactsRetentionEstimate =
         QueryInvocationFactsRetentionEstimate(
