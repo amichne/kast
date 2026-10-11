@@ -132,6 +132,12 @@ class HeavyKotlinScopeTest : HeavyPlatformTestCase() {
         fun query(narrow: Boolean): NativeWorkObservation {
             val observed = NativeWorkObservation()
             val compiled = scope(observed, narrow)
+            val ownershipBefore = observed.counters[IntellijReadCounter.RELATION_PATH_OWNERSHIP_PROBES] ?: 0
+            assertTrue(compiled.nativeScope.contains(callerFile))
+            assertEquals(
+                2,
+                (observed.counters[IntellijReadCounter.RELATION_PATH_OWNERSHIP_PROBES] ?: 0) - ownershipBefore,
+            )
             val rows = mutableListOf<Pair<String, Int>>()
             assertTrue(
                 observed.forEachReference(target, compiled.nativeScope, nativeScopeTestAdmission(request, observed)) {

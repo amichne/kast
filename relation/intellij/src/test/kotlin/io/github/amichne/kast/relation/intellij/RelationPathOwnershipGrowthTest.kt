@@ -32,7 +32,8 @@ class RelationPathOwnershipGrowthTest {
                 assertEquals(7, observation.probes, "Two deepest-owner probes per owned file, three for the outsider")
                 val visits = roots.visits
                 println(
-                    "OWNERSHIP_WORK irrelevant=$irrelevant pass=$pass rootVisits=$visits ancestorProbes=${observation.probes} bound=$bounds"
+                    "OWNERSHIP_WORK irrelevant=$irrelevant pass=$pass rootVisits=$visits " +
+                        "ancestorProbes=${observation.probes} bound=$bounds"
                 )
                 if (visits > bounds) violations += "$irrelevant:$pass:$visits"
                 roots.visits = 0
