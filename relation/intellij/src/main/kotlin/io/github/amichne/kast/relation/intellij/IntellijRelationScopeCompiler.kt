@@ -77,9 +77,12 @@ internal enum class RelationProviderScopeAdmission {
 /** Retains imported ownership separately from the smaller admitted source domain. */
 internal class RelationSourceDomainMembership(
     private val paths: RelationPathPolicy,
-    private val ownershipRoots: List<Path>,
+    ownershipRoots: List<Path>,
     private val directoryAdmission: (Path) -> Boolean,
+    private val observation: IntellijReadObservation = IntellijReadObservation.None,
 ) {
+    private val ownership = RelationSourceRootIndex(ownershipRoots)
+
     fun classifyExcluded(path: IntellijRelationNativePath): RelationProviderScopeAdmission {
         val absolute =
             when (path) {
@@ -87,10 +90,15 @@ internal class RelationSourceDomainMembership(
                 IntellijRelationNativePath.Relative,
                 IntellijRelationNativePath.Unavailable -> return RelationProviderScopeAdmission.UNAVAILABLE
             }
-        val owners = ownershipRoots.filter(absolute::startsWith)
-        val depth = owners.maxOfOrNull(Path::getNameCount) ?: return RelationProviderScopeAdmission.UNAVAILABLE
-        if (owners.count { it.nameCount == depth } != 1) return RelationProviderScopeAdmission.UNAVAILABLE
-        return if (!paths.contains(absolute) || !directoryAdmission(absolute)) {
+        when (val owner = ownership.owner(absolute, observation)) {
+            RelationPathOwner.Unowned -> return RelationProviderScopeAdmission.UNAVAILABLE
+            is RelationPathOwner.Owned ->
+                when (owner.cardinality) {
+                    RelationRootCardinality.UNIQUE -> Unit
+                    RelationRootCardinality.AMBIGUOUS -> return RelationProviderScopeAdmission.UNAVAILABLE
+                }
+        }
+        return if (!paths.contains(absolute, observation) || !directoryAdmission(absolute)) {
             RelationProviderScopeAdmission.SOURCE_DOMAIN_EXCLUDED
         } else {
             // An eligible imported owner rejected by the native source boundary is not a proven domain exit.
@@ -197,6 +205,7 @@ internal class IntellijRelationScopeCompiler(private val fileAdmission: (Path) -
                     directoryAdmission = { path ->
                         matchesDirectory(path, request.subject.lease.workspaceRoot.value, constraints)
                     },
+                    observation = observation,
                 ),
                 libraryScope::contains,
                 libraryPolicy,
@@ -207,7 +216,7 @@ internal class IntellijRelationScopeCompiler(private val fileAdmission: (Path) -
                     model.workspaceRoot.value,
                     constraints,
                     admitsPath = { path ->
-                        pathPolicy.contains(path) &&
+                        pathPolicy.contains(path, observation) &&
                             fileAdmission(path) &&
                             matchesDirectory(path, model.workspaceRoot.value, constraints)
                     },
@@ -241,18 +250,21 @@ internal class IntellijRelationScopeCompiler(private val fileAdmission: (Path) -
 }
 
 internal sealed interface RelationPathPolicy {
-    fun contains(path: Path): Boolean
+    fun contains(path: Path, observation: IntellijReadObservation = IntellijReadObservation.None): Boolean
 
     data class ExactFile(val file: Path) : RelationPathPolicy {
-        override fun contains(path: Path): Boolean = path == file
+        override fun contains(path: Path, observation: IntellijReadObservation): Boolean = path == file
     }
 
     data class SourceRoots(val roots: List<Path>, val ownershipRoots: List<Path>) : RelationPathPolicy {
-        override fun contains(path: Path): Boolean {
-            val owners = ownershipRoots.filter(path::startsWith)
-            val depth = owners.maxOfOrNull(Path::getNameCount) ?: return false
-            return owners.any { it.nameCount == depth && it in roots }
-        }
+        private val admitted = roots.toSet()
+        private val ownership = RelationSourceRootIndex(ownershipRoots)
+
+        override fun contains(path: Path, observation: IntellijReadObservation): Boolean =
+            when (val owner = ownership.owner(path, observation)) {
+                RelationPathOwner.Unowned -> false
+                is RelationPathOwner.Owned -> owner.path in admitted
+            }
     }
 }
 
@@ -282,7 +294,7 @@ private class RelationModelScope(
             if (libraries == SymbolLibraryPolicy.INCLUDE && libraryMembership(file)) return@observed true
             when (val path = relationNativePath(file)) {
                 is IntellijRelationNativePath.Absolute ->
-                    fileAdmission(path.value) && paths.contains(path.value) && sourceMembership(file)
+                    fileAdmission(path.value) && paths.contains(path.value, observation) && sourceMembership(file)
                 IntellijRelationNativePath.Relative,
                 IntellijRelationNativePath.Unavailable -> false
             }

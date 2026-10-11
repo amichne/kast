@@ -164,7 +164,13 @@ class RelationScopeApiObservationTest {
             ),
             observed.completed,
         )
-        assertEquals(mapOf(IntellijReadCounter.RELATION_SCOPE_FILES_ADMITTED to 1), observed.counts)
+        assertEquals(
+            mapOf(
+                IntellijReadCounter.RELATION_PATH_OWNERSHIP_PROBES to 2,
+                IntellijReadCounter.RELATION_SCOPE_FILES_ADMITTED to 1,
+            ),
+            observed.counts,
+        )
         sdk.assertConsumed()
         val failure = CancellationException("Owned file-index cancellation")
         val failed = ScopeObservation()
@@ -179,7 +185,7 @@ class RelationScopeApiObservationTest {
             ),
             failed.completed,
         )
-        assertTrue(failed.counts.isEmpty())
+        assertEquals(mapOf(IntellijReadCounter.RELATION_PATH_OWNERSHIP_PROBES to 2), failed.counts)
         rejectedSdk.assertConsumed()
     }
 
