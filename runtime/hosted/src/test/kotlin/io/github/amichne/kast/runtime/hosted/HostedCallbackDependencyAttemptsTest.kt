@@ -2,8 +2,8 @@ package io.github.amichne.kast.runtime.hosted
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.topology.intellij.SemanticDependencyCaptureFailure
-import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import kotlinx.coroutines.CancellationException
@@ -17,15 +17,16 @@ internal class HostedCallbackDependencyAttemptsTest : HostedScopedCaptureFixture
     fun `unmodeled cache universe records its typed rejection without starting capture`() {
         val counters = mutableListOf<IntellijReadCounter>()
         val reasons = mutableListOf<IntellijReadTermination>()
-        val observation = object : IntellijReadObservation {
-            override fun count(counter: IntellijReadCounter, contributor: IntellijReadContributor, amount: Int) {
-                repeat(amount) { counters += counter }
-            }
+        val observation =
+            object : IntellijReadObservation {
+                override fun count(counter: IntellijReadCounter, contributor: IntellijReadContributor, amount: Int) {
+                    repeat(amount) { counters += counter }
+                }
 
-            override fun terminated(reason: IntellijReadTermination, contributor: IntellijReadContributor) {
-                reasons += reason
+                override fun terminated(reason: IntellijReadTermination, contributor: IntellijReadContributor) {
+                    reasons += reason
+                }
             }
-        }
         val attempts = HostedCallbackDependencyAttempts(observation, emptySet())
         assertEquals(
             Refinement.Rejected(SemanticDependencyCaptureFailure.DEPENDENCY_MODULE_UNMODELED),
