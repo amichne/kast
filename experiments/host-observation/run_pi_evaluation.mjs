@@ -14,10 +14,16 @@ export function validatePlan(plan) {
   for(const item of plan.cases) {
     if(!/^[a-z0-9-]+$/.test(item.name)||!Number.isSafeInteger(item.wallSeconds)||item.wallSeconds<1||item.wallSeconds>480) throw Error('Safe case name and finite wall bound required');
     new CasePolicy(item);
+    if(item.inputCalibrations!==undefined) {
+      if(!Array.isArray(item.inputCalibrations)||item.inputCalibrations.length>64||new Set(item.inputCalibrations.map(value=>value.sha256)).size!==item.inputCalibrations.length) throw Error('Bounded unique offline input calibration references required');
+      for(const reference of item.inputCalibrations) {
+        if(!reference||Object.keys(reference).some(key=>!['type','path','sha256'].includes(key))||reference.type!=='OFFLINE_FULL_PAYLOAD_CALIBRATION'||typeof reference.path!=='string'||!path.isAbsolute(reference.path)||! /^[a-f0-9]{64}$/.test(reference.sha256)) throw Error('Absolute digest-pinned offline full-payload calibration required');
+      }
+    }
     if(item.mode==='fresh') {
       if(typeof item.prompt!=='string'||!item.prompt.length||item.receivedSessionFile!==undefined) throw Error('Fresh case requires its fixed prompt');
     } else if(item.mode==='received-result') {
-      if(item.prompt!==undefined||!path.isAbsolute(item.receivedSessionFile??'')||typeof item.receivedResultEntryId!=='string'||!/^[a-f0-9]{64}$/.test(item.receivedContextSha256??'')) throw Error('Continuation requires saved session/result/context identity and no prompt');
+      if(item.prompt!==undefined||!path.isAbsolute(item.receivedSessionFile??'')||typeof item.receivedResultEntryId!=='string'||!/^[a-f0-9]{64}$/.test(item.receivedContextSha256??'')||typeof item.receivedSessionSha256!=='string'||!/^[a-f0-9]{64}$/.test(item.receivedSessionSha256)) throw Error('Continuation requires digest-pinned saved session/result/context identity and no prompt');
     } else throw Error('Explicit mode required');
   }
   return plan;
@@ -28,7 +34,7 @@ export async function main(args) {
   const planFile=path.resolve(args[1]);
   const plan=validatePlan(JSON.parse(fs.readFileSync(planFile,'utf8')));
   if(args[0]==='--plan') {
-    console.log(JSON.stringify({mode:'NO_INFERENCE',cases:plan.cases.map(c=>({name:c.name,work:c.work,delivery:c.delivery,inputTokenCeiling:c.inputTokenCeiling}))},null,2));return;
+    console.log(JSON.stringify({mode:'NO_INFERENCE',cases:plan.cases.map(c=>({name:c.name,work:c.work,delivery:c.delivery,bounds:new CasePolicy({...c,wallSeconds:Math.min(c.wallSeconds,c.mode==='received-result'?60:120),maximumProviderRequests:Math.min(c.maximumProviderRequests??(c.mode==='received-result'?1:3),c.mode==='received-result'?1:3)}).report().bounds,requestAdmissionMethod:'EXACT_SERIALIZED_REQUEST_BYTES_AND_FINITE_CALLS',tokenAccountingQualification:'POST_RESPONSE_THRESHOLD_ONE_RESPONSE_MAY_OVERSHOOT',inputCalibrationReferences:(c.inputCalibrations??[]).length}))},null,2));return;
   }
   // Existing pilot logs are never overwritten. Each execution owns a new root.
   fs.mkdirSync(plan.outputRoot,{mode:0o700});
@@ -38,7 +44,7 @@ export async function main(args) {
   try {
     for(let index=0;index<plan.cases.length&&!controller.signal.aborted;index++) {
       const result=await runOwnedWorker(process.execPath,[fileURLToPath(new URL('pi_evaluation_worker.mjs',import.meta.url)),planFile,String(index)],
-        {cwd:plan.workspaceRoot,env:{...process.env,KAST_TOOL_RPC_COMMAND:undefined},signal:controller.signal,wallMillis:plan.cases[index].wallSeconds*1000});
+        {cwd:plan.workspaceRoot,env:{...process.env,KAST_TOOL_RPC_COMMAND:undefined},signal:controller.signal,wallMillis:Math.min(plan.cases[index].wallSeconds,plan.cases[index].mode==='received-result'?60:120)*1000});
       results.push({case:plan.cases[index].name,...result});
       fs.writeFileSync(path.join(plan.outputRoot,'report.json'),JSON.stringify({cases:results,timing:plan.timing??'UNQUALIFIED'},null,2)+'\n',{mode:0o600});
     }

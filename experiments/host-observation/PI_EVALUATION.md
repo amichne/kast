@@ -18,7 +18,11 @@ or claim that the pilot's denied request reached a provider or incurred usage.
 Run deterministic checks without Pi, authentication, IDEs or inference:
 
 ```sh
-node --test experiments/host-observation/pi_evaluation.test.mjs
+node --test experiments/host-observation/pi_evaluation.test.mjs \
+  experiments/host-observation/pi_evaluation_payload.test.mjs \
+  experiments/host-observation/pi_evaluation_records.test.mjs \
+  experiments/host-observation/pi_evaluation_calibrations.test.mjs \
+  experiments/host-observation/pi_evaluation_preflight.test.mjs
 python3 -m unittest discover -s experiments/host-observation -p test_pi_evaluation.py
 ```
 
@@ -28,19 +32,46 @@ or GREEN. The Python wrapper includes these checks in the existing Gradle gate.
 
 ## Rules and evidence
 
-- Every named case owns fresh counters and explicit WORK and DELIVERY budgets.
-  Work cannot debit another case or its separate final interpretation allowance.
-- Provider preflight proves the exact `openai-codex/gpt-6.1-sol` selection and
-  effective `high` effort, and records serialized declaration, instruction,
-  context and whole-request byte sizes. Admission takes the greater of the
-  initial input calibration plus conservative context growth and the latest
-  measured input (including cached input) plus subsequent growth, then adds the
-  output reserve. These are estimates; bytes are not tokenizer counts.
-- Finalized API usage keeps uncached input, cached input read/write, generated
-  output and reasoning subset separate. Total usage includes cached input on
-  each request. Reasoning is not an extra additive category. There is no claim
-  of a provider-enforced output/token cap; an in-flight overshoot is explicitly
-  `HARNESS_BUDGET_LIMIT` and stops further requests.
+- Every named case owns fresh counters and a global reported-token threshold.
+  Fresh execution allows at most three provider requests across WORK and DELIVERY;
+  received-result execution allows one. Explicit smaller limits remain smaller.
+  Phase request limits and output reserves also apply. The default global token
+  threshold is the sum of the declared WORK and DELIVERY token amounts; an
+  explicit `maximumReportedTokens` sets the case's global threshold.
+- Provider admission checks the exact `openai-codex/gpt-6.1-sol` selection and
+  effective `high` effort against the complete SDK serialized request. The whole
+  request, including declarations, instructions, restored `additional_tools`
+  and input, is capped at 262,144 bytes (256 KiB). An explicit smaller cap remains
+  smaller. Unsupported structures fail closed; nothing is trimmed. Declaration
+  and tool-text limits remain independent. Optional full-request calibration is
+  empirical diagnostic evidence; missing or changed calibration does not deny
+  a structurally supported request within these byte and request-count bounds.
+  A novel body has a diagnostic input estimate: the greater of its complete
+  serialized UTF-8 byte count and the previous measured cached-inclusive input.
+  The nominal assumption is one token per UTF-8 byte. This conservative heuristic
+  is uncertain, supplies no guaranteed token upper bound, and never decides
+  admission. Its method is `FULL_SERIALIZED_UTF8_BYTES_ONE_TOKEN_PER_BYTE_ESTIMATE`
+  with qualification `CONSERVATIVE_ESTIMATE_UNCERTAIN_NOT_TOKENIZER_OR_SPEND_PROOF`.
+  A matching full-request calibration instead uses
+  `VERIFIED_FULL_PAYLOAD_EMPIRICAL_CALIBRATION` and
+  `CALIBRATION_NOT_TOKENIZER_PROOF`. The greater of its empirical ceiling and
+  the measured input floor is still a diagnostic estimate. `required` adds the
+  output reserve to either estimate without creating an admission oracle.
+- Finalized API usage accumulates uncached input, cached input read/write and
+  generated output across the case. Reasoning is a subset of output, never an
+  extra debit. Reaching the global threshold stops subsequent requests. One
+  response can overshoot the threshold; this is post-response accounting and
+  provides no spend guarantee. A serialized assistant response is capped at
+  65,536 bytes (64 KiB), with explicit smaller limits preserved. Fresh execution
+  has a maximum 120-second deadline; received-result execution has 60 seconds.
+  Shorter declared deadlines remain shorter.
+- The awaited provider hook locally requests `max_output_tokens` at most 2,000,
+  within the phase output reserve. `outputCapApplied` records the local field
+  setting; `backendOutputCapQualification: "UNQUALIFIED"` records that backend
+  enforcement is unproven. The SDK check observes this field at the synthetic
+  SSE fetch boundary. Neither that check nor an offline preflight establishes
+  live output-cap enforcement or a future token/spend bound. Optional calibration
+  retains its exact request identity and historical usage qualification.
 - A semantic rejection aborts at `tool_result`. The isolated SSE transport
   checks the abort before fetch; abort intent alone is not transport evidence.
   The default outcome is `INTENTIONAL_REJECTION`. Optional, explicitly declared
@@ -62,7 +93,13 @@ or GREEN. The Python wrapper includes these checks in the existing Gradle gate.
   exact code as `TOOL_RPC_REJECTION`, not a semantic completeness rejection.
   An adapter-start event alone is not proof of semantic
   execution. No source payloads, credentials, headers or environment are logged
-  in the shareable guard report. Session/event logs are private local artifacts.
+  in the shareable summaries. Guard and event records share one 64-KiB cap,
+  including one reserved `RECORDS_TRUNCATED` marker. Only allowlisted stages,
+  outcomes, counts and hashes are retained. Record failures remain typed sticky
+  failures and abort further work. Exact replay is separate: owned0700 directories
+  and0600 files, with scoped umask077. Restored sessions open an owned copy;
+  the original transcript is not opened for SDK mutation. The policy report
+  and exact replay remain private; summaries are the export surface.
 - Each case runs in one owned process group. Cancellation first requests SDK
   abort, then terminates and reaps an unresponsive worker and its descendants.
   Existing IDEs and user sessions are never owned or restarted by this controller.
@@ -88,38 +125,158 @@ not change the user's normal profile. No implicit warming, retry or catalog
 refresh may debit an unobserved case allowance.
 
 Each case declares `name`, `mode`, `expectedSemanticCalls`, `inputTokenCeiling`,
-`declarationByteCeiling`, `maximumToolTextBytes`, `wallSeconds` (1–480), and:
+`declarationByteCeiling`, `maximumToolTextBytes` and a positive `wallSeconds`.
+The applied deadline is the smaller of that value and 120 seconds for fresh
+execution or 60 seconds for received-result execution. The parent plan uses a
+100,000-byte declaration limit and 300,000-byte tool-text limit. For example,
+a dense case can declare:
 
 ```json
 {
-  "work": {"reportedTokens": 60000, "requests": 3, "tools": 2, "outputReserve": 2000},
-  "delivery": {"reportedTokens": 25000, "requests": 1, "outputReserve": 2000}
+  "work": {"reportedTokens": 120000, "requests": 3, "tools": 2, "outputReserve": 2000},
+  "delivery": {"reportedTokens": 20000, "requests": 1, "outputReserve": 2000},
+  "maximumReportedTokens": 140000,
+  "maximumProviderRequests": 3,
+  "maximumProviderPayloadBytes": 262144,
+  "maximumProviderResponseBytes": 65536,
+  "declarationByteCeiling": 100000,
+  "maximumToolTextBytes": 300000,
+  "wallSeconds": 120
 }
 ```
 
-Use `mode: "fresh"` with the fixed public question in `prompt`. A negative case
-can declare one semantic call, WORK 30,000, and independent DELIVERY 25,000.
-The previous measured declaration array was 73,716 bytes; a declared 80,000-byte
-ceiling and 20,000-token initial input ceiling leave explicit space for that
-context. Validate new schema/context measurements before selecting bounds.
+Use `mode: "fresh"` with the fixed public question in `prompt`. The parent
+plan declares global thresholds of 60,000 reported tokens for the negative case,
+140,000 for the dense case and 60,000 for saved-result delivery. These are explicit
+plan values, not case-name rules. The prior declaration array measured 73,716
+bytes; that establishes a byte measurement only. Keep the declared request,
+byte, response and deadline limits. Calibration is optional and cannot turn
+post-response thresholds into pre-request token or spend guarantees.
 
 For `mode: "received-result"`, provide the exact `receivedSessionFile` and
-`receivedResultEntryId`, the expected `receivedContextSha256`, and omit `prompt`.
+`receivedResultEntryId`, the full original file's `receivedSessionSha256`, the
+expected restored `receivedContextSha256`, and omit `prompt`. The original must
+be a current-user-owned, regular, nonsymlink, single-link file without group or
+world write permission. Ordinary Pi `0644` sources and their existing parents
+remain unchanged. The source has a separate 4 MiB ceiling; the 256 KiB provider
+body ceiling does not limit the original transcript. An `O_NOFOLLOW` opened
+descriptor and the pathname must retain the same identity, size and nanosecond
+modification metadata throughout the bounded read. Growth, truncation, identity
+changes and a full-file digest mismatch fail before creating the replay copy or
+opening it through the SDK. Only authenticated bytes are copied to an exclusive
+`0600` file in the owned `0700` archive; copy failures remove that owned copy,
+and cleanup failure preserves the first finite failure.
 The saved workspace and exact restored context are checked before inference.
-Public `SessionManager.open` and
-`branch` select the saved tool-result leaf in memory; the next appended entry
+Public `SessionManager.open` opens a private owned copy, and
+`branch` selects the saved tool-result leaf in memory; the next appended entry
 persists that branch without replacing older entries. `session.agent.continue()`
 consumes it without a new task, trimming, summary, reissued query or coaching.
 The original session entries remain intact. DELIVERY blocks all new tool calls.
 
-`test_pi_evaluation_mutations.py` kills fifteen changes to the real rules: removing
-the terminal gate, sharing the final budget, dropping cached-input accounting,
-allowing semantic work in DELIVERY, weakening exact evidence-read admission,
-adding a coaching prompt, rejecting valid qualified replies, losing original
-coverage, ignoring measured input, selecting unsafe automatic transport, and
-enabling unaccounted warming, upgrading initial delivery qualification, erasing a
-delivery blocker, collapsing physical RPC count and rejecting a failed-RPC count. A syntax/import
-or provisioning failure does not count as a killed mutation.
+`test_pi_evaluation_mutations.py` exercises adverse changes to the production
+rules. Its executable selectors and expected behaviors remain authoritative.
+A syntax/import or provisioning failure does not count as a killed mutation.
+
+## Optional full-request calibration and no-inference preflight
+
+A case may supply at most64 `inputCalibrations`, each an exact object:
+
+```json
+{"type":"OFFLINE_FULL_PAYLOAD_CALIBRATION","path":"/private/receipts/request.json","sha256":"<64 lowercase hex characters>"}
+```
+
+Receipt files must be owned regular files, with one link, mode0400 or0600, inside
+an owned0700 directory. Symlinks, identity changes, extra reference fields and
+files above4MiB are rejected. Descriptors close before verification/registration.
+The worker loads and verifies all references before creating the SDK session.
+It records finite `INPUT_CALIBRATION` preparation/failure evidence without paths
+or request content. Receipt authority is explicit:
+
+```json
+{
+  "type":"FULL_PAYLOAD_CALIBRATION",
+  "provider":"openai-codex",
+  "model":"gpt-6.1-sol",
+  "request":{"model":"gpt-6.1-sol","instructions":"fixed","input":[],"tools":[],"reasoning":{"effort":"high"},"max_output_tokens":2000},
+  "usage":{"input":100,"cacheRead":0,"cacheWrite":0,"output":10,"totalTokens":110},
+  "calibratedInputCeiling":100,
+  "method":"EXACT_PROJECTED_REQUEST_FINALIZED_USAGE",
+  "qualification":"CALIBRATION_NOT_TOKENIZER_PROOF"
+}
+```
+
+This layout is illustrative; request and usage must come from the exact qualified
+full-request observation. Do not use these sample values as live calibration.
+The request identity omits only store, stream, cache key and locally requested output cap.
+Source authenticity and backend stability remain external provenance obligations.
+A synthetic finalized-usage receipt is test evidence only. Existing receipts
+for instructions alone do not calibrate a new fresh or restored full request.
+A novel request can be admitted without any receipt under the exact serialized
+byte cap and finite request count. Changed dynamic call IDs, tool results and
+reasoning items need no fabricated calibration. Optional matching receipts
+supply empirical diagnostics; their absence or mismatch does not establish a
+failure or a complete-input token bound.
+
+The installed Pi Codex provider exposes an awaited full-payload hook. This
+controller uses it to inspect the complete request and apply the local output
+cap. It does not require an input-count endpoint or tokenizer. Backend output
+cap enforcement remains `UNQUALIFIED`. Live evaluation still requires explicit
+authorization and matched installation/native admission; its token thresholds
+are post-response stops, and one response can overshoot them.
+
+The preflight recipe below uses private digest-pinned captures of each complete
+SDK body. It loads no SDK, credentials, model catalog or native service and sends
+no request. The manifest selects each case and WORK or DELIVERY grant explicitly.
+Admission is independent per request; the receipt says so and cannot establish
+sequence accounting, same-session restoration or live output-cap acceptance.
+
+```sh
+node experiments/host-observation/run_pi_evaluation.mjs --plan /private/plan.json
+node experiments/host-observation/pi_evaluation_preflight.mjs \
+  --plan /private/plan.json --manifest /private/requests/manifest.json \
+  --sha256 "$MANIFEST_SHA256"
+```
+
+The private manifest binds the private plan digest and at most64 unique
+case/phase entries. It must cover WORK for each fresh case and DELIVERY for each
+received-result case; fresh DELIVERY can be checked independently as well:
+
+```json
+{
+  "type":"FULL_PROVIDER_REQUEST_PREFLIGHT",
+  "planSha256":"<plan SHA256>",
+  "requests":[
+    {"case":"fresh-control","phase":"WORK","body":{"type":"FULL_PROVIDER_PAYLOAD","path":"/private/fresh-body.json","sha256":"<body SHA256>"}},
+    {"case":"received-control","phase":"DELIVERY","body":{"type":"FULL_PROVIDER_PAYLOAD","path":"/private/received-body.json","sha256":"<body SHA256>"}}
+  ]
+}
+```
+
+Plan, manifest and body files use the same private ownership/mode/size boundary
+as receipts. Full body files must already contain the locally requested output cap;
+preflight never adds fields, trims context or rewrites declarations. The report
+retains hashes and finite admissions only. A declared received-result identity
+is validated by the plan parser; actual session restoration remains a later SDK
+check. Structural parsing is bounded at depth64 and32768 JSON nodes, with at
+most1024 input items and64 tools. The installed declaration schema requires
+depth33; the larger finite depth supports that complete schema and its receipt
+without changing any token or semantic-work allowance.
+
+Changed declarations, instructions, input or restored `additional_tools` change
+the recorded request digest. A novel bounded supported request remains eligible
+without calibration; unsupported or oversized payloads deny before transport.
+The report records exact whole-file and input-projection hashes, applied request
+and response caps, deadline, global reported-token threshold and local requested/
+applied output settings. It retains `UNQUALIFIED` backend enforcement and
+`INDEPENDENT_REQUEST_ADMISSION_NOT_SEQUENCE_OR_LIVE_PROOF`. This check cannot
+establish sequence accounting, actual restored-session identity, live backend
+behavior, token usage or spend. No provider request is sent by preflight.
+
+`inputEstimate`, `inputEstimateMethod` and `inputEstimateQualification` preserve
+the diagnostic estimate and its uncertainty. `calibratedInputCeiling` contains a
+value only for an actual matching empirical calibration; it is null for a novel body.
+The one-token-per-byte heuristic and `required` estimate are not tokenizer proof,
+a guaranteed upper bound, a spend guarantee or an admission decision.
 
 ## Installed SDK check without inference
 
@@ -132,14 +289,22 @@ node experiments/host-observation/pi_evaluation_sdk_check.mjs \
   "$PI_PACKAGE_ROOT" "$KAST_ADAPTER" "$KAST_ADAPTER_SHA256"
 ```
 
-This loads the actual adapter's read-only catalog, uses the committed worker's
-real SDK construction and awaited hooks, and doubles only external provider
-transports. Its auth and catalog storage are synthetic and in memory. Both
+This loads the actual adapter's read-only catalog. It uses the committed worker's
+SDK construction and awaited hooks. Only external provider transports are doubles. Its auth and catalog storage are synthetic and in memory. All
 provider responses are synthetic; zero inference, semantic tools and real
 provider requests occur. A first synthetic SSE response completes; a denied
 second request reaches neither fetch nor a socket. A separate real-SDK cached
 WebSocket session reproduces one send after its guard denied the second request.
-This validates the selected transport boundary; it is not native semantic proof.
+A fresh sequence also uses the actual installed SDK to project a new tool call
+and complete canonical result into its second request. Only tool execution is
+replaced with a synthetic reply; declarations and instructions remain intact.
+Both requests admit without a prior calibration and end in `FINAL_ANSWER`.
+This is SDK projection and guard proof, not native or backend enforcement proof.
+A saved transcript then continues through the same SDK without a new user prompt
+or semantic call. Its tool text appears once; duplicate `details` fields stay
+out of the provider request. The test checks budget admission and the 2,000-token
+request cap. These checks validate projection and transport, not native semantics
+or live backend support for the cap.
 
 The checked coding-agent package is 1.0.2, but its resolved pi-ai and
 pi-agent-core dependencies are both **1.1.0**. Sanitized exact source/package
@@ -152,6 +317,22 @@ the worker explicitly overrides it. No claim is made that the original pilot
 actually ran a cache-warming request. SDK `tools: string[]` is the supported
 public contract. Fixture provenance and offline owning Kotlin serialization
 steps are in `pi-fixtures/README.md`.
+
+## Terminal report delivery
+
+The worker publishes one terminal message and waits at most1,000ms for its send
+callback. Backpressure is not delivery failure. After settlement it disconnects
+and exits naturally; it does not truncate, retry or exit before publication.
+A closed channel, send failure or timeout is finite data. The controller records
+whether it received a report or worker failure, or observed an IPC failure exit.
+These are parent receipt/exit facts, not a claim about an unseen child callback.
+An earlier worker failure remains the primary failure through publication.
+
+Real owned-child tests preserve exact300k/1MB reports and a policy-accepted
+synthetic rejection summary whose limitations fit the300,000-byte tool allowance.
+The latter establishes accepted-shape transport reliability; it does not prove
+that a native producer or normal pilot creates14,000 repeated limitations.
+Callback-error and timeout cases retain finite failures and reap owned children.
 
 ## Minimal next live validation (not run by this change)
 

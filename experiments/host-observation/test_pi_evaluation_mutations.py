@@ -12,14 +12,22 @@ class PiEvaluationMutationTest(unittest.TestCase):
         node = shutil.which("node")
         self.assertIsNotNone(node, "Node.js is required; missing tooling is not mutation proof")
         mutations = [
+            ("provider-output-cap-removed", "pi_evaluation_guard.mjs",
+             "{...event.payload,max_output_tokens:policy.providerOutputCap()}",
+             "{...event.payload}",
+             "provider projection replaces"),
+            ("inline-declarations-charged-twice", "pi_evaluation_payload.mjs",
+             "payload.input.filter(item=>item.type!=='additional_tools')",
+             "payload.input",
+             "inline SDK declarations consume"),
             ("terminal-rejection-gate", "pi_evaluation_policy.mjs",
              "return this.stop(Outcome.REJECTION);",
              "return decision(true,'RESULT_RECEIVED',this.phase);",
              "recorded terminal dense rejection"),
-            ("shared-final-budget", "pi_evaluation_policy.mjs",
-             "const remaining=bound.reportedTokens-this.phaseUsage[this.phase].totalTokens;",
-             "const remaining=this.config.work.reportedTokens-this.usage.totalTokens;",
-             "recorded 30k negative"),
+            ("global-threshold-reset-by-phase", "pi_evaluation_policy.mjs",
+             "this.usage.totalTokens>=this.maximumReportedTokens",
+             "this.phaseUsage[this.lastRequestPhase].totalTokens>=this.maximumReportedTokens",
+             "postresponse cumulative"),
             ("cached-input-not-charged", "pi_evaluation_policy.mjs",
              "this.phaseUsage[this.lastRequestPhase][key]+=usage[key];",
              "this.phaseUsage[this.lastRequestPhase][key]+=key==='totalTokens'?usage.input+usage.output:usage[key];",
@@ -45,9 +53,17 @@ class PiEvaluationMutationTest(unittest.TestCase):
              "knownMinimum:detail?.coverage?.knownMinimum??null",
              "canonical rejection preserves originalCoverage"),
             ("measured-input-ignored", "pi_evaluation_policy.mjs",
-             "Math.max(this.config.inputTokenCeiling+this.contextGrowthCeiling,measuredInputFloor)",
-             "this.config.inputTokenCeiling+this.contextGrowthCeiling",
-             "measured input above calibration"),
+             "Math.max(calibration.calibratedInputCeiling,this.lastMeasuredInput)",
+             "calibration.calibratedInputCeiling",
+             "cached measured floor is diagnostic", "pi_evaluation_payload.test.mjs"),
+            ("global-call-limit-ignored", "pi_evaluation_policy.mjs",
+             "totalRequests>=this.maximumProviderRequests",
+             "false",
+             "global provider call limit"),
+            ("streamed-response-limit-ignored", "pi_evaluation_policy.mjs",
+             "bytes>this.maximumProviderResponseBytes",
+             "false",
+             "streamed assistant response"),
             ("unsafe-automatic-transport", "pi_evaluation_worker.mjs",
              "transport:'sse',cacheWarming:'off'",
              "transport:'auto',cacheWarming:'off'",
@@ -68,14 +84,19 @@ class PiEvaluationMutationTest(unittest.TestCase):
              "rpcCount:d.rpc_count",
              "rpcCount:1",
              "actual shared-client delivered complete and qualified"),
-            ("failed-rpc-count-rejected", "pi_evaluation_delivery.mjs",
-             "value.pages.length+1>d.rpc_count",
-             "value.pages.length+1!==d.rpc_count",
+            ("failed-rpc-count-rejected", "../../cli/src/main/js/query-delivery-contract.mjs",
+             "value.pages.length + 1 > value.delivery.rpc_count",
+             "value.pages.length + 1 !== value.delivery.rpc_count",
              "actual shared-client blockers cancellation"),
         ]
-        for name, filename, original, replacement, selection in mutations:
+        for entry in mutations:
+            name, filename, original, replacement, selection, *suite = entry
             with self.subTest(mutation=name), tempfile.TemporaryDirectory(prefix="kast-pi-mutation-") as directory:
-                root = Path(directory)
+                root = Path(directory) / "experiments" / "host-observation"
+                root.mkdir(parents=True)
+                contract = Path(directory) / "cli" / "src" / "main" / "js" / "query-delivery-contract.mjs"
+                contract.parent.mkdir(parents=True)
+                shutil.copyfile(here.parent.parent / "cli/src/main/js/query-delivery-contract.mjs", contract)
                 for source in here.glob("pi_evaluation*.mjs"):
                     shutil.copyfile(source, root / source.name)
                 shutil.copyfile(here / "run_pi_evaluation.mjs", root / "run_pi_evaluation.mjs")
@@ -85,7 +106,7 @@ class PiEvaluationMutationTest(unittest.TestCase):
                 self.assertEqual(1, text.count(original), "Mutation must change exactly one owning rule")
                 target.write_text(text.replace(original, replacement))
                 result = subprocess.run([node, "--test", "--test-name-pattern", selection,
-                                         "pi_evaluation.test.mjs"], cwd=root,
+                                         suite[0] if suite else "pi_evaluation.test.mjs"], cwd=root,
                                         capture_output=True, text=True, timeout=10)
                 output = result.stdout + result.stderr
                 self.assertNotEqual(0, result.returncode, f"Surviving mutation {name}\n{output}")

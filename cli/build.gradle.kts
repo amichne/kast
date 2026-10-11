@@ -40,6 +40,8 @@ tasks.named<Test>("test") {
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir("src/test/js").withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file("src/main/js/query-delivery.mjs").withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file("src/main/js/query-delivery-contract.mjs").withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file("src/main/resources/query-delivery.schema.json").withPathSensitivity(PathSensitivity.RELATIVE)
     useJUnitPlatform {
         excludeTags("native")
     }
@@ -58,6 +60,43 @@ val nativeTest =
 
 tasks.named("check") {
     dependsOn(nativeTest)
+}
+
+val queryDeliveryContractTest =
+    tasks.register<Exec>("queryDeliveryContractTest") {
+        group = "verification"
+        description = "Verifies the portable outer delivery contract independently of RPC effects."
+        inputs.files("src/main/js/query-delivery-contract.mjs", "src/test/js/query-delivery-contract.test.mjs")
+        inputs.file(rootProject.file("experiments/host-observation/pi_evaluation_delivery.mjs"))
+        inputs.file(rootProject.file("experiments/host-observation/pi-fixtures/query-delivery-cases.json"))
+        workingDir(rootProject.projectDir)
+        commandLine("node", "--test", "cli/src/test/js/query-delivery-contract.test.mjs")
+    }
+
+tasks.named("check") {
+    dependsOn(queryDeliveryContractTest)
+}
+
+val queryDeliverySchemaTest =
+    tasks.register<Exec>("queryDeliverySchemaTest") {
+        group = "verification"
+        description = "Verifies the outer delivery authority with an independent JSON Schema validator."
+        dependsOn(rootProject.tasks.named("preparePythonTestEnvironment"))
+        inputs.files("src/main/resources/query-delivery.schema.json")
+        inputs.files(
+            rootProject.file("packaging/query_delivery_contract.py"),
+            rootProject.file("packaging/test-query-delivery-contract.py"),
+        )
+        inputs.file(rootProject.file("experiments/host-observation/pi-fixtures/query-delivery-cases.json"))
+        workingDir(rootProject.projectDir)
+        commandLine(
+            rootProject.layout.buildDirectory.file("python-tests/env/bin/python3").get().asFile,
+            "packaging/test-query-delivery-contract.py",
+        )
+    }
+
+tasks.named("check") {
+    dependsOn(queryDeliverySchemaTest)
 }
 
 val codexIntegrationStartScripts =
