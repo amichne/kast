@@ -17,6 +17,36 @@ import org.junit.jupiter.api.assertThrows
 
 class HostedReadSearchAccountingTest {
     @Test
+    fun `file index searches retain first callback and each no-callback terminal cause`() {
+        listOf(IntellijReadSearch.SCOPED_FILES, IntellijReadSearch.EXACT_PACKAGE_FILES).forEach { search ->
+            var now = 0L
+            val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
+            val observation = HostedReadDiagnostics({ now }, publish = receipts::add)
+            observation.search(search) { scope ->
+                now = 23L
+                scope.callbackEntered()
+                now = 90L
+                scope.callbackEntered()
+            }
+            observation.search(search) {}
+            assertThrows<ProcessCanceledException> { observation.search(search) { throw ProcessCanceledException() } }
+            assertThrows<IllegalStateException> {
+                observation.search(search) { throw IllegalStateException("scripted") }
+            }
+            observation.finish(HostedDiagnosticOutcome.Completed)
+            assertEquals(
+                HostedReadSearchCount(search, 4, 1, 1, 1, 1, 0, HostedReadCallCountQualification.EXACT, 23, 23),
+                receipts.single().nativeSearches.single { it.search == search },
+            )
+            val index = receipts.single().nativeCalls.single { it.call == search.call && it.entered != 0L }
+            assertEquals(4L, index.entered)
+            assertEquals(2L, index.returned)
+            assertEquals(1L, index.cancelled)
+            assertEquals(1L, index.failed)
+        }
+    }
+
+    @Test
     fun `each invocation contributes its own first callback delay exactly once`() {
         var now = 0L
         val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
@@ -123,15 +153,33 @@ class HostedReadSearchAccountingTest {
     }
 
     @Test
+    fun `encoded discovery decisions declare explicit zero capability`() {
+        val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
+        val observation = HostedReadDiagnostics({ 0L }, publish = receipts::add)
+        observation.finish(HostedDiagnosticOutcome.Completed)
+        val encoded = Json.parseToJsonElement(receipts.single().encode()).jsonObject
+        val discoveryDecisions =
+            encoded.getValue("counters").jsonArray.filter {
+                it.jsonObject.getValue("counter").jsonPrimitive.content in
+                    setOf("DISCOVERY_SCOPE_FILES_ADMITTED", "DISCOVERY_SCOPE_FILES_EXCLUDED")
+            }
+        assertEquals(2, discoveryDecisions.size)
+        discoveryDecisions.forEach {
+            assertEquals("NONE", it.jsonObject.getValue("contributor").jsonPrimitive.content)
+            assertEquals("0", it.jsonObject.getValue("count").jsonPrimitive.content)
+        }
+    }
+
+    @Test
     fun `encoded search aggregates declare zero entries and exact fixed fields`() {
         val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
         val observation = HostedReadDiagnostics({ 0L }, publish = receipts::add)
         observation.finish(HostedDiagnosticOutcome.Completed)
         val encoded = Json.parseToJsonElement(receipts.single().encode()).jsonObject
-        assertEquals("13", encoded.getValue("schemaVersion").jsonPrimitive.content)
+        assertEquals("14", encoded.getValue("schemaVersion").jsonPrimitive.content)
         val searches = encoded.getValue("nativeSearches").jsonArray
         assertEquals(
-            listOf("REFERENCES", "DEFINITIONS"),
+            listOf("REFERENCES", "DEFINITIONS", "SCOPED_FILES", "EXACT_PACKAGE_FILES"),
             searches.map {
                 it.jsonObject.getValue("search").jsonPrimitive.content
             },
@@ -150,12 +198,14 @@ class HostedReadSearchAccountingTest {
                     "qualification",
                     "firstCallbackDelayTotalNanos",
                     "firstCallbackDelayMaximumNanos",
+                    "workVisibility",
                 ),
                 actual.keys,
             )
             assertEquals("EXACT", actual.getValue("qualification").jsonPrimitive.content)
+            assertEquals("NATIVE_INTERNAL_WORK_UNOBSERVED", actual.getValue("workVisibility").jsonPrimitive.content)
             actual
-                .filterKeys { it != "search" && it != "qualification" }
+                .filterKeys { it != "search" && it != "qualification" && it != "workVisibility" }
                 .values
                 .forEach {
                     assertEquals("0", it.jsonPrimitive.content)

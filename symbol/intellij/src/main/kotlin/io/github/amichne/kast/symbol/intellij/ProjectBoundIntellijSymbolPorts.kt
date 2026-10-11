@@ -50,6 +50,7 @@ private constructor(
                                     IntellijSearchScopeQueryAdapter(
                                         IntellijSearchScopeCompiler(
                                             request.constraints,
+                                            observation = observation,
                                             sourceRootAdmission = { path ->
                                                 fileAdmission.admits(path, request.constraints.sourceSets)
                                             },
@@ -70,6 +71,7 @@ private constructor(
                                 IntellijSearchScopeQueryAdapter(
                                     IntellijSearchScopeCompiler(
                                         constraints,
+                                        observation = observation,
                                         sourceRootAdmission = { path ->
                                             fileAdmission.admits(path, constraints.sourceSets)
                                         },

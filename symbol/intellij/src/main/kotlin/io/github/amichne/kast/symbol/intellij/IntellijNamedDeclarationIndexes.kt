@@ -9,17 +9,15 @@ import com.intellij.util.indexing.IdFilter
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolNameRelevance
 import io.github.amichne.kast.symbol.contract.relevance
-import org.jetbrains.kotlin.idea.stubindex.KotlinClassShortNameIndex
-import org.jetbrains.kotlin.idea.stubindex.KotlinFunctionShortNameIndex
-import org.jetbrains.kotlin.idea.stubindex.KotlinPropertyShortNameIndex
-import org.jetbrains.kotlin.idea.stubindex.KotlinTypeAliasShortNameIndex
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.call
 
 /** Index callbacks admit only cheap facts; the shared collector projects after every callback finishes. */
 internal fun collectIndexedNamedDeclarations(
@@ -29,12 +27,14 @@ internal fun collectIndexedNamedDeclarations(
     observe: () -> Boolean,
     qualify: (SymbolDiscoveryQualification) -> Unit,
     limits: ReadLimits,
+    indexes: IntellijDeclarationIndexes,
+    observation: IntellijReadObservation,
     accept: (NavigationItem) -> Boolean,
 ): Boolean {
     val target = request.target as? SymbolDiscoveryTarget.Name ?: return false
     return when (target.match) {
         SymbolDiscoveryMatch.EXACT_NAME ->
-            collectExactDeclarations(project, scope, request, target.pattern.value, accept)
+            collectExactDeclarations(scope, request, target.pattern.value, indexes, observation, accept)
         SymbolDiscoveryMatch.FUZZY -> {
             val filter = IdFilter.getProjectIdFilter(project, true)
             target.kind
@@ -62,21 +62,20 @@ internal fun collectIndexedNamedDeclarations(
 }
 
 private fun collectExactDeclarations(
-    project: Project,
     scope: CompiledIntellijSearchScope,
     request: SymbolDiscoveryRequest,
     name: String,
+    indexes: IntellijDeclarationIndexes,
+    observation: IntellijReadObservation,
     accept: (NavigationItem) -> Boolean,
 ): Boolean {
     val kinds = request.requestedDeclarationKinds()
-    return (CompilerSymbolKind.CLASSLIKE !in kinds ||
-        KotlinClassShortNameIndex.processElements(name, project, scope.nativeScope) { accept(it) }) &&
-        (CompilerSymbolKind.FUNCTION !in kinds ||
-            KotlinFunctionShortNameIndex.processElements(name, project, scope.nativeScope) { accept(it) }) &&
-        (CompilerSymbolKind.PROPERTY !in kinds ||
-            KotlinPropertyShortNameIndex.processElements(name, project, scope.nativeScope) { accept(it) }) &&
-        (CompilerSymbolKind.TYPE_ALIAS !in kinds ||
-            KotlinTypeAliasShortNameIndex.processElements(name, project, scope.nativeScope) { accept(it) })
+    return IntellijNamedDeclarationIndex.entries.all { index ->
+        index.kind !in kinds ||
+            observation.call(IntellijReadCall.NAMED_DECLARATION_INDEX) {
+                indexes.named(index, name, scope.nativeScope, accept)
+            }
+    }
 }
 
 private fun collectContributorDeclarations(

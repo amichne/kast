@@ -19,6 +19,9 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelFailur
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import io.github.amichne.kast.workspace.intellij.read.IntellijProjectSourceMembership
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.call
 import java.nio.file.Path
 
 sealed interface IntellijSearchScopeFailure {
@@ -93,6 +96,7 @@ internal constructor(
 internal class IntellijSearchScopeCompiler(
     private val constraints: SymbolDiscoveryConstraints = SymbolDiscoveryConstraints.None,
     private val sourceRootAdmission: (Path) -> Boolean = { true },
+    private val observation: IntellijReadObservation = IntellijReadObservation.None,
     private val fileAdmission: (Path) -> Boolean = { true },
 ) {
     /**
@@ -109,25 +113,26 @@ internal class IntellijSearchScopeCompiler(
         project: Project,
         request: SymbolSearchScopeRequest,
         modelCompilation: WorkspaceSearchScopeModelCompilation,
-    ): IntellijSearchScopeCompilation {
-        val libraryScope = ProjectScope.getLibrariesScope(project)
-        return compile(
-            request = request,
-            modelCompilation = modelCompilation,
-            baseScope = GlobalSearchScope.allScope(project),
-            nativePath = ::nativePath,
-            sourceMembership = { file ->
-                IntellijProjectSourceMembership.contains(project, file)
-            },
-            libraryMembership = { file ->
-                if (libraryScope.contains(file)) {
-                    IntellijLibraryMembership.LIBRARY
-                } else {
-                    IntellijLibraryMembership.NOT_LIBRARY
-                }
-            },
-        )
-    }
+    ): IntellijSearchScopeCompilation =
+        observation.call(IntellijReadCall.DISCOVERY_SCOPE_COMPILE) {
+            val libraryScope = ProjectScope.getLibrariesScope(project)
+            compile(
+                request = request,
+                modelCompilation = modelCompilation,
+                baseScope = GlobalSearchScope.allScope(project),
+                nativePath = ::nativePath,
+                sourceMembership = { file ->
+                    IntellijProjectSourceMembership.contains(project, file)
+                },
+                libraryMembership = { file ->
+                    if (libraryScope.contains(file)) {
+                        IntellijLibraryMembership.LIBRARY
+                    } else {
+                        IntellijLibraryMembership.NOT_LIBRARY
+                    }
+                },
+            )
+        }
 
     /**
      * Proof transition equivalent to [compile], with the request-local native base scope, path extractor, and IntelliJ
@@ -237,9 +242,14 @@ internal class IntellijSearchScopeCompiler(
                         nativePath = nativePath,
                         libraryMembership = libraryMembership,
                         sourceMembership = sourceMembership,
+                        observation = observation,
                         fileAdmission = { path ->
-                            fileAdmission(path) &&
-                                matchesDirectory(path, request.lease.workspaceRoot.value, constraints)
+                            observation.call(IntellijReadCall.DISCOVERY_SCOPE_DETACHED_ADMISSION) {
+                                fileAdmission(path)
+                            } &&
+                                observation.call(IntellijReadCall.DISCOVERY_SCOPE_DIRECTORY_MEMBERSHIP) {
+                                    matchesDirectory(path, request.lease.workspaceRoot.value, constraints)
+                                }
                         },
                     ),
             )

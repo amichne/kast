@@ -4,6 +4,8 @@ package io.github.amichne.kast.workspace.intellij.read
 enum class IntellijReadSearch(val call: IntellijReadCall) {
     REFERENCES(IntellijReadCall.REFERENCE_SEARCH),
     DEFINITIONS(IntellijReadCall.DEFINITION_SEARCH),
+    SCOPED_FILES(IntellijReadCall.SCOPED_FILE_INDEX),
+    EXACT_PACKAGE_FILES(IntellijReadCall.EXACT_PACKAGE_INDEX),
 }
 
 interface IntellijReadSearchScope : IntellijReadCallScope {

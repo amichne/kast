@@ -4,6 +4,10 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.search.DelegatingGlobalSearchScope
 import com.intellij.psi.search.GlobalSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.call
 import java.nio.file.Path
 
 internal sealed interface IntellijModelPathPolicy {
@@ -33,8 +37,19 @@ internal class ModelOwnedGlobalSearchScope(
     private val libraryMembership: (VirtualFile) -> IntellijLibraryMembership,
     private val sourceMembership: (VirtualFile) -> Boolean,
     private val fileAdmission: (Path) -> Boolean,
+    private val observation: IntellijReadObservation = IntellijReadObservation.None,
 ) : DelegatingGlobalSearchScope(baseScope, pathPolicy) {
-    override fun contains(file: VirtualFile): Boolean {
+    override fun contains(file: VirtualFile): Boolean =
+        observation.call(IntellijReadCall.DISCOVERY_SCOPE_FILE_MEMBERSHIP) {
+            containsObserved(file).also { admitted ->
+                observation.count(
+                    if (admitted) IntellijReadCounter.DISCOVERY_SCOPE_FILES_ADMITTED
+                    else IntellijReadCounter.DISCOVERY_SCOPE_FILES_EXCLUDED
+                )
+            }
+        }
+
+    private fun containsObserved(file: VirtualFile): Boolean {
         if (!super.contains(file)) {
             return false
         }
@@ -45,7 +60,11 @@ internal class ModelOwnedGlobalSearchScope(
         }
         return when (val path = nativePath(file)) {
             is IntellijVirtualFilePath.Absolute ->
-                sourceMembership(file) && fileAdmission(path.value) && pathPolicy.contains(path.value)
+                observation.call(IntellijReadCall.DISCOVERY_SCOPE_SOURCE_MEMBERSHIP) { sourceMembership(file) } &&
+                    fileAdmission(path.value) &&
+                    observation.call(IntellijReadCall.DISCOVERY_SCOPE_PATH_OWNERSHIP) {
+                        pathPolicy.contains(path.value)
+                    }
             IntellijVirtualFilePath.Relative,
             IntellijVirtualFilePath.Unavailable -> false
         }

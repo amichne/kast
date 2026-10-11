@@ -27,7 +27,7 @@ class HostedCheckpointStorageDiagnosticsTest {
         diagnostic.count(IntellijReadCounter.QUERY_CHECKPOINT_WITHIN_LIMIT)
         diagnostic.finish(HostedDiagnosticOutcome.Completed)
         val encoded = Json.parseToJsonElement(receipts.single().encode()) as JsonObject
-        assertEquals(JsonPrimitive(13), encoded.getValue("schemaVersion"))
+        assertEquals(JsonPrimitive(14), encoded.getValue("schemaVersion"))
         val expected =
             listOf(
                 "QUERY_CHECKPOINT_ALLOWANCE" to 90L,
