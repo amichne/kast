@@ -79,7 +79,7 @@ this track does not claim an exhaustive visible answer or expand the original by
 
 Passed `:cli:check verifyJsonContracts verifyArchitecture knowledgeImpact
 verifyKnowledgeBase`, public adapter generation parity and 15 generator tests.
-CLI verification includes 417 JVM tests, 35 pure Node presentation/session tests,
+CLI verification includes 417 JVM tests, 36 required pure Node presentation/session tests,
 and 116 passing adapter tests with one opt-in installed-harness loader skipped.
 The real JVM-child bridge fixture preserves exact replies and issued authority with
 scripted providers. Cases cover complete/empty/qualified/rejected, multiple pages,
@@ -103,3 +103,42 @@ Canonical drain bounds may still leave output/evidence undelivered; compact text
 not buy extra drainage. Codex MCP/App Server presentation, actual model usability,
 live native expiry/remote cancellation settlement, installation and merge remain
 outside this draft. Parent owns independent reviews and merge/install decisions.
+
+
+## Independent review follow-up
+
+A received observation cannot be replaced with a detail placeholder after the same
+invocation has observed `DELIVERY_UNAVAILABLE`. The retained native fixture followed
+by the committed expired-result rejection reproduced that bug. The repaired projection
+keeps its 16 occurrence rows, original total 185, one discovery and ten relation
+observations inline, alongside the exact unavailable rejection and recovery. It offers
+no READ_RESULT request for that known-dead handle. The regression executes exactly one
+RUN and one READ_RESULT, with no semantic recovery. Canonical replies remain unchanged.
+
+Dense 20-occurrence presentation serializes **53,320 bytes in 68 JSON calls** versus
+40,084 bytes in one legacy envelope serialization: **+13,236 bytes (+33.0%)**. Of the
+new total, 40 dictionary-key construction calls serialize 26,129 bytes. Independently,
+visible text falls 40,084 → 26,228: **−13,856 bytes (−34.6%)**. These count generated
+JSON string bytes, not CPU time or wire traffic; they exclude SDK transcript persistence,
+provider framing and transport serialization. No dense CPU-speed claim follows.
+
+The offline installed Pi 1.0.2 test runs its actual `convertToLlm` and OpenAI Codex
+`convertResponsesMessages` against seven fixed projections, including the repaired
+unavailable-handle case. Intermediate SDK tool-result messages retain canonical details.
+The provider converter emits exactly the compact content and does not serialize those
+details: changing details leaves provider input byte-for-byte equal, and its sentinel
+never appears. Every output character reaches the provider converter; occurrence/failure
+and already-received-observation checks remain executable. This pure conversion test
+uses no credentials, session, provider request or inference; source hashes are recorded
+in the local review evidence. It is opt-in via `KAST_PI_PACKAGE`; ordinary CI does not
+require an installed Pi. This proof covers that installed SDK/OpenAI Codex converter,
+not every provider, extension, custom transform or future SDK version. Canonical details
+still incur local SDK/archive storage and may be exposed by other consumers.
+
+Old catalogs still receive the same compact text. For the matched 43-reference fixture,
+one-shot fallback costs four children (catalog + three calls), versus two for a supported
+session. Both use three RPCs, one catalog, three simulated describes, one RUN, 448 JSON
+request bytes and 9,351 response bytes; fallback adds no new semantics or descriptions.
+The old catalog reads 75,819 bytes and the supported catalog 75,839; total child stdout
+is 85,170 versus 85,190. Sessions add three request framing bytes. These byte boundaries
+exclude SDK/provider serialization and must not be inferred as transport latency savings.

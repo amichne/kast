@@ -101,12 +101,12 @@
         "semanticExecutions": 1,
         "requestBytes": 350,
         "responseBytes": 1475,
-        "modelVisibleBytes": 1338
+        "modelVisibleBytes": 1233
       },
       "canonicalEquality": true,
       "stop": "DELIVERY_UNAVAILABLE",
       "deliveredUniqueReferences": 1,
-      "modelVisibleBytesSaved": 341
+      "modelVisibleBytesSaved": 446
     },
     {
       "name": "unavailable",
@@ -227,6 +227,10 @@
         "after": {
           "calls": 68,
           "bytes": 53320
+        },
+        "dictionaryKeyConstruction": {
+          "calls": 40,
+          "bytes": 26129
         }
       }
     ]

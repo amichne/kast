@@ -251,10 +251,13 @@ test('fixed result oracle reproduces saved work and byte measurements without se
 });
 
 test('presentation serialization counters expose both saved work and dense dictionary overhead', async () => {
-  let calls = 0, bytes = 0;
+  let calls = 0, bytes = 0, dictionaryCalls = 0, dictionaryBytes = 0;
+  const dictionaryObjects = new Set(native.cases.occurrences.reply.document.items.flatMap(row =>
+    [row.occurrence.target, row.occurrence.ownership.declaration]));
   const measuredJSON = { parse: JSON.parse, stringify(value, ...arguments_) {
     const encoded = JSON.stringify(value, ...arguments_);
     calls++; bytes += Buffer.byteLength(encoded);
+    if (dictionaryObjects.has(value)) { dictionaryCalls++; dictionaryBytes += Buffer.byteLength(encoded); }
     return encoded;
   } };
   const instrumented = new SourceTextModule(readFileSync(new URL('../../main/js/query-delivery.mjs', import.meta.url), 'utf8') +
@@ -267,9 +270,103 @@ test('presentation serialization counters expose both saved work and dense dicti
       request_bytes: 0, response_bytes: Buffer.byteLength(JSON.stringify(reply)), result: reply.document.retention.reference }) };
   for (const measurement of measurements.presentationSerialization.cases) {
     const result = fixtures[measurement.name];
-    calls = bytes = 0;
+    calls = bytes = dictionaryCalls = dictionaryBytes = 0;
     assert.equal(instrumented.namespace.queryPresentation(result), queryPresentation(result));
     assert.deepEqual({ calls, bytes }, measurement.after);
+    if (measurement.dictionaryKeyConstruction)
+      assert.deepEqual({ calls: dictionaryCalls, bytes: dictionaryBytes }, measurement.dictionaryKeyConstruction);
     assert.deepEqual({ calls: 1, bytes: Buffer.byteLength(JSON.stringify(result)) }, measurement.before);
   }
 });
+
+test('expired detail authority preserves every already-received observation without semantic replay', async () => {
+  const initial = native.cases.retainedEvidence.reply;
+  const expired = captured.cases.expired.result.pages[0];
+  const replies = [initial, expired], requests = [];
+  const result = await awaitQueryDelivery({ request: { type: 'RUN', source: { type: 'ALL_DECLARATIONS' },
+    output: { type: 'OCCURRENCES' } } }, async (request, policy) => {
+    requests.push(request);
+    assert.ok(requests.length <= replies.length, 'Authority failure cannot trigger recovery execution');
+    const reply = replies[requests.length - 1];
+    policy.onResponseBytes(Buffer.byteLength(JSON.stringify(reply)));
+    return reply;
+  }, { callTimeoutMillis: 1000 }, undefined, () => 0);
+  assert.deepEqual(requests.map(request => request.request.type), ['RUN', 'READ_RESULT']);
+  assert.equal(requests[1].request.result, initial.document.retention.reference);
+  assert.equal(requests[1].request.cursor, 16);
+  assert.equal(requests[1].request.evidence_cursor, 11);
+  assert.equal(result.delivery.stop, 'DELIVERY_UNAVAILABLE');
+  const view = projected(result);
+  assert.equal(view.rows.length, 16);
+  assert.deepEqual(view.rows.map(row => expand(row, view.shared)), initial.document.items);
+  assert.equal(view.summary.invocation.accumulated_row_count, 185);
+  assert.deepEqual(view.summary.coverage, initial.document.coverage);
+  assert.deepEqual(view.evidence.discovery_observations, initial.document.discovery_observations);
+  assert.deepEqual(view.evidence.relation_observations, initial.document.relation_observations);
+  assert.ok(view.text.includes('"reason":"result-unavailable"'));
+  assert.ok(view.text.includes('"next_action":"restart_read"'));
+  assert.equal(view.details, undefined, 'A known-dead handle cannot be offered as usable detail authority');
+  assert.ok(view.text.includes('known unavailable'));
+  assert.equal(JSON.stringify(result.pages[0]), JSON.stringify(expired));
+});
+
+// Optional installed SDK boundary, pure conversion only: no session, credentials, provider, or IDEA.
+test('Pi provider input contains the exact compact projection and excludes canonical SDK details',
+  { skip: !process.env.KAST_PI_PACKAGE }, async () => {
+    const { pathToFileURL } = await import('node:url');
+    const { join } = await import('node:path');
+    const pi = process.env.KAST_PI_PACKAGE;
+    const packageInfo = JSON.parse(readFileSync(join(pi, 'package.json')));
+    const messagesPath = join(pi, 'dist/core/messages.js');
+    const converterPath = join(pi, '../pi-ai/dist/api/openai-responses-shared.js');
+    const { convertToLlm } = await import(pathToFileURL(messagesPath));
+    const { convertResponsesMessages } = await import(pathToFileURL(converterPath));
+    const model = { id: 'gpt-6.1-sol', provider: 'openai-codex', api: 'openai-codex-responses',
+      input: ['text', 'image'], reasoning: true, compat: {} };
+    const selected = ['complete', 'qualified', 'rejectedProof', 'expired'].map(name =>
+      ({ name, result: captured.cases[name].result }));
+    for (const name of ['occurrences', 'retainedEvidence']) {
+      const reply = native.cases[name].reply;
+      selected.push({ name, result: createQueryDeliveryEnvelope(reply, [], { stop: 'BYTE_LIMIT', rpc_count: 1,
+        request_bytes: 0, response_bytes: Buffer.byteLength(JSON.stringify(reply)), result: reply.document.retention.reference }) });
+    }
+    const retainedReply = native.cases.retainedEvidence.reply;
+    const unavailableReply = captured.cases.expired.result.pages[0];
+    selected.push({ name: 'retainedEvidenceExpired', result: createQueryDeliveryEnvelope(retainedReply, [unavailableReply],
+      { stop: 'DELIVERY_UNAVAILABLE', rpc_count: 2, request_bytes: 0,
+        response_bytes: Buffer.byteLength(JSON.stringify(retainedReply)) + Buffer.byteLength(JSON.stringify(unavailableReply)),
+        result: retainedReply.document.retention.reference }) });
+    const observations = [];
+    for (const { name, result } of selected) {
+      const text = queryPresentation(result);
+      const tool = { role: 'toolResult', toolCallId: 'fixture_call', toolName: 'query_symbols',
+        content: [{ type: 'text', text }], details: result, isError: result.initial?.type === 'rejected_document', timestamp: 0 };
+      const assistant = { role: 'assistant', provider: model.provider, api: model.api, model: model.id,
+        content: [{ type: 'toolCall', id: 'fixture_call', name: 'query_symbols', arguments: { request: { type: 'RUN' } } }],
+        stopReason: 'toolUse', timestamp: 0 };
+      const sdkContext = convertToLlm([assistant, tool]);
+      assert.equal(sdkContext[1].details, result, 'Details remain available to the local SDK');
+      const convert = messages => convertResponsesMessages(model, { messages }, new Set(['openai-codex']),
+        { includeSystemPrompt: false });
+      const providerInput = convert(sdkContext);
+      const output = providerInput.find(item => item.type === 'function_call_output');
+      assert.equal(output.output, text, 'Provider receives every character of the independently verified projection');
+      assert.deepEqual(parsed(output.output), parsed(text));
+      if (name === 'retainedEvidenceExpired') {
+        const view = parsed(output.output);
+        assert.deepEqual(view.evidence.discovery_observations, retainedReply.document.discovery_observations);
+        assert.deepEqual(view.evidence.relation_observations, retainedReply.document.relation_observations);
+        assert.equal(view.details, undefined);
+      }
+      const alternateDetails = { privateCanonicalMarker: 'SDK_DETAILS_MUST_NOT_REACH_PROVIDER', full: result };
+      const changedContext = convertToLlm([assistant, { ...tool, details: alternateDetails }]);
+      assert.equal(JSON.stringify(convert(changedContext)), JSON.stringify(providerInput));
+      assert.equal(JSON.stringify(providerInput).includes(alternateDetails.privateCanonicalMarker), false);
+      observations.push({ name, textBytes: Buffer.byteLength(text), canonicalDetailsBytes: Buffer.byteLength(JSON.stringify(result)),
+        serializedProviderInputBytes: Buffer.byteLength(JSON.stringify(providerInput)), detailsExcluded: true });
+    }
+    console.log(JSON.stringify({ boundary: 'Pure installed Pi SDK and OpenAI Codex provider conversion; no inference',
+      package: packageInfo.name, version: packageInfo.version, intermediateDetailsRetained: true,
+      sourceSha256: Object.fromEntries([messagesPath, converterPath].map(path =>
+        [path, createHash('sha256').update(readFileSync(path)).digest('hex')])), observations }));
+  });
