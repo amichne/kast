@@ -208,7 +208,7 @@ const queryEvidenceFields = Object.freeze([
 ]);
 
 /** Human presentation only. The admitted canonical result remains unchanged in adapter details. */
-function queryPresentation(result, verbose = false) {
+function queryPresentation(result, verbose = false, finalDelivery = false) {
   const canonical = () => JSON.stringify(result);
   if (verbose) return canonical();
   const initial = result.type === 'query_delivery' ? result.initial : result;
@@ -290,7 +290,7 @@ function queryPresentation(result, verbose = false) {
     reply.type === 'rejected_document' && reply.document?.rejection?.type === 'execution-rejected' &&
     ['result-unavailable', 'result-stale-basis'].includes(reply.document.rejection.reason));
   const detailAvailable = retained && !detailAuthorityRejected;
-  const summarizeObservations = detailAvailable && stop !== 'DELIVERY_UNAVAILABLE';
+  const summarizeObservations = !finalDelivery && detailAvailable && stop !== 'DELIVERY_UNAVAILABLE';
   const lines = [`Kast query: ${initial.type}; delivery: ${stop}`, 'Summary:', JSON.stringify(summary)];
   if (stop !== 'DELIVERED') lines.push('Output is incomplete; retain the semantic outcome and delivery blocker above.');
   lines.push(`Rows (${rows.length}):`, ...rows.map(row => JSON.stringify(rowPresentation(row))));
@@ -318,18 +318,22 @@ function queryPresentation(result, verbose = false) {
   // Canonical output tags/fields serialize lower-case; public READ_RESULT uses the generated CAPS_CASE enum.
   const output = question?.output ? { ...question.output, type: question.output.type.toUpperCase(),
     ...(question.output.fields ? { fields: question.output.fields.map(field => field.toUpperCase()) } : {}) } : null;
-  if (detailAvailable && stop === 'DELIVERY_UNAVAILABLE')
+  if (finalDelivery) lines.push('Details: the received canonical archive and SDK details retain the full result.',
+    ...(retained ? [`Observed retained handle: ${JSON.stringify(retained)}; ${detailAuthorityRejected
+      ? 'canonical detail authority was rejected; unavailable' : 'current usability is unverified'}.`] : []),
+    'Observed authority is historical. All received evidence is inline; final delivery does not read a handle or rerun semantics.');
+  else if (detailAvailable && stop === 'DELIVERY_UNAVAILABLE')
     lines.push('Detail delivery unavailable; authority was not rejected. Received evidence is inline; READ_RESULT remains available without retrying RUN.');
-  if (detailAvailable) lines.push('Details:', JSON.stringify({ request: { type: 'READ_RESULT', result: retained,
+  if (!finalDelivery && detailAvailable) lines.push('Details:', JSON.stringify({ request: { type: 'READ_RESULT', result: retained,
     cursor: 0, evidence_cursor: 0, ...(output ? { output } : {}) }, verbose: true }),
   'Details use the original live authority and may expire or become stale. An unavailable handle is not rerun.');
-  else if (retained) {
+  else if (!finalDelivery && retained) {
     lines.push(`Details: canonical retained detail authority unavailable for ${JSON.stringify(retained)}; all received evidence is inline.`,
       'Delivery does not retry RUN.');
     if (replies.some(reply => reply.document?.next_action != null))
       lines.push('Follow the received canonical recovery action above.');
   }
-  else lines.push('Details: no retained handle; all available evidence is inline.');
+  else if (!finalDelivery) lines.push('Details: no retained handle; all available evidence is inline.');
   const text = lines.join('\n');
   // Preserve existing presentation bounds. A projection never buys a larger drain or erases a large failure.
   return Buffer.byteLength(text, 'utf8') <= QUERY_DELIVERY_LIMITS.bytes

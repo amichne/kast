@@ -12,6 +12,19 @@ class PiEvaluationMutationTest(unittest.TestCase):
         node = shutil.which("node")
         self.assertIsNotNone(node, "Node.js is required; missing tooling is not mutation proof")
         mutations = [
+            ("final-source-call-unbound", "pi_evaluation_presentation.mjs",
+             "message.toolCallId===binding.callId", "true",
+             "compact context binds the exact admitted source"),
+            ("final-provider-body-unbound", "pi_evaluation_guard.mjs",
+             "item.output===finalProjection", "true",
+             "compact final presentation requires context-before-payload"),
+            ("unsupported-final-family-admitted", "pi_evaluation_presentation.mjs",
+             "if(replies.some", "if(false&&replies.some",
+             "compact context binds the exact admitted source"),
+            ("final-evidence-deferred", "../../cli/src/main/js/query-presentation.mjs",
+             "const summarizeObservations = !finalDelivery && detailAvailable && stop !== 'DELIVERY_UNAVAILABLE';",
+             "const summarizeObservations = detailAvailable && stop !== 'DELIVERY_UNAVAILABLE';",
+             "explicit compact final context preserves"),
             ("final-answer-declarations-retained", "pi_evaluation_guard.mjs",
              "if(policy.isFinalAnswerDelivery())delete payload.tools;",
              "if(false)delete payload.tools;",
@@ -109,6 +122,7 @@ class PiEvaluationMutationTest(unittest.TestCase):
                 contract = Path(directory) / "cli" / "src" / "main" / "js" / "query-delivery-contract.mjs"
                 contract.parent.mkdir(parents=True)
                 shutil.copyfile(here.parent.parent / "cli/src/main/js/query-delivery-contract.mjs", contract)
+                shutil.copyfile(here.parent.parent / "cli/src/main/js/query-presentation.mjs", contract.with_name("query-presentation.mjs"))
                 for source in here.glob("pi_evaluation*.mjs"):
                     shutil.copyfile(source, root / source.name)
                 shutil.copyfile(here / "run_pi_evaluation.mjs", root / "run_pi_evaluation.mjs")

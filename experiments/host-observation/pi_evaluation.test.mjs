@@ -1172,3 +1172,144 @@ test('malformed SDK detail cannot bypass closed canonical decoding or saved-resu
   assert.equal(policy.report().semanticRepliesObserved,0);
   assert.equal(policy.report().modelProposals.length,0);
 });
+
+test('final presentation is an explicit closed setting and preserves the canonical default',()=>{
+  for(const value of [null,false,'unsupported',{},1]) assert.throws(()=>makePolicy({...config(),finalPresentation:value}));
+  for(const value of [undefined,'canonical']) {
+    const policy=makePolicy({...config(),finalPresentation:value}),guard=callbacks(policy);
+    policy.restoreReceivedResult(negativeComplete,10000);
+    const messages=[{role:'toolResult',toolName:'query_symbols',toolCallId:'call-1',content:[{type:'text',text:JSON.stringify(negativeComplete)}],details:negativeComplete}];
+    assert.equal(guard.emit('context',{messages}),undefined);
+    assert.equal(policy.report().finalPresentation,'canonical');
+  }
+});
+
+test('explicit compact final context preserves original verbose messages and canonical facts on fresh and saved paths',()=>{
+  for(const envelope of [negativeComplete,qualified,deliveryCases.rejectedProof.result,partialPrefix()]) {
+    const outputs=[];
+    for(const saved of [false,true]) {
+      const policy=makePolicy({...config(),finalPresentation:'compact',evidenceOnlyDelivery:true}),guard=callbacks(policy);
+      const result={role:'toolResult',...resultEvent(envelope),details:envelope};
+      const messages=[{role:'user',content:'Original fixed request.'},{role:'assistant',content:[{type:'toolCall',id:'call-1',name:'query_symbols',arguments:{request:{type:'RUN'},verbose:true}}]},result];
+      const before=JSON.stringify(messages);
+      if(saved)assert.equal(policy.restoreReceivedResult(decodeEnvelope(result.content,result.toolName,result.details),10000,'call-1').allow,true);
+      else {
+        guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'},verbose:true}});
+        guard.emit('tool_result',result);
+      }
+      const view=guard.emit('context',{messages});
+      assert.equal(JSON.stringify(messages),before);
+      assert.deepEqual(view.messages.slice(0,-1),messages.slice(0,-1));
+      assert.deepEqual(view.messages.at(-1).details,envelope);
+      assert.deepEqual(decodeEnvelope(view.messages.at(-1).content,'query_symbols',view.messages.at(-1).details),envelope);
+      const text=view.messages.at(-1).content[0].text;
+      assert.notEqual(text,result.content[0].text);
+      assert.equal(text.includes('"available_entries"'),false,'Final facts cannot depend on a retained read');
+      assert.equal(text.includes('"request":{"type":"READ_RESULT"'),false,'Final answering has no retained-read capability');
+      assert.equal(text.includes('Observed authority'),true);
+      assert.equal(guard.records.at(-1).type,'final_projection');
+      assert.equal(guard.records.at(-1).decision.allow,true);
+      const payload=guard.emit('before_provider_request',{payload:{...declaredPayload(),input:[{type:'function_call_output',call_id:'call-1',output:text}]}});
+      assert.equal(Object.hasOwn(payload,'tools'),false);
+      assert.equal(guard.records.at(-1).decision.allow,true);
+      assert.equal(policy.report().semanticRepliesObserved,saved?0:1);
+      assert.equal(policy.report().nativeOutcome,envelope===negativeComplete?'EXHAUSTIVE_RESULT':envelope===qualified?'QUALIFIED_RESULT':'REJECTED');
+      outputs.push(text);
+    }
+    assert.equal(outputs[0],outputs[1]);
+  }
+});
+
+test('compact context binds the exact admitted source and rejects unsupported families before provider admission',()=>{
+  for(const change of [
+    messages=>messages[0].toolCallId='different-call',
+    messages=>messages[0].details=structuredClone(qualified),
+    messages=>messages.push(structuredClone(messages[0])),
+    messages=>messages[0].toolName='health_check',
+  ]) {
+    const policy=makePolicy({...config(),finalPresentation:'compact'}),guard=callbacks(policy);
+    policy.restoreReceivedResult(negativeComplete,10000,'call-1');
+    const messages=[{role:'toolResult',...resultEvent(negativeComplete),details:negativeComplete}];change(messages);
+    assert.equal(guard.emit('context',{messages}),undefined);
+    assert.equal(policy.report().outcome,'HARNESS_OBSERVATION_INVALID');
+    assert.equal(guard.emit('before_provider_request',providerEvent()).max_output_tokens,2000);
+    assert.equal(guard.records.at(-1).decision.allow,false);
+    assert.equal(policy.report().providerRequests,0);
+  }
+  const unsupported=structuredClone(negativeComplete);unsupported.document.question.output={type:'trace'};
+  const policy=makePolicy({...config(),finalPresentation:'compact'}),guard=callbacks(policy);
+  assert.equal(policy.restoreReceivedResult(unsupported,10000,'call-1').allow,true);
+  assert.equal(guard.emit('context',{messages:[{role:'toolResult',...resultEvent(unsupported),details:unsupported}]}),undefined);
+  assert.equal(guard.records.at(-1).failure,'UNSUPPORTED_FAMILY');
+  assert.equal(policy.report().providerRequests,0);
+});
+
+test('compact final presentation requires context-before-payload order and preserves cancellation and finite bounds',()=>{
+  for(const scenario of ['missing-context','changed-body','cancelled','record-failure','body-bound','source-bound']) {
+    const policy=makePolicy({...config(),finalPresentation:'compact',maximumProviderPayloadBytes:scenario==='body-bound'?128:262144,
+      maximumToolTextBytes:scenario==='source-bound'?10:1048576}),guard=callbacks(policy,scenario==='record-failure'?{type:'failure'}:undefined);
+    const envelope=negativeComplete;
+    policy.restoreReceivedResult(envelope,scenario==='source-bound'?1:10000,'call-1');
+    if(scenario==='cancelled')policy.stop('HARNESS_CANCELLED');
+    const messages=[{role:'toolResult',...resultEvent(envelope),details:envelope}];
+    const view=scenario==='missing-context'?undefined:guard.emit('context',{messages});
+    const text=scenario==='changed-body'?'Unbound replacement':view?.messages[0].content[0].text??JSON.stringify(envelope);
+    guard.emit('before_provider_request',{payload:{...declaredPayload(),input:[{type:'function_call_output',call_id:'call-1',output:text}]}});
+    assert.equal(guard.records.at(-1).decision.allow,false,scenario);
+    assert.equal(policy.report().providerRequests,0);
+    if(scenario==='cancelled')assert.equal(policy.report().outcome,'HARNESS_CANCELLED');
+    else assert.equal(policy.report().outcome,scenario==='body-bound'?'HARNESS_BUDGET_LIMIT':'HARNESS_OBSERVATION_INVALID');
+  }
+});
+
+test('compact mode leaves WORK and issued evidence reads untouched and cannot reopen the frozen partial rejection',()=>{
+  const messages=[{role:'user',content:'Original work context'}];
+  const policy=makePolicy({...config(),finalPresentation:'compact',evidenceOnlyDelivery:true}),guard=callbacks(policy);
+  assert.equal(guard.emit('context',{messages}),undefined);
+  guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'},verbose:true}});
+  guard.emit('tool_result',resultEvent(deliveryCases.rejectedProof.result.initial));
+  assert.equal(policy.isFinalAnswerDelivery(),false);
+  assert.equal(guard.emit('context',{messages}),undefined);
+  assert.equal(guard.emit('before_provider_request',{payload:declaredPayload()}).tools.length,1);
+  const frozen=makePolicy({...config(),finalPresentation:'compact',evidenceOnlyDelivery:false}),blocked=callbacks(frozen);
+  assert.equal(frozen.restoreReceivedResult(partialPrefix(),10000,'call-1').allow,false);
+  assert.equal(blocked.emit('context',{messages}),undefined);
+  blocked.emit('before_provider_request',{payload:declaredPayload()});
+  assert.equal(frozen.report().outcome,'INTENTIONAL_REJECTION','The first native rejection remains the terminal owner');
+  assert.equal(frozen.report().providerRequests,0);
+});
+
+test('installed Pi request-time context runner preserves raw state and serializes the explicit final view',
+  {skip:!process.env.KAST_PI_PACKAGE},async()=>{
+    const {pathToFileURL}=await import('node:url'),{join}=await import('node:path');
+    const root=process.env.KAST_PI_PACKAGE;
+    const {ExtensionRunner}=await import(pathToFileURL(join(root,'dist/core/extensions/runner.js')));
+    const {convertToLlm}=await import(pathToFileURL(join(root,'dist/core/messages.js')));
+    const {convertResponsesMessages}=await import(pathToFileURL(join(root,'../pi-ai/dist/api/openai-responses-shared.js')));
+    const model={id:'gpt-6.1-sol',provider:'openai-codex',api:'openai-codex-responses',input:['text'],reasoning:true,compat:{}};
+    const bodies=[];
+    for(const saved of [false,true]) {
+      const envelope=partialPrefix(),policy=makePolicy({...config(),finalPresentation:'compact',evidenceOnlyDelivery:true});
+      const handlers=new Map(),records=[];
+      evaluationGuard(policy,value=>records.push(value))({on:(name,handler)=>handlers.set(name,[handler]),getThinkingLevel:()=> 'high'});
+      const result={role:'toolResult',...resultEvent(envelope),details:envelope,isError:true,timestamp:0};
+      const messages=[{role:'assistant',provider:model.provider,api:model.api,model:model.id,
+        content:[{type:'toolCall',id:'call-1',name:'query_symbols',arguments:{request:{type:'RUN'},verbose:true}}],stopReason:'toolUse',timestamp:0},result];
+      const before=JSON.stringify(messages),ctx={model,abort:()=>assert.fail('Unexpected fixture rejection')};
+      if(saved)assert.equal(policy.restoreReceivedResult(envelope,10000,'call-1').allow,true);
+      else {
+        handlers.get('tool_call')[0]({toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'},verbose:true}},ctx);
+        handlers.get('tool_result')[0](result,ctx);
+      }
+      const runner=new ExtensionRunner([{path:'synthetic-source-guard',handlers}],{getThinkingLevel:()=> 'high'},'/public/synthetic-fixture',{},{});
+      const transformed=await runner.emitContext(messages);
+      const input=convertResponsesMessages(model,{messages:convertToLlm(transformed)},new Set(['openai-codex']),{includeSystemPrompt:false});
+      const body=handlers.get('before_provider_request')[0]({payload:{...declaredPayload(),input}},ctx);
+      assert.equal(JSON.stringify(messages),before);
+      assert.equal(body.input.find(item=>item.type==='function_call_output').output,transformed.at(-1).content[0].text);
+      assert.equal(records.at(-1).decision.allow,true);
+      assert.equal(Object.hasOwn(body,'tools'),false);
+      bodies.push(body);
+    }
+    assert.deepEqual(bodies[0],bodies[1]);
+  });

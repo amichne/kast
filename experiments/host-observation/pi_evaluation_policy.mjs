@@ -35,6 +35,7 @@ export function decodeEnvelope(content,toolName='query_symbols',canonicalDetails
 
 export class CasePolicy {
   constructor(config) {
+    if(config.finalPresentation!==undefined&&!['canonical','compact'].includes(config.finalPresentation)) throw Error('Explicit closed final presentation required');
     for(const phase of ['work','delivery']) {
       const b=config[phase];
       if(!b || ![b.reportedTokens,b.requests,b.outputReserve].every(n=>integer(n)&&n>0)) throw Error('Explicit per-case work and delivery bounds required');
@@ -56,11 +57,12 @@ export class CasePolicy {
     this.lastMeasuredInput=0;this.inputCalibrations=new Map();this.outputCapApplied=false;this.queryDeliveries=[];
   }
   stop(outcome) {if(this.phase==='STOPPED') return decision(false,this.outcome,this.phase);this.outcome=outcome;this.phase='STOPPED';return decision(false,outcome,this.phase);}
-  restoreReceivedResult(envelope,textBytes) {
+  restoreReceivedResult(envelope,textBytes,callId) {
     if(this.phase!=='WORK'||this.tools||this.requests.WORK||!['complete','qualified','query_delivery'].includes(envelope.type)) return this.stop(Outcome.INVALID);
     this.restoringReceived=true;
+    this.restoringCallId=callId;
     let observed;
-    try {observed=this.toolResult(envelope,textBytes);} finally {this.restoringReceived=false;}
+    try {observed=this.toolResult(envelope,textBytes);} finally {this.restoringReceived=false;this.restoringCallId=undefined;}
     if(!observed.allow) return observed;
     this.maximumProviderRequests=Math.min(this.maximumProviderRequests,1);
     this.phase='DELIVERY';
@@ -146,6 +148,21 @@ export class CasePolicy {
   }
   adapterStarted(callId) {const p=this.proposals.find(p=>p.callId===callId);if(p) p.adapterStartObserved=true;}
   toolResult(envelope,textBytes=0,callId,hostIsError) {
+    const observed=this.observeToolResult(envelope,textBytes,callId,hostIsError);
+    if(!observed.allow||this.config.finalPresentation!=='compact')return observed;
+    const query=this.restoringReceived||this.proposals.some(proposal=>proposal.callId===callId&&proposal.toolName==='query_symbols');
+    if(query) {
+      const identity=this.restoringReceived?this.restoringCallId:callId;
+      if(typeof identity!=='string'||!identity.length)return this.stop(Outcome.INVALID);
+      try {
+        const canonical=JSON.stringify(envelope);
+        if(Buffer.byteLength(canonical)>this.config.maximumToolTextBytes)return this.stop(Outcome.INVALID);
+        this.finalQuery={callId:identity,canonical};
+      } catch {return this.stop(Outcome.INVALID);}
+    }
+    return observed;
+  }
+  observeToolResult(envelope,textBytes=0,callId,hostIsError) {
     if(this.phase==='STOPPED') return decision(false,this.outcome,this.phase);
     if(!integer(textBytes)) return this.stop(Outcome.INVALID);
     this.toolTextBytes+=textBytes;
@@ -213,6 +230,7 @@ export class CasePolicy {
   }
   report() {
     return {case:this.config.name,outcome:this.outcome,phase:this.phase,nativeOutcome:this.nativeOutcome,finalAnswer:this.finalAnswer,finalTextObserved:this.finalTextObserved??false,exhaustiveEvidence:this.exhaustiveEvidence,
+      finalPresentation:this.config.finalPresentation??'canonical',
       partialEvidence:structuredClone(this.partialEvidence??null),
       // External row/oracle proof is never inferred from a final answer/row count.
       exhaustiveRowsVerified:false,requiredEvidenceVerified:false,usage:structuredClone(this.usage),phaseUsage:structuredClone(this.phaseUsage),inputCalibrationFailure:structuredClone(this.inputCalibrationFailure??null),measuredInputFloor:this.lastMeasuredInput,

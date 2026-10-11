@@ -12,6 +12,7 @@ legacy command graph retained for migration, and hosted output projections.
 
 - [KastToolRpcQuerySession.kt](src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt) - bounded invocation-owned query framing and authority-bound output successors.
 - [query-delivery.mjs](src/main/js/query-delivery.mjs) and [query-session.mjs](src/main/js/query-session.mjs) - portable bounded delivery, compact human presentation and owned subprocess transport, embedded into Pi/Copilot by the public-query generator.
+- [query-presentation.mjs](src/main/js/query-presentation.mjs) - generated importable companion of the same presentation owner; explicit final delivery keeps received evidence inline and preserves original verbose data.
 - [query-delivery-simplification.md](docs/query-delivery-simplification.md) - compact delivery contract, measured work/bytes and compatibility boundaries.
 - [query-presentation-serialization.md](docs/query-presentation-serialization.md) - exact description comparison, measured dictionary-string reduction and the unchanged canonical drain boundary.
 

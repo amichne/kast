@@ -468,6 +468,9 @@ def render_tools(authority: dict) -> dict[Path, str]:
     delivery_owner = ROOT / 'cli/src/main/js/query-delivery.mjs'
     delivery = embed_contract(delivery_owner.read_text(), contract).rstrip()
     outputs[delivery_owner] = delivery + '\n'
+    outputs[ROOT / 'cli/src/main/js/query-presentation.mjs'] = (
+        '// Generated importable presentation; owned by cli/src/main/js/query-delivery.mjs.\n' +
+        delivery + '\nexport { queryPresentation };\n')
     # Registration installs each adapter as one file; generate its marked constants in place.
     for relative in ('copilot/extension.mjs', 'pi/extension.ts'):
         adapter = ROOT / relative
