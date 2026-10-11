@@ -30,6 +30,24 @@ internal class AutomaticDenseRetentionTest : AutomaticDenseRetentionCase() {
     fun `dense accounting preserves finite capacity rejection under unchanged grants`() = runTest {
         val state = QueryStateStore(clock = { 0L })
         val ledger = mutableListOf<QueryInvocationRetentionAdmission>()
+        val factsLedger = mutableListOf<QueryInvocationFactsRetentionEstimate>()
+        val inventoryLedgers = mutableListOf<io.github.amichne.kast.relation.contract.RelationProviderRetentionLedger>()
+        val factStages = mutableListOf<QueryInvocationRetentionStage>()
+        val observer = object : QueryInvocationRetentionObservation {
+            override fun observe(admission: QueryInvocationRetentionAdmission) {
+                ledger += admission
+            }
+
+            override fun observeFacts(
+                stage: QueryInvocationRetentionStage,
+                estimate: QueryInvocationFactsRetentionEstimate,
+                inventoryOwners: io.github.amichne.kast.relation.contract.RelationProviderRetentionLedger,
+            ) {
+                factStages += stage
+                factsLedger += estimate
+                inventoryLedgers += inventoryOwners
+            }
+        }
         val base = policy(rows = 20, byteLimit = 32_768, retainedBytes = QueryByteLimit.DefaultCheckpoint.value)
         val invocationPolicy =
             QueryInvocationPolicy(
@@ -38,7 +56,7 @@ internal class AutomaticDenseRetentionTest : AutomaticDenseRetentionCase() {
                 base.retainedBytes,
                 base.previewBytes,
                 nanoTime = { 0L },
-                retentionObservation = QueryInvocationRetentionObservation(ledger::add),
+                retentionObservation = observer,
             )
         val recording = QueryInvocationExecution(service)
         val protocol = CanonicalQueryProtocol(recording, fixture.references, state)
@@ -57,11 +75,20 @@ internal class AutomaticDenseRetentionTest : AutomaticDenseRetentionCase() {
         val starts = rows.map { (it as QueryOccurrence.Reference).value.occurrence.range.startInclusive }
         assertEquals(starts.size, starts.distinct().size)
         assertTrue(starts.isNotEmpty() && starts.size < locators.size)
-        assertTrue(locators.map { it.range.startInclusive }.containsAll(starts))
+        assertEquals(List(starts.size) { 100 + it * 32 }, starts.sorted(), "Independent fixture oracle for retained prefix")
         assertEquals(starts.size, qualified.coverage.knownMinimum.value)
         assertEquals((0 until positions.size).map { it * 20L }, positions)
         assertEquals(QueryCheckpointStorageOutcome.CAPACITY_EXCEEDED, checkpointAdmissions.last().outcome)
         val last = checkpointAdmissions.last()
+        assertEquals(393, starts.size)
+        assertEquals(789_650L, last.estimate.required.value)
+        assertEquals(685_851L, last.allowance.value)
+        assertEquals(last.estimate.required, last.estimate.tasks)
+        assertEquals(0L, last.estimate.identityRows.value + last.estimate.inputs.value + last.estimate.impact.value + last.estimate.joins.value)
+        val beforeCheckpoint = ledger.last { it.stage == QueryInvocationRetentionStage.BEFORE_EXECUTION }
+        val remaining = beforeCheckpoint.allowance.value - beforeCheckpoint.total.value
+        assertEquals(last.allowance.value, remaining / 2L, "Existing checkpoint/output reservation remains enforced")
+        println("CheckpointReservation(facts=${beforeCheckpoint.facts.value}, issued=${beforeCheckpoint.issuedState.value}, request=${beforeCheckpoint.request.value}, total=${beforeCheckpoint.total.value}, remaining=$remaining)")
         println("DenseCheckpoint(rows=${starts.size}, required=${last.estimate.required.value}, allowance=${last.allowance.value}, components=${last.estimate})")
         assertTrue(checkpointAdmissions.all { it.allowance.value <= grant.checkpointBytes.value })
         assertTrue(ledger.all { it.total.value <= invocationPolicy.retainedBytes.value })
@@ -69,6 +96,20 @@ internal class AutomaticDenseRetentionTest : AutomaticDenseRetentionCase() {
         assertTrue(ledger.all { it.request.value == input.accountedRequestBytes() })
 
         assertTrue(ledger.any { it.issuedState.value > 0L }, "Replay owners must remain charged")
+        assertEquals(ledger.map { it.stage }, factStages)
+        assertEquals(ledger.map { it.facts }, factsLedger.map { it.total })
+        assertTrue(inventoryLedgers.first().charges.isEmpty())
+        assertTrue(inventoryLedgers.last().charges.size == 1)
+        assertEquals(596_430L, inventoryLedgers.last().charges.single().inventory.value)
+        assertTrue(factsLedger.zip(inventoryLedgers).all { (facts, owners) -> owners.total.value <= facts.semantic.value })
+        assertEquals(QueryInvocationRetentionStage.FACTS_ACCEPTED, factStages.last())
+        val final = factsLedger.last()
+        val owners = inventoryLedgers.last()
+        assertEquals(19_921_968L, final.total.value)
+        assertEquals(31_609_640L, ledger.last().total.value)
+        assertEquals(20L, owners.charges.single().references.value)
+        assertEquals(597_102L, owners.total.value)
+        println("DenseFacts(semantic=${final.semantic.value}, preview=${final.preview.value}, rowCells=${final.rowReferenceCells.value}, total=${final.total.value}, inventoryReferences=${owners.charges.single().references.value}, inventoryLedger=${owners.total.value}, request=${ledger.last().request.value}, issued=${ledger.last().issuedState.value}, invocationTotal=${ledger.last().total.value})")
     }
 
     @Test
@@ -155,6 +196,16 @@ internal class AutomaticDenseRetentionTest : AutomaticDenseRetentionCase() {
             listOf(first, second)
                 .flatMap { (it.result.rows as QueryRows.Occurrences).values }
                 .map { (it as QueryOccurrence.Reference).value.occurrence.range.startInclusive }
+        val estimate = facts.retentionEstimate
+        assertEquals(1_339_764L, estimate.total.value)
+        assertEquals(2_049_422L, standalone)
+        assertEquals(facts.retainedBytes, estimate.semantic.value + estimate.preview.value + estimate.rowReferenceCells.value)
+        val owners = facts.providerRetentionLedger()
+        assertEquals(1, owners.charges.size)
+        assertEquals(596_430L, owners.charges.single().inventory.value)
+        assertEquals(1L, owners.charges.single().owner.value)
+        assertTrue(owners.total.value <= estimate.semantic.value, "Inventory ledger is contained in semantic bytes, not added twice")
+        println("MatchedPrefixComponents(semantic=${estimate.semantic.value}, preview=${estimate.preview.value}, rowCells=${estimate.rowReferenceCells.value}, inventoryOwners=${owners.charges.size}, inventoryReferences=${owners.charges.single().references.value}, inventoryLedger=${owners.total.value})")
         println(
             "MatchedPrefixFacts(bytes=${facts.retainedBytes}, standalone=$standalone, " +
                 "inventory=${inventory.retainedBytes}, " +
@@ -206,6 +257,8 @@ internal class AutomaticDenseRetentionTest : AutomaticDenseRetentionCase() {
             (facts.append(page, 0L) as Refinement.Rejected).failure.reason,
         )
         assertEquals(0L, facts.retainedBytes)
+        assertEquals(0, facts.providerRetentionLedger().charges.size)
+        assertEquals(QueryInvocationFactsRetentionEstimate.Empty, facts.retentionEstimate)
         facts.append(page, Long.MAX_VALUE).refined()
         val independent = QueryInvocationFacts(fixture.authority, policy())
         independent.append(page, Long.MAX_VALUE).refined()

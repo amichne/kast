@@ -135,9 +135,13 @@ internal class AutomaticSymbolQueryRunner(
                     QueryInvocationRetentionCapacity.Exhausted ->
                         return QueryInvocationTransition.Stopped(QueryInvocationStop.RETAINED_BYTES_LIMIT)
                 }
-            when (val appended = facts.append(page, capacity)) {
-                is Refinement.Refined -> Unit
-                is Refinement.Rejected -> return appended.failure
+            val appended = facts.append(page, capacity)
+            when (appended) {
+                is Refinement.Refined -> observeFactsTransition(QueryInvocationRetentionStage.FACTS_ACCEPTED)
+                is Refinement.Rejected -> {
+                    observeFactsTransition(QueryInvocationRetentionStage.FACTS_REJECTED)
+                    return appended.failure
+                }
             }
             return advance(page)
         }
@@ -182,7 +186,19 @@ internal class AutomaticSymbolQueryRunner(
                     state.invocationRetainedBytes(issued),
                     QueryRetentionByteCount.measured(request.accountedRequestBytes()),
                 )
-                .also(policy.retentionObservation::observe)
+                .also { admission ->
+                    policy.retentionObservation.observe(admission)
+                    if (policy.retentionObservation !== QueryInvocationRetentionObservation.None)
+                        policy.retentionObservation.observeFacts(
+                            stage,
+                            facts.retentionEstimate,
+                            facts.providerRetentionLedger(),
+                        )
+                }
+
+        private fun observeFactsTransition(stage: QueryInvocationRetentionStage) {
+            if (policy.retentionObservation !== QueryInvocationRetentionObservation.None) retentionAdmission(stage)
+        }
 
         private fun advance(page: SymbolInvocationPage): QueryInvocationTransition =
             when (page) {

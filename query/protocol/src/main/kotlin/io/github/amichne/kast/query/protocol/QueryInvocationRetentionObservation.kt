@@ -1,10 +1,13 @@
 package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.query.contract.QueryByteLimit
+import io.github.amichne.kast.relation.contract.RelationProviderRetentionLedger
 
 enum class QueryInvocationRetentionStage {
     BEFORE_EXECUTION,
     BEFORE_FACTS,
+    FACTS_ACCEPTED,
+    FACTS_REJECTED,
 }
 
 sealed interface QueryInvocationRetentionCapacity {
@@ -31,6 +34,13 @@ class QueryInvocationRetentionAdmission(
 /** Explicit observation boundary; no source, selectors, tokens or authority payloads are recorded. */
 fun interface QueryInvocationRetentionObservation {
     fun observe(admission: QueryInvocationRetentionAdmission)
+
+    /** Inventory charges are already inside semantic bytes; this snapshot is never added to admission again. */
+    fun observeFacts(
+        stage: QueryInvocationRetentionStage,
+        estimate: QueryInvocationFactsRetentionEstimate,
+        inventoryOwners: RelationProviderRetentionLedger,
+    ) {}
 
     companion object {
         val None = QueryInvocationRetentionObservation {}

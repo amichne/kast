@@ -36,8 +36,12 @@ internal class QueryInvocationFacts(
     private var investigation: QueryImpactLedger? = null
     private var originalOrdinals: Map<QueryImpactPath, Int> = emptyMap()
     private val selectedPaths = Collections.newSetFromMap(IdentityHashMap<QueryImpactPath, Boolean>())
-    var retainedBytes = 0L
+    var retentionEstimate = QueryInvocationFactsRetentionEstimate.Empty
         private set
+    val retainedBytes: Long
+        get() = retentionEstimate.total.value
+
+    fun providerRetentionLedger() = impactGraph.providerRetentionLedger()
 
     var progress: QueryContinuationState = QueryContinuationState.Terminal(QueryTerminalReason.UPSTREAM_INCOMPLETE)
 
@@ -61,9 +65,9 @@ internal class QueryInvocationFacts(
                 is Refinement.Refined -> captured.value
                 is Refinement.Rejected -> return captured
             }
-        if (charge > capacity - retainedBytes)
+        if (charge.total.value > capacity - retainedBytes)
             return Refinement.Rejected(QueryInvocationTransition.Stopped(QueryInvocationStop.RETAINED_BYTES_LIMIT))
-        retainedBytes += charge
+        retentionEstimate += charge
         if (observedEmptyRows == null) observedEmptyRows = emptyRows(current)
         if (current is QueryRows.ValuePaths) {
             investigation = selection.ledger
@@ -118,7 +122,7 @@ internal class QueryInvocationFacts(
         page: SymbolInvocationPage,
         selection: ImpactSelection,
         graph: QueryImpactRetainedGraph,
-    ): Refinement<Long, QueryInvocationTransition.Stopped> {
+    ): Refinement<QueryInvocationFactsRetentionEstimate, QueryInvocationTransition.Stopped> {
         val rows = page.result.rows
         val snapshot =
             when (val captured = QueryRetainedResult.capture(lease, page.execution)) {
@@ -146,11 +150,13 @@ internal class QueryInvocationFacts(
                 if (standaloneCheckpoint > snapshotBytes) return Refinement.Rejected(invalidInvocation())
                 (snapshotBytes - standaloneCheckpoint).saturatedAdd(checkpoint.retainedBytes(graph))
             }
-        val charge =
-            semanticBytes
-                .saturatedAdd(policy.previewBytes(page.items))
-                .saturatedAdd(page.items.size.toLong() * QUERY_ROW_REFERENCE_CHARGE_BYTES)
-        return Refinement.Refined(charge)
+        return Refinement.Refined(
+            QueryInvocationFactsRetentionEstimate(
+                QueryRetentionByteCount.measured(semanticBytes),
+                QueryRetentionByteCount.measured(policy.previewBytes(page.items)),
+                QueryRetentionByteCount.measured(page.items.size.toLong() * QUERY_ROW_REFERENCE_CHARGE_BYTES),
+            )
+        )
     }
 
     fun terminal(page: SymbolInvocationPage.Qualified, reason: QueryTerminalReason) {
