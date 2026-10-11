@@ -20,9 +20,16 @@ internal data class HostedReadSearchCount(
     val qualification: HostedReadCallCountQualification,
     val firstCallbackDelayTotalNanos: Long,
     val firstCallbackDelayMaximumNanos: Long,
+    val workVisibility: HostedReadSearchWorkVisibility = HostedReadSearchWorkVisibility.NATIVE_INTERNAL_WORK_UNOBSERVED,
 )
 
-/** Two fixed aggregates; each active scope holds only its start time and finite lifecycle state. */
+/** Scope and callback observations do not expose native inventory, ID visits, CPU time or lock ownership. */
+@Serializable
+internal enum class HostedReadSearchWorkVisibility {
+    NATIVE_INTERNAL_WORK_UNOBSERVED
+}
+
+/** Fixed vocabulary aggregates; each active scope holds only its start time and finite lifecycle state. */
 internal class HostedReadSearchAccounting(
     private val elapsed: () -> Long,
     private val ceiling: Long,
