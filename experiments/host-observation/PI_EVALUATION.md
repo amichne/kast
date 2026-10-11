@@ -399,6 +399,10 @@ The report's nullable `partialEvidence` records unique received rows, duplicate
 preview rows, received/total evidence entries, original known minimum, exact
 question, observed live authority, result identity and one-answer limit. Row
 identity preserves distinct occurrences even when they share a target selector.
+The retained preview must match the ordered received prefix, including issued
+row IDs; conflicting or uncovered previews fail this narrow opt-in. Legacy rows
+without IDs use exact symbol identity or the occurrence's target, meaning, site,
+context, ownership and provenance. Descriptions never invent another identity.
 Canonical documents, all qualifications, failure entries and byte/RPC counts
 remain unchanged. A native minimum is not an exhaustive total.
 
@@ -443,8 +447,18 @@ Validation starts with the named failing policy case, then exercises production
 policy and guard callbacks for false-policy controls, malformed/stale evidence,
 scope/authority changes, duplicate identities, multi-page evidence counts, first
 terminal result preservation, complete-body byte rejection and the one-request
-limit. The seven existing Node suites pass 151 tests without inference or IDEA.
+limit. The seven existing Node suites pass 155 tests without inference or IDEA.
 Independent review and installed combined qualification remain separate gates.
+
+Review hardening admits the question against the existing canonical serializer's
+generated schema. JVM parity prevents schema drift; an independent JSON Schema
+oracle checks the pure Node admission. Evidence-read qualification preserves the
+original minimum and limitations, adds `static-model-unproven`, and uses
+`upstream-incomplete` progress, as `completionEvidenceRead` specifies. Retained
+selection may additionally add `result-limit-reached`, as
+`RetainedQueryPresentation.pageCoverage` specifies. Qualification does not copy
+the original producer progress reason. Unknown enums, missing limitations and
+contradictory qualifications remain blocked.
 
 `queryDeliveries` records stop, physical rpc_count and UTF-8 byte counts separately
 from logical model proposals and semantic replies. A failed RPC can increase

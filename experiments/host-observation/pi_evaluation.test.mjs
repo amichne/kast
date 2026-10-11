@@ -537,6 +537,82 @@ test('partial prefix occurrence identity retains distinct rows and rejects confl
   const conflict=makePolicy({...config(),evidenceOnlyDelivery:true});
   assert.equal(conflict.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,false);
 });
+test('missing row IDs use symbol or occurrence identity and conflicting preview descriptions fail closed',()=>{
+  const symbol=partialPrefix();symbol.initial.document.rejection.detail.evidence.preview[0].name='conflicting name';
+  const rejected=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(rejected.restoreReceivedResult(decodeEnvelope(resultEvent(symbol).content),10000).allow,false);
+  // Existing pinned, sanitized canonical reference rows supply actual occurrence
+  // shape. Missing IDs deliberately exercise the compatible optional-ID boundary.
+  const native=JSON.parse(readFileSync(new URL('../../cli/src/test/resources/query-presentation-native.json',import.meta.url),'utf8')).cases.occurrences.reply.document;
+  const references=partialPrefix(),page=references.pages[0].document,proof=references.initial.document.rejection.detail.evidence;
+  page.items=structuredClone(native.items.slice(0,3));
+  for(const row of page.items)delete row.row_id;
+  assert.equal(new Set(page.items.map(row=>row.ref)).size,1,'Same target can have distinct source occurrences');
+  page.question=structuredClone(native.question);page.live=structuredClone(native.live);
+  proof.question=structuredClone(native.question);proof.preview=[structuredClone(page.items[0])];
+  const valid=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(valid.restoreReceivedResult(decodeEnvelope(resultEvent(references).content),10000).allow,true);
+  assert.equal(valid.report().partialEvidence.receivedRows,3);
+  assert.equal(valid.report().partialEvidence.duplicatePreviewRows,1);
+  proof.preview[0].occurrence.target.name='conflicting target description';
+  const conflict=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(conflict.restoreReceivedResult(decodeEnvelope(resultEvent(references).content),10000).allow,false);
+});
+test('malformed terminal reason cannot enter partial interpretation and legitimate differing reasons remain eligible',()=>{
+  for(const reason of ['result-stale-basis','result-unavailable','UNKNOWN',null,undefined]) {
+    const envelope=partialPrefix();envelope.pages[0].document.qualification.progress.reason=reason;
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,false,reason);
+  }
+  const envelope=partialPrefix();
+  assert.equal(envelope.pages[0].document.qualification.progress.reason,'upstream-incomplete');
+  assert.equal(envelope.initial.document.rejection.detail.originalCoverage.progress.reason,'checkpoint-capacity-exceeded');
+  const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,true);
+});
+test('retained preview must match the ordered received prefix including its issued row IDs',()=>{
+  for(const change of [
+    p=>p[0].row_id='result-row:v1:00000000-0000-4000-8000-000000000004',
+    p=>delete p[0].row_id,
+    p=>p.reverse(),
+    p=>p.push({...p.at(-1),row_id:'result-row:v1:00000000-0000-4000-8000-000000000004'}),
+  ]) {
+    const envelope=partialPrefix(),rows=envelope.pages[0].document.items;
+    for(const [i,row] of rows.entries())row.row_id=`result-row:v1:00000000-0000-4000-8000-00000000000${i+1}`;
+    const proof=envelope.initial.document.rejection.detail.evidence;proof.preview=structuredClone(rows);
+    change(proof.preview);
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,false);
+    assert.equal(policy.report().partialEvidence,null);
+  }
+});
+test('internally consistent malformed questions and contradictory evidence qualification cannot enable partial delivery',()=>{
+  for(const change of [
+    q=>q.from=true,q=>q.output=true,q=>q.completion.model='UNKNOWN',q=>q.from.offset=-1,
+    q=>q.output.fields=['invalid'],q=>q.output.fields=['name','name'],q=>q.steps=[true],
+    q=>q.steps=[{type:'related',relation:'references',expansion_scope:{type:'SOURCE_DOMAIN',source_sets:[],directory:null,source_policy:'production-and-test',generated_sources:'exclude'}}],
+  ]) {
+    const envelope=partialPrefix(),question=envelope.initial.document.rejection.detail.evidence.question;change(question);
+    for(const page of envelope.pages)page.document.question=structuredClone(question);
+    for(const saved of [false,true]) {
+      const policy=makePolicy({...config(),evidenceOnlyDelivery:true}),decoded=decodeEnvelope(resultEvent(envelope).content);
+      assert.equal((saved?policy.restoreReceivedResult(decoded,10000):policy.toolResult(decoded,10000)).allow,false);
+      assert.equal(policy.report().partialEvidence,null);
+    }
+  }
+  for(const change of [
+    q=>q.limitations=[],q=>q.limitations=['static-model-unproven'],q=>q.limitations=['time-limit-reached','static-model-unproven'],
+    q=>q.limitations=['byte-limit-reached','UNKNOWN','static-model-unproven'],
+    q=>q.progress.reason='checkpoint-capacity-exceeded',q=>q.progress.extra='unknown',
+  ]) {
+    const envelope=partialPrefix();change(envelope.pages[0].document.qualification);
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,false);
+  }
+  const pageLimited=partialPrefix();pageLimited.pages[0].document.qualification.limitations.unshift('result-limit-reached');
+  const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(pageLimited).content),10000).allow,true,'Retained page selection may add its own result limit');
+});
 test('fresh partial prefix guard counts full instructions and body permits one request and forbids every further tool',()=>{
   const policy=makePolicy({...config(),evidenceOnlyDelivery:true,delivery:{...config().delivery,requests:3}}),guard=callbacks(policy);
   const envelope=partialPrefix();

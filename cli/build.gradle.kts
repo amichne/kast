@@ -43,6 +43,12 @@ tasks.named<Test>("test") {
     inputs.file("src/main/js/query-delivery.mjs").withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file("src/main/js/query-delivery-contract.mjs").withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file("src/main/resources/query-delivery.schema.json").withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs
+        .files(
+            rootProject.file("experiments/host-observation/pi-fixtures/query-question.schema.json"),
+            rootProject.file("experiments/host-observation/pi-fixtures/query-qualification.schema.json"),
+        )
+        .withPathSensitivity(PathSensitivity.RELATIVE)
     useJUnitPlatform {
         excludeTags("native")
     }

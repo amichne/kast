@@ -1,5 +1,23 @@
 # Public canonical fixture provenance
 
+`query-question.schema.json` and `query-qualification.schema.json` are exported
+offline by `PiQuestionSchema.java`. It calls the existing `generatedRequestSchema`
+owner with `QueryQuestionDocument.serializer()` and
+`CanonicalQueryCliDocuments.qualificationSerializer`. Export used the owned
+`88e35f3` product-gate classpath, without services, IDEA, credentials or inference.
+`PiQuestionSchemaParityTest` compares both committed schemas against the current
+serializer owners. Gradle tracks the two schema files as test inputs.
+
+```sh
+java -cp "$KAST_RELEASE/lib/*" experiments/host-observation/PiQuestionSchema.java \
+  /tmp/query-question.schema.json /tmp/query-qualification.schema.json
+```
+
+The experimental partial-prefix policy uses the generated question constraints
+and qualification vocabulary. Its finite progress/limitation transformation
+follows `completionEvidenceRead` and `RetainedQueryPresentation.pageCoverage`.
+The independent Python JSON Schema oracle checks the pure Node shape admission.
+
 The three `*-document.json` files are public/synthetic query document DTOs,
 serialized offline by the installed release's **actual Kotlin serializers** with
 `PiCanonicalFixture.java`. No services, IDEs, compiler queries or models were
