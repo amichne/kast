@@ -11,6 +11,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 // The catalog is serialized by the production Kotlin RPC bridge, never reconstructed here.
 const catalog = JSON.parse(readFileSync(process.env.KAST_ADAPTER_TEST_CATALOG, 'utf8'));
+// Retain the older catalog compatibility lane; session capability has separate real-child checks.
+delete catalog.catalog.querySession;
 const failures = JSON.parse(readFileSync(process.env.KAST_ADAPTER_TEST_FAILURES, 'utf8'));
 const root = process.env.KAST_PACKAGED_ADAPTER_ROOT ? pathToFileURL(process.env.KAST_PACKAGED_ADAPTER_ROOT + '/share/kast/adapters/') : new URL('../../../../', import.meta.url);
 async function load(harness, reply = catalog, outcome = { type: 'complete', document: {} }, failure, env = {KAST_TOOL_RPC_COMMAND: '/fixture/kast-tool-rpc'}, effects = {}) {
@@ -82,7 +84,7 @@ deadlinePresent:Object.hasOwn(process.env,'KAST_EVALUATION_DEADLINE_MS'),
 selectorPresent:Object.hasOwn(process.env,'KAST_TOOL_RPC_COMMAND'),
 ideaHome:process.env.KAST_INSTALL_IDEA_HOME,javaHome:process.env.JAVA_HOME,javaOptions:process.env.JAVA_OPTS,
 path:process.env.PATH,unknownConfiguration:process.env.KAST_UNKNOWN_CONFIGURATION})+'\n');
-if(phase==='catalog')process.stdout.write(fs.readFileSync(process.env.ADAPTER_CATALOG_FIXTURE_FILE));
+if(phase==='catalog'){const catalog=JSON.parse(fs.readFileSync(process.env.ADAPTER_CATALOG_FIXTURE_FILE));delete catalog.catalog.querySession;process.stdout.write(JSON.stringify(catalog));}
 else if(phase==='call'){process.stdin.resume();process.stdin.on('end',()=>process.stdout.write(JSON.stringify({type:'complete',document:{status:'complete'}})));}
 else process.exitCode=9;
 `, {mode:0o700});
@@ -312,7 +314,7 @@ test('Pi write approval shows bounded workspace target and intent with cancellat
 // Fixtures are production-serialized by QueryDeliveryFixtures, then traverse the real subprocess adapter.
 if (process.env.KAST_ADAPTER_TEST_DELIVERY) {
   const fixture = JSON.parse(readFileSync(process.env.KAST_ADAPTER_TEST_DELIVERY, 'utf8'));
-  const params = { request: { type: 'RUN', source: { type: 'ALL_DECLARATIONS' },
+  const params = { verbose: true, request: { type: 'RUN', source: { type: 'ALL_DECLARATIONS' },
     output: { type: 'SYMBOLS', fields: ['NAME'] }, executionBudget: { maxResults: 43 } } };
   for (const harness of ['pi', 'copilot']) {
     const execute = async (outcomes, signal, arguments_ = params) => {
@@ -350,7 +352,7 @@ if (process.env.KAST_ADAPTER_TEST_DELIVERY) {
           [fixture.rows, fixture.tail].flatMap(r => r.document.failures ?? []));
         for (const [index, [cursor, evidence_cursor]] of expectedCursors.entries()) {
           const input = JSON.parse(loaded.calls[index + 2].input);
-          assert.deepEqual(input, {request:{ type:'READ_RESULT', result:fixture.prefix.document.retention.reference,
+          assert.deepEqual(input, {verbose:true,request:{ type:'READ_RESULT', result:fixture.prefix.document.retention.reference,
             cursor, evidence_cursor, output:params.request.output, executionBudget:params.request.executionBudget }});
           assert.equal(Object.hasOwn(input.request, 'source'), false);
         }
@@ -362,7 +364,7 @@ if (process.env.KAST_ADAPTER_TEST_DELIVERY) {
       });
     }
     test(`${harness} initial READ_RESULT at a nonzero row cursor drains its independent evidence tail`, async () => {
-      const request = {request:{type:'READ_RESULT',result:fixture.prefix.document.retention.reference,
+      const request = {verbose:true,request:{type:'READ_RESULT',result:fixture.prefix.document.retention.reference,
         cursor:1,evidence_cursor:0,output:params.request.output,executionBudget:params.request.executionBudget}};
       assert.equal(Object.hasOwn(fixture.rows.document, 'next_cursor'), false);
       assert.equal(Object.hasOwn(fixture.rows.document, 'invocation'), false);
@@ -373,7 +375,7 @@ if (process.env.KAST_ADAPTER_TEST_DELIVERY) {
       assert.deepEqual(delivered.initial, fixture.rows);
       assert.deepEqual(delivered.pages, [fixture.tail]);
       assert.deepEqual(JSON.parse(loaded.calls[1].input), request);
-      assert.deepEqual(JSON.parse(loaded.calls[2].input), {request:{...request.request,cursor:43,evidence_cursor:1}});
+      assert.deepEqual(JSON.parse(loaded.calls[2].input), {verbose:true,request:{...request.request,cursor:43,evidence_cursor:1}});
       assert.deepEqual([delivered.initial,...delivered.pages].flatMap(r=>r.document.items), fixture.inline.document.items.slice(1));
       assert.deepEqual([delivered.initial,...delivered.pages].flatMap(r=>r.document.failures ?? []),
         [fixture.rows,fixture.tail].flatMap(r=>r.document.failures ?? []));
@@ -392,7 +394,7 @@ if (process.env.KAST_ADAPTER_TEST_DELIVERY) {
     test(`${harness} RESUME is output-only and preserves the original grant`, async () => {
       const {loaded, delivered} = await execute([fixture.outputPrefix, fixture.outputFinal]);
       assert.equal(delivered.delivery.stop, 'DELIVERED');
-      assert.deepEqual(JSON.parse(loaded.calls[2].input), {request:{type:'RESUME',
+      assert.deepEqual(JSON.parse(loaded.calls[2].input), {verbose:true,request:{type:'RESUME',
         continuation:fixture.outputPrefix.document.qualification.progress.checkpoint.token,
         executionBudget:params.request.executionBudget}});
       assert.equal(delivered.delivery.rpc_count, 2);
@@ -410,7 +412,7 @@ if (process.env.KAST_ADAPTER_TEST_DELIVERY) {
           assert.deepEqual(delivered.pages, outcomes.slice(1));
           assert.equal(delivered.delivery.rpc_count, outcomes.length);
           assert.equal(harness === 'pi' ? result.isError : result.resultType === 'failure', true);
-          if (!initial) assert.deepEqual(JSON.parse(loaded.calls[2].input), {request:{type:'RESUME',
+          if (!initial) assert.deepEqual(JSON.parse(loaded.calls[2].input), {verbose:true,request:{type:'RESUME',
             continuation:fixture.outputPrefix.document.qualification.progress.checkpoint.token,
             executionBudget:params.request.executionBudget}});
           if (stop === 'DELIVERY_UNAVAILABLE') assert.equal(Object.hasOwn(blocker.document, 'continuation'), false);
@@ -425,7 +427,7 @@ if (process.env.KAST_ADAPTER_TEST_DELIVERY) {
       assert.deepEqual(delivered.pages, [blocker]);
       assert.equal(delivered.delivery.rpc_count, 2);
       assert.equal(harness === 'pi' ? result.isError : result.resultType === 'failure', true);
-      assert.deepEqual(JSON.parse(loaded.calls[2].input), {request:{type:'READ_RESULT',
+      assert.deepEqual(JSON.parse(loaded.calls[2].input), {verbose:true,request:{type:'READ_RESULT',
         result:fixture.prefix.document.retention.reference,cursor:1,evidence_cursor:0,
         output:params.request.output,executionBudget:params.request.executionBudget}});
     });
@@ -569,3 +571,105 @@ if (process.env.KAST_ADAPTER_TEST_DELIVERY) {
   });
 
 }
+
+// Invocation-scoped transport checks use the real adapter and an owned child, never a live IDE.
+if (process.env.KAST_ADAPTER_TEST_DELIVERY) {
+  const fixture = JSON.parse(readFileSync(process.env.KAST_ADAPTER_TEST_DELIVERY, 'utf8'));
+  for (const harness of ['pi', 'copilot']) {
+    for (const [name, keys, first] of [
+      ['complete', ['prefix','rows','tail'], {type:'RUN',source:{type:'ALL_DECLARATIONS'},output:{type:'SYMBOLS',fields:['NAME']}}],
+      ['retained rejection', ['rejected','proof','proofTail'], {type:'RUN',source:{type:'ALL_DECLARATIONS'},output:{type:'SYMBOLS',fields:['NAME']}}],
+      ['detail', ['rows','tail'], {type:'READ_RESULT',result:fixture.prefix.document.retention.reference,cursor:1,evidence_cursor:0,output:{type:'SYMBOLS',fields:['NAME']}}],
+      ['stale detail', ['expiredResult'], {type:'READ_RESULT',result:fixture.prefix.document.retention.reference,cursor:0,evidence_cursor:0}],
+    ]) {
+      for (const transport of (name==='complete'?['one-shot','session']:['session'])) test(`${harness} ${transport} delivers ${name} without semantic replay`, async t => {
+        const directory = mkdtempSync(join(tmpdir(), 'kast-query-session-'));
+        t.after(() => rmSync(directory, {recursive:true, force:true}));
+        const command = join(directory,'kast-tool-rpc'), proof = join(directory,'proof.jsonl');
+        const sessionCatalog = structuredClone(catalog);if(transport==='session')sessionCatalog.catalog.querySession = true;
+        const catalogFile = join(directory,'catalog.json'), repliesFile = join(directory,'replies.json');
+        writeFileSync(catalogFile,JSON.stringify(sessionCatalog));
+        writeFileSync(repliesFile,JSON.stringify(keys.map(key=>fixture[key])));
+        writeFileSync(command, String.raw`#!/usr/bin/env node
+const fs=require('node:fs'),readline=require('node:readline');
+const directory=process.cwd(),phase=process.argv[2],proof=directory+'/proof.jsonl';
+const record=value=>fs.appendFileSync(proof,JSON.stringify(value)+'\n');
+record({phase,catalogCalls:phase==='catalog'?1:0,selectorPresent:Object.hasOwn(process.env,'KAST_TOOL_RPC_COMMAND'),deadlinePresent:Object.hasOwn(process.env,'KAST_EVALUATION_DEADLINE_MS')});
+if(phase==='catalog')process.stdout.write(fs.readFileSync(directory+'/catalog.json'));
+else if(phase==='query-session'){
+ const replies=JSON.parse(fs.readFileSync(directory+'/replies.json','utf8'));let index=0;
+ readline.createInterface({input:process.stdin}).on('line',line=>{
+  const request=JSON.parse(line).request,reply=replies[index++];
+  if(!reply){process.exitCode=7;return;}
+  record({type:request.type,semanticExecutions:request.type==='RUN'?1:0,describeCalls:1,
+    requestBytes:Buffer.byteLength(line,'utf8'),responseBytes:Buffer.byteLength(JSON.stringify(reply),'utf8')+1});
+  process.stdout.write(JSON.stringify(reply)+'\n');
+  }).on('close',()=>{record({closed:true,consumed:index});if(index!==replies.length)process.exitCode=9;});
+}else if(phase==='call'){
+ const replies=JSON.parse(fs.readFileSync(directory+'/replies.json','utf8')),cursor=directory+'/cursor';
+ const index=fs.existsSync(cursor)?Number(fs.readFileSync(cursor,'utf8')):0;
+ let input='';process.stdin.on('data',chunk=>input+=chunk.toString('utf8'));
+ process.stdin.on('end',()=>{
+  const request=JSON.parse(input).request,reply=replies[index];
+  if(!reply){process.exitCode=7;return;}
+  fs.writeFileSync(cursor,String(index+1));
+  record({type:request.type,semanticExecutions:request.type==='RUN'?1:0,describeCalls:1,
+    requestBytes:Buffer.byteLength(input,'utf8'),responseBytes:Buffer.byteLength(JSON.stringify(reply),'utf8')+1});
+  process.stdout.write(JSON.stringify(reply)+'\n');record({closed:true,consumed:1});
+ });
+}else process.exitCode=8;
+`,{mode:0o700});
+        const children=[],processObservations=[];
+        const environment={KAST_TOOL_RPC_COMMAND:command,KAST_EVALUATION_DEADLINE_MS:'private-controller-deadline',PATH:process.env.PATH};
+        const loaded=await load(harness,sessionCatalog,undefined,undefined,environment,{cwd:directory,
+          spawn:(command,args,options)=>{
+            const started=process.hrtime.bigint(),child=spawnChild(command,args,options);
+            const observation={phase:args[0],stdoutReadBytes:0,spawnReturnMillis:Number(process.hrtime.bigint()-started)/1e6};
+            child.stdout.on('data',chunk=>{observation.stdoutReadBytes+=chunk.length;
+              observation.firstByteMillis??=Number(process.hrtime.bigint()-started)/1e6;});
+            child.on('close',()=>observation.closedMillis=Number(process.hrtime.bigint()-started)/1e6);
+            processObservations.push(observation);children.push(child);return child;}});
+        assert.ifError(loaded.error);
+        const query=loaded.registered.find(tool=>tool.name==='query_symbols');
+        const params={request:first,...(name.includes('detail')?{verbose:true}:{})};
+        const reply=harness==='pi'?await query.execute('one',params,undefined,undefined,{cwd:directory}):await query.handler(params,{});
+        const text=harness==='pi'?reply.content[0].text:reply.textResultForLlm;
+        const trace=readFileSync(proof,'utf8').trim().split('\n').map(line=>JSON.parse(line));
+        assert.deepEqual(trace.filter(row=>row.phase).map(row=>row.phase),['catalog',...(transport==='session'?['query-session']:keys.map(()=> 'call'))]);
+        assert.ok(trace.filter(row=>row.phase).every(row=>!row.selectorPresent&&!row.deadlinePresent));
+        assert.equal(environment.KAST_EVALUATION_DEADLINE_MS,'private-controller-deadline');
+        const requests=trace.filter(row=>row.type);
+        assert.deepEqual(requests.map(row=>row.type),[first.type,...keys.slice(1).map(()=> 'READ_RESULT')]);
+        assert.equal(requests.reduce((n,row)=>n+row.semanticExecutions,0),first.type==='RUN'?1:0);
+        assert.equal(requests.reduce((n,row)=>n+row.describeCalls,0),keys.length,'simulated authoritative describe remains per RPC');
+        assert.equal(children.length,transport==='session'?2:keys.length+1,'one catalog and bounded invocation children');
+        assert.ok(children.every(child=>child.exitCode===0));
+        assert.equal(trace.filter(row=>row.closed).reduce((sum,row)=>sum+row.consumed,0),keys.length);
+        if(name.includes('detail')){
+          const result=JSON.parse(text);
+          if(keys.length===1)assert.deepEqual(result,fixture[keys[0]]);
+          else {assert.deepEqual(result.initial,fixture.rows);assert.deepEqual(result.pages,[fixture.tail]);}
+        }else{
+          assert.match(text,/Rows \(43\):/);
+          assert.equal(harness==='pi'?reply.isError:reply.resultType==='failure',name==='retained rejection');
+          for(let index=0;index<43;index++)assert.ok(text.includes(`"ref":"exact:v2:fixture-${index}"`));
+          if(harness==='pi')assert.deepEqual(JSON.parse(JSON.stringify(reply.details.initial)),fixture[keys[0]]);
+        }
+        console.log(JSON.stringify({harness,transport,case:name,childProcesses:children.length,catalogCalls:1,
+          simulatedDescribeCalls:requests.length,physicalRpcs:requests.length,
+          requestBytes:requests.reduce((n,row)=>n+row.requestBytes,0),responseBytes:requests.reduce((n,row)=>n+row.responseBytes,0),
+          modelVisibleBytes:Buffer.byteLength(text,'utf8'),semanticExecutions:first.type==='RUN'?1:0,semanticReruns:0,
+          requestFramingBytes:transport==='session'?requests.length:0,
+          catalogReadBytes:processObservations.find(row=>row.phase==='catalog').stdoutReadBytes,processObservations}));
+      });
+    }
+  }
+}
+
+for(const harness of ['pi','copilot'])for(const capability of [null,'true',1,{},[]])
+  test(`${harness} rejects an unproven query session capability ${JSON.stringify(capability)}`,async()=>{
+    const invalid=structuredClone(catalog);invalid.catalog.querySession=capability;
+    const loaded=await load(harness,invalid);
+    assert.match(String(loaded.error),/catalog admission failed/);assert.equal(loaded.registered.length,0);
+    assert.equal(loaded.calls.length,1);
+  });

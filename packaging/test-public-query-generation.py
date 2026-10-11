@@ -44,6 +44,14 @@ class PublicQueryGenerationTest(unittest.TestCase):
             self.assertEqual(1, source.count("async function awaitQueryDelivery("))
             self.assertNotIn("from \"../", source)
 
+    def test_invocation_session_has_one_embedded_owner(self):
+        owner = (ROOT / "cli/src/main/js/query-session.mjs").read_text().rstrip()
+        generated = generator.render_tools(self.authority)
+        for relative in ("copilot/extension.mjs", "pi/extension.ts"):
+            source = generated[ROOT / relative]
+            self.assertIn(owner, source)
+            self.assertEqual(1, source.count("function createQuerySession("))
+
     def test_word_discovery_is_a_closed_scoped_source(self):
         source = self.authority["$defs"]["TextSource"]
         self.assertEqual(["SEARCH_TEXT"], source["properties"]["type"]["enum"])

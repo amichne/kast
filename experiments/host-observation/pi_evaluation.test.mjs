@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 import { createHash } from 'node:crypto';
 import { inspectProviderPayload, verifyInputCalibration } from './pi_evaluation_payload.mjs';
 import { CasePolicy, decodeEnvelope, decodeUsage } from './pi_evaluation_policy.mjs';
@@ -493,4 +494,37 @@ test('optional raw finite bounds reject explicit null and coercible unknown valu
     for(const value of [null,'3',false,0,1.5,Infinity]) assert.throws(()=>new CasePolicy({...config(),[key]:value}));
   }
   assert.equal(new CasePolicy(config()).report().bounds.maximumReportedTokens,55000);
+});
+
+
+test('compact production text keeps canonical SDK details and visible-byte accounting in the actual guard',()=>{
+  const source=readFileSync(new URL('../../cli/src/main/js/query-delivery.mjs',import.meta.url),'utf8');
+  const present=runInNewContext(source+';queryPresentation',{Buffer});
+  for(const [name,expectedOutcome] of [['complete','RUNNING'],['qualified','RUNNING'],['rejectedProof','INTENTIONAL_REJECTION']]) {
+    const envelope=deliveryCases[name].result,text=present(envelope);
+    assert.notEqual(text,JSON.stringify(envelope));
+    assert.equal(decodeEnvelope([{type:'text',text}]).type,'invalid');
+    assert.deepEqual(decodeEnvelope([{type:'text',text}],'query_symbols',envelope),envelope);
+    const policy=makePolicy(config()),guard=callbacks(policy);
+    guard.emit('tool_call',{toolName:'query_symbols',toolCallId:'call-1',input:{request:{type:'RUN'}}});
+    guard.emit('tool_result',{toolName:'query_symbols',toolCallId:'call-1',content:[{type:'text',text}],details:envelope,
+      isError:name==='rejectedProof'});
+    assert.equal(policy.report().outcome,expectedOutcome);
+    assert.equal(guard.records.at(-1).textBytes,Buffer.byteLength(text));
+    assert.equal(policy.report().semanticRepliesObserved,1);
+    assert.equal(policy.report().queryDeliveries[0].rpcCount,envelope.delivery.rpc_count);
+  }
+});
+
+test('malformed SDK detail cannot bypass closed canonical decoding or saved-result validation',()=>{
+  const content=[{type:'text',text:JSON.stringify(negativeComplete)}];
+  for(const invalid of [null,{type:'complete',document:{}},{type:'rejected',failure:'UNKNOWN'}]) {
+    assert.deepEqual(decodeEnvelope(content,'query_symbols',invalid),{type:'invalid'});
+  }
+  const saved=deliveryCases.complete.result;
+  const policy=makePolicy(config());
+  assert.equal(policy.restoreReceivedResult(decodeEnvelope([{type:'text',text:'compact received result'}],
+    'query_symbols',saved),23).allow,true);
+  assert.equal(policy.report().semanticRepliesObserved,0);
+  assert.equal(policy.report().modelProposals.length,0);
 });

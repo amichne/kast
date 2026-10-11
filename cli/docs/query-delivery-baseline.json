@@ -1,0 +1,238 @@
+{
+  "schemaVersion": 1,
+  "baselineRevision": "4d675dcf015bcd91480a2e38b9f077553b7ce1b7",
+  "baselineSourceSha256": "51e41c1f668eb2c08a258bf29351f37b27b836507d177cab867d598166cc99f9",
+  "authoritativeFixture": {
+    "path": "experiments/host-observation/pi-fixtures/query-delivery-cases.json",
+    "sha256": "9c6c6cfc2f55a03179db6964e30aa10348062c9e591c317b569031f29901d729",
+    "producer": "QueryDeliveryFixtures typed canonical serializer",
+    "sourceRevision": "36a2e6d256d620cf37a4e7e622ee643d4c38c178"
+  },
+  "command": "node --experimental-vm-modules --test cli/src/test/js/query-presentation.test.mjs",
+  "measurementBoundary": "Production awaitQueryDelivery replay with deterministic fake RPC replies; presentation byte lengths use UTF-8. A prior baseline implementation is evaluated directly from git show. No model, compiler, IDEA or native execution occurred.",
+  "transportAccounting": "Child processes, catalogs/describe calls, setup timings and actual stdout bytes belong to the separate real subprocess transport tests; they are not inferred from this pure boundary.",
+  "unchangedLimits": {
+    "presentationBytes": 262144,
+    "maxPhysicalRpcs": 64
+  },
+  "cases": [
+    {
+      "name": "complete",
+      "before": {
+        "logicalQueries": 1,
+        "physicalRpcs": 3,
+        "semanticExecutions": 1,
+        "requestBytes": 556,
+        "responseBytes": 9348,
+        "modelVisibleBytes": 9542
+      },
+      "after": {
+        "logicalQueries": 1,
+        "physicalRpcs": 3,
+        "semanticExecutions": 1,
+        "requestBytes": 556,
+        "responseBytes": 9348,
+        "modelVisibleBytes": 5073
+      },
+      "canonicalEquality": true,
+      "stop": "DELIVERED",
+      "deliveredUniqueReferences": 43,
+      "modelVisibleBytesSaved": 4469
+    },
+    {
+      "name": "qualified",
+      "before": {
+        "logicalQueries": 1,
+        "physicalRpcs": 2,
+        "semanticExecutions": 1,
+        "requestBytes": 280,
+        "responseBytes": 8106,
+        "modelVisibleBytes": 8255
+      },
+      "after": {
+        "logicalQueries": 1,
+        "physicalRpcs": 2,
+        "semanticExecutions": 1,
+        "requestBytes": 280,
+        "responseBytes": 8106,
+        "modelVisibleBytes": 5186
+      },
+      "canonicalEquality": true,
+      "stop": "DELIVERED",
+      "deliveredUniqueReferences": 43,
+      "modelVisibleBytesSaved": 3069
+    },
+    {
+      "name": "rejectedProof",
+      "before": {
+        "logicalQueries": 1,
+        "physicalRpcs": 3,
+        "semanticExecutions": 1,
+        "requestBytes": 556,
+        "responseBytes": 10256,
+        "modelVisibleBytes": 10451
+      },
+      "after": {
+        "logicalQueries": 1,
+        "physicalRpcs": 3,
+        "semanticExecutions": 1,
+        "requestBytes": 556,
+        "responseBytes": 10256,
+        "modelVisibleBytes": 6187
+      },
+      "canonicalEquality": true,
+      "stop": "DELIVERED",
+      "deliveredUniqueReferences": 43,
+      "modelVisibleBytesSaved": 4264
+    },
+    {
+      "name": "expired",
+      "before": {
+        "logicalQueries": 1,
+        "physicalRpcs": 2,
+        "semanticExecutions": 1,
+        "requestBytes": 350,
+        "responseBytes": 1475,
+        "modelVisibleBytes": 1679
+      },
+      "after": {
+        "logicalQueries": 1,
+        "physicalRpcs": 2,
+        "semanticExecutions": 1,
+        "requestBytes": 350,
+        "responseBytes": 1475,
+        "modelVisibleBytes": 1262
+      },
+      "canonicalEquality": true,
+      "stop": "DELIVERY_UNAVAILABLE",
+      "deliveredUniqueReferences": 1,
+      "modelVisibleBytesSaved": 417
+    },
+    {
+      "name": "unavailable",
+      "before": {
+        "logicalQueries": 1,
+        "physicalRpcs": 2,
+        "semanticExecutions": 1,
+        "requestBytes": 280,
+        "responseBytes": 2586,
+        "modelVisibleBytes": 2746
+      },
+      "after": {
+        "logicalQueries": 1,
+        "physicalRpcs": 2,
+        "semanticExecutions": 1,
+        "requestBytes": 280,
+        "responseBytes": 2586,
+        "modelVisibleBytes": 1804
+      },
+      "canonicalEquality": true,
+      "stop": "DELIVERY_UNAVAILABLE",
+      "deliveredUniqueReferences": 2,
+      "modelVisibleBytesSaved": 942
+    },
+    {
+      "name": "budgetIncrease",
+      "before": {
+        "logicalQueries": 1,
+        "physicalRpcs": 2,
+        "semanticExecutions": 1,
+        "requestBytes": 280,
+        "responseBytes": 2740,
+        "modelVisibleBytes": 2904
+      },
+      "after": {
+        "logicalQueries": 1,
+        "physicalRpcs": 2,
+        "semanticExecutions": 1,
+        "requestBytes": 280,
+        "responseBytes": 2740,
+        "modelVisibleBytes": 1892
+      },
+      "canonicalEquality": true,
+      "stop": "BUDGET_INCREASE_REQUIRED",
+      "deliveredUniqueReferences": 2,
+      "modelVisibleBytesSaved": 1012
+    },
+    {
+      "name": "readBudgetIncrease",
+      "before": {
+        "logicalQueries": 1,
+        "physicalRpcs": 2,
+        "semanticExecutions": 1,
+        "requestBytes": 350,
+        "responseBytes": 8608,
+        "modelVisibleBytes": 8816
+      },
+      "after": {
+        "logicalQueries": 1,
+        "physicalRpcs": 2,
+        "semanticExecutions": 1,
+        "requestBytes": 350,
+        "responseBytes": 8608,
+        "modelVisibleBytes": 5816
+      },
+      "canonicalEquality": true,
+      "stop": "BUDGET_INCREASE_REQUIRED",
+      "deliveredUniqueReferences": 43,
+      "modelVisibleBytesSaved": 3000
+    }
+  ],
+  "nativeCases": [
+    {
+      "name": "empty",
+      "beforeModelVisibleBytes": 2619,
+      "afterModelVisibleBytes": 2348,
+      "deliveredRows": 0,
+      "evidenceEquality": "Canonical result unchanged; no-retention evidence inline; occurrence descriptions expand to exact rows",
+      "boundary": "Presentation replay of previously captured native document; no native call in this track"
+    },
+    {
+      "name": "occurrencesPrefix",
+      "beforeModelVisibleBytes": 40084,
+      "afterModelVisibleBytes": 26228,
+      "deliveredRows": 20,
+      "evidenceEquality": "Canonical result unchanged; no-retention evidence inline; occurrence descriptions expand to exact rows",
+      "boundary": "Presentation replay of previously captured native document; no native call in this track"
+    },
+    {
+      "name": "retainedEvidencePrefix",
+      "beforeModelVisibleBytes": 41314,
+      "afterModelVisibleBytes": 15712,
+      "deliveredRows": 16,
+      "evidenceEquality": "Canonical result unchanged; no-retention evidence inline; occurrence descriptions expand to exact rows",
+      "boundary": "Presentation replay of previously captured native document; no native call in this track"
+    }
+  ],
+  "presentationSerialization": {
+    "boundary": "Instrumented JSON.stringify in the production pure presentation owner; counts UTF-8 bytes of every returned JSON string, including dictionary-key construction. These are work counters, not transport bytes.",
+    "cases": [
+      {
+        "name": "complete",
+        "before": {
+          "calls": 1,
+          "bytes": 9542
+        },
+        "after": {
+          "calls": 50,
+          "bytes": 6124
+        }
+      },
+      {
+        "name": "occurrencesPrefix",
+        "before": {
+          "calls": 1,
+          "bytes": 40084
+        },
+        "after": {
+          "calls": 68,
+          "bytes": 53320
+        },
+        "dictionaryKeyConstruction": {
+          "calls": 40,
+          "bytes": 26129
+        }
+      }
+    ]
+  }
+}

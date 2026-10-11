@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli.rpc
 
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
+import io.github.amichne.kast.appserver.query.AdmittedPublicTool
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.MAXIMUM_PROTOCOL_TEXT_LENGTH
@@ -25,7 +26,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 
-/** One-shot, harness-neutral process boundary for semantic tool calls. */
+/** Harness-neutral one-shot calls and bounded invocation-scoped query sessions. */
 object KastToolRpcMain {
     @JvmStatic
     fun main(args: Array<String>) =
@@ -40,6 +41,10 @@ object KastToolRpcMain {
                 observeDirectToolStage(DirectToolStage.BRIDGE_COMPOSITION) {
                     session?.let(::KastToolRpcBridge)
                 }
+            if (args.contentEquals(arrayOf("query-session"))) {
+                runQuerySession(session, bridge)
+                return@observeDirectToolStage
+            }
             val response =
                 when {
                     session == null || bridge == null -> ToolRpcReply.Rejected(ToolRpcFailure.CATALOG_UNAVAILABLE)
@@ -54,12 +59,29 @@ object KastToolRpcMain {
                     }
                     else -> ToolRpcReply.Rejected(ToolRpcFailure.INVALID_COMMAND)
                 }
-            val document =
-                observeDirectToolStage(DirectToolStage.OUTPUT_SERIALIZATION) {
-                    toolRpcJson.encodeToString<ToolRpcReply>(response)
-                }
-            println(document)
+            printReply(response)
         }
+
+    private fun runQuerySession(session: KastDirectToolSession?, bridge: KastToolRpcBridge?) {
+        when {
+            session == null || bridge == null -> printReply(ToolRpcReply.Rejected(ToolRpcFailure.CATALOG_UNAVAILABLE))
+            session.admission() != InstalledToolAdmission.AVAILABLE ->
+                printReply(ToolRpcReply.Rejected(ToolRpcFailure.INSTALLATION_STOPPED))
+            else ->
+                OneShotInvocationRecord.begin()?.use {
+                    KastToolRpcQuerySession(bridge::callAdmitted).run(System.`in`, ::printReply)
+                } ?: printReply(ToolRpcReply.Rejected(ToolRpcFailure.OBSERVATION_UNAVAILABLE))
+        }
+    }
+
+    private fun printReply(response: ToolRpcReply) {
+        val document =
+            observeDirectToolStage(DirectToolStage.OUTPUT_SERIALIZATION) {
+                toolRpcJson.encodeToString<ToolRpcReply>(response)
+            }
+        println(document)
+        System.out.flush()
+    }
 
     private fun invokeObserved(bridge: KastToolRpcBridge, name: String, bytes: ByteArray): ToolRpcReply =
         when (val input = decodeToolRpcInput(bytes)) {
@@ -107,6 +129,19 @@ internal class KastToolRpcBridge(private val session: KastDirectToolSession) {
                     is Refinement.Refined -> admission.value
                     is Refinement.Rejected -> return ToolRpcReply.Rejected(ToolRpcFailure.INVALID_ARGUMENTS)
                 }
+        return invoke(name) {
+            if (admitted == null) session.invoke(name, arguments) else session.invokeAdmitted(admitted)
+        }
+    }
+
+    fun callAdmitted(request: AdmittedPublicTool): ToolRpcReply {
+        if (session.admission() != InstalledToolAdmission.AVAILABLE)
+            return ToolRpcReply.Rejected(ToolRpcFailure.INSTALLATION_STOPPED)
+        if (!session.supports(request.identity.toolName)) return ToolRpcReply.Rejected(ToolRpcFailure.UNKNOWN_TOOL)
+        return invoke(request.identity.toolName) { session.invokeAdmitted(request) }
+    }
+
+    private fun invoke(name: String, execute: () -> CliExit): ToolRpcReply {
         val root =
             observeDirectToolStage(DirectToolStage.WORKSPACE_DISCOVERY) { session.root() }
                 as? CanonicalRootDiscovery.Discovered ?: return ToolRpcReply.Rejected(ToolRpcFailure.OUT_OF_SCOPE)
@@ -115,7 +150,7 @@ internal class KastToolRpcBridge(private val session: KastDirectToolSession) {
         val exit =
             try {
                 observeDirectToolStage(DirectToolStage.INVOCATION) {
-                    if (admitted == null) session.invoke(name, arguments) else session.invokeAdmitted(admitted)
+                    execute()
                 }
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
                 throw cancelled
@@ -176,6 +211,7 @@ internal sealed interface ToolRpcReply {
 }
 
 @Serializable
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 internal data class ToolRpcCatalog(
     val tools: List<ToolRpcTool>,
     @Required val schemaVersion: Int = PUBLIC_TOOL_CONTRACT_VERSION,
@@ -184,6 +220,9 @@ internal data class ToolRpcCatalog(
         OperationExecutionBudget.WORKSPACE_READINESS.value +
             McpChangePhase.entries.size * OperationExecutionBudget.SEMANTIC_READ.operation.value,
     @Required val maxResponseBytes: Int = BrokerOperationalLimits.maximumToolRpcResponseBytes,
+    /** Optional transport capability; absence in an older catalog selects one-shot calls. */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.ALWAYS)
+    val querySession: Boolean = true,
 )
 
 @Serializable
@@ -213,6 +252,7 @@ internal enum class ToolRpcFailure {
     OUT_OF_SCOPE,
     INVOCATION_FAILED,
     INVALID_RESULT,
+    QUERY_SESSION_TRANSITION_REJECTED,
 }
 
 private val toolRpcJson = Json { encodeDefaults = true }

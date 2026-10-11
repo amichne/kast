@@ -322,6 +322,15 @@ lists, and the verified mutation's duplicated plan preview are omitted. The
 application retains its receipt, actual diff and fresh reference. Presentation
 never changes retained evidence, request lowering or canonical wire outcomes.
 
+Portable Pi/Copilot query delivery presents a compact human text projection by default.
+Canonical replies remain unchanged internally; `verbose: true` returns their JSON envelope.
+Exact row identities, source ranges, original coverage and finite failures remain usable.
+Repeated occurrence descriptions are shared, and retained observation details use the
+existing authority-bound `READ_RESULT` interface. Optional boolean catalog `querySession`
+support selects one invocation-owned child for sequential query/output requests. It admits
+only the preceding reply's retained reference or output checkpoint after the first request;
+a second RUN is rejected before execution. Missing capability keeps the one-shot path.
+
 Lifecycle results retain their full state and ownership evidence in both modes;
 its tool-only boolean never enters canonical lifecycle requests or close approvals.
 
