@@ -5,6 +5,7 @@ import io.github.amichne.kast.topology.contract.SemanticDependencySnapshot
 import io.github.amichne.kast.topology.intellij.SemanticDependencyCaptureFailure
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 
 /** One request's optional preparation decision. No successful snapshot survives its native read action. */
 internal class HostedCallbackDependencyAttempts(
@@ -27,8 +28,11 @@ internal class HostedCallbackDependencyAttempts(
         universe: HostedCallbackDependencyUniverse = HostedCallbackDependencyUniverse.WholeWorkspace,
         effect: () -> Refinement<SemanticDependencySnapshot, SemanticDependencyCaptureFailure>,
     ): Refinement<SemanticDependencySnapshot, SemanticDependencyCaptureFailure> {
-        if (universe !in allowed)
+        if (universe !in allowed) {
+            observation.count(IntellijReadCounter.SEMANTIC_FACT_DEPENDENCY_REJECTIONS)
+            observation.terminated(IntellijReadTermination.SEMANTIC_INPUT_DEPENDENCY_MODULE_UNMODELED)
             return Refinement.Rejected(SemanticDependencyCaptureFailure.DEPENDENCY_MODULE_UNMODELED)
+        }
         return when (val current = states[universe] ?: State.Ready) {
             is State.Unavailable -> {
                 observation.count(IntellijReadCounter.SEMANTIC_FACT_DEPENDENCY_PREPARATIONS_SKIPPED)

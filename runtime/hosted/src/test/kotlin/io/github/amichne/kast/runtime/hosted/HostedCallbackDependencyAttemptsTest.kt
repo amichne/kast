@@ -2,7 +2,10 @@ package io.github.amichne.kast.runtime.hosted
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.topology.intellij.SemanticDependencyCaptureFailure
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import kotlinx.coroutines.CancellationException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
@@ -10,6 +13,31 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 
 internal class HostedCallbackDependencyAttemptsTest : HostedScopedCaptureFixture() {
+    @Test
+    fun `unmodeled cache universe records its typed rejection without starting capture`() {
+        val counters = mutableListOf<IntellijReadCounter>()
+        val reasons = mutableListOf<IntellijReadTermination>()
+        val observation =
+            object : IntellijReadObservation {
+                override fun count(counter: IntellijReadCounter, contributor: IntellijReadContributor, amount: Int) {
+                    repeat(amount) { counters += counter }
+                }
+
+                override fun terminated(reason: IntellijReadTermination, contributor: IntellijReadContributor) {
+                    reasons += reason
+                }
+            }
+        val attempts = HostedCallbackDependencyAttempts(observation, emptySet())
+        assertEquals(
+            Refinement.Rejected(SemanticDependencyCaptureFailure.DEPENDENCY_MODULE_UNMODELED),
+            attempts.capture(HostedCallbackDependencyUniverse.Forward(main)) {
+                throw AssertionError("Unmodeled attribution cannot start native capture")
+            },
+        )
+        assertEquals(listOf(IntellijReadCounter.SEMANTIC_FACT_DEPENDENCY_REJECTIONS), counters)
+        assertEquals(listOf(IntellijReadTermination.SEMANTIC_INPUT_DEPENDENCY_MODULE_UNMODELED), reasons)
+    }
+
     @Test
     fun `allowed universes are copied and foreign modules cannot start an effect`() {
         val known = HostedCallbackDependencyUniverse.Forward(main)
