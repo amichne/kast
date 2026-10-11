@@ -271,7 +271,9 @@ test('first terminal IPC authority survives duplicate conflicting malformed and 
 
 test('timely real child terminal receipt survives timed cancel send kill runtime and observer cleanup permutations',async t=>{
   const semantic={stage:'WORKER_SETUP',operation:'INSTALLATION_PIN',reason:'PIN_MISMATCH'};
-  const script=`const {publishWorkerResult}=await import(process.argv[1]);const mode=process.argv[2],first=JSON.parse(process.argv[3]);
+  const script=`const {publishWorkerResult}=await import(process.argv[1]);const mode=process.argv[2];
+const first=process.argv[3]==='report'?{type:'report',report:{case:'terminal-authority',payload:'R'.repeat(300000),outcome:'INTENTIONAL_REJECTION'}}:
+{type:'failure',failure:{stage:'WORKER_SETUP',operation:'INSTALLATION_PIN',reason:'PIN_MISMATCH'}};
 const send=process.send.bind(process),hold=setInterval(()=>{},1000);process.on('SIGTERM',()=>{});
 process.on('message',message=>{if(message.type==='cancel'&&mode!=='kill'){clearInterval(hold);process.disconnect();}});
 process.send=(message,_callback)=>{send(message,()=>send({type:'ready',pid:process.pid}));return false;};
@@ -305,7 +307,7 @@ await publishWorkerResult(first);`;
           return kill(pid,signal);
         };
         result=await runOwnedWorker(process.execPath,['--input-type=module','-e',script,
-          new URL('./pi_evaluation_worker.mjs',import.meta.url).href,mode,JSON.stringify(first)],
+          new URL('./pi_evaluation_worker.mjs',import.meta.url).href,mode,first.type],
         {...options,wallMillis:1000,graceMillis:100,terminateMillis:0,onEvent:event=>{
           if(event.type==='ready'){ownedPid=event.pid;t.mock.timers.tick(1000);}
           if(event.type==='controller_cancel'&&mode==='observer')throw Error('PRIVATE-OBSERVER');
