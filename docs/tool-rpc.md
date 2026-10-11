@@ -1,6 +1,6 @@
 # Tool RPC for agent extensions
 
-`kast-tool-rpc` is a one-shot process interface for Kast's IDEA-backed tools.
+`kast-tool-rpc` is a bounded process interface for Kast's IDEA-backed tools.
 It does not speak MCP or connect to the Codex App Server. The process uses its
 current working directory to discover the exact Gradle workspace, then uses
 Kast's existing IDEA preparation and semantic operation path.
@@ -91,8 +91,8 @@ Delivery preserves its issued result identity, original question, output and
 bounded execution grant. The retained token's canonical owner checks workspace,
 epoch, lifetime and scope on every physical read.
 
-An inline reply stays unchanged. When delivery needs further calls, the adapter
-returns `type: "query_delivery"`, with the unchanged `initial` RPC reply, the
+Canonical inline replies stay unchanged internally. When delivery needs further calls, the adapter
+retains `type: "query_delivery"`, with the unchanged `initial` RPC reply, the
 ordered canonical suffix `pages`, and a `delivery` observation containing `stop`,
 `rpc_count`, `request_bytes`, `response_bytes`, and the issued `result` reference when available.
 `DELIVERED` means that the selected output and evidence have arrived. The
@@ -103,6 +103,25 @@ Every qualification, omission, failure and evidence observation remains in its
 own canonical reply. Retained `COMPLETION_UNPROVEN` evidence remains a tool error
 even when its delivery finishes. No narrower RUN or increased semantic grant is
 submitted to recover output.
+
+Default query text is a compact human presentation of those canonical replies. It keeps exact
+references, locations, semantic outcome, coverage, qualifications, authority and delivery
+blockers. Identical occurrence descriptions are shared; distinct row identities and ranges
+remain separate. Failures and omissions stay inline. Retained observations show their
+available counts and a `READ_RESULT` request for details; without a retained handle all
+available evidence remains inline. `verbose: true` returns the canonical JSON envelope.
+Pi also retains that envelope in SDK result details. Consumers that parse text as JSON
+must request verbose output. Detail reads use the existing live result authority and may
+expire or become stale; no failed detail request silently starts another RUN.
+
+An optional boolean `catalog.querySession` advertises the invocation-owned `query-session`
+transport. Bundled adapters use one sequential child for the original query and its
+output drains when true; absent or false retains the one-shot path. The session admits at
+most 64 newline-delimited bounded requests. After the first request it accepts only the
+preceding reply's exact retained reference or output checkpoint. It rejects another RUN
+before execution. The child ends with the invocation; cancellation and the original
+aggregate deadline kill it and release its owned pipes. Catalog admission, per-RPC live
+authority checks and wire bounds still apply.
 
 One model/tool turn can therefore require three physical RPCs. These are
 separate metrics. The byte fields count UTF-8 physical request and response bytes, including

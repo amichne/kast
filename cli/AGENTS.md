@@ -10,6 +10,10 @@ legacy command graph retained for migration, and hosted output projections.
 
 ## Key Files
 
+- [KastToolRpcQuerySession.kt](src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt) - bounded invocation-owned query framing and authority-bound output successors.
+- [query-delivery.mjs](src/main/js/query-delivery.mjs) and [query-session.mjs](src/main/js/query-session.mjs) - portable bounded delivery, compact human presentation and owned subprocess transport, embedded into Pi/Copilot by the public-query generator.
+- [query-delivery-simplification.md](docs/query-delivery-simplification.md) - compact delivery contract, measured work/bytes and compatibility boundaries.
+
 - [InstallationJavaRuntime.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt) - installed launcher admission of the selected IDEA JBR before starting its child JVM.
 
 - [KastDaemonMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt) - private managed daemon entry point with exact login admission outside the public command graph.
@@ -18,7 +22,7 @@ legacy command graph retained for migration, and hosted output projections.
 - [KastDirectToolSession.kt](src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt) - shared direct IDEA tool composition for MCP and harness-neutral RPC.
 - [DirectToolRegistration.kt](src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolRegistration.kt) - compiled registration authority and deferred discovery catalog projection.
 - [DirectToolStageObservation.kt](src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolStageObservation.kt) - opt-in bounded JFR stage/outcome events for direct tool startup and invocation.
-- [KastToolRpcMain.kt](src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt) - one-shot catalog and invocation boundary for agent extensions.
+- [KastToolRpcMain.kt](src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt) - catalog, one-shot invocation and bounded query-session boundary for agent extensions.
 - [McpWire.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpWire.kt) - typed MCP discovery, request, and result envelopes.
 - [McpStructuredResults.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt) - schema-validated MCP result envelopes and concise health and validation summaries.
 - [HostedChangeCliInput.kt](src/main/kotlin/io/github/amichne/kast/cli/ide/HostedChangeCliInput.kt) - canonical hosted mutation request input retaining the operation and exact stored plan identity.

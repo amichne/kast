@@ -1,0 +1,356 @@
+{
+  "schemaVersion": 1,
+  "command": ":cli:test --tests *KastToolRpcBridgeTest",
+  "boundary": "Real Node child and production standalone adapters; scripted canonical replies and simulated describe counters. Process timings include child startup, scripted I/O and exit. No native/IDEA call, installation or inference.",
+  "requestAccounting": "requestBytes excludes NDJSON framing, which is reported separately; responseBytes includes reply newlines. catalogReadBytes is outside logical query RPC accounting.",
+  "cases": [
+    {
+      "harness": "pi",
+      "transport": "one-shot",
+      "case": "complete",
+      "childProcesses": 4,
+      "catalogCalls": 1,
+      "simulatedDescribeCalls": 3,
+      "physicalRpcs": 3,
+      "requestBytes": 448,
+      "responseBytes": 9351,
+      "modelVisibleBytes": 5073,
+      "semanticExecutions": 1,
+      "semanticReruns": 0,
+      "requestFramingBytes": 0,
+      "catalogReadBytes": 75819,
+      "processObservations": [
+        {
+          "phase": "catalog",
+          "stdoutReadBytes": 75819,
+          "spawnReturnMillis": 0.6095,
+          "firstByteMillis": 37.4055,
+          "closedMillis": 39.744709
+        },
+        {
+          "phase": "call",
+          "stdoutReadBytes": 1290,
+          "spawnReturnMillis": 0.554417,
+          "firstByteMillis": 38.36325,
+          "closedMillis": 41.058625
+        },
+        {
+          "phase": "call",
+          "stdoutReadBytes": 6961,
+          "spawnReturnMillis": 0.434416,
+          "firstByteMillis": 37.843333,
+          "closedMillis": 40.430083
+        },
+        {
+          "phase": "call",
+          "stdoutReadBytes": 1100,
+          "spawnReturnMillis": 0.478834,
+          "firstByteMillis": 38.440792,
+          "closedMillis": 41.096459
+        }
+      ]
+    },
+    {
+      "harness": "pi",
+      "transport": "session",
+      "case": "complete",
+      "childProcesses": 2,
+      "catalogCalls": 1,
+      "simulatedDescribeCalls": 3,
+      "physicalRpcs": 3,
+      "requestBytes": 448,
+      "responseBytes": 9351,
+      "modelVisibleBytes": 5073,
+      "semanticExecutions": 1,
+      "semanticReruns": 0,
+      "requestFramingBytes": 3,
+      "catalogReadBytes": 75839,
+      "processObservations": [
+        {
+          "phase": "catalog",
+          "stdoutReadBytes": 75839,
+          "spawnReturnMillis": 0.45275,
+          "firstByteMillis": 36.039417,
+          "closedMillis": 38.33675
+        },
+        {
+          "phase": "query-session",
+          "stdoutReadBytes": 9351,
+          "spawnReturnMillis": 0.533542,
+          "firstByteMillis": 35.813667,
+          "closedMillis": 39.888458
+        }
+      ]
+    },
+    {
+      "harness": "pi",
+      "transport": "session",
+      "case": "retained rejection",
+      "childProcesses": 2,
+      "catalogCalls": 1,
+      "simulatedDescribeCalls": 3,
+      "physicalRpcs": 3,
+      "requestBytes": 448,
+      "responseBytes": 10259,
+      "modelVisibleBytes": 6187,
+      "semanticExecutions": 1,
+      "semanticReruns": 0,
+      "requestFramingBytes": 3,
+      "catalogReadBytes": 75839,
+      "processObservations": [
+        {
+          "phase": "catalog",
+          "stdoutReadBytes": 75839,
+          "spawnReturnMillis": 0.471166,
+          "firstByteMillis": 39.201666,
+          "closedMillis": 41.927666
+        },
+        {
+          "phase": "query-session",
+          "stdoutReadBytes": 10259,
+          "spawnReturnMillis": 0.499459,
+          "firstByteMillis": 43.804125,
+          "closedMillis": 48.414959
+        }
+      ]
+    },
+    {
+      "harness": "pi",
+      "transport": "session",
+      "case": "detail",
+      "childProcesses": 2,
+      "catalogCalls": 1,
+      "simulatedDescribeCalls": 2,
+      "physicalRpcs": 2,
+      "requestBytes": 369,
+      "responseBytes": 8061,
+      "modelVisibleBytes": 8252,
+      "semanticExecutions": 0,
+      "semanticReruns": 0,
+      "requestFramingBytes": 2,
+      "catalogReadBytes": 75839,
+      "processObservations": [
+        {
+          "phase": "catalog",
+          "stdoutReadBytes": 75839,
+          "spawnReturnMillis": 0.450584,
+          "firstByteMillis": 35.345375,
+          "closedMillis": 37.679042
+        },
+        {
+          "phase": "query-session",
+          "stdoutReadBytes": 8061,
+          "spawnReturnMillis": 0.437959,
+          "firstByteMillis": 39.281209,
+          "closedMillis": 43.345417
+        }
+      ]
+    },
+    {
+      "harness": "pi",
+      "transport": "session",
+      "case": "stale detail",
+      "childProcesses": 2,
+      "catalogCalls": 1,
+      "simulatedDescribeCalls": 1,
+      "physicalRpcs": 1,
+      "requestBytes": 138,
+      "responseBytes": 187,
+      "modelVisibleBytes": 186,
+      "semanticExecutions": 0,
+      "semanticReruns": 0,
+      "requestFramingBytes": 1,
+      "catalogReadBytes": 75839,
+      "processObservations": [
+        {
+          "phase": "catalog",
+          "stdoutReadBytes": 75839,
+          "spawnReturnMillis": 0.443667,
+          "firstByteMillis": 35.775,
+          "closedMillis": 37.973084
+        },
+        {
+          "phase": "query-session",
+          "stdoutReadBytes": 187,
+          "spawnReturnMillis": 0.356167,
+          "firstByteMillis": 38.332125,
+          "closedMillis": 41.429042
+        }
+      ]
+    },
+    {
+      "harness": "copilot",
+      "transport": "one-shot",
+      "case": "complete",
+      "childProcesses": 4,
+      "catalogCalls": 1,
+      "simulatedDescribeCalls": 3,
+      "physicalRpcs": 3,
+      "requestBytes": 448,
+      "responseBytes": 9351,
+      "modelVisibleBytes": 5073,
+      "semanticExecutions": 1,
+      "semanticReruns": 0,
+      "requestFramingBytes": 0,
+      "catalogReadBytes": 75819,
+      "processObservations": [
+        {
+          "phase": "catalog",
+          "stdoutReadBytes": 75819,
+          "spawnReturnMillis": 0.455583,
+          "firstByteMillis": 35.384791,
+          "closedMillis": 37.83525
+        },
+        {
+          "phase": "call",
+          "stdoutReadBytes": 1290,
+          "spawnReturnMillis": 0.448791,
+          "firstByteMillis": 36.0805,
+          "closedMillis": 39.03025
+        },
+        {
+          "phase": "call",
+          "stdoutReadBytes": 6961,
+          "spawnReturnMillis": 0.472,
+          "firstByteMillis": 38.208416,
+          "closedMillis": 40.940833
+        },
+        {
+          "phase": "call",
+          "stdoutReadBytes": 1100,
+          "spawnReturnMillis": 0.470083,
+          "firstByteMillis": 37.023125,
+          "closedMillis": 39.672875
+        }
+      ]
+    },
+    {
+      "harness": "copilot",
+      "transport": "session",
+      "case": "complete",
+      "childProcesses": 2,
+      "catalogCalls": 1,
+      "simulatedDescribeCalls": 3,
+      "physicalRpcs": 3,
+      "requestBytes": 448,
+      "responseBytes": 9351,
+      "modelVisibleBytes": 5073,
+      "semanticExecutions": 1,
+      "semanticReruns": 0,
+      "requestFramingBytes": 3,
+      "catalogReadBytes": 75839,
+      "processObservations": [
+        {
+          "phase": "catalog",
+          "stdoutReadBytes": 75839,
+          "spawnReturnMillis": 0.412917,
+          "firstByteMillis": 38.239792,
+          "closedMillis": 40.578875
+        },
+        {
+          "phase": "query-session",
+          "stdoutReadBytes": 9351,
+          "spawnReturnMillis": 0.428208,
+          "firstByteMillis": 37.428291,
+          "closedMillis": 41.407666
+        }
+      ]
+    },
+    {
+      "harness": "copilot",
+      "transport": "session",
+      "case": "retained rejection",
+      "childProcesses": 2,
+      "catalogCalls": 1,
+      "simulatedDescribeCalls": 3,
+      "physicalRpcs": 3,
+      "requestBytes": 448,
+      "responseBytes": 10259,
+      "modelVisibleBytes": 6187,
+      "semanticExecutions": 1,
+      "semanticReruns": 0,
+      "requestFramingBytes": 3,
+      "catalogReadBytes": 75839,
+      "processObservations": [
+        {
+          "phase": "catalog",
+          "stdoutReadBytes": 75839,
+          "spawnReturnMillis": 0.462292,
+          "firstByteMillis": 35.267334,
+          "closedMillis": 37.640959
+        },
+        {
+          "phase": "query-session",
+          "stdoutReadBytes": 10259,
+          "spawnReturnMillis": 0.427125,
+          "firstByteMillis": 36.859459,
+          "closedMillis": 40.960792
+        }
+      ]
+    },
+    {
+      "harness": "copilot",
+      "transport": "session",
+      "case": "detail",
+      "childProcesses": 2,
+      "catalogCalls": 1,
+      "simulatedDescribeCalls": 2,
+      "physicalRpcs": 2,
+      "requestBytes": 369,
+      "responseBytes": 8061,
+      "modelVisibleBytes": 8252,
+      "semanticExecutions": 0,
+      "semanticReruns": 0,
+      "requestFramingBytes": 2,
+      "catalogReadBytes": 75839,
+      "processObservations": [
+        {
+          "phase": "catalog",
+          "stdoutReadBytes": 75839,
+          "spawnReturnMillis": 0.411667,
+          "firstByteMillis": 35.323625,
+          "closedMillis": 37.53025
+        },
+        {
+          "phase": "query-session",
+          "stdoutReadBytes": 8061,
+          "spawnReturnMillis": 0.447458,
+          "firstByteMillis": 35.701125,
+          "closedMillis": 39.535458
+        }
+      ]
+    },
+    {
+      "harness": "copilot",
+      "transport": "session",
+      "case": "stale detail",
+      "childProcesses": 2,
+      "catalogCalls": 1,
+      "simulatedDescribeCalls": 1,
+      "physicalRpcs": 1,
+      "requestBytes": 138,
+      "responseBytes": 187,
+      "modelVisibleBytes": 186,
+      "semanticExecutions": 0,
+      "semanticReruns": 0,
+      "requestFramingBytes": 1,
+      "catalogReadBytes": 75839,
+      "processObservations": [
+        {
+          "phase": "catalog",
+          "stdoutReadBytes": 75839,
+          "spawnReturnMillis": 0.464125,
+          "firstByteMillis": 36.333875,
+          "closedMillis": 38.836625
+        },
+        {
+          "phase": "query-session",
+          "stdoutReadBytes": 187,
+          "spawnReturnMillis": 0.491083,
+          "firstByteMillis": 36.344791,
+          "closedMillis": 39.174166
+        }
+      ]
+    }
+  ]
+}

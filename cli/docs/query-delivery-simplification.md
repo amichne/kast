@@ -29,18 +29,74 @@ Semantic budgets, each response's wire-byte bound, aggregate delivery bytes and
 transport lifetime remain distinct. This slice does not raise any quota, make
 partial proof exhaustive, or promise native cancellation settlement.
 
-## Validation plan and decisions
+## Decisions and measured work
 
-Use the existing producer-serialized query fixtures and adapter runner, plus pure
-projection/framing tests and one private real-child fixture. Pin independent
-expected references/evidence and count child starts, catalog/describe requests,
-RPCs, semantic submissions, request/response/presentation bytes. Compare the
-canonical legacy delivery with the compact projection under unchanged grants.
-Cover complete, empty, qualified, rejected, multi-page, oversize, cancellation,
-stale/invalid handles, duplicate occurrences, detail requests and first-outcome
-preservation. Timings supplement counters; scripted host/describe counts are not
-native latency evidence.
+Reuse the existing public query admission, typed canonical replies and generated portable
+output-drain rule. Add an optional boolean catalog capability and one invocation-owned
+NDJSON child; do not introduce a daemon or cache native describe authority. After the
+first request the server accepts only the preceding reply's issued result reference or
+output checkpoint, never another RUN. Public contract version 14 and request shapes
+remain unchanged. The new finite transport failure is generated into both adapters.
 
-Limits: portable Pi/Copilot slice. Codex MCP/App Server presentation, actual model
-usability, live native expiry/settlement, installation and merge remain outside
-this draft. Parent owns independent reviews and merge/install decisions.
+Use a human text projection rather than another wire DTO. Keep canonical results intact
+inside the adapter (Pi SDK details) and through `verbose: true`; detailed retained output
+uses existing `READ_RESULT`. Group identical descriptions, never distinct occurrences.
+Render every failure and omission inline, preserving the first qualified or rejected
+outcome after later complete pages. Do not drop evidence without a usable retained handle.
+Default projection avoids serializing the complete canonical envelope, but dictionary-key
+construction still costs work on dense occurrence documents.
+
+| Fixed boundary | Before | After |
+| --- | ---: | ---: |
+| 43-reference model-visible UTF-8 bytes | 9,542 | 5,073 |
+| Qualified 43-reference visible bytes | 8,255 | 5,186 |
+| Rejected proof visible bytes | 10,451 | 6,187 |
+| Saved native 20-occurrence prefix visible bytes | 40,084 | 26,228 |
+| Saved native 16-row/11-observation prefix visible bytes | 41,314 | 15,712 |
+| Matched adapter complete child starts (including catalog) | 4 | 2 |
+| Matched adapter complete RPC / catalog / simulated describe | 3 / 1 / 3 | 3 / 1 / 3 |
+| Matched adapter complete semantic executions | 1 | 1 |
+| Matched request JSON / response bytes read | 448 / 9,351 | 448 / 9,351 |
+| Complete presentation JSON serialization bytes / calls | 9,542 / 1 | 6,124 / 50 |
+| Dense occurrence presentation serialization bytes / calls | 40,084 / 1 | 53,320 / 68 |
+
+Counters, exact boundaries and source hashes are in
+[query-delivery-baseline.json](query-delivery-baseline.json) and
+[query-delivery-transport.json](query-delivery-transport.json). Both adapters match.
+The session adds one newline per request (3 bytes for this case); the capability adds
+20 catalog bytes (75,819 → 75,839). Describe counts are simulated provider callbacks,
+not evidence of live native work. Process observations separately record spawn return,
+first stdout byte, child closure and stdout bytes. These timings are supplementary,
+contended Node fixture observations, not a controlled native latency result.
+
+The prior main production rule is replayed directly from Git against a fixed typed
+producer fixture: canonical result/evidence equality holds for all seven baseline cases.
+The saved native documents are replayed without executing native work. The 185-reference
+receipt still states 16 displayed rows, original total 185 and 11 available observations;
+this track does not claim an exhaustive visible answer or expand the original byte cap.
+
+## Validation and compatibility
+
+Passed `:cli:check verifyJsonContracts verifyArchitecture knowledgeImpact
+verifyKnowledgeBase`, public adapter generation parity and 15 generator tests.
+CLI verification includes 417 JVM tests, 35 pure Node presentation/session tests,
+and 116 passing adapter tests with one opt-in installed-harness loader skipped.
+The real JVM-child bridge fixture preserves exact replies and issued authority with
+scripted providers. Cases cover complete/empty/qualified/rejected, multiple pages,
+oversize replies, bounded cancellation/deadline/pipe cleanup, invalid/stale handles,
+duplicate occurrences, detail reads with zero RUNs, and first-terminal preservation.
+
+Machine consumers parsing adapter text as JSON must request `verbose: true`.
+Raw RPC, public query inputs, wire outcomes and retained authority remain canonical.
+Absent/false session capability keeps one-shot transport; invalid capability types
+reject catalog admission. The generated callable reference includes the finite
+query-session transition failure. Mintlify rendering was not completed: the installed
+validator writes the shared user preview cache outside this worktree; canonical
+reference generation/verification passed. No native quota or semantic budget is raised.
+
+Limits: portable Pi/Copilot slice. Dictionary serialization cost is still higher for
+dense occurrence fixtures. Catalog discovery and per-RPC native authority checks remain.
+Canonical drain bounds may still leave output/evidence undelivered; compact text does
+not buy extra drainage. Codex MCP/App Server presentation, actual model usability,
+live native expiry/remote cancellation settlement, installation and merge remain
+outside this draft. Parent owns independent reviews and merge/install decisions.

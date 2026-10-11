@@ -19,7 +19,7 @@ Contains the public Mintlify documentation source plus scripts and styles for ob
 
 - [development.md](development.md) - build, local installation, docs preview, and behavior-sized testing.
 - [installation-recovery.md](installation-recovery.md) - offline recovery of damaged installations.
-- [tool-rpc.md](tool-rpc.md) - one-shot tool contract and Copilot/Pi extension setup.
+- [tool-rpc.md](tool-rpc.md) - bounded tool RPC, compact query delivery and Copilot/Pi extension setup.
 
 - [hosted-read-configuration.md](hosted-read-configuration.md) - hosted read grants, retention configuration, and reported limitations.
 - [reviews/representation-impact-proof.md](reviews/representation-impact-proof.md) - exact installed representation-impact qualification, retained evidence, and proof limits.

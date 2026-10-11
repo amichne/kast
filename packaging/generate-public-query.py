@@ -496,6 +496,15 @@ def render_tools(authority: dict) -> dict[Path, str]:
         )
         if count != 1:
             raise ValueError(f'{relative}: missing unique generated query delivery')
+        session = (ROOT / 'cli/src/main/js/query-session.mjs').read_text().rstrip()
+        session_block = ('// Generated query session; owned by cli/src/main/js/query-session.mjs.\n' +
+                         session + '\n// End generated query session.')
+        source, count = re.subn(
+            r'// Generated query session; owned by cli/src/main/js/query-session\.mjs\.\n.*?// End generated query session\.',
+            lambda _: session_block, source, flags=re.DOTALL,
+        )
+        if count != 1:
+            raise ValueError(f'{relative}: missing unique generated query session')
         outputs[adapter] = source
     registrations = []
     responses = []

@@ -12,6 +12,7 @@ const TOOL_RPC_FAILURES = [
   "OUT_OF_SCOPE",
   "INVOCATION_FAILED",
   "INVALID_RESULT",
+  "QUERY_SESSION_TRANSITION_REJECTED",
 ] as const;
 // End generated ToolRpcFailure.
 import { spawn } from "node:child_process";
@@ -73,7 +74,7 @@ function encodeQueryDeliveryEnvelope(value) {
 }
 // End generated outer delivery contract.
 /** Portable output delivery. Canonical replies stay opaque, schema-validated RPC documents. */
-const QUERY_DELIVERY_GUIDANCE = " The client owns bounded query output delivery. For query_delivery, combine initial items with ordered pages; a rejection preview is not an extra page. DELIVERED accounts only for output: initial still owns semantic completion, qualifications and rejection. Report terminal delivery blockers honestly. No continuation-management calls are needed for a delivered reply.";
+const QUERY_DELIVERY_GUIDANCE = " The client awaits bounded query output in one invocation. Default text contains exact rows, shared descriptions, coverage, original outcome and delivery blockers. Detailed source/evidence is available through the shown authority-bound READ_RESULT request with verbose:true. Distinct occurrences remain distinct; a retained rejection is still a rejection. Handles may expire or become stale; never rerun a query implicitly.";
 const QUERY_DELIVERY_LIMITS = Object.freeze({ pages: 64, bytes: 262_144 });
 const deliveryObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const deliveryInteger = value => Number.isSafeInteger(value) && value >= 0 && value <= 1_000_000;
@@ -233,7 +234,193 @@ function queryDeliveryFailed(result) {
     ? result.delivery.stop !== 'DELIVERED' || !result.initial || ['rejected', 'rejected_document'].includes(result.initial.type)
     : ['rejected', 'rejected_document'].includes(result.type);
 }
+
+const queryEvidenceFields = Object.freeze([
+  'failures', 'omissions', 'walk_observations', 'reference_observations', 'discovery_observations', 'relation_observations',
+]);
+
+/** Human presentation only. The admitted canonical result remains unchanged in adapter details. */
+function queryPresentation(result, verbose = false) {
+  const canonical = () => JSON.stringify(result);
+  if (verbose) return canonical();
+  const initial = result.type === 'query_delivery' ? result.initial : result;
+  const first = initial?.document;
+  const rejectionEvidence = first?.rejection?.type === 'COMPLETION_UNPROVEN' &&
+    first.rejection.detail?.evidence?.type === 'RETAINED' ? first.rejection.detail.evidence : null;
+  if (!first || !Array.isArray(first.items) && !rejectionEvidence) return canonical();
+  if (!first.question && !rejectionEvidence?.question) return canonical();
+  const replies = result.type === 'query_delivery' ? [initial, ...result.pages] : [initial];
+  const retained = result.delivery?.result ?? rejectionEvidence?.result ??
+    (first.retention?.kind === 'retained' ? first.retention.reference : null);
+  const rows = replies.flatMap(reply => Array.isArray(reply.document?.items) ? reply.document.items : []);
+  // A rejection preview is a copy of the retained prefix. Keep any occurrence not actually delivered.
+  if (rejectionEvidence) {
+    const delivered = new Set(rows.map(row => JSON.stringify(row)));
+    rows.unshift(...rejectionEvidence.preview.filter(row => !delivered.has(JSON.stringify(row))));
+  }
+  const metadata = document => Object.fromEntries(Object.entries(document).filter(([key]) =>
+    !['items', ...queryEvidenceFields, 'operation', 'page_progress', 'evidence_window', 'next_cursor',
+      'continuation', 'invocation', 'retention'].includes(key)));
+  const summary = metadata(first);
+  if (first.invocation) summary.invocation = { accumulated_row_count: first.invocation.accumulated_row_count,
+    stop: first.invocation.stop, preview: { type: first.invocation.preview.type, row_count: first.invocation.preview.row_count } };
+  if (rejectionEvidence) {
+    // Issued preview/recovery control is rendered once below; rejection and coverage remain authoritative.
+    summary.rejection = JSON.parse(JSON.stringify(first.rejection));
+    delete summary.rejection.detail.evidence.preview;
+    delete summary.rejection.detail.evidence.nextQuery;
+  }
+  const descriptions = new Map(), descriptionKeys = new WeakMap();
+  const consider = value => {
+    if (!deliveryObject(value)) return;
+    const key = JSON.stringify(value);
+    descriptionKeys.set(value, key);
+    const entry = descriptions.get(key);
+    if (entry) entry.count++;
+    else descriptions.set(key, { count: 1, value });
+  };
+  for (const row of rows) {
+    if (row.type === 'reference-occurrence') {
+      consider(row.occurrence?.target);
+      consider(row.occurrence?.ownership?.declaration);
+    }
+  }
+  const shared = [];
+  for (const entry of descriptions.values()) if (entry.count > 1) {
+    entry.label = `description${shared.length + 1}`;
+    shared.push(entry);
+  }
+  const describe = value => {
+    const entry = descriptions.get(descriptionKeys.get(value));
+    return entry?.label ? { $description: entry.label } : value;
+  };
+  const rowPresentation = row => {
+    if (row.type === 'exact-symbol') return Object.fromEntries(Object.entries(row).filter(([key, value]) =>
+      !['name', 'location', 'signature', 'source', 'matches', 'connections'].includes(key) ||
+      value != null && (!Array.isArray(value) || value.length > 0)));
+    if (row.type !== 'reference-occurrence') return row;
+    const occurrence = row.occurrence;
+    return { ...row, occurrence: { ...occurrence, target: describe(occurrence.target),
+      ownership: occurrence.ownership?.type === 'declaration-owned'
+        ? { ...occurrence.ownership, declaration: describe(occurrence.ownership.declaration) } : occurrence.ownership } };
+  };
+  const stop = result.delivery?.stop ?? 'DELIVERED';
+  const lines = [`Kast query: ${initial.type}; delivery: ${stop}`, 'Summary:', JSON.stringify(summary)];
+  if (stop !== 'DELIVERED') lines.push('Output is incomplete; retain the semantic outcome and delivery blocker above.');
+  lines.push(`Rows (${rows.length}):`, ...rows.map(row => JSON.stringify(rowPresentation(row))));
+  if (shared.length) lines.push('Shared descriptions:', ...shared.map(entry => JSON.stringify({ [entry.label]: entry.value })));
+  const evidence = Object.fromEntries(queryEvidenceFields.map(field => [field,
+    replies.flatMap(reply => Array.isArray(reply.document?.[field]) ? reply.document[field] : [])]));
+  const window = replies.map(reply => reply.document?.evidence_window).filter(Boolean).at(-1);
+  lines.push('Evidence delivery:', JSON.stringify({ delivered_entries: Object.values(evidence).reduce((sum, entries) => sum + entries.length, 0),
+    ...(window ? { window } : {}) }), 'Evidence:');
+  for (const [field, entries] of Object.entries(evidence)) if (entries.length) {
+    // Finite failures and omissions always stay inline. Detail omission is explicit and recoverable.
+    lines.push(JSON.stringify({ [field]: retained && !['failures', 'omissions'].includes(field)
+      ? { available_entries: entries.length, detail: 'READ_RESULT' } : entries }));
+  }
+  const observations = new Set([JSON.stringify(metadata(first))]);
+  for (const reply of replies.slice(1)) {
+    if (!reply.document) { lines.push('Delivery observation:', JSON.stringify(reply)); continue; }
+    const detail = metadata(reply.document), encoded = JSON.stringify(detail);
+    if (!observations.has(encoded)) {
+      observations.add(encoded);
+      lines.push('Delivery observation:', encoded);
+    }
+  }
+  const question = first.question ?? rejectionEvidence?.question;
+  // Canonical output tags/fields serialize lower-case; public READ_RESULT uses the generated CAPS_CASE enum.
+  const output = question?.output ? { ...question.output, type: question.output.type.toUpperCase(),
+    ...(question.output.fields ? { fields: question.output.fields.map(field => field.toUpperCase()) } : {}) } : null;
+  if (retained) lines.push('Details:', JSON.stringify({ request: { type: 'READ_RESULT', result: retained,
+    cursor: 0, evidence_cursor: 0, ...(output ? { output } : {}) }, verbose: true }),
+  'Details use the original live authority and may expire or become stale. An unavailable handle is not rerun.');
+  else lines.push('Details: no retained handle; all available evidence is inline.');
+  const text = lines.join('\n');
+  // Preserve existing presentation bounds. A projection never buys a larger drain or erases a large failure.
+  return Buffer.byteLength(text, 'utf8') <= QUERY_DELIVERY_LIMITS.bytes
+    ? text : canonical();
+}
 // End generated query delivery.
+
+// Generated query session; owned by cli/src/main/js/query-session.mjs.
+/** Invocation-owned sequential query transport. No child survives a logical query. */
+function createQuerySession(command, cwd, policy, signal, spawnProcess, environment) {
+  let child, pending, timer, closed = false, stopped = null, closing = false;
+  let record = Buffer.alloc(0), responseBytes = 0;
+  const childEnvironment = { ...environment };
+  delete childEnvironment.KAST_TOOL_RPC_COMMAND;
+  delete childEnvironment.KAST_EVALUATION_DEADLINE_MS;
+  let finishExit;
+  const exit = new Promise(resolve => { finishExit = resolve; });
+  const failure = reason => new Error(`Kast query session outcome=${reason}; submission may be ambiguous, do not resubmit RUN`);
+  const stop = reason => {
+    stopped ??= reason;
+    if (pending) { const current = pending; pending = null;
+      current.policy.onResponseBytes?.(responseBytes); responseBytes = 0; current.reject(failure(stopped)); }
+    child?.kill('SIGKILL');
+    // Release owned pipes even if another process inherited a descriptor; close must not await that peer.
+    child?.stdin.destroy?.(); child?.stdout.destroy?.(); child?.stderr.destroy?.();
+  };
+  const cleanup = () => { clearTimeout(timer); signal?.removeEventListener('abort', abort); };
+  const abort = () => stop('CANCELLED');
+  const launch = () => {
+    if (signal?.aborted) throw failure('CANCELLED');
+    child = spawnProcess(command, ['query-session'], { cwd, env: childEnvironment, stdio: ['pipe', 'pipe', 'pipe'] });
+    timer = setTimeout(() => stop('TIMEOUT'), policy.callTimeoutMillis);
+    signal?.addEventListener('abort', abort, { once: true });
+    child.stderr.on('data', () => {}); // No arbitrary process diagnostics or source payload retained.
+    child.stdin.on('error', () => stop('INPUT_FAILED'));
+    child.on('error', () => { stop('LAUNCH_FAILED'); cleanup(); finishExit(); });
+    child.on('close', code => {
+      closed = true;
+      if (pending) stop(stopped ?? (code === 0 ? 'MISSING_REPLY' : 'NONZERO_EXIT'));
+      cleanup(); finishExit();
+    });
+    child.stdout.on('data', chunk => {
+      if (stopped || closing) return;
+      if (!pending) return stop('UNEXPECTED_REPLY');
+      responseBytes += chunk.length;
+      if (responseBytes > pending.policy.maxResponseBytes) return stop('OUTPUT_OVERFLOW');
+      record = Buffer.concat([record, chunk]);
+      const boundary = record.indexOf(10);
+      if (boundary === -1) return;
+      // Exactly one reply per admitted request; never buffer unsolicited records.
+      if (boundary !== record.length - 1) return stop('UNEXPECTED_REPLY');
+      let reply;
+      try { reply = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(record.subarray(0, boundary))); }
+      catch { return stop('INVALID_REPLY'); }
+      if (!isToolResult(reply)) return stop('INVALID_RESULT');
+      const current = pending;
+      pending = null; record = Buffer.alloc(0);
+      current.policy.onResponseBytes?.(responseBytes); responseBytes = 0;
+      current.resolve(reply);
+    });
+  };
+  return {
+    invoke(arguments_, deliveryPolicy) {
+      if (closed || stopped || closing) return Promise.reject(failure(stopped ?? 'CLOSED'));
+      if (pending) return Promise.reject(failure('CONCURRENT_REQUEST'));
+      try { if (!child) launch(); } catch (error) { return Promise.reject(error); }
+      return new Promise((resolve, reject) => {
+        pending = { resolve, reject, policy: deliveryPolicy };
+        child.stdin.write(JSON.stringify(arguments_) + '\n');
+      });
+    },
+    async close() {
+      closing = true;
+      if (!child) return;
+      if (!closed) {
+        if (pending || stopped || signal?.aborted) stop(stopped ?? 'CANCELLED');
+        else child.stdin.end();
+        // Child cleanup has a finite ownership bound inside the original session deadline.
+        const reap = setTimeout(() => stop('CLOSE_TIMEOUT'), Math.min(1000, policy.callTimeoutMillis));
+        try { await exit; } finally { clearTimeout(reap); cleanup(); }
+      }
+    },
+  };
+}
+// End generated query session.
 
 const installRoot = join(homedir(), ".local", "share", "kast");
 const command = process.env.KAST_TOOL_RPC_COMMAND ||
@@ -332,13 +519,14 @@ export default async function (pi: ExtensionAPI) {
   if (!existsSync(command)) throw new Error("Kast tool RPC command is not installed");
   const reply = await run(["catalog"], "", process.cwd()) as {
     type?: string;
-    catalog?: { schemaVersion?: number; callTimeoutMillis?: number; maxResponseBytes?: number; tools?: Tool[] };
+    catalog?: { schemaVersion?: number; callTimeoutMillis?: number; maxResponseBytes?: number; querySession?: boolean; tools?: Tool[] };
   };
   if (reply?.type !== "catalog" || reply.catalog?.schemaVersion !== PUBLIC_TOOL_CONTRACT_VERSION ||
       !Number.isSafeInteger(reply.catalog.callTimeoutMillis) || !Number.isSafeInteger(reply.catalog.maxResponseBytes) ||
       (reply.catalog.callTimeoutMillis ?? 0) < 1 || (reply.catalog.maxResponseBytes ?? 0) < 1 ||
+      (reply.catalog.querySession !== undefined && typeof reply.catalog.querySession !== "boolean") ||
       !Array.isArray(reply.catalog.tools)) throw new Error(`Kast catalog admission failed: expected=${PUBLIC_TOOL_CONTRACT_VERSION} observed=${Number.isSafeInteger(reply?.catalog?.schemaVersion) ? reply.catalog.schemaVersion : "invalid"} executable=${command}`);
-  const policy = reply.catalog as {callTimeoutMillis: number; maxResponseBytes: number; tools: Tool[]};
+  const policy = reply.catalog as {callTimeoutMillis: number; maxResponseBytes: number; querySession?: boolean; tools: Tool[]};
   const names = new Set<string>();
   for (const tool of reply.catalog.tools) {
     if (tool == null || typeof tool.name !== "string" || !/^[a-z][a-z0-9_]{0,63}$/.test(tool.name) || names.has(tool.name) ||
@@ -363,11 +551,16 @@ export default async function (pi: ExtensionAPI) {
         const workspace = ctx.cwd;
         const invoke = (arguments_: Record<string, unknown>, deliveryPolicy = policy) =>
           run(["call", tool.name], JSON.stringify(arguments_), workspace, deliveryPolicy, signal);
-        const result = tool.name === "query_symbols"
-          ? await awaitQueryDelivery(params, invoke, policy, signal)
-          : await invoke(params);
+        const session = tool.name === "query_symbols" && policy.querySession === true
+          ? createQuerySession(command, workspace, policy, signal, spawn, process.env) : null;
+        let result;
+        try {
+          result = tool.name === "query_symbols"
+            ? await awaitQueryDelivery(params, session?.invoke ?? invoke, policy, signal)
+            : await invoke(params);
+        } finally { await session?.close(); }
         return {
-          content: [{ type: "text", text: JSON.stringify(result) }],
+          content: [{ type: "text", text: tool.name === "query_symbols" ? queryPresentation(result, params.verbose === true) : JSON.stringify(result) }],
           details: result,
           isError: queryDeliveryFailed(result),
         };
