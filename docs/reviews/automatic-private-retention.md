@@ -66,7 +66,7 @@ Completion rejection may advertise progress through `originalCoverage` even
 when retained evidence is unavailable. Publication now follows actual page
 dependencies, so that progress receives the same final commit/discard boundary.
 
-The focused fixtures cover fifteen cases through the production protocol,
+The focused fixtures cover sixteen cases through the production protocol,
 runner and store. A reused public checkpoint exposes an entire public replay
 chain; ancestors replay unchanged while its final successor is running and
 after automatic completion. A private Ready checkpoint cannot be reissued or
@@ -80,6 +80,13 @@ preserve those exact owners and charges. A suspended private producer survives
 another invocation's cleanup; retirement prevents further production and keeps
 only its legitimate 256-byte revocation receipt. Invalid final projection,
 publication rejection and PREPARED discard release their staged state.
+
+A same-token Running negative control exposed an additional transfer condition.
+Before the Ready-only guard, final rollback removed an independently acquired
+producer's 408,352-byte allocation and reservation. The guard now preserves that
+exact charge, rejects concurrent acquisition as InUse, and permits the peer's
+rollback followed by immutable public replay. Existing claim/dependency pins
+continue to govern release; final transfer cannot take over an active producer.
 
 | Pure boundary | Before | Working source |
 | --- | ---: | ---: |

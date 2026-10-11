@@ -60,9 +60,11 @@ internal fun MutableMap<QueryStateKey, QueryStateEntry>.finishInvocation(
 ) {
     val keys = filterValues { it.invocationOwner === invocation }.keys.toList()
     val retainedKey = retained?.key()
-    val checkpoint = this[retainedKey] as? QueryStateEntry.Checkpoint
-    if (retainedKey != null && checkpoint?.privateInvocation === invocation && owner != null) {
-        this[retainedKey] = checkpoint.copy(owner = owner, privateInvocation = null)
+    if (retainedKey != null && owner != null) {
+        val checkpoint = this[retainedKey] as? QueryStateEntry.Checkpoint
+        if (checkpoint?.execution == QueryCheckpointExecution.Ready && checkpoint.privateInvocation === invocation) {
+            this[retainedKey] = checkpoint.copy(owner = owner, privateInvocation = null)
+        }
     }
     for (key in keys) retention.discardInvocation(key, invocation)
     // Any externally pinned child remains charged and public; cleanup cannot invalidate another owner.
