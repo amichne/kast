@@ -19,7 +19,8 @@ internal class AutomaticPrivateReplayTest : AutomaticSymbolQueryCase() {
         val retained = store.retentionMeasurements()
         assertEquals(2, retained.retainedEntries.value)
         println(
-            "PrivateReplayBaseline(entries=${retained.retainedEntries.value}, bytes=${retained.retainedBytes.value}, calls=${script.calls})"
+            "PrivateReplayBaseline(entries=${retained.retainedEntries.value}, " +
+                "bytes=${retained.retainedBytes.value}, calls=${script.calls})"
         )
         script.assertDrained()
     }
