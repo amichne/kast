@@ -97,6 +97,28 @@ class QueryStateStore(
         return QueryPublicationCommit.Committed
     }
 
+    /** Only new children of a private attempt inherit its lifetime; reused public checkpoints keep public replay. */
+    @Synchronized
+    internal fun commitInvocationPublication(
+        invocation: QueryInvocationPublication,
+        claim: QueryExecutionClaim,
+        page: QueryPublishedPage,
+    ): QueryPublicationCommit =
+        entries.commitInvocation(invocation, claim, retention) {
+            commitPublication(claim, page)
+        }
+
+    /** Transfer the one escaping checkpoint to public replay and end every unexposed private lifetime. */
+    @Synchronized
+    internal fun finishInvocation(
+        invocation: QueryInvocationPublication,
+        retained: QueryExecutionContinuation.Pipeline?,
+        publicationOwner: QueryExecutionClaim? = null,
+    ) {
+        val owner = publicationOwner?.takeIf(::owns)
+        entries.finishInvocation(invocation, retained, owner, retention)
+    }
+
     /** Cancellation and rejected publication revoke only resources allocated by this attempt. */
     @Synchronized
     fun releasePublication(claim: QueryExecutionClaim) {
@@ -197,11 +219,14 @@ class QueryStateStore(
     fun restoreCheckpoint(
         token: QueryExecutionContinuation.Pipeline,
         lease: SemanticReadAuthority,
+        publicationOwner: QueryExecutionClaim? = null,
     ): QueryCheckpointRestoration {
         expire()
         val entry = entries[Key.Checkpoint(token)] as? Entry.Checkpoint ?: return QueryCheckpointRestoration.Unavailable
-        if (Key.Checkpoint(token) !in entries.liveDependencyClosure(clock(), ttlMillis))
+        val staged = publicationOwner != null && owns(publicationOwner) && entry.owner === publicationOwner
+        if (Key.Checkpoint(token) !in entries.liveDependencyClosure(clock(), ttlMillis) && !staged)
             return QueryCheckpointRestoration.Unavailable
+        if (!entry.withinLifetime(clock(), ttlMillis)) return QueryCheckpointRestoration.Unavailable
         if (entry.execution != CheckpointExecution.Ready) return QueryCheckpointRestoration.Unavailable
         if (entry.lease != lease) return QueryCheckpointRestoration.Mismatch
         return QueryCheckpointRestoration.Restored(entry.request, entry.checkpoint)
