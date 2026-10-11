@@ -43,9 +43,12 @@ owner controls. Accounted bytes are not heap or latency measurements.
 
 Tracking PR: [#1005](https://github.com/amichne/kast/pull/1005). The initial
 characterization head `95e14c5b8c6801a867127f2595fbb12086fd2168` passed the
-full pre-push product gate. The source fix subsequently passed the owning
-modules, direct hosted consumer and contract/architecture/knowledge guards.
-Publication still requires the full product gate on its committed head.
+full pre-push product gate. Source head
+`313df82feec75bd5879e7481dc8a81ed23bd6459` includes main's independently
+merged presentation change `cf58079b92623cd6ddf84e32234cf84b60ec87fc` and
+passed the full 573-task product gate. Its owning-module test reports contain
+285 protocol, 179 service, 82 contract and 316 hosted tests, with zero failures
+or skips. The parent still owns independent review and CI qualification.
 
 The working source adds an invocation identity capability to private checkpoint
 publication. Only newly allocated children of a private attempt inherit it.
@@ -82,7 +85,7 @@ publication rejection and PREPARED discard release their staged state.
 | --- | ---: | ---: |
 | Three-page semantic calls | 3 | 3 |
 | Store entries after inline completion | 2 | 0 |
-| Store charge after matched three-page replay | 684,336 | 0 |
+| Store charge after matched three-page replay (full gate) | 684,312 | 0 |
 | Dense known minimum | 393 | 633 |
 | Dense facts before rejecting execution | 19,710,623 | 31,362,371 |
 | Dense issued state at that boundary | 12,467,838 | 989,406 |
@@ -97,6 +100,16 @@ is the matched deterministic lifetime comparison. The new dense run performs
 observation, and still rejects legitimate finite demand. Native Pi minimum194
 remains unqualified by this different pure fixture. Inventory sharing, detached
 copy charging and graph transaction rollback were not changed.
+
+The table records the full-gate observation. The focused selector measured
+684,336 bytes for the public three-page control. Existing
+`QueryRetainedEvidence.retainedStorageBytes` estimates rows via `toString()`;
+`SymbolDescription` includes a `SymbolSelector` with default identity text.
+That text's length may vary between JVM executions. The stable proof is two
+public replay allocations versus zero private replay allocations, the same
+three semantic calls and preserved compiler identity. Absolute conservative
+byte observations are not a deterministic heap measurement; this source option
+does not change that existing estimate.
 
 The named zero-owner check first failed with expected zero versus two retained
 entries, then passed through the production protocol/runner/store path. The
