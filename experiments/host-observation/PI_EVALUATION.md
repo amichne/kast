@@ -473,10 +473,19 @@ native `TERMINAL_INCOMPLETE` separately from client `BYTE_LIMIT`.
 Evidence-read qualification preserves the
 original minimum and limitations, adds `static-model-unproven`, and uses
 `upstream-incomplete` progress, as `completionEvidenceRead` specifies. Retained
-selection may additionally add `result-limit-reached`, as
+selection may additionally add `result-limit-reached` while a row cursor remains, as
 `RetainedQueryPresentation.pageCoverage` specifies. Qualification does not copy
 the original producer progress reason. Unknown enums, missing limitations and
 contradictory qualifications remain blocked.
+
+The [partial-prefix invariant inventory](PARTIAL_PREFIX_INVARIANTS.md) records
+native derivation owners, checks and historical facts that a prefix cannot
+reconstruct. Recovery action, optional exact-name seed, incomplete completion
+cause, non-value accounting, output field mask, evidence partition order and
+advancing client successors are checked before the one-answer exception.
+A required Kotlin/Node fixture uses actual retained presentation, canonical
+recovery projection and the shared client's unchanged byte cap in five supported
+combinations. Shape and consistency do not prove native origin or current liveness.
 
 `queryDeliveries` records stop, physical rpc_count and UTF-8 byte counts separately
 from logical model proposals and semantic replies. A failed RPC can increase

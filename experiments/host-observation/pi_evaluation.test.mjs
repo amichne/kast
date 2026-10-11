@@ -10,6 +10,7 @@ import { summarizeGuard } from './pi_evaluation_records.mjs';
 import { driveSession, runOwnedWorker } from './pi_evaluation_controller.mjs';
 import { validatePlan } from './run_pi_evaluation.mjs';
 import { isolatedSettings } from './pi_evaluation_worker.mjs';
+import { admittedQueryDocument } from './pi_evaluation_question.mjs';
 
 const config=()=>({name:'negative',expectedSemanticCalls:1,inputTokenCeiling:20000,declarationByteCeiling:80000,work:{reportedTokens:30000,requests:2,tools:2,outputReserve:2000},delivery:{reportedTokens:25000,requests:1,outputReserve:2000},maximumToolTextBytes:1048576});
 const providerPayload=()=>({model:'gpt-6.1-sol',reasoning:{effort:'high'},tools:[],instructions:'unchanged synthetic instructions',input:[]});
@@ -434,6 +435,114 @@ function partialPrefix() {
   envelope.delivery.stop='BYTE_LIMIT';envelope.delivery.rpc_count=3;
   return envelope;
 }
+function denyPartialPrefix(envelope,label) {
+  const before=JSON.stringify(envelope);
+  assert.ok([envelope.initial,...envelope.pages].every(reply=>admittedQueryDocument(reply.document)),`${label}: counterexample must be schema-valid`);
+  for(const saved of [false,true]) {
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true}),decoded=decodeEnvelope(resultEvent(envelope).content);
+    assert.equal((saved?policy.restoreReceivedResult(decoded,10000):policy.toolResult(decoded,10000)).allow,false,`${label}, saved=${saved}`);
+    assert.equal(policy.report().partialEvidence,null);assert.equal(policy.report().providerRequests,0);
+    assert.equal(policy.beforeProvider(pinned).allow,false);assert.equal(policy.report().nativeOutcome,'REJECTED');
+  }
+  assert.equal(JSON.stringify(envelope),before);
+}
+function exactNamePrefix() {
+  const envelope=partialPrefix(),proof=envelope.initial.document.rejection.detail.evidence;
+  proof.question.from={type:'symbols',match:{type:'name',text:'function0',matching:'exact-name'},
+    scope:{sourceSets:['main'],directory:null,packageName:null},declarationKinds:['function']};
+  envelope.pages[0].document.question=structuredClone(proof.question);
+  proof.seedQuery={request:{type:'RUN',source:{type:'SYMBOL_REFS',symbolRefs:[proof.preview[0].ref]},output:structuredClone(proof.nextQuery.request.output)}};
+  return envelope;
+}
+test('completion rejection requires its producer report failure recovery action',()=>{
+  for(const action of ['restart_read','correct_request','adjust_budget_or_scope','wait_for_workspace']) {
+    const envelope=partialPrefix();envelope.initial.document.next_action=action;denyPartialPrefix(envelope,action);
+  }
+});
+test('retained seed suggestions agree with exact discovery question preview and output',()=>{
+  const valid=exactNamePrefix(),proof=valid.initial.document.rejection.detail.evidence;
+  for(const seed of [proof.seedQuery,null,undefined]) {
+    const envelope=structuredClone(valid);envelope.initial.document.rejection.detail.evidence.seedQuery=seed;
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,true);
+  }
+  for(const [label,change] of [
+    ['different seed',p=>p.seedQuery.request.source.symbolRefs=['exact:v2:other']],
+    ['different output',p=>p.seedQuery.request.output.fields=['LOCATION']],
+    ['location question',p=>p.question.from={type:'location',file:'Fixture.kt',offset:0}],
+    ['fuzzy question',p=>p.question.from.match.matching='fuzzy'],
+    ['nonempty steps',p=>p.question.steps=[{type:'distinct'}]],
+    ['empty preview',p=>p.preview=[]],
+  ]) {
+    const envelope=exactNamePrefix(),p=envelope.initial.document.rejection.detail.evidence;change(p);
+    envelope.pages[0].document.question=structuredClone(p.question);denyPartialPrefix(envelope,label);
+  }
+});
+test('only a row successor permits adding a retained page result limitation',()=>{
+  const invalid=partialPrefix();delete invalid.pages[0].document.next_cursor;
+  invalid.pages[0].document.qualification.limitations.unshift('result-limit-reached');denyPartialPrefix(invalid,'evidence-only successor');
+  const inherited=structuredClone(invalid),detail=inherited.initial.document.rejection.detail;
+  detail.originalCoverage.limitations.unshift('RESULT_LIMIT_REACHED');
+  inherited.pages[0].document.interpretation.originalCoverage=structuredClone(detail.originalCoverage);
+  const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(inherited).content),10000).allow,true,'An inherited source limitation survives row exhaustion');
+});
+test('supported partial outputs require the producer non impact accounting',()=>{
+  const envelope=partialPrefix();envelope.pages[0].document.impact_accounting={type:'EVIDENCE_ONLY',pagePathCount:999};
+  denyPartialPrefix(envelope,'accounting for non-value output');
+});
+test('qualified supported retained coverage fixes coupled completion causes to incomplete execution',()=>{
+  for(const type of ['ITEM_FAILURE','OMITTED_EVIDENCE']) {
+    const envelope=partialPrefix();envelope.initial.document.rejection.detail.cause={type};
+    envelope.pages[0].document.interpretation.cause={type};denyPartialPrefix(envelope,type);
+  }
+});
+test('real delivery rejects nonadvancing successors before a relabeled saved prefix can admit them',async()=>{
+  const awaitDelivery=runInNewContext(readFileSync(new URL('../../cli/src/main/js/query-delivery.mjs',import.meta.url),'utf8')+';awaitQueryDelivery',{Buffer});
+  const envelope=partialPrefix(),stalled=structuredClone(envelope.pages[0]);
+  stalled.document.items=[];stalled.document.page_progress.rows=0;
+  const replies=[envelope.initial,...envelope.pages,stalled],calls=[];
+  const actual=await awaitDelivery({request:{type:'RUN'}},async request=>{
+    calls.push(structuredClone(request));assert.ok(replies.length,'No call follows the stalled reply');return replies.shift();
+  },{callTimeoutMillis:1000},undefined,()=>0);
+  assert.equal(replies.length,0);assert.equal(calls.length,3);assert.equal(actual.delivery.stop,'NON_ADVANCING');
+  assert.equal(actual.pages.length,1);assert.equal(calls[2].request.cursor,3);assert.equal(calls[2].request.evidence_cursor,0);
+  const relabeled=JSON.parse(JSON.stringify(actual));relabeled.pages.push(stalled);relabeled.delivery.stop='BYTE_LIMIT';
+  denyPartialPrefix(relabeled,'nonadvancing retained page');
+  stalled.document.failures=[{type:'exact-reference',ref:'exact:v2:fixture-0',reason:'compiler-identity-unavailable'}];
+  stalled.document.page_progress.failures=1;stalled.document.evidence_window.end=1;
+  const advancing=structuredClone(envelope);advancing.pages.push(stalled);
+  const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+  assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(advancing).content),10000).allow,true);
+  assert.deepEqual(policy.report().partialEvidence.evidence,{received:1,total:3});
+});
+test('retained prefix inventory binds projected symbol fields and excludes invocation metadata',()=>{
+  for(const [label,change] of [
+    ['unrequested name',e=>{e.initial.document.rejection.detail.evidence.question.output.fields=[];e.initial.document.rejection.detail.evidence.nextQuery.request.output.fields=[];e.pages[0].document.question.output.fields=[];}],
+    ['unrequested location',e=>{e.pages[0].document.items[0].location={file:'Fixture.kt',range:{startInclusive:0,endExclusive:1}};e.initial.document.rejection.detail.evidence.preview=[structuredClone(e.pages[0].document.items[0])];}],
+    ['invocation',e=>{e.pages[0].document.invocation=structuredClone(deliveryCases.complete.result.initial.document.invocation);}],
+  ]) {
+    const envelope=partialPrefix();change(envelope);denyPartialPrefix(envelope,label);
+  }
+});
+test('retained evidence families cannot regress across a contiguous prefix',()=>{
+  const envelope=partialPrefix(),first=envelope.pages[0].document,last=structuredClone(envelope.pages[0]);
+  const reference=JSON.parse(readFileSync(new URL('../../cli/src/test/resources/query-presentation-native.json',import.meta.url),'utf8')).cases.occurrences.reply.document.items[0].occurrence;
+  first.reference_observations=[reference];first.page_progress.reference_evidence=1;first.evidence_window.end=1;
+  last.document.items=[];last.document.page_progress.rows=0;last.document.next_cursor=null;
+  last.document.failures=[{type:'exact-reference',ref:'exact:v2:fixture-0',reason:'compiler-identity-unavailable'}];
+  last.document.page_progress.failures=1;last.document.evidence_window={type:'MORE',start:1,end:2,total:3};
+  envelope.pages.push(last);denyPartialPrefix(envelope,'reference evidence before earlier failure family');
+});
+test('retained row exhaustion cannot revive or traverse an intermediate terminal page',()=>{
+  for(const terminal of [false,true]) {
+    const envelope=partialPrefix(),first=envelope.pages[0].document,last=structuredClone(envelope.pages[0]);
+    first.next_cursor=null;if(terminal)first.evidence_window={type:'FINAL',start:0,end:0,total:0};
+    last.document.items=[];last.document.page_progress.rows=0;last.document.next_cursor=3;
+    last.document.evidence_window=structuredClone(first.evidence_window);
+    envelope.pages.push(last);denyPartialPrefix(envelope,`terminal=${terminal}`);
+  }
+});
 test('terminal FINAL pages cannot be relabeled as a byte-limited prefix',async()=>{
   const awaitDelivery=runInNewContext(readFileSync(new URL('../../cli/src/main/js/query-delivery.mjs',import.meta.url),'utf8')+';awaitQueryDelivery',{Buffer});
   for(const omitted of [false,true]) {
@@ -695,6 +804,8 @@ test('canonical omitted or null final cursors permit only later evidence-only pa
     coverage.knownMinimum=3;first.qualification.knownMinimum=3;first.interpretation.originalCoverage=structuredClone(coverage);
     if(omitted)delete first.next_cursor;else first.next_cursor=null;
     const last=structuredClone(envelope.pages[0]);last.document.items=[];last.document.page_progress.rows=0;
+    last.document.failures=[{type:'exact-reference',ref:'exact:v2:fixture-0',reason:'compiler-identity-unavailable'}];
+    last.document.page_progress.failures=1;last.document.evidence_window.end=1;
     envelope.pages.push(last);
     const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
     assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,true);

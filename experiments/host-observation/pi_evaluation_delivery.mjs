@@ -32,7 +32,8 @@ export function partialEvidenceSummary(envelope) {
     envelope.pages.some(reply=>reply.type!=='qualified'||reply.document?.status!=='qualified'||!admittedQueryDocument(reply.document)))return null;
   const rejection=envelope.initial.document.rejection,detail=rejection.detail,proof=detail?.evidence,coverage=detail?.originalCoverage;
   const integer=n=>Number.isSafeInteger(n)&&n>=0;
-  if(rejection.type!=='COMPLETION_UNPROVEN'||detail?.policyProgress?.type!=='EVIDENCE_ONLY'||proof?.type!=='RETAINED'||
+  if(rejection.type!=='COMPLETION_UNPROVEN'||envelope.initial.document.next_action!=='report_failure'||
+    detail?.cause?.type!=='INCOMPLETE_EXECUTION'||detail?.policyProgress?.type!=='EVIDENCE_ONLY'||proof?.type!=='RETAINED'||
     proof.result!==envelope.delivery.result||proof.nextQuery.request.result!==proof.result||(proof.nextQuery.request.cursor??0)!==0||
     coverage?.type!=='QUALIFIED'||coverage.knownMinimum===0||coverage.progress.type!=='terminal_incomplete')return null;
   const question=proof.question,live=envelope.pages[0].document?.live;
@@ -43,6 +44,14 @@ export function partialEvidenceSummary(envelope) {
   const readOutput=output.type==='symbols'?{type:'SYMBOLS',fields:output.fields.map(field=>field.toUpperCase())}:
     output.type==='occurrences'?{type:'OCCURRENCES'}:null;
   if(!readOutput||!isDeepStrictEqual(proof.nextQuery.request.output,readOutput))return null;
+  // completionSeedQuery may suggest one exact preview seed only for an exact
+  // name discovery with no operators and symbol output. It grants no RUN here.
+  if(proof.seedQuery!=null) {
+    const from=question.from,seed=proof.seedQuery.request,first=proof.preview.find(row=>row.type==='exact-symbol');
+    if(output.type!=='symbols'||from.type!=='symbols'||from.match.type!=='name'||from.match.matching!=='exact-name'||
+      question.steps.length||!first||!isDeepStrictEqual(seed.source.symbolRefs,[first.ref])||
+      !isDeepStrictEqual(seed.output,readOutput))return null;
+  }
   const evidenceFields=['failures','omissions','walk_observations','reference_observations','discovery_observations','relation_observations'];
   // completionEvidenceRead preserves source limitations, adds STATIC_MODEL_UNPROVEN,
   // and translates evidence-read progress to upstream-incomplete. Retained page
@@ -52,7 +61,7 @@ export function partialEvidenceSummary(envelope) {
   const expectedQualification=extraResultLimit=>({knownMinimum:coverage.knownMinimum,
     limitations:limitations.filter(value=>coverage.limitations.includes(value)||value==='STATIC_MODEL_UNPROVEN'||extraResultLimit&&value==='RESULT_LIMIT_REACHED').map(value=>value.toLowerCase().replaceAll('_','-')),
     progress:{type:'terminal_incomplete',reason:'upstream-incomplete'}});
-  const rows=new Set(),receivedPrefix=[];let rowCursor=0,evidenceCursor=0,evidenceTotal,rowsEnded=false;
+  const rows=new Set(),receivedPrefix=[];let rowCursor=0,evidenceCursor=0,evidenceTotal,rowsEnded=false,lastEvidenceFamily=-1;
   const rowIdentity=row=>{
     if(row.row_id!=null)return JSON.stringify(['issued-row',row.row_id]);
     if(row.type==='exact-symbol')return JSON.stringify(['exact-symbol',row.ref]);
@@ -64,6 +73,7 @@ export function partialEvidenceSummary(envelope) {
   };
   const addRow=row=>{
     if(row.type!==(output.type==='symbols'?'exact-symbol':'reference-occurrence'))return false;
+    if(output.type==='symbols'&&['name','location','signature','source'].some(field=>!output.fields.includes(field)&&row[field]!=null))return false;
     if(row.type==='reference-occurrence') {
       const reference=row.occurrence,range=reference.occurrence.range;
       if(reference.target.selector!==row.ref||range.endExclusive<range.startInclusive)return false;
@@ -86,10 +96,10 @@ export function partialEvidenceSummary(envelope) {
       relation_evidence:relations.length,scope_exclusions:sum(walk,'scope_exclusions')+sum(relations,'scope_exclusions'),
       callback_observations:callbacks.length,callable_observations:sum(walk,'callable_observations')+sum(relations,'callable_observations'),
       excluded_callbacks:callbacks.filter(item=>item.named_policy.type==='EXCLUDED').length,omissions:d.omissions.length,failures:d.failures.length};
-    if(d.coverage.exhaustive!==false||
+    if(d.coverage.exhaustive!==false||d.invocation!=null||!isDeepStrictEqual(d.impact_accounting,{type:'NOT_APPLICABLE'})||
       !isDeepStrictEqual(d.page_progress,progress)||d.terminal_reason!==d.qualification.progress.reason||d.continuation!=null||
       rowsEnded&&d.items.length>0||
-      ![expectedQualification(false),expectedQualification(true)].some(expected=>isDeepStrictEqual(d.qualification,expected))||
+      ![expectedQualification(false),expectedQualification(d.next_cursor!=null)].some(expected=>isDeepStrictEqual(d.qualification,expected))||
       d.interpretation?.type!=='POLICY_REJECTED_EVIDENCE'||d.interpretation.model!==detail.model||
       !isDeepStrictEqual(d.interpretation.cause,detail.cause)||!isDeepStrictEqual(d.interpretation.originalCoverage,coverage)||
       !isDeepStrictEqual(d.question,question)||!isDeepStrictEqual(d.live,live)||
@@ -98,16 +108,20 @@ export function partialEvidenceSummary(envelope) {
       !w||!integer(w.start)||!integer(w.end)||!integer(w.total)||w.start!==evidenceCursor||w.end<w.start||w.end>w.total||
       (evidenceTotal!==undefined&&w.total!==evidenceTotal)||w.type!==(w.end<w.total?'MORE':'FINAL')||
       evidenceFields.reduce((sum,field)=>sum+d[field].length,0)!==w.end-w.start)return null;
-    rowCursor+=d.items.length;
+    // QueryEvidencePresentation partitions these six families in this order.
+    // A later page cannot move back to a family already passed in the prefix.
+    for(const [family,field] of evidenceFields.entries())if(d[field].length) {
+      if(family<lastEvidenceFamily)return null;lastEvidenceFamily=family;
+    }
     const next=d.next_cursor??null;
+    // awaitQueryDelivery appends only advancing pages with a remaining successor
+    // on a BYTE_LIMIT prefix; a terminal intermediate page cannot be traversed.
+    if((next===null&&w.type==='FINAL')||(!d.items.length&&w.end===evidenceCursor)||rowsEnded&&next!==null)return null;
+    rowCursor+=d.items.length;
     if(next!==null&&next!==rowCursor)return null;
     if(next===null)rowsEnded=true;
     evidenceCursor=w.end;evidenceTotal=w.total;
   }
-  // awaitQueryDelivery finishes DELIVERED when a received page has no output
-  // successor. BYTE_LIMIT can retain this prefix only while a successor remains.
-  const last=envelope.pages.at(-1).document;
-  if(last.next_cursor==null&&last.evidence_window.type==='FINAL')return null;
   // The producer preview is the ordered prefix at cursor zero, with the same
   // issued identities. A conflicting copy must not be unioned into another row.
   if(proof.preview.length>receivedPrefix.length||!proof.preview.every((row,index)=>isDeepStrictEqual(row,receivedPrefix[index])))return null;

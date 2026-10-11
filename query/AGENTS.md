@@ -64,6 +64,7 @@ Models and executes multi-stage semantic queries while retaining scope, budgets,
 ## Entry Points
 
 - Gradle projects: `:query:contract`, `:query:service`, `:query:protocol`.
+- [PartialPrefixProducerTest.kt](protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PartialPrefixProducerTest.kt) - pure retained-page and canonical recovery projection passed to the shared JS delivery client; no semantic execution or native host.
 
 ## Navigation Hints
 
