@@ -117,6 +117,11 @@ enum class IntellijReadCounter {
     CALLBACK_BODY_SCANS,
     CALLBACK_BODY_SCANS_COMPLETED,
     CALLBACK_BODY_SCANS_INCOMPLETE,
+    /** Formal inventory and supplier qualifications are separate from cache eligibility and graph admission. */
+    CALLBACK_FORMAL_COVERAGE_COMPLETE,
+    CALLBACK_FORMAL_COVERAGE_INCOMPLETE,
+    CALLBACK_SUPPLIER_COVERAGE_COMPLETE,
+    CALLBACK_SUPPLIER_COVERAGE_INCOMPLETE,
     /** Exact formal inventories and forwarding edges retained during a bounded fixed-point read. */
     CALLBACK_FORWARDING_FORMALS,
     CALLBACK_FORWARDING_EDGES,

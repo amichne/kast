@@ -52,7 +52,7 @@ class HostedCallbackSupplierDiagnosticsTest {
                 .getValue("counters")
                 .jsonArray
                 .map { it.jsonObject }
-                .filter { it.getValue("counter").jsonPrimitive.content.startsWith("CALLBACK_SUPPLIER_") }
+                .filter { value -> counters.any { it.name == value.getValue("counter").jsonPrimitive.content } }
         assertEquals(5, encoded.size)
         encoded.forEachIndexed { index, value ->
             assertEquals(setOf("counter", "contributor", "count"), value.keys)
