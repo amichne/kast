@@ -1,22 +1,29 @@
 # Public canonical fixture provenance
 
-`query-question.schema.json` and `query-qualification.schema.json` are exported
+`query-question.schema.json`, `query-qualification.schema.json` and
+`query-result.schema.json` are exported
 offline by `PiQuestionSchema.java`. It calls the existing `generatedRequestSchema`
 owner with `QueryQuestionDocument.serializer()` and
-`CanonicalQueryCliDocuments.qualificationSerializer`. Export used the owned
-`88e35f3` product-gate classpath, without services, IDEA, credentials or inference.
-`PiQuestionSchemaParityTest` compares both committed schemas against the current
-serializer owners. Gradle tracks the two schema files as test inputs.
+`CanonicalQueryCliDocuments.qualificationSerializer`. The result schema reuses
+`installedSemanticResultSchema(QUERY_RUN)`, which composes the actual complete,
+qualified and rejected serializers with existing local output definitions.
+Export used the owned `06f0abdc` product-gate classpath, without services, IDEA,
+credentials or inference. `PiQuestionSchemaParityTest` compares all three
+committed schemas against the current owners. Gradle tracks them as test inputs.
 
 ```sh
 java -cp "$KAST_RELEASE/lib/*" experiments/host-observation/PiQuestionSchema.java \
-  /tmp/query-question.schema.json /tmp/query-qualification.schema.json
+  /tmp/query-question.schema.json /tmp/query-qualification.schema.json \
+  /tmp/query-result.schema.json
 ```
 
 The experimental partial-prefix policy uses the generated question constraints
-and qualification vocabulary. Its finite progress/limitation transformation
+and the complete rejection/page DTO constraints, including rows, nested evidence,
+recovery, budget and authority. Its finite progress/limitation transformation
 follows `completionEvidenceRead` and `RetainedQueryPresentation.pageCoverage`.
-The independent Python JSON Schema oracle checks the pure Node shape admission.
+The independent Python JSON Schema oracle checks the pure Node shape admission
+against authoritative documents and recursive type/unknown-property mutations.
+These offline assets never become provider tool declarations or response bytes.
 
 The three `*-document.json` files are public/synthetic query document DTOs,
 serialized offline by the installed release's **actual Kotlin serializers** with

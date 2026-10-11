@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.QueryQuestionDocument
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import java.nio.file.Files
@@ -19,6 +20,10 @@ class PiQuestionSchemaParityTest {
         assertEquals(
             generatedRequestSchema(CanonicalQueryCliDocuments.qualificationSerializer),
             Json.parseToJsonElement(Files.readString(fixtures.resolve("query-qualification.schema.json"))),
+        )
+        assertEquals(
+            installedSemanticResultSchema(CanonicalOperation.QUERY_RUN),
+            Json.parseToJsonElement(Files.readString(fixtures.resolve("query-result.schema.json"))),
         )
     }
 }

@@ -391,7 +391,7 @@ leaves an intact retained `COMPLETION_UNPROVEN` rejection and a consistent,
 nonempty prefix of exact-symbol or reference-occurrence rows. All received pages
 must retain the original question, result identity, coverage interpretation and
 live observation. Row cursors and evidence windows must be contiguous. Unknown
-rows, conflicting row identities, missing authority, stale/expired rejection,
+rows, repeated or conflicting row identities, missing authority, stale/expired rejection,
 retention loss, cancellation and other client stops remain blocked. The false
 policy keeps its existing rejection behavior.
 
@@ -401,8 +401,10 @@ question, observed live authority, result identity and one-answer limit. Row
 identity preserves distinct occurrences even when they share a target selector.
 The retained preview must match the ordered received prefix, including issued
 row IDs; conflicting or uncovered previews fail this narrow opt-in. Legacy rows
-without IDs use exact symbol identity or the occurrence's target, meaning, site,
+with absent or null IDs use exact symbol identity or the occurrence's target, meaning, site,
 context, ownership and provenance. Descriptions never invent another identity.
+Any repeated received identity is rejected, even when its description matches.
+Only the preview is a permitted copy of already received positions.
 Canonical documents, all qualifications, failure entries and byte/RPC counts
 remain unchanged. A native minimum is not an exhaustive total.
 
@@ -418,7 +420,7 @@ external row/evidence verification remains false until separately established.
 
 Decision: constrain this exception to byte-limited rejection evidence. Other
 partial outcome families and resource stops require separate counterexamples.
-The harness changes no production client, generated schema, native retention,
+The harness changes no production client, generated schema owner, native retention,
 semantic budget, transport limit, adapter presentation or installation.
 
 Launch-free evidence from the sealed dense envelope, inspected without replaying
@@ -447,12 +449,25 @@ Validation starts with the named failing policy case, then exercises production
 policy and guard callbacks for false-policy controls, malformed/stale evidence,
 scope/authority changes, duplicate identities, multi-page evidence counts, first
 terminal result preservation, complete-body byte rejection and the one-request
-limit. The seven existing Node suites pass 155 tests without inference or IDEA.
+limit. The existing Node suites run without inference or IDEA.
 Independent review and installed combined qualification remain separate gates.
 
-Review hardening admits the question against the existing canonical serializer's
-generated schema. JVM parity prevents schema drift; an independent JSON Schema
-oracle checks the pure Node admission. Evidence-read qualification preserves the
+Review hardening admits the complete rejection and every qualified page against
+the existing `installedSemanticResultSchema(QUERY_RUN)`. Its actual canonical
+serializers and local output definitions cover rows, nested evidence, budgets,
+recovery and authority. No handwritten row or rejection schema is added.
+JVM parity prevents snapshot drift; an independent JSON Schema oracle compares
+the pure Node admission on canonical documents and recursive type/unknown-field
+mutations. Existing finite schema depth and provider bounds remain unchanged.
+Schema admission does not restore compiler or current liveness authority.
+
+Cross-field checks bind recovery output to the original question, row families to
+that output, and full page progress to the returned evidence groups. Terminal
+reason must match evidence-read qualification; a terminal page cannot issue a
+continuation or return new rows after its final row cursor. Canonical omitted or
+null row IDs/cursors retain their owning DTO meaning. The synthetic prefix uses
+native `TERMINAL_INCOMPLETE` separately from client `BYTE_LIMIT`.
+Evidence-read qualification preserves the
 original minimum and limitations, adds `static-model-unproven`, and uses
 `upstream-incomplete` progress, as `completionEvidenceRead` specifies. Retained
 selection may additionally add `result-limit-reached`, as

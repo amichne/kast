@@ -420,7 +420,7 @@ function partialPrefix() {
   detail.originalCoverage.knownMinimum=194;
   detail.originalCoverage.limitations=['BYTE_LIMIT_REACHED'];
   detail.originalCoverage.progress.reason='checkpoint-capacity-exceeded';
-  detail.stop='BYTE_LIMIT';
+  detail.stop='TERMINAL_INCOMPLETE';
   const page=envelope.pages[0].document;
   page.items=page.items.slice(0,3);
   for(const key of ['failures','omissions','walk_observations','reference_observations','discovery_observations','relation_observations'])page[key]=[];
@@ -512,9 +512,11 @@ test('partial-prefix admission rejects lost stale malformed and mismatched scope
 test('partial prefix preserves contiguous evidence counts across multiple pages',()=>{
   const envelope=partialPrefix(),first=envelope.pages[0].document,last=structuredClone(envelope.pages[0]);
   first.failures=[{type:'exact-reference',ref:'exact:v2:fixture-0',reason:'compiler-identity-unavailable'}];
+  first.page_progress.failures=1;
   first.evidence_window.end=1;
   last.document.items=[];last.document.page_progress.rows=0;
   last.document.failures=structuredClone(first.failures);
+  last.document.page_progress.failures=1;
   last.document.evidence_window={type:'MORE',start:1,end:2,total:3};
   envelope.pages.push(last);
   const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
@@ -550,6 +552,7 @@ test('missing row IDs use symbol or occurrence identity and conflicting preview 
   assert.equal(new Set(page.items.map(row=>row.ref)).size,1,'Same target can have distinct source occurrences');
   page.question=structuredClone(native.question);page.live=structuredClone(native.live);
   proof.question=structuredClone(native.question);proof.preview=[structuredClone(page.items[0])];
+  proof.nextQuery.request.output={type:'OCCURRENCES'};
   const valid=makePolicy({...config(),evidenceOnlyDelivery:true});
   assert.equal(valid.restoreReceivedResult(decodeEnvelope(resultEvent(references).content),10000).allow,true);
   assert.equal(valid.report().partialEvidence.receivedRows,3);
@@ -584,6 +587,136 @@ test('retained preview must match the ordered received prefix including its issu
     const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
     assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,false);
     assert.equal(policy.report().partialEvidence,null);
+  }
+});
+test('matching previews cannot admit noncanonical received row DTOs',()=>{
+  for(const [label,change] of [
+    ['boolean name',row=>row.name=true],
+    ['unknown symbol kind',row=>row.kind='UNKNOWN'],
+    ['malformed location',row=>row.location={file:true,range:{startInclusive:0,endExclusive:1}}],
+    ['malformed signature',row=>row.signature={type:'UNKNOWN'}],
+    ['malformed connection',row=>row.connections=[true]],
+    ['malformed source',row=>row.source={text:true,startLine:1,endLine:2}],
+    ['malformed text matches',row=>row.matches=[true]],
+    ['unknown row property',row=>row.extra='unknown'],
+  ]) {
+    const envelope=partialPrefix();change(envelope.pages[0].document.items[0]);
+    envelope.initial.document.rejection.detail.evidence.preview=[structuredClone(envelope.pages[0].document.items[0])];
+    for(const saved of [false,true]) {
+      const policy=makePolicy({...config(),evidenceOnlyDelivery:true}),decoded=decodeEnvelope(resultEvent(envelope).content);
+      assert.equal((saved?policy.restoreReceivedResult(decoded,10000):policy.toolResult(decoded,10000)).allow,false,label);
+      assert.equal(policy.report().partialEvidence,null,label);
+      assert.equal(policy.beforeProvider(pinned).allow,false,label);
+    }
+  }
+});
+test('received positions must not repeat issued row identity within or across pages',()=>{
+  for(const acrossPages of [false,true]) {
+    const envelope=partialPrefix(),first=envelope.pages[0].document;
+    for(const [index,row] of first.items.entries())row.row_id=`result-row:v1:00000000-0000-4000-8000-00000000000${index+1}`;
+    const duplicate=structuredClone(first.items[0]);
+    if(acrossPages) {
+      const last=structuredClone(envelope.pages[0]);last.document.items=[duplicate];
+      last.document.page_progress.rows=1;last.document.next_cursor=4;envelope.pages.push(last);
+    } else first.items[1]=duplicate;
+    envelope.initial.document.rejection.detail.evidence.preview=structuredClone(first.items);
+    for(const saved of [false,true]) {
+      const policy=makePolicy({...config(),evidenceOnlyDelivery:true}),decoded=decodeEnvelope(resultEvent(envelope).content);
+      assert.equal((saved?policy.restoreReceivedResult(decoded,10000):policy.toolResult(decoded,10000)).allow,false,`acrossPages=${acrossPages}`);
+      assert.equal(policy.report().partialEvidence,null);
+    }
+  }
+});
+test('legacy optional nullable IDs preserve distinct rows and reject repeated semantic identities',()=>{
+  for(const nullable of [false,true]) {
+    const envelope=partialPrefix(),rows=envelope.pages[0].document.items;
+    for(const row of rows)if(nullable)row.row_id=null;else delete row.row_id;
+    envelope.initial.document.rejection.detail.evidence.preview=[structuredClone(rows[0])];
+    const valid=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(valid.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,true);
+    assert.equal(valid.report().partialEvidence.receivedRows,3);
+    rows[1]=structuredClone(rows[0]);
+    envelope.initial.document.rejection.detail.evidence.preview=structuredClone(rows);
+    const duplicate=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(duplicate.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,false);
+  }
+});
+test('canonical omitted or null final cursors permit only later evidence-only pages',()=>{
+  for(const omitted of [false,true]) {
+    const envelope=partialPrefix(),first=envelope.pages[0].document,coverage=envelope.initial.document.rejection.detail.originalCoverage;
+    coverage.knownMinimum=3;first.qualification.knownMinimum=3;first.interpretation.originalCoverage=structuredClone(coverage);
+    if(omitted)delete first.next_cursor;else first.next_cursor=null;
+    const last=structuredClone(envelope.pages[0]);last.document.items=[];last.document.page_progress.rows=0;
+    envelope.pages.push(last);
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,true);
+    assert.equal(policy.report().partialEvidence.receivedRows,3);
+  }
+});
+test('matching reference previews require canonical target ownership occurrence and evidence DTOs',()=>{
+  const native=JSON.parse(readFileSync(new URL('../../cli/src/test/resources/query-presentation-native.json',import.meta.url),'utf8')).cases.occurrences.reply.document;
+  for(const [label,change] of [
+    ['target name',r=>r.target.name=true],['target kind',r=>r.target.kind='UNKNOWN'],
+    ['compiler signature',r=>r.target.compilerEvidence.signature=true],
+    ['ownership variant',r=>r.ownership={type:'UNKNOWN'}],
+    ['occurrence file',r=>r.occurrence.file=true],['context',r=>r.context='UNKNOWN'],
+    ['meaning',r=>r.meaning='UNKNOWN'],['provenance',r=>r.provenance='UNKNOWN'],['coverage',r=>r.coverage=true],
+  ]) {
+    const envelope=partialPrefix(),page=envelope.pages[0].document,proof=envelope.initial.document.rejection.detail.evidence;
+    page.items=structuredClone(native.items.slice(0,3));page.question=structuredClone(native.question);page.live=structuredClone(native.live);
+    proof.question=structuredClone(native.question);proof.nextQuery.request.output={type:'OCCURRENCES'};
+    change(page.items[0].occurrence);proof.preview=[structuredClone(page.items[0])];
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,false,label);
+    assert.equal(policy.report().partialEvidence,null,label);
+  }
+});
+test('partial interpretation admits the complete rejection and page DTO boundary',()=>{
+  for(const [label,change] of [
+    ['rejection operation',e=>e.initial.document.operation='UNKNOWN'],
+    ['rejection recovery',e=>e.initial.document.next_action={type:'UNKNOWN'}],
+    ['rejection model',e=>{e.initial.document.rejection.detail.model='UNKNOWN';e.pages[0].document.interpretation.model='UNKNOWN';}],
+    ['rejection cause',e=>{e.initial.document.rejection.detail.cause={type:'UNKNOWN'};e.pages[0].document.interpretation.cause={type:'UNKNOWN'};}],
+    ['rejection stop',e=>e.initial.document.rejection.detail.stop='UNKNOWN'],
+    ['original failure',e=>e.initial.document.rejection.detail.originalFailure=true],
+    ['next read output',e=>e.initial.document.rejection.detail.evidence.nextQuery.request.output=true],
+    ['seed query',e=>e.initial.document.rejection.detail.evidence.seedQuery={request:{type:'RUN'}}],
+    ['page operation',e=>e.pages[0].document.operation='UNKNOWN'],
+    ['impact accounting',e=>e.pages[0].document.impact_accounting={type:'UNKNOWN'}],
+    ['page progress type',e=>e.pages[0].document.page_progress.omissions=true],
+    ['evidence item type',e=>{e.pages[0].document.failures=[true];e.pages[0].document.evidence_window.end=1;}],
+    ['budget DTO',e=>e.pages[0].document.execution_budget=true],
+    ['authority unknown field',e=>e.pages[0].document.live.extra='unknown'],
+    ['retention unknown field',e=>e.pages[0].document.retention.extra='unknown'],
+  ]) {
+    const envelope=partialPrefix();change(envelope);
+    for(const saved of [false,true]) {
+      const policy=makePolicy({...config(),evidenceOnlyDelivery:true}),decoded=decodeEnvelope(resultEvent(envelope).content);
+      assert.equal((saved?policy.restoreReceivedResult(decoded,10000):policy.toolResult(decoded,10000)).allow,false,label);
+      assert.equal(policy.report().partialEvidence,null,label);
+    }
+  }
+});
+test('schema-valid partial DTOs still require consistent output progress and cursor facts',()=>{
+  for(const [label,change] of [
+    ['contradictory terminal reason',e=>e.pages[0].document.terminal_reason='no-progress'],
+    ['terminal evidence with a continuation',e=>e.pages[0].document.continuation='query-output:v1:unissued'],
+    ['contradictory failure count',e=>e.pages[0].document.page_progress.failures=1],
+    ['contradictory recovery output',e=>e.initial.document.rejection.detail.evidence.nextQuery.request.output.fields=['SIGNATURE']],
+    ['question output disagrees with rows',e=>{
+      const proof=e.initial.document.rejection.detail.evidence;proof.question.output={type:'occurrences'};
+      e.pages[0].document.question=structuredClone(proof.question);proof.nextQuery.request.output={type:'OCCURRENCES'};
+    }],
+    ['rows after final row cursor',e=>{
+      const first=e.pages[0].document,last=structuredClone(e.pages[0]);first.next_cursor=null;
+      last.document.items=[structuredClone(first.items[0])];last.document.items[0].ref='exact:v2:fixture-next';
+      last.document.page_progress.rows=1;last.document.next_cursor=4;e.pages.push(last);
+    }],
+  ]) {
+    const envelope=partialPrefix();change(envelope);
+    const policy=makePolicy({...config(),evidenceOnlyDelivery:true});
+    assert.equal(policy.restoreReceivedResult(decodeEnvelope(resultEvent(envelope).content),10000).allow,false,label);
+    assert.equal(policy.report().partialEvidence,null,label);
   }
 });
 test('internally consistent malformed questions and contradictory evidence qualification cannot enable partial delivery',()=>{

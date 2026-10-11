@@ -47,6 +47,7 @@ tasks.named<Test>("test") {
         .files(
             rootProject.file("experiments/host-observation/pi-fixtures/query-question.schema.json"),
             rootProject.file("experiments/host-observation/pi-fixtures/query-qualification.schema.json"),
+            rootProject.file("experiments/host-observation/pi-fixtures/query-result.schema.json"),
         )
         .withPathSensitivity(PathSensitivity.RELATIVE)
     useJUnitPlatform {
