@@ -67,6 +67,11 @@ export function summarizeGuard(value) {
         decision:decision(value.decision)};
       case 'received_context': return {stage:'RECEIVED_CONTEXT',contextSha256:digest(value.contextSha256),
         toolResultSha256:digest(value.toolResultSha256),newUserMessages:count(value.newUserMessages)};
+      case 'final_projection': return {stage:'FINAL_PROJECTION',canonicalSha256:digest(value.canonicalSha256),
+        callIdSha256:digest(value.callIdSha256),providerCallIdSha256:digest(value.providerCallIdSha256),originalTextBytes:count(value.originalTextBytes),
+        projectedTextBytes:count(value.projectedTextBytes),projectedTextSha256:digest(value.projectedTextSha256),
+        failure:value.failure===null?null:choice(value.failure,['SOURCE_UNAVAILABLE','SOURCE_IDENTITY_MISMATCH',
+          'SOURCE_LIMIT','UNSUPPORTED_FAMILY','PRESENTATION_LIMIT','PROVIDER_IDENTITY_UNAVAILABLE','PROVIDER_IDENTITY_MISMATCH']),decision:decision(value.decision)};
       default: return invalid('GUARD');
     }
   } catch { return invalid('GUARD'); }

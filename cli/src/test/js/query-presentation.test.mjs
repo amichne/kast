@@ -54,6 +54,34 @@ const projected = result => {
   return { text, ...parsed(text) };
 };
 
+test('explicit final view retains all received observation evidence inline without a live handle dependency',()=>{
+  for(const name of ['retainedEvidence','occurrences']) {
+    const reply=native.cases[name].reply;
+    const result=createQueryDeliveryEnvelope(reply,[],{stop:'BYTE_LIMIT',rpc_count:1,request_bytes:0,
+      response_bytes:Buffer.byteLength(JSON.stringify(reply)),result:reply.document.retention.reference});
+    const before=JSON.stringify(result),text=queryPresentation(result,false,true),view=parsed(text);
+    assert.equal(JSON.stringify(result),before);
+    assert.equal(queryPresentation(result,true,true),before,'Explicit final view never changes verbose serialization');
+    for(const field of ['failures','omissions','walk_observations','reference_observations','discovery_observations','relation_observations'])
+      if(reply.document[field]?.length)assert.deepEqual(view.evidence[field],reply.document[field]);
+    assert.deepEqual(view.rows.map(row=>expand(row,view.shared)),reply.document.items);
+    assert.equal(text.includes('"available_entries"'),false);
+    assert.equal(text.includes('"request":{"type":"READ_RESULT"'),false);
+    assert.ok(text.includes(reply.document.retention.reference));
+    assert.ok(text.includes('current usability is unverified'));
+    assert.equal(view.details,undefined);
+  }
+});
+
+test('explicit final view preserves a known unavailable handle and its received failure',()=>{
+  const result=captured.cases.expired.result,before=JSON.stringify(result),text=queryPresentation(result,false,true);
+  assert.equal(JSON.stringify(result),before);
+  assert.ok(text.includes('"reason":"result-unavailable"'));
+  assert.ok(text.includes('canonical detail authority was rejected; unavailable'));
+  assert.equal(text.includes('current usability is unverified'),false);
+  assert.equal(text.includes('"request":{"type":"READ_RESULT"'),false);
+});
+
 for (const [name, entry] of Object.entries(native.cases)) test(`pinned ${name} fixture is an intact canonical document`, () => {
   const digest = createHash('sha256').update(JSON.stringify(entry.reply.document)).digest('hex');
   assert.equal(digest, nativeDocumentHashes[name]);

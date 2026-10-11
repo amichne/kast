@@ -34,7 +34,7 @@ export async function main(args) {
   const planFile=path.resolve(args[1]);
   const plan=validatePlan(JSON.parse(fs.readFileSync(planFile,'utf8')));
   if(args[0]==='--plan') {
-    console.log(JSON.stringify({mode:'NO_INFERENCE',cases:plan.cases.map(c=>({name:c.name,work:c.work,delivery:c.delivery,bounds:new CasePolicy({...c,wallSeconds:Math.min(c.wallSeconds,c.mode==='received-result'?60:120),maximumProviderRequests:Math.min(c.maximumProviderRequests??(c.mode==='received-result'?1:3),c.mode==='received-result'?1:3)}).report().bounds,requestAdmissionMethod:'EXACT_SERIALIZED_REQUEST_BYTES_AND_FINITE_CALLS',tokenAccountingQualification:'POST_RESPONSE_THRESHOLD_ONE_RESPONSE_MAY_OVERSHOOT',inputCalibrationReferences:(c.inputCalibrations??[]).length}))},null,2));return;
+    console.log(JSON.stringify({mode:'NO_INFERENCE',cases:plan.cases.map(c=>({name:c.name,finalPresentation:c.finalPresentation??'canonical',work:c.work,delivery:c.delivery,bounds:new CasePolicy({...c,wallSeconds:Math.min(c.wallSeconds,c.mode==='received-result'?60:120),maximumProviderRequests:Math.min(c.maximumProviderRequests??(c.mode==='received-result'?1:3),c.mode==='received-result'?1:3)}).report().bounds,requestAdmissionMethod:'EXACT_SERIALIZED_REQUEST_BYTES_AND_FINITE_CALLS',tokenAccountingQualification:'POST_RESPONSE_THRESHOLD_ONE_RESPONSE_MAY_OVERSHOOT',inputCalibrationReferences:(c.inputCalibrations??[]).length}))},null,2));return;
   }
   // Existing pilot logs are never overwritten. Each execution owns a new root.
   fs.mkdirSync(plan.outputRoot,{mode:0o700});

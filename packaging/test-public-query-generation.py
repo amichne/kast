@@ -52,6 +52,14 @@ class PublicQueryGenerationTest(unittest.TestCase):
             self.assertIn(owner, source)
             self.assertEqual(1, source.count("function createQuerySession("))
 
+    def test_importable_presentation_reuses_the_embedded_owner_exactly(self):
+        generated = generator.render_tools(self.authority)
+        owner = generated[ROOT / "cli/src/main/js/query-delivery.mjs"].rstrip()
+        companion = generated[ROOT / "cli/src/main/js/query-presentation.mjs"]
+        self.assertEqual(
+            '// Generated importable presentation; owned by cli/src/main/js/query-delivery.mjs.\n' +
+            owner + '\nexport { queryPresentation };\n', companion)
+
     def test_word_discovery_is_a_closed_scoped_source(self):
         source = self.authority["$defs"]["TextSource"]
         self.assertEqual(["SEARCH_TEXT"], source["properties"]["type"]["enum"])

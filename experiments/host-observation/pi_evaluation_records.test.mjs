@@ -53,7 +53,7 @@ test('guard allowlist preserves finite admissions and rejects arbitrary names, I
     decision:allowedDecision});
   assert.deepEqual(summarizeGuard({type:'provider_response_bytes',bytes:65537,decision:{allow:false,reason:'HARNESS_BUDGET_LIMIT',phase:'STOPPED'},content:secret}),{stage:'PROVIDER_RESPONSE_BYTES',bytes:65537,decision:{allow:false,reason:'HARNESS_BUDGET_LIMIT',phase:'STOPPED'}});
   assert.deepEqual(summarizeGuard({type:'provider_response_bytes',bytes:64,decision:{allow:true,reason:'RESPONSE_WITHIN_BYTES',phase:'WORK'},content:secret}),{stage:'PROVIDER_RESPONSE_BYTES',bytes:64,decision:{allow:true,reason:'RESPONSE_WITHIN_BYTES',phase:'WORK'}});
-  const types=['session_settings','model_tool_proposal','native_reply','model_response','provider_response_bytes','received_context',secret];
+  const types=['session_settings','model_tool_proposal','native_reply','model_response','provider_response_bytes','received_context','final_projection',secret];
   for(const type of types) {
     const value=summarizeGuard({type,provider:secret,model:secret,thinking:secret,toolNames:[secret],
       callId:secret,sessionId:secret,toolName:secret,requestType:secret,content:secret,envelopeType:secret,
@@ -61,6 +61,19 @@ test('guard allowlist preserves finite admissions and rejects arbitrary names, I
       contextSha256:secret,toolResultSha256:secret});
     assert.equal(JSON.stringify(value).includes(secret),false);
   }
+});
+
+test('final projection records keep bounded source binding and byte facts without raw identity or contents',()=>{
+  const secret='PRIVATE-CALL-SOURCE';
+  const observed={type:'final_projection',canonicalSha256:'a'.repeat(64),callIdSha256:'b'.repeat(64),providerCallIdSha256:'d'.repeat(64),
+    projectedTextSha256:'c'.repeat(64),originalTextBytes:227363,projectedTextBytes:134723,failure:null,
+    decision:{allow:true,reason:'ADMITTED',phase:'DELIVERY'},callId:secret,providerCallId:secret,canonical:secret,text:secret};
+  assert.deepEqual(summarizeGuard(observed),{stage:'FINAL_PROJECTION',canonicalSha256:'a'.repeat(64),
+    callIdSha256:'b'.repeat(64),providerCallIdSha256:'d'.repeat(64),projectedTextSha256:'c'.repeat(64),originalTextBytes:227363,
+    projectedTextBytes:134723,failure:null,decision:observed.decision});
+  const rejected=summarizeGuard({...observed,failure:secret,canonicalSha256:secret,originalTextBytes:Infinity});
+  assert.equal(rejected.failure,'OBSERVATION_INVALID');assert.equal(rejected.canonicalSha256,null);
+  assert.equal(rejected.originalTextBytes,null);assert.equal(JSON.stringify(rejected).includes(secret),false);
 });
 
 test('summary counts and hashes are bounded typed fields; hostile objects cannot trigger raw error persistence',()=>{

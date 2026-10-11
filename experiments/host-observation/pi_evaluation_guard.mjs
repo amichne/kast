@@ -1,10 +1,12 @@
 import { decodeEnvelope, READ_TOOLS, Outcome } from './pi_evaluation_policy.mjs';
 
 import { inspectProviderPayload } from './pi_evaluation_payload.mjs';
+import { finalQueryPresentation, finalProviderIdentity } from './pi_evaluation_presentation.mjs';
 // The same exported factory is loaded by the real SDK worker and callback tests.
 // It observes provider settings/byte sizes; it never logs payloads or credentials.
-export function evaluationGuard(policy,record) {
+export function evaluationGuard(policy,record,projectProviderInput) {
   return pi=>{
+    let finalProjection;
     const observe=(value,ctx)=>{
       const result=record(value);
       if(result?.type==='failure') {policy.stop(Outcome.INVALID);ctx.abort();return result;}
@@ -14,6 +16,18 @@ export function evaluationGuard(policy,record) {
       pi.setActiveTools([...READ_TOOLS]);
       const recorded=observe({type:'session_settings',provider:ctx.model?.provider,model:ctx.model?.id,thinking:pi.getThinkingLevel(),toolNames:pi.getActiveTools()},ctx);
     });
+    pi.on('context',(event,ctx)=>{
+      finalProjection=undefined;
+      if(policy.config.finalPresentation!=='compact'||!policy.isFinalAnswerDelivery())return;
+      const view=finalQueryPresentation(event.messages,policy.finalQuery,policy.config.maximumToolTextBytes);
+      const identity=view.type==='failure'?view:finalProviderIdentity(view,ctx.model,projectProviderInput);
+      const admission=identity.type==='failure'?policy.stop(Outcome.INVALID):{allow:true,reason:'ADMITTED',phase:policy.phase};
+      const recorded=observe({type:'final_projection',...(view.observation??{}),...(identity.observation??{}),failure:identity.failure??null,decision:admission},ctx);
+      if(recorded.type==='failure')return;
+      if(!admission.allow) {ctx.abort();return;}
+      finalProjection={text:view.text,callId:identity.callId};
+      return {messages:view.messages};
+    });
     pi.on('before_provider_request',(event,ctx)=>{
       const payload={...event.payload,max_output_tokens:policy.providerOutputCap()};
       // Pi reconstructs declarations from transcript history. Final answers have
@@ -21,6 +35,11 @@ export function evaluationGuard(policy,record) {
       if(policy.isFinalAnswerDelivery())delete payload.tools;
       const instruction=policy.deliveryInstruction();
       if(instruction&&typeof payload.instructions==='string')payload.instructions+='\n'+instruction;
+      if(policy.config.finalPresentation==='compact'&&policy.isFinalAnswerDelivery()) {
+        const selected=finalProjection&&Array.isArray(payload.input)?payload.input.filter(item=>
+          item?.type==='function_call_output'&&item.call_id===finalProjection.callId):[];
+        if(selected.length!==1||selected[0].output!==finalProjection.text)policy.stop(Outcome.INVALID);
+      }
       const inspected=inspectProviderPayload(payload,policy.maximumProviderPayloadBytes);
       const observation={provider:ctx.model?.provider,model:ctx.model?.id,thinking:pi.getThinkingLevel(),payload:inspected};
       const admission=policy.beforeProvider(observation);

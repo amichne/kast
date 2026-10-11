@@ -37,7 +37,8 @@ export function isolatedSettings(SettingsManager) {
 
 // Shared real-SDK construction boundary. A no-inference SDK check can supply
 // synthetic in-memory auth/catalog storage; it cannot replace these rules.
-export async function createEvaluationSession({sdk,plan,directory,modelRuntime,policy,record,manager}) {
+export async function createEvaluationSession({sdk,plan,directory,modelRuntime,policy,record,manager,projectProviderInput}) {
+  if(policy.config.finalPresentation==='compact'&&typeof projectProviderInput!=='function')return failure('FINAL_PROVIDER_PROJECTION','PROJECTION_UNAVAILABLE');
   const {createAgentSession,SettingsManager,DefaultResourceLoader}=sdk;
   let observationFailure;
   const observeRecord=value=>{
@@ -51,7 +52,7 @@ export async function createEvaluationSession({sdk,plan,directory,modelRuntime,p
   if(failed(found)) return found;
   const model=found.value;
   if(!model || model.id!=='gpt-6.1-sol' || model.provider!=='openai-codex')return failure('MODEL_LOOKUP','MODEL_UNAVAILABLE');
-  const resources=effect('RESOURCE_CREATE',()=>new DefaultResourceLoader({cwd:plan.workspaceRoot,agentDir:directory,settingsManager,noExtensions:true,additionalExtensionPaths:[plan.kastAdapter],extensionFactories:[evaluationGuard(policy,observeRecord)],noSkills:true,noPromptTemplates:true,noThemes:true,noContextFiles:true}));
+  const resources=effect('RESOURCE_CREATE',()=>new DefaultResourceLoader({cwd:plan.workspaceRoot,agentDir:directory,settingsManager,noExtensions:true,additionalExtensionPaths:[plan.kastAdapter],extensionFactories:[evaluationGuard(policy,observeRecord,projectProviderInput)],noSkills:true,noPromptTemplates:true,noThemes:true,noContextFiles:true}));
   if(failed(resources)) return resources;
   const loader=resources.value;
   const loaded=await asyncEffect('RESOURCE_LOAD',()=>loader.reload());if(failed(loaded)) return loaded;
@@ -119,10 +120,13 @@ export async function worker(planFile,index) {
       const loaded=await asyncEffect('SDK_LOAD',async()=>{
         const load=relative=>import(pathToFileURL(path.join(plan.piPackageRoot,relative)).href);
         return {sdk:await load('dist/index.js'),auth:await load('dist/core/auth-storage.js'),
-          transport:await import(pathToFileURL(path.join(plan.piPackageRoot,'../pi-ai/dist/api/openai-codex-responses.js')).href)};
+          transport:await import(pathToFileURL(path.join(plan.piPackageRoot,'../pi-ai/dist/api/openai-codex-responses.js')).href),
+          responses:item.finalPresentation==='compact'?await load('../pi-ai/dist/api/openai-responses-shared.js'):undefined};
       });
       if(failed(loaded))return loaded;
-      const {sdk,auth,transport}=loaded.value;
+      const {sdk,auth,transport,responses}=loaded.value;
+      const projectProviderInput=responses?(model,messages)=>responses.convertResponsesMessages(model,{messages:sdk.convertToLlm(messages)},
+        new Set(['openai-codex']),{includeSystemPrompt:false}):undefined;
       const runtime=await asyncEffect('MODEL_RUNTIME',()=>sdk.ModelRuntime.create({credentials:new auth.ReadOnlyAuthStorage(plan.authPath),modelsPath:null,modelsStorePath:plan.modelsStorePath,allowModelNetwork:false}));
       if(failed(runtime))return runtime;
       stage='REPLAY_ARCHIVE';
@@ -147,11 +151,11 @@ export async function worker(planFile,index) {
           const receivedSignal=record({type:'received_context',contextSha256:sha(JSON.stringify(context.value)),toolResultSha256:sha(JSON.stringify(received.message)),newUserMessages:0});
           if(failed(receivedSignal))return receivedSignal;
           // Continuation uses its separate declared delivery allowance.
-          const restored=effect('RECEIVED_POLICY',()=>policy.restoreReceivedResult(decodeEnvelope(received.message.content,received.message.toolName,received.message.details),received.message.content.reduce((sum,block)=>sum+(block.type==='text'?Buffer.byteLength(block.text):0),0)));
+          const restored=effect('RECEIVED_POLICY',()=>policy.restoreReceivedResult(decodeEnvelope(received.message.content,received.message.toolName,received.message.details),received.message.content.reduce((sum,block)=>sum+(block.type==='text'?Buffer.byteLength(block.text):0),0),received.message.toolCallId));
           if(failed(restored))return restored;
           if(!restored.value.allow)return failure('RECEIVED_POLICY','RECEIVED_RESULT_REJECTED');
         }
-        const created=await createEvaluationSession({sdk,plan,directory,modelRuntime:runtime.value,policy,record,manager});
+        const created=await createEvaluationSession({sdk,plan,directory,modelRuntime:runtime.value,policy,record,manager,projectProviderInput});
         if(failed(created))return created;
         const {session,settingsManager}=created;
         let sessionResult;
