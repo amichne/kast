@@ -12,7 +12,7 @@
       "health_check"
     ]
   },
-  "adapterSha256": "0a94c048c920c44425f817fe8e1f02db47df1f0150fa352d48d843d98c336975",
+  "adapterSha256": "a58156ca10a9937fffd4b8a434e348fb2a48ee24b475c0d296399090c5e3ad55",
   "identity": {
     "pi-coding-agent": {
       "version": "1.0.2",
@@ -37,8 +37,19 @@
       }
     }
   },
+  "savedProjection": {
+    "storedContextBytes": 275135,
+    "providerInputBytes": 86427,
+    "providerContextBytes": 12287,
+    "declarationInputBytes": 74139,
+    "requiredEstimate": 34287,
+    "budget": 64000,
+    "outputTokenCap": 2000,
+    "newUserMessages": 0,
+    "semanticToolCalls": 0
+  },
   "sse": {
-    "admittedFetchCalls": 1,
+    "admittedFetchCalls": 2,
     "deniedSecondFetchCalls": 0,
     "socketSends": 0
   },

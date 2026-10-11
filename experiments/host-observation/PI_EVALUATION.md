@@ -32,15 +32,20 @@ or GREEN. The Python wrapper includes these checks in the existing Gradle gate.
   Work cannot debit another case or its separate final interpretation allowance.
 - Provider preflight proves the exact `openai-codex/gpt-6.1-sol` selection and
   effective `high` effort, and records serialized declaration, instruction,
-  context and whole-request byte sizes. Admission takes the greater of the
-  initial input calibration plus conservative context growth and the latest
-  measured input (including cached input) plus subsequent growth, then adds the
-  output reserve. These are estimates; bytes are not tokenizer counts.
+  context and whole-request byte sizes. Admission uses the actual SDK projection.
+  Saved message metadata does not enter that projection. Restored `additional_tools`
+  declarations count against the declaration bound and its input calibration.
+  They do not also count as context growth. Admission takes the greater of the
+  declared calibration plus projected context bytes and the latest measured input
+  plus projected growth. It then adds the output reserve. These are estimates;
+  bytes are not tokenizer counts.
 - Finalized API usage keeps uncached input, cached input read/write, generated
   output and reasoning subset separate. Total usage includes cached input on
   each request. Reasoning is not an extra additive category. There is no claim
-  of a provider-enforced output/token cap; an in-flight overshoot is explicitly
-  `HARNESS_BUDGET_LIMIT` and stops further requests.
+  that synthetic transport proves the backend accepts an output cap. The awaited
+  provider hook sets `max_output_tokens` to at most 2,000, within the declared
+  reserve. The SDK check asserts this field at the actual SSE fetch boundary.
+  Usage beyond that reserve is `HARNESS_BUDGET_LIMIT` and stops further requests.
 - A semantic rejection aborts at `tool_result`. The isolated SSE transport
   checks the abort before fetch; abort intent alone is not transport evidence.
   The default outcome is `INTENTIONAL_REJECTION`. Optional, explicitly declared
@@ -112,8 +117,9 @@ persists that branch without replacing older entries. `session.agent.continue()`
 consumes it without a new task, trimming, summary, reissued query or coaching.
 The original session entries remain intact. DELIVERY blocks all new tool calls.
 
-`test_pi_evaluation_mutations.py` kills fifteen changes to the real rules: removing
-the terminal gate, sharing the final budget, dropping cached-input accounting,
+`test_pi_evaluation_mutations.py` kills seventeen changes to the real rules: removing
+the provider output cap, charging inline declarations twice, removing the
+terminal gate, sharing the final budget, dropping cached-input accounting,
 allowing semantic work in DELIVERY, weakening exact evidence-read admission,
 adding a coaching prompt, rejecting valid qualified replies, losing original
 coverage, ignoring measured input, selecting unsafe automatic transport, and
@@ -132,14 +138,17 @@ node experiments/host-observation/pi_evaluation_sdk_check.mjs \
   "$PI_PACKAGE_ROOT" "$KAST_ADAPTER" "$KAST_ADAPTER_SHA256"
 ```
 
-This loads the actual adapter's read-only catalog, uses the committed worker's
-real SDK construction and awaited hooks, and doubles only external provider
-transports. Its auth and catalog storage are synthetic and in memory. Both
+This loads the actual adapter's read-only catalog. It uses the committed worker's
+SDK construction and awaited hooks. Only external provider transports are doubles. Its auth and catalog storage are synthetic and in memory. All
 provider responses are synthetic; zero inference, semantic tools and real
 provider requests occur. A first synthetic SSE response completes; a denied
 second request reaches neither fetch nor a socket. A separate real-SDK cached
 WebSocket session reproduces one send after its guard denied the second request.
-This validates the selected transport boundary; it is not native semantic proof.
+A saved transcript then continues through the same SDK without a new user prompt
+or semantic call. Its tool text appears once; duplicate `details` fields stay
+out of the provider request. The test checks budget admission and the 2,000-token
+request cap. These checks validate projection and transport, not native semantics
+or live backend support for the cap.
 
 The checked coding-agent package is 1.0.2, but its resolved pi-ai and
 pi-agent-core dependencies are both **1.1.0**. Sanitized exact source/package

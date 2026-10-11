@@ -6,9 +6,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import * as zlib from 'node:zlib';
 import { pathToFileURL } from 'node:url';
-import { CasePolicy } from './pi_evaluation_policy.mjs';
+import { CasePolicy, decodeEnvelope } from './pi_evaluation_policy.mjs';
 import { createEvaluationSession } from './pi_evaluation_worker.mjs';
+import { driveSession } from './pi_evaluation_controller.mjs';
 
 const [piPackageRoot,kastAdapter,expectedAdapterSha256]=process.argv.slice(2);
 if(!path.isAbsolute(piPackageRoot??'')||!path.isAbsolute(kastAdapter??'')||!/^[a-f0-9]{64}$/.test(expectedAdapterSha256??'')) throw Error('Explicit installed SDK root, actual adapter path and digest required');
@@ -17,7 +19,7 @@ assert.equal(sha(fs.readFileSync(kastAdapter)),expectedAdapterSha256);
 assert.equal(process.env.KAST_TOOL_RPC_COMMAND,undefined,'Installed canonical RPC route required; no command override');
 const directory=fs.mkdtempSync(path.join(os.tmpdir(),'kast-pi-sdk-check-'));
 const originals={fetch:globalThis.fetch,WebSocket:globalThis.WebSocket};
-let fetchCalls=0,socketSends=0,sockets=0;
+let fetchCalls=0,socketSends=0,sockets=0;const bodies=[];
 const events=()=>{
   const item={id:'synthetic-message',type:'message',role:'assistant',status:'completed',content:[{type:'output_text',text:'Synthetic transport response; no inference occurred.'}]};
   return [{type:'response.created',response:{id:'synthetic-response'}},{type:'response.output_item.added',output_index:0,item:{...item,content:[]}},{type:'response.output_item.done',output_index:0,item},{type:'response.completed',response:{id:'synthetic-response',status:'completed',output:[item],usage:{input_tokens:100,output_tokens:10,total_tokens:110,input_tokens_details:{cached_tokens:0}}}}];
@@ -31,7 +33,10 @@ class SyntheticSocket extends EventTarget {
 globalThis.WebSocket=SyntheticSocket;
 globalThis.fetch=async(_url,options)=>{
   assert.equal(options?.method,'POST','Unexpected catalog/background network request');
-  fetchCalls++;
+  const encoded=new Headers(options.headers).get('content-encoding')==='zstd'?zlib.zstdDecompressSync(options.body).toString('utf8'):options.body;
+  const body=JSON.parse(encoded);
+  assert.equal(body.max_output_tokens,2000,'Every admitted SDK request must carry the provider output cap');
+  bodies.push(body);fetchCalls++;
   return new Response(events().map(e=>`data: ${JSON.stringify(e)}\n\n`).join(''),{headers:{'content-type':'text/event-stream'}});
 };
 const load=relative=>import(pathToFileURL(path.join(piPackageRoot,relative)).href);
@@ -58,12 +63,41 @@ try {
   assert.equal(startup.transport,'sse');assert.equal(startup.cacheWarming,'off');
   assert.deepEqual(startup.tools,['query_symbols','check_diagnostics','health_check']);
   await activeSession.prompt('Fixed synthetic transport check.',{source:'rpc',expandPromptTemplates:false});
-  assert.equal(policy.report().outcome,'FINAL_ANSWER');assert.equal(fetchCalls,1);assert.equal(socketSends,0);
+  assert.equal(policy.report().outcome,'FINAL_ANSWER',activeSession.agent.state.messages.at(-1)?.errorMessage);assert.equal(fetchCalls,1);assert.equal(socketSends,0);
   await activeSession.prompt('Intentionally denied second synthetic request.',{source:'rpc',expandPromptTemplates:false});
   assert.equal(records.filter(e=>e.type==='provider_admission').length,2);
   assert.equal(records.filter(e=>e.type==='provider_admission').at(-1).decision.allow,false);
   assert.equal(fetchCalls,1,'Denied second request must not reach fetch');assert.equal(socketSends,0);
   activeSession.dispose();activeSession=undefined;cleanupSocket(manager.getSessionId());
+  // Restore a real SDK transcript ending at the already received product reply.
+  // Only metadata duplicates grow; the provider receives the exact canonical
+  // tool text once. This asserts projection/admission, not model correctness.
+  const deliveryFixture=JSON.parse(fs.readFileSync(new URL('./pi-fixtures/query-delivery-cases.json',import.meta.url),'utf8')).cases.rejectedProof;
+  const content=[{type:'text',text:JSON.stringify(deliveryFixture.result)}];
+  const savedManager=sdk.SessionManager.inMemory(directory),savedPolicy=new CasePolicy({...makePolicy().config,delivery:{reportedTokens:64000,requests:1,outputReserve:2000},evidenceOnlyDelivery:true});
+  savedManager.appendMessage({role:'user',content:[{type:'text',text:'Find callers for the fixed fixture target.'}],timestamp:1});
+  savedManager.appendMessage({role:'assistant',provider:'openai-codex',model:'gpt-6.1-sol',api:'openai-codex-responses',content:[{type:'toolCall',id:'saved-call',name:'query_symbols',arguments:{request:{type:'RUN'}}}],stopReason:'toolUse',usage:{input:0,output:0,cacheRead:0,cacheWrite:0,totalTokens:0,cost:{input:0,output:0,cacheRead:0,cacheWrite:0,total:0}},timestamp:2});
+  const savedResult={role:'toolResult',toolCallId:'saved-call',toolName:'query_symbols',content,isError:true,details:{duplicate:deliveryFixture.result,omitted:'SDK_OMITTED_METADATA_'.repeat(12000)},timestamp:3};
+  savedManager.appendMessage(savedResult);
+  const savedContext=structuredClone(savedManager.buildSessionContext().messages),savedRecords=[];
+  assert.equal(savedPolicy.restoreReceivedResult(decodeEnvelope(content),Buffer.byteLength(content[0].text)).allow,true);
+  const savedCreated=await createEvaluationSession({sdk,plan,directory,modelRuntime:runtime,policy:savedPolicy,record:e=>savedRecords.push(e),manager:savedManager});activeSession=savedCreated.session;
+  assert.deepEqual(activeSession.agent.state.messages,savedContext);
+  await driveSession(activeSession,{mode:'received-result'});activeSession=undefined;
+  const projected=bodies.at(-1),admission=savedPolicy.report().requestObservations[0];
+  assert.equal(admission.allow,true,JSON.stringify(admission));
+  assert.equal(fetchCalls,2,'Saved result continuation makes one admitted request');
+  assert.equal(projected.input.filter(item=>item.type==='function_call_output').length,1);
+  assert.equal(projected.input.find(item=>item.type==='function_call_output').output,content[0].text);
+  assert.equal(JSON.stringify(projected).includes('SDK_OMITTED_METADATA_'),false);
+  assert.equal(projected.input.filter(item=>item.role==='user').length,1,'Continuation adds no coached user prompt');
+  assert.equal(admission.inputBytes,Buffer.byteLength(JSON.stringify(projected.input)));
+  assert.equal(admission.allow,true);assert.equal(admission.outputTokenCap,2000);
+  assert.equal(savedPolicy.report().nativeOutcome,'REJECTED');assert.equal(savedPolicy.report().exhaustiveEvidence,false);
+  assert.equal(savedPolicy.report().semanticRepliesObserved,0);assert.equal(savedPolicy.report().modelProposals.length,0);
+  assert.equal(savedPolicy.report().finalAnswer,true);assert.equal(savedPolicy.report().outcome,'INTENTIONAL_REJECTION');
+  const savedProjection={storedContextBytes:Buffer.byteLength(JSON.stringify(savedContext)),providerInputBytes:admission.inputBytes,providerContextBytes:admission.contextBytes,declarationInputBytes:admission.declarationInputBytes,requiredEstimate:admission.required,budget:admission.remaining,outputTokenCap:projected.max_output_tokens,newUserMessages:0,semanticToolCalls:0};
+  cleanupSocket(savedManager.getSessionId());
   // Reproduce the installed SDK's cached-WebSocket abort defect independently
   // using its real provider and guard, with synthetic transport only. This is
   // why the committed isolated worker selects supported SSE explicitly.
@@ -84,5 +118,5 @@ try {
     const root=name==='pi-coding-agent'?piPackageRoot:path.join(piPackageRoot,'..',name);
     identity[name]={version:JSON.parse(fs.readFileSync(path.join(root,'package.json'))).version,sha256:Object.fromEntries(['package.json',...files].map(file=>[file,sha(fs.readFileSync(path.join(root,file)))]))};
   }
-  console.log(JSON.stringify({mode:'NO_INFERENCE_REAL_SDK_SYNTHETIC_TRANSPORT',startup,adapterSha256:expectedAdapterSha256,identity,sse:{admittedFetchCalls:fetchCalls,deniedSecondFetchCalls:0,socketSends:0},cachedWebSocket:{connections:sockets,admittedSends:1,deniedSecondSends:1},semanticToolCalls:0,realProviderRequests:0},null,2));
+  console.log(JSON.stringify({mode:'NO_INFERENCE_REAL_SDK_SYNTHETIC_TRANSPORT',startup,adapterSha256:expectedAdapterSha256,identity,savedProjection,sse:{admittedFetchCalls:fetchCalls,deniedSecondFetchCalls:0,socketSends:0},cachedWebSocket:{connections:sockets,admittedSends:1,deniedSecondSends:1},semanticToolCalls:0,realProviderRequests:0},null,2));
 } finally {activeSession?.dispose();cleanupSocket?.();globalThis.fetch=originals.fetch;globalThis.WebSocket=originals.WebSocket;fs.rmSync(directory,{recursive:true,force:true});}
