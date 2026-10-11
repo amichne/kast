@@ -16,6 +16,15 @@ enum class IntellijReadCounter {
     DEPENDENCY_MODULE_INPUT_MEMO_HITS,
     DEPENDENCY_TREE_MEMO_HITS,
     DECLARATION_PSI_NODES_VISITED,
+    /** Complete AST traversal entries, including leaves/errors/lazy bodies; never PSI allocation counts. */
+    DECLARATION_AST_NODES_VISITED,
+    /** Explicit AST-to-PSI requests, whether newly materialized or already cached. */
+    DECLARATION_AST_PSI_REQUESTS,
+    DECLARATION_AST_PSI_FALLBACKS,
+    DECLARATION_AST_LEGACY_FALLBACKS,
+    /** One-time immutable factory qualification work; not source traversal or eligible candidate capacity. */
+    DECLARATION_AST_MAPPING_PSI_PROBES,
+    DECLARATION_AST_BINDING_BYTES_READ,
     /** Detached native discovery/relation page returns, including qualified pages; never public call counts. */
     NATIVE_DISCOVERY_PAGES,
     NATIVE_RELATION_PAGES,

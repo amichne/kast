@@ -8,6 +8,7 @@ import com.intellij.psi.PsiManager
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
@@ -120,7 +121,16 @@ internal fun collectScopedKotlinDeclarations(
             accept = callbacks.accept,
             localOnly = localOnly,
         )
-    return files.values.sortedBy { it.path }.all(visitor::read)
+    val reader =
+        if (!localOnly && request.usesExactClasslikeAstTraversal()) visitor::readExactClasslikes else visitor::read
+    return files.values.sortedBy { it.path }.all(reader)
+}
+
+private fun SymbolDiscoveryRequest.usesExactClasslikeAstTraversal(): Boolean {
+    val name = target as? SymbolDiscoveryTarget.Name ?: return false
+    return name.match == SymbolDiscoveryMatch.EXACT_NAME &&
+        scope.scope.libraryPolicy() == SymbolLibraryPolicy.EXCLUDE &&
+        requestedDeclarationKinds() == setOf(CompilerSymbolKind.CLASSLIKE)
 }
 
 internal enum class ScopedFileCollectionStop {
@@ -182,7 +192,11 @@ internal class ScopedKotlinDeclarationVisitor(
     private val localOnly: Boolean = false,
     private val observation: IntellijReadObservation = IntellijReadObservation.None,
 ) {
-    fun read(file: VirtualFile): Boolean {
+    fun read(file: VirtualFile): Boolean = read(file, ::visit)
+
+    fun readExactClasslikes(file: VirtualFile): Boolean = read(file, ::visitExactClasslikes)
+
+    private fun read(file: VirtualFile, traverse: (KtFile) -> Boolean): Boolean {
         if (!observe()) return false
         val ktFile = observation.call(IntellijReadCall.PSI_FIND_FILE) { manager.findFile(file) } as? KtFile
         if (ktFile == null) {
@@ -193,13 +207,35 @@ internal class ScopedKotlinDeclarationVisitor(
             constraints.packageName.admitPackage { IntellijPackageEvidence.Known(ktFile.packageFqName.asString()) }
         ) {
             IntellijDiscoveryItemAdmission.ADMITTED ->
-                observation.call(IntellijReadCall.DECLARATION_PSI_SCAN) { visit(ktFile) }
+                observation.call(IntellijReadCall.DECLARATION_PSI_SCAN) { traverse(ktFile) }
             IntellijDiscoveryItemAdmission.FILTERED -> true
             IntellijDiscoveryItemAdmission.UNSUPPORTED -> {
                 qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
                 true
             }
         }
+    }
+
+    private fun visitExactClasslikes(file: KtFile): Boolean {
+        if (!supportsExactClasslikeAst(file)) return legacyVisit(file)
+        return when (val binding = IntellijClasslikeAstBinding.acquire(observe, observation)) {
+            IntellijClasslikeAstBinding.Halted -> false
+            IntellijClasslikeAstBinding.Unsupported -> legacyVisit(file)
+            is IntellijClasslikeAstBinding.Supported ->
+                IntellijClasslikeAstTraversal(binding, observe, observation, ::admit).visit(file)
+        }
+    }
+
+    private fun supportsExactClasslikeAst(file: KtFile): Boolean =
+        when {
+            !file.isPhysical || file.isScript() || file.isCompiled -> false
+            localOnly || kinds != setOf(CompilerSymbolKind.CLASSLIKE) -> false
+            else -> true
+        }
+
+    private fun legacyVisit(file: KtFile): Boolean {
+        observation.count(IntellijReadCounter.DECLARATION_AST_LEGACY_FALLBACKS)
+        return visit(file)
     }
 
     private fun visit(file: KtFile): Boolean {
