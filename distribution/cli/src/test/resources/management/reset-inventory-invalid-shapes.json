@@ -1,0 +1,5 @@
+[
+  {"type":"PROCESS_INVENTORY","outcome":{"type":"REJECTED","pid":7,"reason":"UNKNOWN"}},
+  {"type":"PROCESS_INVENTORY","outcome":{"type":"OBSERVED","count":16385}},
+  {"type":"PROCESS_INVENTORY","outcome":{"type":"OBSERVED","count":0,"extra":true}}
+]

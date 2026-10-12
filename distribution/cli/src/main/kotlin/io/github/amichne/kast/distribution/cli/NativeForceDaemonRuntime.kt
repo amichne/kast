@@ -48,42 +48,76 @@ internal object NativeForceDaemonRuntime : ForceDaemonRuntime {
         }
     }
 
-    override fun processes(): ResetProcessTable =
+    override fun processes(): ResetProcessTable = processesObserved { System.err.println(it.asJson()) }
+
+    fun processesObserved(observe: (ResetInventoryObservation) -> Unit): ResetProcessTable =
         try {
-            val user = ProcessHandle.current().info().user().orElseThrow()
-            ProcessHandle.allProcesses().use { stream ->
-                val handles = stream.limit(MAXIMUM_PROCESSES + 1).toList()
-                if (handles.size > MAXIMUM_PROCESSES) return ResetProcessTable.Unavailable
-                collectSnapshots(handles, user)
-            }
+            val current = ProcessHandle.current()
+            val user = current.info().user().orElse(null)
+            if (user == null)
+                inventoryRejected(current.pid(), ResetInventoryRejection.CURRENT_USER_UNAVAILABLE, observe)
+            else collectCurrentProcesses(user, observe)
         } catch (_: Exception) {
-            ResetProcessTable.Unavailable
+            inventoryRejected(ProcessHandle.current().pid(), ResetInventoryRejection.EFFECT_UNAVAILABLE, observe)
         }
 
-    private fun collectSnapshots(handles: List<ProcessHandle>, user: String): ResetProcessTable {
+    private fun collectCurrentProcesses(user: String, observe: (ResetInventoryObservation) -> Unit): ResetProcessTable =
+        ProcessHandle.allProcesses().use { stream ->
+            val handles = stream.limit(MAXIMUM_PROCESSES + 1).toList()
+            if (handles.size > MAXIMUM_PROCESSES)
+                inventoryRejected(ProcessHandle.current().pid(), ResetInventoryRejection.CAPACITY_EXCEEDED, observe)
+            else collectSnapshots(handles, user, observe)
+        }
+
+    internal fun collectSnapshots(
+        handles: List<ProcessHandle>,
+        user: String,
+        observe: (ResetInventoryObservation) -> Unit,
+        processState: (ProcessHandle) -> ResetObservedProcessState = ::observeResetProcessState,
+    ): ResetProcessTable {
         val snapshots = mutableListOf<LifecycleProcessSnapshot>()
         for (handle in handles) {
-            when (val observation = snapshot(handle, user)) {
+            when (val observation = snapshot(handle, user, processState)) {
                 is NativeResetSnapshot.Selected -> snapshots += observation.snapshot
                 NativeResetSnapshot.Unrelated -> Unit
-                NativeResetSnapshot.Unavailable -> return ResetProcessTable.Unavailable
+                is NativeResetSnapshot.Unavailable ->
+                    return inventoryRejected(handle.pid(), observation.reason, observe)
             }
         }
+        observe(ResetInventoryObservation(ResetInventoryOutcome.Observed(snapshots.size)))
         return ResetProcessTable.Observed(snapshots)
     }
 
-    private fun snapshot(handle: ProcessHandle, user: String): NativeResetSnapshot {
+    private fun inventoryRejected(
+        pid: Long,
+        reason: ResetInventoryRejection,
+        observe: (ResetInventoryObservation) -> Unit,
+    ): ResetProcessTable {
+        observe(ResetInventoryObservation(ResetInventoryOutcome.Rejected(pid, reason)))
+        return ResetProcessTable.Unavailable
+    }
+
+    private fun snapshot(
+        handle: ProcessHandle,
+        user: String,
+        processState: (ProcessHandle) -> ResetObservedProcessState,
+    ): NativeResetSnapshot {
         if (!handle.isAlive) return NativeResetSnapshot.Unrelated
         val info = handle.info()
         val owner =
             info.user().orElse(null)
-                ?: return if (handle.isAlive) NativeResetSnapshot.Unavailable else NativeResetSnapshot.Unrelated
+                ?: return if (handle.isAlive) NativeResetSnapshot.Unavailable(ResetInventoryRejection.OWNER_UNAVAILABLE)
+                else NativeResetSnapshot.Unrelated
         if (owner != user) return NativeResetSnapshot.Unrelated
-        val command =
-            info.command().orElse(null)
-                ?: return if (handle.isAlive) NativeResetSnapshot.Unavailable else NativeResetSnapshot.Unrelated
+        val command = info.command().orElse(null)
+        if (command == null) {
+            return if (!handle.isAlive || processState(handle) == ResetObservedProcessState.EXITED)
+                NativeResetSnapshot.Unrelated
+            else NativeResetSnapshot.Unavailable(ResetInventoryRejection.COMMAND_UNAVAILABLE)
+        }
         val args = info.arguments().orElse(null)
-        if (args == null && Path.of(command).fileName.toString() == "java") return NativeResetSnapshot.Unavailable
+        if (args == null && Path.of(command).fileName.toString() == "java")
+            return NativeResetSnapshot.Unavailable(ResetInventoryRejection.ARGUMENTS_UNAVAILABLE)
         return NativeResetSnapshot.Selected(
             LifecycleProcessSnapshot(
                 handle.pid(),
@@ -275,7 +309,7 @@ private sealed interface NativeResetSnapshot {
 
     data object Unrelated : NativeResetSnapshot
 
-    data object Unavailable : NativeResetSnapshot
+    data class Unavailable(val reason: ResetInventoryRejection) : NativeResetSnapshot
 }
 
 private sealed interface NativeResetAdmission {

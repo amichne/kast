@@ -31,7 +31,11 @@ internal fun completePublicInstallation(
     val activated =
         when (completion) {
             InstallationCompletion.STAGED -> LifecycleEffect.Completed
-            InstallationCompletion.ACTIVATE -> resumeCompletedInstallation(root, environment, execution)
+            InstallationCompletion.ACTIVATE ->
+                when (val restored = restorePublicResetConnections(root, environment)) {
+                    LifecycleEffect.Completed -> resumeCompletedInstallation(root, environment, execution)
+                    is LifecycleEffect.Rejected -> restored
+                }
         }
     return when (activated) {
         LifecycleEffect.Completed -> InstallationCompletionResult.Published(destination)

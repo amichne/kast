@@ -51,6 +51,9 @@ Inspect the version and installation path. Verify loaded tools with the [first q
 
     Developer builds are prereleases. Selection reads the published GitHub channel, independently of the local checkout or installed version. The installer prints the selected version and source revision. `kast upgrade` keeps the developer channel.
 
+    Developer installation automatically removes stale Kast state before it installs the selected pair. No separate uninstall or manual deletion is necessary.
+    A stable installation uses the same cleanup with `--force`. `--dry-run` preserves files and registrations.
+
     To preserve an existing Codex MCP configuration, append `--skip-codex-mcp`. Restart IDEA and your agent after installation.
   </Accordion>
 

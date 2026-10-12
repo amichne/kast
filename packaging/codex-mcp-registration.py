@@ -45,7 +45,7 @@ def admitted_legacy_command(root: Path, command: str) -> bool:
 
 
 def main() -> int:
-    if len(sys.argv) != 3 or sys.argv[1] not in {"check", "install", "uninstall"}:
+    if len(sys.argv) != 3 or sys.argv[1] not in {"check", "check-reset", "install", "uninstall"}:
         return 64
     action, root = sys.argv[1], Path(sys.argv[2])
     command = str(root / "installation" / "bin" / "kast-mcp-complete")
@@ -60,12 +60,18 @@ def main() -> int:
         legacy = (action == 'check' and isinstance(transport, dict) and transport.get('type') == 'stdio'
                   and transport.get('args') == [] and isinstance(transport.get('command'), str)
                   and admitted_legacy_command(root, transport['command']))
-        if not owned and not legacy:
+        reset_owned = (action == 'check-reset' and isinstance(transport, dict) and transport.get('type') == 'stdio'
+                       and transport.get('args') == [] and transport.get('command') in {
+                           str(root / 'current/bin/kast-mcp-complete'),
+                           str(Path(os.environ['HOME']) / '.kast/bin/kast-mcp-complete'),
+                           str(Path(os.environ['HOME']) / '.kast/installation/bin/kast-mcp-complete'),
+                       })
+        if not owned and not legacy and not reset_owned:
             if action == "uninstall":
                 return 0
             print("kast-install: Codex MCP name 'kast' belongs to another configuration", file=sys.stderr)
             return 65
-    if action == "check":
+    if action in {"check", "check-reset"}:
         return 0
     if action == "install":
         if configured is None:

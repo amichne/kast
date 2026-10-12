@@ -48,6 +48,8 @@ Keep the `--` separator before installer options. Terminal downloads show progre
 Wait for the installation result. Ctrl-C stops installation. Append `--skip-codex-mcp`
 to preserve an existing Codex MCP configuration.
 Developer selection reads the published GitHub channel, independently of the local checkout or installed version.
+Developer installs automatically remove stale installation state before they install the selected pair.
+Use `--force` with a stable installation to request the same cleanup. `--dry-run` preserves files and registrations.
 
 Restart IDEA to load the plugin. Use `kast status` to inspect the installation.
 The command is `$XDG_CONFIG_HOME/kast` when `XDG_CONFIG_HOME` is nonempty, otherwise
@@ -149,14 +151,15 @@ returns `HOST_RESTART_REQUIRED`. Failed shutdown prevents replacement. Failed
 activation preserves the fence and reports recovery. Sessions and writes are never
 replayed. `kast stop --force` signals only processes whose recorded identity still matches.
 
-**Destructive reset:** `kast uninstall --force` and `kast reinstall --force` erase
-the selected Kast directory, including configuration, arbitrary files, and
-registration history. Erased data has no rollback. Reset verifies process retirement
-before deletion. Shared IDEA and Gradle processes remain under your control.
+**Destructive reset:** `kast uninstall --force` and `kast reinstall --force` erase the selected Kast directory.
+They also remove legacy `$HOME/.kast` state, historical `.kast-*` artifacts under `$HOME/.local/share`, and the public command.
+Stable lock files remain. Erased data has no rollback. Reset stops scoped Kast processes before deletion.
+Shared IDEA and Gradle processes remain under your control.
 
-Force reinstall verifies replacement readiness and reports the new command at
-`<kast-directory>/bin/kast`. Reconnect integrations, restart IDEA, and reload agents.
-Preserve recovery paths and causes before retrying.
+Force reinstall selects the latest release from the recorded stable or developer channel.
+It installs both Control and Host, repairs valid recorded connections, and examines service readiness.
+The public command uses `$XDG_CONFIG_HOME/kast` or `$HOME/.local/bin/kast`.
+Restart IDEA and reload agents after installation. Failed retirement keeps the old payload and reports its recovery path.
 
 Lifecycle commands accept `--json`: one typed stdout result, stage observations on
 stderr, and exit code 1 for unsuccessful outcomes. Unsupported fence capability

@@ -59,10 +59,10 @@ private fun runFreshInstaller(
     executor: LifecycleChildExecutor,
 ): FreshResetResult {
     val script = temporary.resolve("install.sh")
-    val resource =
-        ForceReinstaller::class.java.getResourceAsStream("/management/bootstrap-install.sh")
-            ?: return resetInstallRejected(ForceResetFailure.INSTALLER_UNAVAILABLE)
-    resource.use { Files.copy(it, script) }
+    when (val copied = materializeBootstrap(script)) {
+        ResetEffect.Completed -> Unit
+        is ResetEffect.Rejected -> return resetInstallRejected(copied.failure)
+    }
     // All new command bytes live under the freshly selected directory. No old exterior executable is trusted.
     val childEnvironment =
         environment.filterKeys { it in setOf("PATH", "LANG", "LC_ALL", "TMPDIR", "NO_COLOR") } +
@@ -97,3 +97,17 @@ internal object NativeForceInstallerExecutor : LifecycleChildExecutor {
     override fun execute(command: List<String>, directory: Path, environment: Map<String, String>) =
         NativeLifecycleChildExecutor.executeBounded(command, directory, environment, LifecycleChildPurpose.INSTALLER)
 }
+
+internal fun materializeBootstrap(script: Path): ResetEffect =
+    try {
+        val resource = ForceReinstaller::class.java.getResourceAsStream("/management/bootstrap-install.sh")
+        if (resource == null) ResetEffect.Rejected(ForceResetFailure.INSTALLER_UNAVAILABLE)
+        else {
+            resource.use { Files.copy(it, script) }
+            ResetEffect.Completed
+        }
+    } catch (_: IOException) {
+        ResetEffect.Rejected(ForceResetFailure.FILESYSTEM_REJECTED)
+    } catch (_: SecurityException) {
+        ResetEffect.Rejected(ForceResetFailure.FILESYSTEM_REJECTED)
+    }

@@ -87,6 +87,7 @@ def verify_artifacts(product: Path, control: Path, plugin: Path, host_record: Pa
             require(member.isfile() and member.mode & 0o111 == 0o111, "launcher " + launcher)
         require(archive.getmember("share/kast/knowledge/manifest.json").isfile(), "knowledge manifest")
         require(archive.getmember("share/kast/reset-fence-v1").isfile(), "reset lifecycle marker")
+        require(archive.extractfile("share/kast/public-reset-v1").read() == b"1\n", "public reset capability")
     helper = product / "share/kast/host-installation.py"
     require(helper.is_file() and not helper.is_symlink(), "host installer")
     return AdmittedArtifactPair(control_match.group(1), host_match.group(1), control, plugin, host_record, helper)

@@ -217,7 +217,7 @@ installation plan without changing installation state.
 `--developer-latest` installs the newest verified developer build from the
 public developer channel. Its exact source revision is recorded in the channel
 pointer and release SBOM. Developer builds are prereleases and change independently
-of the latest stable release.
+of the latest stable release. Developer installs reset the user installation automatically.
 
 Development builds use packaging/install-checkout.sh persistent.
 
@@ -231,8 +231,9 @@ a prompt. Non-interactive paired installs default to registration for compatibil
 --register-codex-mcp requires a paired installation. --control-only, --host-only,
 and --stage-only skip registration without prompting; explicit --skip-codex-mcp is accepted.
 After installation, use kast status, kast connect, kast upgrade, or kast uninstall.
-`--force` retires the selected installation, resets its managed state and sockets,
-and restages verified components. It does not change
+`--force` uses the fresh archive to stop Kast and remove its old installation,
+legacy `$HOME/.kast` state, historical `.kast-*` artifacts, and public command.
+It preserves stable lock files and repairs recorded harness connections after installation. It does not change
 source workspaces or the selected IDEA application. `--dry-run` remains read-only.
 USAGE
 }
@@ -453,6 +454,7 @@ PYTHON
 }
 
 
+unset KAST_PUBLIC_RESET_RECOVERY
 action=install
 managed_registrations=0
 uninstall_journal=""
@@ -564,6 +566,7 @@ fi
 [[ "$developer_latest" == 0 || -z "$version" ]] || fail "--developer-latest cannot be combined with --version or KAST_VERSION"
 [[ "$developer_latest" == 0 || -z "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]] ||
   fail "--developer-latest cannot be combined with local assets"
+if [[ "$developer_latest" == 1 && "$stage_only" == 0 ]]; then force=1; fi
 if [[ "$stage_only" == 1 ]]; then
   # Cold reset staging owns only control; its lifecycle owner activates the candidate later.
   component=control
@@ -894,13 +897,48 @@ fi
 management_executable="$control_root/share/kast/libexec/kast-management"
 [[ -x "$management_executable" ]] || fail "control archive has no native management executable"
 export KAST_INSTALL_ROOT="$install_root"
-management_destination="$("$management_executable" --internal-install preflight)" ||
+management_preflight=preflight
+reset_management="$management_executable"
+reset_control_root="$control_root"
+if [[ "$force" == 1 && "$stage_only" == 0 ]]; then
+  reset_capability="$control_root/share/kast/public-reset-v1"
+  if [[ ! -e "$reset_capability" && ! -L "$reset_capability" ]]; then
+    # Recovery code can be newer than the selected immutable release. Its payload is never installed.
+    reset_selection="$(resolve_developer_latest)"
+    IFS=$'\t' read -r reset_release reset_version reset_source <<< "$reset_selection"
+    validate_version "$reset_version"
+    reset_archive="kast-control-v$reset_version-macos-aarch64.tar.gz"
+    selected_release_url="$release_url"
+    release_url="https://github.com/$REPOSITORY/releases/download/$reset_release"
+    note "downloading verified installation recovery $reset_version from $reset_source"
+    for name in "$reset_archive" "$reset_archive.sha256"; do fetch_asset "$name" "$temporary_root/recovery-$name"; done
+    verify_checksum "$temporary_root/recovery-$reset_archive" "$temporary_root/recovery-$reset_archive.sha256" "$reset_archive" >/dev/null
+    release_url="$selected_release_url"
+    extract_control "$temporary_root/recovery-$reset_archive" "$temporary_root/recovery-control"
+    reset_capability="$temporary_root/recovery-control/share/kast/public-reset-v1"
+    reset_management="$temporary_root/recovery-control/share/kast/libexec/kast-management"
+    reset_control_root="$temporary_root/recovery-control"
+  fi
+  [[ -f "$reset_capability" && ! -L "$reset_capability" && "$(cat "$reset_capability")" == 1 ]] ||
+    fail 'verified public installation recovery is unavailable'
+  [[ "$(wc -c < "$reset_capability")" =~ ^[[:space:]]*2[[:space:]]*$ ]] || fail 'public reset capability is incompatible'
+  [[ -x "$reset_management" && ! -L "$reset_management" ]] || fail 'verified public reset executable is unavailable'
+  management_preflight=preflight-reset
+fi
+management_destination="$("$reset_management" --internal-install "$management_preflight")" ||
   fail "native executable destination was rejected before service retirement"
 if [[ "$mode" == apply && "$codex_mcp_choice" == register ]]; then
   require_command codex
-  registration_source="$control_root/share/kast/codex-mcp-registration.py"
+  registration_source="$reset_control_root/share/kast/codex-mcp-registration.py"
   [[ -f "$registration_source" ]] || fail "control archive has no Codex MCP registration helper"
-  python3 "$registration_source" check "$install_root" || fail "Codex MCP name 'kast' is unavailable"
+  registration_check=check
+  [[ "$management_preflight" != preflight-reset ]] || registration_check=check-reset
+  python3 "$registration_source" "$registration_check" "$install_root" || fail "Codex MCP name 'kast' is unavailable"
+fi
+
+if [[ "$mode" == apply && "$management_preflight" == preflight-reset ]]; then
+  export KAST_PUBLIC_RESET_RECOVERY="$temporary_root/prior-management.json"
+  run_installer_step "Fresh installation reset" "" "$reset_management" --internal-install reset
 fi
 
 info "The app server provides the complete Kast suite. Persistent installations start it at login."
@@ -920,7 +958,9 @@ export KAST_INSTALL_JAVA_HOME="$java_home"
 export KAST_INSTALL_ROOT="$install_root"
 export KAST_BIN_DIR="$bin_directory"
 export KAST_INSTALL_PROFILE="$profile"
-export KAST_INSTALL_FORCE="$force"
+service_force="$force"
+if [[ "$mode" == apply && "$management_preflight" == preflight-reset ]]; then service_force=0; fi
+export KAST_INSTALL_FORCE="$service_force"
 export KAST_INSTALL_MODE="$mode"
 export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 export JAVA="$java_home/bin/java"
@@ -928,7 +968,7 @@ export JAVA_HOME="$java_home"
 
 # Pass reset authority as a command option so older payloads reject it before effects.
 installation_options=()
-[[ "$force" == 0 ]] || installation_options+=(--force)
+[[ "$service_force" == 0 ]] || installation_options+=(--force)
 if [[ "$stage_only" == 1 ]]; then
   [[ -f "$control_root/share/kast/reset-fence-v1" && ! -L "$control_root/share/kast/reset-fence-v1" ]] ||
     fail 'this release cannot stage a fenced reset; upgrade the recovery executable and select a compatible release'
@@ -965,9 +1005,12 @@ else
   installed_management="$(cat "$completion_report")"
   [[ "$installed_management" == "$management_destination" ]] ||
     fail "native executable destination changed during installation"
+  if [[ "$management_preflight" == preflight-reset && "$reset_management" != "$management_executable" ]]; then
+    run_installer_step "Recorded connection recovery" "" "$reset_management" --internal-install restore-connections
+  fi
   if [[ "$codex_mcp_choice" == register ]]; then
     [[ -x "$install_root/installation/bin/kast-mcp-complete" ]] || fail "installed Kast MCP launcher is unavailable"
-    "$installed_management" connect codex mcp
+    "$reset_management" connect codex mcp
   fi
   installation_complete=1
 fi
