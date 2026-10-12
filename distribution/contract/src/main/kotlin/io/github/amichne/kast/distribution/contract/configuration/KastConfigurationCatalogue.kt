@@ -294,6 +294,13 @@ enum class ConfigurationParameter(
         ":distribution:cli",
         mutability = ConfigurationMutability.DERIVED,
     ),
+    PUBLIC_RESET_RECOVERY(
+        "KAST_PUBLIC_RESET_RECOVERY",
+        ConfigurationSyntax.ABSOLUTE_PATH,
+        ConfigurationScope.INSTALLATION,
+        ":distribution:cli",
+        mutability = ConfigurationMutability.DERIVED,
+    ),
     ASCII("KAST_ASCII", ConfigurationSyntax.SWITCH, ConfigurationScope.INSTALLATION, defaultValue = "0"),
     DEBUG(
         "KAST_DEBUG",
