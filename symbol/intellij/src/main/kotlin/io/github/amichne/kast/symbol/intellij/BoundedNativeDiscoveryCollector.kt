@@ -3,10 +3,12 @@ package io.github.amichne.kast.symbol.intellij
 import com.intellij.navigation.NavigationItem
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBlockCause
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteCount
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryProgress
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualifications
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
@@ -23,6 +25,7 @@ internal class BoundedNativeDiscoveryCollector(
     private val request: SymbolDiscoveryRequest,
     private val policies: IntellijDiscoveryItemPolicies,
     private val execution: IntellijDiscoveryExecution,
+    private val directoryAllowance: IntellijDeclarationDiscoveryAllowance? = null,
 ) {
     private val clock
         get() = execution.clock
@@ -43,8 +46,10 @@ internal class BoundedNativeDiscoveryCollector(
     private val candidates = linkedSetOf<SymbolDiscoveryCandidate>()
     private val qualifications = linkedSetOf<SymbolDiscoveryQualification>()
     var contributor: IntellijReadContributor = IntellijReadContributor.NONE
+    private var failedObligation: SymbolDiscoveryProgress =
+        SymbolDiscoveryProgress.Blocked(SymbolDiscoveryBlockCause.QUALIFIED_PROVIDER)
     private var encodedBytes = 0L
-    private var workUnits = 0L
+    private var workUnits = directoryAllowance?.consumedWork ?: 0L
     private var projectionNanoseconds = 0L
     var halted: Boolean = false
         private set
@@ -62,16 +67,18 @@ internal class BoundedNativeDiscoveryCollector(
             }
             IntellijDiscoveryEnvironmentState.READY -> Unit
         }
-        if (elapsedSince(startedAt) >= request.elapsedLimitNanoseconds().value) {
+        if (
+            directoryAllowance?.expired() == true || elapsedSince(startedAt) >= request.elapsedLimitNanoseconds().value
+        ) {
             qualifyAndHalt(SymbolDiscoveryQualification.TIME_LIMIT_REACHED)
             return false
         }
         return true
     }
 
-    private fun admitWork(): Boolean {
+    internal fun consumeWork(): Boolean {
         if (!observe()) return false
-        if (workUnits >= request.budget.resources.workUnitLimit.value) {
+        if (workUnits >= request.budget.resources.workUnitLimit.value || directoryAllowance?.consume() == false) {
             observation.terminated(IntellijReadTermination.WORK_LIMIT, contributor)
             qualifyAndHalt(SymbolDiscoveryQualification.WORK_LIMIT_REACHED)
             return false
@@ -159,7 +166,7 @@ internal class BoundedNativeDiscoveryCollector(
         if (candidate in candidates) {
             return true
         }
-        if (!admitWork()) {
+        if (!consumeWork()) {
             return false
         }
         if (candidates.size >= request.budget.resources.resultLimit.value) {
@@ -189,8 +196,15 @@ internal class BoundedNativeDiscoveryCollector(
         halted = true
     }
 
+    fun block(cause: SymbolDiscoveryBlockCause) {
+        failedObligation = SymbolDiscoveryProgress.Blocked(cause)
+        halted = true
+    }
+
     fun finish(): IntellijNativeDiscoveryExecution {
-        if (elapsedSince(startedAt) >= request.elapsedLimitNanoseconds().value) {
+        if (
+            directoryAllowance?.expired() == true || elapsedSince(startedAt) >= request.elapsedLimitNanoseconds().value
+        ) {
             qualify(SymbolDiscoveryQualification.TIME_LIMIT_REACHED)
         }
         val totalNanoseconds = elapsedSince(startedAt)
@@ -230,7 +244,7 @@ internal class BoundedNativeDiscoveryCollector(
                                 IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT
                             )
                     }
-                SymbolDiscoveryOutcome.Qualified(batch, typedQualifications)
+                SymbolDiscoveryOutcome.Qualified(batch, typedQualifications, failedObligation)
             }
         return IntellijNativeDiscoveryExecution.Produced(outcome)
     }

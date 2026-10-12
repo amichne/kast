@@ -4,6 +4,7 @@ import com.intellij.navigation.NavigationItem
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import java.nio.file.Path
 
 internal fun SymbolDiscoveryConstraints.admit(
@@ -36,6 +37,7 @@ private fun SymbolDiscoveryConstraints.admitSourceSets(
             val normalizedFile = file.normalize()
             val owners =
                 compiledScope.ownershipRoots.filter {
+                    compiledScope.observation.count(IntellijReadCounter.DISCOVERY_CONSTRAINT_ROOT_ENTRIES)
                     normalizedFile.startsWith(Path.of(it.sourceRoot.value))
                 }
             val deepest =

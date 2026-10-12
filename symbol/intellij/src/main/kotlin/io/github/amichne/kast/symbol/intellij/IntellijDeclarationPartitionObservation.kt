@@ -8,6 +8,8 @@ import org.jetbrains.kotlin.psi.KtFile
 internal sealed interface IntellijDeclarationInitialInventory {
     data class Complete(val partitions: List<SemanticFilePartition>) : IntellijDeclarationInitialInventory
 
+    data class Rejected(val cause: SymbolDiscoveryBlockCause) : IntellijDeclarationInitialInventory
+
     data object TimeLimit : IntellijDeclarationInitialInventory
 }
 

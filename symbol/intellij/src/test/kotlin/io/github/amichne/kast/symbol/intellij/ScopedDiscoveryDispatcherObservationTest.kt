@@ -22,7 +22,7 @@ import org.junit.jupiter.api.io.TempDir
 
 class ScopedDiscoveryDispatcherObservationTest {
     @Test
-    fun `exact CLASS dispatch exposes broad scope probes before fourteen callbacks without spending excluded capacity`(
+    fun `indexed providers expose excluded scope probes before callbacks without spending candidate capacity`(
         @TempDir home: Path
     ) =
         withParser(home) { project ->
@@ -51,7 +51,11 @@ class ScopedDiscoveryDispatcherObservationTest {
                         true
                     },
                 )
-            val outcome = fixture.query().discoverNative(project, scope, fixture.request, indexes = indexes).outcome()
+            val outcome =
+                fixture
+                    .query()
+                    .discoverExactIndexedDeclarations(project, scope, fixture.request, indexes = indexes)
+                    .outcome()
             indexes.assertConsumed()
             assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
             assertEquals(listOf("Target"), outcome.batch().candidates.map { it.name.value })
@@ -88,7 +92,7 @@ class ScopedDiscoveryDispatcherObservationTest {
                     )
                 return fixture
                     .query(observation)
-                    .discoverNative(project, scope, fixture.request, indexes = indexes)
+                    .discoverExactIndexedDeclarations(project, scope, fixture.request, indexes = indexes)
                     .outcome()
                     .also { indexes.assertConsumed() }
             }
@@ -101,7 +105,11 @@ class ScopedDiscoveryDispatcherObservationTest {
             val fixture = ScopedDiscoveryDispatcherFixture(project, home.resolve("source"))
             val scope = fixture.scope()
             val indexes = fixture.Indexes(scope.nativeScope, { _, _ -> true })
-            val outcome = fixture.query().discoverNative(project, scope, fixture.request, indexes = indexes).outcome()
+            val outcome =
+                fixture
+                    .query()
+                    .discoverExactIndexedDeclarations(project, scope, fixture.request, indexes = indexes)
+                    .outcome()
             indexes.assertConsumed()
             assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
             assertEquals(listOf("Target"), outcome.batch().candidates.map { it.name.value })
@@ -118,7 +126,7 @@ class ScopedDiscoveryDispatcherObservationTest {
             assertSame(
                 cancelled,
                 assertThrows<ProcessCanceledException> {
-                    fixture.query().discoverNative(project, scope, fixture.request, indexes = indexes)
+                    fixture.query().discoverExactIndexedDeclarations(project, scope, fixture.request, indexes = indexes)
                 },
             )
             indexes.assertConsumed()
@@ -145,7 +153,7 @@ class ScopedDiscoveryDispatcherObservationTest {
             assertSame(
                 cancelled,
                 assertThrows<ProcessCanceledException> {
-                    query.discoverNative(project, scope, fixture.request, indexes = indexes)
+                    query.discoverExactIndexedDeclarations(project, scope, fixture.request, indexes = indexes)
                 },
             )
             indexes.assertConsumed()
@@ -165,7 +173,11 @@ class ScopedDiscoveryDispatcherObservationTest {
             val scope = fixture.scope()
             val indexes =
                 fixture.Indexes(scope.nativeScope, { _, _ -> throw IllegalStateException("scripted index failure") })
-            val outcome = fixture.query().discoverNative(project, scope, fixture.request, indexes = indexes).outcome()
+            val outcome =
+                fixture
+                    .query()
+                    .discoverExactIndexedDeclarations(project, scope, fixture.request, indexes = indexes)
+                    .outcome()
             indexes.assertConsumed()
             assertTrue(outcome is SymbolDiscoveryOutcome.Qualified)
             assertEquals(listOf("Target"), outcome.batch().candidates.map { it.name.value })
@@ -187,7 +199,11 @@ class ScopedDiscoveryDispatcherObservationTest {
                     { _, _ -> throw AssertionError("Unexpected fallback") },
                     completeNamed = false,
                 )
-            val outcome = fixture.query().discoverNative(project, scope, fixture.request, indexes = indexes).outcome()
+            val outcome =
+                fixture
+                    .query()
+                    .discoverExactIndexedDeclarations(project, scope, fixture.request, indexes = indexes)
+                    .outcome()
             indexes.assertConsumed(files = 0)
             assertTrue(outcome is SymbolDiscoveryOutcome.Qualified)
             assertTrue(fixture.observation.searches.isEmpty())

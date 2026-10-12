@@ -19,8 +19,16 @@ internal fun IntellijNativeDiscoveryQuery.discoverNative(
     request: SymbolDiscoveryRequest,
     allowance: IntellijDeclarationDiscoveryAllowance = IntellijDeclarationDiscoveryAllowance(request),
     indexes: IntellijDeclarationIndexes = NativeIntellijDeclarationIndexes(project),
+    partitions: IntellijDeclarationPartitionFiles = NativeIntellijDeclarationPartitionFiles,
 ): IntellijNativeDiscoveryExecution {
     if (scope.population == IntellijScopePopulation.KNOWN_EMPTY) return discover(scope, request, emptyList())
+    when (val route = IntellijDirectoryDiscoveryPlan.select(scope, request)) {
+        is IntellijDirectoryDiscoveryRoute.Selected ->
+            return discoverDirectory(project, route.plan, allowance, partitions)
+        IntellijDirectoryDiscoveryRoute.Rejected ->
+            return IntellijNativeDiscoveryExecution.Rejected(IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT)
+        IntellijDirectoryDiscoveryRoute.Existing -> Unit
+    }
     val target = request.target
     return if (target is SymbolDiscoveryTarget.All && target.kind != SymbolNameDiscoveryKind.FILE) {
         discoverIncrementalScopedDeclarations(project, scope, request, limits, allowance, observation)
@@ -29,45 +37,7 @@ internal fun IntellijNativeDiscoveryQuery.discoverNative(
             target.kind != SymbolNameDiscoveryKind.FILE &&
             target.match == SymbolDiscoveryMatch.EXACT_NAME
     ) {
-        // Detach authoritative indexed matches before the completeness scan. The same admission grant and identities
-        // survive both phases; local declarations still require the existing scoped producer.
-        discoverIndexed(
-            compiledScope = scope,
-            request = request,
-            contributor = IntellijReadContributor.EXACT_INDEX,
-            process = { observe, qualify, accept ->
-                collectIndexedNamedDeclarations(
-                    project,
-                    scope,
-                    request,
-                    observe,
-                    qualify,
-                    limits,
-                    indexes,
-                    observation,
-                ) {
-                    accept(IntellijDiscoveryDeclarationInput.Indexed(it))
-                }
-            },
-            continuation = { observe, qualify, accept ->
-                collectScopedKotlinDeclarations(
-                    project,
-                    scope,
-                    request,
-                    ScopedDeclarationCallbacks(
-                        observe,
-                        qualify,
-                        observation = observation,
-                        accept = {
-                            accept(IntellijDiscoveryDeclarationInput.Scoped(it))
-                        },
-                    ),
-                    limits,
-                    indexes = indexes,
-                    localOnly = scope.scope.libraryPolicy() == SymbolLibraryPolicy.INCLUDE,
-                )
-            },
-        )
+        discoverExactIndexedDeclarations(project, scope, request, indexes)
     } else if (request.usesScopedDeclarationEnumeration()) {
         discoverDeclarations(scope, request) { observe, qualify, accept ->
             collectScopedKotlinDeclarations(
@@ -153,3 +123,47 @@ internal fun IntellijNativeDiscoveryQuery.discoverNative(
         )
     }
 }
+
+internal fun IntellijNativeDiscoveryQuery.discoverExactIndexedDeclarations(
+    project: Project,
+    scope: CompiledIntellijSearchScope,
+    request: SymbolDiscoveryRequest,
+    indexes: IntellijDeclarationIndexes = NativeIntellijDeclarationIndexes(project),
+): IntellijNativeDiscoveryExecution =
+    discoverIndexed(
+        compiledScope = scope,
+        request = request,
+        contributor = IntellijReadContributor.EXACT_INDEX,
+        process = { observe, qualify, accept ->
+            collectIndexedNamedDeclarations(
+                project,
+                scope,
+                request,
+                observe,
+                qualify,
+                limits,
+                indexes,
+                observation,
+            ) {
+                accept(IntellijDiscoveryDeclarationInput.Indexed(it))
+            }
+        },
+        continuation = { observe, qualify, accept ->
+            collectScopedKotlinDeclarations(
+                project,
+                scope,
+                request,
+                ScopedDeclarationCallbacks(
+                    observe,
+                    qualify,
+                    observation = observation,
+                    accept = {
+                        accept(IntellijDiscoveryDeclarationInput.Scoped(it))
+                    },
+                ),
+                limits,
+                indexes = indexes,
+                localOnly = scope.scope.libraryPolicy() == SymbolLibraryPolicy.INCLUDE,
+            )
+        },
+    )

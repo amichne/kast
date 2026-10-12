@@ -126,7 +126,7 @@ internal fun collectScopedKotlinDeclarations(
     return files.values.sortedBy { it.path }.all(reader)
 }
 
-private fun SymbolDiscoveryRequest.usesExactClasslikeAstTraversal(): Boolean {
+internal fun SymbolDiscoveryRequest.usesExactClasslikeAstTraversal(): Boolean {
     val name = target as? SymbolDiscoveryTarget.Name ?: return false
     return name.match == SymbolDiscoveryMatch.EXACT_NAME &&
         scope.scope.libraryPolicy() == SymbolLibraryPolicy.EXCLUDE &&
@@ -154,6 +154,7 @@ internal class ScopedKotlinFileCollection(
 
     fun accept(file: VirtualFile): Boolean =
         observation.call(IntellijReadCall.SCOPED_FILE_CALLBACK) {
+            observation.count(IntellijReadCounter.DISCOVERY_FILE_ENTRIES_SUPPLIED)
             when {
                 !observe() -> {
                     stop = ScopedFileCollectionStop.TIME_OR_ENVIRONMENT
@@ -167,6 +168,9 @@ internal class ScopedKotlinFileCollection(
                     false
                 }
                 else -> {
+                    observation.count(IntellijReadCounter.DISCOVERY_FILE_CANDIDATES)
+                    observation.count(IntellijReadCounter.DISCOVERY_RETAINED_PARTITIONS)
+                    observation.count(IntellijReadCounter.DISCOVERY_BYTES_CHARGED, amount = 768 + 2 * file.path.length)
                     values += file
                     true
                 }
@@ -196,6 +200,11 @@ internal class ScopedKotlinDeclarationVisitor(
 
     fun readExactClasslikes(file: VirtualFile): Boolean = read(file, ::visitExactClasslikes)
 
+    fun readSource(file: KtFile, exactClasslikes: Boolean): Boolean {
+        if (!observe()) return false
+        return readSource(file, if (exactClasslikes) ::visitExactClasslikes else ::visit)
+    }
+
     private fun read(file: VirtualFile, traverse: (KtFile) -> Boolean): Boolean {
         if (!observe()) return false
         val ktFile = observation.call(IntellijReadCall.PSI_FIND_FILE) { manager.findFile(file) } as? KtFile
@@ -203,6 +212,10 @@ internal class ScopedKotlinDeclarationVisitor(
             qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
             return true
         }
+        return readSource(ktFile, traverse)
+    }
+
+    private fun readSource(ktFile: KtFile, traverse: (KtFile) -> Boolean): Boolean {
         return when (
             constraints.packageName.admitPackage { IntellijPackageEvidence.Known(ktFile.packageFqName.asString()) }
         ) {
@@ -292,4 +305,6 @@ internal data class ScopedDeclarationCallbacks(
     val qualify: (SymbolDiscoveryQualification) -> Unit,
     val accept: (NavigationItem) -> Boolean,
     val observation: IntellijReadObservation = IntellijReadObservation.None,
+    val consume: () -> Boolean = { true },
+    val block: (io.github.amichne.kast.symbol.contract.SymbolDiscoveryBlockCause) -> Unit = {},
 )

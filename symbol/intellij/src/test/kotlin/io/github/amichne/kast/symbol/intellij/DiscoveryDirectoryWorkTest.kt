@@ -49,7 +49,7 @@ class DiscoveryDirectoryWorkTest {
                 val outcome =
                     fixture
                         .query(observation)
-                        .discoverNative(project, scope, fixture.request, indexes = indexes)
+                        .discoverExactIndexedDeclarations(project, scope, fixture.request, indexes = indexes)
                         .outcome()
                 indexes.assertConsumed()
                 assertTarget(outcome, home, fixture)
@@ -128,7 +128,8 @@ class DiscoveryDirectoryWorkTest {
                         accept: (VirtualFile) -> Boolean,
                     ): Boolean = throw AssertionError("Unexpected package index")
                 }
-            val outcome = fixture.query().discoverNative(project, scope, request, indexes = indexes).outcome()
+            val outcome =
+                fixture.query().discoverExactIndexedDeclarations(project, scope, request, indexes = indexes).outcome()
             assertEquals(1, fileCalls)
             assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
             assertEquals(emptyList<String>(), outcome.batch().candidates.map { it.name.value })

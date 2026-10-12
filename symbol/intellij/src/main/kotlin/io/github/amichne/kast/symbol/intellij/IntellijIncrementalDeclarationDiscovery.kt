@@ -56,6 +56,10 @@ internal class IntellijIncrementalDeclarationDiscovery(
         val initial =
             when (inventory) {
                 is IntellijDeclarationInitialInventory.Complete -> inventory.partitions
+                is IntellijDeclarationInitialInventory.Rejected -> {
+                    state.block = inventory.cause
+                    return
+                }
                 IntellijDeclarationInitialInventory.TimeLimit -> {
                     state.qualifications += SymbolDiscoveryQualification.TIME_LIMIT_REACHED
                     state.block = SymbolDiscoveryBlockCause.INSUFFICIENT_EXECUTION_GRANT
