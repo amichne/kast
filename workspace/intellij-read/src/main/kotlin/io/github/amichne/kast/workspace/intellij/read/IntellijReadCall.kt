@@ -42,6 +42,8 @@ enum class IntellijReadCall {
     REFERENCE_CALLBACK,
     DEFINITION_CALLBACK,
     /** Observable calls only; internal index ID visits and initialization work remain unobserved. */
+    SYMBOL_EXACT_RESOLUTION,
+    SYMBOL_EXACT_REVALIDATION,
     NAMED_DECLARATION_INDEX,
     DISCOVERY_SCOPE_COMPILE,
     /** Whole selected-root admission pass inside compilation; excludes later native scope probes. */
@@ -51,6 +53,8 @@ enum class IntellijReadCall {
     DISCOVERY_SCOPE_DETACHED_ADMISSION,
     DISCOVERY_SCOPE_DIRECTORY_MEMBERSHIP,
     DISCOVERY_SCOPE_PATH_OWNERSHIP,
+    DISCOVERY_DIRECTORY_PLAN,
+    DISCOVERY_PARTITION_SUPPLY,
     SCOPED_FILE_INDEX,
     EXACT_PACKAGE_INDEX,
     SCOPED_FILE_CALLBACK,

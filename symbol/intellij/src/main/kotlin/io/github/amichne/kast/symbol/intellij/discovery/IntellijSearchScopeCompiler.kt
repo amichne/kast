@@ -92,6 +92,7 @@ internal constructor(
     internal val nativeScope: GlobalSearchScope,
     val ownershipRoots: List<ModelOwnedSourceRoot> = sourceRoots,
     val population: IntellijScopePopulation = IntellijScopePopulation.MODEL_OWNED,
+    internal val observation: IntellijReadObservation = IntellijReadObservation.None,
 )
 
 internal class IntellijSearchScopeCompiler(
@@ -173,6 +174,7 @@ internal class IntellijSearchScopeCompiler(
         }
 
         val policyRoots = ownedRoots.filter { root ->
+            observation.count(IntellijReadCounter.DISCOVERY_MODEL_ROOT_ENTRIES)
             request.scope.sourceKinds.includes(root.sourceKind) &&
                 request.scope.generatedSources.includes(root.provenance)
         }
@@ -183,7 +185,12 @@ internal class IntellijSearchScopeCompiler(
             when (val selected = constraints.sourceSets) {
                 SymbolDiscoverySourceSets.All -> policyRoots
                 is SymbolDiscoverySourceSets.Exact -> {
-                    if (ownedRoots.none { it.sourceSet in selected.values }) {
+                    if (
+                        ownedRoots.none {
+                            observation.count(IntellijReadCounter.DISCOVERY_MODEL_ROOT_ENTRIES)
+                            it.sourceSet in selected.values
+                        }
+                    ) {
                         // Complete model ownership proves these exact names have no source roots.
                         // Library policy cannot broaden an empty source-set intersection.
                         return IntellijSearchScopeCompilation.Compiled(
@@ -197,7 +204,10 @@ internal class IntellijSearchScopeCompiler(
                             )
                         )
                     }
-                    policyRoots.filter { it.sourceSet in selected.values }
+                    policyRoots.filter {
+                        observation.count(IntellijReadCounter.DISCOVERY_MODEL_ROOT_ENTRIES)
+                        it.sourceSet in selected.values
+                    }
                 }
             }
         if (constrainedRoots.isEmpty()) {
@@ -207,7 +217,11 @@ internal class IntellijSearchScopeCompiler(
         // that ownership, but only seed discovery with roots admitted by the captured IDE model.
         val readableRoots =
             observation.call(IntellijReadCall.DISCOVERY_SCOPE_ROOT_ADMISSION) {
-                constrainedRoots.filter { sourceRootAdmission(Path.of(it.sourceRoot.value)) }
+                constrainedRoots.filter {
+                    observation.count(IntellijReadCounter.DISCOVERY_MODEL_ROOT_ENTRIES)
+                    observation.count(IntellijReadCounter.DISCOVERY_ROOT_PATH_CONVERSIONS)
+                    sourceRootAdmission(Path.of(it.sourceRoot.value))
+                }
             }
         if (readableRoots.isEmpty() && request.scope.libraryPolicy() == SymbolLibraryPolicy.EXCLUDE) {
             return IntellijSearchScopeCompilation.Compiled(
@@ -227,8 +241,8 @@ internal class IntellijSearchScopeCompiler(
                 is SymbolSearchScope.ExactFile -> IntellijModelPathPolicy.ExactFile(Path.of(scope.file.value))
                 else ->
                     IntellijModelPathPolicy.SourceRoots(
-                        readableRoots.map { Path.of(it.sourceRoot.value) }.distinct().sortedBy(Path::toString),
-                        model.sourceRoots.map { Path.of(it.sourceRoot.value) }.distinct(),
+                        readableRoots.map { observedRootPath(it) }.distinct().sortedBy(Path::toString),
+                        model.sourceRoots.map { observedRootPath(it) }.distinct(),
                     )
             }
         val directoryMembership = directoryMembership(request.lease.workspaceRoot.value, constraints, observation)
@@ -238,6 +252,7 @@ internal class IntellijSearchScopeCompiler(
                 lease = request.lease,
                 scope = request.scope,
                 sourceRoots = readableRoots,
+                observation = observation,
                 ownershipRoots = model.sourceRoots,
                 nativeScope =
                     ModelOwnedGlobalSearchScope(
@@ -261,6 +276,12 @@ internal class IntellijSearchScopeCompiler(
         )
     }
 
+    private fun observedRootPath(root: ModelOwnedSourceRoot): Path {
+        observation.count(IntellijReadCounter.DISCOVERY_MODEL_ROOT_ENTRIES)
+        observation.count(IntellijReadCounter.DISCOVERY_ROOT_PATH_CONVERSIONS)
+        return Path.of(root.sourceRoot.value)
+    }
+
     private fun rootsFor(
         scope: SymbolSearchScope,
         roots: List<ModelOwnedSourceRoot>,
@@ -268,16 +289,25 @@ internal class IntellijSearchScopeCompiler(
         when (scope) {
             is SymbolSearchScope.ExactFile -> {
                 val file = Path.of(scope.file.value)
-                val candidates = roots.filter { file.startsWith(Path.of(it.sourceRoot.value)) }
-                val mostSpecificDepth = candidates.maxOfOrNull { Path.of(it.sourceRoot.value).nameCount }
-                candidates.filter { Path.of(it.sourceRoot.value).nameCount == mostSpecificDepth }
+                val candidates = roots.filter { file.startsWith(observedRootPath(it)) }
+                val mostSpecificDepth = candidates.maxOfOrNull { observedRootPath(it).nameCount }
+                candidates.filter { observedRootPath(it).nameCount == mostSpecificDepth }
             }
-            is SymbolSearchScope.Module -> roots.filter { it.module == scope.module }
+            is SymbolSearchScope.Module ->
+                roots.filter {
+                    observation.count(IntellijReadCounter.DISCOVERY_MODEL_ROOT_ENTRIES)
+                    it.module == scope.module
+                }
             is SymbolSearchScope.SourceSet ->
                 roots.filter {
+                    observation.count(IntellijReadCounter.DISCOVERY_MODEL_ROOT_ENTRIES)
                     it.project == scope.project && it.sourceSet == scope.sourceSet
                 }
-            is SymbolSearchScope.GradleProject -> roots.filter { it.project == scope.project }
+            is SymbolSearchScope.GradleProject ->
+                roots.filter {
+                    observation.count(IntellijReadCounter.DISCOVERY_MODEL_ROOT_ENTRIES)
+                    it.project == scope.project
+                }
             is SymbolSearchScope.Workspace -> roots
         }
 

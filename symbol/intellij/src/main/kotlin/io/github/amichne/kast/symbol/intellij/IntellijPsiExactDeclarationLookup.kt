@@ -18,6 +18,9 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceOffset
 import io.github.amichne.kast.symbol.contract.SymbolSelector
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.call
 import java.nio.file.Path
 
 internal data class IntellijExactDeclarationLookupKey(
@@ -63,7 +66,10 @@ internal fun interface IntellijExactDeclarationLookup {
     ): IntellijExactDeclarationLookupResult
 }
 
-internal class IntellijPsiExactDeclarationLookup(private val project: Project) : IntellijExactDeclarationLookup {
+internal class IntellijPsiExactDeclarationLookup(
+    private val project: Project,
+    private val observation: IntellijReadObservation = IntellijReadObservation.None,
+) : IntellijExactDeclarationLookup {
     /**
      * Proof transition: CompiledIntellijSearchScope + IntellijExactDeclarationLookupKey to
      * IntellijExactDeclarationLookupResult.
@@ -96,7 +102,7 @@ internal class IntellijPsiExactDeclarationLookup(private val project: Project) :
         key: IntellijExactDeclarationLookupKey,
     ): IntellijLiveExactDeclarationLookupResult {
         val file =
-            when (val resolution = key.file.resolveVirtualFile()) {
+            when (val resolution = observation.call(IntellijReadCall.VFS_FIND_FILE) { key.file.resolveVirtualFile() }) {
                 is IntellijExactVirtualFileResolution.Found -> resolution.file
                 IntellijExactVirtualFileResolution.Stale ->
                     return liveRejected(IntellijExactDeclarationLookupRejection.STALE_LOCATION)
@@ -105,7 +111,7 @@ internal class IntellijPsiExactDeclarationLookup(private val project: Project) :
             return liveRejected(IntellijExactDeclarationLookupRejection.OUTSIDE_SCOPE)
         }
         val psiFile =
-            PsiManager.getInstance(project).findFile(file)
+            observation.call(IntellijReadCall.PSI_FIND_FILE) { PsiManager.getInstance(project).findFile(file) }
                 ?: return liveRejected(IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION)
         if (!psiFile.isValid) {
             return liveRejected(IntellijExactDeclarationLookupRejection.STALE_LOCATION)
@@ -118,7 +124,7 @@ internal class IntellijPsiExactDeclarationLookup(private val project: Project) :
                 return liveRejected(IntellijExactDeclarationLookupRejection.UNSUPPORTED_DECLARATION)
         }
         val leaf =
-            psiFile.findElementAt(key.offset.value)
+            observation.call(IntellijReadCall.PSI_FIND_ELEMENT) { psiFile.findElementAt(key.offset.value) }
                 ?: return liveRejected(IntellijExactDeclarationLookupRejection.STALE_LOCATION)
         return findExactDeclarationAncestor(leaf, key)
     }
