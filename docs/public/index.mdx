@@ -10,17 +10,17 @@ keywords:
   - "semantic query"
 ---
 
-Kast gives coding agents compiler-grounded Kotlin declarations, relationships, diagnostics, and targeted source changes through IntelliJ IDEA.
+Kast connects your coding agent to IntelliJ IDEA for Kotlin queries, diagnostics, and targeted source changes.
 
-**Kast is the deterministic structure around a probabilistic system.** The agent chooses what to investigate. Kast establishes declaration identity and reports the scope, source state, and limits of the evidence.
+Your agent chooses the question. Kast uses compiler evidence to identify declarations and relationships. Each answer reports its search scope, source state, and limits.
 
 <CardGroup cols={2}>
   <Card title="Install and connect" icon="download" href="/start">
-    Install Kast and verify your agent with a real query.
+    Install Kast and examine your connection with a real query.
   </Card>
 
   <Card title="Find and trace code" icon="search" href="/search">
-    Select an exact declaration and follow its relationships.
+    Select a declaration and trace its callers or implementations.
   </Card>
 </CardGroup>
 
@@ -28,15 +28,15 @@ Kast gives coding agents compiler-grounded Kotlin declarations, relationships, d
 
 | Question | Kast evidence |
 | --- | --- |
-| Which `submitOrder` do I need? | Matching signatures, locations, source, and exact references. |
-| What calls or implements it? | Compiler-confirmed relationships, call sites, and bounded traversal. |
-| Which queries share declarations? | [Retained results combined by identity](/query-pipelines). |
-| Can I change this target precisely? | [One declaration addition or supported body replacement](/change), with verification and recovery evidence. |
+| Which `submitOrder` do I need? | Signatures, locations, source, and exact references for matching declarations. |
+| What calls or implements it? | Compiler-confirmed relationships and call sites within the requested traversal. |
+| Which queries share declarations? | [Query results combined by declaration identity](/query-pipelines). |
+| Can I change this declaration? | [One declaration addition or supported body replacement](/change), with a receipt for the edit and recovery. |
 
-A confirmed caller does not establish every caller. An empty qualified result does not prove absence. [What an answer proves](/concepts/evidence-boundaries) explains coverage and reuse.
+A caller result identifies a source relationship. Read coverage before you claim that it includes every caller or proves absence. See [What an answer proves](/concepts/evidence-boundaries).
 
 ## Supported environment
 
-Kast supports Kotlin Gradle projects on Apple silicon macOS with IntelliJ IDEA `262.*`. Connect Codex, Copilot, or Pi. Queries prepare the selected IDEA project and report setup blockers.
+Use Kast with a Kotlin Gradle project on Apple silicon macOS and IntelliJ IDEA `262.*`. Supported agents include Codex, Copilot, and Pi. Queries prepare the selected IDEA project and report setup blockers.
 
-Check [compatibility](/reference/compatibility) before installing. After a change, run your project's build and tests. Kast verifies the reported edit scope.
+Before installation, examine [compatibility](/reference/compatibility). After a source change, run your project's build and tests. Kast's edit verification covers the scope in its receipt.

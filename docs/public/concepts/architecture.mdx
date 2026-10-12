@@ -1,6 +1,6 @@
 ---
 title: "How Kast works"
-description: "See how Kast uses your IDEA project to answer queries and check whether results can be reused."
+description: "See how Kast answers queries through IDEA and decides whether saved results remain usable."
 icon: "workflow"
 keywords:
   - "architecture"
@@ -10,11 +10,11 @@ keywords:
 mode: "wide"
 ---
 
-Your agent chooses the question. Kast queries the exact repository's IDEA project and returns facts with their scope, source state, and limitations.
+Kast answers your agent's questions through the IDEA project for the exact repository. The answer includes facts, their search scope, source state, and limitations.
 
 ## Authority stays with the program
 
-IDEA's imported Gradle model, Kotlin plugin, and indexes establish declarations and relationships. Discovery finds candidates. Compiler analysis establishes semantic identity.
+IDEA supplies the imported Gradle model, Kotlin plugin, and indexes. Kast uses indexes to discover candidates and compiler analysis to establish their semantic identity.
 
 ```mermaid
 flowchart TB
@@ -36,18 +36,18 @@ flowchart TB
   classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
 ```
 
-Adapters preserve the operation document through their transport wrappers. Saved rows and checkpoints preserve evidence. They do not replace compiler authority.
+MCP, Tool RPC, and App Server adapters preserve the operation document in their transport wrappers. Saved rows and checkpoints keep the evidence from that operation. Compiler authority still determines semantic identity.
 
 ## Bounded execution preserves progress
 
-Queries run within configured work, byte, result, and time limits. Resumable results issue a continuation. Terminal results report why work cannot continue.
+Queries use configured limits for work, bytes, results, and elapsed time. Public `RUN` drains semantic pages within one grant. `RESUME` presents produced output through an issued continuation. A terminal result reports why the operation stopped.
 
-`ALL_DECLARATIONS` retains unvisited files and its position within the active file. Filters can remove every row from a page without stopping progress. [Results](/reference/responses#follow-progress-not-row-count) distinguishes execution from saved-row paging.
+The internal runner keeps unvisited files and the active file position for `ALL_DECLARATIONS`. A filter can remove every row from a page while execution still advances. [Results](/reference/responses#follow-progress-not-row-count) explains semantic execution and output presentation.
 
 ## Read state constrains reuse
 
-Kast checks workspace root, owning IDEA instance, read epoch, committed source state, and lifetime before restoring saved work. It retains references rather than live compiler objects.
+Before Kast restores saved work, it examines the workspace root, owning IDEA instance, read epoch, committed source state, and lifetime. Saved work contains references rather than live compiler objects.
 
-An exact symbol can undergo fresh compiler revalidation. Results and continuations require their original read state. See [Saved state and identity](/reference/responses#saved-state-and-identity).
+An exact symbol can undergo fresh compiler revalidation. Saved results and continuations need their original read state. See [Saved state and identity](/reference/responses#saved-state-and-identity) for reuse rules.
 
-Queries [prepare IDEA automatically](/concepts/background-startup). Trust, save, import, and indexing blockers remain explicit failures. Listing tools does not establish readiness.
+Queries [prepare IDEA automatically](/concepts/background-startup). Trust, save, import, and indexing blockers produce explicit failures. A tool catalog establishes the available contract. It does not establish project readiness.

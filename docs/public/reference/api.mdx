@@ -4,11 +4,13 @@ description: "Choose the action, input, steps, and output for a query_symbols re
 icon: "book-open"
 ---
 
-`query_symbols` runs queries, resumes produced output, reads retained rows, or reads anchored source. Use the [generated schema](/reference/schemas) for exact variants and [Find and trace code](/search) for agent prompts.
+Choose an action, source, steps, and output for `query_symbols`. It can run a query, present produced output, read saved rows, or read anchored source. Use the [generated schema](/reference/schemas) for exact variants. For agent prompts, use [Find and trace code](/search).
 
 ## Choose an action
 
-| Action | Required input | Behavior |
+The action selects the operation and its necessary input:
+
+| Action | Necessary input | Behavior |
 | --- | --- | --- |
 | `RUN` | `source` | Evaluate optional `steps` in order. Select `output` and optional `retention`. |
 | `RESUME` | Issued output `continuation` | Present remaining produced output without semantic execution. |
@@ -27,11 +29,15 @@ icon: "book-open"
 }
 ```
 
-Omitted output selects symbol name and location. `retention: "RETAIN"` keeps results for later use. Pass issued handles unchanged. Placeholders are not valid references.
+Without an output, the query returns symbol name and location. To save results for later use, set `retention: "RETAIN"`. Pass issued handles unchanged. Replace placeholders with current references.
 
-Every RUN requires complete-only execution within `COMPILER_RESOLVED_STATIC_V1`. The runner drains issued semantic pages under one grant. Unsupported or unproven answers reject with typed evidence. RUN has no completion selector. Compact output remains the default.
+Every `RUN` uses complete-only execution within `COMPILER_RESOLVED_STATIC_V1`. The runner drains semantic pages under one grant. Unsupported or unproven answers return typed rejections. `RUN` accepts no completion selector. Output is compact by default.
 
-## Start from the right input
+<a id="start-from-the-right-input" />
+
+## Choose an input
+
+Choose the source that matches the evidence you already hold:
 
 | Source | Purpose |
 | --- | --- |
@@ -43,51 +49,50 @@ Every RUN requires complete-only execution within `COMPILER_RESOLVED_STATIC_V1`.
 | `RESULT` | Retained rows, optionally selected by their issued row IDs. |
 | `IMPACT` | Producer values through supported Kotlin transfers and supplied reviewed models. |
 
-Discovery accepts directory or package scope. Its default is recursive workspace search in `main` and `test`. Discovery scope does not restrict later relationship destinations.
+Discovery accepts a directory or package scope. By default, it searches the workspace recursively in `main` and `test`. Set relationship destinations separately from discovery scope.
 
-`SEARCH_TEXT` requires a letter or underscore followed by letters, digits, or underscores. Phrases, substrings, qualified literals, and regular expressions are rejected. Text matches establish discovery, not calls.
+For `SEARCH_TEXT`, supply a letter or underscore, then letters, digits, or underscores. Kast rejects phrases, substrings, qualified literals, and regular expressions. A text match explains discovery. A relation query establishes calls.
 
-`ALL_DECLARATIONS` covers supported Kotlin classes, functions, properties, and type aliases. Direct library enumeration is unsupported. Inspect restrictions and progress before claiming completeness.
+`ALL_DECLARATIONS` enumerates supported Kotlin classes, functions, properties, and type aliases. It does not support direct library enumeration. Before a completeness claim, examine the restrictions and progress.
 
 ## Apply only the steps you need
+
+Steps run in their supplied order. Choose the smallest sequence that answers your question:
 
 | Step | Meaning |
 | --- | --- |
 | `WHERE` | Filter compiler-confirmed visibility or literal `NAME`, `KIND`, or `FILE`. Comparisons: `EQUALS`, `NOT_EQUALS`, `STARTS_WITH`, `ENDS_WITH`. |
 | `DISTINCT_SYMBOLS` | Keep the first row per canonical identity at this pipeline position. |
 | `EXPAND_RELATION` | One hop through `REFERENCES`, `CALLERS`, `CALLEES`, `IMPLEMENTATIONS`, `INHERITORS`, `OVERRIDES`, or `TYPE_USES`. |
-| `WALK` | Exhaustive relation traversal when `maximumDepth` is omitted or null; explicit depth bounds reach. Default breadth-first strategy. |
+| `WALK` | Exhaust the reachable graph with omitted or null `maximumDepth`. An explicit depth limits reach. Breadth-first by default. |
 | `TRACE` | Terminal bounded investigation returning the seed, its direct callable members, reference owners, implementations or overrides, direct callers, and one further caller layer. Select `SYMBOLS`. |
 | `CONCAT` | Append `input`, preserving order and duplicates. |
-| `UNION`, `INTERSECT`, `DIFFERENCE` | Compare retained symbol rows in `right` by canonical identity. Difference requires complete right coverage. |
-| `JOIN` | `INNER` pairs named cells. `SEMI` keeps matches. `ANTI` requires complete right coverage to establish absence. |
+| `UNION`, `INTERSECT`, `DIFFERENCE` | Compare saved symbol rows in `right` by canonical identity. Difference needs complete coverage of that input. |
+| `JOIN` | `INNER` pairs named cells. `SEMI` keeps matches. `ANTI` needs complete coverage of `right` to establish absence. |
 | `PROJECT_BINDING` | Select one named symbol cell before further symbol steps. |
 
-There is no arbitrary-field join or general-purpose `MAP`. Steps after composition apply to the combined stream. See [Combine query results](/query-pipelines).
+Steps after composition apply to the combined stream. Queries do not support arbitrary-field joins or a general-purpose `MAP`. See [Combine query results](/query-pipelines) for set and join examples.
 
 ### Trace an interface or adapter
 
-Use `steps: [{"type": "TRACE"}]` with `SYMBOLS` output after selecting an exact
-interface or method. `TRACE` is terminal. It groups facts by canonical symbol
-identity while preserving each compiler relation connection and the original
-reference observations. Imports, type references and code references remain
-distinct evidence; their count is not a call count.
+After you select an exact interface or method, use `steps: [{"type": "TRACE"}]` with `SYMBOLS` output. `TRACE` must be terminal. It groups facts by canonical symbol identity and keeps each compiler relation connection and original reference observation.
 
-For a class or interface seed, the fixed investigation discovers direct callable
-members through authoritative source inventory and compiler refinement. It then
-includes implementations or overrides, callers of callable seeds and those
-callable targets, reference owners, and one additional caller layer from the
-discovered owners/callers. Member calls through inferred receiver types remain
-eligible. Members retain exact declaration references; membership is established
-by source inspection and is not serialized as a class-to-member relation edge.
-A type seed does not acquire an invented named caller edge. This is bounded static evidence for common
-interface/adapter investigations; it does not claim an exhaustive downstream
-runtime graph. Supply `expansionScope` on `TRACE` to constrain native expansion.
-Each component's domain and incomplete coverage remain part of the answer.
+Imports, type references, and code references keep distinct evidence. Their combined count does not represent a call count.
+
+For a class or interface seed, source inventory and compiler refinement establish direct callable members. The fixed investigation includes:
+
+- Implementations or overrides.
+- Callers of callable seeds and discovered callable targets.
+- Reference owners.
+- One further caller layer from discovered owners and callers.
+
+Member calls through inferred receiver types remain eligible. Members keep exact declaration references. Source inspection establishes membership without a serialized class-to-member relation edge. A type seed does not gain an invented named caller edge.
+
+The trace supplies bounded static evidence for interface and adapter questions. It does not establish an exhaustive runtime graph. To constrain native expansion, supply `expansionScope` on `TRACE`. Each component keeps its domain and incomplete coverage in the answer.
 
 ### Choose the relationship search domain
 
-`expansionScope` controls native search before enumeration. A later `WHERE` filters returned rows.
+Set `expansionScope` to control native search before enumeration. A later `WHERE` filters returned rows without a reduction in native search work.
 
 | Scope | Meaning |
 | --- | --- |
@@ -95,13 +100,19 @@ Each component's domain and incomplete coverage remain part of the answer.
 | `RETAINED_SEED` | Scope carried by each seed. Default for `WALK` with explicit `maximumDepth`. Acquire an `AT_LOCATION` seed for exact-file scope. |
 | `SOURCE_DOMAIN` | Exact imported `sourceSets`, source policy, generated-source policy, and optional workspace-relative directory. |
 
-Omission or `null` uses the operation's default. `SOURCE_DOMAIN` requires `sourcePolicy` and `generatedSources`. `includeSubdirectories` defaults to `true`. `IMPACT.domain` requires an explicit scope.
+Omission or `null` selects the operation's default. For `SOURCE_DOMAIN`, supply `sourcePolicy` and `generatedSources`. `includeSubdirectories` defaults to `true`. For `IMPACT.domain`, supply an explicit scope.
 
-Observations retain requested and effective domains, coverage, and proven exclusions. [Callback observations](/reference/callbacks) preserve anonymous ownership. Excluded callbacks do not become named edges.
+Observations keep requested and effective domains, coverage, and proven exclusions. [Callback observations](/reference/callbacks) keep anonymous ownership. Excluded callbacks remain outside the named edges.
 
-A `WALK` with omitted or null `maximumDepth` exhausts the reachable relation graph in its declared expansion domain and defaults to workspace expansion. Its result evidence carries `extent: {"type": "EXHAUSTIVE"}`. Explicit `maximumDepth` includes nodes at that depth without expanding them; evidence carries `extent: {"type": "THROUGH_DEPTH", "maximum_depth": N}`. Complete coverage requires complete one-hop reads at every required node. Result, work, and time limits can pause evaluation while retaining the original extent. Terminal incomplete reads keep the walk incomplete. Explicit expansion policies remain part of the completion question.
+Without `maximumDepth`, or with a null depth, `WALK` exhausts the reachable relation graph in its declared expansion domain. It defaults to workspace expansion. The result carries `extent: {"type": "EXHAUSTIVE"}`.
+
+An explicit `maximumDepth` includes nodes at that depth but does not expand them. The evidence carries `extent: {"type": "THROUGH_DEPTH", "maximum_depth": N}`. Complete coverage needs complete one-hop reads at every necessary node.
+
+Result, work, and time limits can pause internal evaluation without a change to the original extent. Terminal incomplete reads leave the walk incomplete. Explicit expansion policies remain part of the completion question.
 
 ## Choose the result you need
+
+The output selects the evidence shape. Match it to the pipeline's row type:
 
 | Output | Evidence |
 | --- | --- |
@@ -112,16 +123,17 @@ A `WALK` with omitted or null `maximumDepth` exhausts the reachable relation gra
 | `VALUE_PATHS` | Producer sites, transfers, model applications, representation history, terminals, and obligations. |
 | `IMPACT_WITNESS` | Retained impact sections from a complete-only `IMPACT` run or `READ_RESULT`. |
 
-Explicit symbol `fields: []` requests mandatory identity and kind. File-scoped occurrences remain use sites. Walks cannot expand them as declaration endpoints.
+For symbols, explicit `fields: []` requests only the necessary identity and kind. File-scoped occurrences identify use sites. Walks cannot expand them as declaration endpoints.
 
 ## Investigate value impact
 
-`KOTLIN_FORWARD_V1` transfers a final try or catch value to its enclosing try expression when the compiler confirms a value type and the try has no `finally`. Each transfer retains the enclosing try range, branch range, `TRY_BODY` or indexed `CATCH_BODY` alternative, and `NORMAL_COMPLETION` condition. Catch fallback values have their own producers. These paths describe static provenance; they do not prove runtime path feasibility.
+`KOTLIN_FORWARD_V1` tracks supported Kotlin value transfers. A final try or catch value can supply the enclosing try expression. This transfer needs a compiler-confirmed value type and a try without `finally`.
 
-Non-final branch expressions do not supply the try result. Explicit returns remain return transfers, and throws do not produce normal branch results. Crossing a try boundary with `finally`, including an explicit return, retains `FINALLY_UNSUPPORTED`. Keep that obligation and every independent qualification attached to the useful partial paths.
+Each transfer keeps the enclosing try range, branch range, `TRY_BODY` or indexed `CATCH_BODY` alternative, and `NORMAL_COMPLETION` condition. Catch fallback values have their own producers. The paths describe static provenance. Runtime path feasibility needs separate evidence.
 
-`IMPACT` requires `seeds`, `declarations`, `domain`, `flow`, and `models`. Use no transformation steps and select `VALUE_PATHS`, or select `IMPACT_WITNESS` with `COMPLETE_ONLY` to complete the original investigation before presenting its selected section. Retain the result for later inspection.
+Non-final branch expressions do not supply the try result. Explicit returns remain return transfers. Throws do not produce normal branch results. A transfer across a try with `finally`, including an explicit return, keeps `FINALLY_UNSUPPORTED`. Keep that obligation and the independent qualifications with partial paths.
 
+For `IMPACT`, supply `seeds`, `declarations`, `domain`, `flow`, and `models`. Omit transformation steps. Select `VALUE_PATHS` for paths or `IMPACT_WITNESS` for a section from the completed investigation. The fixed `COMPLETE_ONLY` policy applies to both. To inspect the result later, save it with retention.
 
 | Input | Requirement |
 | --- | --- |
@@ -129,33 +141,40 @@ Non-final branch expressions do not supply the try result. Explicit returns rema
 | `declarations` | Modeled callable references paired with identity claims for fresh revalidation. |
 | `flow` | `KOTLIN_FORWARD_V1`. |
 | `domain` | Explicit expansion scope. |
-| `models` | Reviewed representation or boundary rules. `[]` supplies none. |
+| `models` | Reviewed representation rules or rules for modeled interfaces. `[]` supplies none. |
 | Optional `requestedSites` | Enclosing identity, range, and role. Argument sites also identify invocation, callable, and formal parameter index. |
 
-Native reads establish invocation and site identity. Supplied models define representation and boundary meaning. Unsupported transfers, rejected reads, and unresolved obligations preserve qualifications.
+Native reads establish invocation and site identity. Supplied models define the meaning of representations and modeled interfaces. Unsupported transfers, rejected reads, and unresolved obligations keep their qualifications.
 
-A work-limited run rejects completion and can retain empty `VALUE_PATHS` with `EVIDENCE_ONLY` accounting. Before ledger finalization, witness reads return `RESULT_FIELD_UNAVAILABLE`. Retained reads preserve the original qualifications and historical checkpoint without advancing semantic work.
+If a work limit stops the run, completion rejects. Kast can keep empty `VALUE_PATHS` with `EVIDENCE_ONLY` accounting. Before ledger finalization, witness reads return `RESULT_FIELD_UNAVAILABLE`. Saved reads preserve the original qualifications and historical checkpoint. They do no further semantic work.
 
-Strict value-path completion requires discharged original ledger obligations and every original path. Missing evidence, an incomplete path selection, or unresolved obligations returns `INVESTIGATION_UNPROVEN` with case-specific proof details. Budget rejection retains original accounting when storage permits it. Cyclic path expansion and mutable or unsupported native flow remain unproven.
+Strict completion needs every original path and discharged obligations from the original ledger. Missing evidence, incomplete path selection, or unresolved obligations returns `INVESTIGATION_UNPROVEN` with details for that case. Budget rejection keeps original accounting when storage permits it. Cyclic path expansion and mutable or unsupported native flow remain unproven.
 
 ### Read retained witnesses
 
-`READ_RESULT` accepts `IMPACT_WITNESS` sections `PRODUCERS`, `MODELS`, `NATIVE_READS`, `READ_REJECTIONS`, `FINDINGS`, and `SITE_ACCOUNTING`.
+To inspect an `IMPACT_WITNESS`, use `READ_RESULT` with a section:
 
-`FINDINGS` returns one compact row per original path: producer, destination, representation, model provenance, terminal, and obligations. Expand its evidence with `VALUE_PATHS`, cursor `pathOrdinal`, and `executionBudget.maxResults: 1`. The row retains `pathRowId`.
+- `PRODUCERS`
+- `MODELS`
+- `NATIVE_READS`
+- `READ_REJECTIONS`
+- `FINDINGS`
+- `SITE_ACCOUNTING`
 
-`SITE_ACCOUNTING` returns requested sites in original order with admission grants and observed work:
+`FINDINGS` returns one compact row per original path. Each row contains producer, destination, representation, model provenance, terminal, and obligations. To expand the evidence, select `VALUE_PATHS` with cursor `pathOrdinal` and `executionBudget.maxResults: 1`. The row keeps `pathRowId`.
+
+`SITE_ACCOUNTING` returns requested sites in original order. Each site keeps its admission grants and observed work:
 
 | State | Meaning |
 | --- | --- |
 | `REACHED` | Links original paths by ordinal and row ID, preserving separate scope exits. |
-| `EXCLUDED` | Retains proven scope-exclusion witnesses. |
+| `EXCLUDED` | Keeps proven scope-exclusion witnesses. |
 | `RELATIONSHIP_UNPROVEN` | Preserves identity and adds `REQUESTED_SITE_RELATIONSHIP`, preventing semantic completion. |
 
-Site identity alone does not establish a producer relationship. Retained witness paging performs no semantic reads and preserves unresolved obligations. `EVIDENCE_ONLY` supplies no closed investigation claim.
+Site identity alone does not establish a producer relationship. Pages of saved witnesses keep unresolved obligations without more semantic reads. `EVIDENCE_ONLY` does not establish a completed investigation.
 
 ## Defaults and limits
 
-Omitted budgets use configured defaults and ceilings. Omission is not unlimited execution. Budgets do not change requested scope or output shape.
+If you omit a budget, Kast uses configured defaults and ceilings. Omission does not permit unlimited execution. A budget does not change the requested scope or output shape.
 
-Every public tool accepts root-level boolean `verbose`. Omission or `false` selects compact output without removing semantic limitations. [Results](/reference/responses) explains continuation, coverage, and recovery.
+Every public tool accepts a root-level boolean `verbose`. Omission or `false` selects compact output and keeps semantic limitations. Use [Results](/reference/responses) to interpret continuation, coverage, and recovery.

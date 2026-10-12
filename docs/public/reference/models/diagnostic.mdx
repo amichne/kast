@@ -3,5 +3,10 @@ mode: wide
 icon: "stethoscope"
 sidebarTitle: "Diagnostic entry"
 title: "Diagnostic entry"
+description: "Read an IDEA diagnostic with its source location and reported scope."
 openapi-schema: "reference/callables.openapi.json check_diagnosticsResponse_diagnostic"
 ---
+
+`check_diagnostics` returns IDEA diagnostics for the requested path. Read each diagnostic with its source location and the response's reported scope.
+
+IDEA diagnostics do not establish a successful project build. After a source change, run your project's build and tests. See [change receipts](/change#read-the-receipt) for edit verification.

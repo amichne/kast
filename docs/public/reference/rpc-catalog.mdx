@@ -5,35 +5,39 @@ icon: "terminal"
 keywords: ["RPC", "catalog", "Copilot CLI", "Pi"]
 ---
 
-Run `kast-tool-rpc-complete` from the Kotlin repository or worktree. Each invocation writes one JSON object to stdout.
+Tool RPC exposes Kast through a one-shot process. Run `kast-tool-rpc-complete` from the Kotlin repository or worktree that you want to inspect. Each invocation writes one JSON object to stdout.
 
 ## Discover
+
+Use `catalog` to read installed tool names and schemas:
 
 ```shell
 "${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-tool-rpc-complete" catalog
 ```
 
-The reply has `type: "catalog"`, `catalog.schemaVersion: 2`, and `catalog.tools[]`. Each tool carries `name`, `description`, `inputSchema`, and `effect` (`READ` or `WRITE`). Rediscover after upgrades.
+The reply uses `type: "catalog"` and `catalog.schemaVersion: 2`. `catalog.tools[]` contains each tool's `name`, `description`, `inputSchema`, and `effect`. The effect is `READ` or `WRITE`. After an upgrade, rediscover the catalog.
 
 ## Call
 
-Pass the tool name after `call` and one JSON object on stdin:
+To call a tool, pass its name after `call`. Supply one JSON object on stdin:
 
 ```shell
 printf '%s\n' '{}' |
   "${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-tool-rpc-complete" call health_check
 ```
 
-Use [query arguments](/reference/api) for `query_symbols`. Tool RPC exposes direct MCP tool names, including change tools, but excludes `workspace_lifecycle`.
+For `query_symbols`, use [Query forms](/reference/api) to choose arguments. Tool RPC exposes the same tool names as direct MCP, including change tools. It omits hosted `workspace_lifecycle`.
 
 ## Decode
 
-| `type` | Required field | Meaning |
+Select the decoder from the reply's `type`:
+
+| `type` | Necessary field | Meaning |
 | --- | --- | --- |
 | `catalog` | `catalog` | Installed inventory. |
 | `complete` | `document` | Completed operation. |
 | `qualified` | `document` | Facts with limitations. |
 | `rejected_document` | `document` | Semantic or hosted rejection. |
-| `rejected` | `failure` | Finite process-boundary failure. |
+| `rejected` | `failure` | Finite failure at the process interface. |
 
-Decode `document` with the tool's response schema. Unknown variants are incompatible. See the [reply union](/reference/models/tool-rpc-reply) and [adapter guide](https://github.com/amichne/kast/blob/main/docs/tool-rpc.md).
+Decode `document` with the selected tool's response schema. Reject unknown variants as incompatible. See the [reply union](/reference/models/tool-rpc-reply) for the wrapper. Use the [adapter guide](https://github.com/amichne/kast/blob/main/docs/tool-rpc.md) for client integration.

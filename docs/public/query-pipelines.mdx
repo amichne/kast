@@ -1,42 +1,36 @@
 ---
 title: "Combine query results"
-description: "Reuse query results to find shared declarations, combine sets, or follow one side of a join."
+description: "Find shared declarations, combine saved sets, or trace one side of a join."
 icon: "workflow"
 ---
 
-Retain results with `retention: "RETAIN"`, then combine their rows by exact symbol identity. Pass issued result references unchanged.
+Use `retention: "RETAIN"` to save query results for composition. Set operations compare rows by exact symbol identity. Pass each issued result reference unchanged.
 
-## Require a complete static answer
+<a id="require-a-complete-static-answer" />
 
-Every RUN requires a complete answer within `COMPILER_RESOLVED_STATIC_V1`.
-The original question records this fixed model. RUN has no completion selector.
+## Complete static answers
 
-Automatic execution drains symbol, occurrence, traversal, and binding rows under
-one execution budget. A bounded preview can reference retained rows without
-changing upstream completion. The model covers compiler-resolved source
-relationships in the admitted query domain. It does not prove runtime activation;
-walk completion remains relative to the requested maximum depth.
-The strict model admits exact direct and forwarded callback argument routes when
-compiler evidence establishes the finite graph. Stored, returned, default,
-recursive, unresolved, and unproven owner routes remain typed rejections. Other
-value-call boundaries require a supported graph model.
+Every `RUN` needs a complete answer within `COMPILER_RESOLVED_STATIC_V1`. The original question records this fixed model. Requests cannot select another completion policy.
 
-Unsupported outputs receive `COMPLETION_UNSUPPORTED`. An incomplete execution or
-unproven callback graph receives `COMPLETION_UNPROVEN`, preserving the original
-coverage and a retained evidence reference when storage admits it. Use
-`READ_RESULT` with that reference to inspect the proven prefix and its exact
-evidence. Storage failure is explicit in the rejection.
-Retained reads of rejected answers carry `POLICY_REJECTED_EVIDENCE`; inspecting
-their enumeration coverage does not reverse the model rejection. Original
-producer progress remains historical evidence. Policy recovery is `EVIDENCE_ONLY`.
+Automatic execution drains symbol, occurrence, traversal, and binding rows under one execution budget. A bounded preview can reference saved rows without a change to upstream completion.
 
-This example uses the [historical recording](/reference/schemas#recorded-walkthrough) against [Kast at `56df091`](https://github.com/amichne/kast/tree/56df0912e46b182bb4ad8beabd1512823100fd72). Counts describe that run. **A**, **B**, and **C** are teaching labels. Use fresh references in your session.
+The model covers compiler-resolved source relationships in the admitted domain. Runtime activation needs separate evidence. Walk completion applies to the requested maximum depth.
 
-## Retain a second query result
+Compiler evidence can establish finite graphs for exact direct and forwarded callback argument routes. Stored, returned, default, recursive, unresolved, and unproven owner routes remain typed rejections. Other value-call interfaces need a supported graph model.
 
-The [walkthrough](/reference/walkthrough) retains **A**: ten implementations of `QueryStepSyntax`. Retain **B**: two class-like declarations named `Concat` under `query/contract` in `main`.
+Unsupported outputs return `COMPLETION_UNSUPPORTED`. Incomplete execution or an unproven callback graph returns `COMPLETION_UNPROVEN`. That rejection keeps the original coverage and an evidence reference when storage admits it. A storage failure appears explicitly in the rejection.
 
-`QueryStepSyntax.Concat` implements the interface. `ExactQueryStage.Concat` does not. A shared name does not establish shared identity.
+To inspect the proven prefix, use `READ_RESULT` with the evidence reference. Reads of rejected answers carry `POLICY_REJECTED_EVIDENCE`. Enumeration coverage does not reverse the model rejection. Original producer progress remains historical. Recovery uses `EVIDENCE_ONLY` and grants presentation of evidence.
+
+These examples use a [historical recording](/reference/schemas#recorded-walkthrough) against [Kast at `56df091`](https://github.com/amichne/kast/tree/56df0912e46b182bb4ad8beabd1512823100fd72). Counts describe that run. **A**, **B**, and **C** label its inputs and results. For your session, use fresh references.
+
+<a id="retain-a-second-query-result" />
+
+## Save a second query result
+
+The [walkthrough](/reference/walkthrough) saves **A**, ten implementations of `QueryStepSyntax`. The next query saves **B**, two class-like declarations named `Concat` under `query/contract` in `main`.
+
+Only `QueryStepSyntax.Concat` implements the interface. `ExactQueryStage.Concat` shares its name but has a different declaration identity.
 
 <Accordion title="Request: discover and retain input B">
   ```json
@@ -63,6 +57,8 @@ The [walkthrough](/reference/walkthrough) retains **A**: ten implementations of 
 
 ## Combine both inputs, then filter the combined stream
 
+`UNION` combines rows by identity. A later `WHERE` applies to the combined stream.
+
 ```mermaid
 flowchart TB
   accTitle: Set operations compare declaration identity rather than shared names
@@ -79,7 +75,7 @@ flowchart TB
   classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
 ```
 
-The recorded union/filter (`04-union-filter`) returns both declarations with exhaustive coverage. The filter applies after union.
+Recorded call `04-union-filter` returned both declarations with exhaustive coverage. The name filter applied after the union.
 
 <Accordion title="Request: union by identity, then filter by name">
   ```json
@@ -105,12 +101,12 @@ The recorded union/filter (`04-union-filter`) returns both declarations with exh
   }
   ```
 
-  `CONCAT` with `input` preserves order and duplicates. Add further union steps before the filter for more retained inputs.
+  `CONCAT` with `input` preserves order and duplicate rows. To include more saved inputs, add union steps before the filter.
 </Accordion>
 
 ## Keep only symbols present in both
 
-The recorded intersection (`05-intersection`) returns only `QueryStepSyntax.Concat`. Incomplete inputs retain their qualifications.
+Recorded call `05-intersection` returned only `QueryStepSyntax.Concat`, the shared declaration. Incomplete inputs keep their qualifications through intersection.
 
 <Accordion title="Request: intersect retained inputs">
   ```json
@@ -129,11 +125,11 @@ The recorded intersection (`05-intersection`) returns only `QueryStepSyntax.Conc
 
 ## Keep the matched pair, then select a side and continue
 
-`INNER` joins preserve both rows' evidence. Name the cells, then select one with `PROJECT_BINDING` before another relationship step.
+An `INNER` join preserves evidence from both rows. Name its cells. Before another relationship step, select one cell with `PROJECT_BINDING`.
 
-The recorded join (`06-join-c`) retains one pair as **C**. Both cells identify `QueryStepSyntax.Concat`. `step` preserves implementation evidence and `candidate` discovery evidence. Different reference strings can identify the same declaration.
+Recorded call `06-join-c` saved one pair as **C**. Both cells identified `QueryStepSyntax.Concat`. The `step` cell kept implementation evidence, and `candidate` kept discovery evidence. Different reference strings can identify the same declaration.
 
-<Accordion title="Requests: retain pairs as C, then follow one side">
+<Accordion title="Requests: save pairs as C, then trace one side">
   ```json
   {
     "request": {
@@ -153,7 +149,7 @@ The recorded join (`06-join-c`) retains one pair as **C**. Both cells identify `
   }
   ```
 
-  Then project `step` and follow references:
+  To trace the `step` cell's references, use:
 
   ```json
   {
@@ -170,20 +166,22 @@ The recorded join (`06-join-c`) retains one pair as **C**. Both cells identify `
   }
   ```
 
-  The recorded query (`07-project-references`) found this compiler-confirmed use:
+  Recorded call `07-project-references` found this compiler-confirmed use:
 
   ```kotlin
   is QueryStepSyntax.Concat -> ExactQueryStage.Concat(step.input, stage)
   ```
 </Accordion>
 
-There is no arbitrary-field join or general-purpose `MAP`.
+Queries do not support arbitrary-field joins or a general-purpose `MAP`.
 
 ## Choose the relationship search domain
 
-`EXPAND_RELATION` defaults to `WORKSPACE`. A `WALK` with omitted or null `maximumDepth` exhausts the reachable graph and defaults to `WORKSPACE`; an explicit depth defaults to `RETAINED_SEED`. An explicit `expansionScope` overrides either default and controls the search domain before enumeration. A later `WHERE` filters returned rows.
+`EXPAND_RELATION` defaults to `WORKSPACE`. Without `maximumDepth`, or with a null depth, `WALK` exhausts the reachable graph and defaults to `WORKSPACE`. With an explicit depth, it defaults to `RETAINED_SEED`.
 
-For explicit source restrictions:
+An explicit `expansionScope` overrides either default. It controls the search domain before enumeration. A later `WHERE` filters returned rows without a reduction in native search work.
+
+To restrict the source domain explicitly, use:
 
 ```json
 {
@@ -200,11 +198,11 @@ For explicit source restrictions:
 }
 ```
 
-Coverage applies to that domain. This current step does not change the recording's counts.
+Coverage applies to the specified domain. This current example does not change the historical counts.
 
 ## Read produced output or retained rows
 
-`RESUME` presents remaining produced output. `READ_RESULT` presents stored rows without semantic work. A result cursor pages those rows. Neither paging nor composition erases original limitations.
+Use `RESUME` to present the remaining produced output. Use `READ_RESULT` to present stored rows without semantic work. A result cursor selects the next stored page. Output presentation and composition keep the original limitations.
 
 <Accordion title="Requests: resume output or read retained rows">
   ```json
@@ -219,15 +217,16 @@ Coverage applies to that domain. This current step does not change the recording
   {"request":{"type":"READ_RESULT","result":"<result C>","output":{"type":"BINDING_ROWS"}}}
   ```
 
-  Recorded reads `08-read-a` and `09-read-c` returned ten symbols and one pair with their original result identities.
+  Recorded calls `08-read-a` and `09-read-c` returned ten symbols and one pair. Both results kept their original identities.
 </Accordion>
 
-Semantic page continuations belong to the internal runner. A completion rejection
-retains proof for inspection; its historical checkpoint grants no execution.
+The internal runner owns semantic page continuations. A completion rejection can keep proof for inspection. Its historical checkpoint does not authorize execution.
 
-### Reject an incomplete absence check
+<a id="reject-an-incomplete-absence-check" />
 
-`DIFFERENCE` and `ANTI` require complete right coverage. The recorded incomplete search (`10-incomplete-right`) makes both reject:
+### Reject an unproven absence claim
+
+`DIFFERENCE` and `ANTI` need complete coverage of the `right` input to establish absence. Recorded call `10-incomplete-right` supplied an incomplete input. Both operations rejected it:
 
 ```json
 {
@@ -240,6 +239,6 @@ retains proof for inspection; its historical checkpoint grants no execution.
 }
 ```
 
-That historical search had terminal `upstream-incomplete` progress. Current exact-name search can retain candidates beyond output limits. `ALL_DECLARATIONS` can retain its discovery position. Native work or byte limits can still leave coverage incomplete.
+That historical search ended with `upstream-incomplete` progress. Current exact-name search can keep candidates beyond output limits. `ALL_DECLARATIONS` can keep its discovery position. Native work or byte limits can still leave coverage incomplete.
 
-Edits, builds, and IDEA state changes can invalidate retained results. Use [Results](/reference/responses) for recovery and handle rules.
+Edits, builds, and IDEA state changes can invalidate saved results. Before reuse, read the recovery and handle rules in [Results](/reference/responses).
