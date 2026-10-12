@@ -24,6 +24,7 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadCallScope
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadSearch
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadSearchScope
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
@@ -176,6 +177,22 @@ internal class ScopedDiscoveryDispatcherFixture(private val project: Project, re
 internal class RecordingDiscoveryObservation(private val clock: () -> Long) : IntellijReadObservation {
     val calls = mutableMapOf<IntellijReadCall, Int>()
     val counters = mutableMapOf<IntellijReadCounter, Int>()
+    private val activeCalls = ArrayDeque<IntellijReadCall>()
+
+    data class Terminal(
+        val call: IntellijReadCall,
+        val parent: IntellijReadCall?,
+        val phase: IntellijReadPhase,
+        val outcome: IntellijReadCallOutcome,
+    )
+
+    val terminals = mutableMapOf<Terminal, Int>()
+    private var phase = IntellijReadPhase.DISCOVERY_INVENTORY
+
+    override fun phase(value: IntellijReadPhase) {
+        phase = value
+    }
+
     val searches = mutableListOf<Search>()
 
     data class Search(
@@ -188,7 +205,16 @@ internal class RecordingDiscoveryObservation(private val clock: () -> Long) : In
 
     override fun enterCall(call: IntellijReadCall): IntellijReadCallScope {
         calls[call] = (calls[call] ?: 0) + 1
-        return IntellijReadCallScope.None
+        val parent = activeCalls.lastOrNull()
+        val enteredPhase = phase
+        activeCalls.addLast(call)
+        return object : IntellijReadCallScope {
+            override fun finish(outcome: IntellijReadCallOutcome) {
+                assertEquals(call, activeCalls.removeLast())
+                val row = Terminal(call, parent, enteredPhase, outcome)
+                terminals[row] = (terminals[row] ?: 0) + 1
+            }
+        }
     }
 
     override fun enterSearch(search: IntellijReadSearch): IntellijReadSearchScope {

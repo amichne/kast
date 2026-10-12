@@ -249,10 +249,68 @@ internal class IntellijNativeDiscoveryQuery(
         return collector.finish()
     }
 
-    private fun collector(scope: CompiledIntellijSearchScope, request: SymbolDiscoveryRequest) =
+    internal fun discoverDirectory(
+        project: com.intellij.openapi.project.Project,
+        plan: IntellijDirectoryDiscoveryPlan,
+        allowance: IntellijDeclarationDiscoveryAllowance,
+        partitions: IntellijDeclarationPartitionFiles,
+    ): IntellijNativeDiscoveryExecution {
+        when (environmentState()) {
+            IntellijDiscoveryEnvironmentState.DUMB ->
+                return IntellijNativeDiscoveryExecution.Rejected(IntellijNativeDiscoveryRejection.DUMB_MODE)
+            IntellijDiscoveryEnvironmentState.DISPOSED ->
+                return IntellijNativeDiscoveryExecution.Rejected(IntellijNativeDiscoveryRejection.PROJECT_DISPOSED)
+            IntellijDiscoveryEnvironmentState.READY -> Unit
+        }
+        val collector = collector(plan.scope, plan.request, allowance)
+        collector.contributor = IntellijReadContributor.SCOPED_DECLARATIONS
+        val admission = IntellijIndexedDiscoveryAdmission(collector, plan.request, limits, observation)
+        try {
+            admission.collect { observe, qualify, accept ->
+                collectDirectoryKotlinDeclarations(
+                    project,
+                    plan,
+                    limits,
+                    allowance,
+                    ScopedDeclarationCallbacks(
+                        observe,
+                        qualify,
+                        { accept(IntellijDiscoveryDeclarationInput.Scoped(it)) },
+                        observation,
+                        collector::consumeWork,
+                        collector::block,
+                    ),
+                    partitions,
+                )
+            }
+        } catch (cancelled: ProcessCanceledException) {
+            throw cancelled
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: IndexNotReadyException) {
+            collector.qualifyAndHalt(SymbolDiscoveryQualification.DUMB_MODE_TRANSITION)
+        } catch (failure: RuntimeException) {
+            observation.unexpected(
+                io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFailure.capture(
+                    io.github.amichne.kast.workspace.intellij.read.IntellijReadStage.DISCOVERY,
+                    failure,
+                    limits,
+                )
+            )
+            collector.qualifyAndHalt(SymbolDiscoveryQualification.PROVIDER_FAILURE)
+        }
+        return collector.finish()
+    }
+
+    private fun collector(
+        scope: CompiledIntellijSearchScope,
+        request: SymbolDiscoveryRequest,
+        allowance: IntellijDeclarationDiscoveryAllowance? = null,
+    ) =
         BoundedNativeDiscoveryCollector(
             compiledScope = scope,
             request = request,
+            directoryAllowance = allowance,
             policies =
                 IntellijDiscoveryItemPolicies(
                     itemFile = itemFile,

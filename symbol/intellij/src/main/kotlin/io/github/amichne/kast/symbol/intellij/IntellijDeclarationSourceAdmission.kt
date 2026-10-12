@@ -15,11 +15,18 @@ import org.jetbrains.kotlin.idea.KotlinFileType
 internal class IntellijDeclarationSourceAdmission(
     private val scope: CompiledIntellijSearchScope,
     private val request: SymbolDiscoveryRequest,
+    private val plan: IntellijDirectoryDiscoveryPlan.Prepared? = null,
 ) {
     private val root = Path.of(request.scope.lease.workspaceRoot.value)
-    private val requestedDirectory = request.constraints.directory?.let { root.resolve(it.directory.value).normalize() }
-    private val selectedRoots by lazy { scope.sourceRoots.map { Path.of(it.sourceRoot.value) }.toSet() }
-    private val ownershipRoots by lazy { scope.ownershipRoots.map { Path.of(it.sourceRoot.value) }.toSet() }
+    private val requestedDirectory =
+        plan?.selection?.directory
+            ?: request.constraints.directory?.let { root.resolve(it.directory.value).normalize() }
+    private val selectedRoots by lazy {
+        plan?.sourceRoots ?: scope.sourceRoots.map { Path.of(it.sourceRoot.value) }.toSet()
+    }
+    private val ownershipRoots by lazy {
+        plan?.ownershipRoots ?: scope.ownershipRoots.map { Path.of(it.sourceRoot.value) }.toSet()
+    }
 
     fun relevantDirectory(path: Path): Boolean {
         val requested = requestedDirectory

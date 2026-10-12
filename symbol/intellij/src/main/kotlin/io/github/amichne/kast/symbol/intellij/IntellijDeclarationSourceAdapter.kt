@@ -3,7 +3,6 @@ package io.github.amichne.kast.symbol.intellij
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiManager
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
@@ -12,7 +11,6 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBlockCause
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteCount
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryElapsedNanoseconds
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryProgress
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
@@ -22,30 +20,77 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTimings
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryWorkCount
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
+import io.github.amichne.kast.workspace.intellij.read.call
 import java.nio.file.Path
 import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.kotlin.psi.KtFile
 
 /** Bounded VFS observations preserve native scope authority while detaching only admitted unread partitions. */
-internal class IntellijDeclarationSourceAdapter(
+internal class IntellijDeclarationSourceAdapter
+private constructor(
     private val project: Project,
     private val scope: CompiledIntellijSearchScope,
     private val request: SymbolDiscoveryRequest,
     private val limits: ReadLimits,
     private val allowance: IntellijDeclarationDiscoveryAllowance = IntellijDeclarationDiscoveryAllowance(request),
     private val observation: IntellijReadObservation = IntellijReadObservation.None,
+    private val plan: IntellijDirectoryDiscoveryPlan.Prepared? = null,
+    private val consume: () -> Boolean = { true },
+    private val partitions: IntellijDeclarationPartitionFiles = NativeIntellijDeclarationPartitionFiles,
 ) {
-    private val admission = IntellijDeclarationSourceAdmission(scope, request)
+    constructor(
+        project: Project,
+        scope: CompiledIntellijSearchScope,
+        request: SymbolDiscoveryRequest,
+        limits: ReadLimits,
+        allowance: IntellijDeclarationDiscoveryAllowance = IntellijDeclarationDiscoveryAllowance(request),
+        observation: IntellijReadObservation = IntellijReadObservation.None,
+    ) : this(
+        project,
+        scope,
+        request,
+        limits,
+        allowance,
+        observation,
+        null,
+        { true },
+        NativeIntellijDeclarationPartitionFiles,
+    )
+
+    constructor(
+        project: Project,
+        plan: IntellijDirectoryDiscoveryPlan.Prepared,
+        limits: ReadLimits,
+        allowance: IntellijDeclarationDiscoveryAllowance,
+        observation: IntellijReadObservation,
+        consume: () -> Boolean,
+        partitions: IntellijDeclarationPartitionFiles,
+    ) : this(
+        project,
+        plan.selection.scope,
+        plan.selection.request,
+        limits,
+        allowance,
+        observation,
+        plan,
+        consume,
+        partitions,
+    )
+
+    private val admission = IntellijDeclarationSourceAdmission(scope, request, plan)
 
     fun initialPartitions(): IntellijDeclarationInitialInventory {
         if (expired()) return initialTimeLimit()
         return when (val selected = scope.scope) {
             is SymbolSearchScope.ExactFile -> {
                 val path = Path.of(selected.file.value)
+                if (plan != null && !plan.selection.admitsFile(path))
+                    return IntellijDeclarationInitialInventory.Complete(emptyList())
                 IntellijDeclarationInitialInventory.Complete(
                     listOf(SemanticFilePartition.File(admission.identity(path, "file://$path")))
                 )
@@ -59,9 +104,16 @@ internal class IntellijDeclarationSourceAdapter(
 
     private fun sourceRootPartitions(): IntellijDeclarationInitialInventory {
         val paths = sortedSetOf<Path>(compareBy(Path::toString))
-        for (sourceRoot in scope.sourceRoots) {
+        if (plan != null) observation.count(IntellijReadCounter.DISCOVERY_DIRECTORY_PATH_CONVERSIONS)
+        for (root in
+            plan?.sourceRoots?.asSequence() ?: scope.sourceRoots.asSequence().map { Path.of(it.sourceRoot.value) }) {
             if (expired()) return initialTimeLimit()
-            val path = Path.of(sourceRoot.sourceRoot.value)
+            if (plan != null && !consume())
+                return IntellijDeclarationInitialInventory.Rejected(
+                    SymbolDiscoveryBlockCause.INSUFFICIENT_EXECUTION_GRANT
+                )
+            observation.count(IntellijReadCounter.DISCOVERY_PLAN_ROOT_ENTRIES)
+            val path = if (plan == null) root else plan.selection.intersection(root) ?: continue
             if (admission.relevantDirectory(path)) paths.add(path)
         }
         return detachRootPartitions(paths)
@@ -103,19 +155,14 @@ internal class IntellijDeclarationSourceAdapter(
     }
 
     private fun observeNative(partition: SemanticFilePartition): IntellijDeclarationPartitionObservation {
-        val url =
-            when (val identity = partition.location) {
-                is SymbolDiscoveryFileIdentity.Workspace -> "file://${identity.path.value}"
-                is SymbolDiscoveryFileIdentity.External -> identity.url.value
-            }
-        val native = VirtualFileManager.getInstance().findFileByUrl(url)
+        val native = observation.call(IntellijReadCall.VFS_FIND_FILE) { partitions.find(partition) }
         if (expired()) return timeLimit()
         if (native == null)
             return rejected(
                 SymbolDiscoveryBlockCause.PARTITION_UNAVAILABLE,
                 IntellijReadTermination.DISCOVERY_PARTITION_NOT_FOUND,
             )
-        if (!native.isValid)
+        if (!native.isValid || native.path != partition.orderingPath)
             return rejected(
                 SymbolDiscoveryBlockCause.PARTITION_UNAVAILABLE,
                 IntellijReadTermination.DISCOVERY_PARTITION_INVALID,
@@ -138,24 +185,27 @@ internal class IntellijDeclarationSourceAdapter(
     }
 
     private fun directory(native: VirtualFile): IntellijDeclarationPartitionObservation {
-        val children = native.children
+        val children = observation.call(IntellijReadCall.VFS_CHILDREN) { partitions.children(native) }
         val detached = mutableListOf<SemanticFilePartition>()
         var bytes = PARTITION_OBSERVATION_BINDING_BYTES
         for (child in children) {
             if (expired()) return timeLimit()
-            val partition = admission.detach(child)
-            if (partition != null) {
-                if (detached.size >= limits[ReadLimitParameter.DISCOVERY_FILES].value)
-                    return rejected(
-                        SymbolDiscoveryBlockCause.PARTITION_CAPACITY,
-                        IntellijReadTermination.DISCOVERY_PARTITION_CAPACITY,
-                    )
-                val added = partition.detachedBytes()
-                if (added > limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value - bytes)
-                    return rejected(SymbolDiscoveryBlockCause.RETENTION_LIMIT, IntellijReadTermination.RETENTION_LIMIT)
-                detached += partition
-                bytes += added
-            }
+            if (!consume())
+                return IntellijDeclarationPartitionObservation.Rejected(
+                    SymbolDiscoveryBlockCause.INSUFFICIENT_EXECUTION_GRANT
+                )
+            observation.count(IntellijReadCounter.DISCOVERY_DIRECTORY_CHILD_ENTRIES)
+            val partition = admission.detach(child) ?: continue
+            if (detached.size >= limits[ReadLimitParameter.DISCOVERY_FILES].value)
+                return rejected(
+                    SymbolDiscoveryBlockCause.PARTITION_CAPACITY,
+                    IntellijReadTermination.DISCOVERY_PARTITION_CAPACITY,
+                )
+            val added = partition.detachedBytes()
+            if (added > limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value - bytes)
+                return rejected(SymbolDiscoveryBlockCause.RETENTION_LIMIT, IntellijReadTermination.RETENTION_LIMIT)
+            detached += partition
+            bytes += added
         }
         return IntellijDeclarationPartitionObservation.Directory(detached.sortedBy { it.orderingPath })
     }
@@ -169,7 +219,8 @@ internal class IntellijDeclarationSourceAdapter(
         if (native.fileType != KotlinFileType.INSTANCE || !scope.nativeScope.contains(native))
             return IntellijDeclarationPartitionObservation.OutsideUniverse
         val file =
-            PsiManager.getInstance(project).findFile(native) as? KtFile
+            observation.call(IntellijReadCall.PSI_FIND_FILE) { PsiManager.getInstance(project).findFile(native) }
+                as? KtFile
                 ?: return rejected(
                     SymbolDiscoveryBlockCause.PROVIDER_UNAVAILABLE,
                     IntellijReadTermination.DISCOVERY_SOURCE_UNAVAILABLE,

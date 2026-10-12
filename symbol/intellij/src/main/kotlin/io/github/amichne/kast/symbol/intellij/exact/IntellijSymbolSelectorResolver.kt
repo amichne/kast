@@ -17,9 +17,11 @@ import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadStage
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFailure
+import io.github.amichne.kast.workspace.intellij.read.call
 import java.util.concurrent.CancellationException
 
 internal enum class IntellijSymbolSelectorRejection {
@@ -81,6 +83,12 @@ internal class IntellijSymbolSelectorQuery(
     fun resolve(
         compiledScope: CompiledIntellijSearchScope,
         selection: SymbolDiscoverySelection,
+    ): IntellijSymbolSelectorResolution =
+        observation.call(IntellijReadCall.SYMBOL_EXACT_RESOLUTION) { resolveAdmitted(compiledScope, selection) }
+
+    private fun resolveAdmitted(
+        compiledScope: CompiledIntellijSearchScope,
+        selection: SymbolDiscoverySelection,
     ): IntellijSymbolSelectorResolution {
         if (compiledScope.lease != selection.lease || compiledScope.scope != selection.scope) {
             return rejectedResolution(IntellijSymbolSelectorRejection.INTERNAL_INVARIANT)
@@ -112,6 +120,12 @@ internal class IntellijSymbolSelectorQuery(
      * no live IntelliJ or compiler value crosses this call.
      */
     fun describe(
+        compiledScope: CompiledIntellijSearchScope,
+        selector: SymbolSelector,
+    ): IntellijSymbolDescriptionResolution =
+        observation.call(IntellijReadCall.SYMBOL_EXACT_REVALIDATION) { describeAdmitted(compiledScope, selector) }
+
+    private fun describeAdmitted(
         compiledScope: CompiledIntellijSearchScope,
         selector: SymbolSelector,
     ): IntellijSymbolDescriptionResolution {
@@ -265,7 +279,12 @@ internal class IntellijSymbolSelectorResolver(
 
     private fun Project.query(): IntellijSymbolSelectorQuery =
         IntellijSymbolSelectorQuery(
-            lookup = IntellijKotlinCompilerSymbolLookup(IntellijPsiExactDeclarationLookup(this), observation, capture),
+            lookup =
+                IntellijKotlinCompilerSymbolLookup(
+                    IntellijPsiExactDeclarationLookup(this, observation),
+                    observation,
+                    capture,
+                ),
             environmentState = {
                 when {
                     isDisposed -> IntellijDiscoveryEnvironmentState.DISPOSED
