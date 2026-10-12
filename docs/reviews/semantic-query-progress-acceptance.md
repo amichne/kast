@@ -1,5 +1,47 @@
 # Progressive semantic read acceptance
 
+## 2026-10-12 current-source replay
+
+This replay starts from fetched main `d0b32767b9f9e2692b7948cc2ffdae3fb67d7aeb`. The original implementation record follows this section. Its installed-host qualification remains incomplete.
+
+Current regressions pass for retained declaration discovery, reference occurrences, traversal omissions, checkpoint replay, and publication authority. Physical PSI tests exhaust 400 declarations in one file and 600 files without repeated leaf traversal. These checks do not reproduce the original stall on current main.
+
+A new native regression found repeated preparation in `CompiledRelationScope.prepareFileEnumeration`. Four one-row reference pages rebuilt the complete source-file universe four times. The original native reference inventory was already retained once. Each page still returned the expected compiler-proven occurrence.
+
+The fix skips optional file enumeration for admitted `Resume` requests with `References` or `TypeUses` meaning. Fresh scope compilation and K2 subject revalidation precede that decision. Locator restoration still checks current scope membership, exact range and descriptor, and K2 target identity. Other relation meanings retain their existing preparation paths.
+
+| Matched nested-import fixture, REFERENCES limit 1 | Before | After |
+|---|---:|---:|
+| Complete source-file inventories | 4 | 1 |
+| Native reference inventories | 1 | 1 |
+| Distinct proven occurrences | 4 | 4 |
+| File-scoped imports, including alias | 2 | 2 |
+| Declaration-owned type occurrences | 2 | 2 |
+
+`NativeNestedImportOccurrenceTest` uses physical indexed files and the production compiler adapter. Its independent range oracle covers a nested-type import, an aliased import, and both type uses. The matrix exhausts `REFERENCES` and `TYPE_USES` at limits 1, 5, and 20. It requires stable per-drain authority, unique rows, exact targets, and one preparation of each inventory. Imports produce no fabricated declaration endpoint or call edge. `TYPE_USES` keeps its existing type-position projection.
+
+The two-file fixture uses a selected source set with authored production sources and excluded generated sources. Each call requests 10,000 work units, 2,000 milliseconds, and 100,000 returned bytes. The fixture uses no hosted grant admission. Its time grant is not an elapsed measurement. Each native test owns a fresh project; SDK index caches can remain warm between task invocations. No latency, heap, percentile, or large installed-workspace improvement is established.
+
+Environment: macOS 26.5.2, MacBookPro18,2, 10 logical CPUs, 32 GiB RAM, project-owned GraalVM 25.0.2, Kotlin 2.4.20, and pinned IntelliJ SDK 262.9437.185. The baseline assertion is retained in `/tmp/kast-reference-remainder-baseline.xml`. Candidate evidence uses the repository's native JUnit reports. These temporary paths have no durability guarantee.
+
+Executed checks, with `mise exec --` before each Gradle command:
+
+```sh
+./gradlew :relation:intellij:nativeFixtureTest --tests '*NativeNestedImportOccurrenceTest'
+./gradlew :relation:intellij:nativeFixtureTest
+./gradlew :runtime:hosted:nativeFixtureTest
+./gradlew :relation:intellij:check :relation:service:test :query:service:test :traversal:service:test verifyJsonContracts verifyKastArchitecture knowledgeImpact verifyKnowledgeBase :app-server:verifyPublicQueryGeneration
+./gradlew :runtime:hosted:test --tests '*HostedIndexingRetryTest' --tests '*HostedSmartModeWaitTest' --tests '*HostedAutomaticPublicationSessionTest'
+```
+
+The first selector failed before the production change because it observed four source inventories, then passed after the change. The complete relation native lane passes 15 tests. The affected JVM suites pass 204 relation-adapter, 21 relation-service, 179 query-service, and 43 traversal-service tests. Seven hosted native tests pass. They cover real status-read waits, cooperative cancellation, peer disconnect, and early request rejection. These hosted fixtures do not execute a complete installed semantic query.
+
+No public DTO or wire shape changes. Generated-contract validation passes. `knowledgeImpact` reports zero affected concepts for the source change.
+
+Remaining qualification requires a current candidate Host in an owned imported workspace and a matched large-scope installed replay. First-result time, total exhaustion time, cancellation drainage, and retained-state high-water marks remain unmeasured for that boundary. Opaque indivisible native partitions can still return typed capacity failures. Immediate phase logs record first visits; repeated phases on a request that never drains can leave the last phase unknown.
+
+## Historical implementation record
+
 Qualification is in progress. PR #891 is open, and the complete product gate and hosted CI pass at `3040d7b0ab4ae4ae68a619fb3a2c0cdac91f5892`. The claims below record established contracts and the required native checks; they do not yet establish end-to-end completion.
 
 This change starts from fetched `amichne/kast` upstream `6b9d5e0d0d75e4632f8a023e6a9bc6a70212b24f`. The fixture and implementation are evaluated under exact compiler and workspace authority. Source, query, and diagnostic continuation ownership remain in their existing bounded stores.
