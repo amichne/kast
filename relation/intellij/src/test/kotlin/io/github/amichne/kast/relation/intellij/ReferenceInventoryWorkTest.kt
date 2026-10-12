@@ -49,6 +49,13 @@ class ReferenceInventoryWorkTest {
                     WorkPath.DEFINITIONS -> 2
                 }
             assertEquals(expected, candidate.preparations)
+            val requestCount = questions(path, limit).size
+            val occurrenceCount = if (path == WorkPath.DEFINITIONS) 0 else 12
+            assertEquals(requestCount, baseline.preparations)
+            assertEquals(requestCount * occurrenceCount, candidate.confirmations)
+            assertEquals((requestCount * occurrenceCount).toLong(), candidate.examined)
+            assertEquals(requestCount * occurrenceCount, candidate.facts.size)
+            assertEquals(requestCount * maxOf(1, (occurrenceCount + limit - 1) / limit), candidate.pages)
             println(
                 "INVENTORY_WORK ${path.name} $limit ${baseline.preparations} ${candidate.preparations} " +
                     "${candidate.confirmations} ${candidate.examined} ${candidate.pages} ${candidate.facts.size}"

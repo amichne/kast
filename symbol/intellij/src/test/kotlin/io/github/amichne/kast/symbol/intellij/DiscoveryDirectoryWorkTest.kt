@@ -28,9 +28,8 @@ class DiscoveryDirectoryWorkTest {
     ) =
         withParser(home) { project ->
             val fixture = ScopedDiscoveryDispatcherFixture(project, home.resolve("source"))
-            val failures = mutableListOf<String>()
             var expected: SymbolDiscoveryOutcome? = null
-            for (sample in 0..5) {
+            for (excludedCount in listOf(0, 100, 100_000)) {
                 val observation = RecordingDiscoveryObservation { 0L }
                 var detachedAdmissions = 0
                 val scope =
@@ -38,41 +37,38 @@ class DiscoveryDirectoryWorkTest {
                         detachedAdmissions++
                         true
                     }
-                var preCallbackNanos = 0L
                 val indexes =
                     fixture.Indexes(
                         scope.nativeScope,
                         { native, accept ->
-                            val start = System.nanoTime()
-                            repeat(100_000) { assertFalse(native.contains(fixture.excludedFile.virtualFile)) }
-                            preCallbackNanos = System.nanoTime() - start
+                            repeat(excludedCount) { assertFalse(native.contains(fixture.excludedFile.virtualFile)) }
                             fixture.admittedFiles.forEach { assertTrue(accept(it.virtualFile)) }
                             true
                         },
                     )
-                val start = System.nanoTime()
                 val outcome =
                     fixture
                         .query(observation)
                         .discoverNative(project, scope, fixture.request, indexes = indexes)
                         .outcome()
-                val nanos = System.nanoTime() - start
                 indexes.assertConsumed()
                 assertTarget(outcome, home, fixture)
-                assertEquals(100_000, observation.counters[IntellijReadCounter.DISCOVERY_SCOPE_FILES_EXCLUDED])
-                assertEquals(14, observation.calls[IntellijReadCall.SCOPED_FILE_CALLBACK])
-                // Entire outcome equality retains authority, location/range identity, scope and coverage.
-                if (expected == null) expected = outcome else assertEquals(expected, outcome)
-                val conversions = observation.counters[IntellijReadCounter.DISCOVERY_DIRECTORY_PATH_CONVERSIONS] ?: 0
-                println(
-                    "directory roots=4096 sample=$sample queryNs=$nanos preCallbackNs=$preCallbackNanos " +
-                        "detachedAdmissions=$detachedAdmissions directoryConversions=$conversions " +
-                        "calls=${observation.calls} counters=${observation.counters}"
+                assertEquals(
+                    excludedCount,
+                    observation.counters[IntellijReadCounter.DISCOVERY_SCOPE_FILES_EXCLUDED] ?: 0,
                 )
-                if (conversions != 1) failures += "sample=$sample directoryConversions=$conversions"
-                if (detachedAdmissions > 32) failures += "sample=$sample detachedAdmissions=$detachedAdmissions"
+                assertEquals(14, observation.calls[IntellijReadCall.SCOPED_FILE_CALLBACK])
+                assertEquals(14, observation.calls[IntellijReadCall.PSI_FIND_FILE])
+                // The named target has three admissions, followed by fourteen file admissions.
+                assertEquals(17, detachedAdmissions)
+                assertEquals(17, observation.calls[IntellijReadCall.DISCOVERY_SCOPE_SOURCE_MEMBERSHIP])
+                assertEquals(17, observation.calls[IntellijReadCall.DISCOVERY_SCOPE_PATH_OWNERSHIP])
+                assertEquals(excludedCount + 17, observation.calls[IntellijReadCall.DISCOVERY_SCOPE_FILE_MEMBERSHIP])
+                assertEquals(1, observation.counters[IntellijReadCounter.DISCOVERY_DIRECTORY_PATH_CONVERSIONS])
+                assertEquals(1, observation.counters[IntellijReadCounter.CANDIDATES_PROJECTED])
+                // Full equality preserves authority, location, range, scope, and coverage across excluded inputs.
+                if (expected == null) expected = outcome else assertEquals(expected, outcome)
             }
-            assertEquals(emptyList<String>(), failures)
         }
 
     private fun assertTarget(outcome: SymbolDiscoveryOutcome, home: Path, fixture: ScopedDiscoveryDispatcherFixture) {

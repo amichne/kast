@@ -22,12 +22,40 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class DiscoveryDirectoryPolicyTest {
+    @Test
+    fun `directory rejection performs no native source membership or detached admission`() {
+        for (containment in SymbolDiscoveryContainment.entries) {
+            for (excludedCount in listOf(0, 100, 100_000)) {
+                val case = Case(containment)
+                case.path = IntellijVirtualFilePath.classify(Path.of("/workspace/src/narrow-other/File.kt"))
+                repeat(excludedCount) { assertEquals(false, case.contains()) }
+                assertEquals(0, case.sourceChecks)
+                assertEquals(0, case.detachedChecks)
+                assertEquals(0, case.observation.calls[IntellijReadCall.DISCOVERY_SCOPE_SOURCE_MEMBERSHIP] ?: 0)
+                assertEquals(0, case.observation.calls[IntellijReadCall.DISCOVERY_SCOPE_PATH_OWNERSHIP] ?: 0)
+                assertEquals(
+                    excludedCount,
+                    case.observation.counters[IntellijReadCounter.DISCOVERY_SCOPE_FILES_EXCLUDED] ?: 0,
+                )
+                case.path = IntellijVirtualFilePath.classify(Path.of(PATHS.first()))
+                assertEquals(true, case.contains())
+                assertEquals(1, case.sourceChecks)
+                assertEquals(1, case.detachedChecks)
+                case.liveSource = false
+                assertEquals(false, case.contains())
+                assertEquals(2, case.sourceChecks)
+                assertEquals(1, case.detachedChecks)
+            }
+        }
+    }
+
     @Test
     fun `precomputed direct descendant and unrestricted predicates preserve live admission and library policy`() {
         for (containment in listOf(null, SymbolDiscoveryContainment.DIRECT, SymbolDiscoveryContainment.DESCENDANTS)) {
@@ -71,6 +99,7 @@ class DiscoveryDirectoryPolicyTest {
         var liveSource = true
         var library = IntellijLibraryMembership.NOT_LIBRARY
         var detachedChecks = 0
+        var sourceChecks = 0
         private val file = LightVirtualFile("File.kt")
         private val root = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
         private val model =
@@ -126,7 +155,10 @@ class DiscoveryDirectoryPolicyTest {
                         },
                         { path },
                         { library },
-                        { liveSource },
+                        {
+                            sourceChecks++
+                            liveSource
+                        },
                     ) as IntellijSearchScopeCompilation.Compiled)
                 .capability
                 .nativeScope

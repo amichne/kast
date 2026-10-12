@@ -248,13 +248,11 @@ internal class IntellijSearchScopeCompiler(
                         libraryMembership = libraryMembership,
                         sourceMembership = sourceMembership,
                         observation = observation,
+                        directoryMembership = directoryMembership,
                         fileAdmission = { path ->
-                            observation.call(IntellijReadCall.DISCOVERY_SCOPE_DIRECTORY_MEMBERSHIP) {
-                                directoryMembership(path)
-                            } &&
-                                observation.call(IntellijReadCall.DISCOVERY_SCOPE_DETACHED_ADMISSION) {
-                                    fileAdmission(path)
-                                }
+                            observation.call(IntellijReadCall.DISCOVERY_SCOPE_DETACHED_ADMISSION) {
+                                fileAdmission(path)
+                            }
                         },
                     ),
             )
