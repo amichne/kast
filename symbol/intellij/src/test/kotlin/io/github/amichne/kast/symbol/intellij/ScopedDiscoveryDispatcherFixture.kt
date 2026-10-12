@@ -68,7 +68,11 @@ internal class ScopedDiscoveryDispatcherFixture(private val project: Project, re
     var now = 0L
     val observation = RecordingDiscoveryObservation { now }
 
-    fun scope(observe: IntellijReadObservation = observation): CompiledIntellijSearchScope {
+    fun scope(
+        observe: IntellijReadObservation = observation,
+        unrelatedRoots: Int = 0,
+        fileAdmission: (Path) -> Boolean = { true },
+    ): CompiledIntellijSearchScope {
         val model =
             WorkspaceSearchScopeModel.compile(
                 source.scope.lease.workspaceRoot,
@@ -83,9 +87,20 @@ internal class ScopedDiscoveryDispatcherFixture(private val project: Project, re
                         WorkspaceSourceRootKind.PRODUCTION,
                         WorkspaceSourceRootProvenance.AUTHORED,
                     )
-                ),
+                ) +
+                    (0 until unrelatedRoots).map { index ->
+                        WorkspaceSourceRootBoundary(
+                            "unrelated$index",
+                            root,
+                            ":",
+                            "main",
+                            root.resolve("unrelated$index/src"),
+                            WorkspaceSourceRootKind.PRODUCTION,
+                            WorkspaceSourceRootProvenance.AUTHORED,
+                        )
+                    },
             )
-        return (IntellijSearchScopeCompiler(request.constraints, observation = observe)
+        return (IntellijSearchScopeCompiler(request.constraints, observation = observe, fileAdmission = fileAdmission)
                 .compile(
                     request.scope,
                     model,

@@ -11,20 +11,25 @@ import io.github.amichne.kast.workspace.intellij.read.call
 import java.nio.file.Path
 
 internal sealed interface IntellijModelPathPolicy {
-    fun contains(path: Path): Boolean
+    fun contains(path: Path, observation: IntellijReadObservation = IntellijReadObservation.None): Boolean
 
     data class ExactFile(val file: Path) : IntellijModelPathPolicy {
-        override fun contains(path: Path): Boolean = path == file
+        override fun contains(path: Path, observation: IntellijReadObservation): Boolean = path == file
     }
 
     data class SourceRoots(
         val roots: List<Path>,
         val ownershipRoots: List<Path>,
     ) : IntellijModelPathPolicy {
-        override fun contains(path: Path): Boolean {
-            val owners = ownershipRoots.filter(path::startsWith)
-            val depth = owners.maxOfOrNull(Path::getNameCount) ?: return false
-            return owners.any { it.nameCount == depth && it in roots }
+        private val selectedPaths = roots.toSet()
+        private val importedPaths = ownershipRoots.toSet()
+
+        override fun contains(path: Path, observation: IntellijReadObservation): Boolean {
+            for (ancestor in generateSequence(path) { it.parent }) {
+                observation.count(IntellijReadCounter.DISCOVERY_PATH_OWNERSHIP_PROBES)
+                if (ancestor in importedPaths) return ancestor in selectedPaths
+            }
+            return false
         }
     }
 }
@@ -63,7 +68,7 @@ internal class ModelOwnedGlobalSearchScope(
                 observation.call(IntellijReadCall.DISCOVERY_SCOPE_SOURCE_MEMBERSHIP) { sourceMembership(file) } &&
                     fileAdmission(path.value) &&
                     observation.call(IntellijReadCall.DISCOVERY_SCOPE_PATH_OWNERSHIP) {
-                        pathPolicy.contains(path.value)
+                        pathPolicy.contains(path.value, observation)
                     }
             IntellijVirtualFilePath.Relative,
             IntellijVirtualFilePath.Unavailable -> false

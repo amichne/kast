@@ -44,6 +44,8 @@ enum class IntellijReadCall {
     /** Observable calls only; internal index ID visits and initialization work remain unobserved. */
     NAMED_DECLARATION_INDEX,
     DISCOVERY_SCOPE_COMPILE,
+    /** Whole selected-root admission pass inside compilation; excludes later native scope probes. */
+    DISCOVERY_SCOPE_ROOT_ADMISSION,
     DISCOVERY_SCOPE_FILE_MEMBERSHIP,
     DISCOVERY_SCOPE_SOURCE_MEMBERSHIP,
     DISCOVERY_SCOPE_DETACHED_ADMISSION,

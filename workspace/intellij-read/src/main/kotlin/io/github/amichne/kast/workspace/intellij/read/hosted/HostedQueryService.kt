@@ -174,7 +174,10 @@ private constructor(
                             HostedSemanticReadContext(
                                 authority = authority,
                                 model = sourceScope.model,
-                                sourceFiles = IntellijSemanticSourceFileAdmission(sourceScope::contains),
+                                sourceFiles =
+                                    IntellijSemanticSourceFileAdmission { path, sourceSets ->
+                                        sourceScope.contains(path, sourceSets, progress.observation)
+                                    },
                                 observation = progress.observation,
                                 limits = progress.limits,
                                 timeAllowance = timeAllowance,
