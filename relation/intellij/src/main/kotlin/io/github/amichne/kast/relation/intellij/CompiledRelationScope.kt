@@ -2,6 +2,8 @@ package io.github.amichne.kast.relation.intellij
 
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.search.GlobalSearchScope
+import io.github.amichne.kast.relation.contract.RelationMeaning
+import io.github.amichne.kast.relation.contract.RelationReadPosition
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
 import io.github.amichne.kast.workspace.contract.ModelOwnedSourceRoot
@@ -23,8 +25,22 @@ internal constructor(
         allowance: IntellijRelationAllowance,
         limits: io.github.amichne.kast.kernel.ReadLimits,
         lookup: RelationNativeFileLookupPort = RelationNativeFileLookupPort.Local,
-    ): CompiledRelationScope =
-        when (
+    ): CompiledRelationScope {
+        when (request.position) {
+            RelationReadPosition.Start -> Unit
+            is RelationReadPosition.Resume ->
+                when (request.meaning) {
+                    // These producers restore retained locators; they issue no new native reference search.
+                    RelationMeaning.References,
+                    RelationMeaning.TypeUses -> return this
+                    RelationMeaning.Callers,
+                    RelationMeaning.Callees,
+                    RelationMeaning.Implementations,
+                    RelationMeaning.Inheritors,
+                    RelationMeaning.Overrides -> Unit
+                }
+        }
+        return when (
             val prepared =
                 CompleteRelationFileUniverse.prepare(
                     fileEnumerationPlan,
@@ -48,6 +64,7 @@ internal constructor(
                     fileEnumerationPlan,
                 )
         }
+    }
 
     /** Membership is decided before native candidate capacity or locator detachment. */
     fun admitProviderSite(file: VirtualFile?): RelationProviderScopeAdmission =
