@@ -20,6 +20,7 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import io.github.amichne.kast.workspace.intellij.read.IntellijProjectSourceMembership
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.call
 import java.nio.file.Path
@@ -204,7 +205,10 @@ internal class IntellijSearchScopeCompiler(
         }
         // Imported ownership includes Gradle's absent conventional source directories. Retain
         // that ownership, but only seed discovery with roots admitted by the captured IDE model.
-        val readableRoots = constrainedRoots.filter { sourceRootAdmission(Path.of(it.sourceRoot.value)) }
+        val readableRoots =
+            observation.call(IntellijReadCall.DISCOVERY_SCOPE_ROOT_ADMISSION) {
+                constrainedRoots.filter { sourceRootAdmission(Path.of(it.sourceRoot.value)) }
+            }
         if (readableRoots.isEmpty() && request.scope.libraryPolicy() == SymbolLibraryPolicy.EXCLUDE) {
             return IntellijSearchScopeCompilation.Compiled(
                 CompiledIntellijSearchScope(
@@ -227,6 +231,7 @@ internal class IntellijSearchScopeCompiler(
                         model.sourceRoots.map { Path.of(it.sourceRoot.value) }.distinct(),
                     )
             }
+        val directoryMembership = directoryMembership(request.lease.workspaceRoot.value, constraints, observation)
         val libraryPolicy = request.scope.libraryPolicy()
         return IntellijSearchScopeCompilation.Compiled(
             CompiledIntellijSearchScope(
@@ -244,11 +249,11 @@ internal class IntellijSearchScopeCompiler(
                         sourceMembership = sourceMembership,
                         observation = observation,
                         fileAdmission = { path ->
-                            observation.call(IntellijReadCall.DISCOVERY_SCOPE_DETACHED_ADMISSION) {
-                                fileAdmission(path)
+                            observation.call(IntellijReadCall.DISCOVERY_SCOPE_DIRECTORY_MEMBERSHIP) {
+                                directoryMembership(path)
                             } &&
-                                observation.call(IntellijReadCall.DISCOVERY_SCOPE_DIRECTORY_MEMBERSHIP) {
-                                    matchesDirectory(path, request.lease.workspaceRoot.value, constraints)
+                                observation.call(IntellijReadCall.DISCOVERY_SCOPE_DETACHED_ADMISSION) {
+                                    fileAdmission(path)
                                 }
                         },
                     ),
@@ -371,11 +376,20 @@ internal fun nativePath(file: VirtualFile): IntellijVirtualFilePath =
         IntellijVirtualFilePath.Unavailable
     }
 
-private fun matchesDirectory(path: Path, root: String, constraints: SymbolDiscoveryConstraints): Boolean {
-    val restriction = constraints.directory ?: return true
+private fun directoryMembership(
+    root: String,
+    constraints: SymbolDiscoveryConstraints,
+    observation: IntellijReadObservation,
+): (Path) -> Boolean {
+    val restriction = constraints.directory ?: return { true }
+    observation.count(IntellijReadCounter.DISCOVERY_DIRECTORY_PATH_CONVERSIONS)
     val requested = Path.of(root).resolve(restriction.directory.value).normalize()
     return when (restriction.containment) {
-        SymbolDiscoveryContainment.DIRECT -> path.parent == requested
-        SymbolDiscoveryContainment.DESCENDANTS -> path.startsWith(requested)
+        SymbolDiscoveryContainment.DIRECT -> { path ->
+            path.parent == requested
+        }
+        SymbolDiscoveryContainment.DESCENDANTS -> { path ->
+            path.startsWith(requested)
+        }
     }
 }

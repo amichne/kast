@@ -52,6 +52,18 @@ enum class IntellijReadCounter {
     /** Returned discovery scope decisions, including repeated native pre-callback probes. */
     DISCOVERY_SCOPE_FILES_ADMITTED,
     DISCOVERY_SCOPE_FILES_EXCLUDED,
+    /** Detached membership invocations, including root admission and repeated native file probes. */
+    NAMED_SOURCE_MEMBERSHIP_CHECKS,
+    /** Actual model-root path conversions, including preparation; never native index visits. */
+    NAMED_SOURCE_ROOT_PATH_CONVERSIONS,
+    /** Actual owner comparisons or ancestor-key probes at the detached admission boundary. */
+    NAMED_SOURCE_OWNERSHIP_PROBES,
+    /** Actual exclusion comparisons or ancestor-key probes at the detached admission boundary. */
+    NAMED_SOURCE_EXCLUSION_PROBES,
+    /** Actual owner comparisons or ancestor-key probes in request-local native scope policy. */
+    DISCOVERY_PATH_OWNERSHIP_PROBES,
+    /** Actual request-directory path constructions; never file admission decisions. */
+    DISCOVERY_DIRECTORY_PATH_CONVERSIONS,
     /** Returned scope API decisions; repeated visits count separately, exceptions have no decision. */
     RELATION_SCOPE_ADMISSIONS_READY,
     RELATION_SCOPE_ADMISSIONS_HALTED,

@@ -61,24 +61,34 @@ enum class NamedGradleCaptureStage {
 internal class NamedGradleSourceScope
 private constructor(
     val model: WorkspaceSearchScopeModel,
+    private val ownersByPath: Map<Path, List<ModelOwnedSourceRoot>>,
     private val ideRoots: Set<Path>,
     private val excludedRoots: Set<Path>,
 ) {
-    fun contains(file: Path, sourceSets: SymbolDiscoverySourceSets): Boolean {
+    fun contains(
+        file: Path,
+        sourceSets: SymbolDiscoverySourceSets,
+        observation: IntellijReadObservation = IntellijReadObservation.None,
+    ): Boolean {
+        observation.count(IntellijReadCounter.NAMED_SOURCE_MEMBERSHIP_CHECKS)
         if (!file.isAbsolute || file.normalize() != file) return false
-        val owners = model.sourceRoots.filter { file.startsWith(Path.of(it.sourceRoot.value)) }
-        val depth = owners.maxOfOrNull { Path.of(it.sourceRoot.value).nameCount } ?: return false
-        if (excludedRoots.any { file.startsWith(it) && it.nameCount >= depth }) return false
-        return owners.any { owner ->
-            val path = Path.of(owner.sourceRoot.value)
-            path.nameCount == depth &&
-                path in ideRoots &&
-                owner.provenance == WorkspaceSourceRootProvenance.AUTHORED &&
-                when (sourceSets) {
-                    SymbolDiscoverySourceSets.All -> true
-                    is SymbolDiscoverySourceSets.Exact -> owner.sourceSet in sourceSets.values
+        // The first imported ancestor retains every tied owner at the deepest path. An exclusion
+        // at that depth or below rejects; an exclusion above a deeper owner does not shadow it.
+        for (ancestor in generateSequence(file) { it.parent }) {
+            observation.count(IntellijReadCounter.NAMED_SOURCE_EXCLUSION_PROBES)
+            if (ancestor in excludedRoots) return false
+            observation.count(IntellijReadCounter.NAMED_SOURCE_OWNERSHIP_PROBES)
+            val owners = ownersByPath[ancestor] ?: continue
+            return ancestor in ideRoots &&
+                owners.any { owner ->
+                    owner.provenance == WorkspaceSourceRootProvenance.AUTHORED &&
+                        when (sourceSets) {
+                            SymbolDiscoverySourceSets.All -> true
+                            is SymbolDiscoverySourceSets.Exact -> owner.sourceSet in sourceSets.values
+                        }
                 }
         }
+        return false
     }
 
     companion object {
@@ -86,6 +96,7 @@ private constructor(
             root: CanonicalWorkspaceRoot,
             observation: NamedGradleModelObservation,
             ideRoots: List<IdeCodeSourceRoot>,
+            diagnostics: IntellijReadObservation = IntellijReadObservation.None,
         ): Refinement<NamedGradleSourceScope, NamedGradleSourceScopeFailure> {
             val captured =
                 when (observation) {
@@ -106,7 +117,12 @@ private constructor(
                     is WorkspaceSearchScopeModelCompilation.Rejected ->
                         return rejected(NamedGradleSourceScopeFailure.ModelRejected(compiled))
                 }
-            when (val consistent = checkIdeRoots(model, ideRoots)) {
+            val ownersByPath =
+                model.sourceRoots.groupBy {
+                    diagnostics.count(IntellijReadCounter.NAMED_SOURCE_ROOT_PATH_CONVERSIONS)
+                    Path.of(it.sourceRoot.value)
+                }
+            when (val consistent = checkIdeRoots(ownersByPath, ideRoots)) {
                 is Refinement.Rejected -> return consistent
                 is Refinement.Refined -> Unit
             }
@@ -118,16 +134,21 @@ private constructor(
                 return rejected(NamedGradleSourceScopeFailure.IDE_ROOT_INCOHERENT)
             }
             return Refinement.Refined(
-                NamedGradleSourceScope(model, ideRoots.map { it.path }.toSet(), captured.excludedRoots.toSet())
+                NamedGradleSourceScope(
+                    model,
+                    ownersByPath,
+                    ideRoots.map { it.path }.toSet(),
+                    captured.excludedRoots.toSet(),
+                )
             )
         }
 
         private fun checkIdeRoots(
-            model: WorkspaceSearchScopeModel,
+            ownersByPath: Map<Path, List<ModelOwnedSourceRoot>>,
             ideRoots: List<IdeCodeSourceRoot>,
         ): Refinement<Unit, NamedGradleSourceScopeFailure> {
             for (ide in ideRoots) {
-                val owners = model.sourceRoots.filter { Path.of(it.sourceRoot.value) == ide.path }
+                val owners = ownersByPath[ide.path].orEmpty()
                 if (owners.isEmpty())
                     return rejected(
                         NamedGradleSourceScopeFailure.RootMapping(

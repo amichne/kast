@@ -58,6 +58,7 @@ internal class NamedGradleModuleScopeCapture(
             index.root,
             NamedGradleModelObservation.Captured(entries, excludedRoots),
             ideRoots,
+            observation,
         )
     }
 

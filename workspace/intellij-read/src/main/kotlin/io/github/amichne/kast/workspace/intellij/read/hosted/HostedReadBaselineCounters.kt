@@ -39,6 +39,7 @@ internal fun initialHostedReadCounters(): LinkedHashMap<Pair<IntellijReadCounter
                 IntellijReadCounter.RELATION_SCOPE_LIBRARY_SEARCH_EXCLUDED,
             )
             .forEach { this[it to IntellijReadContributor.NONE] = 0L }
+        discoveryOwnershipCounters().forEach { this[it to IntellijReadContributor.NONE] = 0L }
         // Explicit zeros prove page observation capability even when a workload never enters that provider.
         this[IntellijReadCounter.NATIVE_DISCOVERY_PAGES to IntellijReadContributor.NONE] = 0L
         this[IntellijReadCounter.NATIVE_RELATION_PAGES to IntellijReadContributor.NONE] = 0L
@@ -101,4 +102,14 @@ private fun callbackAndSemanticCounters(): List<IntellijReadCounter> =
         IntellijReadCounter.QUERY_POLICY_EVIDENCE_PUBLICATIONS_COMMITTED,
         IntellijReadCounter.QUERY_POLICY_EVIDENCE_COMMIT_REJECTIONS,
         IntellijReadCounter.QUERY_POLICY_EVIDENCE_PUBLICATIONS_DISCARDED,
+    )
+
+private fun discoveryOwnershipCounters(): List<IntellijReadCounter> =
+    listOf(
+        IntellijReadCounter.NAMED_SOURCE_MEMBERSHIP_CHECKS,
+        IntellijReadCounter.NAMED_SOURCE_ROOT_PATH_CONVERSIONS,
+        IntellijReadCounter.NAMED_SOURCE_OWNERSHIP_PROBES,
+        IntellijReadCounter.NAMED_SOURCE_EXCLUSION_PROBES,
+        IntellijReadCounter.DISCOVERY_PATH_OWNERSHIP_PROBES,
+        IntellijReadCounter.DISCOVERY_DIRECTORY_PATH_CONVERSIONS,
     )

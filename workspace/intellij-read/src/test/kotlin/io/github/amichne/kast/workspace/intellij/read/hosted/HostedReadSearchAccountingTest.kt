@@ -3,6 +3,7 @@ package io.github.amichne.kast.workspace.intellij.read.hosted
 import com.intellij.openapi.progress.ProcessCanceledException
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCallOutcome
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCallScope
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadSearch
 import io.github.amichne.kast.workspace.intellij.read.search
 import java.util.concurrent.atomic.AtomicReference
@@ -167,6 +168,50 @@ class HostedReadSearchAccountingTest {
         discoveryDecisions.forEach {
             assertEquals("NONE", it.jsonObject.getValue("contributor").jsonPrimitive.content)
             assertEquals("0", it.jsonObject.getValue("count").jsonPrimitive.content)
+        }
+    }
+
+    @Test
+    fun `ownership work survives both completion and moved freshness rejection with explicit zero capability`() {
+        val counters =
+            setOf(
+                IntellijReadCounter.NAMED_SOURCE_MEMBERSHIP_CHECKS,
+                IntellijReadCounter.NAMED_SOURCE_ROOT_PATH_CONVERSIONS,
+                IntellijReadCounter.NAMED_SOURCE_OWNERSHIP_PROBES,
+                IntellijReadCounter.NAMED_SOURCE_EXCLUSION_PROBES,
+                IntellijReadCounter.DISCOVERY_PATH_OWNERSHIP_PROBES,
+                IntellijReadCounter.DISCOVERY_DIRECTORY_PATH_CONVERSIONS,
+            )
+        for (outcome in
+            listOf(
+                HostedDiagnosticOutcome.Completed,
+                HostedDiagnosticOutcome.Rejected(HostedQueryFailure.CONTENT_MOVED),
+            )) {
+            val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
+            val observation = HostedReadDiagnostics({ 0L }, publish = receipts::add)
+            observation.count(IntellijReadCounter.NAMED_SOURCE_MEMBERSHIP_CHECKS, amount = 2)
+            observation.count(IntellijReadCounter.NAMED_SOURCE_OWNERSHIP_PROBES, amount = 5)
+            observation.finish(outcome)
+            val receipt = receipts.single()
+            assertEquals(outcome, receipt.outcome)
+            assertEquals(observation.identity.value, receipt.readId)
+            val rows =
+                Json.parseToJsonElement(receipt.encode()).jsonObject.getValue("counters").jsonArray.filter {
+                    it.jsonObject.getValue("counter").jsonPrimitive.content in counters.map { counter -> counter.name }
+                }
+            assertEquals(counters.size, rows.size)
+            rows.forEach { row ->
+                val fields = row.jsonObject
+                val name = fields.getValue("counter").jsonPrimitive.content
+                val expected =
+                    when (name) {
+                        "NAMED_SOURCE_MEMBERSHIP_CHECKS" -> "2"
+                        "NAMED_SOURCE_OWNERSHIP_PROBES" -> "5"
+                        else -> "0"
+                    }
+                assertEquals(expected, fields.getValue("count").jsonPrimitive.content)
+                assertEquals("NONE", fields.getValue("contributor").jsonPrimitive.content)
+            }
         }
     }
 
