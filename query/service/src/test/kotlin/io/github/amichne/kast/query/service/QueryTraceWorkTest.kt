@@ -75,11 +75,48 @@ class QueryTraceWorkTest {
         val request = fixture.request(plan, grant, resultLimit = 100, returnedBytes = 1_000_000L)
         val output = drain(service, request)
         assertWitness(path, starts, symbols, output.rows, reads)
+        assertWork(path, size, output, reads)
         val downstream = reads.count { it == "executeWithCache" to RelationMeaning.Callers }
         println(
             "QUERY_WORK ${path.name} $size $grant ${output.pages} ${reads.size} $downstream " +
                 "${output.work} ${output.rows.size} ${output.duplicates} ${output.digest} ${output.rawDigest}"
         )
+    }
+
+    private fun assertWork(
+        path: WorkPath,
+        size: Int,
+        output: WorkOutput,
+        reads: List<Pair<String, RelationMeaning>>,
+    ) {
+        val expectedReads =
+            when (path) {
+                WorkPath.TRACE ->
+                    listOf(
+                        "execute" to RelationMeaning.References,
+                        "execute" to RelationMeaning.Overrides,
+                        "execute" to RelationMeaning.Callers,
+                        "overrideExecute" to RelationMeaning.References,
+                        "overrideExecute" to RelationMeaning.Callers,
+                        "executeWithCache" to RelationMeaning.Callers,
+                    )
+                WorkPath.REFERENCES -> listOf("execute" to RelationMeaning.References)
+                WorkPath.CALLERS -> listOf("execute" to RelationMeaning.Callers)
+                WorkPath.EXACT -> emptyList()
+            }
+        assertEquals(expectedReads.groupingBy { it }.eachCount(), reads.groupingBy { it }.eachCount())
+        // One exact seed and five other relation reads accompany the reference occurrences.
+        // The empty override-reference read still consumes one work unit.
+        val expectedWork =
+            when (path) {
+                WorkPath.TRACE -> size.toLong() + 6
+                WorkPath.REFERENCES -> size.toLong() + 1
+                WorkPath.CALLERS -> 2L
+                WorkPath.EXACT -> 1L
+            }
+        assertEquals(expectedWork, output.work)
+        assertEquals(0, output.duplicates)
+        assertEquals(output.digest, output.rawDigest)
     }
 
     private data class WorkOutput(

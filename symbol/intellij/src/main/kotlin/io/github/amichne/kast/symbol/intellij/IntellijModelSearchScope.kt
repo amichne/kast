@@ -41,6 +41,7 @@ internal class ModelOwnedGlobalSearchScope(
     private val nativePath: (VirtualFile) -> IntellijVirtualFilePath,
     private val libraryMembership: (VirtualFile) -> IntellijLibraryMembership,
     private val sourceMembership: (VirtualFile) -> Boolean,
+    private val directoryMembership: (Path) -> Boolean,
     private val fileAdmission: (Path) -> Boolean,
     private val observation: IntellijReadObservation = IntellijReadObservation.None,
 ) : DelegatingGlobalSearchScope(baseScope, pathPolicy) {
@@ -65,7 +66,10 @@ internal class ModelOwnedGlobalSearchScope(
         }
         return when (val path = nativePath(file)) {
             is IntellijVirtualFilePath.Absolute ->
-                observation.call(IntellijReadCall.DISCOVERY_SCOPE_SOURCE_MEMBERSHIP) { sourceMembership(file) } &&
+                observation.call(IntellijReadCall.DISCOVERY_SCOPE_DIRECTORY_MEMBERSHIP) {
+                    directoryMembership(path.value)
+                } &&
+                    observation.call(IntellijReadCall.DISCOVERY_SCOPE_SOURCE_MEMBERSHIP) { sourceMembership(file) } &&
                     fileAdmission(path.value) &&
                     observation.call(IntellijReadCall.DISCOVERY_SCOPE_PATH_OWNERSHIP) {
                         pathPolicy.contains(path.value, observation)
