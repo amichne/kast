@@ -5,14 +5,14 @@ icon: "download"
 keywords: ["install", "IntelliJ IDEA", "Kotlin"]
 ---
 
-Install Kast, restart IDEA, then [connect your agent](/agent-harnesses).
+Install the Kast command and IDEA plugin. Restart IDEA to load the plugin, then [connect your agent](/agent-harnesses).
 
 ## Before you install
 
-You need Apple silicon macOS, a Kotlin Gradle repository, and IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR. A separate JDK does not change IDEA's runtime.
+You need an Apple silicon Mac and a Kotlin Gradle repository. IntelliJ IDEA must use build `262.*`, its bundled Kotlin plugin, and Java 25 JBR. A separate JDK does not change IDEA's runtime.
 
-<Accordion title="Check the IDEA build and bundled runtime">
-  Adjust the application path if necessary:
+<Accordion title="Examine the IDEA build and bundled runtime">
+  If IDEA uses another application path, change the path in this command:
 
   ```shell
   idea="/Applications/IntelliJ IDEA.app/Contents"
@@ -20,7 +20,7 @@ You need Apple silicon macOS, a Kotlin Gradle repository, and IntelliJ IDEA `262
   cat "$idea/jbr/Contents/Home/release"
   ```
 
-  Look for `IU-262.…` or `IC-262.…`, `JAVA_VERSION` beginning with `25`, and `OS_ARCH` of `aarch64` or `arm64`.
+  Make sure that the build starts with `IU-262.` or `IC-262.`. Make sure that `JAVA_VERSION` starts with `25` and `OS_ARCH` is `aarch64` or `arm64`.
 </Accordion>
 
 ## Install
@@ -29,7 +29,9 @@ You need Apple silicon macOS, a Kotlin Gradle repository, and IntelliJ IDEA `262
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
-The installer adds the IDEA plugin, Kast services, and native `kast` command. It selects stable Control and Host releases independently, then checks their contracts. Version numbers can differ. Append `-- --verbose` for structured diagnostics.
+The installer adds the IDEA plugin, Kast services, and native `kast` command. It selects stable Control and Host releases independently and examines their contracts. Compatible components can use different version numbers.
+
+For structured diagnostics, append `-- --verbose` to the installation command.
 
 Restart IDEA to load the plugin. Then run:
 
@@ -37,30 +39,29 @@ Restart IDEA to load the plugin. Then run:
 kast status
 ```
 
-Inspect the version and installation path. Verify loaded tools with the [first query](/agent-harnesses#check-that-the-tools-work).
+Examine the version and installation path. Use the [first query](/agent-harnesses#run-the-first-query) to make sure that your agent can call Kast.
 
 <AccordionGroup>
   <Accordion title="Install the latest developer build">
-    The default command selects stable releases. To select the latest tested developer build:
+    Developer builds are prereleases. To select the latest tested developer build, use:
 
     ```shell wrap
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest
     ```
 
-    Keep the `--` separator before installer options. Terminal downloads show progress. Wait for the installation result; Ctrl-C stops installation.
+    Keep the `--` separator before installer options. Terminal downloads show progress. Wait for the installation result. Ctrl-C stops installation.
 
-    Developer builds are prereleases. Selection reads the published GitHub channel, independently of the local checkout or installed version. The installer prints the selected version and source revision. `kast upgrade` keeps the developer channel.
+    The installer reads the published GitHub channel to select the version. The local checkout and installed version do not control this selection. The installer prints the selected version and source revision. `kast upgrade` keeps the developer channel.
 
-    Developer installation automatically removes stale Kast state before it installs the selected pair. No separate uninstall or manual deletion is necessary.
-    A stable installation uses the same cleanup with `--force`. `--dry-run` preserves files and registrations.
+    Developer installation removes stale Kast state before it installs the selected pair. You do not need a separate uninstall. For the same cleanup during stable installation, append `--force`. To preserve files and registrations, use `--dry-run`.
 
-    To preserve an existing Codex MCP configuration, append `--skip-codex-mcp`. Restart IDEA and your agent after installation.
+    To preserve an existing Codex MCP configuration, append `--skip-codex-mcp`. After installation, restart IDEA and your agent.
   </Accordion>
 
   <Accordion title="If your shell cannot find kast">
-    The executable is `$XDG_CONFIG_HOME/kast` when `XDG_CONFIG_HOME` is nonempty. Otherwise, it is `$HOME/.local/bin/kast`.
+    If `XDG_CONFIG_HOME` is nonempty, the executable path is `$XDG_CONFIG_HOME/kast`. Otherwise, the path is `$HOME/.local/bin/kast`.
 
-    Use the printed absolute path or add its directory to `PATH`. The installer warns but does not edit shell profiles.
+    Use the absolute path from the installer or add its directory to `PATH`. The installer reports a missing `PATH` entry. It does not edit shell profiles.
   </Accordion>
 
   <Accordion title="Select another IDEA installation">
@@ -70,7 +71,7 @@ Inspect the version and installation path. Verify loaded tools with the [first q
   </Accordion>
 
   <Accordion title="Install a specific release pair">
-    The checked pair is [Control 0.3.1 and Host 0.4.0](/reference/compatibility#current-release-pair):
+    This command pins the [recorded release pair](/reference/compatibility#recorded-release-pair), Control 0.3.1 and Host 0.4.0:
 
     ```shell wrap
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --version 0.3.1 --host-version 0.4.0
@@ -80,4 +81,4 @@ Inspect the version and installation path. Verify loaded tools with the [first q
   </Accordion>
 </AccordionGroup>
 
-**Next:** [Connect your agent](/agent-harnesses). For blockers, use [Troubleshooting](/troubleshooting). For upgrades or removal, use [Manage Kast](/workspaces).
+[Connect your agent](/agent-harnesses) after installation. For setup failures, use [Troubleshooting](/troubleshooting). For upgrades or removal, use [Manage Kast](/workspaces).

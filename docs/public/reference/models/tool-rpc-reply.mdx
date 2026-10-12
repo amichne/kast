@@ -1,12 +1,13 @@
 ---
 title: "Tool RPC reply"
-description: "The closed catalog, document, and boundary-failure variants of tool RPC."
+description: "Select the catalog, operation document, or process failure from a Tool RPC reply."
 openapi-schema: "reference/callables.openapi.json ToolRpcReply"
 mode: "wide"
 ---
 
-`catalog` lists installed tools and their input schemas.
-`complete`, `qualified`, and `rejected_document` contain a canonical
-`document`. `rejected` contains one finite process failure. Decode a
-document with the generated schema for the selected tool.
+Use the reply's `type` to select its payload. `catalog` lists installed tools and their input schemas.
+
+`complete`, `qualified`, and `rejected_document` contain a canonical `document`. `rejected` contains one finite process failure. Decode each document with the generated schema for the selected tool.
+
+Reject unknown variants as incompatible. See [Tool RPC contract](/reference/rpc-catalog#decode) for the variant table and call syntax.
 

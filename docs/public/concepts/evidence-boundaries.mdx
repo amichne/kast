@@ -1,37 +1,39 @@
 ---
 title: "What an answer proves"
-description: "Understand what a result confirms, what remains unknown, and when a reference can be reused."
+description: "Read coverage, identify evidence limits, and decide when to reuse a reference."
 icon: "shield-check"
 ---
 
-Read each fact with its workspace, source state, scope, and coverage. Exact identity and exhaustive coverage establish different properties.
+An exact reference identifies a declaration. Coverage reports how much of the requested search Kast completed. Keep the workspace, source state, scope, and coverage with each fact.
 
 ## Exact facts are not the same as exhaustive coverage
 
 | Result | Supported conclusion |
 | --- | --- |
-| Exact symbol, complete coverage | Confirmed declaration. Requested search scope covered. |
-| Exact symbol, qualified coverage | Confirmed declaration. Additional matches or checks can remain. |
+| Exact symbol, complete coverage | The declaration is established, and Kast covered the requested search scope. |
+| Exact symbol, qualified coverage | The declaration is established, but more matches or unresolved proof can remain. |
 | Empty, complete coverage | No match in the declared, supported scope. |
 | Empty, qualified coverage | Absence remains unproven. |
-| Rejected or unavailable | No successful semantic result from this request. |
+| Rejected or unavailable | The request did not establish a successful semantic answer. |
 
-Kotlin-source coverage does not establish facts about excluded sources, libraries, other languages, or runtime execution. Read restrictions, omissions, and item failures.
+Coverage applies to the declared, supported Kotlin sources. Excluded sources, libraries, other languages, and runtime execution need separate evidence. Examine restrictions, omissions, and item failures before a conclusion.
 
 ## Decide whether to continue
 
-Public RESUME uses an issued output token to present already-produced facts. It does not continue semantic execution. Terminal progress supplies a stopping reason; `retention_unavailable` means a remaining output suffix was lost. A missing continuation does not establish completeness.
+Public `RESUME` presents produced facts through an issued output token. It performs no semantic execution. Terminal progress names the reason for the stop. `retention_unavailable` means that Kast lost the remaining output suffix. A missing continuation does not prove completeness.
 
-An empty retained page can still advance evidence. Reading all saved rows preserves the original coverage limits. See [Results](/reference/responses#follow-progress-not-row-count).
+An empty page can advance through saved evidence. All saved rows keep their original coverage limits, even after you read every page. See [Results](/reference/responses#follow-progress-not-row-count) for the next action.
 
 ## Can I reuse this result later?
 
-Pass issued handles unchanged. Report stale references or unavailable saved state as a blocker. A fresh query requires a new decision; it cannot recover the original delivery.
+Pass issued handles unchanged. If a reference is stale or saved state is unavailable, report that blocker. Decide whether to start a fresh query. A new query cannot recover the original delivery.
 
-An exact symbol can undergo fresh compiler revalidation. Retained results and continuations require their original read state and lifetime. See [Saved state and identity](/reference/responses#saved-state-and-identity).
+Kast can revalidate an exact symbol with fresh compiler evidence. Saved results and continuations need their original read state and lifetime. See [Saved state and identity](/reference/responses#saved-state-and-identity) before reuse.
 
-## Check relationship and verification claims
+<a id="check-relationship-and-verification-claims" />
 
-A confirmed call site establishes a source relationship. Lexical containment alone does not establish a named caller. [Callback evidence](/reference/callbacks) preserves anonymous ownership and activation limits.
+## Read relationship and edit evidence
 
-A verified edit covers the reported change scope. For uncertain outcomes, preserve the receipt and follow [change recovery](/change#read-the-receipt) before retrying. Run your project's build and tests.
+A compiler-confirmed call site establishes a source relationship. Lexical containment alone does not establish a named caller. [Callback evidence](/reference/callbacks) identifies anonymous owners and the limits on activation claims.
+
+An edit receipt establishes verification for its reported scope. If the outcome is uncertain, keep the receipt. Use [change recovery](/change#read-the-receipt) before another write. Run your project's build and tests after a verified change.

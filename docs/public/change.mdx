@@ -4,27 +4,29 @@ description: "Add one declaration or replace one supported function body, then i
 icon: "file-pen-line"
 ---
 
-Kast adds one declaration to an existing Kotlin file or replaces one supported function body. [Find and inspect the target](/search) first. Pass its issued exact reference unchanged.
+Kast can add one declaration to an existing Kotlin file or replace one supported function body. Before a change, [find the target and read its source](/search). Pass the exact reference from that result unchanged.
 
-## Check the target and scope
+<a id="check-the-target-and-scope" />
 
-Substitute your function and directory:
+## Select the target and scope
+
+To select the target, substitute your function and directory in this prompt:
 
 ```text wrap
 Use Kast to find retryLimit under checkout. Show matching signatures and locations. If several functions match, stop so I can choose. Read the selected function's source and check whether it has a supported block body before changing it.
 ```
 
-Then request the chosen change:
+After you select the target, request the change:
 
 ```text wrap
 Use Kast to replace the chosen function's body with { return 3 }. Keep its signature and the source outside the body unchanged. Report verification and the change receipt; if the outcome is uncertain, preserve recovery evidence and stop before retrying the write.
 ```
 
-Body replacement requires a non-inline named function with a block body and no contract. Change tools do not create files, edit arbitrary ranges, rename symbols, or perform multi-file refactors.
+Body replacement accepts a non-inline named function with a block body and no contract. Change tools reject file creation, arbitrary range edits, symbol renames, and multi-file refactors.
 
 ## Read the receipt
 
-Each call plans, applies, and verifies the edit. Inspect its receipt alongside the diff.
+One call plans, applies, and verifies the edit. Examine the receipt and diff before you accept the result.
 
 ```mermaid
 flowchart TB
@@ -44,15 +46,17 @@ flowchart TB
   classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
 ```
 
-<Warning>
-  A rejection, timeout, or lost response does not prove that no write occurred. Inspect the source and recovery evidence before retrying.
-</Warning>
+<Note>
+  A rejection, timeout, or lost response leaves the write outcome uncertain until source and recovery evidence establish the effect.
+</Note>
 
-IDEA diagnostics and edit verification cover their reported scope. Run your project's build and tests after a verified change.
+If the outcome is uncertain, examine the source and recovery evidence before another write.
+
+IDEA diagnostics and edit verification cover the scope in the receipt. After a verified change, run your project's build and tests.
 
 ## Exact inputs for tool authors
 
-Replace placeholders with current issued references.
+These examples use placeholders. Replace each placeholder with a current reference from Kast.
 
 <AccordionGroup>
   <Accordion title="Add a declaration">
@@ -63,7 +67,7 @@ Replace placeholders with current issued references.
     }
     ```
 
-    Select the existing file and review the insertion location. See the [Add declaration schema](/api-reference/add-declaration).
+    Select the existing file. Examine the insertion location before the change. Use the [Add declaration schema](/api-reference/add-declaration) for exact inputs.
   </Accordion>
 
   <Accordion title="Replace a function body">
@@ -74,12 +78,12 @@ Replace placeholders with current issued references.
     }
     ```
 
-    Supply the complete block, including braces. See the [Replace body schema](/api-reference/replace-body).
+    Supply the complete block with its braces. Use the [Replace body schema](/api-reference/replace-body) for exact inputs.
   </Accordion>
 
   <Accordion title="Carry exact identity across a change">
-    `exact:v5:…` and `exact:v3:…` are opaque. Never rewrite their prefixes or substitute another handle.
+    Kast treats `exact:v5:…` and `exact:v3:…` as opaque handles. Keep each prefix and the rest of its handle unchanged.
 
-    After verified replacement, pass the returned `freshRef` to a subsequent `add_declaration`. Pre-write references still require authority checks.
+    After verified replacement, pass the returned `freshRef` to a later `add_declaration`. Kast must still examine the authority of pre-write references.
   </Accordion>
 </AccordionGroup>

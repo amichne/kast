@@ -5,9 +5,11 @@ description: "Know what Kast starts, what it waits for, and which blockers need 
 icon: "monitor-cog"
 ---
 
-Start your agent in the intended Kotlin Gradle repository or worktree. A semantic request prepares its IDEA project automatically.
+Kast prepares the selected IDEA project when your agent sends a semantic request. Start the agent in the Kotlin Gradle repository or worktree that you want to inspect.
 
 ## What happens on the first question
+
+Kast selects the exact Gradle root, reuses or starts IDEA, and waits for import and indexing. Project readiness controls query admission.
 
 ```mermaid
 flowchart TB
@@ -27,14 +29,14 @@ flowchart TB
   classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
 ```
 
-The first request can take longer than later queries. Background presentation is best effort. A trust prompt, unsaved document, or failed import can require attention in IDEA.
+The first request can take longer than later queries. Background presentation is not assured. A trust prompt, unsaved document, or failed import can need your attention in IDEA.
 
-Results belong to that exact worktree. References from another worktree require their own admission. Use the [first query](/agent-harnesses#check-that-the-tools-work) to verify readiness and tool use.
+Results belong to the selected worktree. References from another worktree need their own admission. Use the [first query](/agent-harnesses#run-the-first-query) to examine readiness and tool use.
 
 ## Control when an agent uses Kast
 
-Request Kast for identity, relationships, or retained queries. For text-only work, tell the agent not to call it.
+Ask your agent to use Kast for declaration identity, relationships, or saved query results. For text-only work, tell the agent to omit Kast calls.
 
-`kast disconnect <harness>` removes an installed registration. Restart that agent to unload it. Disconnect does not close IDEA or stop existing sessions and other clients.
+To remove an installed registration, use `kast disconnect <harness>`. Restart that agent to unload the integration. Disconnect leaves IDEA, existing sessions, and other clients in place.
 
-There is no management command that disables preparation while keeping semantic queries enabled. Hosted App Server [workspace lifecycle controls](/workspaces#explicit-workspace-control-in-the-hosted-app-server) provide separate explicit project actions.
+Semantic queries use automatic preparation. Kast has no management command to disable preparation while those queries remain enabled. Hosted App Server supplies explicit project actions through [workspace lifecycle controls](/workspaces#explicit-workspace-control-in-the-hosted-app-server).

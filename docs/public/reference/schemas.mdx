@@ -1,14 +1,14 @@
 ---
 title: "Schemas and samples"
-description: "Open the generated JSON Schema and request examples without a second hand-maintained contract."
+description: "Find generated schemas, request samples, and recorded responses for Kast tools."
 icon: "braces"
 ---
 
-Use installed catalogs for your release's contract. Links to `main` can describe newer behavior.
+Your installed catalog defines your release's contract. The schemas linked to `main` can describe newer behavior. Compare them with the installed catalog before you use an example.
 
 ## Raw JSON Schema
 
-Kast generates per-tool input schemas and examples from one authored contract:
+Kast generates each tool's input schema and examples from one authored contract. These links expose the current files on `main`:
 
 | Tool | Input schema | Request examples |
 | --- | --- | --- |
@@ -17,23 +17,23 @@ Kast generates per-tool input schemas and examples from one authored contract:
 | `add_declaration` | [JSON Schema](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/add_declaration.parameters.json) | [JSON samples](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/add_declaration.examples.json) |
 | `replace_body` | [JSON Schema](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/replace_body.parameters.json) | [JSON samples](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/replace_body.examples.json) |
 
-Support callables have separate availability: direct MCP exposes `health_check`. Hosted App Server exposes `workspace_lifecycle`. The [generated OpenAPI document](https://raw.githubusercontent.com/amichne/kast/main/docs/public/reference/callables.openapi.json) defines their inputs and outputs.
+Direct MCP exposes `health_check`. Hosted App Server exposes `workspace_lifecycle`. The [generated OpenAPI document](https://raw.githubusercontent.com/amichne/kast/main/docs/public/reference/callables.openapi.json) defines their inputs and outputs.
 
-The [authored schema](https://github.com/amichne/kast/blob/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json) owns shared definitions and metadata. Use per-tool `parameters.json` for input checks. Preserve closed variants and `$ref` links.
+The [authored schema](https://github.com/amichne/kast/blob/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json) owns shared definitions and metadata. To examine tool inputs, use that tool's `parameters.json`. Keep the closed variants and `$ref` links intact.
 
 ## Read a schema without reading every definition
 
-Start with required root properties, then select the action variant. For `RUN`, choose a source, necessary steps, and output. [Query forms](/reference/api) explains supported combinations.
+Read the necessary root properties first. Select the action variant, then read its necessary properties. For `RUN`, choose a source, the necessary steps, and an output. [Query forms](/reference/api) explains supported combinations.
 
-Defaults come from admission. Schema validity does not establish current identity, complete coverage, or permission to mutate.
+Admission supplies defaults. A valid schema establishes the input shape. Current identity, complete coverage, and permission to change source need separate evidence.
 
 ## Samples and observed responses
 
-Generated samples include valid and deliberately invalid contract cases. Their opaque references are illustrative. They are not reusable tokens or native response recordings.
+Generated samples include valid cases and deliberate rejection cases. Their opaque references are placeholders. Get current handles from your workspace before use. These samples do not record native responses.
 
 ## Recorded walkthrough
 
-[Download the sixteen-call recording](https://raw.githubusercontent.com/amichne/kast/32c31f7f9e298ed678908d45558b1ea1ea2d9c00/docs/public/examples/query-walkthrough.json) for the [walkthrough](/reference/walkthrough) and [composition examples](/query-pipelines). Entries preserve ID, timestamp, tool, request, and response.
+The [sixteen-call recording](https://raw.githubusercontent.com/amichne/kast/32c31f7f9e298ed678908d45558b1ea1ea2d9c00/docs/public/examples/query-walkthrough.json) supplies the [walkthrough](/reference/walkthrough) and [composition examples](/query-pipelines). Each entry keeps its ID, timestamp, tool, request, and response.
 
 | Capture fact | Value |
 | --- | --- |
@@ -46,18 +46,18 @@ Generated samples include valid and deliberately invalid contract cases. Their o
 
 | Calls | Observed result |
 | --- | --- |
-| `01`–`03`: discover and retain A/B | One interface, ten implementations, two `Concat` declarations. Exhaustive coverage. |
+| `01`–`03`: discover and save A/B | One interface, ten implementations, two `Concat` declarations. Exhaustive coverage. |
 | `04`–`05`: union/filter and intersection | Two distinct declarations after union/filter. One shared declaration after intersection. |
-| `06`–`07`: join C, project, follow references | One paired row and one compiler-confirmed reference occurrence. |
+| `06`–`07`: join C, project, trace references | One paired row and one compiler-confirmed reference occurrence. |
 | `08`–`09`: read retained A/C | Ten symbols and one paired row. Original result identities preserved. |
-| `10`–`11`, `16`: incomplete right input | One qualified discovery row. Both difference and anti join reject `right-input-incomplete`. |
+| `10`–`11`, `16`: incomplete `right` input | One qualified discovery row. Both difference and anti join reject `right-input-incomplete`. |
 | `12`–`13`: bounded execution and resume | One row with a continuation, then the remaining row with complete coverage. |
 | `14`–`15`: find `exactStage`, walk callers | One function, then one caller record at depth 1 within the two-hop bound. |
 
-Only the absolute checkout prefix changed to `/workspace/kast`. References, offsets, identity, and qualifications remain intact. The recording predates compact output.
+The recording replaces only the absolute checkout prefix with `/workspace/kast`. References, offsets, identity, and qualifications stay intact. The capture predates compact output.
 
-To reproduce, use the linked source checkout. Send each `request` to `kast-tool-rpc-complete call query_symbols` in order, substituting newly issued references. Pause builds and edits during composition. Establish your run's own counts and coverage.
+To reproduce the example, use the linked source checkout. Send each `request` to `kast-tool-rpc-complete call query_symbols` in order. Substitute newly issued references. During composition, pause builds and source edits. Read the counts and coverage from your own run.
 
-Captured requests and responses pass generated shape checks. Those checks do not replay IDEA.
+Generated shape checks cover the captured requests and responses. They do not replay the IDEA interaction.
 
-OpenAPI `/callables/…` labels are documentation identifiers, not HTTP endpoints. Use [MCP](/reference/mcp-catalog) or [Tool RPC](/reference/rpc-catalog) for transport wrappers.
+OpenAPI `/callables/…` labels identify documentation sections. Use [MCP](/reference/mcp-catalog) or [Tool RPC](/reference/rpc-catalog) for the transport interface.

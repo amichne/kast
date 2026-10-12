@@ -5,7 +5,9 @@ icon: "plug"
 keywords: ["MCP", "tools/list", "tools/call", "structuredContent"]
 ---
 
-The installed MCP process uses stdio from the client's repository directory. After negotiation, `tools/list` defines the installed names, `inputSchema`, and `outputSchema`.
+Use `tools/list` after MCP negotiation to discover installed tools and schemas. The MCP process uses stdio from the client's repository directory.
+
+Each catalog entry defines a tool name, `inputSchema`, and `outputSchema`:
 
 | Tool | Purpose |
 | --- | --- |
@@ -14,9 +16,11 @@ The installed MCP process uses stdio from the client's repository directory. Aft
 | `health_check` | Workspace binding and readiness. |
 | `add_declaration`, `replace_body` | Targeted source changes. |
 
-Hosted `workspace_lifecycle` is separate and absent from direct MCP.
+Direct MCP omits `workspace_lifecycle`. Hosted App Server supplies that tool separately.
 
 ## Call and result
+
+Send the tool name and arguments through `tools/call`. This example calls `health_check`:
 
 ```json
 {
@@ -27,10 +31,10 @@ Hosted `workspace_lifecycle` is separate and absent from direct MCP.
 }
 ```
 
-For queries, use `query_symbols` and its [arguments](/reference/api).
+For a semantic query, select `query_symbols`. Use [Query forms](/reference/api) to choose its arguments.
 
-The JSON-RPC result carries `content`, `isError`, and admitted `structuredContent`. For semantic tools, `structuredContent` is the canonical operation document, preserving status, references, coverage, failures, and recovery evidence.
+The JSON-RPC result carries `content`, `isError`, and admitted `structuredContent`. For semantic tools, `structuredContent` contains the canonical operation document. That document preserves status, references, coverage, failures, and recovery evidence.
 
-Inspect `isError` and the semantic status. Invocation failures can lack a structured document. `health_check` has its own readiness schema.
+Before you use the result, examine `isError` and the semantic status. An invocation failure can omit the structured document. `health_check` uses its own readiness schema.
 
-Decode the [wrapper](/reference/models/mcp-tool-call-result) and tool-specific [generated result](/reference/schemas) separately. OpenAPI `/callables/…` labels organize documentation. They are not HTTP endpoints.
+Decode the [wrapper](/reference/models/mcp-tool-call-result) separately from the tool-specific [operation document](/reference/schemas). OpenAPI `/callables/…` labels identify documentation sections. Kast does not expose them as HTTP endpoints.
