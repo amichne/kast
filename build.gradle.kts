@@ -131,8 +131,10 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
         into("share/kast")
     }
     from("distribution/cli/lifecycle-fence-v1") { into("share/kast") }
+    from("distribution/cli/public-reset-v1") { into("share/kast") }
     from("distribution/cli/reset-fence-v1") { into("share/kast") }
     from("packaging/install-completion-v1") { into("share/kast") }
+    from("distribution/contract/src/main/resources/management/reset-inventory-observation.schema.json") { into("share/kast/schema") }
     from("distribution/contract/src/main/resources/management/management-lifecycle.schema.json") { into("share/kast/schema") }
     from("distribution/cli/one-shot-observation-v1") {
         into("share/kast")

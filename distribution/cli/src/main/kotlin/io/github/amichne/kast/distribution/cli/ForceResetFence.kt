@@ -34,7 +34,10 @@ private constructor(
     val marker: Path = installationResetFence(root.path)
 
     companion object {
-        fun acquire(root: ForceResetRoot): ResetFenceAcquisition {
+        fun acquire(
+            root: ForceResetRoot,
+            removalScope: ResetRemovalScope = ResetRemovalScope.SelectedRoot,
+        ): ResetFenceAcquisition {
             val marker = installationResetFence(root.path)
             return try {
                 Files.createDirectories(marker.parent)
@@ -56,7 +59,7 @@ private constructor(
                     return ResetFenceAcquisition.Rejected(ForceResetFailure.RESET_BUSY)
                 }
                 val storage =
-                    when (val read = readStorage(marker, root)) {
+                    when (val read = selectedStorage(marker, root, removalScope)) {
                         is ResetJournalAdmission.Admitted -> read.storage
                         ResetJournalAdmission.Rejected -> {
                             lock.release()
@@ -78,6 +81,18 @@ private constructor(
                 ResetFenceAcquisition.Rejected(ForceResetFailure.FENCE_REJECTED)
             }
         }
+
+        private fun selectedStorage(
+            marker: Path,
+            root: ForceResetRoot,
+            scope: ResetRemovalScope,
+        ): ResetJournalAdmission =
+            when (scope) {
+                ResetRemovalScope.SelectedRoot -> readStorage(marker, root)
+                is ResetRemovalScope.Public ->
+                    if (scope.scope.root == root.path) ResetJournalAdmission.Admitted(InstallationResetStorage.Fenced)
+                    else ResetJournalAdmission.Rejected
+            }
 
         private fun readStorage(marker: Path, root: ForceResetRoot): ResetJournalAdmission {
             if (Files.notExists(marker, NOFOLLOW_LINKS))

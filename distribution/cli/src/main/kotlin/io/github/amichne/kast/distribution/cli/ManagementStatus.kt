@@ -141,8 +141,12 @@ private fun decodeReceipt(raw: String): ReceiptRead {
 }
 
 @Suppress("ComplexCondition")
-internal fun readReceipt(root: Path): ReceiptRead {
-    val raw = readBoundedFile(receiptPath(root), 65536) ?: return ReceiptRead.Unavailable("receipt_unavailable")
+internal fun readReceipt(root: Path): ReceiptRead =
+    admitManagementReceipt(root, readBoundedFile(receiptPath(root), MANAGEMENT_RECEIPT_BYTES))
+
+@Suppress("ComplexCondition")
+internal fun admitManagementReceipt(root: Path, raw: String?): ReceiptRead {
+    if (raw == null) return ReceiptRead.Unavailable("receipt_unavailable")
     val receipt =
         when (val decoded = decodeReceipt(raw)) {
             is ReceiptRead.Read -> decoded.receipt
@@ -255,3 +259,5 @@ internal fun validSha256(raw: String): Boolean =
     raw.length == SHA256_HEX_LENGTH && raw.all { it in '0'..'9' || it in 'a'..'f' }
 
 internal fun InstallationStatus.asJson(): String = managementJson.encodeToString(this)
+
+private const val MANAGEMENT_RECEIPT_BYTES = 65536L

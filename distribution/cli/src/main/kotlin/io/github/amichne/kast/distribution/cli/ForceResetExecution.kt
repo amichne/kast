@@ -14,6 +14,7 @@ internal fun forceResetInstallation(
     environment: Map<String, String>,
     operation: ForceResetOperation,
     execution: ForceResetExecution = ForceResetExecution(),
+    removalScope: ResetRemovalScope = ResetRemovalScope.SelectedRoot,
 ): ForceResetOutcome {
     val selected =
         when (val admitted = ForceResetRoot.admit(root, home)) {
@@ -22,7 +23,7 @@ internal fun forceResetInstallation(
                 return ForceResetOutcome.Rejected(operation, ForceResetStage.ADMISSION, ForceResetFailure.ROOT_REJECTED)
         }
     val fence =
-        when (val acquired = ForceResetFence.acquire(selected)) {
+        when (val acquired = ForceResetFence.acquire(selected, removalScope)) {
             is ResetFenceAcquisition.Acquired -> acquired.fence
             is ResetFenceAcquisition.Rejected ->
                 return ForceResetOutcome.Rejected(operation, ForceResetStage.FENCE, acquired.failure)
@@ -30,7 +31,7 @@ internal fun forceResetInstallation(
     var released: ResetEffect
     val result =
         try {
-            executeAcquired(fence, home, environment, operation, execution)
+            executeAcquired(fence, home, environment, operation, execution, removalScope)
         } finally {
             released = fence.release()
         }
@@ -46,6 +47,7 @@ private fun executeAcquired(
     environment: Map<String, String>,
     operation: ForceResetOperation,
     execution: ForceResetExecution,
+    removalScope: ResetRemovalScope,
 ): ForceResetOutcome {
     execution.observe(ResetObservation.Started(operation, ForceResetStage.FENCE))
     val fenced =
@@ -54,7 +56,7 @@ private fun executeAcquired(
             is ResetFencing.Rejected -> return rejected(operation, ForceResetStage.FENCE, detached.failure, execution)
         }
     execution.observe(ResetObservation.Completed(operation, ForceResetStage.FENCE))
-    return executeFenced(fenced, home, environment, operation, execution)
+    return executeFenced(fenced, home, environment, operation, execution, removalScope)
 }
 
 private fun executeFenced(
@@ -63,6 +65,7 @@ private fun executeFenced(
     environment: Map<String, String>,
     operation: ForceResetOperation,
     execution: ForceResetExecution,
+    removalScope: ResetRemovalScope,
 ): ForceResetOutcome {
     execution.observe(ResetObservation.Started(operation, ForceResetStage.DAEMONS))
     val retired =
@@ -87,14 +90,26 @@ private fun executeFenced(
         }
     execution.observe(ResetObservation.Completed(operation, ForceResetStage.CLEANUP))
     return when (operation) {
-        ForceResetOperation.UNINSTALL -> finishRemoval(erased, home, execution)
+        ForceResetOperation.UNINSTALL -> finishRemoval(erased, home, execution, removalScope)
         ForceResetOperation.REINSTALL -> stageReplacement(erased, home, environment, execution)
     }
 }
 
-private fun finishRemoval(erased: ErasedReset, home: Path, execution: ForceResetExecution): ForceResetOutcome {
+private fun finishRemoval(
+    erased: ErasedReset,
+    home: Path,
+    execution: ForceResetExecution,
+    removalScope: ResetRemovalScope,
+): ForceResetOutcome {
     val operation = ForceResetOperation.UNINSTALL
     execution.observe(ResetObservation.Started(operation, ForceResetStage.FINAL_VERIFICATION))
+    val exterior =
+        when (removalScope) {
+            ResetRemovalScope.SelectedRoot -> ResetEffect.Completed
+            is ResetRemovalScope.Public -> removalScope.scope.removeExterior(erased, execution.runtime)
+        }
+    if (exterior is ResetEffect.Rejected)
+        return rejected(operation, ForceResetStage.FINAL_VERIFICATION, exterior.failure, execution)
     val absent = ForceDaemonRetirement(execution.runtime).retire(erased.root, home)
     if (absent is ResetEffect.Rejected)
         return rejected(operation, ForceResetStage.FINAL_VERIFICATION, absent.failure, execution)

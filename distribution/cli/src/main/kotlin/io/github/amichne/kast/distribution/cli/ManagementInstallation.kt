@@ -224,3 +224,19 @@ internal fun writeConnectionConfiguration(path: Path, configuration: ConnectionC
         Files.deleteIfExists(staged)
     }
 }
+
+internal fun writePublicResetRecovery(file: PublicRecoveryFile, receipt: ManagementReceipt): LifecycleEffect =
+    try {
+        Files.writeString(
+            file.path,
+            managementJson.encodeToString(receipt),
+            java.nio.file.StandardOpenOption.CREATE_NEW,
+            java.nio.file.StandardOpenOption.WRITE,
+            LinkOption.NOFOLLOW_LINKS,
+        )
+        LifecycleEffect.Completed
+    } catch (_: java.io.IOException) {
+        LifecycleEffect.Rejected(LifecycleFailure.REGISTRATION_REPAIR_REQUIRED)
+    } catch (_: SecurityException) {
+        LifecycleEffect.Rejected(LifecycleFailure.REGISTRATION_REPAIR_REQUIRED)
+    }

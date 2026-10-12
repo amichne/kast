@@ -49,7 +49,7 @@ fun resetInstallationTransport(installation: Path, home: Path): PriorInstallatio
                 )
                 .parent
         val owner = Files.getOwner(home, LinkOption.NOFOLLOW_LINKS)
-        for (path in setOf(alias, upstream) - run) {
+        for (path in setOf(alias, upstream).filterNot { it == run }) {
             if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) continue
             if (Files.getOwner(path, LinkOption.NOFOLLOW_LINKS) != owner) {
                 return PriorInstallationPreparation.FILESYSTEM_REJECTED

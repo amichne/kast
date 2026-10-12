@@ -118,7 +118,7 @@ internal fun writeStagedReport(report: Path) =
         ),
     )
 
-internal fun prepareFreshPayload(root: Path) {
+internal fun prepareFreshPayload(root: Path, command: Path = root.resolve("bin/kast")) {
     val installation = root.resolve("installation")
     val paths =
         listOf("share/kast/libexec/kast-management", "share/kast/libexec/kast-service", "share/kast/reset-fence-v1")
@@ -133,7 +133,6 @@ internal fun prepareFreshPayload(root: Path) {
         installation.resolve("installation.json"),
         managementJson.encodeToString(FixtureLifecycleManifest(3, "1.2.3", installation.toString(), payloads)),
     )
-    val command = root.resolve("bin/kast")
     Files.createDirectories(command.parent)
     Files.copy(installation.resolve(paths.first()), command)
     command.toFile().setExecutable(true)

@@ -63,9 +63,36 @@ private fun internalInstall(arguments: List<String>, environment: Map<String, St
             println(preflightPublicExecutable(root, environment).path)
             return InternalInstallExit.COMPLETED
         }
+        "preflight-reset",
+        "reset" -> return internalPublicReset(root, environment, arguments[1])
+        "restore-connections" ->
+            return when (val restored = restorePublicResetConnections(root, environment)) {
+                LifecycleEffect.Completed -> InternalInstallExit.COMPLETED
+                is LifecycleEffect.Rejected -> throw ManagementRejected("reset-connections", restored.failure.name)
+            }
         "commit" -> return completeInternalInstall(root, environment, InstallationCompletion.STAGED)
         "commit-active" -> return completeInternalInstall(root, environment, InstallationCompletion.ACTIVATE)
         else -> throw ManagementRejected("installer-protocol", "invalid request")
+    }
+}
+
+private fun internalPublicReset(root: Path, environment: Map<String, String>, action: String): InternalInstallExit {
+    val scope =
+        when (val admission = PublicResetScope.admit(root, environment)) {
+            is PublicResetAdmission.Admitted -> admission.scope
+            is PublicResetAdmission.Rejected -> throw ManagementRejected("public-reset", admission.failure.name)
+        }
+    if (action == "preflight-reset") {
+        println(scope.command)
+        return InternalInstallExit.COMPLETED
+    }
+    when (val saved = savePublicResetConnections(root, environment)) {
+        LifecycleEffect.Completed -> Unit
+        is LifecycleEffect.Rejected -> throw ManagementRejected("reset-connections", saved.failure.name)
+    }
+    return when (presentForceReset(resetPublicInstallation(scope), true)) {
+        ForceResetExit.COMPLETE -> InternalInstallExit.COMPLETED
+        ForceResetExit.INCOMPLETE -> InternalInstallExit.ACTIVATION_REJECTED
     }
 }
 
@@ -317,7 +344,16 @@ private fun perform(command: ManagementCommand) {
             if (outcome is LifecycleOutcome.Rejected || outcome is LifecycleOutcome.Pending) exitProcess(1)
         }
         is ManagementCommand.Reset -> {
-            val outcome = forceResetInstallation(root, Path.of(home), environment, command.operation)
+            val scope =
+                when (val admitted = PublicResetScope.admit(root, environment)) {
+                    is PublicResetAdmission.Admitted -> admitted.scope
+                    is PublicResetAdmission.Rejected -> throw ManagementRejected("public-reset", admitted.failure.name)
+                }
+            val outcome =
+                when (command.operation) {
+                    ForceResetOperation.UNINSTALL -> resetPublicInstallation(scope)
+                    ForceResetOperation.REINSTALL -> reinstallPublicInstallation(scope, environment)
+                }
             when (presentForceReset(outcome, command.json)) {
                 ForceResetExit.COMPLETE -> Unit
                 ForceResetExit.INCOMPLETE -> exitProcess(1)

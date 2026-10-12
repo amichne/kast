@@ -115,6 +115,9 @@ class InstallerEntrypointTest(unittest.TestCase):
                 capability = tarfile.TarInfo("share/kast/install-completion-v1")
                 capability.mode, capability.size = 0o644, len(completion_capability)
                 archive.addfile(capability, io.BytesIO(completion_capability))
+            capability = tarfile.TarInfo("share/kast/public-reset-v1")
+            capability.mode, capability.size = 0o644, 2
+            archive.addfile(capability, io.BytesIO(b"1\n"))
             if reset_capability:
                 capability = tarfile.TarInfo("share/kast/reset-fence-v1")
                 capability.mode, capability.size = 0o644, 2
@@ -123,7 +126,7 @@ class InstallerEntrypointTest(unittest.TestCase):
 set -eu
 [ "$1" = --internal-install ] || exit 92
 case "$2" in
-  preflight) printf '%s\\n' "$HOME/.local/bin/kast" ;;
+  preflight|preflight-reset) printf '%s\\n' "$HOME/.local/bin/kast" ;;
   commit|commit-active)
     printf 'completion=%s\\n' "$2" >&2
     printf '%s\\n' "$HOME/.local/bin/kast" ;;
@@ -271,7 +274,13 @@ else:
 set -eu
 if [ "$1" = --internal-install ]; then
   case "$2" in
-    preflight) ;;
+    preflight|preflight-reset) ;;
+    restore-connections) printf 'restore-connections\\n' >> "$TEST_LOG" ;;
+    reset)
+      printf 'reset\\n' >> "$TEST_LOG"
+      [ "${FAIL_RESET:-0}" = 0 ] || exit "$FAIL_RESET"
+      rm -rf -- "$KAST_INSTALL_ROOT" "$HOME/.kast"
+      rm -f -- "$HOME/.local/bin/kast" ;;
     commit|commit-active)
       printf 'completion=%s\\n' "$2" >&2
       mkdir -p "$HOME/.local/bin"; cp "$0" "$HOME/.local/bin/kast"
@@ -347,13 +356,14 @@ print('{"status":"retained","removed":[],"retained":["prior"]}')
 sys.exit(int(os.environ.get('FAIL_REVIEW', '0')))
 ''',
             'share/kast/codex-mcp-registration.py': b'''import os,sys
-assert sys.argv[1] in ('check', 'install')
+assert sys.argv[1] in ('check', 'check-reset', 'install')
 with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.argv[1] + '\\n')
 ''',
         }
         scripts['share/kast/libexec/kast-management'] = scripts['share/kast/libexec/kast-management'].replace(
             b'__COMPLETION_REJECTED__', json.dumps(asdict(CompletionRejectedFixture())).encode(),
         )
+        scripts['share/kast/public-reset-v1'] = b'1\n'
         if completion_capability:
             scripts['share/kast/install-completion-v1'] = b'1\n'
         else:
@@ -372,6 +382,109 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             f'{hashlib.sha256(control.read_bytes()).hexdigest()}  {control.name}\n'
         )
         return idea, environment, prior, log
+
+    def test_force_install_resets_with_fresh_archive_before_service_and_repairs_missing_launcher(self):
+        with tempfile.TemporaryDirectory(prefix='kast-public-reset-') as directory:
+            idea, environment, prior, log = self.upgrade_fixture(directory)
+            (prior.parent / 'management.json').write_text('corrupt receipt')
+            legacy = Path(environment['HOME']) / '.kast'
+            legacy.mkdir()
+            (legacy / 'sentinel').write_text('old state')
+            result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea),
+                '--force', '--skip-codex-mcp'], cwd=ROOT, env=environment,
+                text=True, capture_output=True, timeout=10)
+            self.assertEqual(0, result.returncode, result.stderr)
+            calls = log.read_text().splitlines()
+            self.assertEqual('reset', calls[0])
+            self.assertLess(calls.index('reset'), calls.index('service'))
+            self.assertFalse((prior.parent / 'management.json').exists())
+            self.assertFalse(legacy.exists())
+            self.assertTrue((Path(environment['HOME']) / '.local/bin/kast').exists())
+
+    def test_rejected_fresh_reset_stops_before_service_or_host_installation(self):
+        with tempfile.TemporaryDirectory(prefix='kast-public-reset-rejected-') as directory:
+            idea, environment, prior, log = self.upgrade_fixture(directory)
+            environment['FAIL_RESET'] = '42'
+            sentinel = prior / 'keep'
+            sentinel.write_text('retained')
+            result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea),
+                '--force', '--skip-codex-mcp'], cwd=ROOT, env=environment,
+                text=True, capture_output=True, timeout=10)
+            self.assertNotEqual(0, result.returncode)
+            self.assertEqual(['reset'], log.read_text().splitlines())
+            self.assertEqual('retained', sentinel.read_text())
+
+    def test_developer_install_resets_automatically_after_release_selection(self):
+        with tempfile.TemporaryDirectory(prefix='kast-developer-reset-') as directory:
+            idea, environment, prior, log = self.upgrade_fixture(directory, version='0.0.123')
+            assets = Path(environment.pop('KAST_INSTALL_ASSETS_DIRECTORY'))
+            environment.pop('KAST_VERSION')
+            environment.update(self.developer_curl(directory, assets,
+                'developer-v0.0.123 0.0.123 ' + 'a' * 40))
+            sentinel = prior / 'old-state'
+            sentinel.write_text('remove')
+            result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea),
+                '--developer-latest', '--skip-codex-mcp'], cwd=ROOT, env=environment,
+                text=True, capture_output=True, timeout=10)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual('reset', log.read_text().splitlines()[0])
+            self.assertFalse(sentinel.exists())
+
+    def test_force_install_older_release_uses_verified_new_recovery_without_changing_selected_version(self):
+        with tempfile.TemporaryDirectory(prefix='kast-older-release-reset-') as directory:
+            idea, environment, prior, log = self.upgrade_fixture(directory)
+            assets = Path(environment['KAST_INSTALL_ASSETS_DIRECTORY'])
+            control = assets / 'kast-control-v1.2.4-macos-aarch64.tar.gz'
+            with tarfile.open(control, 'r:gz') as archive:
+                members = [(member, archive.extractfile(member).read()) for member in archive
+                           if member.name != 'share/kast/public-reset-v1']
+            with tarfile.open(control, 'w:gz') as archive:
+                for member, content in members:
+                    if member.name.endswith('kast-management'):
+                        content = content.replace(b'preflight|preflight-reset)', b'preflight)')
+                        content = content.replace(b'    reset)\n', b'    reset) exit 95\n')
+                        member.size = len(content)
+                    if member.name.endswith('codex-mcp-registration.py'):
+                        content = content.replace(b"'check', 'check-reset', 'install'", b"'check', 'install'")
+                        member.size = len(content)
+                    archive.addfile(member, io.BytesIO(content))
+            control.with_name(control.name + '.sha256').write_text(
+                f'{hashlib.sha256(control.read_bytes()).hexdigest()}  {control.name}\n')
+            recovery_directory = Path(directory) / 'recovery-fixture'
+            recovery_directory.mkdir()
+            _, recovery_environment, _, _ = self.upgrade_fixture(str(recovery_directory), version='0.0.123')
+            for name in ('kast-control-v0.0.123-macos-aarch64.tar.gz', 'kast-control-v0.0.123-macos-aarch64.tar.gz.sha256'):
+                shutil.copyfile(Path(recovery_environment['KAST_INSTALL_ASSETS_DIRECTORY']) / name, assets / name)
+            environment.update(self.developer_curl(directory, assets,
+                'developer-v0.0.123 0.0.123 ' + 'a' * 40))
+            codex = Path(directory) / 'bin/codex'
+            codex.write_text('#!/bin/sh\nexit 0\n')
+            codex.chmod(0o755)
+            sentinel = prior / 'old-state'
+            sentinel.write_text('remove')
+            result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea),
+                '--force', '--register-codex-mcp'], cwd=ROOT, env=environment,
+                text=True, capture_output=True, timeout=10)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(['registration:check-reset', 'reset'], log.read_text().splitlines()[:2])
+            self.assertIn('restore-connections', log.read_text().splitlines())
+            self.assertIn('installed Kast Control 1.2.4 and Kast Host 1.2.4', result.stderr)
+            self.assertFalse(sentinel.exists())
+
+    def test_force_dry_run_preserves_launcher_legacy_state_and_historical_artifacts(self):
+        with tempfile.TemporaryDirectory(prefix='kast-reset-plan-') as directory:
+            idea, _, environment = self.installer_fixture(directory)
+            home = Path(environment['HOME'])
+            paths = [home / '.local/share/kast/management.json', home / '.local/bin/kast',
+                     home / '.kast/old-state', home / '.local/share/.kast-old/sentinel']
+            for path in paths:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text('preserve')
+            result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea),
+                '--force', '--dry-run', '--skip-codex-mcp'], cwd=ROOT, env=environment,
+                text=True, capture_output=True, timeout=10)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertTrue(all(path.read_text() == 'preserve' for path in paths))
 
     def test_explicit_mcp_registration_dispatches_to_native_transport_command(self):
         with tempfile.TemporaryDirectory(prefix='kast-installer-codex-mode-') as directory:

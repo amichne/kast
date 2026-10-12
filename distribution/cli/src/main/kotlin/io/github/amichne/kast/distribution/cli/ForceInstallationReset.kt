@@ -1,5 +1,8 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.installationResetFence
+import io.github.amichne.kast.distribution.managed.PriorInstallationPreparation
+import io.github.amichne.kast.distribution.managed.resetInstallationTransport
 import java.io.IOException
 import java.nio.file.FileVisitResult
 import java.nio.file.Files
@@ -66,9 +69,71 @@ internal class ForceResetRoot private constructor(val path: Path) {
             ForceResetDeletion.Rejected(ForceResetFailure.FILESYSTEM_REJECTED)
         }
     }
+
+    /** The selected reset lock remains held until these effects and final process retirement finish. */
+    fun erasePublicExterior(scope: PublicResetScope, erased: ErasedReset, runtime: ForceDaemonRuntime): ResetEffect {
+        if (erased.root != path || scope.root != path) return ResetEffect.Rejected(ForceResetFailure.ROOT_REJECTED)
+        when (val admitted = erased.fence.admission()) {
+            ResetEffect.Completed -> Unit
+            is ResetEffect.Rejected -> return admitted
+        }
+        return try {
+            val marker = installationResetFence(path)
+            val artifacts =
+                Files.newDirectoryStream(path.parent).use { entries ->
+                    entries
+                        .asSequence()
+                        .filter {
+                            it.fileName.toString().startsWith(".kast-") &&
+                                !it.fileName.toString().endsWith(".lock") &&
+                                it != marker
+                        }
+                        .take(MAXIMUM_PUBLIC_RESET_ENTRIES + 1)
+                        .toList()
+                }
+            if (artifacts.size > MAXIMUM_PUBLIC_RESET_ENTRIES)
+                return ResetEffect.Rejected(ForceResetFailure.FILESYSTEM_REJECTED)
+            for (path in artifacts + listOf(scope.home.resolve(".kast"))) {
+                when (val removed = removeHistoricalEntry(path, scope.home, runtime)) {
+                    ResetEffect.Completed -> Unit
+                    is ResetEffect.Rejected -> return removed
+                }
+            }
+            removeCommands(scope)
+        } catch (_: IOException) {
+            ResetEffect.Rejected(ForceResetFailure.FILESYSTEM_REJECTED)
+        } catch (_: SecurityException) {
+            ResetEffect.Rejected(ForceResetFailure.FILESYSTEM_REJECTED)
+        }
+    }
+
+    private fun removeCommands(scope: PublicResetScope): ResetEffect {
+        when (resetInstallationTransport(path.resolve("installation"), scope.home)) {
+            PriorInstallationPreparation.PREPARED -> Unit
+            PriorInstallationPreparation.FILESYSTEM_REJECTED ->
+                return ResetEffect.Rejected(ForceResetFailure.FILESYSTEM_REJECTED)
+        }
+        for (path in setOf(scope.home.resolve(".local/bin/kast"), scope.command)) {
+            if (ForceResetRoot.admit(path, scope.home) == ForceResetRootAdmission.Rejected)
+                return ResetEffect.Rejected(ForceResetFailure.ROOT_REJECTED)
+            Files.deleteIfExists(path)
+        }
+        return ResetEffect.Completed
+    }
+
+    private fun removeHistoricalEntry(path: Path, home: Path, runtime: ForceDaemonRuntime): ResetEffect {
+        if (Files.isDirectory(path, NOFOLLOW_LINKS)) {
+            when (val retired = ForceDaemonRetirement(runtime).retire(path, home)) {
+                ResetEffect.Completed -> Unit
+                is ResetEffect.Rejected -> return retired
+            }
+            Files.walkFileTree(path, ResetDeletingVisitor)
+        } else Files.deleteIfExists(path)
+        return ResetEffect.Completed
+    }
 }
 
-private object ResetDeletingVisitor : SimpleFileVisitor<Path>() {
+internal object ResetDeletingVisitor : SimpleFileVisitor<Path>() {
     override fun visitFile(file: Path, attributes: BasicFileAttributes): FileVisitResult {
         Files.delete(file)
         return FileVisitResult.CONTINUE
@@ -80,3 +145,5 @@ private object ResetDeletingVisitor : SimpleFileVisitor<Path>() {
         return FileVisitResult.CONTINUE
     }
 }
+
+private const val MAXIMUM_PUBLIC_RESET_ENTRIES = 1024

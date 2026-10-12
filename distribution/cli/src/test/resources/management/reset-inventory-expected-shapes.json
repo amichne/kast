@@ -1,0 +1,9 @@
+[
+  {"type":"PROCESS_INVENTORY","outcome":{"type":"OBSERVED","count":0}},
+  {"type":"PROCESS_INVENTORY","outcome":{"type":"REJECTED","pid":7,"reason":"CURRENT_USER_UNAVAILABLE"}},
+  {"type":"PROCESS_INVENTORY","outcome":{"type":"REJECTED","pid":7,"reason":"OWNER_UNAVAILABLE"}},
+  {"type":"PROCESS_INVENTORY","outcome":{"type":"REJECTED","pid":7,"reason":"COMMAND_UNAVAILABLE"}},
+  {"type":"PROCESS_INVENTORY","outcome":{"type":"REJECTED","pid":7,"reason":"ARGUMENTS_UNAVAILABLE"}},
+  {"type":"PROCESS_INVENTORY","outcome":{"type":"REJECTED","pid":7,"reason":"CAPACITY_EXCEEDED"}},
+  {"type":"PROCESS_INVENTORY","outcome":{"type":"REJECTED","pid":7,"reason":"EFFECT_UNAVAILABLE"}}
+]

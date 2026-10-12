@@ -23,16 +23,29 @@ private constructor(
     companion object {
         fun admit(root: Path, report: Path): FreshResetResult =
             try {
-                admitPayload(root, report)
+                admitPayload(root, report, root.resolve("bin/kast"), InstallerReportIntent.STAGING)
             } catch (_: IOException) {
                 rejected()
             } catch (_: SecurityException) {
                 rejected()
             }
 
-        private fun admitPayload(root: Path, report: Path): FreshResetResult {
+        fun admitPublic(scope: PublicResetScope, report: Path): FreshResetResult =
+            try {
+                admitPayload(scope.root, report, scope.command, InstallerReportIntent.ACTIVATION)
+            } catch (_: IOException) {
+                rejected()
+            } catch (_: SecurityException) {
+                rejected()
+            }
+
+        private fun admitPayload(
+            root: Path,
+            report: Path,
+            command: Path,
+            intent: InstallerReportIntent,
+        ): FreshResetResult {
             val installation = root.resolve("installation")
-            val command = root.resolve("bin/kast")
             val read = readBundledManifest(installation)
             if (
                 read !is BundledManifestRead.Read ||
@@ -54,7 +67,7 @@ private constructor(
                     readBoundedFile(report, REPORT_BYTES),
                     root,
                     command.toString(),
-                    InstallerReportIntent.STAGING,
+                    intent,
                 )
             return if (admitted is InstallerReportAdmission.Admitted) FreshResetResult.Prepared(payload) else rejected()
         }
