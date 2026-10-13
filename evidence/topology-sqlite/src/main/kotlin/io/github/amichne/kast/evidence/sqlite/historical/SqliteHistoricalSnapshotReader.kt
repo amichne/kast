@@ -63,46 +63,69 @@ internal constructor(
             return HistoricalReadResult.Rejected(HistoricalReadFailure.SNAPSHOT_MISMATCH)
         return historicalEffect {
             admitTargets(query).flatMap { targetRows ->
-                val sourcePlaceholders = query.sourceModules.joinToString(",") { "?" }
-                val targetPredicates =
-                    query.targets.joinToString(" OR ") {
-                        "(t.compiler = ? AND t.file = ? AND t.start_offset = ? AND t.end_offset = ?)"
-                    }
-                val sql =
-                    HISTORICAL_OCCURRENCE_QUERY.replace(
-                        "SELECT o.*,",
-                        "SELECT o.*, sf.module AS source_module, tf.module AS target_module,",
-                    ) +
-                        " JOIN historical_file sf ON sf.path = o.source_file" +
-                        " JOIN historical_file tf ON tf.path = t.file" +
-                        " WHERE o.ordinal > ? AND sf.module IN ($sourcePlaceholders) AND ($targetPredicates) ORDER BY o.ordinal LIMIT ?"
-                val after =
-                    when (val position = query.position) {
-                        HistoricalUsagePosition.First -> -1L
-                        is HistoricalUsagePosition.After -> position.cursor.after.value
-                    }
-                val found =
-                    connection.prepareStatement(sql).use { statement ->
-                        var parameter = 1
-                        statement.setLong(parameter++, after)
-                        query.sourceModules.forEach { statement.setString(parameter++, it.value) }
-                        query.targets.forEach { parameter = statement.bindDeclaration(parameter, it.declaration) }
-                        statement.setInt(parameter, query.pageSize.value + 1)
-                        statement.executeQuery().use { rows -> rows.readHistoricalRows(::usageRow) }
-                    }
-                found.flatMap { values ->
-                    val visible = values.take(query.pageSize.value)
-                    val end =
-                        if (values.size > visible.size)
-                            HistoricalUsageEnd.More(query.cursorAfter(visible.last().ordinal))
-                        else HistoricalUsageEnd.Exhausted
-                    work(targetRows + values.size, visible.size.toLong()).map {
-                        HistoricalUsagePage(query, visible, end, it)
+                admitUsageCursor(query).flatMap { cursorRows ->
+                    readUsage(query, HistoricalOrdinalComparison.AFTER, query.pageSize.value + 1).flatMap { values ->
+                        val visible = values.take(query.pageSize.value)
+                        val end =
+                            if (values.size > visible.size)
+                                HistoricalUsageEnd.More(query.cursorAfter(visible.last().ordinal))
+                            else HistoricalUsageEnd.Exhausted
+                        work(targetRows + cursorRows + values.size, visible.size.toLong()).map {
+                            HistoricalUsagePage(query, visible, end, it)
+                        }
                     }
                 }
             }
         }
             .asRead()
+    }
+
+    private fun admitUsageCursor(query: HistoricalUsageQuery): Refinement<Long, HistoricalStorageFailure> =
+        when (query.position) {
+            HistoricalUsagePosition.First -> Refinement.Refined(0L)
+            is HistoricalUsagePosition.After ->
+                readUsage(query, HistoricalOrdinalComparison.EXACT, 1).flatMap {
+                    if (it.isEmpty()) Refinement.Rejected(HistoricalStorageFailure.CURSOR_MISMATCH)
+                    else Refinement.Refined(it.size.toLong())
+                }
+        }
+
+    private fun readUsage(
+        query: HistoricalUsageQuery,
+        comparison: HistoricalOrdinalComparison,
+        limit: Int,
+    ): Refinement<List<HistoricalUsageRow>, HistoricalStorageFailure> {
+        val sourcePlaceholders = query.sourceModules.joinToString(",") { "?" }
+        val targetPredicates =
+            query.targets.joinToString(" OR ") {
+                "(t.compiler = ? AND t.file = ? AND t.start_offset = ? AND t.end_offset = ?)"
+            }
+        val operator =
+            when (comparison) {
+                HistoricalOrdinalComparison.AFTER -> ">"
+                HistoricalOrdinalComparison.EXACT -> "="
+            }
+        val sql =
+            HISTORICAL_OCCURRENCE_QUERY.replace(
+                "SELECT o.*,",
+                "SELECT o.*, sf.module AS source_module, tf.module AS target_module,",
+            ) +
+                " JOIN historical_file sf ON sf.path = o.source_file" +
+                " JOIN historical_file tf ON tf.path = t.file" +
+                " WHERE o.ordinal $operator ? AND sf.module IN ($sourcePlaceholders) AND ($targetPredicates) ORDER BY o.ordinal LIMIT ?"
+        val after =
+            when (val position = query.position) {
+                HistoricalUsagePosition.First -> -1L
+                is HistoricalUsagePosition.After -> position.cursor.after.value
+            }
+        return connection.prepareStatement(sql).use { statement ->
+            var parameter = 1
+            statement.setLong(parameter++, after)
+            query.sourceModules.forEach { statement.setString(parameter++, it.value) }
+            query.targets.forEach { parameter = statement.bindDeclaration(parameter, it.declaration) }
+            statement.setInt(parameter, limit)
+            statement.executeQuery().use { rows -> rows.readHistoricalRows(::usageRow) }
+        }
     }
 
     override fun close() = connection.close()
@@ -161,34 +184,53 @@ internal constructor(
                 }
             }
         return historicalEffect {
-            val found =
-                connection.prepareStatement("SELECT * FROM $table WHERE ordinal > ? ORDER BY ordinal LIMIT ?").use {
-                    statement ->
-                    statement.setLong(1, after)
-                    statement.setInt(2, request.size.value + 1)
-                    statement.executeQuery().use { rows ->
-                        rows.readHistoricalRows { row ->
-                            HistoricalRowOrdinal.parse(row.getLong("ordinal")).storage().flatMap { ordinal ->
-                                read(row).map { ordinal to it }
+            admitInventoryCursor(table, after).flatMap { cursorRows ->
+                val found =
+                    connection
+                        .prepareStatement("SELECT * FROM $table WHERE ordinal > ? ORDER BY ordinal LIMIT ?")
+                        .use { statement ->
+                            statement.setLong(1, after)
+                            statement.setInt(2, request.size.value + 1)
+                            statement.executeQuery().use { rows ->
+                                rows.readHistoricalRows { row ->
+                                    HistoricalRowOrdinal.parse(row.getLong("ordinal")).storage().flatMap { ordinal ->
+                                        read(row).map { ordinal to it }
+                                    }
+                                }
                             }
                         }
+                found.flatMap { values ->
+                    val visible = values.take(request.size.value)
+                    val end =
+                        if (values.size > visible.size)
+                            HistoricalPageEnd.More(
+                                HistoricalRowPosition.After(inventory.identity, family, visible.last().first)
+                            )
+                        else HistoricalPageEnd.Exhausted
+                    work(cursorRows + values.size, visible.size.toLong()).map {
+                        HistoricalInventoryPage(visible.map { it.second }, end, it)
                     }
-                }
-            found.flatMap { values ->
-                val visible = values.take(request.size.value)
-                val end =
-                    if (values.size > visible.size)
-                        HistoricalPageEnd.More(
-                            HistoricalRowPosition.After(inventory.identity, family, visible.last().first)
-                        )
-                    else HistoricalPageEnd.Exhausted
-                work(values.size.toLong(), visible.size.toLong()).map {
-                    HistoricalInventoryPage(visible.map { it.second }, end, it)
                 }
             }
         }
             .asRead()
     }
+
+    private fun admitInventoryCursor(table: String, after: Long): Refinement<Long, HistoricalStorageFailure> {
+        if (after == -1L) return Refinement.Refined(0L)
+        return connection.prepareStatement("SELECT ordinal FROM $table WHERE ordinal = ?").use { statement ->
+            statement.setLong(1, after)
+            statement.executeQuery().use { rows ->
+                if (rows.next()) Refinement.Refined(1L)
+                else Refinement.Rejected(HistoricalStorageFailure.CURSOR_MISMATCH)
+            }
+        }
+    }
+}
+
+private enum class HistoricalOrdinalComparison {
+    AFTER,
+    EXACT,
 }
 
 private fun PreparedStatement.bindDeclaration(start: Int, id: HistoricalDeclarationId): Int {
@@ -219,6 +261,7 @@ private fun <T> Refinement<T, HistoricalStorageFailure>.asRead(): HistoricalRead
                     HistoricalStorageFailure.CONTENT_REJECTED -> HistoricalReadFailure.CORRUPT_ARTIFACT
                     HistoricalStorageFailure.CAPACITY_EXCEEDED -> HistoricalReadFailure.CAPACITY_EXCEEDED
                     HistoricalStorageFailure.DECLARATION_NOT_FOUND -> HistoricalReadFailure.DECLARATION_NOT_FOUND
+                    HistoricalStorageFailure.CURSOR_MISMATCH -> HistoricalReadFailure.CURSOR_MISMATCH
                 }
             )
     }

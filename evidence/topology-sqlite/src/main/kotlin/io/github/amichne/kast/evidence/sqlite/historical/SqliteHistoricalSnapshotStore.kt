@@ -26,6 +26,7 @@ enum class HistoricalStorageFailure {
     CAPACITY_EXCEEDED,
     ATOMIC_PUBLICATION_UNAVAILABLE,
     DECLARATION_NOT_FOUND,
+    CURSOR_MISMATCH,
 }
 
 data class HistoricalPublicationWork(

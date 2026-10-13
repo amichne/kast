@@ -10,6 +10,7 @@ This is an implementation gap, not an absent IDEA installation.
 - Baseline: `54fc6390e55f219dc826a9465a01c514e3201d12` from refreshed `origin/main`.
 - Branch: `feat/persistent-topology-snapshots`.
 - D1 commit: `450d32c5c34a183ba4ca30f2cd805bff26f0678a`.
+- D2 commit: `0ed32da3d3edab34caad7a0678d903d796a651fc`.
 - Slopsentral source: `774716ce2cdee28133d463ae865f4c67bef68fb4`.
 - Environment: macOS, Oracle GraalVM 25.0.2 through repository-owned `mise`.
 - Profiles: `STRUCTURE_V1` and `REFERENCES_V1`.
@@ -188,6 +189,28 @@ The page union matches the independent witness table. Qualified coverage remains
 The fresh-process case passed with a copied read-only artifact and the original case-owned source directory removed.
 Its process environment has an empty executable path. Its classpath excludes the IntelliJ, hosted runtime, and App Server adapters.
 This evidence proves the tested composition. It is not an operating-system prohibition on every possible filesystem read.
+
+A separate generated-input case preserves its content hash, producer, unavailable owner, `CODE` context, and finite coverage causes through SQLite and JSON.
+Its explicit source range selects `api`. The result contains no invented declaration owner.
+
+The cursor suite first exposed three invalid-position acceptances across four selected tests.
+After correction, all four cases passed. Nonexistent or wrong-query positions now return `CURSOR_MISMATCH`.
+A valid continuation adds one decoded row for exact position admission.
+The four-page oracle reports page work of 4, 5, 5, and 4 decoded rows, plus 2 request-selection rows per command.
+Every command also reports its initial artifact admission work. These counters exclude SQLite engine page reads and in-memory metadata scans.
+
+The final D3 command passed 22 tests with zero failures, errors, or skips in 3 seconds:
+
+```sh
+mise exec -- ./gradlew :evidence:topology-sqlite:test \
+  --tests '*SqliteHistoricalSnapshotStoreTest' --tests '*HistoricalSqliteCursorTest' \
+  --tests '*HistoricalOffline*Test' --tests '*HistoricalGeneratedEvidenceTest' \
+  :evidence:topology-sqlite:detekt :evidence:topology-sqlite:checkMainKotlinFileLength \
+  :evidence:topology-sqlite:checkTestKotlinFileLength --console=plain
+```
+
+Counts were 9 storage, 4 cursor, 5 CLI, 3 request-admission, and 1 generated-input case.
+Detekt and both file-length guards passed. The log is `/tmp/kast-historical-d3-final.log`.
 
 ## Qualification limits
 
