@@ -5,7 +5,7 @@
 
 ## Purpose
 
-Retains mutation plans, receipts, and recovery evidence in workspace-bound SQLite stores. A separate topology SQLite adapter retains complete graph snapshots for upcoming work; workspace publication implementation remains retired.
+Keeps mutation plans, receipts, and recovery evidence in workspace-bound SQLite stores. A separate topology SQLite adapter stores historical artifacts. Workspace publication implementation remains retired.
 
 ## Key Files
 
@@ -17,12 +17,13 @@ Retains mutation plans, receipts, and recovery evidence in workspace-bound SQLit
 - [HostedWorkspaceStateFiles.kt](sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/HostedWorkspaceStateFiles.kt) - physical path admission.
 - [SqliteMutationRecoveryJournal.kt](sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationRecoveryJournal.kt) - recovery journal.
 - [SqliteHostedChangeStoresTest.kt](sqlite/src/test/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteHostedChangeStoresTest.kt) - restart, schema and path rejection evidence.
+- [SqliteHistoricalSnapshotStore.kt](topology-sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/historical/SqliteHistoricalSnapshotStore.kt) - atomic standalone publication and immutable historical reads.
 
 ## Subdirectories
 
 - `contract` - storage-neutral recovery types and retained historical publication contracts.
 - `sqlite` - mutation persistence and strict database admission.
-- `topology-sqlite` - retained topology publication, snapshot storage, and relation reads; excluded from shipped runtimes.
+- `topology-sqlite` - topology publication, historical artifacts, and occurrence reads, separate from shipped runtimes.
 
 ## Entry Points
 

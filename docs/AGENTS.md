@@ -25,6 +25,7 @@ Contains the Mintlify site with Guide and Reference tabs plus scripts and styles
 
 - [hosted-read-configuration.md](hosted-read-configuration.md) - hosted read grants, retention configuration, and reported limitations.
 - [reviews/representation-impact-proof.md](reviews/representation-impact-proof.md) - exact installed representation-impact qualification, retained evidence, and proof limits.
+- [reviews/persistent-topology-snapshots.md](reviews/persistent-topology-snapshots.md) - historical contracts, SQLite and offline oracles, work counts, and native capture limits.
 - [reviews/direct-tool-startup-2026-10-05.md](reviews/direct-tool-startup-2026-10-05.md) - paired synthetic and final-byte startup measurements, avoided discovery work, and timing limits.
 - [reviews/selected-jbr-startup-2026-10-05.md](reviews/selected-jbr-startup-2026-10-05.md) - selected IDEA JBR admission, regression coverage, and completed Claim refresh.
 - [public/reference/schemas.mdx](public/reference/schemas.mdx) - generated schema and authored sample entry points.

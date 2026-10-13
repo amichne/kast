@@ -9,6 +9,7 @@ This is an implementation gap, not an absent IDEA installation.
 
 - Baseline: `54fc6390e55f219dc826a9465a01c514e3201d12` from refreshed `origin/main`.
 - Branch: `feat/persistent-topology-snapshots`.
+- D1 commit: `450d32c5c34a183ba4ca30f2cd805bff26f0678a`.
 - Slopsentral source: `774716ce2cdee28133d463ae865f4c67bef68fb4`.
 - Environment: macOS, Oracle GraalVM 25.0.2 through repository-owned `mise`.
 - Profiles: `STRUCTURE_V1` and `REFERENCES_V1`.
@@ -101,6 +102,92 @@ mise exec -- ./gradlew :topology:contract:test \
 RED selected one test and failed its ownership assertion in 3 seconds. GREEN passed the same test in 1 second.
 The final historical suite passed 19 tests in 7 seconds. Detekt and both file-length guards also passed.
 The logs are `/tmp/kast-historical-ownership-red.log`, `/tmp/kast-historical-ownership-green.log`, and `/tmp/kast-historical-d1-tests-final.log`.
+
+## D2: publication and revision attribution
+
+`SqliteHistoricalSnapshotStore` extends the existing topology persistence owner with a separate historical schema.
+The artifact contains the manifest, modules, imported dependencies, files, declarations, occurrences, and coverage causes.
+Publication writes a private candidate, examines its schema and logical content, and replaces the destination with an atomic move.
+The destination remains unchanged after rejection or cancellation. A copied artifact needs no WAL sidecar.
+The reader keeps its admitted connection, so later path replacement cannot substitute another snapshot.
+
+The Git adapter compares only supplied paths with committed blob bytes and admitted content hashes.
+It rejects dirty content, nested checkout roots, unsupported file modes, missing paths, and revision mismatches.
+It does not discover semantic ownership or establish compiler authority.
+
+```sh
+python3 packaging/test-historical-git-attribution.py
+```
+
+The command passed 10 tests with zero skips in 2.922 seconds.
+The nested-root case first failed because the adapter attributed duplicate child bytes to the parent repository.
+Exact Git root admission corrected that defect. The same case then passed.
+A separate fixture measured 6 Git calls, 1 comparison, and 90 bytes examined for a 45-byte source.
+
+Two SQLite regressions changed stored ordinals without changing logical facts.
+Both failed because the reader accepted the altered order. Both passed after contiguous and canonical order admission.
+The logs are `/tmp/kast-historical-d2-ordinal-red.log` and `/tmp/kast-historical-d2-ordinal-green.log`.
+
+The capture coordinator admits exact Git attribution before it calls the explicit native producer.
+It compares the returned header, module domain, and complete file inventory before publication.
+The production IntelliJ adapter rejects the missing stability proof. The coordinator success cases use scripted producer evidence.
+
+The final D2 commands passed:
+
+```sh
+mise exec -- ./gradlew :evidence:topology-sqlite:test \
+  --tests '*SqliteHistoricalSnapshotStoreTest' :evidence:topology-sqlite:detekt \
+  :evidence:topology-sqlite:checkMainKotlinFileLength \
+  :evidence:topology-sqlite:checkTestKotlinFileLength --console=plain
+mise exec -- ./gradlew :topology:build:test --tests '*historical*' \
+  :topology:build:detekt :topology:build:checkMainKotlinFileLength \
+  :topology:build:checkTestKotlinFileLength :topology:intellij:compileKotlin \
+  :topology:intellij:detekt :topology:intellij:checkMainKotlinFileLength --console=plain
+```
+
+The SQLite command selected 9 tests and reported 3 seconds.
+The capture command selected 12 tests and reported 4 seconds. IntelliJ compilation passed, with no native fixture run.
+The initial SQLite fixture used a macOS temporary-path alias. Its rejection preceded publication and was not product RED.
+Tests now use the canonical case-owned path.
+
+The structural fixture has 3 modules, 2 files, 2 declarations, and 12 coverage cells.
+Its receipt reports 20 stored rows, 1 staged batch, 1 committed batch, and 40 decoded rows across 2 admission passes.
+Its artifact size was 69,632 bytes. Replacement examines the prior artifact too, for 60 decoded rows across 3 passes.
+SQLite engine page reads and heap use remain unavailable evidence.
+The input artifact limit is 1 GiB. This limit does not establish acceptable heap use at that size.
+
+## D3: offline source usage
+
+The standalone reader accepts one artifact and an explicit operation: `inventory`, `files`, `declarations`, or `usage`.
+Its Kotlin capability exposes no Git, source, compiler, workspace preparation, or mutation operation.
+The offline composition does not enter the shipped live runtime.
+
+```sh
+mise exec -- ./gradlew :evidence:topology-sqlite:historicalRead \
+  --args='inventory /absolute/path/snapshot.sqlite'
+```
+
+`STRUCTURE_V1` stores module, file, and declaration inventory. Its reference coverage is `NotCollected`.
+`REFERENCES_V1` also stores exact internal occurrences with source ownership, classification, and source-domain coverage.
+Both profiles describe an explicitly selected imported domain, not an inferred repository-wide domain.
+The declaration families are `CLASSLIKE`, `CONSTRUCTOR`, `FUNCTION`, `PROPERTY`, and `TYPE_ALIAS`.
+Generated inputs need explicit provenance. Unsupported or external semantic facts remain qualified or outside the profile.
+Resolution inputs still belong to the producer's context obligation.
+
+The request page size is 1 through 1000. Source and target domains each permit at most 128 entries.
+The parser limits a request to 1,048,576 characters.
+The `usage` operation needs JSON with `sourceModules`, exact historical `targets`, `size`, and an optional `cursor`.
+The result keeps revision, snapshot, source scope, selected targets, occurrence coordinates, ownership, coverage, and continuation.
+The process returns typed JSON for rejection. Consumers must examine `type` and `reason`, not the process exit code alone.
+
+The explicit oracle contains six modules, four files, six declarations, and four reference occurrences.
+It distinguishes overloads, repeated compiler identity at different locations, main and test ownership, empty membership, and rootless membership.
+The four occurrence ranges select `Api` or `api` in the fixture source text.
+The page union matches the independent witness table. Qualified coverage remains qualified after the last page.
+
+The fresh-process case passed with a copied read-only artifact and the original case-owned source directory removed.
+Its process environment has an empty executable path. Its classpath excludes the IntelliJ, hosted runtime, and App Server adapters.
+This evidence proves the tested composition. It is not an operating-system prohibition on every possible filesystem read.
 
 ## Qualification limits
 
