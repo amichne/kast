@@ -4,7 +4,7 @@ description: "Choose the action, input, steps, and output for a query_symbols re
 icon: "book-open"
 ---
 
-Choose an action, source, steps, and output for `query_symbols`. It can run a query, present produced output, read saved rows, or read anchored source. Use the [generated schema](/reference/schemas) for exact variants. For agent prompts, use [Find and trace code](/search).
+Choose an action, source, steps, and output for `query_symbols`. It can run a query, present produced output, read saved rows, or read anchored source. Use the [generated schema](/reference/schemas) for exact variants. For agent prompts, use [Find and trace code](/reference/search).
 
 ## Choose an action
 
@@ -71,7 +71,7 @@ Steps run in their supplied order. Choose the smallest sequence that answers you
 | `JOIN` | `INNER` pairs named cells. `SEMI` keeps matches. `ANTI` needs complete coverage of `right` to establish absence. |
 | `PROJECT_BINDING` | Select one named symbol cell before further symbol steps. |
 
-Steps after composition apply to the combined stream. Queries do not support arbitrary-field joins or a general-purpose `MAP`. See [Combine query results](/query-pipelines) for set and join examples.
+Steps after composition apply to the combined stream. Queries do not support arbitrary-field joins or a general-purpose `MAP`. See [Combine query results](/reference/query-pipelines) for set and join examples.
 
 ### Trace an interface or adapter
 

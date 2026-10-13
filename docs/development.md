@@ -277,16 +277,19 @@ failure leaves the installation available and reports failure.
 
 ## Validate documentation
 
-From `docs/public`, run the same pinned CLI used by documentation CI:
+Kast uses one Mintlify site with Guide and Reference tabs. Guide covers product value and setup. Reference contains technical guides and generated contracts.
+
+From `docs/public`, run:
 
 ```shell
 npx mint@4.2.841 validate
+npx mint@4.2.841 broken-links
 npx mint@4.2.841 dev --port 3000
 ```
 
-Open `http://localhost:3000` and check the installation path, navigation, and
-examples. Edit the public MDX pages and `docs.json` together. Generated callable
-contracts remain owned by the protocol registry.
+Open `http://localhost:3000` and examine both tabs, their navigation, and their links. Edit the MDX pages and `docs.json` together.
+
+The callable generator writes `docs/public/reference/callables.openapi.json`. The protocol registry keeps ownership of the generated contract. Use the [documentation structure](documentation-structure.md) for route and content rules.
 
 After changing source-bound knowledge, run from the repository root:
 

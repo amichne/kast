@@ -1,42 +1,42 @@
 ---
-title: "What is Kast?"
-sidebarTitle: "Overview"
-description: "Find Kotlin declarations, trace relationships, and make targeted changes through your coding agent."
+title: "Give your agent a better view of Kotlin"
+sidebarTitle: "Why Kast?"
+description: "Help your coding agent find the exact code, understand its connections, and make targeted changes."
 icon: "scan-search"
-keywords:
-  - "Kotlin"
-  - "IntelliJ IDEA"
-  - "coding agents"
-  - "semantic query"
 ---
 
-Kast connects your coding agent to IntelliJ IDEA for Kotlin queries, diagnostics, and targeted source changes.
+Kast connects your coding agent to IntelliJ IDEA. Your agent gets the Kotlin knowledge your IDE already uses.
 
-Your agent chooses the question. Kast uses compiler evidence to identify declarations and relationships. Each answer reports its search scope, source state, and limits.
+Ask which function a call refers to, where an interface has implementations, or what uses the code you want to change.
+
+## What Kast adds
+
+Text search finds matching words. Kast identifies Kotlin declarations and their connections through the compiler.
+
+That gives your agent more context before it explains code or changes it:
+
+- **The exact function.** Distinguish functions that share a name and find their source.
+- **The connected code.** Find callers, references, implementations, and overrides across your project.
+- **The limits of the answer.** See when Kast cannot finish a search or establish a result.
+- **Targeted edits.** Add a declaration or replace a supported function body, with a record of the outcome.
+
+## Use the agent you already use
+
+Connect Codex, Copilot, or Pi. After setup, ask questions in your usual conversation.
+
+Kast prepares the selected IntelliJ project when a question needs it. If setup needs your attention, Kast reports the next action.
 
 <CardGroup cols={2}>
-  <Card title="Install and connect" icon="download" href="/start">
-    Install Kast and examine your connection with a real query.
+  <Card title="Get started" icon="download" href="/start">
+    Install Kast and connect your agent.
   </Card>
-
-  <Card title="Find and trace code" icon="search" href="/search">
-    Select a declaration and trace its callers or implementations.
+  <Card title="See what you can do" icon="search" href="/search">
+    Try questions about your own Kotlin code.
   </Card>
 </CardGroup>
 
-## What you can do
+## Is Kast for you?
 
-| Question | Kast evidence |
-| --- | --- |
-| Which `submitOrder` do I need? | Signatures, locations, source, and exact references for matching declarations. |
-| What calls or implements it? | Compiler-confirmed relationships and call sites within the requested traversal. |
-| Which queries share declarations? | [Query results combined by declaration identity](/query-pipelines). |
-| Can I change this declaration? | [One declaration addition or supported body replacement](/change), with a receipt for the edit and recovery. |
+Use Kast with a Kotlin Gradle project on an Apple silicon Mac and IntelliJ IDEA `262.*`.
 
-A caller result identifies a source relationship. Read coverage before you claim that it includes every caller or proves absence. See [What an answer proves](/concepts/evidence-boundaries).
-
-## Supported environment
-
-Use Kast with a Kotlin Gradle project on Apple silicon macOS and IntelliJ IDEA `262.*`. Supported agents include Codex, Copilot, and Pi. Queries prepare the selected IDEA project and report setup blockers.
-
-Before installation, examine [compatibility](/reference/compatibility). After a source change, run your project's build and tests. Kast's edit verification covers the scope in its receipt.
+Kast helps your agent understand source code. Your project's build and tests still establish whether a change works.

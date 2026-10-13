@@ -303,7 +303,7 @@ val testCheckoutInstaller = tasks.register<Exec>("testCheckoutInstaller") {
 val installerEntrypointTest = tasks.register<Exec>("installerEntrypointTest") {
     group = "verification"
     description = "Pins the documented Bash -c installer invocation and argument delivery contract."
-    inputs.files("install.sh", "README.md", "docs/public/start.mdx",
+    inputs.files("install.sh", "README.md", "docs/public/start.mdx", "docs/public/reference/installation.mdx",
         "docs/public/reference/compatibility.mdx", "packaging/test-installer-entrypoint.py")
     commandLine("python3", layout.projectDirectory.file("packaging/test-installer-entrypoint.py"))
 }

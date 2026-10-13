@@ -22,7 +22,7 @@ These terms distinguish declaration identity from the state that supports a read
 
 - §CANONICAL IDENTITY§: The established declaration identity used to compare symbols. Display names and opaque reference strings alone do not establish equality.
   - Known synonyms: none
-  - Source: [SymbolSelector](../symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt) and [result composition](public/query-pipelines.mdx).
+  - Source: [SymbolSelector](../symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt) and [result composition](public/reference/query-pipelines.mdx).
 
 - §SEMANTIC BASIS§: The provenance of an operation's evidence, expressed as published workspace state or live IDEA read state. A provenance record alone grants no execution authority.
   - Known synonyms: none

@@ -24,6 +24,7 @@ INSTALLER = ROOT / "install.sh"
 DOCUMENTS = (
     ROOT / "README.md",
     ROOT / "docs/public/start.mdx",
+    ROOT / "docs/public/reference/installation.mdx",
     ROOT / "docs/public/reference/compatibility.mdx",
 )
 CANONICAL_PREFIX = '/bin/bash -c "$(curl -fsSL '
