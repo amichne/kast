@@ -49,7 +49,7 @@ class AgentSessionProjectionTest {
         val copilotTool = copilot.tools.single()
         assertEquals("function", codexTool.getValue("type").jsonPrimitive.content)
         assertEquals(bootstrap.tools.definitions.single().generationSchema, codexTool.getValue("inputSchema"))
-        assertEquals(false, codexTool.getValue("deferLoading").jsonPrimitive.content.toBoolean())
+        assertEquals(true, codexTool.getValue("deferLoading").jsonPrimitive.content.toBoolean())
         assertEquals(copilotTool.name, codexTool.getValue("name").jsonPrimitive.content)
         assertEquals(copilotTool.description, codexTool.getValue("description").jsonPrimitive.content)
         assertEquals("query.run", copilotTool.operationId)

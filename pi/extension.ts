@@ -1,5 +1,7 @@
 // Generated contract version; owned by packaging/generate-public-query.py.
 const PUBLIC_TOOL_CONTRACT_VERSION = 14;
+// Generated loading policy; owned by tools.schema.json.
+const DEFERRED_TOOL_NAMES: readonly string[] = ["query_symbols", "add_declaration", "replace_body"];
 // Generated from ToolRpcFailure; owned by packaging/generate-public-query.py.
 const TOOL_RPC_FAILURES = [
   "INSTALLATION_STOPPED",
@@ -546,6 +548,13 @@ function approvalSummary(tool: Tool, params: Record<string, unknown>, cwd: strin
 }
 
 export default async function (pi: ExtensionAPI) {
+  pi.on("session_start", () => {
+    if (!pi.getAllTools().some(tool => tool.name === "tool_search")) {
+      throw new Error("Kast deferred tools need Pi's native tool_search");
+    }
+    const active = pi.getActiveTools();
+    if (!active.includes("tool_search")) pi.setActiveTools([...active, "tool_search"]);
+  });
   if (!existsSync(command)) throw new Error("Kast tool RPC command is not installed");
   const reply = await run(["catalog"], "", process.cwd()) as {
     type?: string;
@@ -570,6 +579,7 @@ export default async function (pi: ExtensionAPI) {
     pi.registerTool({
       name: tool.name,
       label: `Kast ${tool.name}`,
+      exposure: DEFERRED_TOOL_NAMES.includes(tool.name) ? "deferred" : "direct",
       description: tool.description + (tool.name === "query_symbols" ? QUERY_DELIVERY_GUIDANCE : ""),
       parameters: Type.Unsafe<Record<string, unknown>>(tool.inputSchema),
       async execute(_id, params, signal, _onUpdate, ctx) {
