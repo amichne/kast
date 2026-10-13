@@ -179,9 +179,9 @@ class InstalledServerProjectionTest {
             ),
             tools.map { it.getValue("name").jsonPrimitive.content },
         )
-        assertFalse(tools.tool("query_symbols").getValue("deferLoading").jsonPrimitive.content.toBoolean())
+        assertTrue(tools.tool("query_symbols").getValue("deferLoading").jsonPrimitive.content.toBoolean())
         assertEquals(
-            setOf("query_symbols", "check_diagnostics"),
+            setOf("check_diagnostics"),
             tools
                 .filterNot { it.getValue("deferLoading").jsonPrimitive.boolean }
                 .map { it.getValue("name").jsonPrimitive.content }

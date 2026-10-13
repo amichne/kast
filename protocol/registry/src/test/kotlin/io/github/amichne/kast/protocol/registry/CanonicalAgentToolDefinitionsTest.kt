@@ -61,9 +61,9 @@ class CanonicalAgentToolDefinitionsTest {
             HostedApprovalPolicy.EXACT_PROJECT_CLOSE,
             CanonicalAgentToolDefinitions.workspaceLifecycle.approval,
         )
-        assertEquals(HostedToolLoading.EAGER, CanonicalAgentToolDefinitions.query.loading)
+        assertEquals(HostedToolLoading.DEFERRED, CanonicalAgentToolDefinitions.query.loading)
         assertEquals(
-            listOf("query_symbols", "check_diagnostics"),
+            listOf("check_diagnostics"),
             CanonicalAgentToolDefinitions.all.filter { it.loading == HostedToolLoading.EAGER }.map { it.name.value },
         )
         assertEquals(HostedApprovalPolicy.NONE, CanonicalAgentToolDefinitions.addDeclaration.approval)

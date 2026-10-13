@@ -2,6 +2,7 @@
 """Focused rejection checks for the authored public-tool generator."""
 
 import copy
+import hashlib
 import importlib.util
 import json
 import re
@@ -25,6 +26,61 @@ class PublicQueryGenerationTest(unittest.TestCase):
         generated = generator.render_tools(self.authority)
         for relative in ("copilot/extension.mjs", "pi/extension.ts"):
             self.assertIn("const PUBLIC_TOOL_CONTRACT_VERSION = 37;", generated[ROOT / relative])
+
+    def test_query_parameters_share_impact_identity_and_range_schemas(self):
+        generated = generator.render_tools(self.authority)
+        parameters = json.loads(generated[generator.RESOURCES / "query_symbols.parameters.json"])
+        self.assertLessEqual(len(json.dumps(parameters, separators=(",", ":"))), 48_000)
+        definitions = parameters["$defs"]
+        self.assertEqual(
+            {"$ref": "#/$defs/ImpactDeclarationReference"},
+            definitions["ImpactDeclaration"]["properties"]["declaration"],
+        )
+        self.assertEqual(
+            {"$ref": "#/$defs/ImpactSourceRange"},
+            definitions["ImpactProducer"]["properties"]["anchor"],
+        )
+
+    def test_pi_exposure_projects_the_authored_loading_policy(self):
+        self.authority["tools"][0]["deferLoading"] = True
+        generated = generator.render_tools(self.authority)
+        source = generated[ROOT / "pi/extension.ts"]
+        match = re.search(r"const DEFERRED_TOOL_NAMES: readonly string\[\] = (\[.*?\]);", source, re.DOTALL)
+        self.assertIsNotNone(match)
+        self.assertEqual(
+            [tool["name"] for tool in self.authority["tools"] if tool["deferLoading"]],
+            json.loads(match.group(1)),
+        )
+
+    def test_shared_refs_preserve_the_expanded_query_contract(self):
+        # Pre-refactor schemas pin constraints, defaults, descriptions, and required fields.
+        expected = {
+            "query_symbols.parameters.json": "534d47a56b424c4dcd2bc964fb94b62fe9bd839c164258a994c24799f422b294",
+            "query_symbols.openai-parameters.json": "84b089c0db236e13e50e64d371af9b36ae8ed66e63d1f0b5d5c2afa5c2fdb629",
+        }
+        generated = generator.render_tools(self.authority)
+        for name, digest in expected.items():
+            schema = json.loads(generated[generator.RESOURCES / name])
+            definitions = schema["$defs"]
+
+            def expand(node):
+                if isinstance(node, list):
+                    return [expand(value) for value in node]
+                if not isinstance(node, dict):
+                    return node
+                if "$ref" in node:
+                    return expand(definitions[node["$ref"][len("#/$defs/"):]])
+                return {key: expand(value) for key, value in node.items() if key != "$defs"}
+
+            encoded = json.dumps(expand(schema), sort_keys=True, separators=(",", ":"))
+            self.assertEqual(digest, hashlib.sha256(encoded.encode()).hexdigest(), name)
+
+    def test_unknown_loading_policy_rejects(self):
+        for policy in (None, "deferred", 1):
+            with self.subTest(policy=policy):
+                self.authority["tools"][0]["deferLoading"] = policy
+                with self.assertRaisesRegex(ValueError, "loading policy"):
+                    generator.validate_authority(self.authority)
 
     def test_adapter_failures_project_the_runtime_enum_owner(self):
         owner = (ROOT / "cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt").read_text()
