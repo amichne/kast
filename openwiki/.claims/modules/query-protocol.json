@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:3050a5e4a3706d0915c2885f266d8ca665377f0ae1c1b8d15dfcbf9c3e552698",
+  "pageVersion": "sha256:b7c44862081a95dafd8f0083d0bbabf72a9c1705e19a17362d3d474173491291",
   "claims": [
     {
       "id": "claim_b9727187adfc4e2c9be8e3a620b37051",
@@ -294,11 +294,11 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackObservationProjection.kt",
-          "version": "repo-file-v1:sha256:13332b0059ab7fd93baf441d6fb6cdb71a9869063b7244c1db6e85c25bf71eaa"
+          "version": "repo-file-v1:sha256:f1f9bfb65c09f7e6b3b4c14ec5143353ca40bfaba8e7132911fdf700f75d508a"
         },
         {
           "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackBindingCanonical.kt",
-          "version": "repo-file-v1:sha256:714cd05d0abcecdc1c7bf548fc5b78bc1c4e3947b95fe15b6da19be396366e51"
+          "version": "repo-file-v1:sha256:748d1a0dfca2e06d2fb10126f522dc753651181984b9dd0eb20c286d5ec64580"
         }
       ]
     },
@@ -355,10 +355,24 @@
           "version": "repo-file-v1:sha256:1ef19f9747b600ee25f439a3a36ac5710cd124f058b6ed1d333958fa231f6156"
         }
       ]
+    },
+    {
+      "id": "claim_bb076ca8fb0d4cc1bf3213dc7381837c",
+      "statement": "Deferred dependency projection preserves the supplier declaration, formal position, compiler target, model, and six binary digests without an invocation count.",
+      "evidence": [
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackObservationProjection.kt#L339-L361",
+          "version": "repo-lines-v1:sha256:2ba4c46ce16de81a18b5761a084786e66be00feaf553c0bc48d9cee5d880d17b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJhYjEyNWFlYjkyMTAyYmY1ODFiYjA0ZGQyODZjMzE1YjdmODkzYWFiYjg1NGRkNTU4YjQ3MGMwYjcyZDIxMTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwNTdiNjY2YTA4ZTZiNWZiOTEyNTA2Y2YwNmVhODk3MGM4MmI3OGE4MmFiMzFmOWQ5ZTk3YzBkZmFhYzg2YjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYzMDEzYWVjYmY1YzkzODczNWFjM2FkZDEyOWJjNGE0YzkwNmYzYWFjYTg3MGY1MmEyZTVjMjRjMTNiZGQxNGIifQ"
+        },
+        {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackBindingCanonical.kt",
+          "version": "repo-file-v1:sha256:748d1a0dfca2e06d2fb10126f522dc753651181984b9dd0eb20c286d5ec64580"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-13T16:27:31.406Z"
+    "at": "2026-10-13T20:10:11.937Z"
   }
 }

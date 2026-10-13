@@ -170,10 +170,10 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt
   - id: openwiki-source-89238fabaeb4e17c02186073
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphNodeRetrievalTest.kt
-generated: { by: "codex", at: "2026-10-13T16:27:31.406Z" }
+generated: { by: "codex", at: "2026-10-13T20:10:11.937Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-13T16:27:31.406Z
+    at: 2026-10-13T20:10:11.937Z
 ---
 
 # Public intent tools
@@ -399,6 +399,12 @@ class digest and `KOTLIN_BINARY_CONTRACT` / `EXACTLY_ONCE` provenance. Binary
 targets receive no authored-source handle or invented body-invocation record.
 Typed admission preserves source containment, exhaustive scanning and nested
 activation obligations before domain construction.
+
+Deferred `DEFERRED_DEPENDENCY` evidence keeps the source supplier, exact formal position, compiler target, and six class digests.
+The required model is `KOTLIN_LAZY_JVM_V1`.
+The binding has no invocation-kind field.
+Document admission rejects inconsistent source sites, incomplete scans, and invented body invocations.
+This shape keeps the deferred supply distinct from a declared calls-in-place contract.
 
 ## Compact retained relations
 

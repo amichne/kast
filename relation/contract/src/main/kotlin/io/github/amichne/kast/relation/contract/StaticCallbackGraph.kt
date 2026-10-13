@@ -1,10 +1,29 @@
 package io.github.amichne.kast.relation.contract
 
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
+
 /** Graph nodes retain compiler identities and exact supplier context; formals from different calls never merge. */
 sealed interface StaticCallbackNode {
     data class Named internal constructor(val callable: RelationCallableBody.Named) : StaticCallbackNode
 
     data class Anonymous internal constructor(val body: RelationCallableBody.Anonymous) : StaticCallbackNode
+
+    data class DeferredSupplier internal constructor(val owner: CallbackDeferredSupplier) : StaticCallbackNode
+
+    @ConsistentCopyVisibility
+    data class ClassReference private constructor(val declaration: CompilerGroundedSymbolEvidence) :
+        StaticCallbackNode {
+        companion object {
+            internal fun fromCompiler(
+                declaration: CompilerGroundedSymbolEvidence
+            ): Refinement<ClassReference, StaticCallbackGraphFailure> =
+                if (declaration.signature is CanonicalCompilerSignature.ClassLike)
+                    Refinement.Refined(ClassReference(declaration))
+                else Refinement.Rejected(StaticCallbackGraphFailure.NonCallableTarget)
+        }
+    }
 
     data class Formal
     internal constructor(
@@ -62,10 +81,25 @@ sealed interface StaticCallbackEdge {
         val evidence: CallbackDependencyContract,
     ) : StaticCallbackEdge
 
+    data class DependencyDeferredSupply
+    internal constructor(
+        override val source: StaticCallbackNode.DeferredSupplier,
+        override val target: StaticCallbackNode.Anonymous,
+        val evidence: CallbackDeferredDependency,
+    ) : StaticCallbackEdge
+
     data class BodyTarget
     internal constructor(
         override val source: StaticCallbackNode.Anonymous,
         override val target: StaticCallbackNode.Named,
+        val occurrence: RelationOccurrence,
+        val namedCallPolicy: CallbackNamedCallPolicy,
+    ) : StaticCallbackEdge
+
+    data class BodyClassReference
+    internal constructor(
+        override val source: StaticCallbackNode.Anonymous,
+        override val target: StaticCallbackNode.ClassReference,
         val occurrence: RelationOccurrence,
         val namedCallPolicy: CallbackNamedCallPolicy,
     ) : StaticCallbackEdge

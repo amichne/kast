@@ -23,6 +23,7 @@ internal fun ImmutableCallbackEnumeration.binding(
     when (val binding = IntellijCallbackBindingReader(context, endpoint.evidence).prepareExpression(value)) {
         is CallbackBindingPreparation.Unavailable -> obligations += binding.cause
         is CallbackBindingPreparation.ContractRejected -> return Refinement.Rejected(binding.cause)
+        is CallbackBindingPreparation.DeferredDependency,
         is CallbackBindingPreparation.DependencyContract ->
             obligations += CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY
         is CallbackBindingPreparation.Direct ->

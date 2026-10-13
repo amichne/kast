@@ -167,6 +167,10 @@ code_sources:
 - path: traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPartialExpansion.kt
 - path: workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
 sources:
+  - id: openwiki-source-0c8d95fadc9cc559f38bed34
+    resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackDeferredDependency.kt
+  - id: openwiki-source-0c3775ff1ab9aa2c15a185c6
+    resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraph.kt
   - id: openwiki-source-c5f0a7cc49121c1f25d33773
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt
   - id: openwiki-source-6226241beb5c7447a86b663f
@@ -175,6 +179,8 @@ sources:
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueSite.kt
   - id: openwiki-source-83fc669045de1f95291d1bb5
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt
+  - id: openwiki-source-b42d067ed670df5e5fe3c5cc
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijKotlinLazyBinaryEvidence.kt
   - id: openwiki-source-69183833f8b6d3564d4f3405
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijLocalRelationOwnerSignature.kt
   - id: openwiki-source-4b4060f7f0e374ebf0169089
@@ -207,6 +213,8 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt
   - id: openwiki-source-0e5288eaa02fcf3a6d2748f0
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperations.kt
+  - id: openwiki-source-0c78b4c4923d167720013a6c
+    resource: repo://runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativeScopedCacheManagerTraceTest.kt
   - id: openwiki-source-5ea9f19dac1745ee97dffee2
     resource: repo://runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperationsTest.kt
   - id: openwiki-source-db97665220b9cbe46d4c2faf
@@ -243,10 +251,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-8d15fa1e67cdc054e05e2796
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedValueFlowDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-13T14:48:27.492Z" }
+generated: { by: "codex", at: "2026-10-13T20:10:11.937Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-13T14:48:27.492Z
+    at: 2026-10-13T20:10:11.937Z
 ---
 
 # Semantic read domains
@@ -713,7 +721,7 @@ object rather than its enclosing named function. Source restoration recognizes
 the reserved object label only for object literals, then checks exact anchors and
 compiler identity.
 
-Binary callback admission reads the resolved library function's declared
+Declared calls-in-place admission reads the resolved library function's declared
 calls-in-place effect, mapped function parameter and actual class digest. Only
 a single matching EXACTLY_ONCE effect is admitted. Dependency bodies are not
 analyzed. Read, admission and rejection counters make that boundary observable;
@@ -722,7 +730,26 @@ activation. Stored callbacks and unsupported mappings retain finite failures.
 
 Binary admission preserves the first finite failure for unresolved mapping,
 missing matching effect, unavailable binary evidence, changed binary evidence,
-or unavailable target evidence.
+unavailable target evidence, or an unreviewed deferred model.
 The selected callback supply preserves that cause through completion evidence.
 These diagnostics do not admit another declaration, expand the source domain,
 or discharge unsupported nested callback obligations.
+
+### Deferred Kotlin lazy initializers
+
+A compiler-resolved `kotlin.lazy` call uses a separate `KOTLIN_LAZY_JVM_V1` proof.
+Admission needs the exact initializer mapping and one reviewed set of six class digests from the resolved archive.
+An archive change or an unknown class set rejects admission.
+The proof accepts named callables and property declarations after source containment succeeds.
+Anonymous suppliers keep their activation obligation.
+
+The static graph distinguishes the deferred supply from an immediate invocation.
+A class-reference edge keeps constructor occurrences when the requested target is a class declaration.
+The graph preserves the named-call policy and never fabricates an ordinary caller.
+It still needs an exhaustive scan, matching identities, the original workspace, and discharged obligations.
+This proof establishes static relationships without a runtime invocation count.
+
+The native caller fixture exercises real K2 ports and the public canonical runner.
+It expects an empty ordinary caller set and one exact property-linked callback occurrence.
+An altered implementation class rejects the model with a finite cause and a rejection counter.
+Source attachments do not supply binary authority.

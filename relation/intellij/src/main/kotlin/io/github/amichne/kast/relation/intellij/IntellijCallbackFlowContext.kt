@@ -171,6 +171,28 @@ internal class IntellijCallbackFlowContext(
             ContainingDeclaration.Unsupported -> null
         }
 
+    fun deferredSupplier(
+        element: PsiElement,
+        occurrence: RelationOccurrence,
+    ): Refinement<io.github.amichne.kast.relation.contract.CallbackDeferredSupplier, CallbackInvocationFlowCause> =
+        when (val found = element.nearestDeclaration()) {
+            is ContainingDeclaration.Found ->
+                when (val result = projection.project(found.declaration)) {
+                    is IntellijRelationDeclarationProjection.Projected ->
+                        io.github.amichne.kast.relation.contract.CallbackDeferredSupplier.fromCompiler(
+                            scope.request.subject.lease.identity,
+                            occurrence,
+                            result.evidence,
+                        )
+                    IntellijRelationDeclarationProjection.Unsupported ->
+                        Refinement.Rejected(CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE)
+                }
+            is ContainingDeclaration.Deferred ->
+                Refinement.Rejected(CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION)
+            ContainingDeclaration.Unsupported ->
+                Refinement.Rejected(CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE)
+        }
+
     fun anonymous(literal: KtFunction): RelationCallableBody.Anonymous? {
         val nativeFile = literal.containingFile?.virtualFile ?: return null
         if (!scope.nativeScope.contains(nativeFile)) return null

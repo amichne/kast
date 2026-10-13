@@ -91,6 +91,7 @@ private fun admitDefaultSupply(
                 Refinement.Refined(Unit)
             else Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
         is CallbackBindingEvidence.Unavailable -> Refinement.Refined(Unit)
+        is CallbackBindingEvidence.DeferredDependency,
         is CallbackBindingEvidence.DependencyContract,
         is CallbackBindingEvidence.Direct,
         is CallbackBindingEvidence.Bound -> Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
@@ -109,6 +110,7 @@ private fun admitDirectSupply(
             if (evidence.binding.occurrence == supply.occurrence) Refinement.Refined(Unit)
             else Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
         is CallbackBindingEvidence.Unavailable -> Refinement.Refined(Unit)
+        is CallbackBindingEvidence.DeferredDependency,
         is CallbackBindingEvidence.DependencyContract,
         is CallbackBindingEvidence.Default,
         is CallbackBindingEvidence.Bound -> Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
@@ -127,6 +129,8 @@ private fun admitInvocationSupply(
     if (evidence is CallbackBindingEvidence.Bound && !evidence.binding.matchesSupply(supply))
         return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
     if (evidence is CallbackBindingEvidence.DependencyContract && evidence.binding.occurrence != supply.occurrence)
+        return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
+    if (evidence is CallbackBindingEvidence.DeferredDependency && evidence.binding.occurrence != supply.occurrence)
         return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
     return Refinement.Refined(Unit)
 }

@@ -70,6 +70,9 @@ internal sealed interface CallbackBindingPreparation {
     data class DependencyContract(val binding: io.github.amichne.kast.relation.contract.CallbackDependencyContract) :
         CallbackBindingPreparation
 
+    data class DeferredDependency(val binding: io.github.amichne.kast.relation.contract.CallbackDeferredDependency) :
+        CallbackBindingPreparation
+
     data class Unavailable(val cause: CallbackInvocationFlowCause) : CallbackBindingPreparation
 
     data class ContractRejected(val cause: CallbackInvocationFlowFailure) : CallbackBindingPreparation

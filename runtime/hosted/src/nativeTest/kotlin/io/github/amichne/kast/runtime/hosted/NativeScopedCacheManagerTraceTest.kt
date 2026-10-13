@@ -61,6 +61,13 @@ import kotlinx.coroutines.runBlocking
 
 /** Real K2 ports and public completion under a fixed source domain; no installed Host or enterprise replay. */
 class NativeScopedCacheManagerTraceTest : NativeSmartModeFixtureTest() {
+    private val lazyClientText =
+        "package scoped\n" +
+            "class InterestRatesClientImpl(private val cacheManager: CacheManager)\n" +
+            "object InterestRatesModule {\n" +
+            "    val interestRatesClient by kotlin.lazy { InterestRatesClientImpl(CacheManager()) }\n" +
+            "}\nfun entry() = InterestRatesModule.interestRatesClient\n"
+
     override fun getModuleType() = JavaModuleType.getModuleType()
 
     fun testScopedTraceAndEmptyReferenceControl() = runBlocking {
@@ -96,6 +103,83 @@ class NativeScopedCacheManagerTraceTest : NativeSmartModeFixtureTest() {
             )
         assertTrue("Expected complete empty REFERENCES, received $empty", empty is OperationOutcome.Complete)
         assertTrue((empty as OperationOutcome.Complete).evidence.payload.items.values.isEmpty())
+    }
+
+    fun testLazyConstructorCallersKeepThePropertySupplyAndOccurrence() = runBlocking {
+        val fixture = prepare(lazyClientText)
+        val protocol = fixture.protocol()
+        val outcome =
+            protocol.execute(
+                request = lazyRequest(),
+                lease = fixture.lease,
+                budget = budget,
+                policy = policy,
+            )
+        if (outcome is OperationOutcome.Rejected) printLazyRejection(protocol, fixture, outcome.reason)
+        assertTrue("Expected complete lazy TRACE", outcome is OperationOutcome.Complete)
+        val result = (outcome as OperationOutcome.Complete).evidence.payload
+        val names =
+            result.items.values
+                .map { identity(checkNotNull((it as QueryResultItemDocument.ExactSymbol).signature)) }
+                .toSet()
+        assertTrue(names.isEmpty())
+        assertFalse(names.any { it.startsWith("unrelated.") })
+        assertTrue(result.failures.values.isEmpty())
+        assertTrue(result.omissions.values.isEmpty())
+        assertLazyConstructor(result, fixture)
+    }
+
+    private fun assertLazyConstructor(result: QueryRunResult, fixture: NativeScopedTraceFixture) {
+        val callbacks = result.relationObservations.values.flatMap { it.callbackObservations.values }
+        val construction = callbacks.single()
+        assertEquals(
+            "scoped.InterestRatesClientImpl",
+            identity(construction.target.compilerTarget.compilerEvidence.signature),
+        )
+        val flow = construction.flow as QueryCallbackFlowDocument.Observed
+        val binding = flow.binding as QueryCallbackBindingDocument.DeferredDependency
+        assertEquals("kotlin.lazy", identity(binding.target.compilerEvidence.signature))
+        assertEquals(
+            "scoped.InterestRatesModule.interestRatesClient",
+            identity(binding.owner.compilerTarget.compilerEvidence.signature),
+        )
+        assertEquals(QueryCallbackInvocationScanDocument.EXHAUSTIVE, flow.scan)
+        assertTrue(flow.obligations.values.isEmpty())
+        assertTrue(flow.invocations.values.isEmpty())
+        val start = lazyClientText.indexOf("InterestRatesClientImpl(CacheManager())")
+        assertEquals(start, construction.occurrence.range.startInclusive.value)
+        assertEquals(start + "InterestRatesClientImpl".length, construction.occurrence.range.endExclusive.value)
+        assertTrue(fixture.observation[IntellijReadCounter.CALLBACK_DEFERRED_MODELS_ADMITTED] > 0L)
+    }
+
+    private fun lazyRequest() =
+        request("InterestRatesClientImpl", true)
+            .copy(steps = bounded(listOf(QueryStepDocument.Related(RelationKindDocument.CALLERS, domain))))
+
+    private suspend fun printLazyRejection(
+        protocol: io.github.amichne.kast.query.protocol.CanonicalQueryProtocol,
+        fixture: NativeScopedTraceFixture,
+        rejection: io.github.amichne.kast.protocol.contract.QueryRunRejection,
+    ) {
+        val reason = rejection as io.github.amichne.kast.protocol.contract.QueryRunRejection.CompletionUnproven
+        println("Lazy tracer graph failure=${reason.callbackGraphFailure?.cause}")
+        val handle =
+            (reason.evidence as io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument.Retained)
+                .result
+        val read =
+            protocol.execute(
+                request =
+                    QueryRunRequest.ReadResult.symbols(
+                        handle,
+                        output = request("InterestRatesClientImpl", true).output as QueryOutputDocument.Symbols,
+                    ),
+                lease = fixture.lease,
+                budget = budget,
+                policy = policy,
+            ) as OperationOutcome.Qualified
+        println("Lazy tracer failures=${read.evidence.payload.failures.values}")
+        println("Lazy tracer omissions=${read.evidence.payload.omissions.values}")
+        println("Lazy tracer terminations=${fixture.observation.terminations}")
     }
 
     private fun assertTrace(result: QueryRunResult, root: CanonicalWorkspaceRoot) {
@@ -144,7 +228,7 @@ class NativeScopedCacheManagerTraceTest : NativeSmartModeFixtureTest() {
         assertTrue(binding.target.file.value.endsWith(".class"))
     }
 
-    private fun prepare(): NativeScopedTraceFixture {
+    private fun prepare(clientText: String = NativeScopedTraceFixture.clientText): NativeScopedTraceFixture {
         lateinit var fixture: NativeScopedTraceFixture
         ApplicationManager.getApplication().invokeAndWait {
             val base = getOrCreateProjectBaseDir()
@@ -157,7 +241,7 @@ class NativeScopedCacheManagerTraceTest : NativeSmartModeFixtureTest() {
                     )
                 }
             configureModule(base, directories)
-            val files = sourceFiles(directories)
+            val files = sourceFiles(directories, clientText)
             PsiDocumentManager.getInstance(project).commitAllDocuments()
             IndexingTestUtil.waitUntilIndexesAreReady(project)
             val root = CanonicalWorkspaceRoot.fromCanonicalPath(base.toNioPath()).traceRefined()
@@ -197,14 +281,14 @@ class NativeScopedCacheManagerTraceTest : NativeSmartModeFixtureTest() {
         }
     }
 
-    private fun sourceFiles(directories: List<VirtualFile>) =
+    private fun sourceFiles(directories: List<VirtualFile>, clientText: String) =
         WriteCommandAction.writeCommandAction(project).compute<List<VirtualFile>, RuntimeException> {
             listOf(
                 directories[0].createChildData(this, "CacheManager.kt").also {
                     it.setBinaryContent(NativeScopedTraceFixture.cacheText.toByteArray())
                 },
                 directories[0].createChildData(this, "Client.kt").also {
-                    it.setBinaryContent(NativeScopedTraceFixture.clientText.toByteArray())
+                    it.setBinaryContent(clientText.toByteArray())
                 },
                 directories[1].createChildData(this, "Outside.kt").also {
                     it.setBinaryContent(NativeScopedTraceFixture.outsideText.toByteArray())

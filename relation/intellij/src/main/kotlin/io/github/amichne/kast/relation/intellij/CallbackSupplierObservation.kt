@@ -20,6 +20,8 @@ internal fun CallbackInvocationFlowCause.supplierTermination(): IntellijReadTerm
             IntellijReadTermination.CALLBACK_SUPPLIER_UNRESOLVED_PARAMETER_REFERENCE
         CallbackInvocationFlowCause.EXTERNAL_CALLABLE -> IntellijReadTermination.CALLBACK_SUPPLIER_EXTERNAL_CALLABLE
         CallbackInvocationFlowCause.OUTSIDE_DOMAIN -> IntellijReadTermination.CALLBACK_SUPPLIER_OUTSIDE_DOMAIN
+        CallbackInvocationFlowCause.DEPENDENCY_DEFERRED_MODEL_UNPROVEN ->
+            IntellijReadTermination.CALLBACK_DEPENDENCY_DEFERRED_MODEL_UNPROVEN
         CallbackInvocationFlowCause.DEPENDENCY_CONTRACT_EFFECT_UNPROVEN ->
             IntellijReadTermination.CALLBACK_DEPENDENCY_CONTRACT_EFFECT_UNPROVEN
         CallbackInvocationFlowCause.DEPENDENCY_BINARY_UNAVAILABLE ->

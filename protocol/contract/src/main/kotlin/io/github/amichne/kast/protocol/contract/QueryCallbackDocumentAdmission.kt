@@ -54,6 +54,7 @@ private fun QueryCallbackObservationDocument.admitObservedFlow(
     return when (val binding = flow.binding) {
         is QueryCallbackBindingDocument.Default -> admitDefaultFlow(flow, binding)
         is QueryCallbackBindingDocument.Direct -> admitDirectFlow(flow, binding)
+        is QueryCallbackBindingDocument.DeferredDependency -> admitDeferredDependencyFlow(flow, binding)
         is QueryCallbackBindingDocument.DependencyContract -> admitDependencyContractFlow(flow, binding)
         is QueryCallbackBindingDocument.Unavailable -> binding.admitUnavailable(flow)
         is QueryCallbackBindingDocument.Bound ->
@@ -104,6 +105,7 @@ private fun QueryCallbackFlowDocument.Observed.admitForwardingScan(): Refinement
             when (binding) {
                 is QueryCallbackBindingDocument.Bound,
                 is QueryCallbackBindingDocument.Default -> admitExhaustedGraphScan()
+                is QueryCallbackBindingDocument.DeferredDependency,
                 is QueryCallbackBindingDocument.DependencyContract,
                 is QueryCallbackBindingDocument.Direct,
                 is QueryCallbackBindingDocument.Unavailable -> rejected(QueryCallbackDocumentFailure.INVALID_SCAN_PROOF)
@@ -288,6 +290,25 @@ private fun QueryCallbackObservationDocument.admitImmutableFlow(
     else Refinement.Refined(Unit)
 }
 
+private fun QueryCallbackObservationDocument.admitDeferredDependencyFlow(
+    flow: QueryCallbackFlowDocument.Observed,
+    binding: QueryCallbackBindingDocument.DeferredDependency,
+): Refinement<Unit, QueryCallbackDocumentFailure> {
+    if (!binding.owner.validDeclaration()) return rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
+    val owner = binding.owner.declaration
+    if (
+        binding.basis != flow.basis ||
+            !binding.occurrence.contains(flow.body.occurrence) ||
+            !owner.contains(binding.occurrence)
+    )
+        return rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
+    if (!lexicalOwner.declaration.contains(owner) || !binding.validDeferredDependencyTarget())
+        return rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
+    if (flow.scan != QueryCallbackInvocationScanDocument.EXHAUSTIVE || flow.invocations.values.isNotEmpty())
+        return rejected(QueryCallbackDocumentFailure.INVALID_SCAN_PROOF)
+    return Refinement.Refined(Unit)
+}
+
 private fun QueryCallbackObservationDocument.admitDependencyContractFlow(
     flow: QueryCallbackFlowDocument.Observed,
     binding: QueryCallbackBindingDocument.DependencyContract,
@@ -326,3 +347,16 @@ internal fun QueryCallbackBindingDocument.DependencyContract.validDependencyCont
 }
 
 private const val SHA256_HEX_LENGTH = 64
+
+internal fun QueryCallbackBindingDocument.DeferredDependency.validDeferredDependencyTarget(): Boolean {
+    val signature = target.compilerEvidence.signature as? CompilerSignatureDocument.Function ?: return false
+    val digests = with(binary) { listOf(facade, factory, synchronized, publication, unsafe, modeDispatch) }
+    return signature.qualifiedIdentity.value == "kotlin.lazy" &&
+        target.file.value.startsWith("jar://") &&
+        (target.file.value.endsWith("!/kotlin/LazyKt__LazyJVMKt.class") ||
+            target.file.value.endsWith("!/kotlin/LazyKt.class")) &&
+        position.value == signature.valueParameters.values.lastIndex &&
+        digests.all { digest ->
+            digest.value.length == SHA256_HEX_LENGTH && digest.value.all { it in '0'..'9' || it in 'a'..'f' }
+        }
+}

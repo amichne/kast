@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:bcdfccee03312b6386dc42edc4c998e143a5bab83665f92670c7a1260d700fdb",
+  "pageVersion": "sha256:81100fa2829680bd355ae66ada5e4813c870927740d9426547df4aeac3c9d4ea",
   "claims": [
     {
       "id": "claim_d5f49799d6a64a78a95f34b3ba0fa09a",
       "statement": "The authored tools.schema.json generates Kotlin DTOs, per-tool admission and strict Responses schemas, examples and App Server registrations; check mode rejects any stale generated artifact.",
       "evidence": [
         {
-          "resource": "repo://packaging/generate-public-query.py#L514-L552",
+          "resource": "repo://packaging/generate-public-query.py#L525-L563",
           "version": "repo-lines-v1:sha256:94373d8b7b4e73d1639969c94e24a12d62e722e0a8f9a0f572aa9df8cc095e6c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExMDFhMmQ5YjhlZmRkODg2MTQ1Zjk4ZTg0Nzg0Mzc0OWY5ZWEyN2U5Mzg0NmIwNDg2Mjk5MDUzYmQ4YmIxNGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmNDRkZTQ0ZDdiMzUzYzFmZDRkMjljMTRhMDQwMmUwMDJlYTgzNTNlZGM1ZjdhZjM0NzUxZDY3NTJjNDE4ZDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJlZjEzMjY1NjFlMjFiNDdjZDdmYWFiNzc3MzJlMDU2NjljYzJjY2YxNDlkYzNmZjI0YjUzZDhiYTM2YTVlMjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIxMzVjYzI2Zjk3ZGMxY2RkNmM3NGVlZThhZjI0NTI3YzVhODYzMzVlZmU1Y2RiODA4N2Y0NDQyNzBhNzBkMmYifQ"
         }
       ]
@@ -174,11 +174,11 @@
         },
         {
           "resource": "repo://pi/extension.ts",
-          "version": "repo-file-v1:sha256:552c0d041900b22a533d7b3b2dbf1b9559c52d13d287c8496f6cdc182ec92bb7"
+          "version": "repo-file-v1:sha256:c7b1c6fb1424a64e02a436a4cdfd9f935f14ade89da812a8f2af551b753928ac"
         },
         {
           "resource": "repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt",
-          "version": "repo-file-v1:sha256:a683e4c1e010a74b32c33bbc10a72e2f38e42fc944380c070a641092e933096f"
+          "version": "repo-file-v1:sha256:3b93f59772a3c63a013ee95c054613b1845f94868cb0737d79851bdd7394e39e"
         }
       ]
     },
@@ -188,7 +188,7 @@
       "evidence": [
         {
           "resource": "repo://cli/src/test/js/harness-adapters.test.mjs",
-          "version": "repo-file-v1:sha256:235269a06c4e6fb40b9297dd265e98cea87e748243bf7886e1b59898368fb15f"
+          "version": "repo-file-v1:sha256:beb8c02cfc54f942091bb9bfaec33c8e8dee8800accd29c1a6358a34a584d9d5"
         },
         {
           "resource": "repo://copilot/extension.mjs",
@@ -200,7 +200,7 @@
         },
         {
           "resource": "repo://pi/extension.ts",
-          "version": "repo-file-v1:sha256:552c0d041900b22a533d7b3b2dbf1b9559c52d13d287c8496f6cdc182ec92bb7"
+          "version": "repo-file-v1:sha256:c7b1c6fb1424a64e02a436a4cdfd9f935f14ade89da812a8f2af551b753928ac"
         }
       ]
     },
@@ -246,7 +246,7 @@
       "evidence": [
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackDocumentAdmission.kt",
-          "version": "repo-file-v1:sha256:294e909831b83c5c8963ed6fa4708bc588d5f847bdebba9a1ce25bb557457f31"
+          "version": "repo-file-v1:sha256:9af3a275f569a991b3caee541f42d98e5990a1010cd4b00135e9c195257778fe"
         },
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SymbolProtocolModels.kt",
@@ -254,7 +254,7 @@
         },
         {
           "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/QueryCallbackBindingWireDocuments.kt",
-          "version": "repo-file-v1:sha256:79e71fda4c06945ff4a5b411d50f086c552e6020cfe80256b14fbd9e9edcfc34"
+          "version": "repo-file-v1:sha256:3e1555e8d60a95cfde75c4f9b63642e174ff13a829980349707f1a2d71c8fd6b"
         }
       ]
     },
@@ -351,10 +351,24 @@
           "version": "repo-lines-v1:sha256:b55550c83c8d3d60fde4c757f9988dbc7774cd4a11e4a719a93d2f5fa87363dd:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzY3MjZkMTk4NzljNGE5OWNlOTcxMzY1MWUyMGZhMjYxMmU3MDY1MmQzNzE4MzRiY2JjZWQ0ZTA3ZDVlYTU0NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTQzM2QwZWE5ZWNmMmYzOWM5YTUwNDA3Mzk1ZWU0MTE3MmZlNjgyYzljODg1YTM1MDhmNzViZGVlMTUxZWZmZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjMzNTY0NGE4MDU2NDIwMzEyMGI1NjgxNzYzZGI4ZjAyYjkwYzQwMGExMGVjMmM1NDhlMDVlNDRjZDk5ZWVmMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzBjMWYxODhmMTQyZWQ3YTgyNDY4MGIyMDcxNzJjNTUxOWJjNjE0YTQ4ZmRhN2NmMTY3ZWRiOGRkZjc5OTU2YyJ9"
         }
       ]
+    },
+    {
+      "id": "claim_77a5b000385a4e2aadaf64985466a4d8",
+      "statement": "The deferred callback wire binding keeps formal mapping, source identities, its model, and six class digests without an invocation-kind field.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackDocumentAdmission.kt#L293-L316",
+          "version": "repo-lines-v1:sha256:66c18efee54d1a512a3bf5bb9f536b26a90f6229d13b815765301c613bef0f48:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkOGNhNGE3MDE1ODU1N2I5OGIxOGQ1NDQyY2U0N2M4MDlkMmJkMzEzOGI2YTFlZDIzMjBiNmZiZTZiYmExMjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlNDg1MGVmMmYwMzk5NGExNjRhYTgwYWRlYzllY2NjNWM5YjM5OTY4OTE5YmNmNjVlZTc2MDc0YmQzYWU3M2MiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczOTJmMDMxNDE4YWM1OWIxMGQ5MTIxNDNlNzZmYTVkM2MwZDFkM2I1ZDgzMDI3ZWRlNDM5MDQzMGRhYmIxZDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBiMGFkZDU0NjljNmQ1MDQ3MDdkYjZiZTU0MTc4YzRmNTJhMTc3Mjk0MTA2MTdhY2FmMTlkNDYyMjcxN2ViOWEifQ"
+        },
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/QueryCallbackBindingWireDocuments.kt#L73-L105",
+          "version": "repo-lines-v1:sha256:b6345fd814638ab0898b70123df59611054e5a4feddf7b93c0d8d1abfe7dc701:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyZjgyNGI1MDJlMGZmMDExODg1ODlkMzdkOTIwYjgxYTIyOGY5Mjk0NmZkZDBjYzYxNGYxNDAyYWI4NzFkMGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRhNmUwMWQ2YzRjMmYwYmI3ZGNkODgxNTY2MWM5NWU4YzA1Mjk1MjAxZTczMjhkY2I5ZWU2ZDVjYjk2ZWUyOWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIxNjY0ZTQ1MDgxYTk4OTc5YWI0YjExZjE5YmMyYjYzMjIzZjBmZmYwOTZlNTQ4NDAwNmE2YzhkM2ZlMjZjMmQifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-13T16:27:31.406Z"
+    "at": "2026-10-13T20:10:11.937Z"
   }
 }

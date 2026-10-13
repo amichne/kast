@@ -208,10 +208,10 @@ sources:
     resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisition.kt
   - id: openwiki-source-614907c76c5e46269ec7d42b
     resource: repo://symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisitionBudgetTest.kt
-generated: { by: "codex", at: "2026-10-13T16:27:31.406Z" }
+generated: { by: "codex", at: "2026-10-13T20:10:11.937Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-13T16:27:31.406Z
+    at: 2026-10-13T20:10:11.937Z
 ---
 
 # Query protocol
@@ -444,3 +444,8 @@ QUALIFIED COVERAGE keeps the prior conservative maximum charge.
 COMPLETE COVERAGE keeps its count-dependent charge.
 Existing quotas and multipliers remain unchanged.
 These charges estimate quota use and do not measure JVM heap use.
+
+Deferred dependency projection keeps the source supplier declaration, exact formal position, compiler target, model, and six class digests.
+Its binding has no invocation-kind field or invented invocation record.
+Canonical retention includes the supplier signature and every binary digest.
+The public document preserves the original SEMANTIC BASIS and source containment.

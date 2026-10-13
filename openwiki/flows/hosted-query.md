@@ -243,8 +243,12 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedSymbolGraphMeasurementTest.kt
   - id: openwiki-source-711e20b0c3995766bf099120
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryValuePathOutputAdmission.kt
+  - id: openwiki-source-0c8d95fadc9cc559f38bed34
+    resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackDeferredDependency.kt
   - id: openwiki-source-83fc669045de1f95291d1bb5
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt
+  - id: openwiki-source-b42d067ed670df5e5fe3c5cc
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijKotlinLazyBinaryEvidence.kt
   - id: openwiki-source-1fe2efeabc6d3df3eafeb9cc
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijSelectedCallbackSupplies.kt
   - id: openwiki-source-680008eb9e24b45cf91f6d9d
@@ -271,10 +275,10 @@ sources:
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt
   - id: openwiki-source-63abd5c24e7d947c619c1a6e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadValueSiteCounterTest.kt
-generated: { by: "codex", at: "2026-10-13T16:19:14.290Z" }
+generated: { by: "codex", at: "2026-10-13T20:10:11.937Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-13T16:19:14.290Z
+    at: 2026-10-13T20:10:11.937Z
 ---
 
 # Existing-IDE semantic query
@@ -855,9 +859,15 @@ contract supplies compiler evidence separately. Missing counters in an older
 record do not establish zero work.
 
 Dependency admission also preserves finite causes for a missing matching effect,
-unavailable binary evidence, changed binary evidence, and unavailable target evidence.
+unavailable binary evidence, changed binary evidence, unavailable target evidence, and an unreviewed deferred model.
 The selected callback supply keeps the first native failure instead of replacing it with `OUTSIDE_DOMAIN`.
 These causes explain rejected proof transitions and do not establish a complete graph.
+
+Deferred Kotlin `lazy` reads add separate counters for model reads, admissions, and rejections.
+The adapter reads six bounded classes from one unchanged archive.
+The retained binding keeps the exact compiler mapping and reviewed binary identities.
+The counters report work and finite outcomes without source payloads.
+An unreviewed class set keeps `DEPENDENCY_DEFERRED_MODEL_UNPROVEN` through completion evidence.
 
 Compact retained reference pages use the shared graph projection after canonical presentation.
 Compact SYMBOLS pages use the same owner with the actual current field selection.
