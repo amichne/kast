@@ -178,9 +178,12 @@ rechecks a previous unavailable or incompatible Host or plugin when its next req
 needs the workspace; restart IDEA after installing a Host update to load it.
 
 Routine installation preserves admitted saved settings, including the App Server
-endpoint, unless you explicitly select another. A fresh installation uses the standard Codex socket when available
-and selects a private endpoint when that socket is occupied or cannot be inspected. Direct MCP and
-the installed `kast-codex` launcher remain usable with a private endpoint.
+endpoint, unless you explicitly select another. Fresh installation and force reinstall
+default to `codex-control`, even when the standard socket is occupied or cannot be inspected.
+The installer does not select a private endpoint as a fallback. Startup rejects an
+unowned socket with `PUBLIC_SOCKET_OWNED`, and activation remains pending.
+Explicit private mode remains available. Direct MCP and the installed `kast-codex`
+launcher support a private endpoint.
 
 ## Develop
 

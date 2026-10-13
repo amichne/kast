@@ -90,12 +90,11 @@ jobs:
         with:
           validate-wrappers: true
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          # Task outputs for IDEA extraction already belong to caches/build-cache-1.
           gradle-home-cache-includes: |
             caches
             notifications
             native-build-tools
-            kast/workspace-intellij-read-idea-distributions
-            kast/symbol-intellij-idea-distributions
             kast/topology-intellij-kotlin-plugin
 
       - name: Build exact release candidate

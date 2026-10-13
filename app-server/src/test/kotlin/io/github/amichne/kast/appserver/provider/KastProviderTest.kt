@@ -230,9 +230,9 @@ class KastProviderTest {
         executable(temporary.resolve("kast"))
         val schema = capabilitySchema()
         val current = Json.decodeFromString<KastCapabilityBoundary>(schema)
-        assertEquals(18, current.serverProjection.schemaVersion)
+        assertEquals(19, current.serverProjection.schemaVersion)
         val oldCatalog =
-            Json.encodeToString(current.copy(serverProjection = current.serverProjection.copy(schemaVersion = 17)))
+            Json.encodeToString(current.copy(serverProjection = current.serverProjection.copy(schemaVersion = 18)))
         for ((schema, failure) in
             listOf(
                 oldCatalog to KastQualificationFailure.SCHEMA_INCOMPATIBLE,

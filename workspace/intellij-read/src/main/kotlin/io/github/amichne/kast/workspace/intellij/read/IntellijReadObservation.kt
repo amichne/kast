@@ -171,6 +171,9 @@ enum class IntellijReadPhase {
 
 /** Request-local diagnostic capability; owners choose whether to observe. */
 interface IntellijReadObservation {
+    fun discoveryPage(measurements: IntellijDiscoveryPageMeasurements): IntellijDiscoveryPagePublication =
+        IntellijDiscoveryPagePublication.UNOBSERVED
+
     fun enterCall(call: IntellijReadCall): IntellijReadCallScope = IntellijReadCallScope.None
 
     fun submitReadAction(kind: IntellijReadActionKind, mode: IntellijReadActionMode): IntellijReadActionScope =

@@ -518,3 +518,91 @@ The report is `build/reports/persistent-topology/review-text-assessment.json`.
 Logical-row retention remains bounded. The artifact limit and decoder scratch size do not establish a heap bound for large TEXT fields.
 Process-kill cleanup, injected deletion failures, native capture, and native extraction reuse remain outside this repair's evidence.
 The PR records the final pushed revision and its pre-push gate result.
+
+
+## Late storage failures after committed progress
+
+The artifact repair integrates `main` at `db57619760949a324a809a5fb26ba3469c083fa4` once.
+The prior artifact head is `75d5c9e4e66366e37edc8ad7c60160782511e9d5`.
+The final PR head identifies the integrated repair. The four original segment commits remain separate.
+
+The independent oracle selects several files and throws `IOException` on the second `beforeCommit` call.
+Real SQLite rows establish that the first selected file committed before the fault.
+Both fresh and partial stages returned a bare storage rejection without their new committed-work receipt.
+The two cases failed only at that receipt-loss assertion. Their recovery, publication preservation, and final fact assertions passed before the assertion.
+
+```sh
+mise exec -- ./gradlew :evidence:topology-sqlite:test \
+  --tests '*HistoricalSqliteLateFailureTest' --console=plain
+```
+
+RED selected two cases and failed both at the missing receipt.
+The log is `/tmp/kast-historical-late-failure-red.log`.
+GREEN selected the same two cases and passed both after the repair.
+The log is `/tmp/kast-historical-late-failure-green.log`.
+
+`HistoricalStageRun` now owns acknowledged progress, transaction settlement, connection cleanup, and the final outcome.
+`HistoricalStageFailure.Effect` preserves the finite fault, its phase, progress evidence, and both cleanup outcomes.
+`HistoricalStageProgress.Settled` carries exact settled progress.
+`HistoricalStageProgress.Uncertain` carries only the last acknowledged prefix and names commit or rollback uncertainty.
+A failed commit stays uncertain even after a successful rollback. The next explicit call admits actual rows against its fresh basis.
+The receipt counts rollback only for an uncommitted batch after successful rollback.
+Cleanup failures preserve acknowledged commits and explicit stop causes.
+`HistoricalStageCancellationException` remains a cancellation exception and carries the original cause, progress evidence, and cleanup outcomes.
+The adapter catches expected I/O, SQL, and access failures. Unexpected defects and fatal JVM errors propagate.
+
+The expanded cases cover fresh and partial stages with I/O and SQL faults, plus zero-progress failure.
+Seven effect cases use real JDBC through a bounded connection seam.
+They cover commit failures before and after the actual commit, rollback failure, close failure, and cancellation with successful or failed cleanup.
+Each effect script rejects excess calls and asserts complete consumption.
+The cancellation originates at `beforeCommit`. No JDBC-internal cancellation or process-crash durability claim follows from these cases.
+
+A fresh late-fault case acknowledges one file and four rows, then rolls back one five-row batch.
+A partial late-fault case reuses one file and four rows, acknowledges one file and five rows, then rolls back one three-row batch.
+Their maximum materialized batch contains five rows. Their basis-fact counts are 70 and 60.
+The commit-uncertainty cases report one acknowledged file and four rows in both outcomes.
+The database contains one or two completed files, respectively, when the fault occurs before or after the second actual commit.
+Fresh admission reuses the actual prefix. The retry reaches the same snapshot identity, facts, and coverage as uninterrupted publication.
+Previous publication bytes stay unchanged before explicit publication.
+
+Native capture, native extraction reuse, process-kill cleanup, and global installation remain unrun.
+This repair changes the historical SQLite adapter and its focused evidence. It adds no live fallback or automatic capture.
+
+
+### Integrated repair gates
+
+The expanded storage selector passed 21 tests with zero failures, errors, or skips:
+
+```sh
+mise exec -- ./gradlew :evidence:topology-sqlite:spotlessApply \
+  :evidence:topology-sqlite:test \
+  --tests '*HistoricalSqliteLateFailureTest' --tests '*HistoricalSqliteStageEffectsTest' \
+  --tests '*HistoricalSqliteStagingTest' --tests '*HistoricalSqliteBatchCapacityTest' --console=plain
+```
+
+Its log is `/tmp/kast-historical-late-failure-expanded-green.log`.
+The final historical selectors passed 97 tests: 26 contract, 58 SQLite, 12 capture coordinator, and one legacy graph characterization.
+All selected cases reported zero failures, errors, and skips.
+
+```sh
+mise exec -- ./gradlew :topology:contract:test --tests '*Historical*' \
+  :evidence:topology-sqlite:test --tests '*Historical*' \
+  :topology:build:test --tests '*historical*' \
+  :topology:service:test --tests '*RetainedGraphIdentityCharacterizationTest' \
+  :evidence:topology-sqlite:detekt :evidence:topology-sqlite:spotlessCheck \
+  :evidence:topology-sqlite:checkMainKotlinFileLength \
+  :evidence:topology-sqlite:checkTestKotlinFileLength \
+  verifyJsonContracts verifyKastArchitecture knowledgeImpact verifyKnowledgeBase --console=plain
+```
+
+The command passed in 16 seconds. Its log is `/tmp/kast-historical-late-failure-final-gates.log`.
+JSON admission examined 631 fingerprints with zero violations.
+The knowledge suite passed seven tests. Its citation scan examined 28 concepts and five reserved files with zero issues.
+The combined impact scan included the pending merge and named nine concepts.
+The separate impact scan of the eight repair files named zero concepts.
+Its report is `build/reports/persistent-topology/late-failure-knowledge-impact.json`.
+An earlier gate failed only on unformatted lines in the new test files. The final formatter and Detekt gates passed.
+
+Vale 3.24.0 assessed this report with the repository glossary. Its `ASSESSED` result includes a grade advisory.
+The report remains `build/reports/persistent-topology/review-text-assessment.json`.
+The PR records the final SHA and the pre-push result after the integration commit.

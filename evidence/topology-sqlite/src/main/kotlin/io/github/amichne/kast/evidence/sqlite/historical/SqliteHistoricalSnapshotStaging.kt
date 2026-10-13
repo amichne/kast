@@ -16,21 +16,38 @@ object SqliteHistoricalSnapshotStaging {
         basis: HistoricalCaptureBasis,
         budget: HistoricalStageBudget,
         control: HistoricalStageControl = HistoricalStageControl.Uninterrupted,
+    ): Refinement<HistoricalStageAdvance, HistoricalStageFailure> =
+        advance(stage, basis, budget, control, ::historicalWriteConnection)
+
+    internal fun advance(
+        stage: Path,
+        basis: HistoricalCaptureBasis,
+        budget: HistoricalStageBudget,
+        control: HistoricalStageControl,
+        openConnection: (Path) -> Connection,
     ): Refinement<HistoricalStageAdvance, HistoricalStageFailure> = historicalStageEffect {
         admitHistoricalPath(stage, mustExist = false).stage().orReturn {
             return@historicalStageEffect it
         }
         if (!Files.exists(stage, NOFOLLOW_LINKS)) initializeStage(stage, basis)
-        historicalWriteConnection(stage).use { connection ->
+        val connection = openConnection(stage)
+        var ownership = HistoricalStageConnectionOwnership.CLOSE
+        try {
             connection.enableStageIntegrity()
             connection.autoCommit = false
-            try {
-                connection.admitHistoricalStage(basis).flatMap { admitted ->
-                    advanceFiles(connection, basis, budget, control, admitted)
+            val admitted =
+                connection.admitHistoricalStage(basis).orReturn {
+                    return@historicalStageEffect it
                 }
-            } finally {
-                connection.rollback()
-            }
+            val selected =
+                planFiles(basis, budget, admitted).orReturn {
+                    return@historicalStageEffect it
+                }
+            val run = HistoricalStageRun(connection, basis, admitted, selected)
+            ownership = HistoricalStageConnectionOwnership.RUN
+            run.advance(control)
+        } finally {
+            if (ownership == HistoricalStageConnectionOwnership.CLOSE) connection.close()
         }
     }
 
@@ -85,40 +102,6 @@ object SqliteHistoricalSnapshotStaging {
         }
     }
 
-    private fun advanceFiles(
-        connection: Connection,
-        basis: HistoricalCaptureBasis,
-        budget: HistoricalStageBudget,
-        control: HistoricalStageControl,
-        admitted: HistoricalStageAdmission,
-    ): Refinement<HistoricalStageAdvance, HistoricalStageFailure> {
-        val selected =
-            planFiles(basis, budget, admitted).orReturn {
-                return it
-            }
-        val work = HistoricalStageRunWork()
-        work.basisFactRowsExamined = selected.sumOf { it.basisFactRowsExamined }
-        for (file in selected) {
-            val batch = file.materialize()
-            work.maximumBatchRows = maxOf(work.maximumBatchRows, batch.rowCount)
-            work.basisFactRowsExamined += batch.basisFactRowsExamined
-            when (val signal = connection.commitStageBatch(batch, control)) {
-                HistoricalStageSignal.Continue -> {
-                    work.committedFiles++
-                    work.committedRows += batch.rowCount
-                }
-                is HistoricalStageSignal.Stop ->
-                    return Refinement.Refined(
-                        HistoricalStageAdvance.Stopped(
-                            signal.cause,
-                            receipt(basis, admitted, work, 1),
-                        )
-                    )
-            }
-        }
-        return Refinement.Refined(HistoricalStageAdvance.Advanced(receipt(basis, admitted, work, 0)))
-    }
-
     private fun planFiles(
         basis: HistoricalCaptureBasis,
         budget: HistoricalStageBudget,
@@ -133,63 +116,11 @@ object SqliteHistoricalSnapshotStaging {
         }
         return Refinement.Refined(selected)
     }
-
-    private fun receipt(
-        basis: HistoricalCaptureBasis,
-        admitted: HistoricalStageAdmission,
-        work: HistoricalStageRunWork,
-        rolledBack: Long,
-    ): HistoricalStageReceipt {
-        val completion =
-            if (admitted.completedFiles.size + work.committedFiles == basis.files.size.toLong())
-                HistoricalStageCompletion.READY
-            else HistoricalStageCompletion.PENDING
-        return HistoricalStageReceipt(
-            basis.snapshot.identity,
-            completion,
-            HistoricalStageWork(
-                historicalCount(admitted.completedFiles.size.toLong()),
-                historicalCount(admitted.reusedRows),
-                historicalCount(work.committedFiles),
-                historicalCount(work.committedRows),
-                historicalCount(rolledBack),
-                historicalCount(work.maximumBatchRows),
-                historicalCount(admitted.examinedRows),
-                historicalCount(basis.snapshot.historicalRowCount()),
-                historicalCount(admitted.basisFactRowsExamined + work.basisFactRowsExamined),
-            ),
-        )
-    }
 }
 
-private class HistoricalStageRunWork {
-    var committedFiles = 0L
-    var committedRows = 0L
-    var maximumBatchRows = 0L
-    var basisFactRowsExamined = 0L
-}
-
-private enum class HistoricalBatchResolution {
-    COMMITTED,
-    ROLLBACK,
-}
-
-private fun Connection.commitStageBatch(
-    batch: HistoricalStageFileBatch,
-    control: HistoricalStageControl,
-): HistoricalStageSignal {
-    var resolution = HistoricalBatchResolution.ROLLBACK
-    try {
-        writeHistoricalStageBatch(batch)
-        val signal = control.beforeCommit()
-        if (signal == HistoricalStageSignal.Continue) {
-            commit()
-            resolution = HistoricalBatchResolution.COMMITTED
-        }
-        return signal
-    } finally {
-        if (resolution == HistoricalBatchResolution.ROLLBACK) rollback()
-    }
+private enum class HistoricalStageConnectionOwnership {
+    CLOSE,
+    RUN,
 }
 
 private fun Connection.enableStageIntegrity() {

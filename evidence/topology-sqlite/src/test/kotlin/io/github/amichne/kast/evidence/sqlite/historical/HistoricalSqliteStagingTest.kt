@@ -201,7 +201,15 @@ class HistoricalSqliteStagingTest {
                     throw java.io.IOException("controlled stage effect fault")
                 }
             )
-        assertEquals(HistoricalStageFailure.Storage(HistoricalStorageFailure.STORAGE_UNAVAILABLE), failure.failure)
+        val effect = assertInstanceOf<HistoricalStageFailure.Effect>(failure.failure)
+        assertEquals(
+            HistoricalStageFault.Storage(HistoricalStagePhase.CONTROL, HistoricalStageEffectCause.IO),
+            effect.fault,
+        )
+        val receipt = assertInstanceOf<HistoricalStageProgress.Settled>(effect.progress).receipt
+        assertEquals(1L, receipt.work.filesReused.value)
+        assertEquals(0L, receipt.work.filesCommitted.value)
+        assertEquals(1L, receipt.work.rolledBackBatches.value)
         assertEquals(before, stageCounts(stage))
         assertArrayEquals(bytes, Files.readAllBytes(artifact))
     }

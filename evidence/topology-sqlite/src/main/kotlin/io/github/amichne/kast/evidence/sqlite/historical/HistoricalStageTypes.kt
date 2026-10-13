@@ -7,6 +7,12 @@ import io.github.amichne.kast.topology.contract.historical.HistoricalReadCount
 sealed interface HistoricalStageFailure {
     data class Storage(val cause: HistoricalStorageFailure) : HistoricalStageFailure
 
+    data class Effect(
+        val fault: HistoricalStageFault,
+        val progress: HistoricalStageProgress,
+        val cleanup: HistoricalStageCleanup,
+    ) : HistoricalStageFailure
+
     data object InvalidBudget : HistoricalStageFailure
 
     data object BasisMismatch : HistoricalStageFailure
