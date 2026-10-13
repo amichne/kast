@@ -30,7 +30,7 @@ enum class PublicToolIdentity(
             "gets share one admitted grant and remain subject to host ceilings. The schema also defines one-hop" +
             " EXPAND_RELATION, graph walk with WALK, predicates, retained composition, joins, and value IMPACT;" +
             " choose them only for those specific questions.",
-        HostedToolLoading.EAGER,
+        HostedToolLoading.DEFERRED,
     ),
     CHECK_DIAGNOSTICS("check_diagnostics", CanonicalOperation.DIAGNOSTIC_CHECK,
         "Check compiler diagnostics for a file or recursively beneath a directory in the session workspace." +

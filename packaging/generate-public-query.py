@@ -85,6 +85,8 @@ def validate_authority(authority: dict) -> None:
     for tool in authority['tools']:
         if tool['operation'] not in {'query.run', 'diagnostic.check', 'change'}:
             raise ValueError(f'Unbound advertised tool: {tool["name"]}')
+        if not isinstance(tool.get('deferLoading'), bool):
+            raise ValueError(f'Invalid public tool loading policy: {tool["name"]}')
     support_bindings = {
         'workspace_lifecycle': ('WorkspaceLifecycleToolInput', ['APP_SERVER']),
         'health_check': ('McpHealthRequest', ['MCP', 'RPC']),
@@ -480,6 +482,15 @@ def render_tools(authority: dict) -> dict[Path, str]:
         )
         if count != 1:
             raise ValueError(f'{relative}: missing unique generated contract version')
+        if relative == 'pi/extension.ts':
+            deferred_names = [tool['name'] for tool in authority['tools'] if tool['deferLoading']]
+            source, count = re.subn(
+                r'const DEFERRED_TOOL_NAMES: readonly string\[\] = \[.*?\];',
+                lambda _: 'const DEFERRED_TOOL_NAMES: readonly string[] = ' + json.dumps(deferred_names) + ';',
+                source, flags=re.DOTALL,
+            )
+            if count != 1:
+                raise ValueError(f'{relative}: missing unique generated loading policy')
         failure_block = ('// Generated from ToolRpcFailure; owned by packaging/generate-public-query.py.\n'
                          'const TOOL_RPC_FAILURES = [\n' +
                          ''.join('  ' + json.dumps(failure) + ',\n' for failure in failures) +

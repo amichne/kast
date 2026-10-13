@@ -16,7 +16,7 @@ delete catalog.catalog.querySession;
 const failures = JSON.parse(readFileSync(process.env.KAST_ADAPTER_TEST_FAILURES, 'utf8'));
 const root = process.env.KAST_PACKAGED_ADAPTER_ROOT ? pathToFileURL(process.env.KAST_PACKAGED_ADAPTER_ROOT + '/share/kast/adapters/') : new URL('../../../../', import.meta.url);
 async function load(harness, reply = catalog, outcome = { type: 'complete', document: {} }, failure, env = {KAST_TOOL_RPC_COMMAND: '/fixture/kast-tool-rpc'}, effects = {}) {
-  const registered = [], calls = [];
+  const registered = [], calls = [], handlers = new Map();
   const context = createContext({ Buffer, TextDecoder, setTimeout: (callback, millis) => {
     if (failure === 'timeout' && calls.length > 1) { queueMicrotask(callback); return 0; }
     return setTimeout(callback, millis);
@@ -65,10 +65,97 @@ async function load(harness, reply = catalog, outcome = { type: 'complete', docu
   let error;
   try {
     await module.evaluate();
-    if (harness === 'pi') await module.namespace.default({ registerTool: (tool) => registered.push(tool) });
+    if (harness === 'pi') await module.namespace.default({
+      registerTool: (tool) => registered.push(tool),
+      on: (name, handler) => handlers.set(name, handler),
+      getAllTools: () => effects.availableTools ?? [...registered, {name:'read'}, {name:'bash'}, {name:'tool_search'}],
+      getActiveTools: () => effects.activeTools ?? ['read', 'bash'],
+      setActiveTools: names => effects.onActiveTools?.(names),
+    });
   } catch (failure) { error = failure; }
-  return { registered, calls, error };
+  return { registered, calls, error, handlers };
 }
+
+test('Pi defers query and write schemas while diagnostic and health tools stay direct', async () => {
+  const loaded = await load('pi');
+  assert.ifError(loaded.error);
+  assert.deepEqual(loaded.registered.map(tool => tool.name), catalog.catalog.tools.map(tool => tool.name));
+  for (const tool of loaded.registered) {
+    const deferred = ['query_symbols', 'add_declaration', 'replace_body'].includes(tool.name);
+    assert.equal(tool.exposure, deferred ? 'deferred' : 'direct', tool.name);
+    assert.deepEqual(JSON.parse(JSON.stringify(tool.parameters)), catalog.catalog.tools.find(entry => entry.name === tool.name).inputSchema);
+  }
+  assert.equal(loaded.calls.length, 1, 'Exposure must not invoke a semantic tool');
+});
+
+test('Pi enables native discovery without loading deferred schemas or replacing active tools', async () => {
+  const changes = [];
+  const loaded = await load('pi', catalog, undefined, undefined, undefined, {
+    activeTools:['read', 'bash'], onActiveTools:names => changes.push([...names]),
+  });
+  assert.ifError(loaded.error);
+  loaded.handlers.get('session_start')();
+  assert.deepEqual(changes, [['read', 'bash', 'tool_search']]);
+  assert.equal(loaded.calls.length, 1);
+  const alreadyActive = await load('pi', catalog, undefined, undefined, undefined, {
+    activeTools:['read', 'tool_search'], onActiveTools:() => assert.fail('Discovery is already active'),
+  });
+  assert.ifError(alreadyActive.error);
+  alreadyActive.handlers.get('session_start')();
+});
+
+test('Pi rejects unavailable native discovery without changing active tools', async () => {
+  const loaded = await load('pi', catalog, undefined, undefined, undefined, {
+    availableTools:[], onActiveTools:() => assert.fail('Missing discovery must not change active tools'),
+  });
+  assert.ifError(loaded.error);
+  assert.throws(() => loaded.handlers.get('session_start')(), /Kast deferred tools need Pi's native tool_search/);
+  assert.equal(loaded.calls.length, 1);
+});
+
+test('upstream Pi loader and native tool search discover the deferred query schema', {
+  skip: !process.env.KAST_UPSTREAM_PI_PACKAGE,
+}, async t => {
+  const pi = process.env.KAST_UPSTREAM_PI_PACKAGE;
+  const { loadExtensions } = await import(pathToFileURL(join(pi, 'dist/core/extensions/loader.js')));
+  const { createToolSearchToolDefinition } = await import(pathToFileURL(join(pi, 'dist/extensions/tool-search/tool.js')));
+  const directory = mkdtempSync(join(tmpdir(), 'kast-pi-discovery-'));
+  t.after(() => rmSync(directory, {recursive:true, force:true}));
+  const command = join(directory, 'catalog-rpc');
+  writeFileSync(command, `#!/usr/bin/env node\nconst fs=require('node:fs');\nif(process.argv[2]!=='catalog')process.exit(9);\nprocess.stdout.write(fs.readFileSync(process.env.KAST_ADAPTER_TEST_CATALOG));\n`, {mode:0o700});
+  const prior = process.env.KAST_TOOL_RPC_COMMAND;
+  process.env.KAST_TOOL_RPC_COMMAND = command;
+  try {
+    const loaded = await loadExtensions([fileURLToPath(new URL('pi/extension.ts', root))], directory);
+    assert.deepEqual(loaded.errors, []);
+    const extension = loaded.extensions[0];
+    const definitions = [...extension.tools.values()].map(tool => tool.definition);
+    let active = ['read', 'check_diagnostics', 'health_check'];
+    const changes = [];
+    const tools = {
+      getAllTools: () => [...definitions, {name:'read',exposure:'direct'}, {name:'tool_search',exposure:'model-only'}],
+      getActiveTools: () => [...active],
+      setActiveTools: names => {
+        assert.ok(names.every(name => tools.getAllTools().some(tool => tool.name === name)), 'Unknown tool activation');
+        active = [...names]; changes.push([...names]);
+      },
+    };
+    Object.assign(loaded.runtime, tools);
+    for (const handler of extension.handlers.get('session_start')) await handler({}, {});
+    assert.deepEqual(active, ['read', 'check_diagnostics', 'health_check', 'tool_search']);
+    assert.equal(definitions.find(tool => tool.name === 'query_symbols').exposure, 'deferred');
+    const search = createToolSearchToolDefinition({tools});
+    const result = await search.execute('discovery', {query:'query_symbols',limit:1});
+    assert.deepEqual(result.details.loaded, ['query_symbols']);
+    assert.deepEqual(active, ['read', 'check_diagnostics', 'health_check', 'tool_search', 'query_symbols']);
+    const absent = await search.execute('absent', {query:'nonexistentqjxvkpt',limit:1});
+    assert.deepEqual(absent.details.loaded, []);
+    assert.equal(changes.length, 2);
+    console.log(`upstream Pi=${JSON.parse(readFileSync(join(pi, 'package.json'))).version}; native loader/search passed with a case-owned registry; no model or semantic invocation`);
+  } finally {
+    if (prior === undefined) delete process.env.KAST_TOOL_RPC_COMMAND; else process.env.KAST_TOOL_RPC_COMMAND = prior;
+  }
+});
 
 test('Pi private orchestration deadline stays outside actual tool subprocess environment', async t => {
   const directory = mkdtempSync(join(tmpdir(), 'kast-pi-environment-'));
