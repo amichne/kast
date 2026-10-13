@@ -264,7 +264,8 @@ The adapter separately reports seven endpoint identity parses. SQLite engine pag
 A Unicode case preserves Kotlin ordering for supplementary and private-use characters, where SQLite text ordering differs.
 
 The resumed fixture reused one file and four rows. It committed three files and ten rows, with a maximum batch of five rows.
-Its receipt reports 42 persisted rows examined, 48 full-basis rows retained, and 60 visits to facts in that full basis.
+Its original receipt reports 42 persisted rows examined, 48 full-basis rows retained, and 60 visits to facts in that full basis.
+The later review repair records 70 actual visits, including the omitted stage-admission scan.
 Stage publication reports 48 stored rows and 148 examined rows across three passes. The artifact measured 90,112 bytes.
 The strict structural fixture measured 73,728 bytes, compared with 69,632 bytes before `STRICT` tables.
 These measurements do not establish reduced semantic work, total work, heap use, or latency.
@@ -363,3 +364,157 @@ The native gap has specific owners:
 The current native fixture supplies a model and uses the host SDK. It does not prove actual imported-model admission or immutable external inputs.
 The necessary next fixture must exercise those mechanisms and an external change-and-revert case.
 A native environment alone cannot resolve this implementation gap.
+
+## Artifact review repairs
+
+Review examined candidate `1417a9ee30a0a9b9d1f385dd2c00c94f0f6c134a`.
+The repairs preserve the incomplete offline-artifact scope. They do not implement native capture.
+
+Malformed UTF-16 admitted two distinct producer names with one identity.
+The Kotlin fixture gave `x\uD800` and `x\uD801` the same digest:
+`86cfb9fc84d184b7df42574f9eeac83fd8812526b9b8fa35935509da85966e50`.
+The first complete selector ran six cases. Five rejection cases failed, and the valid-Unicode control passed.
+The log is `/tmp/kast-historical-unicode-red.log`.
+An earlier test compilation failure selected no cases and does not count as product RED.
+
+`HistoricalCanonicalFields` now admits Unicode scalar values before UTF-8 conversion.
+Historical text parsers reject unpaired surrogates. Snapshot and query admission also reject malformed compiler identities from existing live types.
+Canonical encoding returns finite rejection for malformed raw fields before it changes the row digest.
+Valid pairs, supplementary characters, canonical framing, and UTF-16 source coordinates remain unchanged.
+The existing independently computed snapshot digest still passes.
+
+SQLite TEXT also needs byte admission before JDBC replacement decoding.
+A corruption case stored the bytes `ED A0 80` with SQL `CAST`, then proved that JDBC returned a replacement character.
+The reader accepted that corruption before the repair. `HistoricalSqliteText` now rejects malformed UTF-8 with `CONTENT_REJECTED`.
+The helper preserves SQL NULL as a separate case and keeps valid text without normalization.
+
+A second regression opened an artifact with 1,024 declarations and more than 8 MiB of data.
+An external connection changed its first signature without replacing the inode.
+The original reader returned the changed declaration under its admitted identity.
+The log is `/tmp/kast-historical-reader-red.log`.
+
+Each reader now owns a private copy. Admission and subsequent queries consume that copy.
+The copy uses a 64 KiB buffer and enforces the existing 1 GiB limit during transfer.
+Failed admission and normal close remove the owned file.
+`copiedBytesRead` and `copiedBytesWritten` each report the actual artifact size for a successful open.
+These counts exclude SQLite engine reads, metadata operations, and operating-system cache behavior.
+
+Two batch-capacity cases exposed commits before a later selected file exceeded its row limit.
+The fresh stage kept four declarations and two progress rows after rejection.
+The partial stage gained a declaration and a progress row after rejection.
+The log is `/tmp/kast-historical-unicode-green-storage-red.log`.
+
+The coordinator now admits every selected file budget before the first selected-file commit.
+It keeps bounded descriptors and materializes one admitted file batch at a time.
+Both rejection cases preserve prior facts and progress, then succeed with an adequate budget.
+The successful two-file retry examines 55 facts. The three-file retry examines 77 facts.
+Each count includes stage admission, preflight, and materialization. The maximum batch contains five rows.
+A focused metric regression exposed omitted stage-admission visits in three cases.
+The cases reported 60, 44, and 66 instead of the independent totals of 70, 55, and 77.
+The log is `/tmp/kast-historical-stage-metrics-red.log`.
+
+The focused GREEN command passed 26 cases with zero failures, errors, or skips:
+
+```sh
+mise exec -- ./gradlew :topology:contract:spotlessApply \
+  :evidence:topology-sqlite:spotlessApply \
+  :topology:contract:test --tests '*HistoricalUnicodeContractTest' \
+  --tests '*HistoricalSnapshotContractTest' \
+  :evidence:topology-sqlite:test --tests '*HistoricalSqliteBatchCapacityTest' \
+  --tests '*HistoricalSqliteUnicodeTest' --tests '*HistoricalSqliteReaderIsolationTest' \
+  --tests '*HistoricalOfflineAdmissionTest' --console=plain
+```
+
+The counts are 15 contract cases and 11 SQLite cases.
+The log is `/tmp/kast-historical-review-green.log`.
+
+## Focused native follow-up
+
+The current PR remains useful as complete offline-artifact groundwork with explicit native gaps.
+D1 supplies independent contracts. D4 also contains necessary consumer integrity repairs, so it is not an optional optimization segment.
+No new split is necessary for the current artifact scope.
+
+A native owner must bind compiler resolution and recorded fingerprints to the same immutable inputs for the entire capture.
+Those inputs include source text, generated inputs, imported membership, ordered resolution roots, compiler settings, and cache provenance.
+`LiveSemanticReadAuthority` carries an IDEA owner and epoch. Its continuity contract explicitly excludes proof of external-input stability.
+`SemanticNativeFileMemo` keeps hashes of mutable VFS inputs. Equal hashes before and after capture cannot exclude an external change and reversion.
+
+The pinned platform sources expose append-only VFS content records through `PersistentFS`.
+Those records do not bind compiler reads. `PersistentFSImpl` can read the physical filesystem, and `ZipHandler` can replace archive handles.
+The examined source version is `262.9437.185`. It does not qualify the separate host version `262.10315.125`.
+A bounded feasibility experiment exists. A successful same-IDE implementation remains unproved.
+
+The decisive fixture needs an actual imported project and an external JAR with versions A and B.
+Identical source must select different internal overloads under A and B.
+After admission, a controlled handshake changes A to B, resolves the occurrence, and restores A before the final comparison.
+Success needs compiler evidence bound to A, or typed rejection before publication with prior bytes unchanged.
+The fixture must trace actual compiler input reads or exact cache provenance under cold and warm caches.
+An unexplained cache hit cannot prove input binding.
+
+After that proof, extend the existing owners in this order:
+
+1. Extend the admitted native execution owner with the proven input capability.
+2. Extend `GradleBuildProjectIndex` with detached complete membership, including rootless projects and empty source sets.
+3. Export bounded declaration and occurrence facts from the symbol and relation owners, composed by the existing hosted runtime.
+4. Connect `HistoricalCaptureCoordinator` to an explicit production request and the existing SQLite publication owner.
+5. Add terminal file batches and fresh-session progress admission before native extraction reuse.
+
+The current coordinator and historical adapter lack production callers.
+The retained extractor needs `PublishedWorkspace` and skips unresolved facts. It does not supply a safe shortcut.
+SQLite must remain outside normal live semantic composition.
+
+The first native artifact can reuse the current full-capture API and all offline admission, identity, coverage, and query proofs.
+Native resume needs an input identity distinct from the final artifact digest, atomic terminal file batches, and complete final closure.
+Its oracle must interrupt one file, resume under a fresh admitted session, and prove that committed files receive no native extraction calls.
+Changed inputs must reject reuse. Interrupted and uninterrupted captures must produce identical facts, coverage, identity, and offline pages.
+
+A provisional implementation estimate spans 15–25 production and test files after the native feasibility gate.
+The estimate excludes unknown platform work and unresolved external request wiring. It is not a schedule.
+No native fixture, installation, restart, private-workspace action, or live query ran for this assessment.
+
+## Repair gates and remaining limits
+
+The final repair suite passed 85 selected Kotlin cases with zero failures, errors, or skips.
+The counts are 26 historical contract, 46 historical SQLite, 12 capture coordinator, and one retained-graph characterization case.
+The capture coordinator still uses scripted native results.
+
+The combined gate command was:
+
+```sh
+mise exec -- ./gradlew :topology:contract:spotlessApply \
+  :evidence:topology-sqlite:spotlessApply \
+  :topology:contract:test --tests '*Historical*' \
+  :evidence:topology-sqlite:test --tests '*Historical*' \
+  :topology:build:test --tests '*historical*' \
+  :topology:service:test --tests '*RetainedGraphIdentityCharacterizationTest' \
+  :topology:contract:detekt :evidence:topology-sqlite:detekt \
+  :topology:contract:checkMainKotlinFileLength :topology:contract:checkTestKotlinFileLength \
+  :evidence:topology-sqlite:checkMainKotlinFileLength \
+  :evidence:topology-sqlite:checkTestKotlinFileLength \
+  verifyJsonContracts verifyKastArchitecture knowledgeImpact verifyKnowledgeBase --console=plain
+```
+
+The contract, capture coordinator, graph, and JSON tasks passed within the combined gate runs.
+Two Detekt findings then needed small helper extractions in the SQLite code. They were style failures, not behavioral RED.
+After the final extraction, the SQLite and remaining repository command passed:
+
+```sh
+mise exec -- ./gradlew :evidence:topology-sqlite:spotlessApply \
+  :evidence:topology-sqlite:test --tests '*Historical*' \
+  :evidence:topology-sqlite:detekt :evidence:topology-sqlite:checkMainKotlinFileLength \
+  :evidence:topology-sqlite:checkTestKotlinFileLength \
+  verifyKastArchitecture knowledgeImpact verifyKnowledgeBase --console=plain
+```
+
+The final command reported nine seconds. Its log is `/tmp/kast-historical-review-final-gates.log`.
+JSON admission examined 631 fingerprints with zero violations.
+The knowledge suite passed seven tests. Its citation scan examined 28 concepts and five reserved files with zero issues.
+The repair impact scan found no affected concept.
+
+The pinned Vale 3.24.0 procedure assessed this report against `docs/GLOSSARY.md`.
+The result is `ASSESSED` with a grade advisory. It is not a clean report or proof of comprehension.
+The report is `build/reports/persistent-topology/review-text-assessment.json`.
+
+Logical-row retention remains bounded. The artifact limit and decoder scratch size do not establish a heap bound for large TEXT fields.
+Process-kill cleanup, injected deletion failures, native capture, and native extraction reuse remain outside this repair's evidence.
+The PR records the final pushed revision and its pre-push gate result.

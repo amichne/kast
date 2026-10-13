@@ -39,6 +39,7 @@ data class HistoricalSqliteRetention(
 class SqliteHistoricalSnapshotReader
 internal constructor(
     private val connection: Connection,
+    private val image: HistoricalPrivateReaderImage,
     override val inventory: HistoricalSnapshotInventory,
     override val openWork: HistoricalOpenWork,
     val admissionRetention: HistoricalSqliteRetention,
@@ -138,7 +139,13 @@ internal constructor(
         }
     }
 
-    override fun close() = connection.close()
+    override fun close() {
+        try {
+            connection.close()
+        } finally {
+            image.close()
+        }
+    }
 
     private fun admitTargets(query: HistoricalUsageQuery): Refinement<Long, HistoricalStorageFailure> {
         var examined = 0L
@@ -153,8 +160,8 @@ internal constructor(
 
     private fun usageRow(rows: ResultSet): Refinement<HistoricalUsageRow, HistoricalStorageFailure> =
         HistoricalRowOrdinal.parse(rows.getLong("ordinal")).storage().flatMap { ordinal ->
-            HistoricalModuleId.parse(rows.getString("source_module").orEmpty()).storage().flatMap { source ->
-                HistoricalModuleId.parse(rows.getString("target_module").orEmpty()).storage().flatMap { target ->
+            historicalModuleId(rows, "source_module").flatMap { source ->
+                historicalModuleId(rows, "target_module").flatMap { target ->
                     historicalOccurrence(rows).map { HistoricalUsageRow(ordinal, source, target, it) }
                 }
             }
@@ -236,6 +243,12 @@ internal constructor(
             }
         }
     }
+
+    private fun historicalModuleId(
+        rows: ResultSet,
+        column: String,
+    ): Refinement<HistoricalModuleId, HistoricalStorageFailure> =
+        historicalText(rows, column).flatMap { HistoricalModuleId.parse(it.value).storage() }
 }
 
 private enum class HistoricalOrdinalComparison {

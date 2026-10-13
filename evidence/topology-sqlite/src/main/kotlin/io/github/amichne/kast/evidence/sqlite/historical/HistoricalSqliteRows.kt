@@ -48,40 +48,39 @@ private fun historicalHeader(
     rows: ResultSet
 ): Refinement<Pair<HistoricalHeader, HistoricalDigest>, HistoricalStorageFailure> {
     val repository =
-        HistoricalRepositoryId.parse(rows.getString("repository").orEmpty()).storage().orReturn {
+        historicalText(rows, "repository", HistoricalRepositoryId::parse).orReturn {
             return it
         }
     val commit =
-        GitObjectId.parse(rows.getString("commit_id").orEmpty()).storage().orReturn {
+        historicalText(rows, "commit_id", GitObjectId::parse).orReturn {
             return it
         }
     val tree =
-        GitObjectId.parse(rows.getString("tree_id").orEmpty()).storage().orReturn {
+        historicalText(rows, "tree_id", GitObjectId::parse).orReturn {
             return it
         }
     val model =
-        HistoricalDigest.parse(rows.getString("model_digest").orEmpty()).storage().orReturn {
+        historicalText(rows, "model_digest", HistoricalDigest::parse).orReturn {
             return it
         }
     val resolution =
-        HistoricalDigest.parse(rows.getString("resolution_digest").orEmpty()).storage().orReturn {
+        historicalText(rows, "resolution_digest", HistoricalDigest::parse).orReturn {
             return it
         }
     val compiler =
-        HistoricalDigest.parse(rows.getString("compiler_digest").orEmpty()).storage().orReturn {
+        historicalText(rows, "compiler_digest", HistoricalDigest::parse).orReturn {
             return it
         }
     val profile =
-        historicalEnum<HistoricalProfile>(rows.getString("profile"), HistoricalStorageFailure.PROFILE_REJECTED)
-            .orReturn {
-                return it
-            }
+        historicalEnum<HistoricalProfile>(rows, "profile", HistoricalStorageFailure.PROFILE_REJECTED).orReturn {
+            return it
+        }
     val producer =
-        HistoricalName.parse(rows.getString("producer").orEmpty()).storage().orReturn {
+        historicalText(rows, "producer", HistoricalName::parse).orReturn {
             return it
         }
     val digest =
-        HistoricalDigest.parse(rows.getString("logical_digest").orEmpty()).storage().orReturn {
+        historicalText(rows, "logical_digest", HistoricalDigest::parse).orReturn {
             return it
         }
     return Refinement.Refined(
@@ -96,13 +95,19 @@ private fun historicalHeader(
 
 internal fun Connection.readHistoricalModules(): Refinement<List<HistoricalModule>, HistoricalStorageFailure> =
     queryHistorical("SELECT * FROM historical_module ORDER BY id") { rows ->
-        HistoricalModuleId.parse(rows.getString("id").orEmpty()).storage().flatMap { id ->
-            HistoricalName.parse(rows.getString("project").orEmpty()).storage().flatMap { project ->
-                HistoricalName.parse(rows.getString("name").orEmpty()).storage().flatMap { name ->
-                    val rawSourceSet = rows.getString("source_set")
+        historicalText(rows, "id", HistoricalModuleId::parse).flatMap { id ->
+            historicalText(rows, "project", HistoricalName::parse).flatMap { project ->
+                historicalText(rows, "name", HistoricalName::parse).flatMap { name ->
                     val sourceSet =
-                        if (rawSourceSet == null) Refinement.Refined(HistoricalSourceSet.Rootless)
-                        else HistoricalName.parse(rawSourceSet).storage().map { HistoricalSourceSet.Named(it) }
+                        HistoricalSqliteText.read(rows, "source_set").flatMap { stored ->
+                            when (stored) {
+                                HistoricalOptionalText.Absent -> Refinement.Refined(HistoricalSourceSet.Rootless)
+                                is HistoricalOptionalText.Present ->
+                                    HistoricalName.parse(stored.text.value).storage().map {
+                                        HistoricalSourceSet.Named(it)
+                                    }
+                            }
+                        }
                     sourceSet.map { HistoricalModule(id, project, name, it) }
                 }
             }
@@ -111,8 +116,8 @@ internal fun Connection.readHistoricalModules(): Refinement<List<HistoricalModul
 
 internal fun Connection.readHistoricalDependencies(): Refinement<List<HistoricalDependency>, HistoricalStorageFailure> =
     queryHistorical("SELECT * FROM historical_dependency ORDER BY source, target") { rows ->
-        HistoricalModuleId.parse(rows.getString("source").orEmpty()).storage().flatMap { source ->
-            HistoricalModuleId.parse(rows.getString("target").orEmpty()).storage().map { target ->
+        historicalText(rows, "source", HistoricalModuleId::parse).flatMap { source ->
+            historicalText(rows, "target", HistoricalModuleId::parse).map { target ->
                 HistoricalDependency(source, target)
             }
         }
@@ -120,31 +125,35 @@ internal fun Connection.readHistoricalDependencies(): Refinement<List<Historical
 
 internal fun historicalFile(rows: ResultSet): Refinement<HistoricalFile, HistoricalStorageFailure> {
     val path =
-        WorkspaceSourcePath.parse(rows.getString("path").orEmpty()).storage().orReturn {
+        historicalText(rows, "path", WorkspaceSourcePath::parse).orReturn {
             return it
         }
     val content =
-        WorkspaceSourceContentHash.parse(rows.getString("content").orEmpty()).storage().orReturn {
+        historicalText(rows, "content", WorkspaceSourceContentHash::parse).orReturn {
             return it
         }
     val module =
-        HistoricalModuleId.parse(rows.getString("module").orEmpty()).storage().orReturn {
+        historicalText(rows, "module", HistoricalModuleId::parse).orReturn {
             return it
         }
     val provenance =
-        when (rows.getString("provenance")) {
-            "TRACKED" ->
-                GitObjectId.parse(rows.getString("provenance_value").orEmpty()).storage().map {
-                    HistoricalFileProvenance.Tracked(it)
+        historicalText(rows, "provenance")
+            .flatMap { kind ->
+                when (kind.value) {
+                    "TRACKED" ->
+                        historicalText(rows, "provenance_value", GitObjectId::parse).map {
+                            HistoricalFileProvenance.Tracked(it)
+                        }
+                    "GENERATED" ->
+                        historicalText(rows, "provenance_value", HistoricalName::parse).map {
+                            HistoricalFileProvenance.Generated(it)
+                        }
+                    else -> Refinement.Rejected(HistoricalStorageFailure.CONTENT_REJECTED)
                 }
-            "GENERATED" ->
-                HistoricalName.parse(rows.getString("provenance_value").orEmpty()).storage().map {
-                    HistoricalFileProvenance.Generated(it)
-                }
-            else -> Refinement.Rejected(HistoricalStorageFailure.CONTENT_REJECTED)
-        }.orReturn {
-            return it
-        }
+            }
+            .orReturn {
+                return it
+            }
     return Refinement.Refined(HistoricalFile(path, content, module, provenance))
 }
 
@@ -157,15 +166,15 @@ internal fun historicalDeclaration(
             return it
         }
     val name =
-        HistoricalName.parse(rows.getString("${prefix}name").orEmpty()).storage().orReturn {
+        historicalText(rows, "${prefix}name", HistoricalName::parse).orReturn {
             return it
         }
     val signature =
-        HistoricalName.parse(rows.getString("${prefix}signature").orEmpty()).storage().orReturn {
+        historicalText(rows, "${prefix}signature", HistoricalName::parse).orReturn {
             return it
         }
     val kind =
-        historicalEnum<CompilerSymbolKind>(rows.getString("${prefix}kind")).orReturn {
+        historicalEnum<CompilerSymbolKind>(rows, "${prefix}kind").orReturn {
             return it
         }
     return Refinement.Refined(HistoricalDeclaration(id, name, signature, kind))
@@ -176,11 +185,11 @@ internal fun historicalDeclarationId(
     prefix: String = "",
 ): Refinement<HistoricalDeclarationId, HistoricalStorageFailure> {
     val compiler =
-        CompilerSymbolIdentity.parse(rows.getString("${prefix}compiler").orEmpty()).storage().orReturn {
+        historicalText(rows, "${prefix}compiler", CompilerSymbolIdentity::parse).orReturn {
             return it
         }
     val file =
-        WorkspaceSourcePath.parse(rows.getString("${prefix}file").orEmpty()).storage().orReturn {
+        historicalText(rows, "${prefix}file", WorkspaceSourcePath::parse).orReturn {
             return it
         }
     val range =
@@ -221,7 +230,7 @@ internal const val HISTORICAL_OCCURRENCE_QUERY =
 
 internal fun historicalOccurrence(rows: ResultSet): Refinement<HistoricalOccurrence, HistoricalStorageFailure> {
     val file =
-        WorkspaceSourcePath.parse(rows.getString("source_file").orEmpty()).storage().orReturn {
+        historicalText(rows, "source_file", WorkspaceSourcePath::parse).orReturn {
             return it
         }
     val range =
@@ -237,37 +246,45 @@ internal fun historicalOccurrence(rows: ResultSet): Refinement<HistoricalOccurre
             return it
         }
     val kind =
-        historicalEnum<HistoricalReferenceKind>(rows.getString("kind")).orReturn {
+        historicalEnum<HistoricalReferenceKind>(rows, "kind").orReturn {
             return it
         }
     val context =
-        historicalEnum<HistoricalReferenceContext>(rows.getString("context")).orReturn {
+        historicalEnum<HistoricalReferenceContext>(rows, "context").orReturn {
             return it
         }
     return Refinement.Refined(HistoricalOccurrence(file, range, target, owner, kind, context))
 }
 
 private fun historicalOwner(rows: ResultSet): Refinement<HistoricalOccurrenceOwner, HistoricalStorageFailure> =
-    when (rows.getString("owner_kind")) {
-        "DECLARATION" ->
-            if (rows.getString("owner_detail") != null) Refinement.Rejected(HistoricalStorageFailure.CONTENT_REJECTED)
-            else historicalDeclarationId(rows, "owner_").map { HistoricalOccurrenceOwner.Declaration(it) }
-        "FILE_SCOPED" ->
-            historicalEnum<HistoricalReferenceContext>(rows.getString("owner_detail")).map {
-                HistoricalOccurrenceOwner.FileScoped(it)
-            }
-        "UNAVAILABLE" ->
-            historicalEnum<HistoricalOwnershipUnavailableCause>(rows.getString("owner_detail")).map {
-                HistoricalOccurrenceOwner.Unavailable(it)
-            }
-        else -> Refinement.Rejected(HistoricalStorageFailure.CONTENT_REJECTED)
+    historicalText(rows, "owner_kind").flatMap { kind ->
+        when (kind.value) {
+            "DECLARATION" ->
+                HistoricalSqliteText.read(rows, "owner_detail").flatMap { detail ->
+                    when (detail) {
+                        HistoricalOptionalText.Absent ->
+                            historicalDeclarationId(rows, "owner_").map { HistoricalOccurrenceOwner.Declaration(it) }
+                        is HistoricalOptionalText.Present ->
+                            Refinement.Rejected(HistoricalStorageFailure.CONTENT_REJECTED)
+                    }
+                }
+            "FILE_SCOPED" ->
+                historicalEnum<HistoricalReferenceContext>(rows, "owner_detail").map {
+                    HistoricalOccurrenceOwner.FileScoped(it)
+                }
+            "UNAVAILABLE" ->
+                historicalEnum<HistoricalOwnershipUnavailableCause>(rows, "owner_detail").map {
+                    HistoricalOccurrenceOwner.Unavailable(it)
+                }
+            else -> Refinement.Rejected(HistoricalStorageFailure.CONTENT_REJECTED)
+        }
     }
 
 internal fun Connection.readHistoricalCoverage(): Refinement<List<HistoricalCoverage>, HistoricalStorageFailure> =
     queryHistorical("SELECT * FROM historical_limitation ORDER BY module, family, reason") { rows ->
-            HistoricalModuleId.parse(rows.getString("module").orEmpty()).storage().flatMap { module ->
-                historicalEnum<HistoricalFactFamily>(rows.getString("family")).flatMap { family ->
-                    historicalEnum<HistoricalLimitation>(rows.getString("reason")).map { reason ->
+            historicalText(rows, "module", HistoricalModuleId::parse).flatMap { module ->
+                historicalEnum<HistoricalFactFamily>(rows, "family").flatMap { family ->
+                    historicalEnum<HistoricalLimitation>(rows, "reason").map { reason ->
                         Triple(module, family, reason)
                     }
                 }
@@ -276,10 +293,12 @@ internal fun Connection.readHistoricalCoverage(): Refinement<List<HistoricalCove
         .flatMap { reasons ->
             val grouped = reasons.groupBy({ it.first to it.second }, { it.third })
             queryHistorical("SELECT * FROM historical_coverage ORDER BY module, family") { rows ->
-                    HistoricalModuleId.parse(rows.getString("module").orEmpty()).storage().flatMap { module ->
-                        historicalEnum<HistoricalFactFamily>(rows.getString("family")).flatMap { family ->
-                            coverageStatus(rows.getString("status"), grouped[module to family].orEmpty()).map {
-                                HistoricalCoverage(module, family, it)
+                    historicalText(rows, "module", HistoricalModuleId::parse).flatMap { module ->
+                        historicalEnum<HistoricalFactFamily>(rows, "family").flatMap { family ->
+                            historicalText(rows, "status").flatMap { status ->
+                                coverageStatus(status.value, grouped[module to family].orEmpty()).map {
+                                    HistoricalCoverage(module, family, it)
+                                }
                             }
                         }
                     }

@@ -92,12 +92,14 @@ object SqliteHistoricalSnapshotStaging {
         control: HistoricalStageControl,
         admitted: HistoricalStageAdmission,
     ): Refinement<HistoricalStageAdvance, HistoricalStageFailure> {
+        val selected =
+            planFiles(basis, budget, admitted).orReturn {
+                return it
+            }
         val work = HistoricalStageRunWork()
-        for (file in basis.files.drop(admitted.completedFiles.size).take(budget.files)) {
-            val batch =
-                historicalStageBatch(basis.snapshot, file, budget).orReturn {
-                    return it
-                }
+        work.basisFactRowsExamined = selected.sumOf { it.basisFactRowsExamined }
+        for (file in selected) {
+            val batch = file.materialize()
             work.maximumBatchRows = maxOf(work.maximumBatchRows, batch.rowCount)
             work.basisFactRowsExamined += batch.basisFactRowsExamined
             when (val signal = connection.commitStageBatch(batch, control)) {
@@ -115,6 +117,21 @@ object SqliteHistoricalSnapshotStaging {
             }
         }
         return Refinement.Refined(HistoricalStageAdvance.Advanced(receipt(basis, admitted, work, 0)))
+    }
+
+    private fun planFiles(
+        basis: HistoricalCaptureBasis,
+        budget: HistoricalStageBudget,
+        admitted: HistoricalStageAdmission,
+    ): Refinement<List<HistoricalStageFilePlan>, HistoricalStageFailure> {
+        val selected = mutableListOf<HistoricalStageFilePlan>()
+        for (file in basis.files.asSequence().drop(admitted.completedFiles.size).take(budget.files)) {
+            when (val plan = HistoricalStageFilePlan.admit(basis.snapshot, file, budget)) {
+                is Refinement.Refined -> selected += plan.value
+                is Refinement.Rejected -> return plan
+            }
+        }
+        return Refinement.Refined(selected)
     }
 
     private fun receipt(
@@ -139,7 +156,7 @@ object SqliteHistoricalSnapshotStaging {
                 historicalCount(work.maximumBatchRows),
                 historicalCount(admitted.examinedRows),
                 historicalCount(basis.snapshot.historicalRowCount()),
-                historicalCount(work.basisFactRowsExamined),
+                historicalCount(admitted.basisFactRowsExamined + work.basisFactRowsExamined),
             ),
         )
     }

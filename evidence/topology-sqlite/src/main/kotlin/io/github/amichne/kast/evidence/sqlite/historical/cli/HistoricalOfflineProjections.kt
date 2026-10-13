@@ -206,6 +206,8 @@ internal fun workDocument(open: HistoricalOpenWork, page: HistoricalPageWork, se
     ReadWorkDocument(
         open.rowsExamined.value,
         open.artifactBytes.value,
+        open.copiedBytesRead.value,
+        open.copiedBytesWritten.value,
         selections,
         page.rowsExamined.value,
         page.rowsReturned.value,

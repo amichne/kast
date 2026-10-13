@@ -4,6 +4,7 @@ import io.github.amichne.kast.kernel.Refinement
 import java.util.Collections
 
 enum class HistoricalAdmissionFailure {
+    INVALID_TEXT,
     DUPLICATE_MODULE,
     DUPLICATE_FILE,
     DUPLICATE_DECLARATION,
@@ -32,15 +33,14 @@ data class HistoricalSnapshotInput(
     fun admit(): Refinement<HistoricalSnapshot, HistoricalAdmissionFailure> = HistoricalSnapshot.admit(this)
 }
 
-class HistoricalSnapshot private constructor(input: HistoricalSnapshotInput) {
+class HistoricalSnapshot private constructor(input: HistoricalSnapshotInput, val identity: HistoricalDigest) {
     val header = input.header
-    val modules = immutable(input.modules.sortedBy { it.id })
-    val dependencies = immutable(input.dependencies.sortedWith(compareBy({ it.source }, { it.target })))
-    val files = immutable(input.files.sortedBy { it.path })
-    val declarations = immutable(input.declarations.sortedBy { it.id })
-    val occurrences = immutable(input.occurrences.sortedWith(HistoricalCanonicalEncoding.occurrenceOrder))
-    val coverage = immutable(input.coverage.sortedWith(compareBy({ it.module }, { it.family })))
-    val identity: HistoricalDigest = HistoricalCanonicalEncoding.digest(this)
+    val modules = immutable(input.modules)
+    val dependencies = immutable(input.dependencies)
+    val files = immutable(input.files)
+    val declarations = immutable(input.declarations)
+    val occurrences = immutable(input.occurrences)
+    val coverage = immutable(input.coverage)
 
     fun reference(id: HistoricalDeclarationId): Refinement<HistoricalDeclarationReference, HistoricalSelectionFailure> =
         if (declarations.any { it.id == id }) Refinement.Refined(HistoricalDeclarationReference(identity, id))
@@ -48,9 +48,22 @@ class HistoricalSnapshot private constructor(input: HistoricalSnapshotInput) {
 
     companion object {
         fun admit(input: HistoricalSnapshotInput): Refinement<HistoricalSnapshot, HistoricalAdmissionFailure> {
-            return when (val admitted = HistoricalSnapshotAdmission.admit(input)) {
-                is Refinement.Refined -> Refinement.Refined(HistoricalSnapshot(input))
-                is Refinement.Rejected -> admitted
+            when (val admitted = HistoricalSnapshotAdmission.admit(input)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return admitted
+            }
+            val ordered =
+                input.copy(
+                    modules = input.modules.sortedBy { it.id },
+                    dependencies = input.dependencies.sortedWith(compareBy({ it.source }, { it.target })),
+                    files = input.files.sortedBy { it.path },
+                    declarations = input.declarations.sortedBy { it.id },
+                    occurrences = input.occurrences.sortedWith(HistoricalCanonicalEncoding.occurrenceOrder),
+                    coverage = input.coverage.sortedWith(compareBy({ it.module }, { it.family })),
+                )
+            return when (val identity = HistoricalCanonicalEncoding.digest(HistoricalCanonicalEncoding.rows(ordered))) {
+                is Refinement.Refined -> Refinement.Refined(HistoricalSnapshot(ordered, identity.value))
+                is Refinement.Rejected -> Refinement.Rejected(HistoricalAdmissionFailure.INVALID_TEXT)
             }
         }
     }

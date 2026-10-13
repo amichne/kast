@@ -219,7 +219,7 @@ class HistoricalSqliteStagingTest {
         assertEquals(3L, finished.work.filesCommitted.value)
         assertEquals(10L, finished.work.rowsCommitted.value)
         assertEquals(5L, finished.work.maximumBatchRows.value)
-        assertEquals(60L, finished.work.basisFactRowsExamined.value)
+        assertEquals(70L, finished.work.basisFactRowsExamined.value)
     }
 
     private fun stageCounts(stage: Path): List<Long> =

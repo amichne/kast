@@ -187,6 +187,7 @@ internal fun HistoricalReadFailure.document(): OfflineFailureCode =
 
 private fun HistoricalUsageFailure.document(): OfflineFailureCode =
     when (this) {
+        HistoricalUsageFailure.INVALID_TEXT -> OfflineFailureCode.INVALID_TEXT
         HistoricalUsageFailure.EMPTY_SOURCE_DOMAIN -> OfflineFailureCode.EMPTY_SOURCE_DOMAIN
         HistoricalUsageFailure.EMPTY_TARGET_DOMAIN -> OfflineFailureCode.EMPTY_TARGET_DOMAIN
         HistoricalUsageFailure.SOURCE_OUTSIDE_CAPTURE -> OfflineFailureCode.SOURCE_OUTSIDE_CAPTURE

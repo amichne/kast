@@ -148,31 +148,58 @@ object SqliteHistoricalSnapshotStore {
             }
         }
 
-    fun open(path: Path): Refinement<SqliteHistoricalSnapshotReader, HistoricalStorageFailure> = historicalEffect {
+    fun open(path: Path): Refinement<SqliteHistoricalSnapshotReader, HistoricalStorageFailure> =
+        open(path, Path.of(System.getProperty("java.io.tmpdir")))
+
+    internal fun open(
+        path: Path,
+        privateCopyRoot: Path,
+    ): Refinement<SqliteHistoricalSnapshotReader, HistoricalStorageFailure> = historicalEffect {
         admitHistoricalPath(path, mustExist = true).flatMap {
-            val connection = openHistoricalConnection(path)
+            val image =
+                HistoricalPrivateReaderImage.copy(path, privateCopyRoot).orReturn {
+                    return@historicalEffect it
+                }
             var ownership = HistoricalConnectionOwnership.CLOSE
             try {
-                val result =
-                    connection
-                        .examineHistoricalSchema()
-                        .flatMap { connection.admitHistoricalArtifact() }
-                        .flatMap { admitted ->
-                            HistoricalReadCount.parse(Files.size(path)).storage().map { bytes ->
-                                SqliteHistoricalSnapshotReader(
-                                    connection,
-                                    admitted.inventory,
-                                    HistoricalOpenWork(historicalCount(admitted.rowsExamined), bytes),
-                                    admitted.retention,
-                                    historicalCount(admitted.endpointIdentifiersRead),
-                                )
-                            }
-                        }
+                val result = openPrivateImage(image)
                 if (result is Refinement.Refined) ownership = HistoricalConnectionOwnership.TRANSFER
                 result
             } finally {
-                if (ownership == HistoricalConnectionOwnership.CLOSE) connection.close()
+                if (ownership == HistoricalConnectionOwnership.CLOSE) image.close()
             }
+        }
+    }
+
+    private fun openPrivateImage(
+        image: HistoricalPrivateReaderImage
+    ): Refinement<SqliteHistoricalSnapshotReader, HistoricalStorageFailure> {
+        val connection = openHistoricalConnection(image.path)
+        var ownership = HistoricalConnectionOwnership.CLOSE
+        try {
+            val result =
+                connection
+                    .examineHistoricalSchema()
+                    .flatMap { connection.admitHistoricalArtifact() }
+                    .map { admitted ->
+                        SqliteHistoricalSnapshotReader(
+                            connection,
+                            image,
+                            admitted.inventory,
+                            HistoricalOpenWork(
+                                historicalCount(admitted.rowsExamined),
+                                image.copiedBytes,
+                                image.copiedBytes,
+                                image.copiedBytes,
+                            ),
+                            admitted.retention,
+                            historicalCount(admitted.endpointIdentifiersRead),
+                        )
+                    }
+            if (result is Refinement.Refined) ownership = HistoricalConnectionOwnership.TRANSFER
+            return result
+        } finally {
+            if (ownership == HistoricalConnectionOwnership.CLOSE) connection.close()
         }
     }
 }
@@ -345,4 +372,4 @@ internal inline fun <T> historicalEffect(
         Refinement.Rejected(HistoricalStorageFailure.PATH_REJECTED)
     }
 
-private const val MAXIMUM_HISTORICAL_BYTES = 1024L * 1024 * 1024
+internal const val MAXIMUM_HISTORICAL_BYTES = 1024L * 1024 * 1024

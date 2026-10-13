@@ -80,7 +80,10 @@ data class HistoricalHeader(
 )
 
 private fun validHistoricalText(raw: String): Boolean =
-    raw.isNotBlank() && raw.length <= MAXIMUM_TEXT_LENGTH && raw.none(Char::isISOControl)
+    raw.isNotBlank() &&
+        raw.length <= MAXIMUM_TEXT_LENGTH &&
+        raw.none(Char::isISOControl) &&
+        wellFormedHistoricalUnicode(raw)
 
 private const val SHA1_HEX_LENGTH = 40
 private const val SHA256_HEX_LENGTH = 64

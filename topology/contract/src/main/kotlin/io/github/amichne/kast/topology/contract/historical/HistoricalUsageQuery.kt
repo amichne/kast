@@ -6,6 +6,7 @@ import java.security.MessageDigest
 import java.util.Collections
 
 enum class HistoricalUsageFailure {
+    INVALID_TEXT,
     EMPTY_SOURCE_DOMAIN,
     EMPTY_TARGET_DOMAIN,
     SOURCE_OUTSIDE_CAPTURE,
@@ -128,7 +129,11 @@ private constructor(
                     is Refinement.Refined -> admitted.value
                     is Refinement.Rejected -> return admitted
                 }
-            val identity = queryIdentity(inventory.identity, sources, targets, pageSize)
+            val identity =
+                when (val parsed = queryIdentity(inventory.identity, sources, targets, pageSize)) {
+                    is Refinement.Refined -> parsed.value
+                    is Refinement.Rejected -> return Refinement.Rejected(HistoricalUsageFailure.INVALID_TEXT)
+                }
             when (position) {
                 HistoricalUsagePosition.First -> Unit
                 is HistoricalUsagePosition.After ->
@@ -214,7 +219,7 @@ private constructor(
             sources: Set<HistoricalModuleId>,
             targets: Set<HistoricalDeclarationId>,
             pageSize: HistoricalPageSize,
-        ): HistoricalDigest {
+        ): Refinement<HistoricalDigest, HistoricalValueFailure> {
             val fields =
                 listOf(
                     "historical-usage-v1",
@@ -233,16 +238,20 @@ private constructor(
                             it.compiler.value,
                         )
                     }
+            val encoded =
+                when (val parsed = HistoricalCanonicalFields.parse(fields)) {
+                    is Refinement.Refined -> parsed.value
+                    is Refinement.Rejected -> return parsed
+                }
             val digest = MessageDigest.getInstance("SHA-256")
-            fields.forEach { field ->
-                val bytes = field.toByteArray(StandardCharsets.UTF_8)
+            encoded.utf8.forEach { bytes ->
                 digest.update(bytes.size.toString().toByteArray(StandardCharsets.UTF_8))
                 digest.update(':'.code.toByte())
                 digest.update(bytes)
             }
             val text = digest.digest().joinToString("") { (it.toInt() and 255).toString(16).padStart(2, '0') }
             return when (val admitted = HistoricalDigest.parse(text)) {
-                is Refinement.Refined -> admitted.value
+                is Refinement.Refined -> admitted
                 is Refinement.Rejected -> error("SHA-256 has a canonical hexadecimal representation")
             }
         }

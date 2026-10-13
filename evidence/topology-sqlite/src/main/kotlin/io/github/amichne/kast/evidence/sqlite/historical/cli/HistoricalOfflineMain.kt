@@ -140,6 +140,8 @@ private fun inventory(reader: HistoricalSnapshotReader, request: HistoricalPageR
         ReadWorkDocument(
             reader.openWork.rowsExamined.value,
             reader.openWork.artifactBytes.value,
+            reader.openWork.copiedBytesRead.value,
+            reader.openWork.copiedBytesWritten.value,
             0,
             modules.size.toLong(),
             modules.size.toLong(),

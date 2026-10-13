@@ -43,36 +43,51 @@ internal data class HistoricalStageFileBatch(
         get() = declarations.size.toLong() + occurrences.size + 1
 }
 
-internal fun historicalStageBatch(
-    snapshot: HistoricalSnapshot,
-    file: HistoricalFile,
-    budget: HistoricalStageBudget,
-): Refinement<HistoricalStageFileBatch, HistoricalStageFailure> {
-    var examined = 0L
-    val rows =
-        snapshot.declarations
-            .count {
+/** Admitted file capacity remains bound to the immutable snapshot used for later materialization. */
+internal class HistoricalStageFilePlan
+private constructor(
+    private val snapshot: HistoricalSnapshot,
+    private val file: HistoricalFile,
+    val basisFactRowsExamined: Long,
+) {
+    fun materialize(): HistoricalStageFileBatch {
+        var examined = 0L
+        val declarations =
+            snapshot.declarations.withIndex().filter {
                 examined++
-                it.id.file == file.path
+                it.value.id.file == file.path
             }
-            .toLong() +
-            snapshot.occurrences.count {
+        val occurrences =
+            snapshot.occurrences.withIndex().filter {
                 examined++
-                it.sourceFile == file.path
-            } +
-            1
-    if (rows > budget.rowsPerFile) return Refinement.Rejected(HistoricalStageFailure.FileCapacityExceeded)
-    val declarations =
-        snapshot.declarations.withIndex().filter {
-            examined++
-            it.value.id.file == file.path
+                it.value.sourceFile == file.path
+            }
+        return HistoricalStageFileBatch(file, declarations, occurrences, examined)
+    }
+
+    companion object {
+        fun admit(
+            snapshot: HistoricalSnapshot,
+            file: HistoricalFile,
+            budget: HistoricalStageBudget,
+        ): Refinement<HistoricalStageFilePlan, HistoricalStageFailure> {
+            var examined = 0L
+            val rows =
+                snapshot.declarations
+                    .count {
+                        examined++
+                        it.id.file == file.path
+                    }
+                    .toLong() +
+                    snapshot.occurrences.count {
+                        examined++
+                        it.sourceFile == file.path
+                    } +
+                    1
+            return if (rows > budget.rowsPerFile) Refinement.Rejected(HistoricalStageFailure.FileCapacityExceeded)
+            else Refinement.Refined(HistoricalStageFilePlan(snapshot, file, examined))
         }
-    val occurrences =
-        snapshot.occurrences.withIndex().filter {
-            examined++
-            it.value.sourceFile == file.path
-        }
-    return Refinement.Refined(HistoricalStageFileBatch(file, declarations, occurrences, examined))
+    }
 }
 
 internal fun Connection.initializeHistoricalStage(snapshot: HistoricalSnapshot) {

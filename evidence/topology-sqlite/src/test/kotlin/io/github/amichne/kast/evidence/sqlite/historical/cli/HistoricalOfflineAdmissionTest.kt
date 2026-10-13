@@ -19,6 +19,12 @@ class HistoricalOfflineAdmissionTest {
         val reader = ForbiddenHistoricalReader(HistoricalSnapshotInventory.from(snapshot))
         val cases =
             listOf(
+                request.copy(
+                    targets =
+                        request.targets.map {
+                            it.copy(declaration = it.declaration.copy(compiler = "id\uD800"))
+                        }
+                ) to OfflineFailureCode.INVALID_TEXT,
                 request.copy(size = 0) to OfflineFailureCode.PAGE_SIZE_OUTSIDE_LIMIT,
                 request.copy(size = 1001) to OfflineFailureCode.PAGE_SIZE_OUTSIDE_LIMIT,
                 request.copy(sourceModules = listOf("absent")) to OfflineFailureCode.SOURCE_OUTSIDE_CAPTURE,

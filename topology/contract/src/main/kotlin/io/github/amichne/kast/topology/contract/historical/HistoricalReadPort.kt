@@ -120,8 +120,13 @@ private constructor(
     }
 }
 
-/** Open admission work is separate from each bounded row read. Bytes name the examined artifact size. */
-data class HistoricalOpenWork(val rowsExamined: HistoricalReadCount, val artifactBytes: HistoricalReadCount)
+/** Open admission work is separate from bounded row reads. Copy counts name actual byte transfers. */
+data class HistoricalOpenWork(
+    val rowsExamined: HistoricalReadCount,
+    val artifactBytes: HistoricalReadCount,
+    val copiedBytesRead: HistoricalReadCount,
+    val copiedBytesWritten: HistoricalReadCount,
+)
 
 data class HistoricalPageWork(val rowsExamined: HistoricalReadCount, val rowsReturned: HistoricalReadCount)
 

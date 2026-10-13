@@ -28,16 +28,30 @@ internal fun Connection.admitHistoricalArtifact(): Refinement<HistoricalArtifact
         }
     val digest = MessageDigest.getInstance("SHA-256")
     val snapshot = metadata.snapshot
-    HistoricalCanonicalEncoding.update(digest, HistoricalCanonicalEncoding.header(snapshot.header))
-    snapshot.modules.forEach { HistoricalCanonicalEncoding.update(digest, HistoricalCanonicalEncoding.module(it)) }
-    snapshot.dependencies.forEach {
-        HistoricalCanonicalEncoding.update(digest, HistoricalCanonicalEncoding.dependency(it))
+    HistoricalCanonicalEncoding.update(digest, HistoricalCanonicalEncoding.header(snapshot.header)).storage().orReturn {
+        return it
+    }
+    snapshot.modules.forEach { module ->
+        HistoricalCanonicalEncoding.update(digest, HistoricalCanonicalEncoding.module(module)).storage().orReturn {
+            return it
+        }
+    }
+    snapshot.dependencies.forEach { dependency ->
+        HistoricalCanonicalEncoding.update(digest, HistoricalCanonicalEncoding.dependency(dependency))
+            .storage()
+            .orReturn {
+                return it
+            }
     }
     val facts =
         streamArtifactFacts(snapshot, digest).orReturn {
             return it
         }
-    snapshot.coverage.forEach { HistoricalCanonicalEncoding.update(digest, HistoricalCanonicalEncoding.coverage(it)) }
+    snapshot.coverage.forEach { coverage ->
+        HistoricalCanonicalEncoding.update(digest, HistoricalCanonicalEncoding.coverage(coverage)).storage().orReturn {
+            return it
+        }
+    }
     return metadata.finish(digest, facts)
 }
 
@@ -228,7 +242,9 @@ private fun <T> ResultSet.readHistoricalStream(
                     return Refinement.Rejected(HistoricalStorageFailure.CONTENT_REJECTED)
             }
         }
-        HistoricalCanonicalEncoding.update(digest, encode(current))
+        HistoricalCanonicalEncoding.update(digest, encode(current)).storage().orReturn {
+            return it
+        }
         previous = HistoricalPrevious.Value(current)
         count++
     }

@@ -13,6 +13,7 @@ internal val historicalJson = Json {
 internal enum class OfflineFailureCode {
     INVALID_ARGUMENTS,
     INVALID_REQUEST,
+    INVALID_TEXT,
     PAGE_SIZE_OUTSIDE_LIMIT,
     PATH_REJECTED,
     SCHEMA_REJECTED,
@@ -202,6 +203,8 @@ internal data class UsageRowDocument(
 internal data class ReadWorkDocument(
     val artifactRowsExamined: Long,
     val artifactBytes: Long,
+    val copiedBytesRead: Long,
+    val copiedBytesWritten: Long,
     val requestSelectionRowsExamined: Long,
     val pageRowsExamined: Long,
     val returnedRows: Long,

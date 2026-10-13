@@ -129,7 +129,7 @@ class HistoricalSnapshotContractTest {
         val identity = snapshot.identity
         modules.clear()
         assertEquals(3, snapshot.modules.size)
-        assertEquals(identity, HistoricalCanonicalEncoding.digest(snapshot))
+        assertEquals(identity, HistoricalCanonicalEncoding.digest(snapshot).value())
     }
 
     @Test

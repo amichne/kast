@@ -11,6 +11,7 @@ internal data class HistoricalStageAdmission(
     val completedFiles: List<WorkspaceSourcePath>,
     val reusedRows: Long,
     val examinedRows: Long,
+    val basisFactRowsExamined: Long,
 )
 
 internal fun Connection.admitHistoricalStage(
@@ -24,21 +25,18 @@ internal fun Connection.admitHistoricalStage(
         return it
     }
     val completed =
-        queryHistorical("SELECT file FROM historical_stage_progress") { rows ->
-                WorkspaceSourcePath.parse(rows.getString(1).orEmpty()).storage()
-            }
-            .stage()
-            .orReturn {
-                return it
-            }
-            .sorted()
-    if (completed != snapshot.files.take(completed.size).map { it.path })
-        return Refinement.Rejected(HistoricalStageFailure.ContentRejected)
+        admitStageProgress(snapshot).orReturn {
+            return it
+        }
     val completedSet = completed.toSet()
+    var basisFactRowsExamined = 0L
     val declarations =
         compareStageRows(
                 "SELECT * FROM historical_declaration ORDER BY ordinal",
-                snapshot.declarations.withIndex().asSequence().filter { it.value.id.file in completedSet },
+                snapshot.declarations.withIndex().asSequence().filter {
+                    basisFactRowsExamined++
+                    it.value.id.file in completedSet
+                },
                 { historicalDeclaration(it) },
             )
             .orReturn {
@@ -47,12 +45,25 @@ internal fun Connection.admitHistoricalStage(
     val occurrences =
         compareStageRows(
                 "SELECT * FROM historical_stage_occurrence ORDER BY ordinal",
-                snapshot.occurrences.withIndex().asSequence().filter { it.value.sourceFile in completedSet },
+                snapshot.occurrences.withIndex().asSequence().filter {
+                    basisFactRowsExamined++
+                    it.value.sourceFile in completedSet
+                },
                 ::historicalOccurrence,
             )
             .orReturn {
                 return it
             }
+    admitUnpublishedStage().orReturn {
+        return it
+    }
+    val reused = declarations + occurrences + completed.size
+    return Refinement.Refined(
+        HistoricalStageAdmission(completed, reused, snapshot.stageMetadataRows() + reused, basisFactRowsExamined)
+    )
+}
+
+private fun Connection.admitUnpublishedStage(): Refinement<Unit, HistoricalStageFailure> {
     val publishedOccurrences =
         queryHistorical("SELECT ordinal FROM historical_occurrence LIMIT 1") {
                 Refinement.Refined(it.getLong(1))
@@ -62,8 +73,23 @@ internal fun Connection.admitHistoricalStage(
                 return it
             }
     if (publishedOccurrences.isNotEmpty()) return Refinement.Rejected(HistoricalStageFailure.ContentRejected)
-    val reused = declarations + occurrences + completed.size
-    return Refinement.Refined(HistoricalStageAdmission(completed, reused, snapshot.stageMetadataRows() + reused))
+    return Refinement.Refined(Unit)
+}
+
+private fun Connection.admitStageProgress(
+    snapshot: HistoricalSnapshot
+): Refinement<List<WorkspaceSourcePath>, HistoricalStageFailure> {
+    val completed =
+        queryHistorical("SELECT file FROM historical_stage_progress") { rows ->
+                historicalText(rows, "file", WorkspaceSourcePath::parse)
+            }
+            .stage()
+            .orReturn {
+                return it
+            }
+            .sorted()
+    return if (completed == snapshot.files.take(completed.size).map { it.path }) Refinement.Refined(completed)
+    else Refinement.Rejected(HistoricalStageFailure.ContentRejected)
 }
 
 private fun Connection.admitStageMetadata(snapshot: HistoricalSnapshot): Refinement<Unit, HistoricalStageFailure> {

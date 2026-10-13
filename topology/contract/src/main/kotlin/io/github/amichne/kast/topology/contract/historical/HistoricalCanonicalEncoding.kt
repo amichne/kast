@@ -91,22 +91,45 @@ object HistoricalCanonicalEncoding {
         yieldAll(snapshot.coverage.asSequence().map(::coverage))
     }
 
-    fun digest(snapshot: HistoricalSnapshot): HistoricalDigest = digest(rows(snapshot))
+    internal fun rows(snapshot: HistoricalSnapshotInput): Sequence<List<String>> = sequence {
+        yield(header(snapshot.header))
+        yieldAll(snapshot.modules.asSequence().map(::module))
+        yieldAll(snapshot.dependencies.asSequence().map(::dependency))
+        yieldAll(snapshot.files.asSequence().map(::file))
+        yieldAll(snapshot.declarations.asSequence().map(::declaration))
+        yieldAll(snapshot.occurrences.asSequence().map(::occurrence))
+        yieldAll(snapshot.coverage.asSequence().map(::coverage))
+    }
 
-    fun digest(rows: Sequence<List<String>>): HistoricalDigest {
+    fun digest(snapshot: HistoricalSnapshot): Refinement<HistoricalDigest, HistoricalValueFailure> =
+        digest(rows(snapshot))
+
+    fun digest(rows: Sequence<List<String>>): Refinement<HistoricalDigest, HistoricalValueFailure> {
         val digest = MessageDigest.getInstance("SHA-256")
-        rows.forEach { row -> update(digest, row) }
+        for (row in rows) when (val updated = update(digest, row)) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return updated
+        }
         val hex = digest.digest().joinToString("") { (it.toInt() and 255).toString(16).padStart(2, '0') }
         return when (val parsed = HistoricalDigest.parse(hex)) {
-            is Refinement.Refined -> parsed.value
+            is Refinement.Refined -> parsed
             is Refinement.Rejected -> error("SHA-256 produced a noncanonical digest")
         }
     }
 
-    fun update(digest: MessageDigest, row: List<String>) {
+    fun update(digest: MessageDigest, row: List<String>): Refinement<Unit, HistoricalValueFailure> {
+        val fields =
+            when (val parsed = HistoricalCanonicalFields.parse(listOf(row.size.toString()) + row)) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected -> return parsed
+            }
+        update(digest, fields)
+        return Refinement.Refined(Unit)
+    }
+
+    private fun update(digest: MessageDigest, fields: HistoricalCanonicalFields) {
         // Row length prevents moving fields across variable-length rows without changing the digest.
-        (listOf(row.size.toString()) + row).forEach { field ->
-            val bytes = field.toByteArray(StandardCharsets.UTF_8)
+        fields.utf8.forEach { bytes ->
             digest.update(bytes.size.toString().toByteArray(StandardCharsets.US_ASCII))
             digest.update(':'.code.toByte())
             digest.update(bytes)
