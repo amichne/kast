@@ -1,0 +1,46 @@
+{
+  "baseline_compact_utf8_bytes": 5081,
+  "baseline_verbose_utf8_bytes": 5110,
+  "candidate_compact_utf8_bytes": 4896,
+  "candidate_verbose_utf8_bytes": 5110,
+  "exact_delta_only_seven_fields": true,
+  "verbose_byte_identical": true,
+  "diagnostic_events": [
+    {
+      "outcome": "COMPLETE",
+      "measurement": 0,
+      "json_bytes": 276,
+      "prefixed_bytes": 296
+    },
+    {
+      "outcome": "QUALIFIED",
+      "measurement": 0,
+      "json_bytes": 277,
+      "prefixed_bytes": 297
+    },
+    {
+      "outcome": "COMPLETE",
+      "measurement": 100,
+      "json_bytes": 290,
+      "prefixed_bytes": 310
+    },
+    {
+      "outcome": "QUALIFIED",
+      "measurement": 100,
+      "json_bytes": 291,
+      "prefixed_bytes": 311
+    },
+    {
+      "outcome": "COMPLETE",
+      "measurement": 100000,
+      "json_bytes": 311,
+      "prefixed_bytes": 331
+    },
+    {
+      "outcome": "QUALIFIED",
+      "measurement": 100000,
+      "json_bytes": 312,
+      "prefixed_bytes": 332
+    }
+  ]
+}

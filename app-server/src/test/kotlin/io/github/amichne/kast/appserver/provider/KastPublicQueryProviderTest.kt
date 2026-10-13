@@ -103,9 +103,9 @@ class KastPublicQueryProviderTest {
         val schema = capability()
         val json = Json { encodeDefaults = true }
         val current = json.decodeFromString<KastCapabilityBoundary>(schema)
-        assertEquals(18, current.serverProjection.schemaVersion)
+        assertEquals(19, current.serverProjection.schemaVersion)
         val oldCatalog =
-            json.encodeToString(current.copy(serverProjection = current.serverProjection.copy(schemaVersion = 17)))
+            json.encodeToString(current.copy(serverProjection = current.serverProjection.copy(schemaVersion = 18)))
         val invalid =
             listOf(
                 capability(driftSchema = true),

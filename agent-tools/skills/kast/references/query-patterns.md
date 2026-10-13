@@ -136,7 +136,7 @@ meaning in the answer.
 
 Question: “What reaches this function within two call hops?”
 
-Use `boundedCallerWalk`. It walks `CALLERS` to depth two with explicit
+Use `boundedCallerWalk`. It walks `CALLERS` to depth two with default
 breadth-first exploration and returns `TRAVERSAL_RECORDS` with hop depth and
 relation evidence. Read walk progress and partial expansions before describing
 the covered graph. `BOUNDED_FAN_OUT` can sample deeper paths; it qualifies
@@ -188,10 +188,10 @@ range, and role claims. Native admission revalidates them. Then use
 `readImpactSiteAccounting` to distinguish `REACHED`, proven `EXCLUDED`, and
 `RELATIONSHIP_UNPROVEN` sites. Identity alone does not prove a producer route.
 
-Use `completeImpactFindings` when a complete static investigation is required.
-It selects `COMPLETE_ONLY` and `IMPACT_WITNESS` findings, completing the original
-ledger before presentation. Missing evidence or unresolved obligations reject;
-do not infer completion from a compact finding or from retained paging.
+Use `completeImpactFindings` for a complete static investigation.
+It selects `IMPACT_WITNESS` findings under the fixed `COMPLETE_ONLY` execution policy.
+The original ledger must complete before presentation. Missing evidence or unresolved obligations reject.
+Do not infer completion from a compact finding or from retained paging.
 
 ## Retain, page, and compose
 

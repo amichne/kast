@@ -60,7 +60,6 @@
             "scope": {
               "type": "DIRECTORY",
               "relativeDirectoryPath": "services/orders",
-              "includeSubdirectories": true,
               "sourceSetNames": [
                 "main"
               ]
@@ -300,10 +299,7 @@
             {
               "type": "WALK",
               "relation": "CALLERS",
-              "maximumDepth": 2,
-              "strategy": {
-                "type": "BREADTH_FIRST"
-              }
+              "maximumDepth": 2
             }
           ],
           "output": {
@@ -392,7 +388,7 @@
       }
     },
     "resumeQuery": {
-      "summary": "Resume stored execution without resending its source or steps. Replace the non-issued all-zero continuation.",
+      "summary": "Deliver already-produced output without semantic execution. Replace the illustrative all-zero continuation with an issued output token.",
       "value": {
         "request": {
           "type": "RESUME",
