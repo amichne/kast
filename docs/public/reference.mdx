@@ -1,0 +1,37 @@
+---
+title: "Kast reference"
+sidebarTitle: "Overview"
+description: "Use Kast contracts, query syntax, runtime details, and recovery procedures."
+icon: "code"
+---
+
+Use these docs to write a custom integration, inspect a result contract, or work on Kast itself.
+
+For installation and everyday use, start with the [Kast guide](/).
+
+<CardGroup cols={2}>
+  <Card title="Query reference" icon="search" href="/reference/api">
+    Choose query inputs, steps, outputs, and search scope.
+  </Card>
+  <Card title="Schemas and samples" icon="braces" href="/reference/schemas">
+    Use the generated contracts and recorded examples.
+  </Card>
+  <Card title="Connect a client" icon="plug" href="/reference/integrations">
+    Choose a transport, destination, or custom integration.
+  </Card>
+  <Card title="Runtime and recovery" icon="settings" href="/reference/management">
+    Manage installation state and workspace controls.
+  </Card>
+</CardGroup>
+
+## Understand the evidence
+
+[What an answer proves](/reference/evidence-boundaries) explains coverage, source state, and the limits of compiler evidence.
+
+[How Kast works](/reference/internals/architecture) describes the request path. [Callback evidence](/reference/callbacks) explains anonymous ownership and static relationships.
+
+## Work on Kast
+
+Use the repository's [development guide](https://github.com/amichne/kast/blob/main/docs/development.md) for local commands and tests.
+
+Generated callable schemas keep their existing owner. Do not edit `reference/callables.openapi.json` directly.

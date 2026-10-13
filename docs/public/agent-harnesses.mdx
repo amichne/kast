@@ -1,164 +1,52 @@
 ---
 title: "Connect your agent"
-description: "Connect Codex, Copilot, or Pi and run your first Kotlin query."
+description: "Connect Codex, Copilot, or Pi and ask your first Kotlin question."
 icon: "plug"
 ---
 
-[Install Kast](/start) first. Make sure that your terminal can run your agent's command. In these examples, replace `/path/to/kotlin-repository` with the exact repository or worktree that you want to inspect.
+[Install Kast](/start) first. Choose your agent, then run its setup commands in a terminal.
 
 ## Choose your agent
 
 <Tabs>
   <Tab title="Codex">
-    The bundled plugin supplies MCP tools, the query skill, and examples. If direct MCP is already registered, run `kast disconnect codex` before plugin installation.
+    Replace an existing Kast connection with the bundled plugin:
 
     ```shell
+    kast disconnect codex
     kast plugin codex
-    cd /path/to/kotlin-repository
-    codex
     ```
 
-    Restart Codex after installation.
-
-    <Accordion title="Direct MCP without the bundled plugin">
-      ```shell
-      kast connect codex mcp
-      cd /path/to/kotlin-repository
-      codex
-      ```
-
-      Start a new session to load the registration. `kast connect codex` needs an explicit transport.
-    </Accordion>
-
-    <Accordion title="App Server transport">
-      New persistent installations use the standard Codex control socket when it is available. If another service occupies it or Kast cannot inspect it, installation uses a private endpoint. Routine installation preserves your saved endpoint.
-
-      At the standard socket, managed `codex` invocations can discover Kast automatically. Compatible desktop builds use the service's daemon-selection flag on a fresh launch.
-
-      Quit and reopen the desktop app. Saved `private` endpoints and client overrides can bypass discovery. Examine the [recorded client compatibility](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md) for limits on desktop tools.
-
-      To attach explicitly, use:
-
-      ```shell
-      kast connect codex app-server
-      cd /path/to/kotlin-repository
-      kast-codex
-      ```
-
-      This command installs `~/.local/bin/kast-codex`. Start a fresh thread to load dynamic tools. Custom clients can use `kast-codex app-server` for JSONL stdio.
-    </Accordion>
+    Restart Codex to load the plugin. Select your Kotlin repository or worktree.
   </Tab>
   <Tab title="Copilot">
     ```shell
     kast connect copilot
-    cd /path/to/kotlin-repository
-    copilot
     ```
 
-    Restart Copilot to load the extension and installed catalog.
+    Restart Copilot to load Kast. Start Copilot from your Kotlin repository or worktree.
   </Tab>
   <Tab title="Pi">
     ```shell
     kast connect pi
-    cd /path/to/kotlin-repository
-    pi
     ```
 
-    Restart Pi to load the extension and installed catalog.
+    Restart Pi to load Kast. Start Pi from your Kotlin repository or worktree.
   </Tab>
 </Tabs>
-
-Queries [prepare IntelliJ automatically](/concepts/background-startup). You do not need a separate workspace-open step.
-
-<a id="check-that-the-tools-work" />
 
 ## Run the first query
 
 Ask your agent:
 
-> Use Kast to find one Kotlin declaration in this repository. Show its name, kind, signature, source location, and coverage. Report any readiness or proof blocker.
+> Use Kast to find a Kotlin function in this repository. Show its name and source location. Report a setup problem if you cannot.
 
-A declaration with its location and coverage shows that the agent called Kast. Use `kast status` to inspect the recorded registration.
+A result from Kast shows that your agent can use the connection. Kast prepares the selected IntelliJ project when the query needs it.
 
-To investigate a function, substitute its name and directory in this prompt:
+You can continue in the same conversation:
 
-```text wrap
-Use Kast to find submitOrder in the production Kotlin sources under checkout. Show matching signatures, locations, and coverage. Stop so I can choose the exact function.
-```
+> Read that function's source with Kast, then find its callers.
 
-After you select a function, ask:
+See [What you can do](/search) for more questions. If the tools do not appear, use [Troubleshoot Kast](/troubleshooting).
 
-```text wrap
-Use the exact reference for the function I selected to find its callers. Show the call sites and searched scope, and report any unfinished work.
-```
-
-[Find and trace code](/search) explains the results. For missing tools or readiness blockers, use [Troubleshooting](/troubleshooting).
-
-## Choose a connection destination
-
-Pass an absolute directory when connecting:
-
-```shell
-kast connect pi --destination "$HOME/.config/pi/agent"
-kast connect copilot --destination "$HOME/.config/copilot"
-kast connect codex mcp --destination "$HOME/.config/codex"
-kast connect codex app-server --destination "$HOME/bin"
-```
-
-| Connection | What the directory contains |
-| --- | --- |
-| Pi | `extensions/kast.ts` under the Pi agent home |
-| Copilot | `extensions/kast/extension.mjs` under the Copilot home |
-| Codex MCP | Codex's `config.toml`. The registered executable stays in the Kast installation. |
-| Codex App Server | The `kast-codex` launcher |
-
-Kast saves these directories in `~/.config/kast/config.json`. Reconnect, upgrade, and disconnect reuse them. An explicit `--destination` overrides the saved preference.
-
-Without a saved destination, Kast reads `PI_CODING_AGENT_DIR`, `COPILOT_HOME`, or `CODEX_HOME` for the selected agent. If that variable is absent, Kast uses the agent's default directory. App Server defaults to `~/.local/bin`.
-
-For a custom directory, run the agent with the same harness home. For example, `PI_CODING_AGENT_DIR="$HOME/.config/pi/agent" pi` loads the adapter from that directory. Kast's saved destination does not change the agent's settings.
-
-When you change `--destination`, Kast examines the new connection and removes its previous owned slot in the same transaction. Other harness settings remain in place.
-
-## Recover an existing connection
-
-Matching registrations stay in place. By default, `kast connect` recovers a conflicting Kast slot with the verified release payload. Kast keeps the displaced bytes in a private backup and prints its location. Other extensions and registration names remain in place.
-
-If the connection fails, Kast restores the previous connection, preferences, checkpoint, and ownership receipt. If a concurrent change or filesystem refusal prevents restoration, Kast keeps the recovery copy and reports the necessary action. Unverified release payloads and symbolic-link slots reject before replacement.
-
-Kast keeps a verified configuration checkpoint in `~/.config/kast/config.last-good.json`. Reconnect restores a damaged or missing configuration from that checkpoint.
-
-If both copies are invalid, Kast reconstructs preferences from recorded connection directories and keeps the rejected copies. If an older receipt lacks that routing proof, supply `--destination` to reconstruct preferences. Kast keeps the rejected configuration.
-
-Use `--no-recover` to reject conflicts without replacing them. `--force` remains available for explicit replacement of the selected Kast slot.
-
-## Disconnect or upgrade
-
-For a registration made with `kast connect`:
-
-```shell
-kast disconnect copilot
-```
-
-`kast disconnect codex` removes its recorded App Server launcher and MCP registration. Remove the Codex-owned bundled plugin with `codex plugin remove kast@kast`. Restart the affected agent.
-
-After `kast upgrade`, restart IDEA and connected agents. For the bundled Codex plugin, repeat `kast plugin codex`.
-
-## Install the skill independently
-
-<Accordion title="Release archives and custom clients">
-  [Control 0.3.1](https://github.com/amichne/kast/releases/tag/control-v0.3.1) supplies `kast-skill-v0.3.1.zip`, `kast-plugin-v0.3.1.zip`, and `kast-marketplace-v0.3.1.zip` with SHA-256 checksums.
-
-  Extract the skill's `kast/` directory into `~/.agents/skills/` or your repository's `.agents/skills/`. The generated examples use the public contract. Replace example references with handles from your current workspace.
-
-  Examine the checksums, then extract the marketplace. To install it, use:
-
-  ```shell
-  codex plugin marketplace add /absolute/path/to/extracted-marketplace
-  codex plugin add kast@kast
-  ```
-
-  The source marketplace is available through `codex plugin marketplace add amichne/kast`. Install Kast and a compatible Host first.
-
-  Custom clients can use [MCP](/reference/mcp-catalog), [Tool RPC](/reference/rpc-catalog), or App Server. See the [adapter guide](https://github.com/amichne/kast/blob/main/docs/tool-rpc.md).
-</Accordion>
+Custom clients and alternate connections belong in the [reference](/reference/integrations).

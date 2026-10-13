@@ -1,126 +1,47 @@
 ---
-title: "Find and trace code"
-description: "Find a declaration in your project, read its source, and trace callers or implementations."
+title: "What you can do"
+description: "Find code, trace its connections, inspect problems, and make targeted changes through your agent."
 icon: "search"
-keywords: ["query_symbols", "Kotlin", "compiler references", "relations"]
 ---
 
-Start with one declaration, read its source, and use its exact reference to trace affected uses. Your [connected agent](/agent-harnesses) writes the query.
+Ask your [connected agent](/agent-harnesses) to use Kast. Replace the example names with names from your project.
 
-## 1. Find a declaration and inspect its source
+## Find the exact code
 
-To find a declaration, substitute its name and directory in this prompt:
+Find a function, class, or property and read its source. If several declarations share a name, Kast gives their signatures and locations.
 
-```text wrap
-Use Kast to find submitOrder under checkout in main. Show matching signatures, locations, and coverage. Stop so I can choose the exact function.
-```
+> Use Kast to find submitOrder in this repository. Show the matches and their source locations.
 
-Select the declaration by signature and file. Ask the agent to read its source. Keep the exact reference for later queries.
+## Understand what connects to it
 
-For a Kotlin interface, use `declarationKinds: ["CLASS"]`. The `CLASS` request family includes supported class-like declarations, interfaces, and objects. Returned symbols use `kind: "classlike"`. Requests reject `INTERFACE` and `CLASSLIKE` as kind values.
+Find callers, references, implementations, or overrides. Use those connections to investigate a feature or review the code around a proposed change.
 
-```json
-{
-  "request": {
-    "type": "RUN",
-    "source": {
-      "type": "SEARCH_DECLARATIONS",
-      "declarationName": "CacheManager",
-      "declarationKinds": ["CLASS"],
-      "scope": {
-        "type": "PACKAGE",
-        "packageName": "example.cache",
-        "includeSubpackages": false,
-        "sourceSetNames": ["main"]
-      }
-    },
-    "output": {"type": "SYMBOLS", "fields": ["NAME", "LOCATION", "SIGNATURE"]}
-  }
-}
-```
+> Use Kast to find the callers of the submitOrder function I selected. Show where each call occurs.
 
-To find an interface method, use `declarationName: "execute"` and `declarationKinds: ["FUNCTION"]` in the same package. Examine the signature's qualified identity to select `example.cache.CacheManager.execute` from its overrides. An exact name can match several overloads and owners.
+> Use Kast to find implementations of CacheManager in this project.
 
-Exact-name discovery uses name indexes and a supplemental declaration scan to prove completeness within the admitted scope. Before discovery, apply the directory, package, source-set, and declaration-kind constraints that you know. An exact name alone does not limit how many source files the completeness scan visits.
+## Find reported problems
 
-`AT_LOCATION` selects the nearest containing named declaration. An offset inside a method's generic parameter list selects that method. An offset on `manager.execute(...)` selects the enclosing declaration. It does not resolve the `execute` token to the interface method.
+Ask for the problems that IntelliJ reports in the selected code.
 
-To establish that relationship, select the exact method. Request `REFERENCES` or `CALLERS` in the intended search domain. Use occurrence evidence to identify the use site.
+> Use Kast to inspect the IDEA diagnostics for the function I selected.
 
-Offsets and returned ranges use UTF-16 code units. Byte offsets and line numbers do not identify those positions. After edits, recalculate offsets from the current file.
+## Make a targeted change
 
-| Evidence | Why it matters |
-| --- | --- |
-| Signature | Distinguishes overloads. |
-| Location | Identifies the repository and declaration. |
-| Coverage | Reports whether the requested search finished. |
-| Exact reference | Carries the selected identity into the next request. |
+Kast can add a declaration to an existing Kotlin file or replace a supported function body. It reports the edit outcome.
 
-## 2. Trace the selected declaration
+> Use Kast to replace the selected retryLimit function's body with `{ return 3 }`. Keep its signature unchanged.
 
-To trace a function, interface method, or type, ask:
+These edits cover specific targets. Kast does not rename symbols, create files, or do multi-file refactors through its change tools.
 
-```text wrap
-Use the exact Kast reference we selected to TRACE affected uses across the workspace. Show signatures, locations, occurrence evidence, and completion. Keep the result for follow-up reads.
-```
+After an edit, review the diff and run your project's build and tests.
 
-The agent must pass the issued reference unchanged. In this example, replace the placeholder with the `ref` from the previous response:
+## Know when an answer needs more work
 
-```json
-{
-  "request": {
-    "type": "RUN",
-    "source": {"type": "SYMBOL_REFS", "symbolRefs": ["<issued ref>"]},
-    "steps": [{"type": "TRACE", "expansionScope": {"type": "WORKSPACE"}}],
-    "output": {"type": "SYMBOLS", "fields": ["NAME", "LOCATION", "SIGNATURE"]},
-    "retention": "RETAIN",
-    "executionBudget": {"maxElapsedMs": 30000}
-  }
-}
-```
+Kast reports when it cannot finish a search or establish a relationship. A limited answer does not prove that no matches exist.
 
-`TRACE` covers references, implementations or overrides, direct callers, and one further caller layer. A type trace also covers the type's direct functions and properties. Kast groups declarations and keeps occurrence evidence. The topology is fixed. `TRACE` must be the final step and use `SYMBOLS` output.
+Your agent can use the reported reason to narrow the question or resolve a setup problem.
 
-This example requests 30 seconds for the trace. The host can admit less time. Read the returned execution budget. All branches share the elapsed grant.
-
-Discovery scope selects the seed. `WORKSPACE` lets the trace reach clients in other modules. If the question excludes those destinations, choose `SOURCE_DOMAIN`. `RETAINED_SEED` limits expansion to the selected capability's scope.
-
-A later filter cannot reduce native search work. See [Query forms](/reference/api#apply-only-the-steps-you-need) for expansion controls.
-
-<a id="3-read-completion-and-follow-recovery" />
-
-## 3. Read completion and choose recovery
-
-Every `RUN` uses the fixed `COMPLETE_ONLY` policy for a complete compiler-static answer. If proof is incomplete, Kast returns `COMPLETION_UNPROVEN`. The rejection includes its finite cause and recovery evidence when available.
-
-A saved preview contains established facts. It does not prove completion. Use its result reference with `READ_RESULT` to inspect the evidence. For a completed answer, the same action can present more rows.
-
-`RESUME` accepts issued output continuations. The internal runner owns semantic page continuation. A historical checkpoint or result cursor cannot authorize execution.
-
-`TRACE` gathers incoming paths before it groups results. Budget exhaustion returns a completion rejection with proof that Kast can keep. A larger timeout request does not remove host ceilings.
-
-For direct callers or implementations, use one `EXPAND_RELATION`. For a graph with a specified depth, use `WALK`. Examine its hop evidence before a conclusion. [Query forms](/reference/api) describes both forms.
-
-If `WALK.maximumDepth` and `WALK.expansionScope` are omitted or null, `WALK` exhausts the reachable graph across the workspace. Discovery scope does not restrict those destinations.
-
-If the question needs a limit, set the depth or destination scope explicitly. Keep `COMPLETE_ONLY`. Resource exhaustion leaves proof incomplete. Later output filters do not reduce native enumeration work.
-
-Calls inside lambdas keep their separate ownership. A static callback path does not prove runtime execution. See [Callback evidence](/reference/callbacks) for ownership and activation limits.
-
-## Start from remembered text
-
-```text wrap
-Use Kast to find functions containing the word retry under checkout in main. Show a matching line for each function, then let me choose one to inspect or trace.
-```
-
-Use one case-sensitive ASCII word that starts with a letter or underscore. Kast rejects phrases, substrings, qualified literals, and regular expressions. A word match explains how Kast found the declaration. Use a relation query to establish callers. Unsupported containers or a stopped scan leave coverage incomplete.
-
-## Keep the investigation current
-
-Pass issued references unchanged. If a reference is stale or saved state is unavailable, search again. Edits, IDEA restarts, and retention expiry can invalidate saved work.
-
-A new opaque reference with the same signature and location does not alone prove a source change. When Kast reacquires an exact handle, read `reference_acquisitions`. Keep each response's semantic basis.
-
-Signature and location help select a declaration. The exact handle supplies authority. Continuations and source snapshots need their original basis. [Read-limit diagnostics](https://github.com/amichne/kast/blob/main/docs/hosted-read-configuration.md#read-the-evidence) explains the bounded epoch-movement signals.
-
-Read [What an answer proves](/concepts/evidence-boundaries) before a conclusion. Use [Results](/reference/responses) for progress or [Combine query results](/query-pipelines) for composition with saved results.
+<Card title="Connect your agent" icon="plug" href="/agent-harnesses">
+  Choose Codex, Copilot, or Pi and ask your first question.
+</Card>

@@ -1,0 +1,47 @@
+---
+title: "Troubleshoot Kast"
+description: "Recover from missing tools, an IDEA readiness blocker, or an incomplete result."
+icon: "life-buoy"
+---
+
+Use the reported failure to choose the recovery action. To inspect the installation, run:
+
+```shell
+kast status
+```
+
+Examine the version, installation path, and connections. After recovery, repeat the [first query](/reference/integrations#run-the-first-query) to make sure that the agent can call Kast.
+
+## Choose the symptom
+
+| Symptom | Action |
+| --- | --- |
+| No Kast tools | Examine the [connection](/reference/integrations), then restart the agent. |
+| No matching plugin | Examine the [IDEA build and JBR](/reference/installation#before-you-install), then compare [compatibility](/reference/compatibility). |
+| Trust, import, or indexing blocker | Resolve the reported state in the selected IDEA project. Repeat the read. |
+| Wrong workspace | Start the client from the intended Gradle repository or worktree. |
+| Qualified query | Read the issued output or keep the facts with their terminal reason. |
+| Stale reference or unavailable state | Search again and pass fresh handles unchanged. |
+| Uncertain write | Inspect source and [recovery evidence](/reference/change#read-the-receipt) before retrying. |
+
+If the catalog includes `health_check`, it reports workspace binding and readiness. Use a scoped query to establish a declaration or relationship.
+
+<AccordionGroup>
+  <Accordion title="Connection conflicts and version or catalog failures">
+    Compare the expected contract, reported contract, and selected executable. Install compatible payloads. Restart IDEA and the agent. Then rediscover tools.
+
+    Codex needs an explicit `mcp` or `app-server` transport. App Server installs `kast-codex`. A fresh thread must admit the generated namespace and bind its workspace. Keep the reported stage, binding, or schema failure.
+
+    To replace a harness's Kast slot deliberately, use `--force`. If rollback reports a backup, keep it. Restore the named destination from that backup. Force connection does not repair live thread ownership or restore sessions across upgrades.
+  </Accordion>
+
+  <Accordion title="Continuation failure details">
+    Read the failure cause: expiration, owner retirement, dependency loss, eviction, stale basis, or incompatible identity. If authority or saved state is unavailable, start a new read.
+
+    Budget failures report the exhausted dimension and stage. A larger grant cannot recover missing state. Revocation receipts have limited retention. After receipt reclamation, Kast cannot establish the token's historical eviction or expiry cause.
+  </Accordion>
+</AccordionGroup>
+
+## A write has an uncertain outcome
+
+Timeout, cancellation, output overflow, and nonzero exit leave the write outcome uncertain. Keep the plan identity and phase evidence. Before another write, read the source. Use [change recovery](/reference/change#read-the-receipt) to establish the effect.

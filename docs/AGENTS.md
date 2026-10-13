@@ -5,15 +5,17 @@
 
 ## Purpose
 
-Contains the public Mintlify documentation source plus scripts and styles for observer visual evidence.
+Contains the Mintlify site with Guide and Reference tabs plus scripts and styles for observer visual evidence.
 
 ## Key Files
 
 - [public/docs.json](public/docs.json) - public documentation navigation and site configuration.
 - [public/index.mdx](public/index.mdx) - product landing documentation.
+- [public/reference.mdx](public/reference.mdx) - entry point for technical reference material.
+- [documentation-structure.md](documentation-structure.md) - route and content rules.
 - [public/start.mdx](public/start.mdx) - installation and connection guide.
 - [public/search.mdx](public/search.mdx) - search workflow.
-- [public/change.mdx](public/change.mdx) - one-call change, internal exact-plan signing, application, and recovery workflow.
+- [public/reference/change.mdx](public/reference/change.mdx) - one-call change, internal exact-plan signing, application, and recovery workflow.
 - [public/troubleshooting.mdx](public/troubleshooting.mdx) - support guidance.
 - [render_kast_observer_snapshots.py](render_kast_observer_snapshots.py) - observer snapshot renderer.
 
@@ -30,7 +32,7 @@ Contains the public Mintlify documentation source plus scripts and styles for ob
 
 ## Subdirectories
 
-- `public/concepts` - conceptual explanations.
+- `public/reference/internals` - runtime implementation details.
 - `public/reference` - generated and hand-authored reference pages.
 - `public/images` - checked documentation assets.
 - `reviews` - source and runtime acceptance review evidence.

@@ -2,84 +2,141 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "maple",
   "name": "Kast",
-  "description": "Connect your coding agent to IntelliJ IDEA to find Kotlin declarations, trace relationships, and make targeted source changes.",
-  "colors": {"primary": "#3154C7", "light": "#8FA7FF", "dark": "#27439F"},
-  "fonts": {"family": "SUSE"},
+  "description": "Give your coding agent the Kotlin knowledge your IDE already uses. Find code, trace its connections, and make targeted changes.",
+  "colors": {
+    "primary": "#3154C7",
+    "light": "#8FA7FF",
+    "dark": "#27439F"
+  },
+  "fonts": {
+    "family": "SUSE"
+  },
   "logo": "/images/kast-mark.svg",
   "favicon": "/images/kast-mark.svg",
-  "icons": {"library": "lucide"},
-  "background": {"color": {"light": "#FBFBF9", "dark": "#171816"}},
-  "appearance": {"default": "light", "strict": false},
+  "icons": {
+    "library": "lucide"
+  },
+  "background": {
+    "color": {
+      "light": "#FBFBF9",
+      "dark": "#171816"
+    }
+  },
+  "appearance": {
+    "default": "light",
+    "strict": false
+  },
   "navigation": {
-    "groups": [
+    "tabs": [
       {
-        "group": "Start here",
-        "pages": [
-          "index",
-          "start",
-          "agent-harnesses"
-        ]
-      },
-      {
-        "group": "Using Kast",
-        "pages": [
-          "search",
-          "concepts/evidence-boundaries",
-          "change",
-          "query-pipelines",
-          "troubleshooting",
+        "tab": "Guide",
+        "groups": [
           {
-            "group": "Setup and maintenance",
+            "group": "Discover Kast",
             "pages": [
-              "concepts/background-startup",
-              "workspaces"
+              "index",
+              "search"
+            ]
+          },
+          {
+            "group": "Get started",
+            "pages": [
+              "start",
+              "agent-harnesses",
+              "troubleshooting"
             ]
           }
         ]
       },
       {
-        "group": "Reference",
-        "openapi": "reference/callables.openapi.json",
-        "pages": [
-          "concepts/architecture",
+        "tab": "Reference",
+        "groups": [
           {
-            "group": "Query reference",
+            "group": "Reference",
+            "pages": [
+              "reference",
+              "reference/search",
+              "reference/evidence-boundaries",
+              "reference/change",
+              "reference/query-pipelines"
+            ]
+          },
+          {
+            "group": "Integration and maintenance",
+            "pages": [
+              "reference/integrations",
+              "reference/installation",
+              "reference/troubleshooting",
+              "reference/management"
+            ]
+          },
+          {
+            "group": "Contracts",
+            "openapi": {
+              "source": "reference/callables.openapi.json",
+              "directory": "reference/callables"
+            },
             "pages": [
               "reference/api",
               "reference/responses",
               "reference/symbols",
               "reference/callbacks",
-              "reference/walkthrough"
-            ]
-          },
-          "reference/schemas",
-          {
-            "group": "Integration contracts",
-            "expanded": false,
-            "pages": [
-              "reference/mcp-catalog",
-              "reference/rpc-catalog",
-              "reference/compatibility"
-            ]
-          },
-          {
-            "group": "Detailed schemas",
-            "expanded": false,
-            "pages": [
+              "reference/walkthrough",
+              "reference/schemas",
               {
-                "group": "Callable schemas",
+                "group": "Integration contracts",
                 "expanded": false,
-                "pages": ["POST /callables/query_symbols", "POST /callables/check_diagnostics", "POST /callables/add_declaration", "POST /callables/replace_body", "POST /callables/workspace_lifecycle"]
+                "pages": [
+                  "reference/mcp-catalog",
+                  "reference/rpc-catalog",
+                  "reference/compatibility"
+                ]
               },
               {
-                "group": "Transport results",
+                "group": "Detailed schemas",
                 "expanded": false,
-                "pages": ["reference/models/mcp-tool-call-result", "reference/models/mcp-read-result", "reference/models/mcp-investigation-result", "reference/models/mcp-change-result", "reference/models/tool-rpc-reply"]
+                "pages": [
+                  {
+                    "group": "Callable schemas",
+                    "expanded": false,
+                    "pages": [
+                      "POST /callables/query_symbols",
+                      "POST /callables/check_diagnostics",
+                      "POST /callables/add_declaration",
+                      "POST /callables/replace_body",
+                      "POST /callables/workspace_lifecycle"
+                    ]
+                  },
+                  {
+                    "group": "Transport results",
+                    "expanded": false,
+                    "pages": [
+                      "reference/models/mcp-tool-call-result",
+                      "reference/models/mcp-read-result",
+                      "reference/models/mcp-investigation-result",
+                      "reference/models/mcp-change-result",
+                      "reference/models/tool-rpc-reply"
+                    ]
+                  },
+                  {
+                    "group": "Semantic results",
+                    "expanded": false,
+                    "pages": [
+                      "reference/models/query-item",
+                      "reference/models/relation-fact",
+                      "reference/models/diagnostic",
+                      "reference/models/live-evidence"
+                    ]
+                  }
+                ]
               },
               {
-                "group": "Semantic results",
+                "group": "Internals",
                 "expanded": false,
-                "pages": ["reference/models/query-item", "reference/models/relation-fact", "reference/models/diagnostic", "reference/models/live-evidence"]
+                "pages": [
+                  "reference/internals/architecture",
+                  "reference/internals/background-startup"
+                ]
               }
             ]
           }
@@ -88,23 +145,190 @@
     ]
   },
   "navbar": {
-    "links": [{"label": "Overview", "href": "/"}, {"label": "GitHub", "href": "https://github.com/amichne/kast"}],
-    "primary": {"type": "button", "label": "Install Kast", "href": "/start"}
+    "links": [
+      {
+        "label": "Reference",
+        "href": "/reference"
+      },
+      {
+        "label": "GitHub",
+        "href": "https://github.com/amichne/kast"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Install Kast",
+      "href": "/start"
+    }
   },
   "footer": {
-    "socials": {"github": "https://github.com/amichne/kast"},
+    "socials": {
+      "github": "https://github.com/amichne/kast"
+    },
     "links": [
-      {"header": "Get started", "items": [{"label": "Install", "href": "/start"}, {"label": "Connect your agent", "href": "/agent-harnesses"}, {"label": "Troubleshooting", "href": "/troubleshooting"}]},
-      {"header": "Learn", "items": [{"label": "Query examples", "href": "/search"}, {"label": "Combine results", "href": "/query-pipelines"}, {"label": "Schemas and samples", "href": "/reference/schemas"}]},
-      {"header": "Source", "items": [{"label": "GitHub", "href": "https://github.com/amichne/kast"}, {"label": "Security", "href": "https://github.com/amichne/kast/security"}]}
+      {
+        "header": "Kast",
+        "items": [
+          {
+            "label": "Why Kast?",
+            "href": "/"
+          },
+          {
+            "label": "What you can do",
+            "href": "/search"
+          }
+        ]
+      },
+      {
+        "header": "Get started",
+        "items": [
+          {
+            "label": "Install",
+            "href": "/start"
+          },
+          {
+            "label": "Connect your agent",
+            "href": "/agent-harnesses"
+          },
+          {
+            "label": "Troubleshoot",
+            "href": "/troubleshooting"
+          }
+        ]
+      },
+      {
+        "header": "Reference",
+        "items": [
+          {
+            "label": "Technical reference",
+            "href": "/reference"
+          },
+          {
+            "label": "GitHub",
+            "href": "https://github.com/amichne/kast"
+          },
+          {
+            "label": "Security",
+            "href": "https://github.com/amichne/kast/security"
+          }
+        ]
+      }
     ]
   },
-  "metadata": {"timestamp": true},
-  "styling": {"eyebrows": "breadcrumbs"},
-  "interaction": {"drilldown": false},
-  "contextual": {"options": ["copy", "view"], "display": "header"},
-  "api": {"playground": {"display": "none"}, "examples": {"autogenerate": false}},
-  "search": {"prompt": "Search docs"},
-  "errors": {"404": {"redirect": false, "title": "Page not found", "description": "The requested Kast documentation page does not exist. Return to the [documentation home](/)."}},
-  "redirects": [{"source": "/concepts/runtime-integration-validation", "destination": "/concepts/architecture", "permanent": true}]
+  "metadata": {
+    "timestamp": true
+  },
+  "styling": {
+    "eyebrows": "breadcrumbs"
+  },
+  "interaction": {
+    "drilldown": false
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view"
+    ],
+    "display": "header"
+  },
+  "search": {
+    "prompt": "Search Kast"
+  },
+  "errors": {
+    "404": {
+      "redirect": false,
+      "title": "Page not found",
+      "description": "The requested Kast documentation page does not exist. Return to the [documentation home](/)."
+    }
+  },
+  "redirects": [
+    {
+      "source": "/change",
+      "destination": "/reference/change",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/architecture",
+      "destination": "/reference/internals/architecture",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/background-startup",
+      "destination": "/reference/internals/background-startup",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/evidence-boundaries",
+      "destination": "/reference/evidence-boundaries",
+      "permanent": true
+    },
+    {
+      "source": "/query-pipelines",
+      "destination": "/reference/query-pipelines",
+      "permanent": true
+    },
+    {
+      "source": "/workspaces",
+      "destination": "/reference/management",
+      "permanent": true
+    },
+    {
+      "source": "/reference/callables.openapi.json",
+      "destination": "https://raw.githubusercontent.com/amichne/kast/main/docs/public/reference/callables.openapi.json",
+      "permanent": true
+    },
+    {
+      "source": "/examples/query-walkthrough.json",
+      "destination": "/reference/examples/query-walkthrough.json",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/runtime-integration-validation",
+      "destination": "/reference/internals/architecture",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/query-symbols",
+      "destination": "/reference/callables/query-symbols",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/check-diagnostics",
+      "destination": "/reference/callables/check-diagnostics",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/add-declaration",
+      "destination": "/reference/callables/add-declaration",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/replace-body",
+      "destination": "/reference/callables/replace-body",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/workspace-lifecycle",
+      "destination": "/reference/callables/workspace-lifecycle",
+      "permanent": true
+    },
+    {
+      "source": "/reference/examples/query-walkthrough.json",
+      "destination": "https://raw.githubusercontent.com/amichne/kast/main/docs/public/reference/examples/query-walkthrough.json",
+      "permanent": true
+    },
+    {
+      "source": "/developers",
+      "destination": "/reference",
+      "permanent": true
+    }
+  ],
+  "api": {
+    "playground": {
+      "display": "none"
+    },
+    "examples": {
+      "autogenerate": false
+    }
+  }
 }

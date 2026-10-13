@@ -1,84 +1,43 @@
 ---
-title: "Install Kast"
-description: "Install the matched IDEA plugin and native Kast command, then connect your agent."
+title: "Get started"
+description: "Install Kast, restart IntelliJ IDEA, and connect your coding agent."
 icon: "download"
-keywords: ["install", "IntelliJ IDEA", "Kotlin"]
 ---
 
-Install the Kast command and IDEA plugin. Restart IDEA to load the plugin, then [connect your agent](/agent-harnesses).
+Install Kast once. Then connect Codex, Copilot, or Pi.
 
 ## Before you install
 
-You need an Apple silicon Mac and a Kotlin Gradle repository. IntelliJ IDEA must use build `262.*`, its bundled Kotlin plugin, and Java 25 JBR. A separate JDK does not change IDEA's runtime.
+You need:
 
-<Accordion title="Examine the IDEA build and bundled runtime">
-  If IDEA uses another application path, change the path in this command:
+- An Apple silicon Mac.
+- A Kotlin Gradle project.
+- IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
 
-  ```shell
-  idea="/Applications/IntelliJ IDEA.app/Contents"
-  cat "$idea/Resources/build.txt"
-  cat "$idea/jbr/Contents/Home/release"
-  ```
+## 1. Install Kast
 
-  Make sure that the build starts with `IU-262.` or `IC-262.`. Make sure that `JAVA_VERSION` starts with `25` and `OS_ARCH` is `aarch64` or `arm64`.
-</Accordion>
-
-## Install
+Run this command in a terminal:
 
 ```shell wrap
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
-The installer adds the IDEA plugin, Kast services, and native `kast` command. It selects stable Control and Host releases independently and examines their contracts. Compatible components can use different version numbers.
+The installer adds Kast and its IntelliJ plugin. It shows progress and reports setup problems.
 
-For structured diagnostics, append `-- --verbose` to the installation command.
+## 2. Restart IntelliJ IDEA
 
-Restart IDEA to load the plugin. Then run:
+Restart IDEA to load the plugin. Then examine the installation:
 
 ```shell
 kast status
 ```
 
-Examine the version and installation path. Use the [first query](/agent-harnesses#run-the-first-query) to make sure that your agent can call Kast.
+If your terminal cannot find `kast`, use the command path that the installer prints.
 
-<AccordionGroup>
-  <Accordion title="Install the latest developer build">
-    Developer builds are prereleases. To select the latest tested developer build, use:
+## 3. Connect your agent
 
-    ```shell wrap
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest
-    ```
+<Card title="Choose your agent" icon="plug" href="/agent-harnesses">
+  Connect Codex, Copilot, or Pi and ask your first question.
+</Card>
 
-    Keep the `--` separator before installer options. Terminal downloads show progress. Wait for the installation result. Ctrl-C stops installation.
-
-    The installer reads the published GitHub channel to select the version. The local checkout and installed version do not control this selection. The installer prints the selected version and source revision. `kast upgrade` keeps the developer channel.
-
-    Developer installation removes stale Kast state before it installs the selected pair. You do not need a separate uninstall. For the same cleanup during stable installation, append `--force`. To preserve files and registrations, use `--dry-run`.
-
-    To preserve an existing Codex MCP configuration, append `--skip-codex-mcp`. After installation, restart IDEA and your agent.
-  </Accordion>
-
-  <Accordion title="If your shell cannot find kast">
-    If `XDG_CONFIG_HOME` is nonempty, the executable path is `$XDG_CONFIG_HOME/kast`. Otherwise, the path is `$HOME/.local/bin/kast`.
-
-    Use the absolute path from the installer or add its directory to `PATH`. The installer reports a missing `PATH` entry. It does not edit shell profiles.
-  </Accordion>
-
-  <Accordion title="Select another IDEA installation">
-    ```shell wrap
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --idea-home "/Applications/IntelliJ IDEA.app"
-    ```
-  </Accordion>
-
-  <Accordion title="Install a specific release pair">
-    This command pins the [recorded release pair](/reference/compatibility#recorded-release-pair), Control 0.3.1 and Host 0.4.0:
-
-    ```shell wrap
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --version 0.3.1 --host-version 0.4.0
-    ```
-
-    `--version` selects Control. `--host-version` selects Host. Restart IDEA and your agent.
-  </Accordion>
-</AccordionGroup>
-
-[Connect your agent](/agent-harnesses) after installation. For setup failures, use [Troubleshooting](/troubleshooting). For upgrades or removal, use [Manage Kast](/workspaces).
+If setup stops, use [Troubleshoot Kast](/troubleshooting).
