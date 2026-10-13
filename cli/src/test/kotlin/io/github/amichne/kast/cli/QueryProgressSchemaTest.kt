@@ -27,13 +27,15 @@ import io.github.amichne.kast.protocol.contract.SymbolKindDocument
 import io.github.amichne.kast.protocol.contract.ToolOutputDetail
 import io.github.amichne.kast.protocol.wire.presentation.AgentInterfaceDiscoveryFixture
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
 import io.github.amichne.kast.query.protocol.evidenceBasis
 import io.github.amichne.kast.symbol.contract.CanonicalSymbolId
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -92,82 +94,69 @@ class QueryProgressSchemaTest {
 
     @Test
     fun `actual compact and verbose discovery pages admit and required semantic evidence cannot disappear`() {
+        val progresses =
+            listOf(
+                QueryDiscoveryProgressDocument.Exhausted,
+                AgentInterfaceDiscoveryFixture.resumableProgress(),
+                QueryDiscoveryProgressDocument.Blocked(QueryDiscoveryBlockDocument.PARTITION_CAPACITY),
+            )
+        for (progress in progresses) {
+            assertDiscoveryOutcome(AgentInterfaceDiscoveryFixture.complete(progress = progress))
+            assertDiscoveryOutcome(AgentInterfaceDiscoveryFixture.qualified(progress = progress))
+            assertDiscoveryOutcome(AgentInterfaceDiscoveryFixture.complete(progress = progress, evidenceOnly = true))
+        }
         with(schema) {
-            val progresses =
-                listOf(
-                    QueryDiscoveryProgressDocument.Exhausted,
-                    AgentInterfaceDiscoveryFixture.resumableProgress(),
-                    QueryDiscoveryProgressDocument.Blocked(QueryDiscoveryBlockDocument.PARTITION_CAPACITY),
-                )
-            for (progress in progresses) {
-                for (outcome in
-                    listOf(
-                        AgentInterfaceDiscoveryFixture.complete(progress = progress),
-                        AgentInterfaceDiscoveryFixture.qualified(progress = progress),
-                        AgentInterfaceDiscoveryFixture.complete(progress = progress, evidenceOnly = true),
-                    )) {
-                    for (detail in ToolOutputDetail.entries) {
-                        val document = outcome.document(detail)
-                        assertAdmits(CanonicalOperation.QUERY_RUN, document)
-                        for (field in
-                            listOf(
-                                "items",
-                                "walk_observations",
-                                "reference_observations",
-                                "discovery_observations",
-                                "relation_observations",
-                            )) {
-                            assertRejects(CanonicalOperation.QUERY_RUN, JsonObject(document - field))
-                        }
-                        val observation = document.getValue("discovery_observations").jsonArray.single().jsonObject
-                        for (field in listOf("universe", "ordering", "progress", "observed_stops")) {
-                            assertRejects(
-                                CanonicalOperation.QUERY_RUN,
-                                document.with(
-                                    "discovery_observations",
-                                    JsonArray(listOf(JsonObject(observation - field))),
-                                ),
-                            )
-                        }
-                        assertRejects(
-                            CanonicalOperation.QUERY_RUN,
-                            document.with(
-                                "discovery_observations",
-                                JsonArray(
-                                    listOf(
-                                        observation.with(
-                                            "progress",
-                                            observation
-                                                .getValue("progress")
-                                                .jsonObject
-                                                .with("kind", JsonPrimitive("invented")),
-                                        )
-                                    )
-                                ),
-                            ),
-                        )
-                        assertRejects(
-                            CanonicalOperation.QUERY_RUN,
-                            document.with(
-                                "discovery_observations",
-                                JsonArray(listOf(observation.with("ordering", JsonPrimitive("invented")))),
-                            ),
-                        )
-                        assertRejects(
-                            CanonicalOperation.QUERY_RUN,
-                            document.with(
-                                "discovery_observations",
-                                JsonArray(listOf(observation.with("examined_work_units", JsonPrimitive(-1)))),
-                            ),
-                        )
-                    }
-                }
-            }
             for (detail in ToolOutputDetail.entries) {
                 assertAdmits(CanonicalOperation.QUERY_RUN, AgentInterfaceDiscoveryFixture.rejected().document(detail))
             }
         }
     }
+
+    private fun assertDiscoveryOutcome(outcome: ProjectedOperationOutcome) =
+        with(schema) {
+            for (detail in ToolOutputDetail.entries) assertDiscoveryDocument(outcome.document(detail))
+        }
+
+    private fun assertDiscoveryDocument(document: JsonObject) =
+        with(schema) {
+            assertAdmits(CanonicalOperation.QUERY_RUN, document)
+            for (field in
+                listOf(
+                    "items",
+                    "walk_observations",
+                    "reference_observations",
+                    "discovery_observations",
+                    "relation_observations",
+                )) {
+                assertRejects(CanonicalOperation.QUERY_RUN, document.withoutRequired(field))
+            }
+            val observation = document.getValue("discovery_observations").jsonArray.single().jsonObject
+            for (field in listOf("universe", "ordering", "progress", "observed_stops")) {
+                assertInvalidObservation(document, observation.withoutRequired(field))
+            }
+            assertInvalidObservation(
+                document,
+                observation.with(
+                    "progress",
+                    observation.getValue("progress").jsonObject.with("kind", JsonPrimitive("invented")),
+                ),
+            )
+            assertInvalidObservation(document, observation.with("ordering", JsonPrimitive("invented")))
+            assertInvalidObservation(document, observation.with("examined_work_units", JsonPrimitive(-1)))
+        }
+
+    // These mutations deliberately remove required fields or supply incompatible values.
+    // Their source is a real serialized document, not a second fixed contract fixture.
+    private fun JsonObject.withoutRequired(field: String): JsonObject =
+        Json.encodeToJsonElement(filterKeys { it != field }).jsonObject
+
+    private fun assertInvalidObservation(document: JsonObject, invalid: JsonObject) =
+        with(schema) {
+            assertRejects(
+                CanonicalOperation.QUERY_RUN,
+                document.with("discovery_observations", Json.encodeToJsonElement(listOf(invalid))),
+            )
+        }
 
     private fun result(fixture: RelationPagingFixture): QueryRunResult =
         with(schema) {

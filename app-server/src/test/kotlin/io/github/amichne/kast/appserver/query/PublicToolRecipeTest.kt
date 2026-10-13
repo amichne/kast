@@ -2,10 +2,40 @@ package io.github.amichne.kast.appserver.query
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
-import io.github.amichne.kast.protocol.contract.*
+import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.ImpactWitnessSectionDocument
+import io.github.amichne.kast.protocol.contract.ProtocolCount
+import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryCompletionDocument
+import io.github.amichne.kast.protocol.contract.QueryCompletionTypeDocument
+import io.github.amichne.kast.protocol.contract.QueryContainmentDocument
+import io.github.amichne.kast.protocol.contract.QueryDeclarationKindDocument
+import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
+import io.github.amichne.kast.protocol.contract.QueryExpansionScopeDocument
+import io.github.amichne.kast.protocol.contract.QueryFromDocument
+import io.github.amichne.kast.protocol.contract.QueryMatchDocument
+import io.github.amichne.kast.protocol.contract.QueryOutputDocument
+import io.github.amichne.kast.protocol.contract.QueryPredicateDocument
+import io.github.amichne.kast.protocol.contract.QueryPrimitiveFieldDocument
+import io.github.amichne.kast.protocol.contract.QueryPrimitiveOperatorDocument
+import io.github.amichne.kast.protocol.contract.QueryQuestionDocument
+import io.github.amichne.kast.protocol.contract.QueryRetentionModeDocument
+import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.protocol.contract.QueryStaticModelDocument
+import io.github.amichne.kast.protocol.contract.QueryStepDocument
+import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
+import io.github.amichne.kast.protocol.contract.QueryVisibilityDocument
+import io.github.amichne.kast.protocol.contract.RelationKindDocument
+import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
-import kotlinx.serialization.json.*
-import org.junit.jupiter.api.Assertions.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /** Reads authored recipes so admission proof does not depend on generation having run first. */

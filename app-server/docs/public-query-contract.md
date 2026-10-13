@@ -91,6 +91,21 @@ Query binding rows carry two named cells and preserve each matching pair. Query 
 
 Executable checks are `PublicToolContractTest`, `PublicToolSchemaTest`, `KastPublicQueryProviderTest`, `PublicToolCommandTest`, `InstalledServerProjectionTest`, `CanonicalAgentToolDefinitionsTest`, and `GeneratedCliProjectionTest`. Run `:app-server:verifyPublicQueryGeneration`, the relevant module checks, `verifyKastArchitecture`, and the existing native replay for native semantic evidence. The [search guide](../../docs/public/reference/search.mdx) contains current examples.
 
+## Discovery measurements in agent output
+
+Compact discovery observations omit `examined_work_units`, `inventory_files`, `reacquired_files`, `examined_leaves`, `inventory_nanoseconds`, `declaration_scan_nanoseconds`, and `projection_nanoseconds`.
+Omission means that this presentation does not supply a measurement. It does not mean zero work.
+Verbose output keeps the exact values. Compact output keeps universe, ordering, progress, stop causes, authority, and required collections.
+
+Installed server projection version 19 carries the revised output schema.
+A consumer that needs all seven measurements in compact output is incompatible with this projection.
+The executable and broker must use the same projection version. The public request grammar and host-wire contract stay unchanged.
+
+The hosted diagnostic owner receives one measurement offer after each native discovery page returns.
+Diagnostic schema version 15 adds `kast_discovery_page` records and publication counts in the read receipt.
+Each read can publish at most 16 page records, subject to the configured diagnostic limit.
+Suppression and logger failure keep separate finite outcomes. Neither outcome changes the semantic page or proves zero work.
+
 ## Admission and evidence
 
 `tools.schema.json` is the only authored public query input grammar. Its generated Kotlin DTOs, admission parameters and provider projections are checked by `:app-server:verifyPublicQueryGeneration`. `PublicToolContract` validates the selected tool schema, decodes typed syntax and lowers it to the canonical operation. The schema and tool identities remain attached to the admitted request, so a validated value for another tool cannot be substituted.
