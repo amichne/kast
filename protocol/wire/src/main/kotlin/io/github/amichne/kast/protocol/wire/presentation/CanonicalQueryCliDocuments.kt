@@ -127,6 +127,8 @@ private fun projectComplete(result: QueryRunResult, live: LiveReadCliEvidence?):
             operation = QueryCliOperation.RUN,
             status = QueryCompleteCliStatus.COMPLETE,
             items = result.items.values.map(QueryResultItemDocument::toCliDocument),
+            originalItems = result.items.values,
+            presentationOutput = result.presentationOutput,
             failures = result.failures.values.map(QueryItemFailureDocument::toCliDocument),
             omissions = result.omissions.values.map(QueryRelationOmissionDocument::toCliDocument),
             walkObservations = result.walkObservations.values.map { it.toQueryCliDocument() },
@@ -158,6 +160,8 @@ private fun projectQualified(
             operation = QueryCliOperation.RUN,
             status = QueryQualifiedCliStatus.QUALIFIED,
             items = result.items.values.map(QueryResultItemDocument::toCliDocument),
+            originalItems = result.items.values,
+            presentationOutput = result.presentationOutput,
             failures = result.failures.values.map(QueryItemFailureDocument::toCliDocument),
             omissions = result.omissions.values.map(QueryRelationOmissionDocument::toCliDocument),
             walkObservations = result.walkObservations.values.map { it.toQueryCliDocument() },
@@ -186,6 +190,12 @@ private fun projectQualified(
 
 @Serializable
 private data class QueryCompleteCliDocument(
+    @kotlinx.serialization.Transient val originalItems: List<QueryResultItemDocument> = emptyList(),
+    @kotlinx.serialization.Transient
+    val presentationOutput: io.github.amichne.kast.protocol.contract.QueryOutputDocument? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("relation_graph")
+    val relationGraph: QueryRelationGraphCliDocument? = null,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val interpretation: io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument =
         io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument.QueryResult,
@@ -227,6 +237,12 @@ private data class QueryCompleteCliDocument(
 
 @Serializable
 private data class QueryQualifiedCliDocument(
+    @kotlinx.serialization.Transient val originalItems: List<QueryResultItemDocument> = emptyList(),
+    @kotlinx.serialization.Transient
+    val presentationOutput: io.github.amichne.kast.protocol.contract.QueryOutputDocument? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("relation_graph")
+    val relationGraph: QueryRelationGraphCliDocument? = null,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val interpretation: io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument =
         io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument.QueryResult,
@@ -316,27 +332,65 @@ private fun QueryRelationOmissionDocument.toCliDocument() =
 
 private val completeFactory =
     CanonicalJsonDocument.generated(QueryCompleteCliDocument.serializer()) {
-        it.copy(
-            failures = it.failures?.takeIf(List<*>::isNotEmpty),
-            omissions = it.omissions?.takeIf(List<*>::isNotEmpty),
-            discoveryObservations = it.discoveryObservations.map(QueryDiscoveryObservationCliDocument::compact),
-            executionBudget = null,
-            live = it.live?.compact(),
-        )
+        it.compactGraph()
+            .copy(
+                failures = it.failures?.takeIf(List<*>::isNotEmpty),
+                omissions = it.omissions?.takeIf(List<*>::isNotEmpty),
+                discoveryObservations = it.discoveryObservations.map(QueryDiscoveryObservationCliDocument::compact),
+                executionBudget = null,
+                live = it.live?.compact(),
+            )
     }
 private val qualifiedFactory =
     CanonicalJsonDocument.generated(QueryQualifiedCliDocument.serializer()) {
-        it.copy(
-            failures = it.failures?.takeIf(List<*>::isNotEmpty),
-            omissions = it.omissions?.takeIf(List<*>::isNotEmpty),
-            discoveryObservations = it.discoveryObservations.map(QueryDiscoveryObservationCliDocument::compact),
-            continuation = null,
-            terminalReason = null,
-            live = it.live?.compact(),
-        )
+        it.compactGraph()
+            .copy(
+                failures = it.failures?.takeIf(List<*>::isNotEmpty),
+                omissions = it.omissions?.takeIf(List<*>::isNotEmpty),
+                discoveryObservations = it.discoveryObservations.map(QueryDiscoveryObservationCliDocument::compact),
+                continuation = null,
+                terminalReason = null,
+                live = it.live?.compact(),
+            )
     }
 private val rejectedFactory = CanonicalJsonDocument.generated(QueryRejectedCliDocument.serializer())
 
 private const val MAXIMUM_QUERY_CLI_TEXT_LENGTH = 1_048_576
+
+private fun QueryCompleteCliDocument.compactGraph(): QueryCompleteCliDocument {
+    val retained = retention as? QueryResultRetention.Retained ?: return this
+    return when (
+        val projected =
+            projectRetainedRelationGraph(
+                retained.reference,
+                items,
+                referenceObservations,
+                originalItems,
+                presentationOutput,
+            )
+    ) {
+        is QueryRelationGraphProjection.Projected ->
+            copy(items = projected.items, relationGraph = projected.graph, referenceObservations = emptyList())
+        is QueryRelationGraphProjection.Ineligible -> this
+    }
+}
+
+private fun QueryQualifiedCliDocument.compactGraph(): QueryQualifiedCliDocument {
+    val retained = retention as? QueryResultRetention.Retained ?: return this
+    return when (
+        val projected =
+            projectRetainedRelationGraph(
+                retained.reference,
+                items,
+                referenceObservations,
+                originalItems,
+                presentationOutput,
+            )
+    ) {
+        is QueryRelationGraphProjection.Projected ->
+            copy(items = projected.items, relationGraph = projected.graph, referenceObservations = emptyList())
+        is QueryRelationGraphProjection.Ineligible -> this
+    }
+}
 
 internal fun QueryReferenceDocument.toCliDocument(): String = token.value

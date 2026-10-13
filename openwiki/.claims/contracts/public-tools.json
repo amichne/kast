@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:9463cd678b62774abdda5c66c9be42e69209af593abadffe534044c0adbd141f",
+  "pageVersion": "sha256:bcdfccee03312b6386dc42edc4c998e143a5bab83665f92670c7a1260d700fdb",
   "claims": [
     {
       "id": "claim_d5f49799d6a64a78a95f34b3ba0fa09a",
       "statement": "The authored tools.schema.json generates Kotlin DTOs, per-tool admission and strict Responses schemas, examples and App Server registrations; check mode rejects any stale generated artifact.",
       "evidence": [
         {
-          "resource": "repo://packaging/generate-public-query.py#L488-L526",
+          "resource": "repo://packaging/generate-public-query.py#L514-L552",
           "version": "repo-lines-v1:sha256:94373d8b7b4e73d1639969c94e24a12d62e722e0a8f9a0f572aa9df8cc095e6c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExMDFhMmQ5YjhlZmRkODg2MTQ1Zjk4ZTg0Nzg0Mzc0OWY5ZWEyN2U5Mzg0NmIwNDg2Mjk5MDUzYmQ4YmIxNGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmNDRkZTQ0ZDdiMzUzYzFmZDRkMjljMTRhMDQwMmUwMDJlYTgzNTNlZGM1ZjdhZjM0NzUxZDY3NTJjNDE4ZDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJlZjEzMjY1NjFlMjFiNDdjZDdmYWFiNzc3MzJlMDU2NjljYzJjY2YxNDlkYzNmZjI0YjUzZDhiYTM2YTVlMjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIxMzVjYzI2Zjk3ZGMxY2RkNmM3NGVlZThhZjI0NTI3YzVhODYzMzVlZmU1Y2RiODA4N2Y0NDQyNzBhNzBkMmYifQ"
         }
       ]
@@ -170,11 +170,11 @@
       "evidence": [
         {
           "resource": "repo://copilot/extension.mjs",
-          "version": "repo-file-v1:sha256:80473b22b4748e3a23f2f135293cbdf0295830f2c20b14b2e7e000e9dd37fff8"
+          "version": "repo-file-v1:sha256:12d72f3ff06a913e91aef3239b0785ff5876e06ae57b9a429edf019e1c10c915"
         },
         {
           "resource": "repo://pi/extension.ts",
-          "version": "repo-file-v1:sha256:0a94c048c920c44425f817fe8e1f02db47df1f0150fa352d48d843d98c336975"
+          "version": "repo-file-v1:sha256:552c0d041900b22a533d7b3b2dbf1b9559c52d13d287c8496f6cdc182ec92bb7"
         },
         {
           "resource": "repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt",
@@ -188,11 +188,11 @@
       "evidence": [
         {
           "resource": "repo://cli/src/test/js/harness-adapters.test.mjs",
-          "version": "repo-file-v1:sha256:23f3b65560b5b7076589b8a8e4c1b0aa4588f019f1e9338a574002c11a82eeac"
+          "version": "repo-file-v1:sha256:235269a06c4e6fb40b9297dd265e98cea87e748243bf7886e1b59898368fb15f"
         },
         {
           "resource": "repo://copilot/extension.mjs",
-          "version": "repo-file-v1:sha256:80473b22b4748e3a23f2f135293cbdf0295830f2c20b14b2e7e000e9dd37fff8"
+          "version": "repo-file-v1:sha256:12d72f3ff06a913e91aef3239b0785ff5876e06ae57b9a429edf019e1c10c915"
         },
         {
           "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt",
@@ -200,7 +200,7 @@
         },
         {
           "resource": "repo://pi/extension.ts",
-          "version": "repo-file-v1:sha256:0a94c048c920c44425f817fe8e1f02db47df1f0150fa352d48d843d98c336975"
+          "version": "repo-file-v1:sha256:552c0d041900b22a533d7b3b2dbf1b9559c52d13d287c8496f6cdc182ec92bb7"
         }
       ]
     },
@@ -268,11 +268,11 @@
         },
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt",
-          "version": "repo-file-v1:sha256:299bafc211f1c017ce15997a66867902b36006796142ddad238d52bae1017e73"
+          "version": "repo-file-v1:sha256:69da98fa26a1913522500654b4b8d4698c89f5bd1ce97a786541d06fec303afc"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt",
-          "version": "repo-file-v1:sha256:90a9f73d789e5ab379f04ee15db525a1e1d3f9d783d1b1023292707fa782da3b"
+          "version": "repo-file-v1:sha256:680933b85bef3cb29892f3bbccee8dedd2c055201681774d70f3544112d9b0b6"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidenceRead.kt",
@@ -280,7 +280,7 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt",
-          "version": "repo-file-v1:sha256:e6f788df208a5c43692b732f634d1286139da3f802abd915b4429f9b3181fc0a"
+          "version": "repo-file-v1:sha256:877ee3ba0deef8350bea52ae9d00fbd1b1e0ee797454e7936b242f0d633ec5bb"
         }
       ]
     },
@@ -298,13 +298,63 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt",
-          "version": "repo-file-v1:sha256:e6f788df208a5c43692b732f634d1286139da3f802abd915b4429f9b3181fc0a"
+          "version": "repo-file-v1:sha256:877ee3ba0deef8350bea52ae9d00fbd1b1e0ee797454e7936b242f0d633ec5bb"
+        }
+      ]
+    },
+    {
+      "id": "claim_4096dc4d27f141d8909139c7b9c738d6",
+      "statement": "Compact retained occurrence and SYMBOLS pages preserve exact selectors, compiler identities, source locations, and distinct qualified connections within their retained basis. The existing verbose READ_RESULT retrieves full compiler signatures. Full descriptor conflicts or absent row identity preserve full output.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryRelationGraphCliDocument.kt#L15-L87",
+          "version": "repo-lines-v1:sha256:88e289f0dff1adac6c591b6a6adbece5c62fa68089db0c33a2d8c4efffd3f22e:eyJzZWxlY3RlZExpbmVDb3VudCI6NzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwODhkNTBmZDM5NDVkZWI4ZjRkNDU0MDIxMDAyMDVmNmE5OGE4ZWI4NGRmM2NlYmQ2MThiYjU3MzUwYTViZTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA4ZmJlYWM5ZGFmN2Y1ODNhMWVjMzc4Y2RjYWNmMmY0YTgxNTlhM2MzZDgwZDJmNzRkMTRmNTdkYzQ5MzQ3MzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc5MmI2NzQ1YzFjNTFjMDA5OTI5YTc1YWE4YmNjNDdjNTczNzc2ZGRkNWI2ZTFiZDNmZDJjZjdhYzJlOTIxNjEifQ"
+        },
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/RetainedRelationGraphProjection.kt#L176-L185",
+          "version": "repo-lines-v1:sha256:b20946c1b390c5e8e9c02d345ed3d0b1be8314786297cddbe056ce1d1bee0aa8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMzI4YjFiMjRlN2EyZTRkOTJiZmU5OGM0NWZmMGJmYzAyZGU0MDlhZDcxYmY5ZDhlNGFlNzJkYTA0OWI5YWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA3OTQ5ZTNiYjM1OGE2ZDU4MTAzZTJjOTUxYjVkMTIyNzU2MjlmNzEyYWFhNDYyMmRmNDdkYTdjZjY4ZGM5NGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcwMjZjNDFjYWZiYzY3Mzc2ODYzODkwODAxOWUyY2I4MmI4MjI2YmM1M2RiYTM4YzEyOWJlNjYxYTBmOTNkZjYifQ"
+        },
+        {
+          "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphNodeRetrievalTest.kt",
+          "version": "repo-file-v1:sha256:48e1015613e33b5f0991e5589f309af5a441307a48971365b67ce0e89f927ad2"
+        }
+      ]
+    },
+    {
+      "id": "claim_6f441e63b49d4bed976f7b0a46d8b227",
+      "statement": "The shared client rejects a graph with a different retained basis and counts graph reference observations for evidence cursor progress without changing original semantic coverage.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/js/query-delivery.mjs#L157-L177",
+          "version": "repo-lines-v1:sha256:396ea00e89c2ea6249a53f0c1ca36acb59ade154848bc15a2ca5a7868389a0de:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3OTg5ZDE0NTljZGY4ZTkyZjhjOTQ0ZWI4OWE2MDEzODU1YTFhZmY0NDM0MmU5MjZiMTMxY2MyY2ZkOTIzMTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4OGUzYmYzZGQxYTI1ZWQ0ODM0MjNkYTEwNWZkZmNjNjZjYjJhNWViYmUzZDZlYjlkMTI5ZjU5OTAyMDZlYWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU2YWZlYTMxMDk0NmI3NTNlZTAwMzYxNmI0YjJhMGM4OTFhMmM0MzA0YjEyYzczOGE4NWQ3NmI2MDZmMGRlOGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImEzMGViZDZlZWFjNTNlMWZjYmY5Y2Q2ZmMzZDk0YWY4NzY1NjFiZTE4OTYxNGZjYTlmNGY3MTRiNzU3NDI1ZTYifQ"
+        },
+        {
+          "resource": "repo://cli/src/test/js/query-presentation.test.mjs",
+          "version": "repo-file-v1:sha256:a16e2cb4469fc8d8916bf0a21ceefc3c0538c8ebdf0bfa88df316ec77f742da4"
+        }
+      ]
+    },
+    {
+      "id": "claim_8220dfe97101424d92a9eda7eb27e3b3",
+      "statement": "Retained SYMBOLS compact projection needs the actual current selection and shares a declaration-owned witness only after full relation-fact equality. Legacy output without selection proof remains full.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/RetainedRelationGraphProjection.kt#L143-L173",
+          "version": "repo-lines-v1:sha256:cde7ff00c1573cf4bc168e21de6336c4428c56d84ab9148757e65e14032462ab:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyMmQxZDdmMjE3YWVmZWY4MDU1YWMxYzM5YTg1ZmM1ZmNhZTAyMWRhODliZTVmZjZmMzc0ZmE5NGYyNmFiMWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEzN2FjMjc4MTg5YmVmMDY1ZjBlYTRiMDA1ODNhZmRjMzM4MTAxZTcwYzczN2MxMzdhMzA3MjZlOTI4YmZhNTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI1OTM3Mjg0N2EyOWRiNjkxYTJmMzNiZTQwMWU3MTBhOTY5Y2IwNWE0OWQxZWJjY2YzMzBlYjYyN2E0ZDk2YmQifQ"
+        },
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/RetainedRelationGraphProjection.kt#L266-L310",
+          "version": "repo-lines-v1:sha256:c67d1967d27532e86e4d0987748342fbd7163b6c42a22fae1fe98edfe0f64d40:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlZmJmMWZiOTc3NDM0YTg1ODBjYjE1YTIyNDRhZmNjOTQ2ZjU1ZmJkOGMzNjI5MDIxNzE4YThmZDg1Y2IxODkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVkMjliNzI4MGI4NmQyYzlmNjE1ZDNiNzYzNWJlY2M5N2Y5YzM4Y2I2MmNiMGQxZGNlNmIxMWI2ODNkMzM1OGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlYTgwNmRjZTJhOTlkMWQwOTg4Mzk2MGI1ZTc5NjAwNWIzYzI5NWE5ZDdkNGU2Mjc0OTQ1MDI1NGI4Mzc1YzcifQ"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultEnvelope.kt#L35-L43",
+          "version": "repo-lines-v1:sha256:b55550c83c8d3d60fde4c757f9988dbc7774cd4a11e4a719a93d2f5fa87363dd:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzY3MjZkMTk4NzljNGE5OWNlOTcxMzY1MWUyMGZhMjYxMmU3MDY1MmQzNzE4MzRiY2JjZWQ0ZTA3ZDVlYTU0NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTQzM2QwZWE5ZWNmMmYzOWM5YTUwNDA3Mzk1ZWU0MTE3MmZlNjgyYzljODg1YTM1MDhmNzViZGVlMTUxZWZmZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjMzNTY0NGE4MDU2NDIwMzEyMGI1NjgxNzYzZGI4ZjAyYjkwYzQwMGExMGVjMmM1NDhlMDVlNDRjZDk5ZWVmMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzBjMWYxODhmMTQyZWQ3YTgyNDY4MGIyMDcxNzJjNTUxOWJjNjE0YTQ4ZmRhN2NmMTY3ZWRiOGRkZjc5OTU2YyJ9"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-09T15:03:18.986Z"
+    "at": "2026-10-13T16:27:31.406Z"
   }
 }

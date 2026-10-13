@@ -93,8 +93,26 @@ internal fun nativeRelationRequest(
 
 private const val NATIVE_RELATION_BYTE_LIMIT = 100_000L
 
+/** The compiler supplies current identity before the full adapter can revalidate the selector. */
+internal fun reissuedNativeRelationRequest(
+    request: RelationRequest,
+    evidence: CompilerGroundedSymbolEvidence,
+    meaning: RelationMeaning,
+): RelationRequest {
+    val file = evidence.file as io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity.Workspace
+    val selection =
+        nativeDiscoverySelection(
+            lease = request.subject.lease,
+            file = Path.of(file.path.value),
+            offset = evidence.range.startInclusive,
+            scope = request.searchScope,
+            resources = request.budget.resources,
+        )
+    return RelationRequest.start(SymbolSelector.issue(selection, evidence).nativeRefined(), meaning, request.budget)
+}
+
 private fun nativeDiscoverySelection(
-    lease: SemanticReadLease,
+    lease: io.github.amichne.kast.workspace.contract.SemanticReadAuthority,
     file: Path,
     offset: Int,
     scope: SymbolSearchScope,

@@ -119,7 +119,7 @@ internal fun retainedStorageBytes(
                     observation.scopeExclusions.sumOf { it.exclusion.canonicalProjection().utf8UpperBound() }
             }
         )
-        .saturatedAdd(coverage.toString().utf8UpperBound())
+        .saturatedAdd(coverage.retainedCoverageBytes())
         .saturatedAdd(lease.toString().utf8UpperBound())
         .saturatedAdd(sourceText)
         .saturatedAdd(rows.fold(0L) { size, row -> size.saturatedAdd(row.textMatches.projectedUtf8Size()) })
@@ -134,6 +134,30 @@ internal fun retainedStorageBytes(
 }
 
 internal fun String.utf8UpperBound(): Long = length.toLong().saturatedMultiply(MAX_UTF8_BYTES_PER_UTF16_CODE_UNIT)
+
+/** Keeps the prior accounting ceiling without strings or process-specific object hashes. */
+internal fun QueryCoverage.retainedCoverageBytes(): Long =
+    when (this) {
+        is QueryCoverage.Complete ->
+            COMPLETE_COVERAGE_BASE_BYTES.saturatedAdd(
+                resultCount.decimalUnits().saturatedMultiply(MAX_UTF8_BYTES_PER_UTF16_CODE_UNIT)
+            )
+        is QueryCoverage.Qualified -> QUALIFIED_COVERAGE_BYTES
+    }
+
+private fun QueryCount.decimalUnits(): Long {
+    var remaining = value
+    var units = 1L
+    while (remaining >= DECIMAL_RADIX) {
+        remaining /= DECIMAL_RADIX
+        units++
+    }
+    return units
+}
+
+private const val COMPLETE_COVERAGE_BASE_BYTES = 120L
+private const val QUALIFIED_COVERAGE_BYTES = 210L
+private const val DECIMAL_RADIX = 10
 
 internal fun Long.saturatedAdd(other: Long): Long =
     if (this < 0L || other < 0L || this > Long.MAX_VALUE - other) Long.MAX_VALUE else this + other

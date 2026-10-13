@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:86d9ff81121ac1b663f373660c773b1f151990c2aa0813df840f293fd22c7939",
+  "pageVersion": "sha256:e4b513f2edb6132a924cc79ba08676e841b8caf703bccf96a5dd25b3576a260b",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -48,7 +48,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceReinstallation.kt#L54-L87",
-          "version": "repo-lines-v1:sha256:db4ffc5f070e4dc6ba92c511d2efd16b244bdb5412879f860c48c82c9f84e64e:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1OGI3NzdmYzMwNWY2ZTk0YmQyNzk0YWQ2ODc1MjBiNTIwYjc1OTU3YmIzZmZlZTM2M2EyYjRlNDNlZWJhOTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhNDY5M2U1ZmYxMjk4ZmIwNTdmM2MzYTU5N2FhODcyNDY0OGE5YmRiZTEzNWY3ZmY2Y2ExZWU1NmExNGNjMzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwMDExOTI5M2Y0NzAzYTlmYmE4OWFlMzM2ZmUyZTY1NjIwNTFmNDM4ZDg0OWEzYjk5ZjEwODZiOGQ0OTBjZjkifQ"
+          "version": "repo-lines-v1:sha256:0f6de962b0654bb0f2d85bcaa702c570a6b044dec09753ebfb3818778438c84f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1OGI3NzdmYzMwNWY2ZTk0YmQyNzk0YWQ2ODc1MjBiNTIwYjc1OTU3YmIzZmZlZTM2M2EyYjRlNDNlZWJhOTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhNDY5M2U1ZmYxMjk4ZmIwNTdmM2MzYTU5N2FhODcyNDY0OGE5YmRiZTEzNWY3ZmY2Y2ExZWU1NmExNGNjMzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwMDExOTI5M2Y0NzAzYTlmYmE4OWFlMzM2ZmUyZTY1NjIwNTFmNDM4ZDg0OWEzYjk5ZjEwODZiOGQ0OTBjZjkifQ"
         }
       ]
     },
@@ -71,7 +71,7 @@
       "statement": "Failed staging or activation triggers stopped-state compensation; when compensation fails the reset outcome retains both the original failure and the recovery failure instead of manufacturing completion.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetExecution.kt#L140-L157",
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetExecution.kt#L155-L172",
           "version": "repo-lines-v1:sha256:000edd43f70c9ee49c69324e344ebdc8e8bd5bbbd87513f76fe4c12668672593:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkZTE3MzBmNTMxMDE4YjVkNzFiZjI4ZGI4YmQ3OGJmN2FlYjk1M2MxMGFlNmUwNzkwNjI5YWExNDk4NTM2N2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
         }
       ]
@@ -86,7 +86,7 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:6e024696fed21fbe2935599d84ba9508e602ce458055c86c648ab2e68a4b3491"
+          "version": "repo-file-v1:sha256:d84b7816ab011fe4dc1682aafb8760346d9472a8baa8d01e084edd167c797566"
         },
         {
           "resource": "repo://packaging/host-installation.py",
@@ -122,7 +122,7 @@
         },
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:98dc54e5596afc2195055c80a6eb73aff33c6370ef8475766f4bb897dd277c54"
+          "version": "repo-file-v1:sha256:0cbd08f040ca1756f7b35bd51cbccfe57604ccc6fc87f99ec7d773f176af5062"
         }
       ]
     },
@@ -135,7 +135,7 @@
           "version": "repo-file-v1:sha256:25a0bddfbcc6fcde44e799fdd58fdf1b5e080f33172a043694dfb8c9ede86282"
         },
         {
-          "resource": "repo://install.sh#L574-L598",
+          "resource": "repo://install.sh#L580-L604",
           "version": "repo-lines-v1:sha256:61b79c53302dbd050f51a56b9467d1271544d67aad22237e5c8febf726ae7526:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVmYTE4NWY2MGNlZWUwNGJmOTI0OTI0YWQ1NzRjYzZiM2M5MGRhNDI0ZGI2YjBjOGNjMDZiNGJhNjI2YmE2NmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM1ZmM5MGZmOGE0NDE0YzU0NDFkMGY2NzdjNWNiZmRhMzhiNDc0ZTUxYmZkNTU5YTU1NTlkZTBmODc3MDU1MjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ1ZjYzMTQ1NzAyOWY2ZjgxNzc0M2VkMTQ2MmJlMjg1YTFmYmNjMjM2ZWVlMTQwMmQ4NjQ4NjkwODJkOTk2N2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhkYzRiNDU2M2QwODdmM2Y1ZjI2ZWEwOWI0YTBkMDkxZDc5ZTkzMjg3NTc5ZDY2MDFiZTMyMDdjMTJkMmI2MmQifQ"
         },
         {
@@ -153,7 +153,7 @@
           "version": "repo-lines-v1:sha256:5fb91fbe67679114dbc2cc07a1ee59663734a36dfdd618581ceb11c3be3fc11f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwODMzMTE3ODE4OTMzYWMxNTA4MThkZjMxZTQ3ZWZjYmE2ZGE2ZjNjMDNkYmIzOTExZmQ2NmYzYjYxZTk0OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyMTRmYTBlZjIyMmY5OGZhZDg4ODAxMDcwOWE0NzgxOGVjMTVmMTVmNDkxMjFiZGI1NzI1OWI0YzBkNjNiNDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzOTJmZTM3MTljNzFiNzdkZGU2YzAzMDFmYTNlYmNiNTVjYjNlZTExYzBhNWEyY2E3NTc1ZWUxNzkzMTQ5OTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdkMjBmYzYxMTc3N2M4OWRkYjlmZmJhMDE5ODk1YmI3NzVjMmVhMTg4ZmJkNzhmYjUwYzFjOGZiNThlMzFjNjYifQ"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt#L32-L46",
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt#L35-L49",
           "version": "repo-lines-v1:sha256:dec0b8190c9cbf52b5b0f1b50a2c2ef28a73332862ac5cf860caede83c51e7c8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkZTMwNTkyNDcxZGI4ZWIyY2E3ZGM2YjBjMGYzNzg3ZGNhOGVkMDIwNDJiMDViMDBjNzhiZTU5MDYzMGU2YTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA0OGU0OTZhMDQzZjFhYTMyNmI1MjNmOGQwOGQ4ZTg1NWJjZjM3N2ZlMDI2OGUwNDU1NTc0MWM0NjFkYjFkNzciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQyMWJjYTM4NTI0ZTYwYmQ1MDI5ZGViYTAyMTA0ZDg0YWIyMDA2YWFlMDBmZDFiODJhN2YxYzgzY2M1ZDMzZTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg3M2MxYzJkZWJjM2I1NDFhMmQzODZiZWM2ZWQzNDU4NDJmZjg2ZjIwMDc2NDk5MTJmM2ZmMzI1Yzg3MWZlN2QifQ"
         },
         {
@@ -167,7 +167,7 @@
       "statement": "Assembled-product acceptance stages production Control in an owned HOME, verifies canonical cold staging and publication, then stages the receipted Host, creates an empty canonical mutation database and invokes the real published native uninstall, requiring owned Host, Control, public executable and user-state removal while preserving an unrelated sentinel; it does not establish live IDE or Codex behavior.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L269-L291",
+          "resource": "repo://build.gradle.kts#L271-L293",
           "version": "repo-lines-v1:sha256:c63ebb273fccf68e2a3c0f1cbab575687a341afc2488c43a61044c28d63cfb1d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlYTVmNjVjMTE2ZTQzZGMzODJmNzkzYzE2MGI4NmE1ZTBjZDMwMjc4Nzg5ZTkxM2M0NDdhMGJlYjkyMzc3NGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdjMmM1MTE5MzI3MjZkMjc5MTVmMDlhZGUxNTlmMThlZjE3NjkzYzY2ODk3NGZjZjg0MDQ0YmE3YzRmMTU5N2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ2ZDE3ZjYwNzhkNzM1YTY5MmM1OWM5MTAwOWE2NDYwZmYzZTQxZjZjZDU5MzBjOGFiYmU3ZDFmMmU1NTI0MTgifQ"
         },
         {
@@ -175,7 +175,7 @@
           "version": "repo-file-v1:sha256:82f00cd72889105c170a2dd2bd2b326775607ef7634b0ba6cfc2619ea772c67c"
         },
         {
-          "resource": "repo://packaging/run-installed-product.py#L178-L218",
+          "resource": "repo://packaging/run-installed-product.py#L179-L219",
           "version": "repo-lines-v1:sha256:aaac73ce77b6635d91f47ad958eec0d56473829859b30bbd34056c129652484c:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlhODQ1ZGExZTk1NDU1ZDAyY2QyY2M0OTJlOGRhYTZmMDI0MmUwZjc0Y2IwZTM5OTA2MDcxYmRiZTIzYzIwYTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiNDVlYmUyOTI0M2ZkMWY0Y2FiMzM2ZTI5NTYwZDc4MzRlNmE3YTQ3NmMzYWEwM2JmZGE5NjViNmQzMTQ5MTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRkN2UxNDE2ZTFhMDU4ZmQzZGIyYTIyMWYzZjIxZGIyNTM3Zjc3OWIxOGExZGIzNjAwNTA5ZjBlMjZiNzNlZTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY4NzhlYjQyOTc4MDFjZTFlY2I0OGJmNmIxYzk3YTZmNDQ5ZTI4M2Y5ODQxYTUxZTJlMjNjMmQ0NjEyODY5NjEifQ"
         }
       ]
@@ -247,7 +247,7 @@
           "version": "repo-lines-v1:sha256:6be3d9ba98a1d559ddc67c5bfae38c81d8d2dcf712b530b31af6c2e81b61d766:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiMjY4YzllYTNlNjJhYzY4ZmRjNjViNWU1MTE5NDFlNmMxNGIwZTM0MDlhMDNiNjAwNjAxZjM0MDcxNWUxZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA0Y2RlMWJhYTU3YTc1MTI0OGRjYjZiOGM4OGE2MTY4YjhhZTFjMmU0ODUzOWNlM2U2OTg1NDc3NzMxNGJiODIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ5YWVjMzQwMTg3MDQyMTU2NGI1OWJkOTBjZjRhNTY4OGI4ZmM3YjYzZmE2NWFkODA2Y2NjMjE4NmVhODc5NGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjExNzY0MzNiMzA3MTNmMDRkYjI3YjM1NTMxMTI3MGI4NDc5YWYxYjg4NWY4YmU0YTkzMmQxNTc3ZDI4OWZiYzYifQ"
         },
         {
-          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt#L226-L235",
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt#L247-L256",
           "version": "repo-lines-v1:sha256:d811038e2cba936aa0ecce9441c55f0d5f33324348177499340e667efd462fcd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYxMTg2Y2JkMGYyZTFlNzJhYzBjYjdiMDBmODJiYzhjMTk0ODdiYjRiZjgxZmFkMzJhMjQxZDQ3MTc2NzBlMWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYxYzgxZmE5YzQxMjAzNTI4ZTBhODdmY2UzM2I1Yjg5ZWM0ZGIxMTFmMTQzMDBkNDRjNjRmNDJjNjhhMjA1MmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk1NDEyYzc0OTRlMDgxYmQzZDg4N2QzNWU5ZTE3NzJjYTFmZWFhNWZhZGQ2MTc4MWY5MDQwOWE1MzJkZmJhMjgifQ"
         }
       ]
@@ -257,24 +257,12 @@
       "statement": "The public installer parses the explicit Codex registration choice once: Control-only, Host-only and Control cold staging default to skip and accept explicit skip in either order; explicit registration requires a paired installation and rejects component installs before download or installation effects.",
       "evidence": [
         {
-          "resource": "repo://install.sh#L523-L572",
-          "version": "repo-lines-v1:sha256:6e02463ba6deb55e154fb98eb6ad931d39e2a02e0aa283cb6fd15b62fd6227e1:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVmMWFiZmE5ZTUyZDc4NWU2OWJiMjFhOTJhZGM4MWNhNjlhNzY1YmU0M2Y1NjcyOTJmZDBhOWE3MDM5MmM2OTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM3NjlkMjM3Y2Q0MjBiOWQzOGI5ODFhMGE0ZjY3NzAxOTBhNGE4M2RjYTFmZTU2YzRmNWJhMWUyY2JjMGVmNzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMwNGEyOTEzZmExYjY0Njk0MzQ2MTFlNDRlYjJjOTI2ZTgxN2MzYzU0ODhjMTgxMTI4ZTA2N2U1YjA1N2E3NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQzMmFlNGZmZmQ1OTRiYWNiMDRlNjg3NjdlZGU5MzgzNGI3MTkzMzY1Njk3ODBmNzI3NmMwZjRkMjI3NmFiMTUifQ"
+          "resource": "repo://install.sh",
+          "version": "repo-file-v1:sha256:0cbd08f040ca1756f7b35bd51cbccfe57604ccc6fc87f99ec7d773f176af5062"
         },
         {
-          "resource": "repo://install.sh#L755-L768",
-          "version": "repo-lines-v1:sha256:cdf06392883f5660c24887c217696204fade5f5cd07838980f5029b910d3ddd7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQzNzYzYWI4MmQ2ZGMzNTc5MGU5NjM2ZWZmYjZhYmY1YmU3YzQ2NzZmNDI3NGI0NjY1ZjVlYTE0NTdmNTU2ZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM3NjlkMjM3Y2Q0MjBiOWQzOGI5ODFhMGE0ZjY3NzAxOTBhNGE4M2RjYTFmZTU2YzRmNWJhMWUyY2JjMGVmNzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZhMzY3ZmZkYTEzOTA3M2U2ZjJiM2UxODEzZTJmYTYzZjFlZGZmYTkxNmExYjJiYjlhMjgwYmU2ZDg1ODFhOGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI1ZTc4Y2M4OWE4NjcxYjIxZjNiMjQ3OTFiNDhjMDkyZDU2NGFjYTA5MmJlNGY5ODEwMDQ1OGQzYjkzNTM4MzUifQ"
-        },
-        {
-          "resource": "repo://packaging/test-installer-entrypoint.py#L541-L568",
-          "version": "repo-lines-v1:sha256:bb54c65f912eb897e467c3b580652dc824cfc59ad743c634628f1a2b96007dd4:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY3MDkxYTIxMzQwOWFhYTczYjI3NDkyYzUxNDQxMDJhNjdmODkyNDM3NGNkYjQwOWYxNDcwMzY1NjNkZjlkZTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMzZWM1ZmM0NTQzMTVmMTEyYjA2YTlhN2FlMWM2Y2U0OGVjZDJkNGY1YmNkNmNlNzlmZGU3MTA3Y2YzY2QzOWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJlZWFjYjc0NzQ2OGVjYTY2NGRmYmYxYjQ2ZDIxMzJjMDE2NjlhZWNlNTgwNTQyOTI2NzNkZDY2MWQwZTYyNzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVjM2M2ZWFlYThlOTJlMjQwM2IwYjRjYTZkMDYzOTg5ZGJjMTJkZjNjZTQ5Y2NhZmJhN2YzOGEwYzBkYWE0YzAifQ"
-        },
-        {
-          "resource": "repo://packaging/test-installer-entrypoint.py#L603-L628",
-          "version": "repo-lines-v1:sha256:ee63bdb07eb2ab138f19011b8a4ea6348555b7a3fb5fcc8011782a6198694a68:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhNzAwODkxMzM2MzZkZTQ5ZDVjODcyNTI5YjFmYTMwZjYzMzI5MzU5YzJhM2I2MThiNTlhMzUxZjlhNTNmZWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwM2Y4ZDM4YjcxODFjOWJlMGVjZWU1MjkxYmY1OTUxZmFjMWYwNzBjMDA4Mjg0MWRmZmFiZTA3Y2ZhNDQ4OWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBhMTRhYjYzYTE5NjY4MTQ3OGJiNDA5ZmIzZDhiODlkOWIwOGEzZWZhNTExYTYwMGNhYWVlZjA3Y2Y0ZTUwODEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAwYjU2NTZhNjA5NjAxODQ4Mjg3MGU1Y2I4MzYzNDQyMzE1ZmZmY2NjNjI3MDA1YWJmZmIzNmM0Y2U1YWQzNGYifQ"
-        },
-        {
-          "resource": "repo://packaging/test-installer-entrypoint.py#L720-L738",
-          "version": "repo-lines-v1:sha256:6a32dcf5347bc25e747fba0380d53804b1f51c13b332c37f45842e44925a8185:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE2NzgzZWU1MjlkNzc5YmUwNmRmOGJjMzQ4MjFiYTkzODI1MzRlYzliY2Q1YmJjMGMwYmQzNTFjZjMyNGUzNDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4MjIyODkzYzlmNTU4ODg0OTNmNDlhMzFiNmRlNTU0NTgyYTk3NTU2NmJjN2E0ZjY4NmVlOWIxZDZhNjVjYWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAzNjk5MWJhMGJkZmY5MjhjOTA2OTIwZDAzY2FhOWNjMGQxN2FhOTM4NWIxNGNjYWNiZDE5OWJiODgyZDAzODUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg5YzZmNzVhZTdmMTFhNTgwNjNlN2JmODdiMDNkNGY3NzE4NDdmODg0Y2JhOGM1NzYyOTMzNTZkNDkwYzZiYjcifQ"
+          "resource": "repo://packaging/test-installer-entrypoint.py",
+          "version": "repo-file-v1:sha256:a34ab690e33be19092a386ac3ea43b1c8be304037099be8f7351809edde4fc3e"
         }
       ]
     },
@@ -328,7 +316,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:1c2e859a1c3ebfd7a810d4b4bd1fc7dc8528ec354e02abd3b7d04bd2b5d6b845"
+          "version": "repo-file-v1:sha256:f57f16469672f26932cd5b781561f3619d67cf4b2d9e44d127d8a33d0fd44d04"
         }
       ]
     },
@@ -359,8 +347,8 @@
           "version": "repo-file-v1:sha256:0a03e166df92557b9de822f5a682334b5bbec1d1582aba64314f694ddf96fe93"
         },
         {
-          "resource": "repo://.github/workflows/ci.yml#L104-L150",
-          "version": "repo-lines-v1:sha256:55844767a3a073cc32217d88565302ba2a9f62f6f4474c141cb5938328eae90f:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1OTRjZmRjNjRjMzAyZDQ0MDE1NDE5ZjdiMDJiYmJkYjMxNDk2OTJlNWY1OTBjN2Q3MDU3ZjYzYWMyZjdkOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OGJmMzg0ZmQyMGNkZjkwZGQ5OTVhZWZkZjI2NWRjNDNjZWViY2Q0NjdjYzU5NTlkZDdkMjMxNTkxMTE3NDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRlNGNiZGE4MTE5YjBiNmVmMTI3ZGVhZjlkNjEyODJlODQ0MjEwZTk1MzY1OThjZDc0Y2IwOGJjNTcyNGZmYmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIyZmUzYjc4Y2ZlOWMwYmUzMjFhODNmNzc2MjUwMDdjODJjOTgyNDRhOThkZDNhZGJlYzhlZGE3NTU0ZmM2OTkifQ"
+          "resource": "repo://.github/workflows/ci.yml#L104-L149",
+          "version": "repo-lines-v1:sha256:086d7db241f5324bec78cf4c33a9dc9571e48bf12f940347902ef31ad0c00fe9:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1OTRjZmRjNjRjMzAyZDQ0MDE1NDE5ZjdiMDJiYmJkYjMxNDk2OTJlNWY1OTBjN2Q3MDU3ZjYzYWMyZjdkOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OGJmMzg0ZmQyMGNkZjkwZGQ5OTVhZWZkZjI2NWRjNDNjZWViY2Q0NjdjYzU5NTlkZDdkMjMxNTkxMTE3NDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRlNGNiZGE4MTE5YjBiNmVmMTI3ZGVhZjlkNjEyODJlODQ0MjEwZTk1MzY1OThjZDc0Y2IwOGJjNTcyNGZmYmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIyZmUzYjc4Y2ZlOWMwYmUzMjFhODNmNzc2MjUwMDdjODJjOTgyNDRhOThkZDNhZGJlYzhlZGE3NTU0ZmM2OTkifQ"
         },
         {
           "resource": "repo://distribution/cli/build.gradle.kts#L60-L69",
@@ -377,7 +365,7 @@
           "version": "repo-lines-v1:sha256:f75d6ff2626eba0dd5d9846c8dfa19e66d0ec80d6e0dc24a341feea8dd15e776:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4ZTg3Nzg1MTlkZTdlMjFjZWFiYzViMjI2ZjMwMDM2NzA3YTNjMDk2ODg4MGE5MjA5MTk0NjVlZDA4MjQ1MzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNjMzA3NGUxNWY1YjM5ZTQ4ZGQxMTVmNjUxN2Q2ZWUzMjY5ZmQxYTllYjA1ZDQxOWRmNmMzNzY5YjI4ZTcwMGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczN2RlNmEwOTU3ZTNmODJkZGUyZTg4YWJlYjc4OWE3NmE2ZWU5MGRkYzFlODFkYWE4MTE4ZDEzMTc1NDU5NDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYzMmNlMjUxNmY2YTkwODZkMjRjZGU0YzY0Yjg4NTBiMzY4MTIyMjc5YzE2OGU3ZDk3Y2ZkM2JjODRjNjk2ZTcifQ"
         },
         {
-          "resource": "repo://.github/workflows/ci.yml#L157-L172",
+          "resource": "repo://.github/workflows/ci.yml#L156-L171",
           "version": "repo-lines-v1:sha256:dfe9abba222720d275953e15b9941838b072100f1c4ba6134eb91f1e18549c26:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkxNzllOTFhYTVhNWNhNmQzODZkMWYyODY2MDY3MTE5Y2MyOWY1NzkxMDRlZmQ1OTEyODZlZmNhOGZjNWNiOTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiMzJiOTg3MjYzZGYyMTYzZTcyNmQ0OGI5MmY2Zjk2NTE0OGNiNmI2ZDI4MzE3OTE1MTRjOTM5ZjgzN2ExNDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2ZGM0MWU2YzIzZjk2ODY0NDY4MWFmYzE0MTA2MjU2Mzk5NmMwY2MyN2UxMWM2MWY3ZTA4NWE5OWYzOTM4NjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNjNTkxMGRmYzViM2FjNjAwODQ1YTdkMTVmOTRmNWRjZjc2YzY1ZDA5NDNiMWRmZTBkYmQ2NjhjZDlhM2IxMTgifQ"
         },
         {
@@ -389,6 +377,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-09T15:05:31.379Z"
+    "at": "2026-10-13T14:48:27.492Z"
   }
 }

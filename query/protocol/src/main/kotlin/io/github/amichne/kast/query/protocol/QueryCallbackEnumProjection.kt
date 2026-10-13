@@ -45,6 +45,14 @@ internal fun CallbackInvocationFlowCause.protocolCallbackDocument(): QueryCallba
             QueryCallbackFlowCauseDocument.UNRESOLVED_PARAMETER_REFERENCE
         CallbackInvocationFlowCause.EXTERNAL_CALLABLE -> QueryCallbackFlowCauseDocument.EXTERNAL_CALLABLE
         CallbackInvocationFlowCause.OUTSIDE_DOMAIN -> QueryCallbackFlowCauseDocument.OUTSIDE_DOMAIN
+        CallbackInvocationFlowCause.DEPENDENCY_CONTRACT_EFFECT_UNPROVEN ->
+            QueryCallbackFlowCauseDocument.DEPENDENCY_CONTRACT_EFFECT_UNPROVEN
+        CallbackInvocationFlowCause.DEPENDENCY_BINARY_UNAVAILABLE ->
+            QueryCallbackFlowCauseDocument.DEPENDENCY_BINARY_UNAVAILABLE
+        CallbackInvocationFlowCause.DEPENDENCY_BINARY_CHANGED ->
+            QueryCallbackFlowCauseDocument.DEPENDENCY_BINARY_CHANGED
+        CallbackInvocationFlowCause.DEPENDENCY_TARGET_UNAVAILABLE ->
+            QueryCallbackFlowCauseDocument.DEPENDENCY_TARGET_UNAVAILABLE
         CallbackInvocationFlowCause.PARAMETER_ESCAPES -> QueryCallbackFlowCauseDocument.PARAMETER_ESCAPES
         CallbackInvocationFlowCause.CALLBACK_CYCLE -> QueryCallbackFlowCauseDocument.CALLBACK_CYCLE
         CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION ->

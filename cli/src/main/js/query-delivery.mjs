@@ -159,6 +159,7 @@ async function awaitQueryDelivery(params, invoke, policy, signal, now = Date.now
       const window = page.evidence_window;
       const expectedQuestion = rejectedEvidence?.question ?? first.question;
       if (!Array.isArray(items) || page.retention?.reference !== retained ||
+          (page.relation_graph != null && page.relation_graph.basis !== retained) ||
           JSON.stringify(page.question) !== JSON.stringify(expectedQuestion) ||
           (liveIdentity != null && JSON.stringify(page.live) !== JSON.stringify(liveIdentity)) ||
           (count != null && page.invocation != null && page.invocation.accumulated_row_count !== count)) return bounded('IDENTITY_MISMATCH');
@@ -171,7 +172,8 @@ async function awaitQueryDelivery(params, invoke, policy, signal, now = Date.now
           evidenceTotal != null && window.total !== evidenceTotal ||
           window.type !== (window.end === window.total ? 'FINAL' : 'MORE') ||
           ['failures', 'omissions', 'walk_observations', 'reference_observations', 'discovery_observations', 'relation_observations']
-            .reduce((total, field) => total + (Array.isArray(page[field]) ? page[field].length : 0), 0) !== window.end - window.start)) return bounded('MALFORMED_PAGE');
+            .reduce((total, field) => total + (Array.isArray(page[field]) ? page[field].length : 0),
+              Array.isArray(page.relation_graph?.reference_observations) ? page.relation_graph.reference_observations.length : 0) !== window.end - window.start)) return bounded('MALFORMED_PAGE');
       if (evidenceTotal != null && window == null) return bounded('MALFORMED_PAGE');
       const evidenceEnd = window?.end ?? evidenceCursor;
       const more = rowNext != null || window?.type === 'MORE';
@@ -227,7 +229,7 @@ function queryPresentation(result, verbose = false, finalDelivery = false) {
     rows.unshift(...rejectionEvidence.preview.filter(row => !delivered.has(JSON.stringify(row))));
   }
   const metadata = document => Object.fromEntries(Object.entries(document).filter(([key]) =>
-    !['items', ...queryEvidenceFields, 'operation', 'page_progress', 'evidence_window', 'next_cursor',
+    !['items', 'relation_graph', ...queryEvidenceFields, 'operation', 'page_progress', 'evidence_window', 'next_cursor',
       'continuation', 'invocation', 'retention'].includes(key)));
   const summary = metadata(first);
   if (first.invocation) summary.invocation = { accumulated_row_count: first.invocation.accumulated_row_count,
@@ -248,6 +250,47 @@ function queryPresentation(result, verbose = false, finalDelivery = false) {
     return keys.length === otherKeys.length && keys.every((key, index) =>
       key === otherKeys[index] && sameDescription(left[key], right[key]));
   };
+  // Merge only received tables under their admitted retained basis. IDs never become live selectors.
+  const receivedGraphs = new Map();
+  for (const reply of replies) {
+    const graph = reply.document?.relation_graph;
+    if (graph == null) continue;
+    if (graph.basis !== retained || !Array.isArray(graph.nodes) || !Array.isArray(graph.witnesses) ||
+        !Array.isArray(graph.reference_observations)) return canonical();
+    let received = receivedGraphs.get(graph.basis);
+    if (!received) {
+      received = { original: graph, nodes: new Map(), witnesses: new Map(), connections: new Map(), observations: [] };
+      receivedGraphs.set(graph.basis, received);
+    } else if (!sameDescription(received.original.detail, graph.detail)) return canonical();
+    if (graph.connection_witnesses != null && !Array.isArray(graph.connection_witnesses)) return canonical();
+    for (const [values, table] of [[graph.nodes, received.nodes], [graph.witnesses, received.witnesses],
+      [graph.connection_witnesses ?? [], received.connections]]) {
+      for (const value of values) {
+        const prior = table.get(value.id);
+        if (prior != null && !sameDescription(prior, value)) return canonical();
+        table.set(value.id, value);
+      }
+    }
+    received.observations.push(...graph.reference_observations);
+  }
+  for (const received of receivedGraphs.values()) {
+    for (const witness of received.witnesses.values()) {
+      if (!received.nodes.has(witness.target) || witness.ownership?.type === 'declaration-owned' &&
+          !received.nodes.has(witness.ownership.declaration)) return canonical();
+    }
+    if (received.observations.some(id => !received.witnesses.has(id))) return canonical();
+    for (const connection of received.connections.values()) {
+      if (connection.type === 'reference-backed') {
+        if (received.witnesses.get(connection.witness)?.ownership?.type !== 'declaration-owned') return canonical();
+      } else if (connection.type === 'direct') {
+        if (!received.nodes.has(connection.source) || !received.nodes.has(connection.target)) return canonical();
+      } else return canonical();
+    }
+  }
+  const graph = receivedGraphs.get(retained);
+  if (rows.some(row => row.type === 'reference-edge' && !graph?.witnesses.has(row.witness))) return canonical();
+  if (rows.some(row => row.type === 'exact-symbol-node' && (!graph?.nodes.has(row.node) ||
+      !Array.isArray(row.connections) || row.connections.some(id => !graph.connections.has(id))))) return canonical();
   const descriptions = [], candidates = new Map(), descriptionEntries = new WeakMap();
   const consider = value => {
     if (!deliveryObject(value)) return;
@@ -295,10 +338,15 @@ function queryPresentation(result, verbose = false, finalDelivery = false) {
   if (stop !== 'DELIVERED') lines.push('Output is incomplete; retain the semantic outcome and delivery blocker above.');
   lines.push(`Rows (${rows.length}):`, ...rows.map(row => JSON.stringify(rowPresentation(row))));
   if (shared.length) lines.push('Shared descriptions:', ...shared.map(entry => JSON.stringify({ [entry.label]: entry.value })));
+  for (const received of receivedGraphs.values()) lines.push('Relation graph:', JSON.stringify({ ...received.original,
+    nodes: [...received.nodes.values()], witnesses: [...received.witnesses.values()],
+    reference_observations: received.observations,
+    ...(received.connections.size ? { connection_witnesses: [...received.connections.values()] } : {}) }));
   const evidence = Object.fromEntries(queryEvidenceFields.map(field => [field,
     replies.flatMap(reply => Array.isArray(reply.document?.[field]) ? reply.document[field] : [])]));
   const window = replies.map(reply => reply.document?.evidence_window).filter(Boolean).at(-1);
-  lines.push('Evidence delivery:', JSON.stringify({ delivered_entries: Object.values(evidence).reduce((sum, entries) => sum + entries.length, 0),
+  lines.push('Evidence delivery:', JSON.stringify({ delivered_entries: Object.values(evidence).reduce((sum, entries) => sum + entries.length,
+    [...receivedGraphs.values()].reduce((sum, received) => sum + received.observations.length, 0)),
     ...(window ? { window } : {}) }), 'Evidence:');
   for (const [field, entries] of Object.entries(evidence)) if (entries.length) {
     // Finite failures and omissions always stay inline. Detail omission is explicit and recoverable.
@@ -324,8 +372,9 @@ function queryPresentation(result, verbose = false, finalDelivery = false) {
     'Observed authority is historical. All received evidence is inline; final delivery does not read a handle or rerun semantics.');
   else if (detailAvailable && stop === 'DELIVERY_UNAVAILABLE')
     lines.push('Detail delivery unavailable; authority was not rejected. Received evidence is inline; READ_RESULT remains available without retrying RUN.');
-  if (!finalDelivery && detailAvailable) lines.push('Details:', JSON.stringify({ request: { type: 'READ_RESULT', result: retained,
-    cursor: 0, evidence_cursor: 0, ...(output ? { output } : {}) }, verbose: true }),
+  if (!finalDelivery && detailAvailable) lines.push('Details:', JSON.stringify(graph?.original.detail ??
+    { request: { type: 'READ_RESULT', result: retained,
+      cursor: 0, evidence_cursor: 0, ...(output ? { output } : {}) }, verbose: true }),
   'Details use the original live authority and may expire or become stale. An unavailable handle is not rerun.');
   else if (!finalDelivery && retained) {
     lines.push(`Details: canonical retained detail authority unavailable for ${JSON.stringify(retained)}; all received evidence is inline.`,

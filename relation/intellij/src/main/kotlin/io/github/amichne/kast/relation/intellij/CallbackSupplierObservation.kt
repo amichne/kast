@@ -20,6 +20,14 @@ internal fun CallbackInvocationFlowCause.supplierTermination(): IntellijReadTerm
             IntellijReadTermination.CALLBACK_SUPPLIER_UNRESOLVED_PARAMETER_REFERENCE
         CallbackInvocationFlowCause.EXTERNAL_CALLABLE -> IntellijReadTermination.CALLBACK_SUPPLIER_EXTERNAL_CALLABLE
         CallbackInvocationFlowCause.OUTSIDE_DOMAIN -> IntellijReadTermination.CALLBACK_SUPPLIER_OUTSIDE_DOMAIN
+        CallbackInvocationFlowCause.DEPENDENCY_CONTRACT_EFFECT_UNPROVEN ->
+            IntellijReadTermination.CALLBACK_DEPENDENCY_CONTRACT_EFFECT_UNPROVEN
+        CallbackInvocationFlowCause.DEPENDENCY_BINARY_UNAVAILABLE ->
+            IntellijReadTermination.CALLBACK_DEPENDENCY_BINARY_UNAVAILABLE
+        CallbackInvocationFlowCause.DEPENDENCY_BINARY_CHANGED ->
+            IntellijReadTermination.CALLBACK_DEPENDENCY_BINARY_CHANGED
+        CallbackInvocationFlowCause.DEPENDENCY_TARGET_UNAVAILABLE ->
+            IntellijReadTermination.CALLBACK_DEPENDENCY_TARGET_UNAVAILABLE
         CallbackInvocationFlowCause.PARAMETER_ESCAPES -> IntellijReadTermination.CALLBACK_SUPPLIER_PARAMETER_ESCAPES
         CallbackInvocationFlowCause.CALLBACK_CYCLE -> IntellijReadTermination.CALLBACK_SUPPLIER_CALLBACK_CYCLE
         CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION ->

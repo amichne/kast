@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:8447f0afdc204091e37f554b0acd4269be658c5cf7537807e7761518c0e366ca",
+  "pageVersion": "sha256:3050a5e4a3706d0915c2885f266d8ca665377f0ae1c1b8d15dfcbf9c3e552698",
   "claims": [
     {
       "id": "claim_b9727187adfc4e2c9be8e3a620b37051",
       "statement": "Canonical query protocol separates new run, checkpoint/output continuation, and retained result presentation under the supplied semantic authority; read-result projects retained rows instead of executing a new semantic query.",
       "evidence": [
         {
-          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt#L85-L153",
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt#L103-L171",
           "version": "repo-lines-v1:sha256:a75e76b4ea41a36b21659455fcbf1bc4417bf297a50783a35bce2b83086fbd79:eyJzZWxlY3RlZExpbmVDb3VudCI6NjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3ZmViZjc5ODNhYzBiYjg0Yjg5YmU1OTk5NjI4YjhmN2MyOGQyYzdiMmY0MzY2NDgyZmNmNThjMTVlZTNjOWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5M2Q4ZGFlMmFkZjc5YjU1Y2Q0NjFjMWRiN2ViZDhkOTA1OThmY2FiOWM4ZmU0NzVkNDlhMTI2NjVmYzg2M2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMzMzU2MzgyOGFlM2I3YzQwOTYwNWY0YjUxYzgyOGE3NDQzNjJkMWYwZWEwM2I0NjMzNmViZmUzYjMwNjI5MDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUwZjI5M2JiZGI4ZmJiOTY4MDA3M2U1OTI2OTU2NzBhM2E3MDVjNDVkYjlhMjUzNTZlOTgyNDhlNTk3N2QwYjYifQ"
         }
       ]
@@ -17,12 +17,12 @@
       "statement": "Continuation acquisition has explicit in-use, unavailable, mismatch and capacity failures; publication preparation retains the claim only when the owning publication boundary prepares it, otherwise finally releases it.",
       "evidence": [
         {
-          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt#L116-L153",
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt#L134-L171",
           "version": "repo-lines-v1:sha256:82533b2a217ae61850792b95a166e552a10dbea67d995831c5d41d33b10037e0:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0NDZmM2EzNDBhM2Q0MWEyNTI2OTc5OGFhZWE3YjNkYzAyZGY3MzI2YWU0NDQ1Y2NiMGQ0NzgxNjI4ZjRhOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5M2Q4ZGFlMmFkZjc5YjU1Y2Q0NjFjMWRiN2ViZDhkOTA1OThmY2FiOWM4ZmU0NzVkNDlhMTI2NjVmYzg2M2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2MDAzOGFlOGRlZDJiNDRhMzUxM2I0OGMzNTc1NjVjMDc5YjZkZWIxMDcxMzFlNWQwOWY1NzczMmJmY2I0ZDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUwZjI5M2JiZGI4ZmJiOTY4MDA3M2U1OTI2OTU2NzBhM2E3MDVjNDVkYjlhMjUzNTZlOTgyNDhlNTk3N2QwYjYifQ"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryPagePublication.kt",
-          "version": "repo-file-v1:sha256:48e30612e6255a746578f23f7942461a26052f4102ad74e16966ab1badc24d50"
+          "version": "repo-file-v1:sha256:824d702347a72631903f7a96b996a3cf086e6c315a810e4348b828fa942f5d85"
         }
       ]
     },
@@ -54,7 +54,7 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt",
-          "version": "repo-file-v1:sha256:e6f788df208a5c43692b732f634d1286139da3f802abd915b4429f9b3181fc0a"
+          "version": "repo-file-v1:sha256:877ee3ba0deef8350bea52ae9d00fbd1b1e0ee797454e7936b242f0d633ec5bb"
         },
         {
           "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryRetentionProtocolTest.kt",
@@ -76,7 +76,7 @@
       "evidence": [
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt",
-          "version": "repo-file-v1:sha256:00a4a193085cbbd7a5ca9d229c1f05b91449fad30aaa4b9e16d1de57eb6e6e8d"
+          "version": "repo-file-v1:sha256:d2c254ff4719736ead771b9f666ae7dbd289499ae187efbc59227747286e145c"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt",
@@ -94,11 +94,11 @@
       "evidence": [
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRetainedGraph.kt",
-          "version": "repo-file-v1:sha256:2694fa7235d06fce3e1fe563c7d207b56c857f4afd24820105ab159240bd6b76"
+          "version": "repo-file-v1:sha256:68c9a626b222a01f77e3de20f2ec1a81d60081bc2294f6d258b9ef7eef2ef3ca"
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt",
-          "version": "repo-file-v1:sha256:1db0b5bfaacb4c490816b541b72cfc880b65f42eeed2ebabf726176f8484198f"
+          "version": "repo-file-v1:sha256:c29b2ccabed4951b11d75a5521b82137373dbd740f8813b099b5b9d158b14fc9"
         }
       ]
     },
@@ -116,7 +116,7 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt",
-          "version": "repo-file-v1:sha256:bcb7e77c4f3d047641eedfb238f82982e705e0097c6097e18cb8f4397a91429c"
+          "version": "repo-file-v1:sha256:d6d3ac7ab79b42feb47ce80e8b326672ef711170ef11212ff14f76efe9cb1785"
         }
       ]
     },
@@ -308,7 +308,7 @@
       "evidence": [
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt",
-          "version": "repo-file-v1:sha256:90a9f73d789e5ab379f04ee15db525a1e1d3f9d783d1b1023292707fa782da3b"
+          "version": "repo-file-v1:sha256:680933b85bef3cb29892f3bbccee8dedd2c055201681774d70f3544112d9b0b6"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidenceRead.kt",
@@ -316,17 +316,49 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt",
-          "version": "repo-file-v1:sha256:e6f788df208a5c43692b732f634d1286139da3f802abd915b4429f9b3181fc0a"
+          "version": "repo-file-v1:sha256:877ee3ba0deef8350bea52ae9d00fbd1b1e0ee797454e7936b242f0d633ec5bb"
         },
         {
           "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CompleteOnlyQueryTest.kt",
           "version": "repo-file-v1:sha256:bf4974b5b46ba83a80ba472d2b66bfc4f27eb702407f1199b369d1584e8c57cf"
         }
       ]
+    },
+    {
+      "id": "claim_53a8b809cb2342bbb16f5f6dab1ba565",
+      "statement": "Retained envelopes preserve the actual current selected output through canonical wire serialization. Compact SYMBOLS uses that proof for its detail request. Legacy documents without it keep full output.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/QueryContinuationWireDocuments.kt#L40-L45",
+          "version": "repo-lines-v1:sha256:fff0c1f27884e2a9e3e0e88dbd30e3415d8ffabf5c3eefc922575018e8b18acc:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZmJjNWNjMTVmMTM3MDNlY2I5YThiZWU2ZjI2NzViYzdmNTcwNDI2NTZiM2VkNjIzZTU2ODczYWZjNDY0ZmY0OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmFmYmEwNTI3YzM5NTNjNGI2ZTBlNWI1NzM5YmE4MzYxMmY4MDUzYmNkYzk0NjY3MzAxOTNjZDFkNTkwYjQwOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjY2ZjhiNzczY2UxYzgzYTYyY2EyNGI3YTExYWJiMGNkMTM0MmEzYTBkZWI4MWU3NWQ4M2I3NjU5N2MwMzc0YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmJkMWY3NzI5NTJlMTBiNzE3MWJlN2YxZDdmNjRlMTk2NGIzMmVkNTMyNzBlMjJmYmEzYTQ5ZTdhYzQ2ODYzZSJ9"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultEnvelope.kt#L38-L43",
+          "version": "repo-lines-v1:sha256:32529909d44e784cad3c700b252f00ce164c50cef3ab37d5da5a9fff5ed747d5:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGFjZDA3N2RiM2I2YjRkOTMzNDY4ODBhNDMzZWZlZDJkZDYzOWI0N2QwM2I4OTM1ZmY2NzQ2MGVhZWZkZjA5ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTQzM2QwZWE5ZWNmMmYzOWM5YTUwNDA3Mzk1ZWU0MTE3MmZlNjgyYzljODg1YTM1MDhmNzViZGVlMTUxZWZmZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzBiMzdiODIzYWU4Mjc4MWE4YzAwOWIyYjgxYjM5ODc0NjE0YzZkYzQ0NThiNzRlYjE1NzlkYTU3NmRkOGQ0MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzBjMWYxODhmMTQyZWQ3YTgyNDY4MGIyMDcxNzJjNTUxOWJjNjE0YTQ4ZmRhN2NmMTY3ZWRiOGRkZjc5OTU2YyJ9"
+        },
+        {
+          "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedSymbolGraphDeliveryTest.kt",
+          "version": "repo-file-v1:sha256:7044070c8abb013683b624096ffa27a960746eea10c6219667d40596c76659cf"
+        }
+      ]
+    },
+    {
+      "id": "claim_c4842022b0b5449f8ca5118066cf1fa2",
+      "statement": "Retained coverage accounting uses exhaustive typed charges without process-dependent object text. Qualified coverage keeps its prior conservative maximum. Complete coverage keeps its count-dependent charge. Quotas and multipliers remain unchanged.",
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedEvidence.kt#L138-L160",
+          "version": "repo-lines-v1:sha256:0a25176b2336e9bdb4290637d9dd857bf84d69a3c0ae9e39f1f94480569b58cd:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZhYjljNWU0ZTc0OTdiMzZkOWExYjk0OTA1NTgyN2I2NjEzN2I1NGRlMTRhOTk2NjI4YmVlZWQ2ZDRlNjMzYTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUxYjg1ZmNkZmUzYTc1MWVkZjc2Yjg5NDc4YTYwMTA5OTIzZmQxZTJhOGRmMmQzZmI2OGUxMjY5ODAzOGM3N2MiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBkYjE2ZmMxNGMzY2Q5ODc4NzgwNDQzYjEwODE3OGUzNmZiNDgzZjM3M2FmODY4YmFhNmFiYTM5M2E1Mjc4ZDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiZTE4ZTk4M2M3YTM0YmFmZGU5YzViNmQyZjA5YWNmNjUwYTYzZmVjNzYzNGQ1ZTdkNGNiZDA4M2Q1MmZkZTQifQ"
+        },
+        {
+          "resource": "repo://query/contract/src/test/kotlin/io/github/amichne/kast/query/contract/QueryCoverageRetentionTest.kt",
+          "version": "repo-file-v1:sha256:1ef19f9747b600ee25f439a3a36ac5710cd124f058b6ed1d333958fa231f6156"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-09T14:52:54.878Z"
+    "at": "2026-10-13T16:27:31.406Z"
   }
 }

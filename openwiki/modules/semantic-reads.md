@@ -243,10 +243,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-8d15fa1e67cdc054e05e2796
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedValueFlowDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-09T14:52:54.878Z" }
+generated: { by: "codex", at: "2026-10-13T14:48:27.492Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-09T14:52:54.878Z
+    at: 2026-10-13T14:48:27.492Z
 ---
 
 # Semantic read domains
@@ -719,3 +719,10 @@ a single matching EXACTLY_ONCE effect is admitted. Dependency bodies are not
 analyzed. Read, admission and rejection counters make that boundary observable;
 the evidence establishes the supported compiler-static rule rather than runtime
 activation. Stored callbacks and unsupported mappings retain finite failures.
+
+Binary admission preserves the first finite failure for unresolved mapping,
+missing matching effect, unavailable binary evidence, changed binary evidence,
+or unavailable target evidence.
+The selected callback supply preserves that cause through completion evidence.
+These diagnostics do not admit another declaration, expand the source domain,
+or discharge unsupported nested callback obligations.

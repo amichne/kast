@@ -17,6 +17,36 @@ import kotlinx.serialization.Serializable
 @Serializable
 internal sealed interface QueryResultItemCliDocument {
     @Serializable
+    @SerialName("exact-symbol-node")
+    data class ExactSymbolNode(
+        @ProtocolStringConstraint(pattern = "^node:v1:[0-9a-f]{64}$") val node: String,
+        val kind: SymbolKindWireDocument,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER) val name: String? = null,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        val location: QueryExactLocationCliDocument? = null,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        val signature: CompilerSignatureCliDocument? = null,
+        val connections: List<String>,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        val source: QuerySourceWindowCliDocument? = null,
+        @SerialName("row_id")
+        @ProtocolStringConstraint(pattern = QueryResultRowReference.SERIALIZED_PATTERN)
+        val rowId: String,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint(maximumItems = 1000)
+        val matches: List<QueryTextMatchWireDocument>? = null,
+    ) : QueryResultItemCliDocument
+
+    @Serializable
+    @SerialName("reference-edge")
+    data class ReferenceEdge(
+        @SerialName("row_id")
+        @ProtocolStringConstraint(pattern = QueryResultRowReference.SERIALIZED_PATTERN)
+        val rowId: String,
+        @ProtocolStringConstraint(pattern = "^witness:v1:[0-9a-f]{64}$") val witness: String,
+    ) : QueryResultItemCliDocument
+
+    @Serializable
     @SerialName("IMPACT_WITNESS")
     data class ImpactWitness(val item: io.github.amichne.kast.protocol.contract.ImpactWitnessItemDocument) :
         QueryResultItemCliDocument

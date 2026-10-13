@@ -263,6 +263,8 @@ val queryPresentationTest =
         inputs.files("src/main/js/query-session.mjs", "src/test/js/query-session.test.mjs")
         inputs.file(rootProject.file("copilot/extension.mjs"))
         inputs.file("src/test/resources/query-presentation-native.json")
+        inputs.file("src/test/resources/query-compact-graph-pages.json")
+        inputs.file("src/test/resources/query-compact-symbol-graph-pages.json")
         inputs.file(rootProject.file("experiments/host-observation/pi-fixtures/query-delivery-cases.json"))
         workingDir(rootProject.projectDir)
         commandLine(
