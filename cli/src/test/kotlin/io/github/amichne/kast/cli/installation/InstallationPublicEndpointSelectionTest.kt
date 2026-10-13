@@ -1,7 +1,6 @@
 package io.github.amichne.kast.cli.installation
 
 import io.github.amichne.kast.appserver.BrokerPublicEndpointMode
-import io.github.amichne.kast.appserver.CodexControlSocketAvailability
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
@@ -33,8 +32,6 @@ internal class InstallationPublicEndpointSelectionTest {
     private fun observations(): List<InstallationPublicEndpointObservation> =
         listOf(
                 BrokerPublicEndpointMode.CODEX_CONTROL to InstallationPublicEndpointSelectionReason.FRESH_DEFAULT,
-                BrokerPublicEndpointMode.PRIVATE to InstallationPublicEndpointSelectionReason.OCCUPIED_CODEX_CONTROL,
-                BrokerPublicEndpointMode.PRIVATE to InstallationPublicEndpointSelectionReason.UNAVAILABLE_CODEX_CONTROL,
                 BrokerPublicEndpointMode.PRIVATE to InstallationPublicEndpointSelectionReason.SAVED_CONFIGURATION,
                 BrokerPublicEndpointMode.CODEX_CONTROL to InstallationPublicEndpointSelectionReason.SAVED_CONFIGURATION,
                 BrokerPublicEndpointMode.PRIVATE to InstallationPublicEndpointSelectionReason.EXPLICIT,
@@ -43,65 +40,34 @@ internal class InstallationPublicEndpointSelectionTest {
             .map { (endpoint, reason) -> InstallationPublicEndpointObservation(endpoint = endpoint, reason = reason) }
 
     @Test
-    fun `occupied fresh endpoint records the finite fallback reason and exact chosen mode`() {
-        val boundary = ScriptedAvailability(listOf(CodexControlSocketAvailability.OCCUPIED))
-        val selected =
-            selectInstallationConfiguration(InstallationPublicEndpointSelection.Unspecified, null, boundary::observe)
-                as Refinement.Refined
-        boundary.assertConsumed()
-        assertEquals(InstallationConfigurationSelection.FreshOccupiedCodexControl, selected.value)
-        val document =
-            Json.parseToJsonElement(
-                    InstallationPublicEndpointObservation(
-                            endpoint = selected.value.endpoint,
-                            reason = selected.value.reason,
-                        )
-                        .toJson()
-                )
-                .jsonObject
-        assertEquals(setOf("event", "endpoint", "reason"), document.keys)
-        assertEquals("kast_installation_public_endpoint", document.getValue("event").jsonPrimitive.content)
-        assertEquals("PRIVATE", document.getValue("endpoint").jsonPrimitive.content)
-        assertEquals("OCCUPIED_CODEX_CONTROL", document.getValue("reason").jsonPrimitive.content)
-    }
-
-    @Test
-    fun `unknown fresh endpoint availability preserves uncertainty and selects private`() {
-        val boundary = ScriptedAvailability(listOf(CodexControlSocketAvailability.UNAVAILABLE))
+    fun `fresh unspecified endpoint selects Codex control without external observations`() {
         assertEquals(
-            Refinement.Refined(InstallationConfigurationSelection.FreshUnavailableCodexControl),
-            selectInstallationConfiguration(InstallationPublicEndpointSelection.Unspecified, null, boundary::observe),
+            Refinement.Refined(InstallationConfigurationSelection.FreshDefault),
+            selectInstallationConfiguration(InstallationPublicEndpointSelection.Unspecified, null),
         )
-        boundary.assertConsumed()
     }
 
     @Test
-    fun `explicit fresh endpoint never inspects occupancy`() {
+    fun `explicit fresh endpoint preserves the selected mode`() {
         for (endpoint in BrokerPublicEndpointMode.entries) {
-            val boundary = ScriptedAvailability(emptyList())
             val selected =
                 selectInstallationConfiguration(
                     InstallationPublicEndpointSelection.Explicit(endpoint),
                     null,
-                    boundary::observe,
                 )
                     as Refinement.Refined
-            boundary.assertConsumed()
             assertEquals(endpoint, selected.value.endpoint)
             assertEquals(InstallationPublicEndpointSelectionReason.EXPLICIT, selected.value.reason)
         }
     }
 
     @Test
-    fun `saved endpoint admission retains its reason and never inspects occupancy`(@TempDir temporary: Path) {
+    fun `saved endpoint admission retains its mode and reason`(@TempDir temporary: Path) {
         val root = Files.createDirectory(temporary.toRealPath().resolve("prior"))
         Files.createDirectory(root.resolve("config"))
         Files.writeString(root.resolve("config/environment"), "KAST_APP_SERVER_PUBLIC_ENDPOINT=private\n")
-        val boundary = ScriptedAvailability(emptyList())
         val selected =
-            selectInstallationConfiguration(InstallationPublicEndpointSelection.Unspecified, root, boundary::observe)
-                as Refinement.Refined
-        boundary.assertConsumed()
+            selectInstallationConfiguration(InstallationPublicEndpointSelection.Unspecified, root) as Refinement.Refined
         assertEquals(BrokerPublicEndpointMode.PRIVATE, selected.value.endpoint)
         assertEquals(InstallationPublicEndpointSelectionReason.SAVED_CONFIGURATION, selected.value.reason)
     }
@@ -120,16 +86,13 @@ internal class InstallationPublicEndpointSelectionTest {
             )
         for ((content, failure) in failures) {
             Files.writeString(configuration, content)
-            val boundary = ScriptedAvailability(emptyList())
             assertEquals(
                 Refinement.Rejected(failure),
                 selectInstallationConfiguration(
                     InstallationPublicEndpointSelection.Explicit(BrokerPublicEndpointMode.PRIVATE),
                     root,
-                    boundary::observe,
                 ),
             )
-            boundary.assertConsumed()
             assertEquals(content, Files.readString(configuration))
         }
     }
@@ -138,13 +101,11 @@ internal class InstallationPublicEndpointSelectionTest {
     fun `missing and linked prior settings reject at physical source admission`(@TempDir temporary: Path) {
         val root = Files.createDirectory(temporary.toRealPath().resolve("prior"))
         Files.createDirectory(root.resolve("config"))
-        val boundary = ScriptedAvailability(emptyList())
         assertEquals(
             Refinement.Rejected(InstallationConfigurationFailure.SOURCE_REJECTED),
             selectInstallationConfiguration(
                 InstallationPublicEndpointSelection.Unspecified,
                 root,
-                boundary::observe,
             ),
         )
         val target = Files.writeString(root.resolve("outside"), "KAST_APP_SERVER_PUBLIC_ENDPOINT=private\n")
@@ -154,22 +115,9 @@ internal class InstallationPublicEndpointSelectionTest {
             selectInstallationConfiguration(
                 InstallationPublicEndpointSelection.Unspecified,
                 root,
-                boundary::observe,
             ),
         )
-        boundary.assertConsumed()
         assertEquals("KAST_APP_SERVER_PUBLIC_ENDPOINT=private\n", Files.readString(target))
-    }
-
-    private class ScriptedAvailability(private val observations: List<CodexControlSocketAvailability>) {
-        private var calls = 0
-
-        fun observe(): CodexControlSocketAvailability {
-            check(calls < observations.size) { "Unexpected endpoint availability observation" }
-            return observations[calls++]
-        }
-
-        fun assertConsumed() = assertEquals(observations.size, calls, "Unconsumed endpoint availability observation")
     }
 
     @Serializable private data class ExpectedObservation(val event: String, val endpoint: String, val reason: String)

@@ -32,6 +32,9 @@ Registration is handled by the daemon management RPC. The private entry point
 also accepts `enable`, `disable`, `stop`, and `repair --destructive`.
 A rejected registration retains its finite daemon reason.
 
+Fresh installation and force reinstall keep `codex-control` selected even when
+another process owns the standard socket. Service startup rejects that conflict
+with `PUBLIC_SOCKET_OWNED`. The installer does not select private mode as a fallback.
 The canonical public socket remains installation-owned and is never taken over
 from an unproven incumbent. Explicit private mode instead uses `state/run/c.sock`
 (with an owned short-path transport when needed). The CLI connection command is
