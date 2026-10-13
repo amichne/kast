@@ -23,14 +23,11 @@ class BrokerPublicEndpointTest {
     }
 
     @Test
-    fun `incumbent canonical endpoint rejects before protocol probing and permits startup after removal`(
+    fun `default endpoint rejects an incumbent before protocol probing and permits startup after removal`(
         @TempDir temporary: Path
     ) {
         val fixture = installedFixture(temporary)
-        val command =
-            resolvedCommand(
-                fixture.copy(environment = fixture.environment + ("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "codex-control"))
-            )
+        val command = resolvedCommand(fixture)
         assertTrue(command.publicEndpoint is BrokerPublicEndpoint.CodexControl)
         Files.createDirectories(command.publicSocket.parent)
         // A foreign endpoint need not speak the Kast status protocol to reserve this path.
@@ -95,6 +92,32 @@ class BrokerPublicEndpointTest {
                     )
                 ),
         )
+    }
+
+    @Test
+    fun `default endpoint preserves a dangling incumbent link and rejects before probing`(@TempDir temporary: Path) {
+        val fixture = installedFixture(temporary)
+        val command = resolvedCommand(fixture)
+        Files.createDirectories(command.publicSocket.parent)
+        val target = fixture.home.resolve("absent-codex-socket")
+        Files.createSymbolicLink(command.publicSocket, target)
+        val calls = mutableListOf<String>()
+        val host =
+            MacOsPersistentBrokerServiceHost(
+                launchctl =
+                    LaunchctlInvoker { arguments, _ ->
+                        calls += arguments[1]
+                        if (arguments[1] == "list") LaunchctlInvocation.Absent else LaunchctlInvocation.Rejected
+                    },
+                socketProbe = BrokerSocketProbe { throw AssertionError("Unexpected incumbent protocol probe") },
+            )
+        assertEquals(
+            PersistentBrokerServiceAdmission.Rejected(PersistentBrokerServiceFailure.PUBLIC_SOCKET_OWNED),
+            host.ensure(command),
+        )
+        assertEquals(listOf("list"), calls)
+        assertEquals(target, Files.readSymbolicLink(command.publicSocket))
+        assertTrue(Files.notExists(target, java.nio.file.LinkOption.NOFOLLOW_LINKS))
     }
 
     @Test
