@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-10-05 | hash: 7ccf277f0a6a -->
+<!-- generated: 2026-10-12 | hash: 4c3c4f746c13 -->
 
 # packaging
 
@@ -22,6 +22,7 @@ qualification requires separate runtime evidence.
 - [generate-public-query.py](generate-public-query.py) - generated public query source from the authored schema.
 - [run-installed-product.py](run-installed-product.py) and [installer_fixture.py](installer_fixture.py) - assembled archive and public installer smoke in an owned temporary root.
 - [run-portable-tests.py](run-portable-tests.py) and [run-portable-tests-container.sh](run-portable-tests-container.sh) - offline installer and build-tool test inventory.
+- [topology/git_attribution.py](topology/git_attribution.py) - explicit Git byte attribution for supplied historical source paths, without semantic ownership discovery.
 
 ## Entry Points
 
