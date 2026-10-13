@@ -40,7 +40,7 @@ sources:
 generated: { by: "codex", at: "2026-10-09T02:50:46.064Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-09T02:50:46.064Z
+    at: 2026-10-13T14:48:27.492Z
 ---
 
 # Compiler identity

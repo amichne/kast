@@ -15,6 +15,7 @@ internal fun QueryReferenceAuthority.resultEnvelope(
     evidence: QueryProjectedEvidence,
     presentationWindow: QueryRetainedPresentationWindow?,
     presentationOrigin: QueryKnownMinimum?,
+    output: io.github.amichne.kast.protocol.contract.QueryOutputDocument,
 ): EvidenceEnvelope<QueryRunResult> =
     EvidenceEnvelope(
         CanonicalOperation.QUERY_RUN.id,
@@ -34,5 +35,10 @@ internal fun QueryReferenceAuthority.resultEnvelope(
             referenceAcquisitions = readAcquisitions(),
             presentationOrigin = presentationOrigin,
             presentationWindow = presentationWindow,
+            presentationOutput =
+                when (presented.retention) {
+                    io.github.amichne.kast.protocol.contract.QueryResultRetention.NotRequested -> null
+                    is io.github.amichne.kast.protocol.contract.QueryResultRetention.Retained -> output
+                },
         ),
     )

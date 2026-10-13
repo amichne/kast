@@ -110,6 +110,8 @@ sources:
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingValidation.kt
   - id: openwiki-source-2a21ecdc94f78bbee9750c81
     resource: repo://protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract/ImpactFindingAccountingTest.kt
+  - id: openwiki-source-c047d8626fa319fb3b4aab1f
+    resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/QueryContinuationWireDocuments.kt
   - id: openwiki-source-927d5002042f13cac9db37f1
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactFinding.kt
   - id: openwiki-source-9fcd90db4b894268639790f3
@@ -124,8 +126,12 @@ sources:
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteAccounting.kt
   - id: openwiki-source-47b84d48b89b57b3b1609484
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPresentationExecution.kt
+  - id: openwiki-source-93befc801b9b22c7a13d387e
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedEvidence.kt
   - id: openwiki-source-a184ae82a49703816522523e
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
+  - id: openwiki-source-e1d6cecbfa32e3ca078e0845
+    resource: repo://query/contract/src/test/kotlin/io/github/amichne/kast/query/contract/QueryCoverageRetentionTest.kt
   - id: openwiki-source-dfd865ab52ce8eea1b519c4e
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
   - id: openwiki-source-64a145dbb5a4113781750bd9
@@ -162,6 +168,8 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryPagePublication.kt
   - id: openwiki-source-4e38a945b050af72c2343f02
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProjectedEvidence.kt
+  - id: openwiki-source-4d966bb6246ecb797751303a
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultEnvelope.kt
   - id: openwiki-source-4bf64022307aff9f9f531f9b
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
   - id: openwiki-source-cff355f3dfdd8f6ba0b1f798
@@ -180,6 +188,8 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactRetentionTest.kt
   - id: openwiki-source-aafa836937e73d591f7fe586
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryImpactBranchProjectionTest.kt
+  - id: openwiki-source-eadf536d34552dd57c7ba214
+    resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedSymbolGraphDeliveryTest.kt
   - id: openwiki-source-8bba742d3ecbc32c906815e6
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt
   - id: openwiki-source-711e20b0c3995766bf099120
@@ -198,10 +208,10 @@ sources:
     resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisition.kt
   - id: openwiki-source-614907c76c5e46269ec7d42b
     resource: repo://symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisitionBudgetTest.kt
-generated: { by: "codex", at: "2026-10-09T14:52:54.878Z" }
+generated: { by: "codex", at: "2026-10-13T16:27:31.406Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-09T14:52:54.878Z
+    at: 2026-10-13T16:27:31.406Z
 ---
 
 # Query protocol
@@ -424,3 +434,13 @@ occurrence, source owner, formal parameter position and binary class digest.
 Contract evidence does not invent a dependency body invocation; nested callback
 obligations remain qualified. Canonical retained-storage accounting charges this
 provenance through the existing owner.
+
+RETAINED RESULT envelopes preserve the actual current selected output through canonical wire serialization.
+The compact SYMBOLS detail request uses this selection, rather than the original RUN fields or absent values.
+Legacy documents without selection proof keep full SYMBOLS output.
+
+Coverage storage charges use exhaustive typed cases instead of object text or process-dependent hashes.
+QUALIFIED COVERAGE keeps the prior conservative maximum charge.
+COMPLETE COVERAGE keeps its count-dependent charge.
+Existing quotas and multipliers remain unchanged.
+These charges estimate quota use and do not measure JVM heap use.

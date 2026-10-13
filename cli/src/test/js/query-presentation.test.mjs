@@ -8,6 +8,9 @@ import { SourceTextModule, createContext } from 'node:vm';
 // The expected identities and failure vocabulary below are independent of presentation code.
 const captured = JSON.parse(readFileSync(new URL('../../../../experiments/host-observation/pi-fixtures/query-delivery-cases.json', import.meta.url)));
 const native = JSON.parse(readFileSync(new URL('../resources/query-presentation-native.json', import.meta.url)));
+// Captured by RetainedGraphDeliveryMeasurementTest from typed production serializers at the 20,000-byte wire cap.
+const graphPages = JSON.parse(readFileSync(new URL('../resources/query-compact-graph-pages.json', import.meta.url)));
+const symbolGraphPages = JSON.parse(readFileSync(new URL('../resources/query-compact-symbol-graph-pages.json', import.meta.url)));
 const measurements = JSON.parse(readFileSync(new URL('../../../docs/query-delivery-baseline.json', import.meta.url)));
 const owner = new SourceTextModule(readFileSync(new URL('../../main/js/query-delivery.mjs', import.meta.url), 'utf8') +
   '\nexport { queryPresentation, awaitQueryDelivery, createQueryDeliveryEnvelope };', { context: createContext({ Buffer }) });
@@ -53,6 +56,158 @@ const projected = result => {
   assert.equal(queryPresentation(result, true), before, 'Verbose remains byte-for-byte canonical JSON');
   return { text, ...parsed(text) };
 };
+
+test('compact retained graph pages preserve evidence progress and deliver all 53 occurrences', async () => {
+  const requests = [];
+  const replies = graphPages.map(({ document }) => ({ ...structuredClone(native.cases.occurrences.reply), document }));
+  const result = await awaitQueryDelivery({ request: { type: 'READ_RESULT',
+    result: replies[0].document.retention.reference, cursor: 0, evidence_cursor: 0,
+    output: { type: 'OCCURRENCES' } } }, async (request, policy) => {
+    requests.push(request);
+    assert.ok(requests.length <= replies.length, 'Delivery cannot invoke semantics or invent another page');
+    const reply = replies[requests.length - 1];
+    policy.onResponseBytes(Buffer.byteLength(JSON.stringify(reply)));
+    return reply;
+  }, { callTimeoutMillis: 1000 }, undefined, () => 0);
+  assert.equal(result.delivery.stop, 'DELIVERED');
+  assert.equal(requests.length, 27);
+  assert.ok(requests.every(request => request.request.type === 'READ_RESULT'));
+  const documents = [result.initial, ...result.pages].map(reply => reply.document);
+  assert.equal(documents.flatMap(document => document.items).length, 53);
+  assert.equal(new Set(documents.flatMap(document => document.items.map(item => item.row_id))).size, 53);
+  assert.equal(documents.reduce((sum, document) => sum + document.relation_graph.reference_observations.length, 0), 53);
+  assert.ok(Buffer.byteLength(JSON.stringify(result)) <= 262144);
+  for (const document of documents) {
+    const graph = document.relation_graph;
+    const witnesses = new Set(graph.witnesses.map(witness => witness.id));
+    assert.ok(document.items.every(item => witnesses.has(item.witness)));
+    assert.equal(graph.basis, document.retention.reference);
+    assert.equal(graph.detail.request.type, 'READ_RESULT');
+    assert.equal(document.coverage.exhaustive, true);
+  }
+  const rendered = projected(result);
+  const evidenceLine = rendered.lines[rendered.lines.indexOf('Evidence delivery:') + 1];
+  assert.equal(JSON.parse(evidenceLine).delivered_entries, 53);
+  const graphLine = rendered.lines[rendered.lines.indexOf('Relation graph:') + 1];
+  const receivedGraph = JSON.parse(graphLine);
+  assert.equal(receivedGraph.basis, documents[0].retention.reference);
+  assert.equal(receivedGraph.nodes.length, 3);
+  assert.equal(receivedGraph.witnesses.length, 53);
+  assert.equal(receivedGraph.reference_observations.length, 53);
+  assert.ok(rendered.rows.every(row => receivedGraph.witnesses.some(witness => witness.id === row.witness)));
+  assert.equal(rendered.summary.coverage.exhaustive, true);
+  assert.ok(Buffer.byteLength(rendered.text) < Buffer.byteLength(JSON.stringify(result)));
+});
+
+test('graph text keeps received witnesses when later delivery loses transport', () => {
+  const replies = graphPages.slice(0, 2).map(({ document }) =>
+    ({ ...structuredClone(native.cases.occurrences.reply), document: structuredClone(document) }));
+  const result = createQueryDeliveryEnvelope(replies[0], replies.slice(1), { stop: 'DELIVERY_UNAVAILABLE',
+    rpc_count: 3, request_bytes: 30, response_bytes: 100, result: replies[0].document.retention.reference });
+  const rendered = projected(result);
+  const graph = JSON.parse(rendered.lines[rendered.lines.indexOf('Relation graph:') + 1]);
+  assert.equal(graph.witnesses.length, 4);
+  assert.equal(rendered.rows.length, 4);
+  assert.equal(rendered.summary.coverage.exhaustive, true);
+  assert.ok(rendered.lines.some(line => line.includes('delivery: DELIVERY_UNAVAILABLE')));
+  assert.equal(rendered.details.verbose, true);
+});
+
+test('minimal SYMBOLS delivers all 53 exact rows under the unchanged aggregate allowance', async () => {
+  const replies = structuredClone(symbolGraphPages);
+  const requests = [];
+  const result = await awaitQueryDelivery({ request: { type: 'READ_RESULT',
+    result: replies[0].document.retention.reference, cursor: 0, evidence_cursor: 0,
+    output: { type: 'SYMBOLS', fields: [] } } }, async (request, policy) => {
+    requests.push(request);
+    assert.ok(requests.length <= replies.length, 'Delivery only consumes issued retained pages');
+    const reply = replies[requests.length - 1];
+    policy.onResponseBytes(Buffer.byteLength(JSON.stringify(reply)));
+    return reply;
+  }, { callTimeoutMillis: 1000 }, undefined, () => 0);
+  assert.equal(result.delivery.stop, 'DELIVERED');
+  assert.equal(requests.length, 27);
+  assert.ok(requests.every(request => request.request.type === 'READ_RESULT'));
+  assert.ok(requests.every(request => request.request.output.type === 'SYMBOLS' && request.request.output.fields.length === 0));
+  const documents = [result.initial, ...result.pages].map(reply => reply.document);
+  assert.equal(documents.flatMap(document => document.items).length, 53);
+  assert.equal(new Set(documents.flatMap(document => document.items.map(item => item.row_id))).size, 53);
+  assert.ok(Buffer.byteLength(JSON.stringify(result)) <= 262144 - 16384);
+  for (const document of documents) {
+    const graph = document.relation_graph;
+    const nodes = new Set(graph.nodes.map(node => node.id));
+    const witnesses = new Map(graph.witnesses.map(witness => [witness.id, witness]));
+    const connections = new Map(graph.connection_witnesses.map(connection => [connection.id, connection]));
+    for (const row of document.items) {
+      assert.equal(row.type, 'exact-symbol-node');
+      assert.ok(nodes.has(row.node));
+      assert.equal(row.connections.length, 1);
+      const connection = connections.get(row.connections[0]);
+      assert.equal(connection.type, 'reference-backed');
+      assert.equal(witnesses.get(connection.witness).ownership.type, 'declaration-owned');
+    }
+    assert.deepEqual(graph.detail.request.output, { type: 'SYMBOLS', fields: [] });
+    assert.equal(graph.detail.request.result, graph.basis);
+    assert.equal(graph.detail.verbose, true);
+    assert.equal(document.coverage.exhaustive, true);
+  }
+  const rendered = projected(result);
+  const graph = JSON.parse(rendered.lines[rendered.lines.indexOf('Relation graph:') + 1]);
+  assert.equal(graph.nodes.length, 3);
+  assert.equal(graph.witnesses.length, 53);
+  assert.equal(graph.connection_witnesses.length, 53);
+  assert.equal(rendered.rows.length, 53);
+  assert.equal(rendered.summary.coverage.exhaustive, true);
+  assert.deepEqual(rendered.details.request.output, { type: 'SYMBOLS', fields: [] });
+  assert.ok(Buffer.byteLength(rendered.text) < Buffer.byteLength(JSON.stringify(result)));
+  console.log('D3 client SYMBOLS logical_calls=' + requests.length + ' response_bytes=' + result.delivery.response_bytes +
+    ' request_bytes=' + result.delivery.request_bytes + ' envelope_bytes=' + Buffer.byteLength(JSON.stringify(result)));
+});
+
+test('symbol text rejects unresolved connections and unknown connection variants', () => {
+  for (const change of [
+    document => { document.items[0].connections[0] = 'connection:v1:' + '0'.repeat(64); },
+    document => { document.relation_graph.connection_witnesses[0].type = 'name-backed'; },
+    document => { document.relation_graph.connection_witnesses[0].witness = 'witness:v1:' + '0'.repeat(64); },
+  ]) {
+    const reply = structuredClone(symbolGraphPages[0]);
+    change(reply.document);
+    const result = createQueryDeliveryEnvelope(reply, [], { stop: 'BYTE_LIMIT', rpc_count: 1,
+      request_bytes: 1, response_bytes: Buffer.byteLength(JSON.stringify(reply)), result: reply.document.retention.reference });
+    assert.equal(queryPresentation(result), JSON.stringify(result));
+  }
+});
+
+test('conflicting received graph descriptions preserve the canonical output', () => {
+  const replies = graphPages.slice(0, 2).map(({ document }) =>
+    ({ ...structuredClone(native.cases.occurrences.reply), document: structuredClone(document) }));
+  replies[1].document.relation_graph.nodes[0].symbol.name = 'different';
+  const result = createQueryDeliveryEnvelope(replies[0], replies.slice(1), { stop: 'BYTE_LIMIT',
+    rpc_count: 2, request_bytes: 20, response_bytes: 100, result: replies[0].document.retention.reference });
+  assert.equal(queryPresentation(result), JSON.stringify(result));
+});
+
+test('compact graph delivery rejects missing evidence and a different retained basis', async () => {
+  for (const [expected, change] of [
+    ['MALFORMED_PAGE', document => document.relation_graph.reference_observations.pop()],
+    ['IDENTITY_MISMATCH', document => { document.relation_graph.basis = 'result:v1:00000000-0000-0000-0000-000000000099'; }],
+  ]) {
+    const replies = graphPages.slice(0, 2).map(({ document }) =>
+      ({ ...structuredClone(native.cases.occurrences.reply), document: structuredClone(document) }));
+    change(replies[1].document);
+    let calls = 0;
+    const result = await awaitQueryDelivery({ request: { type: 'READ_RESULT',
+      result: replies[0].document.retention.reference, cursor: 0, evidence_cursor: 0,
+      output: { type: 'OCCURRENCES' } } }, async () => {
+      assert.ok(calls < replies.length, 'A rejected page must stop before another call');
+      return replies[calls++];
+    }, { callTimeoutMillis: 1000 }, undefined, () => 0);
+    assert.equal(result.delivery.stop, expected);
+    assert.equal(calls, 2);
+    assert.equal(result.initial.document.coverage.exhaustive, true);
+    assert.equal(result.initial.document.items.length, 2);
+  }
+});
 
 test('explicit final view retains all received observation evidence inline without a live handle dependency',()=>{
   for(const name of ['retainedEvidence','occurrences']) {

@@ -260,6 +260,7 @@ internal class IntellijSelectedCallbackSupplies(
         for (literal in literals) {
             when (val read = readCallbackDependencyContract(context, call, literal)) {
                 is CallbackBindingPreparation.DependencyContract -> bindings += read.binding
+                is CallbackBindingPreparation.Unavailable -> return Refinement.Rejected(read.cause)
                 else -> return Refinement.Rejected(CallbackInvocationFlowCause.OUTSIDE_DOMAIN)
             }
         }

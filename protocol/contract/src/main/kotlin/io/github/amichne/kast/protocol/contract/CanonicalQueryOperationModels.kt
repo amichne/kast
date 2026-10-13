@@ -348,6 +348,8 @@ data class QueryRunResult(
     val invocation: QueryInvocationDocument? = null,
     val evidenceWindow: QueryEvidenceWindowDocument? = null,
     val interpretation: QueryResultInterpretationDocument = QueryResultInterpretationDocument.QueryResult,
+    /** Current retained selection. Legacy SYMBOLS documents without this fact keep full presentation. */
+    val presentationOutput: QueryOutputDocument? = null,
 ) : OperationResult
 
 @Serializable

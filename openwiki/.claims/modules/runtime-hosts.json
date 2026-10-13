@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e841709540e2298696e5600c704eb98eccbe763f8c4a9f6b9c52caad7da1c0a6",
+  "pageVersion": "sha256:3f9b23d917cbf99a043a1cb842e3e847b1ca79ea6e168b48bd7e5a16a4971468",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt#L17-L70",
-          "version": "repo-lines-v1:sha256:836fdffe866ba18d800f6a75e109078930fa5f3c17fd22fb3f99ca6ec356b9de:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlNDlmMjgxOTgyNDZkOGY4M2E1YTQzNDkyNDkxZTJlMDg4OTU1MTlhMTgwMDgzOGQ0OGExMTAwYjc0YjI3ZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlhNjgyZmMwYmQ0ZTExNTQxODk0ZGIxMWU4NTI2Mjg3ODRjNDk2ODI4ZjkyZDYyY2M0ZDVjMzVkNDZkMTI4N2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg3ZjgyNmMxMGQxYjk3OTNkZWY3ZDI4ZjE3ZjIxMjFiOGU3MmQxZThiMzMzZjMwMTMyNjgzZTgyMzRjYjM3MGUifQ"
+          "version": "repo-lines-v1:sha256:9d889eae001852176e47d9d447f3a051e442b38dfe2b5c760d730bb496309f3c:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlNDlmMjgxOTgyNDZkOGY4M2E1YTQzNDkyNDkxZTJlMDg4OTU1MTlhMTgwMDgzOGQ0OGExMTAwYjc0YjI3ZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlhNjgyZmMwYmQ0ZTExNTQxODk0ZGIxMWU4NTI2Mjg3ODRjNDk2ODI4ZjkyZDYyY2M0ZDVjMzVkNDZkMTI4N2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg3ZjgyNmMxMGQxYjk3OTNkZWY3ZDI4ZjE3ZjIxMjFiOGU3MmQxZThiMzMzZjMwMTMyNjgzZTgyMzRjYjM3MGUifQ"
         }
       ]
     },
@@ -18,7 +18,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt#L73-L97",
-          "version": "repo-lines-v1:sha256:f05988e2d1ab20f52ef48014bbc7d27b7a077bec3dd56e99f4dd609c22368c67:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1MjNiYzFjMzY2ZGJmYjJiZjhiZjJmMmNjNzdlNDQzMGJkMmM3Y2NjZDI2MTliZTRjNmJkYTdjYThhMWRiYmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVlZGM0MzY3ODU0MjFjYjc2MmVkYjMwNmVmZWVmOTZmMDM3OTY1Y2JiMDRmZmRmOWMzM2MxMzVlMjJjZmMzZWMifQ"
+          "version": "repo-lines-v1:sha256:1694c5f9f367336e6c1daf7e0fa656cd12a57eb7a59d8a578326a66cfeeef677:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1MjNiYzFjMzY2ZGJmYjJiZjhiZjJmMmNjNzdlNDQzMGJkMmM3Y2NjZDI2MTliZTRjNmJkYTdjYThhMWRiYmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVlZGM0MzY3ODU0MjFjYjc2MmVkYjMwNmVmZWVmOTZmMDM3OTY1Y2JiMDRmZmRmOWMzM2MxMzVlMjJjZmMzZWMifQ"
         }
       ]
     },
@@ -60,11 +60,11 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt",
-          "version": "repo-file-v1:sha256:ab1822ddf9c35779b72d0e7ef0fe775f6ca93e4aff666eeef337619338e7d2c1"
+          "version": "repo-file-v1:sha256:54245f06891c2c6f10193390b3b21045114e1b702392e1d0cc0cb0f0057c6e56"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt",
-          "version": "repo-file-v1:sha256:913656da15604ed3893d66986f72064a84d8c88884040fabab573da43126d381"
+          "version": "repo-file-v1:sha256:840ec88bd2cd87ec13b9f74665273d65e7a1eedde0820a00e9cf4d01464e58d9"
         }
       ]
     },
@@ -170,7 +170,7 @@
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt",
-          "version": "repo-file-v1:sha256:c018e3c815295ea33e695ffa3126c8bd6c6123f84f3cb9c95bc11025a6df5238"
+          "version": "repo-file-v1:sha256:f5523937140873d2d926397d83eb47156a1d6069ebfced5f6cf0d5fd6beb2295"
         }
       ]
     },
@@ -202,7 +202,7 @@
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt",
-          "version": "repo-file-v1:sha256:c018e3c815295ea33e695ffa3126c8bd6c6123f84f3cb9c95bc11025a6df5238"
+          "version": "repo-file-v1:sha256:f5523937140873d2d926397d83eb47156a1d6069ebfced5f6cf0d5fd6beb2295"
         },
         {
           "resource": "repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt",
@@ -216,7 +216,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt",
-          "version": "repo-file-v1:sha256:bcb7e77c4f3d047641eedfb238f82982e705e0097c6097e18cb8f4397a91429c"
+          "version": "repo-file-v1:sha256:d6d3ac7ab79b42feb47ce80e8b326672ef711170ef11212ff14f76efe9cb1785"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt",
@@ -274,7 +274,7 @@
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt",
-          "version": "repo-file-v1:sha256:c229eb447c7fe1f6148a17dbdd40b340cd06e3352da4eaa864066363fb670e72"
+          "version": "repo-file-v1:sha256:11822ffc2451f8e5ef9cebb2d8657497558949ef051539c7f69fcfce7ffa3948"
         }
       ]
     },
@@ -292,7 +292,7 @@
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt",
-          "version": "repo-file-v1:sha256:a66f318d1a51c245e8a1b8185159d689f23c19d8bc04c626e41681c374668806"
+          "version": "repo-file-v1:sha256:bea2a047cd9befdff67e1b99b93fdb7057a96db854d980b33f24ca3a4c93f428"
         }
       ]
     },
@@ -309,6 +309,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-09T14:52:54.878Z"
+    "at": "2026-10-13T14:48:27.492Z"
   }
 }

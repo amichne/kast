@@ -198,6 +198,7 @@ internal class QueryOutcomeProjection(
             qualification,
             presentationWindow,
             presentationOrigin,
+            output,
         )
     }
 
@@ -216,6 +217,7 @@ internal class QueryOutcomeProjection(
         qualification: QueryRunQualification?,
         window: QueryRetainedPresentationWindow?,
         origin: Int?,
+        output: QueryOutputDocument,
     ): OperationOutcome<QueryRunResult, QueryRunQualification, QueryRunRejection> {
         val minimum = origin?.let {
             QueryKnownMinimum.parse(it).refinedForQueryOrNull() ?: return contractRejected()
@@ -239,6 +241,7 @@ internal class QueryOutcomeProjection(
                 evidence,
                 fittedWindow,
                 minimum,
+                output,
             )
         return if (qualification == null) OperationOutcome.Complete(envelope)
         else OperationOutcome.Qualified(envelope, qualification)

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7a6954d6ab510cbde87883ab81a26c1bdba6c3c3814ea1e6c32cc523bf3402fd",
+  "pageVersion": "sha256:ea50b62163c2182c360019e1cd40840f51f0eb6c0ef5674c4a734a6b2db5b6b0",
   "claims": [
     {
       "id": "claim_33df4f539870445aaef2d593695dca1b",
@@ -41,7 +41,7 @@
       "statement": "Installed query output schemas derive complete, qualified and rejected shapes from their actual CLI serializers, and CLI projection validates impact completion/accounting before emitting successful documents.",
       "evidence": [
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt#L319-L332",
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt#L331-L344",
           "version": "repo-lines-v1:sha256:faf6c82c92d7b7dd2f5c95c138b848ac5ffb5387db9aed3cf3ef21e5f5def0df:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYxOTllY2ZiNmRkMWE5YWFlZDI4OTllYmQ4YWE0MjI4NTI3YmNkM2NkOTAxNDNlYzdiZjhlMzVhMDY3NzE2MmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwNzBlNjA2MzIxOGQwMTNmMTc2OWYyMDhiMDE1ZDI0YWY4NDBkNGQzYzY4ZGMzNmYwMTc5Y2ZjZWViMDM2YmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUyMTFmM2JhNGQ1M2NlYWFhNDc0YmI3ZjYwMDc2YjMxZTRkMTczY2Q5M2Q0ZDBjMmE0MmIxY2JmOWIxNDJhNmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE5NmU3NGMwYmQ1OTJkMDQzNWRhZjVkZWJkOTM0MGIzZTk0NGNjMDg0MTRmYTgyNTgxNTllYmNiNjRiM2M4YzMifQ"
         },
         {
@@ -63,10 +63,60 @@
           "version": "repo-file-v1:sha256:06b52850e8e65b4542b1a3c2f9fed0159422b2a64c2209505560f880a0d51302"
         }
       ]
+    },
+    {
+      "id": "claim_f255acf1957a44ad9ef7588b5d1e3dcc",
+      "statement": "Typed compact retained occurrence and SYMBOLS pages preserve exact nodes and qualified witnesses within their retained basis. Full descriptor conflicts preserve full output. Existing verbose READ_RESULT retrieves full evidence and compiler signatures.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryRelationGraphCliDocument.kt#L15-L87",
+          "version": "repo-lines-v1:sha256:88e289f0dff1adac6c591b6a6adbece5c62fa68089db0c33a2d8c4efffd3f22e:eyJzZWxlY3RlZExpbmVDb3VudCI6NzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwODhkNTBmZDM5NDVkZWI4ZjRkNDU0MDIxMDAyMDVmNmE5OGE4ZWI4NGRmM2NlYmQ2MThiYjU3MzUwYTViZTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA4ZmJlYWM5ZGFmN2Y1ODNhMWVjMzc4Y2RjYWNmMmY0YTgxNTlhM2MzZDgwZDJmNzRkMTRmNTdkYzQ5MzQ3MzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc5MmI2NzQ1YzFjNTFjMDA5OTI5YTc1YWE4YmNjNDdjNTczNzc2ZGRkNWI2ZTFiZDNmZDJjZjdhYzJlOTIxNjEifQ"
+        },
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/RetainedRelationGraphProjection.kt#L176-L185",
+          "version": "repo-lines-v1:sha256:b20946c1b390c5e8e9c02d345ed3d0b1be8314786297cddbe056ce1d1bee0aa8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMzI4YjFiMjRlN2EyZTRkOTJiZmU5OGM0NWZmMGJmYzAyZGU0MDlhZDcxYmY5ZDhlNGFlNzJkYTA0OWI5YWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA3OTQ5ZTNiYjM1OGE2ZDU4MTAzZTJjOTUxYjVkMTIyNzU2MjlmNzEyYWFhNDYyMmRmNDdkYTdjZjY4ZGM5NGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcwMjZjNDFjYWZiYzY3Mzc2ODYzODkwODAxOWUyY2I4MmI4MjI2YmM1M2RiYTM4YzEyOWJlNjYxYTBmOTNkZjYifQ"
+        },
+        {
+          "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphNodeRetrievalTest.kt",
+          "version": "repo-file-v1:sha256:48e1015613e33b5f0991e5589f309af5a441307a48971365b67ce0e89f927ad2"
+        }
+      ]
+    },
+    {
+      "id": "claim_70e8825be85141858a2433bfed446c7f",
+      "statement": "Callback domain and public projections preserve DEPENDENCY_CONTRACT_EFFECT_UNPROVEN, DEPENDENCY_BINARY_UNAVAILABLE, DEPENDENCY_BINARY_CHANGED, and DEPENDENCY_TARGET_UNAVAILABLE as distinct finite causes.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt",
+          "version": "repo-file-v1:sha256:ddd72a9d7f9ea2afea026b7f891d31a4a7885a9091cb6bf50b917ec572c67c7f"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackEnumProjection.kt",
+          "version": "repo-file-v1:sha256:77c74d9d6d95bd5dd8a7451214ddc79869ac6b075f792d0989f1753f85d77726"
+        },
+        {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackInvocationFlow.kt",
+          "version": "repo-file-v1:sha256:4db5f2fdd451b1ba891a5d2471c1244a903cdf00047c244374d9291a399dc0cf"
+        }
+      ]
+    },
+    {
+      "id": "claim_3fae80703170488fac33c1e3f26eb554",
+      "statement": "Compact retained SYMBOLS connections use direct or reference-backed variants. Sharing needs full relation-fact equality. Detail selection preserves the actual current output.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/RetainedRelationGraphProjection.kt#L145-L173",
+          "version": "repo-lines-v1:sha256:97a8e9062feacb09e366846cdf50b36c60b55640742044e79a0cf5a1fe7fe762:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE1YmY3YTIzZjhhMmRkYzhkYTUwZTNlZWI1MjliYTg5MTM4ZTdhOTQ0ZjE2NjJlYWVhODc0MTBhMDBlMTljMDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyMmQxZDdmMjE3YWVmZWY4MDU1YWMxYzM5YTg1ZmM1ZmNhZTAyMWRhODliZTVmZjZmMzc0ZmE5NGYyNmFiMWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZmMGQ3NTk1MGRmMGZmOWEzZWU5NjYzOWRjYzhmZjVlYWVkYjQwZDY4MmJlYTkyNjIyYjUyMGRkODg3ZDkzZTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI1OTM3Mjg0N2EyOWRiNjkxYTJmMzNiZTQwMWU3MTBhOTY5Y2IwNWE0OWQxZWJjY2YzMzBlYjYyN2E0ZDk2YmQifQ"
+        },
+        {
+          "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/RetainedRelationGraphProjection.kt#L266-L310",
+          "version": "repo-lines-v1:sha256:c67d1967d27532e86e4d0987748342fbd7163b6c42a22fae1fe98edfe0f64d40:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlZmJmMWZiOTc3NDM0YTg1ODBjYjE1YTIyNDRhZmNjOTQ2ZjU1ZmJkOGMzNjI5MDIxNzE4YThmZDg1Y2IxODkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVkMjliNzI4MGI4NmQyYzlmNjE1ZDNiNzYzNWJlY2M5N2Y5YzM4Y2I2MmNiMGQxZGNlNmIxMWI2ODNkMzM1OGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlYTgwNmRjZTJhOTlkMWQwOTg4Mzk2MGI1ZTc5NjAwNWIzYzI5NWE5ZDdkNGU2Mjc0OTQ1MDI1NGI4Mzc1YzcifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-08T04:02:52.014Z"
+    "at": "2026-10-13T16:19:14.290Z"
   }
 }

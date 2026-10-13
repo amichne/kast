@@ -55,6 +55,8 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
   - id: openwiki-source-1320464fca8af68fbc8ba11a
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt
+  - id: openwiki-source-6ee6a10decc8306b2fc74bca
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt
   - id: openwiki-source-207ff2d32f1b70dfee08054c
     resource: repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/OperationRegistry.kt
   - id: openwiki-source-1905c35a82810ccf74696707
@@ -63,10 +65,20 @@ sources:
     resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireTable.kt
   - id: openwiki-source-7e2e7b680c5aeef13789f9ff
     resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/CanonicalQueryCliDocuments.kt
-generated: { by: "codex", at: "2026-10-08T01:13:49.481Z" }
+  - id: openwiki-source-f25255e9bb017d304eee3d17
+    resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryRelationGraphCliDocument.kt
+  - id: openwiki-source-ff46625371d40be09ef9d311
+    resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/RetainedRelationGraphProjection.kt
+  - id: openwiki-source-ec259a6582a780e15493400b
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackEnumProjection.kt
+  - id: openwiki-source-89238fabaeb4e17c02186073
+    resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphNodeRetrievalTest.kt
+  - id: openwiki-source-c7caab29dec6e41d0046710e
+    resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackInvocationFlow.kt
+generated: { by: "codex", at: "2026-10-13T16:19:14.290Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-08T04:02:52.014Z
+    at: 2026-10-13T16:19:14.290Z
 ---
 
 # Protocol
@@ -173,3 +185,18 @@ Impact documents retain exact value-site basis, callable identity, source range 
 The installed query output schema is derived from the actual complete, qualified and rejected CLI serializers. Item, failure and qualification schemas reuse the same serializer owners. The former independent source-window/query field lists have been removed, so schema admission and typed encoded output share one owner. Encoded-shape, schema and generation checks remain distinct from native qualification.
 
 Keyless mutation uses `kast.ide-hosted.runtime.v3` and daemon operation RPC version 3. Apply and recovery carry canonical requests, without private preparation, signing or approval assertions. Exact current native plan, source and recovery admission remains required. Older loaded Host contracts reject; receipt replay may retain admitted historical v1 evidence without granting current mutation authority.
+
+Compact retained reference pages use typed `reference-edge` rows and a result-scoped `relation_graph`.
+Retained SYMBOLS pages use typed `exact-symbol-node` rows through the same projection.
+The graph preserves exact nodes, occurrence witnesses, finite ownership, direction, provenance, and coverage.
+Compact nodes preserve exact selectors, compiler identities, and source locations.
+Stable node and witness identifiers name descriptions within the retained basis.
+They supply no live selector or authority across epochs.
+The shared serializer includes a verbose `READ_RESULT` request for full evidence and compiler signatures.
+Its SYMBOLS selection comes from the actual current canonical output.
+Reference-backed connections share witnesses only after full relation-fact equality.
+Missing row identity or conflicting exact descriptions preserve full occurrence output.
+
+Callback failure projections preserve `DEPENDENCY_CONTRACT_EFFECT_UNPROVEN`, `DEPENDENCY_BINARY_UNAVAILABLE`, `DEPENDENCY_BINARY_CHANGED`, and `DEPENDENCY_TARGET_UNAVAILABLE`.
+The domain, public DTO, and exhaustive projection keep these causes distinct.
+More precise rejection evidence does not establish graph completion.

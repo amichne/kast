@@ -231,6 +231,7 @@ private fun QueryRunResult.toQueryWireDocument() =
         nextCursor = nextCursor,
         executionBudget = executionBudget,
         referenceAcquisitions = referenceAcquisitions,
+        presentationOutput = presentationOutput,
     )
 
 private fun QueryRunResultWireDocument.toContract(): WireDocumentConversion<QueryRunResult> =
@@ -257,6 +258,7 @@ private fun QueryRunResultWireDocument.toContract(): WireDocumentConversion<Quer
                                                                 invocation = invocation,
                                                                 evidenceWindow = evidenceWindow,
                                                                 question = question,
+                                                                presentationOutput = presentationOutput,
                                                                 impactAccounting = impactAccounting,
                                                                 items = boundedItems,
                                                                 failures = boundedFailures,

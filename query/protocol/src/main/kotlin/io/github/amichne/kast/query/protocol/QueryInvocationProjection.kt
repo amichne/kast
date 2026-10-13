@@ -218,6 +218,7 @@ internal class QueryInvocationProjection(
                     evidence = presentationEvidence,
                     presentationWindow = preview.window,
                     presentationOrigin = QueryKnownMinimum.parse(count).required(),
+                    output = request.output,
                 )
             return OperationOutcome.Complete(
                 envelope.copy(

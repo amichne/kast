@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:511251eed943cb7aa6dcc1703f823064098db3ac472c181505afd7c1a023d4bf",
+  "pageVersion": "sha256:44069fe68f9bc4eb68b69fb9050f2fdbebb8d75238a704ac0db345f312f6d383",
   "claims": [
     {
       "id": "claim_91a8a70849534ef1b2462828f3d9c9fb",
@@ -66,7 +66,7 @@
         },
         {
           "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt",
-          "version": "repo-file-v1:sha256:30185a0cef6375eedc44a6c3a1eda620e4a6ac1e8977846c75ea00c34cd8e9a2"
+          "version": "repo-file-v1:sha256:4b8a3f91562ce68b78d400b292d2c9ed78f945e508267afa3547bce17332345d"
         }
       ]
     },
@@ -95,7 +95,7 @@
           "version": "repo-lines-v1:sha256:ca8b1a8c021864546d6acb94a7efc0e735534bbad61e9c48aae36bc5cb02a54e:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTRkYTYyZDI0YzE4MTZjNzQ1OWIzNzRkNzQ1MWJiYTdlNDZjZmI4MzZkNWU3ZDA4MjkzOTgzODI2ZGQ4YjRkMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2QxMmJjMjllM2JkMmJkZDg4NDI0Y2YzZjE3YTgwODQxMjg4ZjVmZjRmMGFlZDBlYjUzZWE3NTZmZmMyN2EyNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGM0NDQxNDQ1YTZmOTg2ZGMzNzk2MGZhNWMzM2RiNTQ1NmQ2ZTMxYWQxZmY4YWJlZjA3MzBhNjYzNjkwYjNjYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmRlZmNmY2U1NzQ4ZmExMGY0YzZmOGNhNDJmMTliOWJkZTdjMjY1YTIwMjFkZDQ5Mjg0OTk3MzlkYzdlN2ViZSJ9"
         },
         {
-          "resource": "repo://install.sh#L576-L589",
+          "resource": "repo://install.sh#L582-L595",
           "version": "repo-lines-v1:sha256:06243be3a54d13e0ef3c5c6f3f8c06ca25b46c730f94e907f2daceb16571ba4e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMxMmViMzUwMjFiOTY3MTI5NjM3M2EyMWNiMjg4ZGViNGY3MjViMjVmZmQ2NTliNzY4MGVlMjQ1NDFkZDRjOGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYyZTFhZGRiZGZkN2IwY2ZlOGFhYzVkNGE3MGFlOTYxMDNjY2NhZWM5YWM3ZDlkYTg5NGRkZmNmMDc0MGE3MzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIzN2FhZDE0MjFjYzU4MGE3ZTIxZGM2YTg2ZmY0N2M3ZmVmNzVkMzE3MGQwNTQxZTdhZDA0ODljNjZjM2VjYjUifQ"
         },
         {
@@ -119,7 +119,7 @@
       "statement": "The local adapter delegates Java selection to the public installer's admitted IntelliJ home. The unused KAST_LOCAL_JAVA_EXECUTABLE and KAST_LOCAL_JAVA_HOME inputs are absent from installLocal and the catalogue; every configuration source rejects them as UNKNOWN_KEY. The assembled-product acceptance runner retains KAST_ACCEPTANCE_JAVA_EXECUTABLE.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L253-L293",
+          "resource": "repo://build.gradle.kts#L255-L295",
           "version": "repo-lines-v1:sha256:499fb1769181925802016dccbf5c762d8dca34b3cebf9a04cbc8c3937a7bb446:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlZGM3OWM2ZjgxZDZlZDM2NTEzN2JlNGMyNzM4MGEyNGE4ZmI0YzUyNjk1ZDMzYjFkMzRlNzg1MzIzOGVjOTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg5NDkyYzhhODE3ZWQ1MGU1NjYwNzhiZDQ4MmUxMjUzYTdmNDBiYzc5YTI5MWFiZjgzMjkzYWJhYjdhMzQxMWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU2ZTg4YzRmNGYyY2JlNTU5MDUyYjExMjdkMDVjZDlmZThkM2VjMDFiZTBmMWY0MDgyNjMxNmFkZjM2YjlhMmYifQ"
         },
         {
@@ -128,7 +128,7 @@
         },
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:98dc54e5596afc2195055c80a6eb73aff33c6370ef8475766f4bb897dd277c54"
+          "version": "repo-file-v1:sha256:0cbd08f040ca1756f7b35bd51cbccfe57604ccc6fc87f99ec7d773f176af5062"
         },
         {
           "resource": "repo://packaging/install-local.sh",
@@ -153,6 +153,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-08T02:31:16.815Z"
+    "at": "2026-10-13T14:48:27.492Z"
   }
 }

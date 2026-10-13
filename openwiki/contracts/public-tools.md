@@ -90,12 +90,16 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt
   - id: openwiki-source-25b472ce8bd658b8f8006f96
     resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolExpansionScopeContractTest.kt
+  - id: openwiki-source-82cf2cb34e9f56bad15bc34f
+    resource: repo://cli/src/main/js/query-delivery.mjs
   - id: openwiki-source-59889f27a7250df554c3789e
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KotlinxRequestJsonSchema.kt
   - id: openwiki-source-1477ae5b7ae5aa974c4639a0
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/CanonicalSchemaReferences.kt
   - id: openwiki-source-13541e0f8bd3fead648241e7
     resource: repo://cli/src/test/js/harness-adapters.test.mjs
+  - id: openwiki-source-5e000dafdc7ca9b43b0fab21
+    resource: repo://cli/src/test/js/query-presentation.test.mjs
   - id: openwiki-source-4ef03fc871e7002a6d738dfc
     resource: repo://cli/src/test/kotlin/io/github/amichne/kast/cli/GeneratedSchemaReuseTest.kt
   - id: openwiki-source-ffafcc2936c3877f4b78db93
@@ -136,6 +140,10 @@ sources:
     resource: repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt
   - id: openwiki-source-bf3ab75a4bb34b3c2053ce19
     resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalSymbolDocuments.kt
+  - id: openwiki-source-f25255e9bb017d304eee3d17
+    resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryRelationGraphCliDocument.kt
+  - id: openwiki-source-ff46625371d40be09ef9d311
+    resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/RetainedRelationGraphProjection.kt
   - id: openwiki-source-0004ddd2db1ed842d955e596
     resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/QueryCallbackBindingWireDocuments.kt
   - id: openwiki-source-25796dce45aaa5a543a07570
@@ -152,16 +160,20 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidenceRead.kt
   - id: openwiki-source-47abb721c1c0711f6358e68d
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt
+  - id: openwiki-source-4d966bb6246ecb797751303a
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultEnvelope.kt
   - id: openwiki-source-4bf64022307aff9f9f531f9b
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
   - id: openwiki-source-06ad73bc218ddc2ffa485553
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt
   - id: openwiki-source-ff3a32a34def3fbe81d63b1c
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt
-generated: { by: "codex", at: "2026-10-09T15:03:18.986Z" }
+  - id: openwiki-source-89238fabaeb4e17c02186073
+    resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphNodeRetrievalTest.kt
+generated: { by: "codex", at: "2026-10-13T16:27:31.406Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-09T15:03:18.986Z
+    at: 2026-10-13T16:27:31.406Z
 ---
 
 # Public intent tools
@@ -387,3 +399,26 @@ class digest and `KOTLIN_BINARY_CONTRACT` / `EXACTLY_ONCE` provenance. Binary
 targets receive no authored-source handle or invented body-invocation record.
 Typed admission preserves source containment, exhaustive scanning and nested
 activation obligations before domain construction.
+
+## Compact retained relations
+
+Compact output for retained reference-occurrence rows uses `reference-edge` items and one `relation_graph` per page.
+The graph carries exact node descriptions, occurrence witnesses, ownership, direction, provenance, and coverage.
+Each compact node keeps its exact selector, compiler identity, kind, name, qualified identity, file, and range.
+Full compiler signatures remain available through the graph's verbose detail request.
+Its identifiers name evidence within the RETAINED RESULT basis.
+They do not select live declarations or establish authority across epochs.
+
+The shared projection preserves distinct occurrences between the same endpoints.
+Its detail request uses existing `READ_RESULT` ownership with `verbose: true` to retrieve full evidence.
+Missing row identity or conflicting exact descriptions preserve the full occurrence output.
+Complete-empty and evidence-only pages also preserve their existing shapes.
+
+Retained SYMBOLS output uses `exact-symbol-node` rows and closed direct or reference-backed connections.
+A backed connection shares a declaration-owned reference witness only after full relation-fact equality.
+The canonical result preserves the actual current field selection for its detail request.
+Legacy SYMBOLS documents without that fact keep full output.
+
+The shared client admits the graph's retained basis before it accepts a page.
+Its EVIDENCE CURSOR counts the graph's reference observations.
+Delivery progress remains separate from semantic coverage, and a delivery stop preserves the original outcome.

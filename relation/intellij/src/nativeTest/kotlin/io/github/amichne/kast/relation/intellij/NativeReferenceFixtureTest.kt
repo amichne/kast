@@ -108,6 +108,24 @@ internal constructor(
     val request: RelationRequest,
     private val model: WorkspaceSearchScopeModelCompilation,
 ) {
+    internal suspend fun read(
+        meaning: io.github.amichne.kast.relation.contract.RelationMeaning
+    ): io.github.amichne.kast.relation.contract.RelationCompilation {
+        val selected =
+            com.intellij.openapi.application.readAction {
+                val projection = IntellijK2RelationProjection(project, request.subject.lease.workspaceRoot)
+                val evidence = (projection.project(target) as IntellijRelationDeclarationProjection.Projected).evidence
+                reissuedNativeRelationRequest(request, evidence, meaning)
+            }
+        return IntellijRelationCompilerQuery()
+            .read(
+                project = project,
+                currentLease = selected.subject.lease,
+                request = selected,
+                modelCompilation = model,
+            )
+    }
+
     internal fun targetFileOnly(): NativeReferenceFixture {
         val file = target.containingFile.virtualFile.toNioPath()
         val scope =

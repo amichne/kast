@@ -207,6 +207,10 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedEndpointDocuments.kt
   - id: openwiki-source-1320464fca8af68fbc8ba11a
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt
+  - id: openwiki-source-ff46625371d40be09ef9d311
+    resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/RetainedRelationGraphProjection.kt
+  - id: openwiki-source-abdee49d351af2be40792496
+    resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/serialization/CanonicalQueryDocuments.kt
   - id: openwiki-source-47b84d48b89b57b3b1609484
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPresentationExecution.kt
   - id: openwiki-source-dfd865ab52ce8eea1b519c4e
@@ -221,6 +225,8 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt
   - id: openwiki-source-4e38a945b050af72c2343f02
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProjectedEvidence.kt
+  - id: openwiki-source-4d966bb6246ecb797751303a
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryResultEnvelope.kt
   - id: openwiki-source-4bf64022307aff9f9f531f9b
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
   - id: openwiki-source-cff355f3dfdd8f6ba0b1f798
@@ -229,10 +235,18 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingPresentationTest.kt
   - id: openwiki-source-1263068512b14f5d3a0bde82
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactRetentionTest.kt
+  - id: openwiki-source-83cd0a09602c37672ae29caa
+    resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphDeliveryMeasurementTest.kt
+  - id: openwiki-source-eadf536d34552dd57c7ba214
+    resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedSymbolGraphDeliveryTest.kt
+  - id: openwiki-source-6876ff288b3f8ed238045cae
+    resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedSymbolGraphMeasurementTest.kt
   - id: openwiki-source-711e20b0c3995766bf099120
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryValuePathOutputAdmission.kt
   - id: openwiki-source-83fc669045de1f95291d1bb5
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt
+  - id: openwiki-source-1fe2efeabc6d3df3eafeb9cc
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijSelectedCallbackSupplies.kt
   - id: openwiki-source-680008eb9e24b45cf91f6d9d
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
   - id: openwiki-source-9ddb39fa2f594fe2e1edaa19
@@ -257,10 +271,10 @@ sources:
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt
   - id: openwiki-source-63abd5c24e7d947c619c1a6e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadValueSiteCounterTest.kt
-generated: { by: "codex", at: "2026-10-09T14:52:54.878Z" }
+generated: { by: "codex", at: "2026-10-13T16:19:14.290Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-09T14:52:54.878Z
+    at: 2026-10-13T16:19:14.290Z
 ---
 
 # Existing-IDE semantic query
@@ -839,3 +853,16 @@ counters at the K2 binary-contract boundary. The counters carry no source
 payload or dependency body. They are runtime observations; the retained declared
 contract supplies compiler evidence separately. Missing counters in an older
 record do not establish zero work.
+
+Dependency admission also preserves finite causes for a missing matching effect,
+unavailable binary evidence, changed binary evidence, and unavailable target evidence.
+The selected callback supply keeps the first native failure instead of replacing it with `OUTSIDE_DOMAIN`.
+These causes explain rejected proof transitions and do not establish a complete graph.
+
+Compact retained reference pages use the shared graph projection after canonical presentation.
+Compact SYMBOLS pages use the same owner with the actual current field selection.
+The canonical result carries that selection through wire serialization.
+Legacy SYMBOLS documents without the fact keep full output.
+Existing canonical byte fitting still determines page partitions.
+Fewer emitted bytes therefore do not establish fewer physical RPCs or less semantic work.
+The detail request retrieves full evidence and compiler signatures through the same retained owner.

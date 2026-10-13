@@ -35,6 +35,8 @@ internal fun readCallbackDependencyContract(
             IntellijReadCounter.CALLBACK_DEPENDENCY_CONTRACTS_ADMITTED
         else IntellijReadCounter.CALLBACK_DEPENDENCY_CONTRACTS_REJECTED
     )
+    if (result is CallbackBindingPreparation.Unavailable)
+        context.observation.terminated(result.cause.supplierTermination())
     return result
 }
 
@@ -48,8 +50,10 @@ private fun dependencyContract(
         is Refinement.Rejected -> return CallbackBindingPreparation.Unavailable(permit.failure)
     }
     val native =
-        context.observation.observedAnalyze(call) { binaryContract(context, call, expression) }
-            ?: return CallbackBindingPreparation.Unavailable(CallbackInvocationFlowCause.OUTSIDE_DOMAIN)
+        when (val read = context.observation.observedAnalyze(call) { binaryContract(context, call, expression) }) {
+            is Refinement.Refined -> read.value
+            is Refinement.Rejected -> return CallbackBindingPreparation.Unavailable(read.failure)
+        }
     val occurrence =
         context.occurrence(call.valueInvocationExpression())
             ?: return CallbackBindingPreparation.Unavailable(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
@@ -78,22 +82,41 @@ private fun org.jetbrains.kotlin.analysis.api.KaSession.binaryContract(
     context: IntellijCallbackFlowContext,
     call: KtCallElement,
     expression: KtExpression,
-): NativeDependencyContract? {
-    val resolved = call.resolveCall() ?: return null
-    val symbol = resolved.signature.symbol as? KaNamedFunctionSymbol ?: return null
-    if (symbol.origin != KaSymbolOrigin.LIBRARY) return null
-    val parameter = resolved.valueArgumentMapping[expression]?.symbol ?: return null
-    if (parameter.returnType !is KaFunctionType || !symbol.exactlyOnce(parameter)) return null
+): Refinement<NativeDependencyContract, CallbackInvocationFlowCause> {
+    val resolved =
+        call.resolveCall() ?: return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+    val symbol =
+        resolved.signature.symbol as? KaNamedFunctionSymbol
+            ?: return Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_TARGET_UNAVAILABLE)
+    if (symbol.origin != KaSymbolOrigin.LIBRARY) return Refinement.Rejected(CallbackInvocationFlowCause.OUTSIDE_DOMAIN)
+    val parameter =
+        resolved.valueArgumentMapping[expression]?.symbol
+            ?: return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+    if (parameter.returnType !is KaFunctionType)
+        return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+    if (!symbol.exactlyOnce(parameter))
+        return Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_CONTRACT_EFFECT_UNPROVEN)
     val position =
         when (val parsed = ValueArgumentPosition.parse(symbol.valueParameters.indexOf(parameter))) {
             is Refinement.Refined -> parsed.value
-            is Refinement.Rejected -> return null
+            is Refinement.Rejected ->
+                return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
         }
-    val declaration = symbol.psi as? PsiNamedElement ?: return null
-    val file = declaration.containingFile?.virtualFile ?: return null
-    val digest = file.contractClassDigest() ?: return null
-    val evidence = contractTarget(context, symbol, declaration, file) ?: return null
-    return NativeDependencyContract(evidence, position, digest)
+    val declaration =
+        symbol.psi as? PsiNamedElement
+            ?: return Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_TARGET_UNAVAILABLE)
+    val file =
+        declaration.containingFile?.virtualFile
+            ?: return Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_BINARY_UNAVAILABLE)
+    val digest =
+        when (val read = file.contractClassDigest()) {
+            is Refinement.Refined -> read.value
+            is Refinement.Rejected -> return read
+        }
+    val evidence =
+        contractTarget(context, symbol, declaration, file)
+            ?: return Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_TARGET_UNAVAILABLE)
+    return Refinement.Refined(NativeDependencyContract(evidence, position, digest))
 }
 
 private fun KaNamedFunctionSymbol.exactlyOnce(
@@ -106,24 +129,28 @@ private fun KaNamedFunctionSymbol.exactlyOnce(
     return effects.size == 1 && effects.single().invocationKind == KaContractInvocationKind.EXACTLY_ONCE
 }
 
-private fun com.intellij.openapi.vfs.VirtualFile.contractClassDigest(): DependencyClassDigest? {
-    if (extension != "class" || length !in 1..MAX_CONTRACT_CLASS_BYTES) return null
+private fun com.intellij.openapi.vfs.VirtualFile.contractClassDigest():
+    Refinement<DependencyClassDigest, CallbackInvocationFlowCause> {
+    if (extension != "class" || length !in 1..MAX_CONTRACT_CLASS_BYTES)
+        return Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_BINARY_UNAVAILABLE)
     val stamp = modificationStamp
     val content =
         try {
             inputStream.use { it.readNBytes((MAX_CONTRACT_CLASS_BYTES + 1).toInt()) }
         } catch (_: java.io.IOException) {
-            return null
+            return Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_BINARY_UNAVAILABLE)
         }
-    if (content.size.toLong() !in 1..MAX_CONTRACT_CLASS_BYTES || modificationStamp != stamp) return null
+    if (content.size.toLong() !in 1..MAX_CONTRACT_CLASS_BYTES)
+        return Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_BINARY_UNAVAILABLE)
+    if (modificationStamp != stamp) return Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_BINARY_CHANGED)
     return when (
         val parsed =
             DependencyClassDigest.parse(
-                MessageDigest.getInstance("SHA-256").digest(content).joinToString("") { "%02x".format(it) }
+                java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content))
             )
     ) {
-        is Refinement.Refined -> parsed.value
-        is Refinement.Rejected -> null
+        is Refinement.Refined -> parsed
+        is Refinement.Rejected -> Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_BINARY_UNAVAILABLE)
     }
 }
 
