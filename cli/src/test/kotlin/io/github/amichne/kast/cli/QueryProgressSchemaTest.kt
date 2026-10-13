@@ -7,6 +7,8 @@ import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.QueryCheckpointDocument
+import io.github.amichne.kast.protocol.contract.QueryDiscoveryBlockDocument
+import io.github.amichne.kast.protocol.contract.QueryDiscoveryProgressDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryItemFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
@@ -22,13 +24,17 @@ import io.github.amichne.kast.protocol.contract.ReadResumeActionDocument
 import io.github.amichne.kast.protocol.contract.RelationFactDocument
 import io.github.amichne.kast.protocol.contract.SymbolIdDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
+import io.github.amichne.kast.protocol.contract.ToolOutputDetail
+import io.github.amichne.kast.protocol.wire.presentation.AgentInterfaceDiscoveryFixture
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
 import io.github.amichne.kast.query.protocol.evidenceBasis
 import io.github.amichne.kast.symbol.contract.CanonicalSymbolId
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
@@ -80,6 +86,85 @@ class QueryProgressSchemaTest {
                         ),
                     ),
                 )
+            }
+        }
+    }
+
+    @Test
+    fun `actual compact and verbose discovery pages admit and required semantic evidence cannot disappear`() {
+        with(schema) {
+            val progresses =
+                listOf(
+                    QueryDiscoveryProgressDocument.Exhausted,
+                    AgentInterfaceDiscoveryFixture.resumableProgress(),
+                    QueryDiscoveryProgressDocument.Blocked(QueryDiscoveryBlockDocument.PARTITION_CAPACITY),
+                )
+            for (progress in progresses) {
+                for (outcome in
+                    listOf(
+                        AgentInterfaceDiscoveryFixture.complete(progress = progress),
+                        AgentInterfaceDiscoveryFixture.qualified(progress = progress),
+                        AgentInterfaceDiscoveryFixture.complete(progress = progress, evidenceOnly = true),
+                    )) {
+                    for (detail in ToolOutputDetail.entries) {
+                        val document = outcome.document(detail)
+                        assertAdmits(CanonicalOperation.QUERY_RUN, document)
+                        for (field in
+                            listOf(
+                                "items",
+                                "walk_observations",
+                                "reference_observations",
+                                "discovery_observations",
+                                "relation_observations",
+                            )) {
+                            assertRejects(CanonicalOperation.QUERY_RUN, JsonObject(document - field))
+                        }
+                        val observation = document.getValue("discovery_observations").jsonArray.single().jsonObject
+                        for (field in listOf("universe", "ordering", "progress", "observed_stops")) {
+                            assertRejects(
+                                CanonicalOperation.QUERY_RUN,
+                                document.with(
+                                    "discovery_observations",
+                                    JsonArray(listOf(JsonObject(observation - field))),
+                                ),
+                            )
+                        }
+                        assertRejects(
+                            CanonicalOperation.QUERY_RUN,
+                            document.with(
+                                "discovery_observations",
+                                JsonArray(
+                                    listOf(
+                                        observation.with(
+                                            "progress",
+                                            observation
+                                                .getValue("progress")
+                                                .jsonObject
+                                                .with("kind", JsonPrimitive("invented")),
+                                        )
+                                    )
+                                ),
+                            ),
+                        )
+                        assertRejects(
+                            CanonicalOperation.QUERY_RUN,
+                            document.with(
+                                "discovery_observations",
+                                JsonArray(listOf(observation.with("ordering", JsonPrimitive("invented")))),
+                            ),
+                        )
+                        assertRejects(
+                            CanonicalOperation.QUERY_RUN,
+                            document.with(
+                                "discovery_observations",
+                                JsonArray(listOf(observation.with("examined_work_units", JsonPrimitive(-1)))),
+                            ),
+                        )
+                    }
+                }
+            }
+            for (detail in ToolOutputDetail.entries) {
+                assertAdmits(CanonicalOperation.QUERY_RUN, AgentInterfaceDiscoveryFixture.rejected().document(detail))
             }
         }
     }

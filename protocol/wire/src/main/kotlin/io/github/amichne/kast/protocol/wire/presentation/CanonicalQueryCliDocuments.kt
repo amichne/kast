@@ -131,7 +131,7 @@ private fun projectComplete(result: QueryRunResult, live: LiveReadCliEvidence?):
             omissions = result.omissions.values.map(QueryRelationOmissionDocument::toCliDocument),
             walkObservations = result.walkObservations.values.map { it.toQueryCliDocument() },
             referenceObservations = result.referenceObservations.values.map { it.toWireDocument() },
-            discoveryObservations = result.discoveryObservations.values,
+            discoveryObservations = result.discoveryObservations.values.map(QueryDiscoveryObservationCliDocument::from),
             relationObservations = result.relationObservations.values.map { it.toWireDocument() },
             retention = result.retention,
             nextCursor = result.nextCursor,
@@ -162,7 +162,7 @@ private fun projectQualified(
             omissions = result.omissions.values.map(QueryRelationOmissionDocument::toCliDocument),
             walkObservations = result.walkObservations.values.map { it.toQueryCliDocument() },
             referenceObservations = result.referenceObservations.values.map { it.toWireDocument() },
-            discoveryObservations = result.discoveryObservations.values,
+            discoveryObservations = result.discoveryObservations.values.map(QueryDiscoveryObservationCliDocument::from),
             relationObservations = result.relationObservations.values.map { it.toWireDocument() },
             retention = result.retention,
             nextCursor = result.nextCursor,
@@ -206,8 +206,7 @@ private data class QueryCompleteCliDocument(
     val omissions: List<QueryRelationOmissionCliDocument>? = null,
     @SerialName("walk_observations") val walkObservations: List<QueryWalkObservationCliDocument>,
     @SerialName("reference_observations") val referenceObservations: List<RelationReferenceOccurrenceWireDocument>,
-    @SerialName("discovery_observations")
-    val discoveryObservations: List<io.github.amichne.kast.protocol.contract.QueryDiscoveryObservationDocument>,
+    @SerialName("discovery_observations") val discoveryObservations: List<QueryDiscoveryObservationCliDocument>,
     @SerialName("relation_observations")
     val relationObservations: List<io.github.amichne.kast.protocol.wire.QueryRelationObservationWireDocument>,
     val retention: QueryResultRetention,
@@ -248,8 +247,7 @@ private data class QueryQualifiedCliDocument(
     val omissions: List<QueryRelationOmissionCliDocument>? = null,
     @SerialName("walk_observations") val walkObservations: List<QueryWalkObservationCliDocument>,
     @SerialName("reference_observations") val referenceObservations: List<RelationReferenceOccurrenceWireDocument>,
-    @SerialName("discovery_observations")
-    val discoveryObservations: List<io.github.amichne.kast.protocol.contract.QueryDiscoveryObservationDocument>,
+    @SerialName("discovery_observations") val discoveryObservations: List<QueryDiscoveryObservationCliDocument>,
     @SerialName("relation_observations")
     val relationObservations: List<io.github.amichne.kast.protocol.wire.QueryRelationObservationWireDocument>,
     val retention: QueryResultRetention,
@@ -321,6 +319,7 @@ private val completeFactory =
         it.copy(
             failures = it.failures?.takeIf(List<*>::isNotEmpty),
             omissions = it.omissions?.takeIf(List<*>::isNotEmpty),
+            discoveryObservations = it.discoveryObservations.map(QueryDiscoveryObservationCliDocument::compact),
             executionBudget = null,
             live = it.live?.compact(),
         )
@@ -330,6 +329,7 @@ private val qualifiedFactory =
         it.copy(
             failures = it.failures?.takeIf(List<*>::isNotEmpty),
             omissions = it.omissions?.takeIf(List<*>::isNotEmpty),
+            discoveryObservations = it.discoveryObservations.map(QueryDiscoveryObservationCliDocument::compact),
             continuation = null,
             terminalReason = null,
             live = it.live?.compact(),
