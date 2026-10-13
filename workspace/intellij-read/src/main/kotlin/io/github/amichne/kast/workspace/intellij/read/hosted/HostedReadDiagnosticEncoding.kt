@@ -26,6 +26,15 @@ internal fun hostedReadDiagnostics(limits: ReadLimits = ReadLimits.Default): Hos
             Logger.getInstance(HostedReadDiagnostics::class.java)
                 .info("kast_read_action " + diagnosticOutcomeJson.encodeToString(admission))
         },
+        publishDiscovery =
+            HostedDiscoveryPagePublisher { record ->
+                try {
+                    Logger.getInstance(HostedReadDiagnostics::class.java).info("kast_discovery_page " + record.encode())
+                    HostedDiscoveryPagePublishOutcome.PUBLISHED
+                } catch (_: RuntimeException) {
+                    HostedDiscoveryPagePublishOutcome.FAILED
+                }
+            },
         publishCall = { call ->
             Logger.getInstance(HostedReadDiagnostics::class.java)
                 .info("kast_native_call " + diagnosticOutcomeJson.encodeToString(call))
@@ -35,7 +44,7 @@ internal fun hostedReadDiagnostics(limits: ReadLimits = ReadLimits.Default): Hos
 internal fun HostedReadDiagnosticReceipt.encode(): String =
     diagnosticOutcomeJson.encodeToString(
         HostedReadDiagnosticDocument(
-            schemaVersion = 14,
+            schemaVersion = 15,
             limits =
                 limits.values.map {
                     HostedLimitDocument(it.parameter.name, it.value, it.parameter.unit.name, it.source.name)
@@ -64,6 +73,7 @@ internal fun HostedReadDiagnosticReceipt.encode(): String =
             nativeCalls = nativeCalls,
             nativeSearches = nativeSearches,
             readActions = readActions,
+            discoveryPages = discoveryPages,
             gauges = gauges,
             terminations = terminations,
             outcome =
@@ -103,6 +113,7 @@ private data class HostedReadDiagnosticDocument(
     val nativeCalls: List<HostedReadCallCount>,
     val nativeSearches: List<HostedReadSearchCount>,
     val readActions: List<HostedReadActionCount>,
+    val discoveryPages: HostedDiscoveryPageCounts,
     val nativeCallVocabulary: List<IntellijReadCall> = IntellijReadCall.entries,
     val gauges: List<HostedNativeGauge>,
     val terminations: List<HostedNativeTermination>,
@@ -153,3 +164,35 @@ internal sealed interface HostedDiagnosticOutcomeDocument {
         val detail: JsonElement,
     ) : HostedDiagnosticOutcomeDocument
 }
+
+internal fun HostedDiscoveryPageRecord.encode(): String =
+    diagnosticOutcomeJson.encodeToString(
+        HostedDiscoveryPageDocument(
+            schemaVersion = 15,
+            readId = read.value.toString(),
+            pageOrdinal = ordinal.value,
+            outcome = measurements.outcome,
+            examinedWorkUnits = measurements.examinedWorkUnits.value,
+            inventoryFiles = measurements.inventoryFiles.value,
+            reacquiredFiles = measurements.reacquiredFiles.value,
+            examinedLeaves = measurements.examinedLeaves.value,
+            inventoryNanoseconds = measurements.inventoryNanoseconds.value,
+            declarationScanNanoseconds = measurements.declarationScanNanoseconds.value,
+            projectionNanoseconds = measurements.projectionNanoseconds.value,
+        )
+    )
+
+@Serializable
+private data class HostedDiscoveryPageDocument(
+    val schemaVersion: Int,
+    val readId: String,
+    val pageOrdinal: Int,
+    val outcome: io.github.amichne.kast.workspace.intellij.read.IntellijDiscoveryPageOutcome,
+    @SerialName("examined_work_units") val examinedWorkUnits: Long,
+    @SerialName("inventory_files") val inventoryFiles: Long,
+    @SerialName("reacquired_files") val reacquiredFiles: Long,
+    @SerialName("examined_leaves") val examinedLeaves: Long,
+    @SerialName("inventory_nanoseconds") val inventoryNanoseconds: Long,
+    @SerialName("declaration_scan_nanoseconds") val declarationScanNanoseconds: Long,
+    @SerialName("projection_nanoseconds") val projectionNanoseconds: Long,
+)

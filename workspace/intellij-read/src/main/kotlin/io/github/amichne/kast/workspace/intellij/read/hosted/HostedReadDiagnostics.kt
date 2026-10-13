@@ -14,11 +14,18 @@ internal class HostedReadDiagnostics(
     private val publishPhase: (HostedNativePhaseEntry) -> Unit = {},
     private val publishAdmission: (HostedReadActionStarted) -> Unit = {},
     private val publishCall: (HostedReadCallStarted) -> Unit = {},
+    private val publishDiscovery: HostedDiscoveryPagePublisher = HostedDiscoveryPagePublisher.Unavailable,
     private val publish: (HostedReadDiagnosticReceipt) -> Unit,
 ) : IntellijReadObservation {
     private val started = clock()
     val identity = HostedReadTraceIdentity.fromBoundary(UUID.randomUUID())
     private val readId = identity.value
+    private val discoveryPages = HostedDiscoveryPageAccounting(identity, limits, publishDiscovery)
+
+    @Synchronized
+    override fun discoveryPage(measurements: IntellijDiscoveryPageMeasurements): IntellijDiscoveryPagePublication =
+        discoveryPages.offer(measurements)
+
     private val phaseDurations = linkedMapOf<IntellijReadPhase, Long>()
     private var nativePhase: HostedNativePhaseState = HostedNativePhaseState.NotEntered
     private var phaseStarted = 0L
@@ -156,6 +163,7 @@ internal class HostedReadDiagnostics(
                 calls.finish(),
                 searches.finish(),
                 readActions.finish(),
+                discoveryPages.finish(),
             )
         )
     }
@@ -245,6 +253,7 @@ internal data class HostedReadDiagnosticReceipt(
     val nativeCalls: List<HostedReadCallCount> = emptyList(),
     val nativeSearches: List<HostedReadSearchCount> = emptyList(),
     val readActions: List<HostedReadActionCount> = emptyList(),
+    val discoveryPages: HostedDiscoveryPageCounts = HostedDiscoveryPageCounts(),
 )
 
 /** A completed read transaction and its evaluator's semantic classification are distinct facts. */

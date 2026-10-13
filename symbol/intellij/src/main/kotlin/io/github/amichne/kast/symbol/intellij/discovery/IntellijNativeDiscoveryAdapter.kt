@@ -12,6 +12,7 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget
 import io.github.amichne.kast.symbol.contract.SymbolNameDiscoveryKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
+import io.github.amichne.kast.workspace.intellij.read.IntellijDiscoveryPageMeasurements
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 
@@ -94,8 +95,10 @@ internal class IntellijNativeDiscoveryAdapter(
 
     internal suspend fun observePage(read: suspend () -> IntellijNativeDiscoveryResult): IntellijNativeDiscoveryResult =
         read().also { result ->
-            if (result is IntellijNativeDiscoveryResult.Discovered)
+            if (result is IntellijNativeDiscoveryResult.Discovered) {
                 observation.count(IntellijReadCounter.NATIVE_DISCOVERY_PAGES)
+                observation.discoveryPage(IntellijDiscoveryPageMeasurements.from(result.outcome))
+            }
         }
 }
 
