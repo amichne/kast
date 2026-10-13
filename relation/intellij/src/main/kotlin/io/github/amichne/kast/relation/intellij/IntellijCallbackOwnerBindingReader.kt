@@ -72,10 +72,10 @@ internal class IntellijCallbackOwnerBindingReader(private val context: IntellijC
         when (read) {
             is CallbackBindingPreparation.DeferredDependency ->
                 CallbackBodyBinding.fromCompiler(
-                    body,
-                    supply,
-                    CallbackBindingEvidence.DeferredDependency(read.binding),
-                    obligations,
+                    body = body,
+                    supply = supply,
+                    binding = CallbackBindingEvidence.DeferredDependency(read.binding),
+                    obligations = obligations,
                 )
             is CallbackBindingPreparation.DependencyContract ->
                 CallbackBodyBinding.fromCompiler(

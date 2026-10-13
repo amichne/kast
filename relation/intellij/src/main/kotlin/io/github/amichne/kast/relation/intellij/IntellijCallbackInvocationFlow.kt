@@ -51,13 +51,14 @@ private class NativeCallbackInvocationFlow(
             is CallbackBindingPreparation.Direct -> readDirectCallbackFlow(context, prepared, body, lexicalOwner)
             is CallbackBindingPreparation.DeferredDependency ->
                 context.observed(
-                    body,
-                    io.github.amichne.kast.relation.contract.CallbackBindingEvidence.DeferredDependency(
-                        prepared.binding
-                    ),
-                    emptyList(),
-                    emptySet(),
-                    io.github.amichne.kast.relation.contract.CallbackInvocationScan.EXHAUSTIVE,
+                    body = body,
+                    binding =
+                        io.github.amichne.kast.relation.contract.CallbackBindingEvidence.DeferredDependency(
+                            prepared.binding
+                        ),
+                    invocations = emptyList(),
+                    obligations = emptySet(),
+                    scan = io.github.amichne.kast.relation.contract.CallbackInvocationScan.EXHAUSTIVE,
                 )
             is CallbackBindingPreparation.DependencyContract ->
                 context.observed(
