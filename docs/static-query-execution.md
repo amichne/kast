@@ -2,7 +2,7 @@
 
 The target workload is a current semantic index for 500–750 modules and roughly
 30 million Kotlin lines. The acceptance ceiling is 60 seconds for a complete
-query, including its retained result and completion evidence. Compilation,
+query, including its RETAINED RESULT and completion evidence. Compilation,
 project import, and initial indexing are measured separately. This is an
 acceptance target, not a measured capacity claim.
 
@@ -38,8 +38,8 @@ complete-only impact witness first completes that same investigation, then prese
 a retained section with the original question and path identities. Shared ledger
 objects are charged once; each page still charges its rows and references.
 
-Presentation size is separate from semantic completion. A bounded preview may
-point to retained rows and independent evidence pages. Reading a retained result
+Presentation size is separate from SEMANTIC COMPLETION. A bounded preview may
+point to retained rows and independent evidence pages. Reading a RETAINED RESULT
 does not run the semantic query again. An exhausted upstream prefix cannot become
 complete merely because its preview fits.
 
@@ -80,7 +80,7 @@ the derivation witnesses without converting lexical containment into a named
 call edge.
 
 A callback parameter summary contains detached compiler evidence for one exact
-formal parameter and semantic basis. Its finite graph retains all forwarding
+formal parameter and SEMANTIC BASIS. Its finite graph retains all forwarding
 edges; each terminal invocation retains one simple rooted path. The relation
 request may reuse an exhaustive summary for several supplied callbacks. Each
 reuse separately validates its supplier binding, anonymous body, and owner
@@ -93,6 +93,11 @@ recursive graph with no terminal invocation is a complete static empty invocatio
 inventory. It does not prove that the supplied callback executes, or that the
 recursive code terminates at runtime. Missing graph inventory, unproven forwarding,
 and exhausted resource grants remain typed rejections.
+
+Kotlin `lazy` initializers use a separate deferred-supply proof with exact compiler mapping and a reviewed set of binary class digests.
+The graph keeps property suppliers and constructor references without an invocation count or a fabricated named caller.
+Unknown binary sets and unsupported supplies keep finite rejections.
+See [the reproduction and proof limits](reviews/lazy-callback-proof.md).
 
 ## Snapshot relation indexes
 
@@ -163,7 +168,7 @@ immutable fixture proves complete empty and nonempty formal supplier inventories
 The matched complete allowances are 32 and 128 results. Atomic selected-supply
 inventories retain evidence in addition to lexical callback observations. A cold
 host's eight-result control must reject with `RESULT_LIMIT_REACHED` and retain its
-original complete coverage as policy evidence. Run this control before relation
+original COMPLETE COVERAGE as policy evidence. Run this control before relation
 reads on a freshly restarted candidate: an admitted cached summary can legitimately
 fit the smaller grant. The separate one-result control cannot retain the alpha
 route's forwarding witnesses. Presentation has its own one-record allowance;

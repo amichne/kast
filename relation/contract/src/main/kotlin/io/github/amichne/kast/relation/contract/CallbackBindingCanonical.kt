@@ -25,6 +25,7 @@ internal fun StringBuilder.binding(evidence: CallbackBindingEvidence) {
             occurrence(evidence.binding.occurrence)
             body(evidence.binding.owner)
         }
+        is CallbackBindingEvidence.DeferredDependency -> deferredBinding(evidence.binding)
         is CallbackBindingEvidence.DependencyContract -> {
             field("DEPENDENCY_CONTRACT")
             field(evidence.binding.basis.workspaceRoot.value)
@@ -44,5 +45,29 @@ internal fun StringBuilder.binding(evidence: CallbackBindingEvidence) {
             field("UNAVAILABLE")
             field(evidence.cause.name)
         }
+    }
+}
+
+private fun StringBuilder.deferredBinding(binding: CallbackDeferredDependency) {
+    field("DEFERRED_DEPENDENCY")
+    field(binding.basis.workspaceRoot.value)
+    field(binding.basis.revisionKey.value)
+    occurrence(binding.occurrence)
+    field(binding.owner.file.stableValue)
+    range(binding.owner.range)
+    field(binding.owner.evidence.compilerIdentity.value)
+    field(binding.owner.evidence.signature.canonicalEncoding().value)
+    field(binding.target.file.stableValue)
+    range(binding.target.range)
+    field(binding.target.name.value)
+    field(binding.target.signature.canonicalEncoding().value)
+    field(binding.position.value.toString())
+    with(binding.binary.classes) {
+        field(facade.value)
+        field(factory.value)
+        field(synchronized.value)
+        field(publication.value)
+        field(unsafe.value)
+        field(modeDispatch.value)
     }
 }

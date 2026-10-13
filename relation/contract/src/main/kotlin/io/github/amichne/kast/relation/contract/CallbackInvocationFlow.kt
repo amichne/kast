@@ -16,6 +16,7 @@ enum class CallbackInvocationFlowCause {
     EXTERNAL_CALLABLE,
     OUTSIDE_DOMAIN,
     DEPENDENCY_CONTRACT_EFFECT_UNPROVEN,
+    DEPENDENCY_DEFERRED_MODEL_UNPROVEN,
     DEPENDENCY_BINARY_UNAVAILABLE,
     DEPENDENCY_BINARY_CHANGED,
     DEPENDENCY_TARGET_UNAVAILABLE,
@@ -37,6 +38,8 @@ sealed interface CallbackBindingEvidence {
     data class Direct(val binding: CallbackDirectInvocationBinding) : CallbackBindingEvidence
 
     data class DependencyContract(val binding: CallbackDependencyContract) : CallbackBindingEvidence
+
+    data class DeferredDependency(val binding: CallbackDeferredDependency) : CallbackBindingEvidence
 
     data class Unavailable(val cause: CallbackInvocationFlowCause) : CallbackBindingEvidence
 }
@@ -61,6 +64,7 @@ private constructor(
             .addBytes(
                 when (binding) {
                     is CallbackBindingEvidence.Bound -> valueSiteStorageBytes(binding.binding.invocation.resultSite())
+                    is CallbackBindingEvidence.DeferredDependency,
                     is CallbackBindingEvidence.DependencyContract,
                     is CallbackBindingEvidence.Default,
                     is CallbackBindingEvidence.Direct,

@@ -55,6 +55,8 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
   - id: openwiki-source-1320464fca8af68fbc8ba11a
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt
+  - id: openwiki-source-3a2deddcdbc6513d70de57e5
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackDocumentAdmission.kt
   - id: openwiki-source-6ee6a10decc8306b2fc74bca
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt
   - id: openwiki-source-207ff2d32f1b70dfee08054c
@@ -75,10 +77,10 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphNodeRetrievalTest.kt
   - id: openwiki-source-c7caab29dec6e41d0046710e
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackInvocationFlow.kt
-generated: { by: "codex", at: "2026-10-13T16:19:14.290Z" }
+generated: { by: "codex", at: "2026-10-13T20:10:11.937Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-13T16:19:14.290Z
+    at: 2026-10-13T20:10:11.937Z
 ---
 
 # Protocol
@@ -197,6 +199,10 @@ Its SYMBOLS selection comes from the actual current canonical output.
 Reference-backed connections share witnesses only after full relation-fact equality.
 Missing row identity or conflicting exact descriptions preserve full occurrence output.
 
-Callback failure projections preserve `DEPENDENCY_CONTRACT_EFFECT_UNPROVEN`, `DEPENDENCY_BINARY_UNAVAILABLE`, `DEPENDENCY_BINARY_CHANGED`, and `DEPENDENCY_TARGET_UNAVAILABLE`.
+Callback failure projections preserve `DEPENDENCY_CONTRACT_EFFECT_UNPROVEN`, `DEPENDENCY_DEFERRED_MODEL_UNPROVEN`, `DEPENDENCY_BINARY_UNAVAILABLE`, `DEPENDENCY_BINARY_CHANGED`, and `DEPENDENCY_TARGET_UNAVAILABLE`.
 The domain, public DTO, and exhaustive projection keep these causes distinct.
 More precise rejection evidence does not establish graph completion.
+
+Deferred dependency bindings carry `KOTLIN_LAZY_JVM_V1`, an exact supplier declaration, a formal position, and six binary class digests.
+Their wire shape uses `DEFERRED_DEPENDENCY` and has no invocation-kind field.
+The closed document parser preserves source containment and rejects incomplete scans or invented invocations.

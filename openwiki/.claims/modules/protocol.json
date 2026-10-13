@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:ea50b62163c2182c360019e1cd40840f51f0eb6c0ef5674c4a734a6b2db5b6b0",
+  "pageVersion": "sha256:a7c56d15beb0bf60304e7e26db6c0dc43a4ab0fa324867eba1e195ae27d18881",
   "claims": [
     {
       "id": "claim_33df4f539870445aaef2d593695dca1b",
@@ -84,19 +84,19 @@
     },
     {
       "id": "claim_70e8825be85141858a2433bfed446c7f",
-      "statement": "Callback domain and public projections preserve DEPENDENCY_CONTRACT_EFFECT_UNPROVEN, DEPENDENCY_BINARY_UNAVAILABLE, DEPENDENCY_BINARY_CHANGED, and DEPENDENCY_TARGET_UNAVAILABLE as distinct finite causes.",
+      "statement": "Callback domain and public projections preserve distinct missing-effect, unreviewed-deferred-model, unavailable-binary, changed-binary, and unavailable-target causes.",
       "evidence": [
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt",
-          "version": "repo-file-v1:sha256:ddd72a9d7f9ea2afea026b7f891d31a4a7885a9091cb6bf50b917ec572c67c7f"
+          "version": "repo-file-v1:sha256:9d824fad78f196069d597c60b745fb113f6260edc30093ab1aaed5e05f46e534"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackEnumProjection.kt",
-          "version": "repo-file-v1:sha256:77c74d9d6d95bd5dd8a7451214ddc79869ac6b075f792d0989f1753f85d77726"
+          "version": "repo-file-v1:sha256:016f77fbfcb03d2c49e817f217a9534307ae9e89d849fd38b03b7ba834bec0d3"
         },
         {
           "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackInvocationFlow.kt",
-          "version": "repo-file-v1:sha256:4db5f2fdd451b1ba891a5d2471c1244a903cdf00047c244374d9291a399dc0cf"
+          "version": "repo-file-v1:sha256:3bb329408a04315e1bf4b78030933e05e93ff672a35e7e8a2800fb022fc8c500"
         }
       ]
     },
@@ -113,10 +113,24 @@
           "version": "repo-lines-v1:sha256:c67d1967d27532e86e4d0987748342fbd7163b6c42a22fae1fe98edfe0f64d40:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlZmJmMWZiOTc3NDM0YTg1ODBjYjE1YTIyNDRhZmNjOTQ2ZjU1ZmJkOGMzNjI5MDIxNzE4YThmZDg1Y2IxODkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVkMjliNzI4MGI4NmQyYzlmNjE1ZDNiNzYzNWJlY2M5N2Y5YzM4Y2I2MmNiMGQxZGNlNmIxMWI2ODNkMzM1OGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhlYTgwNmRjZTJhOTlkMWQwOTg4Mzk2MGI1ZTc5NjAwNWIzYzI5NWE5ZDdkNGU2Mjc0OTQ1MDI1NGI4Mzc1YzcifQ"
         }
       ]
+    },
+    {
+      "id": "claim_5593ba2a2282454f93480cd9cdbd3e20",
+      "statement": "Deferred dependency documents carry a model, supplier declaration, formal position, and six binary digests while rejecting incomplete scans and invented invocations.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackDocumentAdmission.kt#L293-L314",
+          "version": "repo-lines-v1:sha256:e0c180a13f9b29e45e34f8b4906140626ad790c0bf76d1e0bf5536fdadc33bb4:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkOGNhNGE3MDE1ODU1N2I5OGIxOGQ1NDQyY2U0N2M4MDlkMmJkMzEzOGI2YTFlZDIzMjBiNmZiZTZiYmExMjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmZjVkN2U2MzdlOTNiOTA3YTM1OWZmNTMzOTJhM2VmY2M4M2IyYjM2NmMyNzM1YzQ4YWQ4OGQ1ZDIyNWI0MTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczOTJmMDMxNDE4YWM1OWIxMGQ5MTIxNDNlNzZmYTVkM2MwZDFkM2I1ZDgzMDI3ZWRlNDM5MDQzMGRhYmIxZDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgyZjQxOWQzY2U1Njg0YTAwOGJhMzgxMTRiY2ZkZGE2NzIxOGE3MDg4NWQ1NTM4MWU4YWRhOGNhMDcxOTgxM2EifQ"
+        },
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt#L228-L257",
+          "version": "repo-lines-v1:sha256:a043f7e2d3022175589dac94b96bdcd75c569b68f6fb1641878f60bd26ca8716:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlNWU3OTc0NmQ4MThlMzBiNDUyNGJlNjQxNDlmODc5OWYxY2ExY2MwOGZiZGU4MWJiZmY3NjBkODAzMDA1NWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5NjY1MzgxMDliM2NjMDMxNzVkZWIzZTIxNjczZjlmZjdiNTJkMzJiZGY1MmRhNmJlMWUzMmI4ZmUwNmRlNjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiOWZjNThkYWE3YTRjMzNmNWQyOGUzYzMxNGIxM2E3YjZjNDU1Y2ZiNzdkMDAyNTgwNTlkOTUxYmM4MzY5MzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY4ZTk3MTdiNDE3MzYxNWEzNzlmNzU0ZTEwYjFkMTk4OWI1M2YwODVhYjUwNWExMWJjOWMyMzA1YzFmZjA1NTQifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-13T16:19:14.290Z"
+    "at": "2026-10-13T20:10:11.937Z"
   }
 }

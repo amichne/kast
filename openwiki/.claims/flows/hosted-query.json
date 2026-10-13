@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:c8931cdb695f585f17be034c550cacab0c9fb950e6be106079d6d3110bdd1637",
+  "pageVersion": "sha256:482c704bf2f0c368e7477a240f62976ada9cb84b19618f75cc961d9065c674d3",
   "claims": [
     {
       "id": "claim_0f0af9dddde2411188f2130d7debe0f5",
@@ -240,11 +240,11 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt",
-          "version": "repo-file-v1:sha256:1ae4015c8bc64397329c2eb47baa3640b8dfd81deb6d46cacd31f6b96c97d72a"
+          "version": "repo-file-v1:sha256:b843bdcfa86bb1bb2d07fb5294685fb197ee69a7d6ed5ab97966760940768a60"
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt",
-          "version": "repo-file-v1:sha256:b862729ef7b39bb6e0758e6b14aa147832d7804b27b7b8cfc348ecbab536353b"
+          "version": "repo-file-v1:sha256:4f480338abe02491d2d2176ebf0078eac348bcf5bd274eda51851f604ed1eab0"
         }
       ]
     },
@@ -272,15 +272,15 @@
     },
     {
       "id": "claim_35af58742ca54bbd8fdb3595fa90f3f3",
-      "statement": "Dependency admission preserves finite missing-effect, unavailable-binary, changed-binary, and unavailable-target causes. The selected callback supply preserves the native cause instead of replacing it with OUTSIDE_DOMAIN.",
+      "statement": "Dependency admission preserves finite missing-effect, binary, target, and unreviewed-model failures. Selected callback supplies keep the first native cause.",
       "evidence": [
         {
-          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt#L85-L160",
-          "version": "repo-lines-v1:sha256:ce5e955175a2e7180c54ac0dffc83b5c188a337f26ce4af78a30edc7ed2a8593:eyJzZWxlY3RlZExpbmVDb3VudCI6NzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc0N2U4ZTlkN2ZmMTJkZTlmOTMzNzM0NjVhMTUzYzc1NjQ1ODI3MGUzODgwOGQ4NjJiYmY5NmQzMGJiODFkZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxMjRlNWU3ZDRiMzk0ZjdhNjU1MDdhMzFlYzQzNTMyOWVlNDBmNzJjMzNjODgzYzZmNTYxZWVlZmFiMmEzNTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY3NGQ3MGQzYzhiODllMWFmY2VjN2FmODE4NTAxZWQ1MTJiNDBiMWRhYjA0NGJkMjlkZjZhNTZjZWFkMTY4MDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJhYmM3MmYzMjA1Y2IxOWQ5YjhmNWQ5MTc3M2ZjZTAwYzFhOGRlYTQ2NjNiZWVlMjg0MjM0MjZmNDZkOTk5NDYifQ"
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt#L133-L196",
+          "version": "repo-lines-v1:sha256:648bd9a38874a746b9cab3cd23f91549558a50b8a2c11644bea550db0797f1de:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY4ZjQyNTMyODc4MGYwOTc5MWRkOWE3ZGFlY2QwMjE5ZDhiYzI0ZTM5YjM0MDlhOTRlYzVlMTY5MWRjNzNjYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk5N2U0OWIzYjJkMDllZGViZmQxM2M1N2FmNzUwNDBkZmFmMjZiYzQ0NGQwZmE4ODYxNjQ3ZGM3NDAzNDI1ZGYifQ"
         },
         {
-          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijSelectedCallbackSupplies.kt#L252-L267",
-          "version": "repo-lines-v1:sha256:2bb933aa28ff60c856220efd7ebde2bee562fc401def646441fb19fbe4509b90:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjllZGFhMWU5NTY2MzA5ZjU1NmE4ODEzMjdlNzllNThmZDQxMjcwMGU0NjhjNjAwMjA4NTQ4MzI2YTgyODM0MmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlhMDRlNWMyNDQxZWFlNmFmYjE1YzU5NTNjMDY0YzFmZTBiYTQxYjJlYTUzYmU0ZDllNjI1NDBkZmVhNGNiYmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIzYmEzYzQyYmQwM2Q0MTM3OGI1OWM3NDQ0Zjg2NDc5ZTNhNTMyYjEyMWY0ZjQxOGU4ZTMyNDE4NDBiZmM5ZTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwZmJjZWM5N2I4NzBlYzk3NWM4YTA1MGRhYTI4N2NmM2ViMGFmYmZiNDlkYzk1NDRkZWE5ZTE0MmFlMmRhZGIifQ"
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijSelectedCallbackSupplies.kt#L252-L265",
+          "version": "repo-lines-v1:sha256:6a8de09c8eec00180161011282c62516bb0bd994a20a8d75a08176be08a5ce07:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBmY2Q4NWUxMmMwYjJkNmFjZWE2MmQ2NzY4YWM3OGM0YzQ5MTE5NTNhNzRmODIwODdlZjQ1MzdkMzFlMThiZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM2NWIyZWRjZDU3ODQ2NTIwZjYyYWU4OGYzZTk3OTIyZmFlNmU5YjEzNmM4ODJhMmU1YTIyNjAzYjA3OTgwYjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhkNjBmNWRmMTM4MzYzNWYwYzUyMTc2OTRjMzg5OTdiOGRmZThjNWE3ZGI3YmZkMDM3NTc4MWQ0YjlhYjliZDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwZmJjZWM5N2I4NzBlYzk3NWM4YTA1MGRhYTI4N2NmM2ViMGFmYmZiNDlkYzk1NDRkZWE5ZTE0MmFlMmRhZGIifQ"
         }
       ]
     },
@@ -319,10 +319,24 @@
           "version": "repo-file-v1:sha256:7044070c8abb013683b624096ffa27a960746eea10c6219667d40596c76659cf"
         }
       ]
+    },
+    {
+      "id": "claim_3bc21c97166a41cf8863b5a9fdc0fd55",
+      "statement": "Deferred Kotlin lazy reads record separate bounded read, admission, and rejection counters while the retained binding preserves the compiler mapping and six reviewed class digests.",
+      "evidence": [
+        {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackDeferredDependency.kt",
+          "version": "repo-file-v1:sha256:0b0720aa4a3c438ffd8cdc4b524c75751da37b2f3cbb41f5a87163b993a5a899"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijKotlinLazyBinaryEvidence.kt#L12-L52",
+          "version": "repo-lines-v1:sha256:c375469d4b41205e9ba1b3f8f335663565918364810372539eb248828e00bd56:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRhNWYyMDdkMGE3ZTE2OGQyMGEwMTNjNTYzNzFlNzQwODdjNDRkMzgxODM1NjQ0MTIwMzRlYjFmZTZkZmU1NGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNkZGQ4YWUyOTNiMWVhZDQ1OTYyYjFlY2U3YmI1MDhiZTc4MDZkNTNiNzkzOGEzZmVhNTdkNmE5OThjOTk4MTUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY5MmQ3N2JiN2MyZGQyMmM3OTRmMDEwYTBhM2Q3YzA1OGVmNGJmMjI2ZDUzOWRkZjI0YjBlYjk3ZGRkMmNkYzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdlOTU1ODM0YWRlMjlkNTI5MDRmZjVhNWE4MWQ3Y2M2YWI1ZGM0NzFjNmRkNzYzN2UxODg3NzAxMmMxOWZhYjYifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-13T16:19:14.290Z"
+    "at": "2026-10-13T20:10:11.937Z"
   }
 }

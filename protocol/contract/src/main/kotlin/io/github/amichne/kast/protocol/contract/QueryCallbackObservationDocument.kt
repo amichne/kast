@@ -125,6 +125,7 @@ enum class QueryCallbackFlowCauseDocument {
     EXTERNAL_CALLABLE,
     OUTSIDE_DOMAIN,
     DEPENDENCY_CONTRACT_EFFECT_UNPROVEN,
+    DEPENDENCY_DEFERRED_MODEL_UNPROVEN,
     DEPENDENCY_BINARY_UNAVAILABLE,
     DEPENDENCY_BINARY_CHANGED,
     DEPENDENCY_TARGET_UNAVAILABLE,
@@ -224,8 +225,32 @@ sealed interface QueryCallbackBindingDocument {
         val invocationKind: QueryCallbackDependencyInvocationKindDocument,
     ) : QueryCallbackBindingDocument
 
+    data class DeferredDependency(
+        val basis: ImpactSemanticBasisDocument,
+        val occurrence: RelationOccurrenceDocument,
+        val owner: QueryCallbackCallableDocument,
+        val target: QueryExcludedCompilerTargetDocument,
+        val position: ProtocolOffset,
+        val binary: QueryKotlinLazyBinaryDocument,
+    ) : QueryCallbackBindingDocument
+
     data class Unavailable(val cause: QueryCallbackFlowCauseDocument) : QueryCallbackBindingDocument
 }
+
+@Serializable
+enum class QueryDeferredDependencyModelDocument {
+    KOTLIN_LAZY_JVM_V1
+}
+
+data class QueryKotlinLazyBinaryDocument(
+    val model: QueryDeferredDependencyModelDocument,
+    val facade: ProtocolText,
+    val factory: ProtocolText,
+    val synchronized: ProtocolText,
+    val publication: ProtocolText,
+    val unsafe: ProtocolText,
+    val modeDispatch: ProtocolText,
+)
 
 data class QueryCallbackForwardingDocument(
     val source: QueryCallbackParameterIdentityDocument,

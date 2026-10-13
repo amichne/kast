@@ -132,6 +132,7 @@ private class StaticCallbackGraphAdmission(
             when (val binding = flow.binding) {
                 is CallbackBindingEvidence.Bound -> bound(binding.binding)
                 is CallbackBindingEvidence.Direct -> direct(binding.binding)
+                is CallbackBindingEvidence.DeferredDependency -> deferredDependency(binding.binding)
                 is CallbackBindingEvidence.DependencyContract -> dependencyContract(binding.binding)
                 is CallbackBindingEvidence.Default ->
                     Refinement.Rejected(StaticCallbackGraphFailure.UnsupportedDefaultSupply)
@@ -143,22 +144,49 @@ private class StaticCallbackGraphAdmission(
                 is Refinement.Refined -> result.value
                 is Refinement.Rejected -> return result
             }
-        val target =
-            when (val admitted = RelationCallableBody.Named.fromCompiler(observation.target)) {
-                is Refinement.Refined -> StaticCallbackNode.Named(admitted.value)
-                is Refinement.Rejected -> return Refinement.Rejected(StaticCallbackGraphFailure.NonCallableTarget)
+        val targetEdge =
+            when (val admitted = bodyTarget()) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
             }
-        return Refinement.Refined(
-            (edges +
-                    StaticCallbackEdge.BodyTarget(
-                        body,
-                        target,
-                        observation.occurrence,
-                        observation.policy,
-                    ))
-                .distinct()
-        )
+        return Refinement.Refined((edges + targetEdge).distinct())
     }
+
+    private fun bodyTarget(): Refinement<StaticCallbackEdge, StaticCallbackGraphFailure> =
+        when (observation.target.signature) {
+            is io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature.Function,
+            is io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature.LocalFunction ->
+                when (val admitted = RelationCallableBody.Named.fromCompiler(observation.target)) {
+                    is Refinement.Refined ->
+                        Refinement.Refined(
+                            StaticCallbackEdge.BodyTarget(
+                                body,
+                                StaticCallbackNode.Named(admitted.value),
+                                observation.occurrence,
+                                observation.policy,
+                            )
+                        )
+                    is Refinement.Rejected -> Refinement.Rejected(StaticCallbackGraphFailure.NonCallableTarget)
+                }
+            is io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature.ClassLike ->
+                when (val admitted = StaticCallbackNode.ClassReference.fromCompiler(observation.target)) {
+                    is Refinement.Refined ->
+                        Refinement.Refined(
+                            StaticCallbackEdge.BodyClassReference(
+                                body,
+                                admitted.value,
+                                observation.occurrence,
+                                observation.policy,
+                            )
+                        )
+                    is Refinement.Rejected -> admitted
+                }
+            is io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature.Property,
+            is io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature.LocalProperty,
+            is io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature.TypeAlias,
+            is io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature.AnonymousObject ->
+                Refinement.Rejected(StaticCallbackGraphFailure.NonCallableTarget)
+        }
 
     private fun bound(
         binding: CallbackArgumentBinding
@@ -231,6 +259,21 @@ private class StaticCallbackGraphAdmission(
         return Refinement.Refined(edges)
     }
 
+    private fun deferredDependency(
+        binding: CallbackDeferredDependency
+    ): Refinement<List<StaticCallbackEdge>, StaticCallbackGraphFailure> {
+        if (flow.scan != CallbackInvocationScan.EXHAUSTIVE)
+            return Refinement.Rejected(StaticCallbackGraphFailure.IncompleteScan)
+        val owner = binding.owner
+        if (owner.evidence != observation.lexicalOwner)
+            return Refinement.Rejected(StaticCallbackGraphFailure.SupplierIdentityMismatch)
+        return Refinement.Refined(
+            listOf(
+                StaticCallbackEdge.DependencyDeferredSupply(StaticCallbackNode.DeferredSupplier(owner), body, binding)
+            )
+        )
+    }
+
     private fun dependencyContract(
         binding: CallbackDependencyContract
     ): Refinement<List<StaticCallbackEdge>, StaticCallbackGraphFailure> {
@@ -277,6 +320,8 @@ private fun RelationEndpoint.matches(owner: RelationCallableBody.Named): Boolean
 private fun StaticCallbackNode.insideWorkspace(root: CanonicalWorkspaceRoot): Boolean {
     val file =
         when (this) {
+            is StaticCallbackNode.ClassReference -> declaration.file
+            is StaticCallbackNode.DeferredSupplier -> owner.file
             is StaticCallbackNode.Named -> callable.file
             is StaticCallbackNode.Anonymous -> body.file
             is StaticCallbackNode.Formal -> parameter.callable.file
@@ -303,7 +348,9 @@ private fun List<StaticCallbackEdge>.nodes(): Set<StaticCallbackNode> = flatMap 
                 }
             is StaticCallbackEdge.Supply -> listOf(edge.body)
             is StaticCallbackEdge.Invoke -> listOf(edge.owner)
+            is StaticCallbackEdge.DependencyDeferredSupply,
             is StaticCallbackEdge.DependencyContractInvoke,
+            is StaticCallbackEdge.BodyClassReference,
             is StaticCallbackEdge.BodyTarget,
             is StaticCallbackEdge.DirectInvoke,
             is StaticCallbackEdge.Forward -> emptyList()

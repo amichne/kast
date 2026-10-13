@@ -73,6 +73,7 @@ private fun QueryCallbackBodyBindingDocument.admitDefaultSupply(
     return when (val mapped = binding) {
         is QueryCallbackBindingDocument.Default -> mapped.admitDefaultMapping(parameter, body.occurrence)
         is QueryCallbackBindingDocument.Unavailable -> Refinement.Refined(Unit)
+        is QueryCallbackBindingDocument.DeferredDependency,
         is QueryCallbackBindingDocument.DependencyContract,
         is QueryCallbackBindingDocument.Bound,
         is QueryCallbackBindingDocument.Direct ->
@@ -100,6 +101,7 @@ private fun QueryCallbackBodyBindingDocument.admitDirectSupply(
     return when (val mapped = binding) {
         is QueryCallbackBindingDocument.Direct -> mapped.admitDirectMapping(occurrence, body.occurrence, basis)
         is QueryCallbackBindingDocument.Unavailable -> Refinement.Refined(Unit)
+        is QueryCallbackBindingDocument.DeferredDependency,
         is QueryCallbackBindingDocument.DependencyContract,
         is QueryCallbackBindingDocument.Bound,
         is QueryCallbackBindingDocument.Default ->
@@ -141,6 +143,7 @@ private fun QueryCallbackBodyBindingDocument.admitInvocationSupply(
         is QueryCallbackBindingDocument.Default,
         is QueryCallbackBindingDocument.Direct ->
             Refinement.Rejected(QueryCallbackDocumentFailure.OWNER_BINDING_MISMATCH)
+        is QueryCallbackBindingDocument.DeferredDependency -> mapped.admitDeferredInvocation(supply, basis)
         is QueryCallbackBindingDocument.DependencyContract -> {
             val owner =
                 when (val result = mapped.owner.admitOwner()) {
@@ -191,4 +194,16 @@ private fun admitNestedMapping(
     if (bound.position.value !in signature.valueParameters.values.indices)
         return Refinement.Rejected(QueryCallbackDocumentFailure.PARAMETER_POSITION_MISMATCH)
     return Refinement.Refined(Unit)
+}
+
+private fun QueryCallbackBindingDocument.DeferredDependency.admitDeferredInvocation(
+    supply: QueryCallbackBodySupplyDocument.Invocation,
+    basis: ImpactSemanticBasisDocument,
+): Refinement<Unit, QueryCallbackDocumentFailure> {
+    if (!this.owner.validDeclaration()) return Refinement.Rejected(QueryCallbackDocumentFailure.OWNER_BINDING_MISMATCH)
+    val owner = this.owner.declaration
+    return if (this.basis != basis || !supply.occurrence.sameSite(this.occurrence) || !owner.contains(this.occurrence))
+        Refinement.Rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
+    else if (!this.validDeferredDependencyTarget()) Refinement.Rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
+    else Refinement.Refined(Unit)
 }

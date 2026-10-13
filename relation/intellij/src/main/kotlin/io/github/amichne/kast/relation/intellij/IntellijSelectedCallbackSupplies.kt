@@ -45,9 +45,7 @@ private data class SelectedCallbackArgument(
 )
 
 private sealed interface SelectedCallbackCall {
-    data class DeclaredContracts(
-        val bindings: List<io.github.amichne.kast.relation.contract.CallbackDependencyContract>
-    ) : SelectedCallbackCall
+    data object DeclaredContracts : SelectedCallbackCall
 
     data object NoCallbackParameters : SelectedCallbackCall
 
@@ -79,7 +77,7 @@ internal class IntellijSelectedCallbackSupplies(
                 is Refinement.Refined ->
                     when (val selectedCall = selected.value) {
                         SelectedCallbackCall.NoCallbackParameters -> return SelectedCallbackSuppliesRead.NotRequired
-                        is SelectedCallbackCall.DeclaredContracts -> return SelectedCallbackSuppliesRead.NotRequired
+                        SelectedCallbackCall.DeclaredContracts -> return SelectedCallbackSuppliesRead.NotRequired
                         is SelectedCallbackCall.Mapped -> selectedCall
                     }
             }
@@ -256,15 +254,15 @@ internal class IntellijSelectedCallbackSupplies(
     ): Refinement<SelectedCallbackCall, CallbackInvocationFlowCause> {
         val literals = expressions.filterIsInstance<org.jetbrains.kotlin.psi.KtLambdaExpression>()
         if (literals.size != expected) return Refinement.Rejected(CallbackInvocationFlowCause.OUTSIDE_DOMAIN)
-        val bindings = mutableListOf<io.github.amichne.kast.relation.contract.CallbackDependencyContract>()
         for (literal in literals) {
             when (val read = readCallbackDependencyContract(context, call, literal)) {
-                is CallbackBindingPreparation.DependencyContract -> bindings += read.binding
+                is CallbackBindingPreparation.DeferredDependency,
+                is CallbackBindingPreparation.DependencyContract -> Unit
                 is CallbackBindingPreparation.Unavailable -> return Refinement.Rejected(read.cause)
                 else -> return Refinement.Rejected(CallbackInvocationFlowCause.OUTSIDE_DOMAIN)
             }
         }
-        return Refinement.Refined(SelectedCallbackCall.DeclaredContracts(bindings))
+        return Refinement.Refined(SelectedCallbackCall.DeclaredContracts)
     }
 
     private fun argument(

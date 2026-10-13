@@ -8,6 +8,7 @@ import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocumen
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
 import io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
+import io.github.amichne.kast.protocol.contract.ProtocolStringConstraint
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryCallbackBindingDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackDependencyContractProvenanceDocument
@@ -15,6 +16,8 @@ import io.github.amichne.kast.protocol.contract.QueryCallbackDependencyInvocatio
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackForwardingDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackParameterIdentityDocument
+import io.github.amichne.kast.protocol.contract.QueryDeferredDependencyModelDocument
+import io.github.amichne.kast.protocol.contract.QueryKotlinLazyBinaryDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
@@ -69,9 +72,35 @@ internal sealed interface QueryCallbackBindingWireDocument {
     ) : QueryCallbackBindingWireDocument
 
     @Serializable
+    @SerialName("DEFERRED_DEPENDENCY")
+    data class DeferredDependency(
+        val basis: ImpactSemanticBasisDocument,
+        val occurrence: RelationOccurrenceWireDocument,
+        val owner: QueryCallbackCallableWireDocument,
+        val target: QueryExcludedCompilerTargetWireDocument,
+        @ProtocolIntegerConstraint(minimum = 0) val position: Int,
+        val binary: QueryKotlinLazyBinaryWireDocument,
+    ) : QueryCallbackBindingWireDocument
+
+    @Serializable
     @SerialName("UNAVAILABLE")
     data class Unavailable(val cause: QueryCallbackFlowCauseDocument) : QueryCallbackBindingWireDocument
 }
+
+@Serializable
+internal data class QueryKotlinLazyBinaryWireDocument(
+    val model: QueryDeferredDependencyModelDocument,
+    @ProtocolStringConstraint(minimumLength = 64, maximumLength = 64, pattern = "^[0-9a-f]{64}$") val facade: String,
+    @ProtocolStringConstraint(minimumLength = 64, maximumLength = 64, pattern = "^[0-9a-f]{64}$") val factory: String,
+    @ProtocolStringConstraint(minimumLength = 64, maximumLength = 64, pattern = "^[0-9a-f]{64}$")
+    val synchronized: String,
+    @ProtocolStringConstraint(minimumLength = 64, maximumLength = 64, pattern = "^[0-9a-f]{64}$")
+    val publication: String,
+    @ProtocolStringConstraint(minimumLength = 64, maximumLength = 64, pattern = "^[0-9a-f]{64}$") val unsafe: String,
+    @ProtocolStringConstraint(minimumLength = 64, maximumLength = 64, pattern = "^[0-9a-f]{64}$")
+    @SerialName("mode_dispatch")
+    val modeDispatch: String,
+)
 
 @Serializable
 internal data class QueryCallbackForwardingWireDocument(
@@ -108,6 +137,23 @@ internal fun QueryCallbackBindingDocument.callbackWire(): QueryCallbackBindingWi
                 invocationKind,
             )
         is QueryCallbackBindingDocument.Unavailable -> QueryCallbackBindingWireDocument.Unavailable(cause)
+        is QueryCallbackBindingDocument.DeferredDependency ->
+            QueryCallbackBindingWireDocument.DeferredDependency(
+                basis,
+                occurrence.callbackWire(),
+                owner.callbackWire(),
+                target.callbackWire(),
+                position.value,
+                QueryKotlinLazyBinaryWireDocument(
+                    binary.model,
+                    binary.facade.value,
+                    binary.factory.value,
+                    binary.synchronized.value,
+                    binary.publication.value,
+                    binary.unsafe.value,
+                    binary.modeDispatch.value,
+                ),
+            )
     }
 
 internal fun QueryCallbackParameterIdentityDocument.callbackWire() =
@@ -144,6 +190,7 @@ internal fun QueryCallbackBindingWireDocument.toContract(): WireDocumentConversi
                 QueryCallbackBindingDocument.Direct(basis, occurrence, owner)
             }
         is QueryCallbackBindingWireDocument.DependencyContract -> dependencyContractDocument()
+        is QueryCallbackBindingWireDocument.DeferredDependency -> deferredDependencyDocument()
         is QueryCallbackBindingWireDocument.Bound ->
             invocationOccurrence.toContract().flatMapConverted { callOccurrence ->
                 invocationOwner.toContract().flatMapConverted { supplyingOwner ->
@@ -174,6 +221,7 @@ internal fun QueryCallbackForwardingWireDocument.toContract(): WireDocumentConve
                         BoundedProtocolList.create(callableTransfers).toWireDocumentConversion().mapConverted {
                             QueryCallbackForwardingDocument(source, argument, target, it)
                         }
+                    is QueryCallbackBindingDocument.DeferredDependency,
                     is QueryCallbackBindingDocument.DependencyContract,
                     is QueryCallbackBindingDocument.Unavailable,
                     is QueryCallbackBindingDocument.Default,
@@ -181,6 +229,46 @@ internal fun QueryCallbackForwardingWireDocument.toContract(): WireDocumentConve
                 }
             }
         }
+    }
+
+private fun QueryCallbackBindingWireDocument.DeferredDependency.deferredDependencyDocument():
+    WireDocumentConversion<QueryCallbackBindingDocument> =
+    combineConverted(occurrence.toContract(), owner.toContract(), target.toContract()) { occurrence, owner, target ->
+            Triple(occurrence, owner, target)
+        }
+        .flatMapConverted { (occurrence, owner, target) ->
+            combineConverted(ProtocolOffset.parse(position).toWireDocumentConversion(), binary.toContract()) {
+                position,
+                binary ->
+                QueryCallbackBindingDocument.DeferredDependency(basis, occurrence, owner, target, position, binary)
+            }
+        }
+
+private fun QueryKotlinLazyBinaryWireDocument.toContract(): WireDocumentConversion<QueryKotlinLazyBinaryDocument> =
+    ProtocolText.parse(facade).toWireDocumentConversion().flatMapConverted { facade ->
+        combineConverted(
+                ProtocolText.parse(factory).toWireDocumentConversion(),
+                ProtocolText.parse(synchronized).toWireDocumentConversion(),
+                ProtocolText.parse(publication).toWireDocumentConversion(),
+            ) { factory, synchronized, publication ->
+                Triple(factory, synchronized, publication)
+            }
+            .flatMapConverted { (factory, synchronized, publication) ->
+                combineConverted(
+                    ProtocolText.parse(unsafe).toWireDocumentConversion(),
+                    ProtocolText.parse(modeDispatch).toWireDocumentConversion(),
+                ) { unsafe, modeDispatch ->
+                    QueryKotlinLazyBinaryDocument(
+                        model,
+                        facade,
+                        factory,
+                        synchronized,
+                        publication,
+                        unsafe,
+                        modeDispatch,
+                    )
+                }
+            }
     }
 
 private fun QueryCallbackBindingWireDocument.DependencyContract.dependencyContractDocument():
