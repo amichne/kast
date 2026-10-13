@@ -1,0 +1,31 @@
+{"status":"complete","detail":"COMPACT","documentBytes":4896,"mcpResponseBytes":10601,"rpcResponseBytes":4927}
+{"status":"complete","detail":"VERBOSE","documentBytes":5110,"mcpResponseBytes":11047,"rpcResponseBytes":5141}
+{"status":"qualified","detail":"COMPACT","documentBytes":5282,"mcpResponseBytes":11419,"rpcResponseBytes":5314}
+{"status":"qualified","detail":"VERBOSE","documentBytes":5566,"mcpResponseBytes":12009,"rpcResponseBytes":5598}
+{"status":"complete","detail":"COMPACT","documentBytes":1360,"mcpResponseBytes":3097,"rpcResponseBytes":1391}
+{"status":"complete","detail":"VERBOSE","documentBytes":1574,"mcpResponseBytes":3543,"rpcResponseBytes":1605}
+{"status":"rejected","detail":"COMPACT","documentBytes":123,"mcpResponseBytes":450,"rpcResponseBytes":163}
+{"status":"rejected","detail":"VERBOSE","documentBytes":123,"mcpResponseBytes":450,"rpcResponseBytes":163}
+{"fixture":0,"owner":"src/main/js/query-delivery.mjs","compactDocumentBytes":4927,"verboseDocumentBytes":5141,"presentationTextBytes":4478,"importAttempts":0}
+{"fixture":0,"owner":"../pi/extension.ts","compactDocumentBytes":4927,"verboseDocumentBytes":5141,"presentationTextBytes":4478,"importAttempts":0}
+{"fixture":0,"owner":"../copilot/extension.mjs","compactDocumentBytes":4927,"verboseDocumentBytes":5141,"presentationTextBytes":4478,"importAttempts":0}
+{"fixture":1,"owner":"src/main/js/query-delivery.mjs","compactDocumentBytes":5314,"verboseDocumentBytes":5598,"presentationTextBytes":4743,"importAttempts":0}
+{"fixture":1,"owner":"../pi/extension.ts","compactDocumentBytes":5314,"verboseDocumentBytes":5598,"presentationTextBytes":4743,"importAttempts":0}
+{"fixture":1,"owner":"../copilot/extension.mjs","compactDocumentBytes":5314,"verboseDocumentBytes":5598,"presentationTextBytes":4743,"importAttempts":0}
+{"fixture":2,"owner":"src/main/js/query-delivery.mjs","compactDocumentBytes":1391,"verboseDocumentBytes":1605,"presentationTextBytes":975,"importAttempts":0}
+{"fixture":2,"owner":"../pi/extension.ts","compactDocumentBytes":1391,"verboseDocumentBytes":1605,"presentationTextBytes":975,"importAttempts":0}
+{"fixture":2,"owner":"../copilot/extension.mjs","compactDocumentBytes":1391,"verboseDocumentBytes":1605,"presentationTextBytes":975,"importAttempts":0}
+{"fixture":3,"owner":"src/main/js/query-delivery.mjs","compactDocumentBytes":163,"verboseDocumentBytes":163,"presentationTextBytes":163,"importAttempts":0}
+{"fixture":3,"owner":"../pi/extension.ts","compactDocumentBytes":163,"verboseDocumentBytes":163,"presentationTextBytes":163,"importAttempts":0}
+{"fixture":3,"owner":"../copilot/extension.mjs","compactDocumentBytes":163,"verboseDocumentBytes":163,"presentationTextBytes":163,"importAttempts":0}
+{"fixture":0,"owner":"@earendil-works/pi-coding-agent","version":"1.0.2","detail":"compact","functionCallOutputs":1,"providerTextBytes":4478,"providerInputBytes":5222}
+{"fixture":0,"owner":"@earendil-works/pi-coding-agent","version":"1.0.2","detail":"verbose","functionCallOutputs":1,"providerTextBytes":5141,"providerInputBytes":5977}
+{"fixture":1,"owner":"@earendil-works/pi-coding-agent","version":"1.0.2","detail":"compact","functionCallOutputs":1,"providerTextBytes":4743,"providerInputBytes":5521}
+{"fixture":1,"owner":"@earendil-works/pi-coding-agent","version":"1.0.2","detail":"verbose","functionCallOutputs":1,"providerTextBytes":5598,"providerInputBytes":6484}
+{"fixture":2,"owner":"@earendil-works/pi-coding-agent","version":"1.0.2","detail":"compact","functionCallOutputs":1,"providerTextBytes":975,"providerInputBytes":1287}
+{"fixture":2,"owner":"@earendil-works/pi-coding-agent","version":"1.0.2","detail":"verbose","functionCallOutputs":1,"providerTextBytes":1605,"providerInputBytes":2009}
+{"fixture":3,"owner":"@earendil-works/pi-coding-agent","version":"1.0.2","detail":"compact","functionCallOutputs":1,"providerTextBytes":163,"providerInputBytes":377}
+{"fixture":3,"owner":"@earendil-works/pi-coding-agent","version":"1.0.2","detail":"verbose","functionCallOutputs":1,"providerTextBytes":163,"providerInputBytes":377}
+{"pureInstalledConversion":"passed","sourceSha256":{"/Users/amichne/.local/share/config/dependencies/pi-1.0.2/node_modules/@earendil-works/pi-coding-agent/dist/core/messages.js":"8688b3f6eb28865f779cac998bd4754d1a4f08703200dfe0dd5a799aa0d42ef6","/Users/amichne/.local/share/config/dependencies/pi-1.0.2/node_modules/@earendil-works/pi-ai/dist/api/openai-responses-shared.js":"8744ad2ce9ce2512993360600760f5bcdbeb520d0a641c655b2a0b7cbe9db10a"}}
+(node:7259) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)

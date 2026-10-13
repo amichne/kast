@@ -3,7 +3,7 @@
   "baselineRevision": "54fc6390e55f219dc826a9465a01c514e3201d12",
   "evidenceScope": "Local synthetic fixtures and executed adapter tests before publication",
   "sha256": {
-    "integration/adapter-metrics.log": "91fb70dbb60076626afc3cc78f4aafa2e1e73f7b1bbe4465d681feb65208e0d9",
+    "integration/adapter-metrics.log": "0ef94f64fd13d1cef110d757dc3ca15bc84240facf816c6a01e1e21388e97dfc",
     "integration/encoded/baseline-compact.json": "58ebe695257de69fe7422997b631d10fc0f4e28e43d09494fb7fd378b85cb567",
     "integration/encoded/byte-comparison.json": "fa23ef0ff18a70f1a748fbdb9abf08e50fde62a917611581ac21f665d73e7af8",
     "integration/encoded/candidate-compact.json": "c9f3c357cdf50d0f16cf627c70cdf1f150ece4d49240b1eaadacdfa87b0d3e00",
