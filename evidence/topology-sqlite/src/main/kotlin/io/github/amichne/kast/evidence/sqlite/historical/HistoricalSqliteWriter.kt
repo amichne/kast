@@ -1,6 +1,7 @@
 package io.github.amichne.kast.evidence.sqlite.historical
 
 import io.github.amichne.kast.topology.contract.historical.HistoricalCoverageStatus
+import io.github.amichne.kast.topology.contract.historical.HistoricalDeclaration
 import io.github.amichne.kast.topology.contract.historical.HistoricalFileProvenance
 import io.github.amichne.kast.topology.contract.historical.HistoricalLimitation
 import io.github.amichne.kast.topology.contract.historical.HistoricalOccurrenceOwner
@@ -18,7 +19,7 @@ internal fun Connection.writeHistoricalSnapshot(snapshot: HistoricalSnapshot) {
     writeHistoricalCoverage(snapshot)
 }
 
-private fun Connection.writeHistoricalHeader(snapshot: HistoricalSnapshot) {
+internal fun Connection.writeHistoricalHeader(snapshot: HistoricalSnapshot) {
     prepareStatement("INSERT INTO historical_header VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?)").use { statement ->
         val header = snapshot.header
         var parameter = 1
@@ -35,7 +36,7 @@ private fun Connection.writeHistoricalHeader(snapshot: HistoricalSnapshot) {
     }
 }
 
-private fun Connection.writeHistoricalModules(snapshot: HistoricalSnapshot) {
+internal fun Connection.writeHistoricalModules(snapshot: HistoricalSnapshot) {
     prepareStatement("INSERT INTO historical_module VALUES (?, ?, ?, ?)").use { statement ->
         snapshot.modules.forEach { value ->
             var parameter = 1
@@ -54,7 +55,7 @@ private fun Connection.writeHistoricalModules(snapshot: HistoricalSnapshot) {
     }
 }
 
-private fun Connection.writeHistoricalDependencies(snapshot: HistoricalSnapshot) {
+internal fun Connection.writeHistoricalDependencies(snapshot: HistoricalSnapshot) {
     prepareStatement("INSERT INTO historical_dependency VALUES (?, ?)").use { statement ->
         snapshot.dependencies.forEach { value ->
             var parameter = 1
@@ -65,7 +66,7 @@ private fun Connection.writeHistoricalDependencies(snapshot: HistoricalSnapshot)
     }
 }
 
-private fun Connection.writeHistoricalFiles(snapshot: HistoricalSnapshot) {
+internal fun Connection.writeHistoricalFiles(snapshot: HistoricalSnapshot) {
     prepareStatement("INSERT INTO historical_file VALUES (?, ?, ?, ?, ?, ?)").use { statement ->
         snapshot.files.forEachIndexed { ordinal, value ->
             var parameter = 1
@@ -88,9 +89,12 @@ private fun Connection.writeHistoricalFiles(snapshot: HistoricalSnapshot) {
     }
 }
 
-private fun Connection.writeHistoricalDeclarations(snapshot: HistoricalSnapshot) {
+internal fun Connection.writeHistoricalDeclarations(snapshot: HistoricalSnapshot) =
+    writeHistoricalDeclarationRows(snapshot.declarations.withIndex().toList())
+
+internal fun Connection.writeHistoricalDeclarationRows(values: List<IndexedValue<HistoricalDeclaration>>) {
     prepareStatement("INSERT INTO historical_declaration VALUES (?, ?, ?, ?, ?, ?, ?, ?)").use { statement ->
-        snapshot.declarations.forEachIndexed { ordinal, value ->
+        values.forEach { (ordinal, value) ->
             var parameter = 1
             statement.setInt(parameter++, ordinal)
             statement.setString(parameter++, value.id.compiler.value)
@@ -105,7 +109,7 @@ private fun Connection.writeHistoricalDeclarations(snapshot: HistoricalSnapshot)
     }
 }
 
-private fun Connection.writeHistoricalOccurrences(snapshot: HistoricalSnapshot) {
+internal fun Connection.writeHistoricalOccurrences(snapshot: HistoricalSnapshot) {
     val declarationOrdinals = snapshot.declarations.mapIndexed { ordinal, value -> value.id to ordinal }.toMap()
     prepareStatement("INSERT INTO historical_occurrence VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").use { statement ->
         snapshot.occurrences.forEachIndexed { ordinal, value ->
@@ -139,7 +143,7 @@ private fun Connection.writeHistoricalOccurrences(snapshot: HistoricalSnapshot) 
     }
 }
 
-private fun Connection.writeHistoricalCoverage(snapshot: HistoricalSnapshot) {
+internal fun Connection.writeHistoricalCoverage(snapshot: HistoricalSnapshot) {
     prepareStatement("INSERT INTO historical_coverage VALUES (?, ?, ?)").use { statement ->
         snapshot.coverage.forEach { value ->
             var parameter = 1

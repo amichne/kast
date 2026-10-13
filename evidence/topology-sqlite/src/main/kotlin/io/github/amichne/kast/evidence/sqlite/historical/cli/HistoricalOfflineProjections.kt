@@ -37,7 +37,37 @@ internal fun HistoricalSnapshotInventory.document(): ManifestDocument =
             HistoricalProfile.STRUCTURE_V1 -> OfflineProfile.STRUCTURE_V1
             HistoricalProfile.REFERENCES_V1 -> OfflineProfile.REFERENCES_V1
         },
+        modules.size,
+        coverageSummary(),
     )
+
+private fun HistoricalSnapshotInventory.coverageSummary(): List<FamilyCoverageDocument> {
+    val grouped = coverage.groupBy { it.family }
+    return HistoricalFactFamily.entries.map { family ->
+        val statuses = grouped[family].orEmpty().map { it.status }
+        val causes =
+            statuses
+                .flatMap { status ->
+                    when (status) {
+                        HistoricalCoverageStatus.Complete,
+                        HistoricalCoverageStatus.NotCollected -> emptyList()
+                        is HistoricalCoverageStatus.OutsideProfile -> listOf(status.reason)
+                        is HistoricalCoverageStatus.Qualified -> status.reasons.toList()
+                    }
+                }
+                .distinct()
+                .sorted()
+                .map { it.document() }
+        FamilyCoverageDocument(
+            family.document(),
+            statuses.count { it == HistoricalCoverageStatus.Complete },
+            statuses.count { it is HistoricalCoverageStatus.Qualified },
+            statuses.count { it == HistoricalCoverageStatus.NotCollected },
+            statuses.count { it is HistoricalCoverageStatus.OutsideProfile },
+            causes,
+        )
+    }
+}
 
 internal fun HistoricalDeclarationId.document(): DeclarationIdentityDocument =
     DeclarationIdentityDocument(compiler.value, file.value, range.startInclusive, range.endExclusive)

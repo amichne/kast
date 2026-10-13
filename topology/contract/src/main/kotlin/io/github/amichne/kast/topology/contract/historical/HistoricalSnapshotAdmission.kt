@@ -20,17 +20,15 @@ internal object HistoricalSnapshotAdmission {
     }
 
     private fun membershipAdmission(input: HistoricalSnapshotInput): Refinement<Unit, HistoricalAdmissionFailure> {
-        val moduleIds = input.modules.map { it.id }.toSet()
+        val modules = input.modules.associateBy { it.id }
         val files = input.files.associateBy { it.path }
-        if (
-            input.files.any { it.module !in moduleIds } ||
-                input.dependencies.any { it.source !in moduleIds || it.target !in moduleIds }
-        ) {
+        if (input.dependencies.any { it.source !in modules || it.target !in modules }) {
             return Refinement.Rejected(HistoricalAdmissionFailure.UNKNOWN_MODULE)
         }
-        val rootless = input.modules.filter { it.sourceSet == HistoricalSourceSet.Rootless }.map { it.id }.toSet()
-        if (input.files.any { it.module in rootless })
-            return Refinement.Rejected(HistoricalAdmissionFailure.ROOTLESS_FILE)
+        for (file in input.files) when (val admitted = HistoricalFactPolicy.admitFile(file, modules)) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return admitted
+        }
         if (input.declarations.any { it.id.file !in files } || input.occurrences.any { it.sourceFile !in files }) {
             return Refinement.Rejected(HistoricalAdmissionFailure.UNKNOWN_FILE)
         }
@@ -38,31 +36,15 @@ internal object HistoricalSnapshotAdmission {
     }
 
     private fun endpointAdmission(input: HistoricalSnapshotInput): Refinement<Unit, HistoricalAdmissionFailure> {
-        val declarations = input.declarations.associateBy { it.id }
-        if (input.occurrences.any { it.target !in declarations })
-            return Refinement.Rejected(HistoricalAdmissionFailure.INVALID_ENDPOINT)
-        input.occurrences.forEach { occurrence ->
-            when (val owner = occurrence.owner) {
-                is HistoricalOccurrenceOwner.Declaration ->
-                    if (owner.id !in declarations || owner.id.file != occurrence.sourceFile)
-                        return Refinement.Rejected(HistoricalAdmissionFailure.OWNER_MISMATCH)
-                is HistoricalOccurrenceOwner.FileScoped ->
-                    if (owner.context != occurrence.context || !fileScopedContext(owner.context))
-                        return Refinement.Rejected(HistoricalAdmissionFailure.OWNER_MISMATCH)
-                is HistoricalOccurrenceOwner.Unavailable -> Unit
-            }
+        val declarations = input.declarations.mapTo(hashSetOf()) { it.id }
+        for (occurrence in input.occurrences) when (
+            val admitted = HistoricalFactPolicy.admitOccurrence(occurrence, declarations)
+        ) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return admitted
         }
         return Refinement.Refined(Unit)
     }
-
-    private fun fileScopedContext(context: HistoricalReferenceContext): Boolean =
-        when (context) {
-            HistoricalReferenceContext.IMPORT,
-            HistoricalReferenceContext.ALIASED_IMPORT,
-            HistoricalReferenceContext.FILE_ANNOTATION -> true
-            HistoricalReferenceContext.TYPE,
-            HistoricalReferenceContext.CODE -> false
-        }
 
     private fun structuralAdmission(input: HistoricalSnapshotInput): Refinement<Unit, HistoricalAdmissionFailure> =
         when {

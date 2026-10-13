@@ -50,6 +50,7 @@ sealed interface HistoricalUsagePosition {
 /** Pure request admission fixes scope, coverage, budgets, and cursor before exact storage lookups. */
 class HistoricalUsagePlan
 internal constructor(
+    internal val inventoryBasis: HistoricalSnapshotInventory,
     val snapshot: HistoricalDigest,
     internal val revision: HistoricalRevision,
     sources: Set<HistoricalModuleId>,
@@ -69,6 +70,7 @@ internal constructor(
 
 class HistoricalUsageQuery
 private constructor(
+    private val inventoryBasis: HistoricalSnapshotInventory,
     val snapshot: HistoricalDigest,
     val revision: HistoricalRevision,
     sources: Set<HistoricalModuleId>,
@@ -82,6 +84,9 @@ private constructor(
     val targets: Set<HistoricalDeclarationReference> =
         Collections.unmodifiableSet(selections.sortedBy { it.declaration }.toCollection(linkedSetOf()))
     val family: HistoricalFactFamily = HistoricalFactFamily.REFERENCES
+
+    /** Scope and coverage belong to the exact immutable inventory that admitted this query. */
+    fun usesInventory(inventory: HistoricalSnapshotInventory): Boolean = inventoryBasis === inventory
 
     fun cursorAfter(ordinal: HistoricalRowOrdinal): HistoricalUsageCursor =
         HistoricalUsageCursor.fromStored(snapshot, identity, ordinal)
@@ -133,6 +138,7 @@ private constructor(
             }
             return Refinement.Refined(
                 HistoricalUsagePlan(
+                    inventory,
                     inventory.identity,
                     inventory.header.revision,
                     sources,
@@ -155,6 +161,7 @@ private constructor(
                 return Refinement.Rejected(HistoricalUsageFailure.TARGET_SELECTION_MISMATCH)
             return Refinement.Refined(
                 HistoricalUsageQuery(
+                    plan.inventoryBasis,
                     plan.snapshot,
                     plan.revision,
                     plan.sourceModules,

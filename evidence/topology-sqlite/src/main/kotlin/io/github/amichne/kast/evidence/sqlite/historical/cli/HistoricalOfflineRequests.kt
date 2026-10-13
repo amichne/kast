@@ -180,6 +180,7 @@ internal fun HistoricalReadFailure.document(): OfflineFailureCode =
         HistoricalReadFailure.PROFILE_UNSUPPORTED -> OfflineFailureCode.PROFILE_REJECTED
         HistoricalReadFailure.CAPACITY_EXCEEDED -> OfflineFailureCode.CAPACITY_EXCEEDED
         HistoricalReadFailure.SNAPSHOT_MISMATCH -> OfflineFailureCode.SNAPSHOT_MISMATCH
+        HistoricalReadFailure.QUERY_INVENTORY_MISMATCH -> OfflineFailureCode.QUERY_INVENTORY_MISMATCH
         HistoricalReadFailure.DECLARATION_NOT_FOUND -> OfflineFailureCode.DECLARATION_NOT_FOUND
         HistoricalReadFailure.CURSOR_MISMATCH -> OfflineFailureCode.CURSOR_MISMATCH
     }

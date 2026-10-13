@@ -29,12 +29,20 @@ import java.sql.Connection
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 
+/** Logical domain rows held by admission collections. This is not a JVM heap measurement. */
+data class HistoricalSqliteRetention(
+    val metadataRows: HistoricalReadCount,
+    val maximumFactRows: HistoricalReadCount,
+)
+
 /** The retained capability reads the admitted artifact only. Pages use stored canonical ordinals. */
 class SqliteHistoricalSnapshotReader
 internal constructor(
     private val connection: Connection,
     override val inventory: HistoricalSnapshotInventory,
     override val openWork: HistoricalOpenWork,
+    val admissionRetention: HistoricalSqliteRetention,
+    val admissionEndpointIdentifiers: HistoricalReadCount,
 ) : HistoricalSnapshotReader {
     override fun files(request: HistoricalPageRequest): HistoricalReadResult<HistoricalInventoryPage<HistoricalFile>> =
         page("historical_file", HistoricalFactFamily.FILES, request, ::historicalFile)
@@ -61,6 +69,8 @@ internal constructor(
     override fun usage(query: HistoricalUsageQuery): HistoricalReadResult<HistoricalUsagePage> {
         if (query.snapshot != inventory.identity)
             return HistoricalReadResult.Rejected(HistoricalReadFailure.SNAPSHOT_MISMATCH)
+        if (!query.usesInventory(inventory))
+            return HistoricalReadResult.Rejected(HistoricalReadFailure.QUERY_INVENTORY_MISMATCH)
         return historicalEffect {
             admitTargets(query).flatMap { targetRows ->
                 admitUsageCursor(query).flatMap { cursorRows ->

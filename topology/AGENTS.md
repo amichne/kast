@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-12 | hash: 16a344461124 -->
+<!-- generated: 2026-10-12 | hash: 1264ed21d715 -->
 
 # topology
 

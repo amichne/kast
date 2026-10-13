@@ -49,7 +49,7 @@ internal fun Connection.readHistoricalSnapshot(): Refinement<HistoricalSnapshot,
     else Refinement.Rejected(HistoricalStorageFailure.CONTENT_REJECTED)
 }
 
-private fun <T> Connection.queryHistoricalOrdinal(
+internal fun <T> Connection.queryHistoricalOrdinal(
     sql: String,
     read: (ResultSet) -> Refinement<T, HistoricalStorageFailure>,
 ): Refinement<List<T>, HistoricalStorageFailure> {

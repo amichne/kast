@@ -11,6 +11,7 @@ This is an implementation gap, not an absent IDEA installation.
 - Branch: `feat/persistent-topology-snapshots`.
 - D1 commit: `450d32c5c34a183ba4ca30f2cd805bff26f0678a`.
 - D2 commit: `0ed32da3d3edab34caad7a0678d903d796a651fc`.
+- D3 commit: `af915d76de4c1aa7f367fb65585d38042e9aa13e`.
 - Slopsentral source: `774716ce2cdee28133d463ae865f4c67bef68fb4`.
 - Environment: macOS, Oracle GraalVM 25.0.2 through repository-owned `mise`.
 - Profiles: `STRUCTURE_V1` and `REFERENCES_V1`.
@@ -184,7 +185,7 @@ The process returns typed JSON for rejection. Consumers must examine `type` and 
 The explicit oracle contains six modules, four files, six declarations, and four reference occurrences.
 It distinguishes overloads, repeated compiler identity at different locations, main and test ownership, empty membership, and rootless membership.
 The four occurrence ranges select `Api` or `api` in the fixture source text.
-The page union matches the independent witness table. Qualified coverage remains qualified after the last page.
+The page union matches the independent witness table. QUALIFIED COVERAGE remains qualified after the last page.
 
 The fresh-process case passed with a copied read-only artifact and the original case-owned source directory removed.
 Its process environment has an empty executable path. Its classpath excludes the IntelliJ, hosted runtime, and App Server adapters.
@@ -212,9 +213,153 @@ mise exec -- ./gradlew :evidence:topology-sqlite:test \
 Counts were 9 storage, 4 cursor, 5 CLI, 3 request-admission, and 1 generated-input case.
 Detekt and both file-length guards passed. The log is `/tmp/kast-historical-d3-final.log`.
 
+Review exposed three further correctness gaps.
+Each query now keeps its reader's admitted inventory, so caller-created metadata cannot upgrade artifact coverage.
+The regression first accepted forged COMPLETE COVERAGE. It now rejects with `QUERY_INVENTORY_MISMATCH`.
+
+SQLite accepted wide offsets and coerced BLOB values into identities that differed during exact selection.
+The independent corruptions produced product RED before correction.
+The historical schema now uses `STRICT` tables. Integer decoding also rejects offsets outside the declared coordinate range.
+Three focused cases passed after correction. Legacy SQLite schemas remain unchanged.
+The logs are `/tmp/kast-historical-d4-integrity-red.log` and `/tmp/kast-historical-d4-integrity-green.log`.
+
+Every successful command now includes four bounded coverage summaries in its manifest.
+The summaries count each status per family and preserve finite causes. Inventory pages supply individual module coverage.
+The files and declarations cases first failed because their manifests omitted coverage. Both passed after correction.
+
+## D4: durable storage progress and bounded reads
+
+The stage belongs to `SqliteHistoricalSnapshotStaging` within the topology SQLite adapter.
+Each file commits its declaration facts, occurrence facts, and progress row in one transaction.
+An interrupted transaction rolls back those facts and its progress together.
+The ordinary reader rejects a stage. Publication copies a ready stage into a private candidate before final admission and atomic replacement.
+
+A resumed operation needs a fresh `HistoricalCaptureBasis`.
+The adapter compares the complete context, metadata, source inventory, and committed facts with that basis.
+Changed context or changed committed facts reject reuse.
+The budget limits files per operation and rows per file. An oversized file rejects before its facts or progress change.
+
+This stage reuses SQLite writes. It does not resume native extraction.
+The fresh basis still contains the complete snapshot, and each receipt reports that retained input separately.
+Native streaming extraction and durable reuse under fresh native authority remain unimplemented.
+
+The first four stage cases passed with the two coverage cases:
+
+```sh
+mise exec -- ./gradlew :evidence:topology-sqlite:test \
+  --tests '*HistoricalSqliteStagingTest' --tests '*HistoricalOfflineCoverageTest' --console=plain
+```
+
+The command selected six tests and reported 4 seconds.
+The log is `/tmp/kast-historical-d4-stage-first.log`.
+The first staging command failed because its API did not exist. No behavioral assertion ran, so that failure is not product RED.
+
+The independent read-retention case measured 14 materialized fact rows before the change.
+Its limit of two rows failed while the fixture identity and counts remained correct.
+The RED log is `/tmp/kast-historical-d4-stream-red.log`.
+This measure counts logical facts, not bytes or heap use. Metadata has a separate count.
+
+GREEN kept at most two fact rows, plus 34 metadata rows, for the same artifact identity and 48 admitted rows.
+The adapter separately reports seven endpoint identity parses. SQLite engine page reads remain unmeasured.
+A Unicode case preserves Kotlin ordering for supplementary and private-use characters, where SQLite text ordering differs.
+
+The resumed fixture reused one file and four rows. It committed three files and ten rows, with a maximum batch of five rows.
+Its receipt reports 42 persisted rows examined, 48 full-basis rows retained, and 60 visits to facts in that full basis.
+Stage publication reports 48 stored rows and 148 examined rows across three passes. The artifact measured 90,112 bytes.
+The strict structural fixture measured 73,728 bytes, compared with 69,632 bytes before `STRICT` tables.
+These measurements do not establish reduced semantic work, total work, heap use, or latency.
+
+The expanded suite passed seven stage cases and two streamed-admission cases.
+Changed context, cancellation, and an injected I/O fault preserve committed progress and prior published bytes.
+The final command passed 37 historical SQLite cases and 19 historical contract cases, with zero failures, errors, or skips.
+Detekt and the selected file-length guards passed. The command reported 5 seconds.
+The log is `/tmp/kast-historical-d4-final-gates.log`.
+
+```sh
+mise exec -- ./gradlew :evidence:topology-sqlite:test --tests '*Historical*' \
+  :topology:contract:test --tests '*Historical*' \
+  :evidence:topology-sqlite:detekt :topology:contract:detekt \
+  :evidence:topology-sqlite:checkMainKotlinFileLength \
+  :evidence:topology-sqlite:checkTestKotlinFileLength \
+  :topology:contract:checkMainKotlinFileLength --console=plain
+```
+
+A final metric review found that the endpoint counter collapsed equal target and owner identities.
+The self-reference case failed with one parse instead of two. The adapter now reuses each parsed identity and counts both parse operations.
+The same selector then passed all three streamed-admission cases in 3 seconds, with zero failures, errors, or skips:
+
+```sh
+mise exec -- ./gradlew :evidence:topology-sqlite:test \
+  --tests '*HistoricalSqliteStreamingTest' :evidence:topology-sqlite:detekt \
+  :evidence:topology-sqlite:checkMainKotlinFileLength \
+  :evidence:topology-sqlite:checkTestKotlinFileLength --console=plain
+```
+
+The logs are `/tmp/kast-historical-d4-self-metric-red.log` and `/tmp/kast-historical-d4-self-metric-green.log`.
+The historical SQLite suite now contains 38 cases. The last complete historical run preceded this final added case.
+
+## Repository gates
+
+The JSON, architecture, and knowledge gates passed in 29 seconds:
+
+```sh
+mise exec -- ./gradlew verifyJsonContracts verifyKastArchitecture \
+  knowledgeImpact verifyKnowledgeBase --console=plain
+```
+
+JSON admission examined 631 fingerprints with zero violations.
+The knowledge suite passed seven tests. Its citation scan examined 28 concepts and five reserved files with zero issues.
+The log is `/tmp/kast-historical-required-gates.log`.
+
+The Gradle impact task covers current uncommitted changes.
+A separate invocation supplied every changed path from the baseline through `--changed-file` to `.github/scripts/code_kb.py impact`.
+Only the two glossary concepts that cite root `AGENTS.md` matched.
+The root change adds a navigation link. Their cited policy remains unchanged, so no generated Claim needed a refresh.
+The report is `build/reports/persistent-topology/knowledge-impact.json`.
+
+The pinned Vale 3.24.0 procedure assessed the report and five changed navigation files against `docs/GLOSSARY.md`.
+Its result is `ASSESSED`, with grade advisories and pre-existing long sentences in root `AGENTS.md`.
+The result is not a clean report or proof of reader comprehension.
+The report is `build/reports/persistent-topology/text-assessment.json`.
+
+## Acceptance matrix
+
+This matrix records evidence before publication. The draft PR records the later pre-push result and exact candidate revision.
+
+| Segment or promised gate | Status | Evidence and limit |
+|---|---|---|
+| D1 reuse and historical contracts | passed | Existing characterization, independent identity oracle, finite coverage, and historical/live compiler rejection. |
+| D2 Git attribution and standalone SQLite publication | passed | Real Git adapter and SQLite tests. Producer success uses scripted semantic facts. |
+| D2 coherent native producer | unimplemented | Current input capture keeps hashes of mutable roots. No immutable resolution-input carrier exists. |
+| D2 native fixture artifact and relocated fresh-process read | not run | The fresh-process read passed for a scripted artifact. The native producer cannot supply an artifact. |
+| D3 exact offline report and explicit coverage | passed | Independent occurrence witnesses, paging, rejection, generated provenance, and fresh-process composition. |
+| D3 first functional product acceptance | not run | The offline path passes with admitted fixtures. The real capture-to-report path lacks its native producer. |
+| D4 per-file SQLite progress | passed | Seven cases cover interruption, reuse, changed context, cancellation, faults, capacity, tampering, and publication. |
+| D4 bounded offline admission | passed | RED kept 14 fact rows. GREEN kept at most two. Full digest, counts, and Unicode order passed. |
+| D4 durable native extraction and bounded capture | unimplemented | Every stage resume still consumes a complete fresh capture basis. |
+| JSON, architecture, and knowledge gates | passed | Exact command and counts appear in the repository gate section. |
+| Repository publication gate | not run | The pre-push hook must run `productBuildGate` on a clean commit. |
+
+These statuses do not declare D2, D3, or D4 complete under the specification.
+D1 can receive separate review at `450d32c5c34a183ba4ca30f2cd805bff26f0678a`, based on the recorded baseline.
+D2 depends on D1. D3 depends on D2. D4 also carries corrections from the final cross-segment review.
+The draft preserves those segment commits for review. No segment permits a native completeness claim from fixtures.
+
 ## Qualification limits
 
 Native export, native reference projection, real imported-model completeness, and repository-scale capture are **not run**.
 Native success also lacks the necessary producer implementation. Scripted success cannot satisfy D2 or D3 native acceptance.
 No heap measurement, enterprise throughput result, or process-crash durability claim exists.
 No live fallback, automatic indexing, global installation, IDE restart, merge, or release forms part of this work.
+
+The native gap has specific owners:
+
+- `GradleBuildProjectIndex` already traverses cached imported projects. Its detached projection must preserve projects and source sets without roots.
+- `SemanticNativeModuleInputs` reads the current SDK and resolution roots. `SemanticNativeFileMemo` stores hashes, without immutable bytes or compiler input handles.
+- `ProjectReadEpochVfsListener` excludes events outside the WORKSPACE ROOT. An IDEA read action does not prevent external file changes and reversions.
+- A new native session must bind compiler resolution and fingerprints to the same immutable inputs before historical projection can succeed.
+- Historical projection must keep current declaration and reference evidence. The retired extractor needs `PublishedWorkspace` and discards some unresolved facts.
+
+The current native fixture supplies a model and uses the host SDK. It does not prove actual imported-model admission or immutable external inputs.
+The necessary next fixture must exercise those mechanisms and an external change-and-revert case.
+A native environment alone cannot resolve this implementation gap.

@@ -127,6 +127,60 @@ class SqliteHistoricalSnapshotStoreTest {
     }
 
     @Test
+    fun `persisted offsets outside Int cannot truncate into an admitted declaration`() {
+        val artifact = directory.toRealPath().resolve("wide-offset.sqlite")
+        SqliteHistoricalSnapshotStore.publish(artifact, fixture().admit().value()).value()
+        mutate(
+            artifact,
+            "UPDATE historical_declaration SET start_offset = start_offset + 4294967296, " +
+                "end_offset = end_offset + 4294967296",
+        )
+        val rejected =
+            assertInstanceOf<Refinement.Rejected<HistoricalStorageFailure>>(
+                SqliteHistoricalSnapshotStore.open(artifact)
+            )
+        assertEquals(HistoricalStorageFailure.CONTENT_REJECTED, rejected.failure)
+    }
+
+    @Test
+    fun `persisted fractional offsets cannot truncate into an admitted declaration`() {
+        val artifact = directory.toRealPath().resolve("fractional-offset.sqlite")
+        SqliteHistoricalSnapshotStore.publish(artifact, fixture().admit().value()).value()
+        try {
+            mutate(
+                artifact,
+                "UPDATE historical_declaration SET start_offset = start_offset + 0.5, end_offset = end_offset + 0.5",
+            )
+        } catch (failure: java.sql.SQLException) {
+            assertEquals(19, failure.errorCode)
+            SqliteHistoricalSnapshotStore.open(artifact).value().close()
+            return
+        }
+        val rejected =
+            assertInstanceOf<Refinement.Rejected<HistoricalStorageFailure>>(
+                SqliteHistoricalSnapshotStore.open(artifact)
+            )
+        assertEquals(HistoricalStorageFailure.CONTENT_REJECTED, rejected.failure)
+    }
+
+    @Test
+    fun `BLOB compiler identity cannot remain an admitted text identity`() {
+        val artifact = directory.toRealPath().resolve("blob-identity.sqlite")
+        val snapshot = fixture().admit().value()
+        SqliteHistoricalSnapshotStore.publish(artifact, snapshot).value()
+        try {
+            mutate(artifact, "UPDATE historical_declaration SET compiler = CAST(compiler AS BLOB)")
+        } catch (failure: java.sql.SQLException) {
+            assertEquals(19, failure.errorCode)
+            SqliteHistoricalSnapshotStore.open(artifact).value().use { reader ->
+                assertInstanceOf<HistoricalReadResult.Read<*>>(reader.select(snapshot.declarations.first().id))
+            }
+            return
+        }
+        assertInstanceOf<Refinement.Rejected<HistoricalStorageFailure>>(SqliteHistoricalSnapshotStore.open(artifact))
+    }
+
+    @Test
     fun `unsupported schema is rejected without initialization or replacement`() {
         val artifact = directory.toRealPath().resolve("future.sqlite")
         SqliteHistoricalSnapshotStore.publish(artifact, fixture().admit().value()).value()

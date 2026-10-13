@@ -1,5 +1,5 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-10-03 | hash: 3cf4c6551236 -->
+<!-- generated: 2026-10-12 | hash: 3cf4c6551236 -->
 
 # evidence
 
@@ -18,6 +18,7 @@ Keeps mutation plans, receipts, and recovery evidence in workspace-bound SQLite 
 - [SqliteMutationRecoveryJournal.kt](sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationRecoveryJournal.kt) - recovery journal.
 - [SqliteHostedChangeStoresTest.kt](sqlite/src/test/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteHostedChangeStoresTest.kt) - restart, schema and path rejection evidence.
 - [SqliteHistoricalSnapshotStore.kt](topology-sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/historical/SqliteHistoricalSnapshotStore.kt) - atomic standalone publication and immutable historical reads.
+- [SqliteHistoricalSnapshotStaging.kt](topology-sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/historical/SqliteHistoricalSnapshotStaging.kt) - per-file facts and progress with exact fresh-basis admission.
 
 ## Subdirectories
 

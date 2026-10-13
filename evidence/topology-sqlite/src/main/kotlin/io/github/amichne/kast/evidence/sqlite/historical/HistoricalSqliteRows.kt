@@ -184,12 +184,31 @@ internal fun historicalDeclarationId(
             return it
         }
     val range =
-        ExactDeclarationTextRange.parse(rows.getInt("${prefix}start_offset"), rows.getInt("${prefix}end_offset"))
-            .storage()
-            .orReturn {
-                return it
-            }
+        historicalRange(rows, prefix).orReturn {
+            return it
+        }
     return Refinement.Refined(HistoricalDeclarationId(compiler, file, range))
+}
+
+private fun historicalRange(
+    rows: ResultSet,
+    prefix: String = "",
+): Refinement<ExactDeclarationTextRange, HistoricalStorageFailure> =
+    historicalOffset(rows, "${prefix}start_offset").flatMap { start ->
+        historicalOffset(rows, "${prefix}end_offset").flatMap { end ->
+            ExactDeclarationTextRange.parse(start, end).storage()
+        }
+    }
+
+private fun historicalOffset(rows: ResultSet, column: String): Refinement<Int, HistoricalStorageFailure> {
+    val raw =
+        when (val stored = rows.getObject(column)) {
+            is Int -> stored.toLong()
+            is Long -> stored
+            else -> return Refinement.Rejected(HistoricalStorageFailure.CONTENT_REJECTED)
+        }
+    return if (raw in 0..Int.MAX_VALUE.toLong()) Refinement.Refined(raw.toInt())
+    else Refinement.Rejected(HistoricalStorageFailure.CONTENT_REJECTED)
 }
 
 internal const val HISTORICAL_OCCURRENCE_QUERY =
@@ -206,7 +225,7 @@ internal fun historicalOccurrence(rows: ResultSet): Refinement<HistoricalOccurre
             return it
         }
     val range =
-        ExactDeclarationTextRange.parse(rows.getInt("start_offset"), rows.getInt("end_offset")).storage().orReturn {
+        historicalRange(rows).orReturn {
             return it
         }
     val target =

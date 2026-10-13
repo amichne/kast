@@ -5,7 +5,6 @@ import io.github.amichne.kast.topology.contract.historical.HistoricalDigest
 import io.github.amichne.kast.topology.contract.historical.HistoricalOpenWork
 import io.github.amichne.kast.topology.contract.historical.HistoricalReadCount
 import io.github.amichne.kast.topology.contract.historical.HistoricalSnapshot
-import io.github.amichne.kast.topology.contract.historical.HistoricalSnapshotInventory
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -65,45 +64,64 @@ object SqliteHistoricalSnapshotStore {
         destination: Path,
         snapshot: HistoricalSnapshot,
         faults: HistoricalSqliteFaultInjector,
+    ): Refinement<HistoricalSqlitePublication, HistoricalStorageFailure> =
+        publishPrepared(destination, snapshot.identity, snapshot.historicalRowCount(), faults = faults) {
+            writeCandidate(it, snapshot, faults)
+        }
+
+    internal fun publishPrepared(
+        destination: Path,
+        identity: HistoricalDigest,
+        rows: Long,
+        extraVerificationRows: Long = 0,
+        faults: HistoricalSqliteFaultInjector = HistoricalSqliteFaultInjector.Disabled,
+        write: (Path) -> Refinement<Unit, HistoricalStorageFailure>,
     ): Refinement<HistoricalSqlitePublication, HistoricalStorageFailure> = historicalEffect {
-        admitHistoricalPath(destination, mustExist = false).flatMap {
-            val prior =
-                if (Files.exists(destination, NOFOLLOW_LINKS))
-                    openHistoricalConnection(destination).use { connection ->
-                        connection
-                            .examineHistoricalSchema()
-                            .flatMap { connection.readHistoricalSnapshot() }
-                            .map { 1L to it.historicalRowCount() }
-                    }
-                else Refinement.Refined(0L to 0L)
-            prior.flatMap { (priorPasses, priorRows) ->
-                val temporary = Files.createTempFile(destination.parent, ".kast-topology-", ".sqlite")
-                try {
-                    writeCandidate(temporary, snapshot, faults).flatMap {
-                        openHistoricalConnection(temporary)
-                            .use { connection ->
-                                connection.examineHistoricalSchema().flatMap { connection.readHistoricalSnapshot() }
-                            }
-                            .flatMap { restored ->
-                                if (restored.identity != snapshot.identity)
-                                    Refinement.Rejected(HistoricalStorageFailure.CONTENT_REJECTED)
-                                else {
-                                    val bytes = Files.size(temporary)
-                                    publicationWork(snapshot.historicalRowCount(), priorPasses, priorRows, bytes).map {
-                                        work ->
-                                        faults.observe(HistoricalSqliteFaultPoint.BEFORE_PUBLICATION)
-                                        Files.move(temporary, destination, ATOMIC_MOVE, REPLACE_EXISTING)
-                                        HistoricalSqlitePublication(snapshot.identity, work)
-                                    }
-                                }
-                            }
-                    }
-                } finally {
-                    Files.deleteIfExists(temporary)
-                }
+        admitHistoricalPath(destination, mustExist = false).orReturn {
+            return@historicalEffect it
+        }
+        val (priorPasses, priorRows) =
+            priorPublicationWork(destination).orReturn {
+                return@historicalEffect it
             }
+        val temporary = Files.createTempFile(destination.parent, ".kast-topology-", ".sqlite")
+        try {
+            write(temporary).orReturn {
+                return@historicalEffect it
+            }
+            val restored =
+                openHistoricalConnection(temporary)
+                    .use { connection ->
+                        connection.examineHistoricalSchema().flatMap { connection.admitHistoricalArtifact() }
+                    }
+                    .orReturn {
+                        return@historicalEffect it
+                    }
+            if (restored.inventory.identity != identity)
+                return@historicalEffect Refinement.Rejected(HistoricalStorageFailure.CONTENT_REJECTED)
+            val bytes = Files.size(temporary)
+            val extraPasses = if (extraVerificationRows > 0) 1 else 0
+            val work =
+                publicationWork(rows, priorPasses + extraPasses, priorRows + extraVerificationRows, bytes).orReturn {
+                    return@historicalEffect it
+                }
+            faults.observe(HistoricalSqliteFaultPoint.BEFORE_PUBLICATION)
+            Files.move(temporary, destination, ATOMIC_MOVE, REPLACE_EXISTING)
+            Refinement.Refined(HistoricalSqlitePublication(identity, work))
+        } finally {
+            Files.deleteIfExists(temporary)
         }
     }
+
+    private fun priorPublicationWork(destination: Path): Refinement<Pair<Long, Long>, HistoricalStorageFailure> =
+        if (Files.exists(destination, NOFOLLOW_LINKS))
+            openHistoricalConnection(destination).use { connection ->
+                connection
+                    .examineHistoricalSchema()
+                    .flatMap { connection.admitHistoricalArtifact() }
+                    .map { 1L to it.rowsExamined }
+            }
+        else Refinement.Refined(0L to 0L)
 
     private fun writeCandidate(
         path: Path,
@@ -138,16 +156,16 @@ object SqliteHistoricalSnapshotStore {
                 val result =
                     connection
                         .examineHistoricalSchema()
-                        .flatMap { connection.readHistoricalSnapshot() }
-                        .flatMap { snapshot ->
-                            HistoricalReadCount.parse(snapshot.historicalRowCount()).storage().flatMap { rows ->
-                                HistoricalReadCount.parse(Files.size(path)).storage().map { bytes ->
-                                    SqliteHistoricalSnapshotReader(
-                                        connection,
-                                        HistoricalSnapshotInventory.from(snapshot),
-                                        HistoricalOpenWork(rows, bytes),
-                                    )
-                                }
+                        .flatMap { connection.admitHistoricalArtifact() }
+                        .flatMap { admitted ->
+                            HistoricalReadCount.parse(Files.size(path)).storage().map { bytes ->
+                                SqliteHistoricalSnapshotReader(
+                                    connection,
+                                    admitted.inventory,
+                                    HistoricalOpenWork(historicalCount(admitted.rowsExamined), bytes),
+                                    admitted.retention,
+                                    historicalCount(admitted.endpointIdentifiersRead),
+                                )
                             }
                         }
                 if (result is Refinement.Refined) ownership = HistoricalConnectionOwnership.TRANSFER
@@ -263,7 +281,9 @@ private fun historicalPathShape(path: Path): Refinement<Unit, HistoricalStorageF
     return Refinement.Refined(Unit)
 }
 
-internal fun Connection.examineHistoricalSchema(): Refinement<Unit, HistoricalStorageFailure> {
+internal fun Connection.examineHistoricalSchema(
+    expected: List<String> = historicalSchema
+): Refinement<Unit, HistoricalStorageFailure> {
     examineHistoricalVersion().orReturn {
         return it
     }
@@ -276,7 +296,7 @@ internal fun Connection.examineHistoricalSchema(): Refinement<Unit, HistoricalSt
             .orReturn {
                 return it
             }
-    if (actual.toSet() != historicalSchema.map(::normalizedHistoricalSchema).toSet())
+    if (actual.toSet() != expected.map(::normalizedHistoricalSchema).toSet())
         return Refinement.Rejected(HistoricalStorageFailure.SCHEMA_REJECTED)
     return examineHistoricalIntegrity()
 }

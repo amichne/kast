@@ -21,6 +21,7 @@ internal enum class OfflineFailureCode {
     STORAGE_UNAVAILABLE,
     CAPACITY_EXCEEDED,
     SNAPSHOT_MISMATCH,
+    QUERY_INVENTORY_MISMATCH,
     DECLARATION_NOT_FOUND,
     CURSOR_MISMATCH,
     EMPTY_SOURCE_DOMAIN,
@@ -79,7 +80,19 @@ internal data class ManifestDocument(
     val compiler: String,
     val producer: String,
     val profile: OfflineProfile,
+    val importedModuleCount: Int,
+    val familyCoverage: List<FamilyCoverageDocument>,
     val coordinateConvention: CoordinateConvention = CoordinateConvention.UTF16_EXCLUSIVE_END,
+)
+
+@Serializable
+internal data class FamilyCoverageDocument(
+    val family: OfflineFamily,
+    val complete: Int,
+    val qualified: Int,
+    val notCollected: Int,
+    val outsideProfile: Int,
+    val causes: List<OfflineLimitation>,
 )
 
 @Serializable
