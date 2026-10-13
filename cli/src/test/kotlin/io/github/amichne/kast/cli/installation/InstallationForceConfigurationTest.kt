@@ -86,7 +86,7 @@ internal class InstallationForceConfigurationTest {
     }
 
     @Test
-    fun `force unspecified endpoint uses fresh occupied socket fallback`(@TempDir temporary: Path) {
+    fun `force unspecified endpoint keeps Codex control when its socket is occupied`(@TempDir temporary: Path) {
         val fixture = Fixture(temporary)
         fixture.customized(BrokerPublicEndpointMode.CODEX_CONTROL)
         val socket =
@@ -96,8 +96,8 @@ internal class InstallationForceConfigurationTest {
             )
         val plan = fixture.plan(InstallationSwitch.ENABLED)
         val selected = fixture.select(plan)
-        assertEquals(InstallationConfigurationSelection.FreshOccupiedCodexControl, selected)
-        fixture.assertFreshConfiguration(plan, selected, BrokerPublicEndpointMode.PRIVATE)
+        assertEquals(InstallationConfigurationSelection.FreshDefault, selected)
+        fixture.assertFreshConfiguration(plan, selected, BrokerPublicEndpointMode.CODEX_CONTROL)
         assertEquals("incumbent", Files.readString(socket))
     }
 

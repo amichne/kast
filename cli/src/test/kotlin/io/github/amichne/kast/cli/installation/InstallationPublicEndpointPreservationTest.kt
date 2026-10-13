@@ -29,9 +29,7 @@ internal class InstallationPublicEndpointPreservationTest {
     }
 
     @Test
-    fun `fresh unspecified installation uses private when the Codex control endpoint is occupied`(
-        @TempDir temporary: Path
-    ) {
+    fun `fresh unspecified installation keeps Codex control when its endpoint is occupied`(@TempDir temporary: Path) {
         val fixture = Fixture(temporary)
         val socket =
             Files.writeString(
@@ -40,7 +38,7 @@ internal class InstallationPublicEndpointPreservationTest {
             )
         val identity = observeInstallationFilesystemIdentity(socket.parent)
         fixture.install("1.2.3")
-        assertEquals(BrokerPublicEndpointMode.PRIVATE, savedEndpoint(fixture.configuration))
+        assertEquals(BrokerPublicEndpointMode.CODEX_CONTROL, savedEndpoint(fixture.configuration))
         assertEquals(identity, observeInstallationFilesystemIdentity(socket.parent))
     }
 
@@ -54,7 +52,7 @@ internal class InstallationPublicEndpointPreservationTest {
     }
 
     @Test
-    fun `explicit Codex control overrides occupied fresh endpoint fallback`(@TempDir temporary: Path) {
+    fun `explicit Codex control preserves an occupied fresh endpoint`(@TempDir temporary: Path) {
         val fixture = Fixture(temporary)
         val socket =
             Files.writeString(

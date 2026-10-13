@@ -79,9 +79,11 @@ longer changes service identity in the checkout build.
 ## Default managed-client discovery — 2026-10-04 implementation
 
 For a fresh installation, the default endpoint is the standard
-`<CODEX_HOME>/app-server-control/app-server-control.sock` when available. If that
-socket is occupied or cannot be inspected, the installer selects a private endpoint so Kast can
-finish installation and serve direct clients. An explicit endpoint choice remains
+`<CODEX_HOME>/app-server-control/app-server-control.sock`. Fresh installation and force
+reinstall preserve that selection when the socket is occupied or its status is unknown.
+The existing service owner admits the socket at startup. An unowned incumbent
+rejects startup with `PUBLIC_SOCKET_OWNED`, and activation remains pending.
+The installer does not select private mode as a fallback. An explicit endpoint choice remains
 explicit, and a routine replacement preserves admitted saved settings, including
 the endpoint and `CODEX_HOME`.
 No new socket protocol,

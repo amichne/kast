@@ -2,7 +2,6 @@ package io.github.amichne.kast.cli.installation
 
 import io.github.amichne.kast.appserver.AdmittedAppServerConfiguration
 import io.github.amichne.kast.appserver.BrokerPublicEndpointMode
-import io.github.amichne.kast.appserver.CodexControlSocketAvailability
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import kotlinx.serialization.Serializable
@@ -40,16 +39,6 @@ internal sealed interface InstallationConfigurationSelection {
         override val reason = InstallationPublicEndpointSelectionReason.FRESH_DEFAULT
     }
 
-    data object FreshOccupiedCodexControl : InstallationConfigurationSelection {
-        override val endpoint = BrokerPublicEndpointMode.PRIVATE
-        override val reason = InstallationPublicEndpointSelectionReason.OCCUPIED_CODEX_CONTROL
-    }
-
-    data object FreshUnavailableCodexControl : InstallationConfigurationSelection {
-        override val endpoint = BrokerPublicEndpointMode.PRIVATE
-        override val reason = InstallationPublicEndpointSelectionReason.UNAVAILABLE_CODEX_CONTROL
-    }
-
     data class FreshExplicit(override val endpoint: BrokerPublicEndpointMode) : InstallationConfigurationSelection {
         override val reason = InstallationPublicEndpointSelectionReason.EXPLICIT
     }
@@ -82,8 +71,6 @@ internal sealed interface InstallationConfigurationSelection {
 @Serializable
 internal enum class InstallationPublicEndpointSelectionReason {
     FRESH_DEFAULT,
-    OCCUPIED_CODEX_CONTROL,
-    UNAVAILABLE_CODEX_CONTROL,
     SAVED_CONFIGURATION,
     EXPLICIT,
 }
@@ -107,10 +94,7 @@ internal fun observeInstallationConfigurationSelection(
             InstallationSwitch.DISABLED -> prior
             InstallationSwitch.ENABLED -> null
         }
-    val selected =
-        selectInstallationConfiguration(plan.request.publicEndpoint, retainedSettings) {
-            CodexControlSocketAvailability.observe(plan.request.codexHome.value)
-        }
+    val selected = selectInstallationConfiguration(plan.request.publicEndpoint, retainedSettings)
     when (selected) {
         is Refinement.Refined ->
             System.err.println(
@@ -131,21 +115,13 @@ internal fun observeInstallationConfigurationSelection(
 internal fun selectInstallationConfiguration(
     selection: InstallationPublicEndpointSelection,
     prior: Path?,
-    observeCodexControl: () -> CodexControlSocketAvailability,
 ): Refinement<InstallationConfigurationSelection, InstallationConfigurationFailure> {
     if (prior == null) {
         return when (selection) {
             is InstallationPublicEndpointSelection.Explicit ->
                 Refinement.Refined(InstallationConfigurationSelection.FreshExplicit(selection.mode))
             InstallationPublicEndpointSelection.Unspecified ->
-                when (observeCodexControl()) {
-                    CodexControlSocketAvailability.AVAILABLE ->
-                        Refinement.Refined(InstallationConfigurationSelection.FreshDefault)
-                    CodexControlSocketAvailability.OCCUPIED ->
-                        Refinement.Refined(InstallationConfigurationSelection.FreshOccupiedCodexControl)
-                    CodexControlSocketAvailability.UNAVAILABLE ->
-                        Refinement.Refined(InstallationConfigurationSelection.FreshUnavailableCodexControl)
-                }
+                Refinement.Refined(InstallationConfigurationSelection.FreshDefault)
         }
     }
     val configuration =
