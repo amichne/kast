@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:482c704bf2f0c368e7477a240f62976ada9cb84b19618f75cc961d9065c674d3",
+  "pageVersion": "sha256:2e428c5a69af8a94020f8d2cb87a8a86a924d7b085c6bac82416e869cb363809",
   "claims": [
     {
       "id": "claim_0f0af9dddde2411188f2130d7debe0f5",
@@ -240,7 +240,7 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt",
-          "version": "repo-file-v1:sha256:b843bdcfa86bb1bb2d07fb5294685fb197ee69a7d6ed5ab97966760940768a60"
+          "version": "repo-file-v1:sha256:5caab847365df145809dde3090a37e539780578941d6ead266269e868441f299"
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt",
@@ -275,12 +275,12 @@
       "statement": "Dependency admission preserves finite missing-effect, binary, target, and unreviewed-model failures. Selected callback supplies keep the first native cause.",
       "evidence": [
         {
-          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt#L133-L196",
-          "version": "repo-lines-v1:sha256:648bd9a38874a746b9cab3cd23f91549558a50b8a2c11644bea550db0797f1de:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY4ZjQyNTMyODc4MGYwOTc5MWRkOWE3ZGFlY2QwMjE5ZDhiYzI0ZTM5YjM0MDlhOTRlYzVlMTY5MWRjNzNjYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk5N2U0OWIzYjJkMDllZGViZmQxM2M1N2FmNzUwNDBkZmFmMjZiYzQ0NGQwZmE4ODYxNjQ3ZGM3NDAzNDI1ZGYifQ"
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt#L132-L193",
+          "version": "repo-lines-v1:sha256:6b1061e6be41cb9fb16b813e2f147deaa3224c8a66bad290e1cd0074f9665e53:eyJzZWxlY3RlZExpbmVDb3VudCI6NjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkZjdjZTlhYTU3NWQ1YWYxZjhmY2Q4YTZmNDkyYzU0MDk4NTk3ZmI4OTExOGFkYmI4YjZkNWY0NjZkMmE5ZDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBiOWI5OWI2NzNkYjljZWQ3OWUzODBiYTdhMDY4NGEwN2NlYTVhZjEwZDJkYjE1MTMzZjgzM2ExNGJkMGIwNDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZmNmRiYTNhYmY1YzAzNjlmNWRiYWM5YzZhZTllNTVjYTk1NTY1YTU1NzY5MDlhZDlkYjRmNThjOGQzNTE3NTQifQ"
         },
         {
-          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijSelectedCallbackSupplies.kt#L252-L265",
-          "version": "repo-lines-v1:sha256:6a8de09c8eec00180161011282c62516bb0bd994a20a8d75a08176be08a5ce07:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBmY2Q4NWUxMmMwYjJkNmFjZWE2MmQ2NzY4YWM3OGM0YzQ5MTE5NTNhNzRmODIwODdlZjQ1MzdkMzFlMThiZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM2NWIyZWRjZDU3ODQ2NTIwZjYyYWU4OGYzZTk3OTIyZmFlNmU5YjEzNmM4ODJhMmU1YTIyNjAzYjA3OTgwYjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhkNjBmNWRmMTM4MzYzNWYwYzUyMTc2OTRjMzg5OTdiOGRmZThjNWE3ZGI3YmZkMDM3NTc4MWQ0YjlhYjliZDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwZmJjZWM5N2I4NzBlYzk3NWM4YTA1MGRhYTI4N2NmM2ViMGFmYmZiNDlkYzk1NDRkZWE5ZTE0MmFlMmRhZGIifQ"
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijSelectedCallbackSupplies.kt#L249-L265",
+          "version": "repo-lines-v1:sha256:b70e71561e6c2b38814687c44193ae13bc19129d81cac8673103b827be2c2b1e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmNWE4NWFiYmFiY2M0YWQ4MjFkYmVmMDIzN2QwYmI1YzY3NGFjMGEyNGI1MDJhYjFmOTkzYjdhYTBmN2Q2ZTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM2NWIyZWRjZDU3ODQ2NTIwZjYyYWU4OGYzZTk3OTIyZmFlNmU5YjEzNmM4ODJhMmU1YTIyNjAzYjA3OTgwYjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFmNjRhYTUxZGU2MzhlMGJkMjUzZTIyMTRiNGQwNWI2OGU1OTE4YWUzNmRhNTBlNjk3M2E3NTE1NWZkOTk1MTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwZmJjZWM5N2I4NzBlYzk3NWM4YTA1MGRhYTI4N2NmM2ViMGFmYmZiNDlkYzk1NDRkZWE5ZTE0MmFlMmRhZGIifQ"
         }
       ]
     },
@@ -326,7 +326,7 @@
       "evidence": [
         {
           "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackDeferredDependency.kt",
-          "version": "repo-file-v1:sha256:0b0720aa4a3c438ffd8cdc4b524c75751da37b2f3cbb41f5a87163b993a5a899"
+          "version": "repo-file-v1:sha256:ea259909dbe00ac7de23ff654d1e88b33e9a7425486650a3182c9efd5ad1a066"
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijKotlinLazyBinaryEvidence.kt#L12-L52",
@@ -337,6 +337,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-13T20:10:11.937Z"
+    "at": "2026-10-14T01:57:02.037Z"
   }
 }

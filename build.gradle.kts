@@ -503,3 +503,41 @@ val componentReleaseTest = tasks.register<Exec>("componentReleaseTest") {
 }
 
 tasks.named("check") { dependsOn(verifyConfigurationIngress, verifyKnowledgeBase, hostObservationTest, componentReleaseTest) }
+
+val semanticCoverageDirectory = layout.projectDirectory.dir("config/kotlin-semantic-coverage")
+val semanticInputGate = tasks.register<Exec>("verifyKotlinSemanticInputs") {
+    group = "verification"
+    description = "Rejects drift in authored semantic resources and reviewed fixture carriers."
+    workingDir(semanticCoverageDirectory.dir("tooling"))
+    commandLine("uv", "run", "--locked", "--script", "inventory.py", "inputs",
+        "--repository-root", layout.projectDirectory,
+        "--reviewed-carriers", semanticCoverageDirectory.file("reviewed-fixture-carriers.tsv"))
+}
+
+// Inventory accounting and successful traces remain separate admission obligations.
+val semanticInventoryGate = tasks.register<Exec>("verifyKotlinSemanticInventory") {
+    group = "verification"
+    description = "Examines the pinned FIR population and classified evidence without claiming trace completion."
+    dependsOn(":relation:intellij:extractRelationKotlinPlugin", ":runtime:hosted:semanticCoverageFixtureTest")
+    workingDir(semanticCoverageDirectory.dir("tooling"))
+    val fixtureHome = providers.gradleProperty("nativeFixtureIdeaHome")
+        .map { file(it) }.getOrElse(layout.projectDirectory.dir("relation/intellij/build/native-test/idea").asFile)
+    val pluginRoot = fixtureHome.resolve("plugins/Kotlin/lib")
+    commandLine("uv", "run", "--locked", "--script", "inventory.py", "audit", "--require-element-correspondence",
+        "--plugin-jar", pluginRoot.resolve("kotlin-plugin.jar"),
+        "--compiler-common-jar", pluginRoot.resolve("kotlinc.kotlin-compiler-common.jar"),
+        "--javap", java.nio.file.Path.of(System.getProperty("java.home"), "bin", "javap"),
+        "--required-cases", semanticCoverageDirectory.file("inventory-evidence-cases.tsv"),
+        "--junit", layout.projectDirectory.file("runtime/hosted/build/test-results/semanticCoverageFixtureTest/TEST-io.github.amichne.kast.runtime.hosted.NativeScopedCacheManagerTraceTest.xml"))
+}
+val semanticTraceGate = tasks.register<Exec>("verifyKotlinSemanticCoverage") {
+    group = "verification"
+    description = "Requires the exact semantic case population and successful assertion results."
+    dependsOn(":relation:intellij:semanticCoverageFixtureTest", ":runtime:hosted:semanticCoverageFixtureTest")
+    workingDir(semanticCoverageDirectory.dir("tooling"))
+    commandLine("uv", "run", "--locked", "--script", "inventory.py", "execution",
+        "--required-cases", semanticCoverageDirectory.file("cases.tsv"),
+        "--junit", layout.projectDirectory.dir("relation/intellij/build/test-results/semanticCoverageFixtureTest"),
+        "--junit", layout.projectDirectory.dir("runtime/hosted/build/test-results/semanticCoverageFixtureTest"))
+}
+tasks.named("check") { dependsOn(semanticInputGate, semanticInventoryGate, semanticTraceGate) }

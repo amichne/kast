@@ -268,9 +268,14 @@ private class StaticCallbackGraphAdmission(
         if (owner.evidence != observation.lexicalOwner)
             return Refinement.Rejected(StaticCallbackGraphFailure.SupplierIdentityMismatch)
         return Refinement.Refined(
-            listOf(
-                StaticCallbackEdge.DependencyDeferredSupply(StaticCallbackNode.DeferredSupplier(owner), body, binding)
-            )
+            deferredExecutionEdges(owner.execution) +
+                listOf(
+                    StaticCallbackEdge.DependencyDeferredSupply(
+                        StaticCallbackNode.DeferredSupplier(owner),
+                        body,
+                        binding,
+                    )
+                )
         )
     }
 
@@ -353,6 +358,7 @@ private fun List<StaticCallbackEdge>.nodes(): Set<StaticCallbackNode> = flatMap 
             is StaticCallbackEdge.BodyClassReference,
             is StaticCallbackEdge.BodyTarget,
             is StaticCallbackEdge.DirectInvoke,
+            is StaticCallbackEdge.NestedDirectInvoke,
             is StaticCallbackEdge.Forward -> emptyList()
         }
 }

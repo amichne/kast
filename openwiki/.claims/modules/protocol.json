@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:a7c56d15beb0bf60304e7e26db6c0dc43a4ab0fa324867eba1e195ae27d18881",
+  "pageVersion": "sha256:ee9b3851b66f9383a5ebc50114c384b0c275a52201b3c4aff63284df44658fce",
   "claims": [
     {
       "id": "claim_33df4f539870445aaef2d593695dca1b",
@@ -88,11 +88,11 @@
       "evidence": [
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt",
-          "version": "repo-file-v1:sha256:9d824fad78f196069d597c60b745fb113f6260edc30093ab1aaed5e05f46e534"
+          "version": "repo-file-v1:sha256:9b54710513d9268a02363092ddba5e0b5f8012d2f1b909b6af34c6b7f246c212"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackEnumProjection.kt",
-          "version": "repo-file-v1:sha256:016f77fbfcb03d2c49e817f217a9534307ae9e89d849fd38b03b7ba834bec0d3"
+          "version": "repo-file-v1:sha256:4b7bdc217abc42664769846c311da3504741a09786d1c3c8a65901670618c0b2"
         },
         {
           "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackInvocationFlow.kt",
@@ -116,21 +116,35 @@
     },
     {
       "id": "claim_5593ba2a2282454f93480cd9cdbd3e20",
-      "statement": "Deferred dependency documents carry a model, supplier declaration, formal position, and six binary digests while rejecting incomplete scans and invented invocations.",
+      "statement": "Deferred dependency documents preserve a supplier, formal position, six binary digests, and declaration, accessor, initializer, or ordered direct-invocation execution proof. Incomplete scans and invented invocations reject.",
       "evidence": [
         {
-          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackDocumentAdmission.kt#L293-L314",
-          "version": "repo-lines-v1:sha256:e0c180a13f9b29e45e34f8b4906140626ad790c0bf76d1e0bf5536fdadc33bb4:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkOGNhNGE3MDE1ODU1N2I5OGIxOGQ1NDQyY2U0N2M4MDlkMmJkMzEzOGI2YTFlZDIzMjBiNmZiZTZiYmExMjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmZjVkN2U2MzdlOTNiOTA3YTM1OWZmNTMzOTJhM2VmY2M4M2IyYjM2NmMyNzM1YzQ4YWQ4OGQ1ZDIyNWI0MTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczOTJmMDMxNDE4YWM1OWIxMGQ5MTIxNDNlNzZmYTVkM2MwZDFkM2I1ZDgzMDI3ZWRlNDM5MDQzMGRhYmIxZDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgyZjQxOWQzY2U1Njg0YTAwOGJhMzgxMTRiY2ZkZGE2NzIxOGE3MDg4NWQ1NTM4MWU4YWRhOGNhMDcxOTgxM2EifQ"
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackDocumentAdmission.kt#L288-L315",
+          "version": "repo-lines-v1:sha256:15f58843b7c13dd886630b43beec65c4022a06b94f65581469f834914208b091:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFhZTNhZjRiY2QwOTJkNDUzYTg5MDA5NGU0ZWNjM2MxNzY1MzdmYjExNjY3Y2Y2MmE0NDg3NzM0ZjAwZjYwNmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2ODdjMDY0ZTI5NGYxMmVjZTkxZTMzZjVkNTdmZTljNmZjNGQ0OGU2ZDRjNjM4YTcwYWQ5ODliYTc3OTc0MjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFmOTg4NDRmODczYmU5MWQ3OTFmYzI3YjM0ZTRkMzYxN2Y4OGJkMWM5NTE4YThlNzc2YzVlMjczMzY1YzJlNzkifQ"
         },
         {
-          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt#L228-L257",
-          "version": "repo-lines-v1:sha256:a043f7e2d3022175589dac94b96bdcd75c569b68f6fb1641878f60bd26ca8716:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlNWU3OTc0NmQ4MThlMzBiNDUyNGJlNjQxNDlmODc5OWYxY2ExY2MwOGZiZGU4MWJiZmY3NjBkODAzMDA1NWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5NjY1MzgxMDliM2NjMDMxNzVkZWIzZTIxNjczZjlmZjdiNTJkMzJiZGY1MmRhNmJlMWUzMmI4ZmUwNmRlNjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiOWZjNThkYWE3YTRjMzNmNWQyOGUzYzMxNGIxM2E3YjZjNDU1Y2ZiNzdkMDAyNTgwNTlkOTUxYmM4MzY5MzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY4ZTk3MTdiNDE3MzYxNWEzNzlmNzU0ZTEwYjFkMTk4OWI1M2YwODVhYjUwNWExMWJjOWMyMzA1YzFmZjA1NTQifQ"
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryDeferredSupplierExecutionDocument.kt",
+          "version": "repo-file-v1:sha256:e055b65ed1924105b0c3c5829aa822b9308ab1b00c11e476bb627c4d66525785"
+        }
+      ]
+    },
+    {
+      "id": "claim_c7eef04a678f4e7b8f2a97561bd1e75d",
+      "statement": "Dependency-contract callback bindings preserve the four declared Kotlin invocation kinds through the public DTO and exhaustive query projection.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt#L170-L176",
+          "version": "repo-lines-v1:sha256:32133e9c8d9d7d39e4f542d6e6910764c1463bd872cd7e6af655b1365f3c2122:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDViMzdiNWFjMDM1MWM0NTlmMDM1ODUyMDFkZjI2YjYzYzFjNzIzN2U4OWQxZjI1YmRhNDkxNzc0ZTI1ZGRlMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzkyYjY3NDVjMWM1MWMwMDk5MjlhNzVhYThiY2M0N2M1NzM3NzZkZGQ1YjZlMWJkM2ZkMmNmN2FjMmU5MjE2MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjZjNjdlYjliM2NlMWVmYTczNmI2NzNhM2EyOWQzODM4NjNhZjQyZWUyNmJhNzBhOTgzYWIwMjk2Y2U0ZGMwNSJ9"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackEnumProjection.kt#L16-L23",
+          "version": "repo-lines-v1:sha256:42ae568611a8c2f18c292681de8db436ab60e1a828e90748836162a78eef1373:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjZhNmFhNzk2NDdmNWZmMWY5NWUwMWMwYmYxMjIxYzM3YmFjMzE4YWQ3M2U1ODc0MDVkZDYxMTk5MzNiNmM4MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5M2Y0MGUzNzgxZWI4OTZjODJkMDQ2YTA4MDY3YTExZTM1Y2RmMmYxZGZhZjI2ZmVhOTBiOGRiNjY3NjQxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDU4MDc1ZjFhMWJjODdjMzEwMjkyZjZiY2I1NDQ1MjgzMmNiMjcwNTVkZjQ3MmQ1ZDEyNDM4NDYzMTVjOTNlZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWNmMGY4ODgxYTQ3OGI3MzQxYjA0MzNiZmU4ZmJhYmU5MmQ1ZjIyZGVlZGUwYjRiNGFhYWVlMTU4NzA4NWVjYyJ9"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-13T20:10:11.937Z"
+    "at": "2026-10-14T02:15:18.461Z"
   }
 }

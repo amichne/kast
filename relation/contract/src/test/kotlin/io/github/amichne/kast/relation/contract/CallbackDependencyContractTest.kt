@@ -12,19 +12,31 @@ class CallbackDependencyContractTest {
     private val fixture = CallbackInvocationFlowFixture()
 
     @Test
+    fun `declared invocation kinds cover the independent Kotlin contract population`() {
+        assertEquals(
+            setOf("EXACTLY_ONCE", "AT_MOST_ONCE", "AT_LEAST_ONCE", "UNKNOWN"),
+            CallbackDependencyInvocationKind.entries.map { it.name }.toSet(),
+        )
+    }
+
+    @Test
     fun `declared contract preserves binary identity without a dependency body invocation`(): Unit =
         with(fixture) {
-            val contract = contract()
-            val flow = flow(contract).value()
-            assertSame(contract, (flow.binding as CallbackBindingEvidence.DependencyContract).binding)
-            assertTrue(flow.invocations.isEmpty())
-            assertTrue(flow.obligations.isEmpty())
-            assertTrue(flow.canonicalProjection().contains("DEPENDENCY_CONTRACT"))
-            assertTrue(flow.canonicalProjection().contains(contract.classDigest.value))
-            assertEquals(CallbackDependencyContractProvenance.KOTLIN_BINARY_CONTRACT, contract.provenance)
-            assertEquals(CallbackDependencyInvocationKind.EXACTLY_ONCE, contract.invocationKind)
-            assertEquals("jar:///library.jar!/fixture/Boundary.class", contract.target.file.stableValue)
+            for (kind in CallbackDependencyInvocationKind.entries) assertContractKind(kind)
         }
+
+    private fun CallbackInvocationFlowFixture.assertContractKind(kind: CallbackDependencyInvocationKind) {
+        val contract = create(external(), kind = kind).value()
+        val flow = flow(contract).value()
+        assertSame(contract, (flow.binding as CallbackBindingEvidence.DependencyContract).binding)
+        assertTrue(flow.invocations.isEmpty())
+        assertTrue(flow.obligations.isEmpty())
+        assertTrue(flow.canonicalProjection().contains("DEPENDENCY_CONTRACT"))
+        assertTrue(flow.canonicalProjection().contains(contract.classDigest.value))
+        assertEquals(CallbackDependencyContractProvenance.KOTLIN_BINARY_CONTRACT, contract.provenance)
+        assertEquals(kind, contract.invocationKind)
+        assertEquals("jar:///library.jar!/fixture/Boundary.class", contract.target.file.stableValue)
+    }
 
     @Test
     fun `contract rejects authored targets invalid formal position and invalid class digest`(): Unit =
@@ -95,6 +107,7 @@ class CallbackDependencyContractTest {
         position: Int = 1,
         occurrence: RelationOccurrence = occurrence(20, 80),
         owner: RelationCallableBody = supplyingOwner,
+        kind: CallbackDependencyInvocationKind = CallbackDependencyInvocationKind.EXACTLY_ONCE,
     ) =
         CallbackDependencyContract.fromCompiler(
             lease.identity,
@@ -104,7 +117,7 @@ class CallbackDependencyContractTest {
             ValueArgumentPosition.parse(position).value(),
             DependencyClassDigest.parse("ab".repeat(32)).value(),
             CallbackDependencyContractProvenance.KOTLIN_BINARY_CONTRACT,
-            CallbackDependencyInvocationKind.EXACTLY_ONCE,
+            kind,
         )
 
     private fun CallbackInvocationFlowFixture.contract() = create(external()).value()

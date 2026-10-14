@@ -1,0 +1,24 @@
+tree 970db83ae8b85812b90e2c301be9a73503edac79
+parent 185114b9a156d06fc3859b27c24f97cae2bf3938
+author Dmitrii Gridin <dmitry.gridin@jetbrains.com> 1782600635 +0200
+committer Space Team <noreply@jetbrains.team> 1784323310 +0000
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ wsFcBAADCQAGBQJqWpzuAAoJEIyVCkVppFllalIP/2XyNHKqQp9jcVk3C33RadMJ
+ tMIGr6Istg5oEsHpWolTosJ8ZzQxU7c0Diki0Qvrewrmjo4J5aW8/Ets5/rpMopr
+ xtOYN9ZsCpJtOvmhsmcrWvRqyaUzSoFxjYaFtWlzohDoa3WdyQZEVRRpM3QrKn1J
+ Uugm3BvmgXr36NPikao6784GuTKXuEPl3yCwE0LbBpzE2AgHTtk9lAoaiP4D0EnO
+ ojOQBBleszCc7jY/0VnE3yi/nZPQjxyEqN1QX0kx0WExLjmgDPelJ/JMgRrRuDi/
+ QU5PqExnIWeiWOnBAnkRmTRYjNSuID+mgGekh3c3lG2n7zoR/WyfzFuYxiO22vWC
+ cN0FIMNc1e1IjsNbeDRVriDDVpPxnkown6E/YrRyTIwTzX+U9hoR6oBMA1HbniXr
+ o+bQpUs0bbpzQLxhd4FwExFN+YnY0aERhTFBmTxU+cNP3N2g2qRed+HO3aq0F4u2
+ s37q74wmy0YhkqJFcz6lGTCdiLKnIe6vDV/AXcu2j0kXuwaonZ1f5AH4KW1TJ4CP
+ dT+bDXy93RztAzVBWyjUFR+dTXhexTLh6HGzt70JHZr1m/y7+6GhBhRy/srDLhig
+ v9B2roNQEhkkuNXUXvUSxiXxQlH0d86Pa823rNr2v5O9d6XIPdDfL8yv5KHQX1z1
+ IDKVZv70XbsrsgOQyp0r
+ =ctO8
+ -----END PGP SIGNATURE-----
+
+[Analysis API] update analysis-api-surface.classpath-issues
+
+(cherry picked from commit db1bc5055f24c7227a7d2cc37d058432007d288f)

@@ -278,7 +278,7 @@ sources:
 generated: { by: "codex", at: "2026-10-13T20:10:11.937Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-13T20:10:11.937Z
+    at: 2026-10-14T01:57:02.037Z
 ---
 
 # Existing-IDE semantic query

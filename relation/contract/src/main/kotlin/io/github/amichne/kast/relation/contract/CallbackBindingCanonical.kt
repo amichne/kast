@@ -57,6 +57,7 @@ private fun StringBuilder.deferredBinding(binding: CallbackDeferredDependency) {
     range(binding.owner.range)
     field(binding.owner.evidence.compilerIdentity.value)
     field(binding.owner.evidence.signature.canonicalEncoding().value)
+    deferredExecution(binding.owner.execution)
     field(binding.target.file.stableValue)
     range(binding.target.range)
     field(binding.target.name.value)

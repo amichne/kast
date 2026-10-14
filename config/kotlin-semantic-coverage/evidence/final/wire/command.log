@@ -1,0 +1,73 @@
+Calculating task graph as no cached configuration is available for tasks: :relation:intellij:spotlessKotlinApply :protocol:wire:test --tests *QueryDeferredSupplierExecutionWireTest --tests *QueryCallbackDeferredDependencyWireTest verifyJsonContracts
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :protocol:registry:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:wire:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:wire:processResources NO-SOURCE
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:wire:processTestResources UP-TO-DATE
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:registry:processResources NO-SOURCE
+> Task :protocol:contract:processResources UP-TO-DATE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :kernel:processResources NO-SOURCE
+> Task :protocol:wire:processTestFixturesResources NO-SOURCE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :kernel:compileJava NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar UP-TO-DATE
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar UP-TO-DATE
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :protocol:contract:compileKotlin UP-TO-DATE
+> Task :protocol:contract:compileJava NO-SOURCE
+> Task :protocol:contract:classes UP-TO-DATE
+> Task :protocol:contract:jar UP-TO-DATE
+> Task :protocol:registry:compileKotlin UP-TO-DATE
+> Task :protocol:registry:compileJava NO-SOURCE
+> Task :protocol:registry:classes UP-TO-DATE
+> Task :protocol:registry:jar UP-TO-DATE
+> Task :protocol:wire:compileKotlin UP-TO-DATE
+> Task :protocol:wire:compileJava NO-SOURCE
+> Task :protocol:wire:classes UP-TO-DATE
+> Task :protocol:wire:jar UP-TO-DATE
+> Task :protocol:wire:compileTestFixturesKotlin UP-TO-DATE
+> Task :protocol:wire:compileTestFixturesJava NO-SOURCE
+> Task :protocol:wire:testFixturesClasses UP-TO-DATE
+> Task :protocol:wire:testFixturesJar UP-TO-DATE
+> Task :relation:intellij:spotlessKotlin
+> Task :relation:intellij:spotlessKotlinApply
+> Task :protocol:wire:compileTestKotlin
+> Task :protocol:wire:compileTestJava NO-SOURCE
+> Task :protocol:wire:testClasses UP-TO-DATE
+> Task :protocol:wire:test
+
+> Task :verifyJsonContracts
+JSON contract syntax check: 631 fingerprints, 0 violations. Report: /Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/build/reports/json-contracts/report.json
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/build/reports/kotlin-build/kast-build-2026-10-13-21-20-33-0.txt
+
+BUILD SUCCESSFUL in 8s
+31 actionable tasks: 5 executed, 26 up-to-date
+Configuration cache entry stored.

@@ -1,0 +1,39 @@
+schema_version = 1
+repository = "https://github.com/JetBrains/kotlin"
+upstream_tag = "build-2.4.20-ij262-35"
+upstream_commit = "7342188118e8c24e12b5447f4430730ccc9c1989"
+research_commit = "27dcf56d308b52358f411523ed5edc3e74608504"
+source_path = "compiler/fir/tree/tree-generator/src/org/jetbrains/kotlin/fir/tree/generator/FirTree.kt"
+source_sha256 = "d1b8ab49661b0c129456406e985f94bc980a0d737ed07bf70e4d980be011bbe0"
+visitor_sha256 = "5b35a885e7effe0fc6f85f063b89158ca6328800df0ae73a4f64b13470c52fcf"
+fixture_index_sha256 = "69bf95ba29dbcb73b843069e2e8513aefb43a9cc349379d8f916fffe1344d9b8"
+selected_fixture_manifest_sha256 = "2a71bcc078c1c032a2cf0102b6c316baae092f12096c7553408ebafdc0f9face"
+binary_population_sha256 = "2cdad394b68ae565b57aa17ce5e9e3260ea0aab9acb7113ec725511631d589a5"
+platform_build = "262.9437.185"
+kotlin_gradle_version = "2.4.20"
+plugin_version = "262.9437.185-IJ"
+plugin_sha256 = "fb6becc3f5c709a01ee2cb32c834212935e94bbf5b01efb6745b7c0f62831fce"
+adapter_compiler_version = "2.4.20-ij262-34"
+compiler_common_sha256 = "5b364960e81389e2576b3156c04f34d5ad0f14845236102940546f3e0794cb73"
+standalone_compiler_version = "2.3.20-release-208"
+analysis_api_invocation_kinds = ["ZERO", "AT_MOST_ONCE", "EXACTLY_ONCE", "AT_LEAST_ONCE", "MORE_THAN_ONCE", "UNKNOWN"]
+correspondence = "EXACT_SOURCE"
+correspondence_limit = "Exact published ij262-34 FIR sources match 1809 pinned upstream Git blobs. Its 4486 published classes match the unchanged bundled plugin. This proves the audited FIR source scope, not the whole compiler Git revision."
+selected_fixture_sources = [
+  "analysis/analysis-api/testData/components/resolver/allByPsi/callableReference.kt",
+  "analysis/analysis-api/testData/components/resolver/allByPsi/constructors.kt",
+  "analysis/analysis-api/testData/components/resolver/allByPsi/lambdaParameters.kt",
+  "analysis/analysis-api/testData/components/resolver/allByPsi/contextSensitiveResolution/contracts.kt",
+  "analysis/analysis-api/testData/components/resolver/allByPsi/contextSensitiveResolution/callArgumentPosition/anonymousFun.kt",
+  "analysis/analysis-api/testData/components/resolver/allByPsi/contextSensitiveResolution/callArgumentPosition/defaultArg.kt",
+]
+
+[published_fir]
+version = "2.4.20-ij262-34"
+binary_sha256 = "81db202e383c646067059af36683cdb32baf7a0202fa53ad7fccd7e58806f5f4"
+sources_sha256 = "b95b6a7851aa1b7d0d7f937d513ee1553d59d7f3db5f98fae6512bcaf1d7f990"
+pom_sha256 = "c608521fd2be3dd8b51568cd29a62fae9dbe2d86f316db0fb4ff0b2bb85aafc9"
+sbom_sha256 = "93d58ff16403e14cdcc0063d343876abd88e7c12b7c51fc3af7e516c9fa51373"
+source_map_sha256 = "11767779d90c8ccfef9dbadc8eb0d4f9282cbee0b0cbc5f4b6a498fa26b240b0"
+class_count = 4486
+source_count = 1809

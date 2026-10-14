@@ -164,7 +164,7 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
         return QueryCallbackCallableDocument(declaration, target)
     }
 
-    private fun dependencyTarget(value: CompilerGroundedSymbolEvidence): QueryExcludedCompilerTargetDocument? {
+    fun dependencyTarget(value: CompilerGroundedSymbolEvidence): QueryExcludedCompilerTargetDocument? {
         val signature = value.signature.protocolDocument() ?: return null
         val evidence =
             CompilerSymbolEvidenceDocument.restore(
@@ -336,28 +336,6 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
         }
     }
 
-    private fun deferredDependency(
-        value: io.github.amichne.kast.relation.contract.CallbackDeferredDependency
-    ): QueryCallbackBindingDocument? {
-        val classes = value.binary.classes
-        return QueryCallbackBindingDocument.DeferredDependency(
-            value.basis.impactDocument().callbackValue() ?: return null,
-            occurrence(value.occurrence) ?: return null,
-            callable(value.owner.evidence) ?: return null,
-            dependencyTarget(value.target) ?: return null,
-            ProtocolOffset.parse(value.position.value).callbackValue() ?: return null,
-            io.github.amichne.kast.protocol.contract.QueryKotlinLazyBinaryDocument(
-                io.github.amichne.kast.protocol.contract.QueryDeferredDependencyModelDocument.KOTLIN_LAZY_JVM_V1,
-                ProtocolText.parse(classes.facade.value).callbackValue() ?: return null,
-                ProtocolText.parse(classes.factory.value).callbackValue() ?: return null,
-                ProtocolText.parse(classes.synchronized.value).callbackValue() ?: return null,
-                ProtocolText.parse(classes.publication.value).callbackValue() ?: return null,
-                ProtocolText.parse(classes.unsafe.value).callbackValue() ?: return null,
-                ProtocolText.parse(classes.modeDispatch.value).callbackValue() ?: return null,
-            ),
-        )
-    }
-
     private fun dependencyContract(
         value: io.github.amichne.kast.relation.contract.CallbackDependencyContract
     ): QueryCallbackBindingDocument? =
@@ -370,7 +348,7 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
             ProtocolText.parse(value.classDigest.value).callbackValue() ?: return null,
             io.github.amichne.kast.protocol.contract.QueryCallbackDependencyContractProvenanceDocument
                 .KOTLIN_BINARY_CONTRACT,
-            io.github.amichne.kast.protocol.contract.QueryCallbackDependencyInvocationKindDocument.EXACTLY_ONCE,
+            value.invocationKind.protocolCallbackDocument(),
         )
 
     fun bound(value: CallbackArgumentBinding): QueryCallbackBindingDocument.Bound? {

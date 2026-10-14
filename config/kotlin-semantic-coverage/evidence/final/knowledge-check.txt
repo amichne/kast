@@ -1,0 +1,36 @@
+Reusing configuration cache.
+
+> Task :preparePythonTestEnvironment
+Requirement already satisfied: jsonschema==4.26.0 in ./build/python-tests/env/lib/python3.14/site-packages (from -r /Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/experiments/host-observation/requirements-test.txt (line 1)) (4.26.0)
+Requirement already satisfied: PyYAML==6.0.3 in ./build/python-tests/env/lib/python3.14/site-packages (from -r /Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/experiments/host-observation/requirements-test.txt (line 2)) (6.0.3)
+Requirement already satisfied: attrs>=22.2.0 in ./build/python-tests/env/lib/python3.14/site-packages (from jsonschema==4.26.0->-r /Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/experiments/host-observation/requirements-test.txt (line 1)) (26.1.0)
+Requirement already satisfied: jsonschema-specifications>=2023.03.6 in ./build/python-tests/env/lib/python3.14/site-packages (from jsonschema==4.26.0->-r /Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/experiments/host-observation/requirements-test.txt (line 1)) (2025.9.1)
+Requirement already satisfied: referencing>=0.28.4 in ./build/python-tests/env/lib/python3.14/site-packages (from jsonschema==4.26.0->-r /Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/experiments/host-observation/requirements-test.txt (line 1)) (0.37.0)
+Requirement already satisfied: rpds-py>=0.25.0 in ./build/python-tests/env/lib/python3.14/site-packages (from jsonschema==4.26.0->-r /Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/experiments/host-observation/requirements-test.txt (line 1)) (2026.9.1)
+
+> Task :knowledgeImpact
+OpenWiki impact: 242 changed file(s), 9 impacted concept(s)
+- openwiki/contracts/configuration.md: build.gradle.kts
+- openwiki/contracts/public-tools.md: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackDocumentAdmission.kt, protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt, protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryDeferredSupplierExecutionDocument.kt, protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/QueryCallbackBindingWireDocuments.kt, protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/QueryDeferredSupplierExecutionWireDocument.kt
+- openwiki/flows/hosted-query.md: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackDeferredDependency.kt, relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt
+- openwiki/modules/architecture.md: build.gradle.kts, runtime/hosted/build.gradle.kts
+- openwiki/modules/distribution.md: build.gradle.kts
+- openwiki/modules/protocol.md: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackDocumentAdmission.kt, protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt, protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryDeferredSupplierExecutionDocument.kt, query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackEnumProjection.kt
+- openwiki/modules/query-protocol.md: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackObservationProjection.kt, query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryDeferredSupplierProjection.kt, relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackBindingCanonical.kt
+- openwiki/modules/runtime-hosts.md: runtime/hosted/build.gradle.kts
+- openwiki/modules/semantic-reads.md: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackDeferredDependency.kt, relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackDeferredSupplier.kt, relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraph.kt, relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/DeclaredCallbackInvocationKind.kt, relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt, relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijDeferredSupplierExecution.kt, relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2RelationSearch.kt
+
+> Task :knowledgeBaseTest
+.......
+----------------------------------------------------------------------
+Ran 7 tests in 3.351s
+
+OK
+
+> Task :verifyKnowledgeBase
+OpenWiki citations: 28 concept(s), 5 reserved file(s), 0 issue(s)
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/build/reports/kotlin-build/kast-build-2026-10-13-22-16-44-0.txt
+
+BUILD SUCCESSFUL in 6s
+4 actionable tasks: 4 executed
+Configuration cache entry reused.

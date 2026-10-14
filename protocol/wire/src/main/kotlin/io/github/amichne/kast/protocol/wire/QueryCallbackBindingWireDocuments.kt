@@ -80,6 +80,9 @@ internal sealed interface QueryCallbackBindingWireDocument {
         val target: QueryExcludedCompilerTargetWireDocument,
         @ProtocolIntegerConstraint(minimum = 0) val position: Int,
         val binary: QueryKotlinLazyBinaryWireDocument,
+        @kotlinx.serialization.EncodeDefault
+        val execution: QueryDeferredSupplierExecutionWireDocument =
+            QueryDeferredSupplierExecutionWireDocument.Declaration,
     ) : QueryCallbackBindingWireDocument
 
     @Serializable
@@ -153,6 +156,7 @@ internal fun QueryCallbackBindingDocument.callbackWire(): QueryCallbackBindingWi
                     binary.unsafe.value,
                     binary.modeDispatch.value,
                 ),
+                execution.callbackWire(),
             )
     }
 
@@ -237,10 +241,20 @@ private fun QueryCallbackBindingWireDocument.DeferredDependency.deferredDependen
             Triple(occurrence, owner, target)
         }
         .flatMapConverted { (occurrence, owner, target) ->
-            combineConverted(ProtocolOffset.parse(position).toWireDocumentConversion(), binary.toContract()) {
-                position,
-                binary ->
-                QueryCallbackBindingDocument.DeferredDependency(basis, occurrence, owner, target, position, binary)
+            combineConverted(
+                ProtocolOffset.parse(position).toWireDocumentConversion(),
+                binary.toContract(),
+                execution.toContract(),
+            ) { position, binary, execution ->
+                QueryCallbackBindingDocument.DeferredDependency(
+                    basis,
+                    occurrence,
+                    owner,
+                    target,
+                    position,
+                    binary,
+                    execution,
+                )
             }
         }
 

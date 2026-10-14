@@ -1,0 +1,3 @@
+case_id	test_result_id
+R0-lazy-constructor-public	io.github.amichne.kast.runtime.hosted.NativeScopedCacheManagerTraceTest#testLazyConstructorCallersKeepThePropertySupplyAndOccurrence
+R0-scoped-trace-and-empty-public	io.github.amichne.kast.runtime.hosted.NativeScopedCacheManagerTraceTest#testScopedTraceAndEmptyReferenceControl

@@ -74,6 +74,13 @@ sealed interface StaticCallbackEdge {
         val evidence: CallbackDirectInvocationBinding,
     ) : StaticCallbackEdge
 
+    data class NestedDirectInvoke
+    internal constructor(
+        override val source: StaticCallbackNode.Anonymous,
+        override val target: StaticCallbackNode.Anonymous,
+        val evidence: CallbackDirectInvocationBinding,
+    ) : StaticCallbackEdge
+
     data class DependencyContractInvoke
     internal constructor(
         override val source: StaticCallbackNode.Named,

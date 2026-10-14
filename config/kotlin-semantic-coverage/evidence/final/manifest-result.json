@@ -1,0 +1,616 @@
+{
+  "status": "PASS",
+  "gate": "EXECUTION_POPULATION",
+  "upstream_commit": "",
+  "element_count": 0,
+  "fixture_source_count": 0,
+  "fixture_artifact_count": 0,
+  "counts": [],
+  "results": [
+    {
+      "case_id": "R0-lazy-constructor-public",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeScopedCacheManagerTraceTest#testLazyConstructorCallersKeepThePropertySupplyAndOccurrence",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R0-native-testBuildRuntimeStdlibKeepsADeferredSupply",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testBuildRuntimeStdlibKeepsADeferredSupply",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R0-native-testChangedLazyImplementationRejectsWithItsModelOutcome",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testChangedLazyImplementationRejectsWithItsModelOutcome",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R0-native-testLazyExplicitLockKeepsADeferredSupply",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testLazyExplicitLockKeepsADeferredSupply",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R0-native-testLazyInitializerHasACompleteDeferredSupplyWithoutAnImmediateInvocation",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testLazyInitializerHasACompleteDeferredSupplyWithoutAnImmediateInvocation",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R0-native-testLazyInitializerWithSources",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testLazyInitializerWithSources",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R0-native-testLazyNamedArgumentsKeepTheFormalPosition",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testLazyNamedArgumentsKeepTheFormalPosition",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R0-native-testLazyNoneModeKeepsADeferredSupply",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testLazyNoneModeKeepsADeferredSupply",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R0-native-testLazyPropertyKeepsItsInitializerOwner",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testLazyPropertyKeepsItsInitializerOwner",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R0-native-testLazyPublicationKeepsADeferredSupply",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testLazyPublicationKeepsADeferredSupply",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R0-native-testLazyShadowCannotBorrowTheDeferredModel",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testLazyShadowCannotBorrowTheDeferredModel",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R0-native-testMissingExactlyOnceEffectKeepsTheFirstFailedProof",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testMissingExactlyOnceEffectKeepsTheFirstFailedProof",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R0-native-testNamedArgumentsPreserveActualToFormalPosition",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testNamedArgumentsPreserveActualToFormalPosition",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R0-native-testOrdinaryLambdaWithAttachedSources",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testOrdinaryLambdaWithAttachedSources",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R0-native-testOrdinaryLambdaWithoutAttachedSources",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testOrdinaryLambdaWithoutAttachedSources",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R0-native-testReceiverLambdaGraphPreservesExactOccurrenceAndSourceNodes",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testReceiverLambdaGraphPreservesExactOccurrenceAndSourceNodes",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R0-native-testReceiverLambdaWithAttachedSources",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testReceiverLambdaWithAttachedSources",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R0-native-testReceiverLambdaWithoutAttachedSources",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testReceiverLambdaWithoutAttachedSources",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R0-native-testSameNameWithoutInvocationCannotBorrowTheLibraryEffect",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testSameNameWithoutInvocationCannotBorrowTheLibraryEffect",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R0-scoped-trace-and-empty-public",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeScopedCacheManagerTraceTest#testScopedTraceAndEmptyReferenceControl",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R1-adapter-control-testAbsentEffectDoesNotAcquireUnknown",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testAbsentEffectDoesNotAcquireUnknown",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R1-adapter-control-testAllAuthoredInputsCompileWithThePinnedCompiler",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testAllAuthoredInputsCompileWithThePinnedCompiler",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R1-adapter-control-testOtherFormalEffectDoesNotAcquireTheDeclaredEffect",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testOtherFormalEffectDoesNotAcquireTheDeclaredEffect",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R1-adapter-control-testSameNameStringOverloadDoesNotAcquireTheIntContract",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testSameNameStringOverloadDoesNotAcquireTheIntContract",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R1-independent-oracle-controls",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.DeclaredEffectTraceOracleTest#testIndependentPredicateRejectsNegativeControls",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2-oracle-testAcceptsTheAuthoredCompletePopulation",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testAcceptsTheAuthoredCompletePopulation",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2-oracle-testRejectsAMissingOuterInvocationRoute",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAMissingOuterInvocationRoute",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2-oracle-testRejectsASameNameTargetFromAnotherPackage",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsASameNameTargetFromAnotherPackage",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2-oracle-testRejectsAnInventedExactlyOnceEffect",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAnInventedExactlyOnceEffect",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2-oracle-testRejectsAnInventedNamedCaller",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAnInventedNamedCaller",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2-oracle-testRejectsAnOccurrenceOutsideTheExecutionOwner",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAnOccurrenceOutsideTheExecutionOwner",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2-oracle-testRejectsAnOmittedTargetOccurrence",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAnOmittedTargetOccurrence",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2-oracle-testRejectsAnUnrelatedSupplier",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAnUnrelatedSupplier",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2-oracle-testRejectsAnUnresolvedObligation",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAnUnresolvedObligation",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2-oracle-testRejectsAnotherWorkspaceGeneration",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAnotherWorkspaceGeneration",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2-oracle-testRejectsQualifiedCompletion",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsQualifiedCompletion",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_constructor_body_constructor",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testConstructorBodyConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_constructor_body_function",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testConstructorBodyFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_depth_two_anonymous_constructor",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testDepthTwoAnonymousConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_depth_two_anonymous_function",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testDepthTwoAnonymousFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_depth_two_lambda_constructor",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testDepthTwoLambdaConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_depth_two_lambda_function",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testDepthTwoLambdaFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_direct_anonymous_constructor",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testDirectAnonymousConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_direct_anonymous_function",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testDirectAnonymousFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_direct_lambda_constructor",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testDirectLambdaConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_direct_lambda_function",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testDirectLambdaFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_getter_constructor",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testGetterConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_getter_function",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testGetterFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_init_block_constructor",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testInitBlockConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_init_block_function",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testInitBlockFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_local_function_constructor",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testLocalFunctionConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_local_function_function",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testLocalFunctionFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_local_property_constructor",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testLocalPropertyConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_local_property_function",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testLocalPropertyFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_member_property_constructor",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testMemberPropertyConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_member_property_function",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testMemberPropertyFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_named_function_constructor",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testNamedFunctionConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_named_function_function",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testNamedFunctionFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_setter_constructor",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testSetterConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_setter_function",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testSetterFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_top_property_constructor",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testTopPropertyConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R2_top_property_function",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testTopPropertyFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R4-bare-reference-callers",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testBareConstructorReferenceHasNoCallerInvocation",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R4-bare-reference-references",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testBareConstructorReferenceKeepsTheReferenceOccurrence",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "R4-uninvoked-outer",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testAnUninvokedOuterLambdaCannotCompleteItsDeferredTrace",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-at_least_once-anonymous-constructor-adapter",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testAtLeastOnceAnonymousConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-at_least_once-anonymous-constructor-public",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testAtLeastOnceAnonymousConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-at_least_once-anonymous-function-adapter",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testAtLeastOnceAnonymousFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-at_least_once-anonymous-function-public",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testAtLeastOnceAnonymousFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-at_least_once-lambda-constructor-adapter",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testAtLeastOnceLambdaConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-at_least_once-lambda-constructor-public",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testAtLeastOnceLambdaConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-at_least_once-lambda-function-adapter",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testAtLeastOnceLambdaFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-at_least_once-lambda-function-public",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testAtLeastOnceLambdaFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-at_most_once-anonymous-constructor-adapter",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testAtMostOnceAnonymousConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-at_most_once-anonymous-constructor-public",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testAtMostOnceAnonymousConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-at_most_once-anonymous-function-adapter",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testAtMostOnceAnonymousFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-at_most_once-anonymous-function-public",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testAtMostOnceAnonymousFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-at_most_once-lambda-constructor-adapter",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testAtMostOnceLambdaConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-at_most_once-lambda-constructor-public",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testAtMostOnceLambdaConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-at_most_once-lambda-function-adapter",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testAtMostOnceLambdaFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-at_most_once-lambda-function-public",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testAtMostOnceLambdaFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-control-absent-public",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectRejectionTest#testAbsentEffectDoesNotAcquireUnknown",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-control-other-formal-public",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectRejectionTest#testOtherFormalEffectDoesNotAcquireTheDeclaredEffect",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-control-string-overload-public",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectRejectionTest#testSameNameStringOverloadDoesNotAcquireTheIntContract",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-exactly_once-anonymous-constructor-adapter",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testExactlyOnceAnonymousConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-exactly_once-anonymous-constructor-public",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testExactlyOnceAnonymousConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-exactly_once-anonymous-function-adapter",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testExactlyOnceAnonymousFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-exactly_once-anonymous-function-public",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testExactlyOnceAnonymousFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-exactly_once-lambda-constructor-adapter",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testExactlyOnceLambdaConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-exactly_once-lambda-constructor-public",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testExactlyOnceLambdaConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-exactly_once-lambda-function-adapter",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testExactlyOnceLambdaFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-exactly_once-lambda-function-public",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testExactlyOnceLambdaFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-unknown-anonymous-constructor-adapter",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testUnknownAnonymousConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-unknown-anonymous-constructor-public",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testUnknownAnonymousConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-unknown-anonymous-function-adapter",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testUnknownAnonymousFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-unknown-anonymous-function-public",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testUnknownAnonymousFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-unknown-lambda-constructor-adapter",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testUnknownLambdaConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-unknown-lambda-constructor-public",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testUnknownLambdaConstructor",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-unknown-lambda-function-adapter",
+      "test_result_id": "io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testUnknownLambdaFunction",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "case_id": "r1-unknown-lambda-function-public",
+      "test_result_id": "io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testUnknownLambdaFunction",
+      "status": "PASS",
+      "detail": ""
+    }
+  ],
+  "issues": [],
+  "correspondence": "",
+  "distribution": {
+    "type": "UNOBSERVED"
+  }
+}

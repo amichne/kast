@@ -168,7 +168,10 @@ enum class QueryCallbackDependencyContractProvenanceDocument {
 
 @Serializable
 enum class QueryCallbackDependencyInvocationKindDocument {
-    EXACTLY_ONCE
+    EXACTLY_ONCE,
+    AT_MOST_ONCE,
+    AT_LEAST_ONCE,
+    UNKNOWN,
 }
 
 sealed interface QueryCallbackBodyDocument {
@@ -232,6 +235,7 @@ sealed interface QueryCallbackBindingDocument {
         val target: QueryExcludedCompilerTargetDocument,
         val position: ProtocolOffset,
         val binary: QueryKotlinLazyBinaryDocument,
+        val execution: QueryDeferredSupplierExecutionDocument = QueryDeferredSupplierExecutionDocument.Declaration,
     ) : QueryCallbackBindingDocument
 
     data class Unavailable(val cause: QueryCallbackFlowCauseDocument) : QueryCallbackBindingDocument

@@ -13,6 +13,33 @@ class QueryCallbackDependencyContractWireTest {
     private val fixture = QueryCallbackRefinementWireFixture()
 
     @Test
+    fun `wire invocation kinds preserve all four declared Kotlin effects`() {
+        assertEquals(
+            setOf("EXACTLY_ONCE", "AT_MOST_ONCE", "AT_LEAST_ONCE", "UNKNOWN"),
+            QueryCallbackDependencyInvocationKindDocument.entries.map { it.name }.toSet(),
+        )
+        for (kind in QueryCallbackDependencyInvocationKindDocument.entries) {
+            val wire = observation()
+            val flow = fixture.flow(wire)
+            val binding = flow.binding as QueryCallbackBindingWireDocument.DependencyContract
+            val changed = wire.copy(flow = flow.copy(binding = binding.copy(invocationKind = kind)))
+            fixture.assertAdmitted(changed)
+            val raw = wireJson.encodeToJsonElement(QueryCallbackObservationWireDocument.serializer(), changed)
+            assertEquals(
+                kind.name,
+                raw.jsonObject
+                    .getValue("flow")
+                    .jsonObject
+                    .getValue("binding")
+                    .jsonObject
+                    .getValue("invocation_kind")
+                    .jsonPrimitive
+                    .content,
+            )
+        }
+    }
+
+    @Test
     fun `declared contract encodes exact provenance class digest and formal position`() {
         val wire = observation()
         fixture.assertAdmitted(wire)

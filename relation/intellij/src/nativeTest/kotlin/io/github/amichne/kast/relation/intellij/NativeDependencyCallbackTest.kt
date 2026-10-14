@@ -10,6 +10,7 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.IndexingTestUtil
 import io.github.amichne.kast.relation.contract.CallbackBindingEvidence
+import io.github.amichne.kast.relation.contract.CallbackDependencyInvocationKind
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowRead
 import io.github.amichne.kast.relation.contract.CallbackInvocationScan
@@ -181,20 +182,23 @@ class NativeDependencyCallbackTest : NativeReferenceFixtureTest() {
         }
     }
 
+    // The stable R0 case identity predates support for the compiler-declared UNKNOWN effect.
     fun testMissingExactlyOnceEffectKeepsTheFirstFailedProof() {
         val fixture = fixture("kotlin.repeat(0) { proof.target() }", true)
         ReadAction.run<RuntimeException> {
+            assertRepeatCompilerEffect(checkNotNull(psiManager.findFile(fixture.callerFile)))
             val observation = DependencyProofObservation()
             val flow = read(fixture, observation)
-            assertEquals(setOf(CallbackInvocationFlowCause.DEPENDENCY_CONTRACT_EFFECT_UNPROVEN), flow.obligations)
-            assertEquals(CallbackInvocationScan.INCOMPLETE, flow.scan)
-            assertTrue(flow.binding is CallbackBindingEvidence.Unavailable)
-            assertEquals(emptyList<CallbackParameterInvocation>(), flow.invocations)
-            assertEquals(1, observation.counts[IntellijReadCounter.CALLBACK_DEPENDENCY_CONTRACTS_REJECTED])
+            assertEquals(emptySet<CallbackInvocationFlowCause>(), flow.obligations)
+            assertEquals(CallbackInvocationScan.EXHAUSTIVE, flow.scan)
+            val binding = (flow.binding as CallbackBindingEvidence.DependencyContract).binding
             assertEquals(
-                listOf(IntellijReadTermination.CALLBACK_DEPENDENCY_CONTRACT_EFFECT_UNPROVEN),
-                observation.reasons,
+                CallbackDependencyInvocationKind.UNKNOWN,
+                binding.invocationKind,
             )
+            assertEquals(emptyList<CallbackParameterInvocation>(), flow.invocations)
+            assertEquals(1, observation.counts[IntellijReadCounter.CALLBACK_DEPENDENCY_CONTRACTS_ADMITTED])
+            assertEquals(emptyList<IntellijReadTermination>(), observation.reasons)
         }
     }
 

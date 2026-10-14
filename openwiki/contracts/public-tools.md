@@ -128,8 +128,12 @@ sources:
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/LocalDeclarationAddressDocuments.kt
   - id: openwiki-source-3a2deddcdbc6513d70de57e5
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackDocumentAdmission.kt
+  - id: openwiki-source-6ee6a10decc8306b2fc74bca
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt
   - id: openwiki-source-9485a00d6483340e3d906f3e
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionCauseDocument.kt
+  - id: openwiki-source-c2eebc668e2b6f4fe4c4b7ed
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryDeferredSupplierExecutionDocument.kt
   - id: openwiki-source-1363c35728458151b90e82c5
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryExpansionScopeDocument.kt
   - id: openwiki-source-1f01ff8b987dcefdbd6182ee
@@ -146,6 +150,8 @@ sources:
     resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/RetainedRelationGraphProjection.kt
   - id: openwiki-source-0004ddd2db1ed842d955e596
     resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/QueryCallbackBindingWireDocuments.kt
+  - id: openwiki-source-43622e455d728bf2f3612e98
+    resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/QueryDeferredSupplierExecutionWireDocument.kt
   - id: openwiki-source-25796dce45aaa5a543a07570
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryCompleteMembership.kt
   - id: openwiki-source-a184ae82a49703816522523e
@@ -170,10 +176,10 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt
   - id: openwiki-source-89238fabaeb4e17c02186073
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphNodeRetrievalTest.kt
-generated: { by: "codex", at: "2026-10-13T20:10:11.937Z" }
+generated: { by: "codex", at: "2026-10-14T02:15:18.461Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-13T20:10:11.937Z
+    at: 2026-10-14T02:15:18.461Z
 ---
 
 # Public intent tools
@@ -395,7 +401,8 @@ a display label supplies no qualified declaration identity.
 
 Callback `DEPENDENCY_CONTRACT` evidence retains the semantic read basis, actual
 source call and owner, detached binary compiler target, mapped formal position,
-class digest and `KOTLIN_BINARY_CONTRACT` / `EXACTLY_ONCE` provenance. Binary
+class digest, `KOTLIN_BINARY_CONTRACT` provenance, and the declared invocation kind.
+The kinds are `EXACTLY_ONCE`, `AT_MOST_ONCE`, `AT_LEAST_ONCE`, and `UNKNOWN`. Binary
 targets receive no authored-source handle or invented body-invocation record.
 Typed admission preserves source containment, exhaustive scanning and nested
 activation obligations before domain construction.
@@ -403,7 +410,11 @@ activation obligations before domain construction.
 Deferred `DEFERRED_DEPENDENCY` evidence keeps the source supplier, exact formal position, compiler target, and six class digests.
 The required model is `KOTLIN_LAZY_JVM_V1`.
 The binding has no invocation-kind field.
+Its `execution` variant keeps declaration, accessor, initializer, or ordered direct-invocation evidence.
 Document admission rejects inconsistent source sites, incomplete scans, and invented body invocations.
+
+Direct routes must preserve each parent, anonymous body, SEMANTIC BASIS, and source occurrence.
+Legacy omission admits declaration execution. New output always includes the execution variant.
 This shape keeps the deferred supply distinct from a declared calls-in-place contract.
 
 ## Compact retained relations

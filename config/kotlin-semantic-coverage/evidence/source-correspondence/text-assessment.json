@@ -1,0 +1,106 @@
+{
+  "comprehension": {
+    "type": "NOT_ASSESSED"
+  },
+  "documents": [
+    {
+      "findings": [
+        {
+          "category": "READABILITY",
+          "line": 1,
+          "message": "Estimated Flesch-Kincaid grade 9.65 exceeds the shared advisory target of 8.",
+          "rule": "Slopsentral.Grade",
+          "severity": "warning",
+          "span": [
+            1,
+            1
+          ],
+          "type": "FINDING"
+        }
+      ],
+      "metrics": {
+        "estimatedSyllables": 1826,
+        "fleschKincaidGrade": 9.65,
+        "sentences": 110,
+        "words": 992,
+        "wordsPerSentence": 9.02
+      },
+      "path": "/Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/config/kotlin-semantic-coverage/README.md",
+      "sourceSha256": "629b7b8721d71ead9ac708af2c141ef971c5aa47e2b6dd97f9f7fb514f547f40",
+      "terminology": {
+        "type": "IN_SCOPE"
+      },
+      "type": "DOCUMENT_ASSESSMENT"
+    },
+    {
+      "findings": [
+        {
+          "category": "READABILITY",
+          "line": 1,
+          "message": "Estimated Flesch-Kincaid grade 11.39 exceeds the shared advisory target of 8.",
+          "rule": "Slopsentral.Grade",
+          "severity": "warning",
+          "span": [
+            1,
+            1
+          ],
+          "type": "FINDING"
+        }
+      ],
+      "metrics": {
+        "estimatedSyllables": 4132,
+        "fleschKincaidGrade": 11.39,
+        "sentences": 209,
+        "words": 2117,
+        "wordsPerSentence": 10.13
+      },
+      "path": "/Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/config/kotlin-semantic-coverage/execution-report.md",
+      "sourceSha256": "0e8e2775feeb29d7582c99b01eff48761d0f4b6acf6d9f2a76927da6def8bf25",
+      "terminology": {
+        "type": "IN_SCOPE"
+      },
+      "type": "DOCUMENT_ASSESSMENT"
+    },
+    {
+      "findings": [
+        {
+          "category": "READABILITY",
+          "line": 1,
+          "message": "Estimated Flesch-Kincaid grade 9.31 exceeds the shared advisory target of 8.",
+          "rule": "Slopsentral.Grade",
+          "severity": "warning",
+          "span": [
+            1,
+            1
+          ],
+          "type": "FINDING"
+        }
+      ],
+      "metrics": {
+        "estimatedSyllables": 1457,
+        "fleschKincaidGrade": 9.31,
+        "sentences": 84,
+        "words": 814,
+        "wordsPerSentence": 9.69
+      },
+      "path": "/Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/config/kotlin-semantic-coverage/source-correspondence-report.md",
+      "sourceSha256": "1af14055c18193d0fd719ef724c536a1330ad57ec05a3971ed65036250797f16",
+      "terminology": {
+        "type": "IN_SCOPE"
+      },
+      "type": "DOCUMENT_ASSESSMENT"
+    }
+  ],
+  "engine": {
+    "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+    "type": "VALE",
+    "version": "3.24.0"
+  },
+  "glossary": {
+    "entries": 19,
+    "sourceSha256": "de243ceefb4d8f01aafa586602ea31a77c4d9515dfc11f15bc5085e62096623b",
+    "type": "CHECKED"
+  },
+  "schemaVersion": 1,
+  "type": "ASSESSED"
+}

@@ -1,0 +1,421 @@
+{
+  "SPDXID" : "SPDXRef-DOCUMENT",
+  "spdxVersion" : "SPDX-2.3",
+  "creationInfo" : {
+    "created" : "2026-07-17T14:41:45Z",
+    "creators" : [ "Tool: spdx-gradle-plugin", "Organization: JetBrains s.r.o." ]
+  },
+  "name" : "kotlin-compiler-fir-for-ide",
+  "dataLicense" : "CC0-1.0",
+  "documentNamespace" : "https://www.jetbrains.com/spdxdocs/a5d3377c-da10-4f09-810b-aa60116a0308",
+  "packages" : [ {
+    "SPDXID" : "SPDXRef-gnrtd0",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "kotlin-compiler-fir-for-ide",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#kotlin-compiler-fir-for-ide[:prepare:ide-plugin-dependencies:kotlin-compiler-fir-for-ide]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd1",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "cones",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#cones[:compiler:fir:cones]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd2",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "providers",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#providers[:compiler:fir:providers]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd3",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "semantics",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#semantics[:compiler:fir:semantics]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd4",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "resolve",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#resolve[:compiler:fir:resolve]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd5",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "fir-serialization",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#fir-serialization[:compiler:fir:fir-serialization]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd6",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "fir-deserialization",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#fir-deserialization[:compiler:fir:fir-deserialization]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd7",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "plugin-utils",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#plugin-utils[:compiler:fir:plugin-utils]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd8",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "tree",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#tree[:compiler:fir:tree]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd9",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "fir-jvm",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#fir-jvm[:compiler:fir:fir-jvm]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd10",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "fir-js",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#fir-js[:compiler:fir:fir-js]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd11",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "fir-native",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#fir-native[:compiler:fir:fir-native]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd12",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "raw-fir.common",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#raw-fir.common[:compiler:fir:raw-fir:raw-fir.common]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd13",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "psi2fir",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#psi2fir[:compiler:fir:raw-fir:psi2fir]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd14",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "checkers",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#checkers[:compiler:fir:checkers]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd15",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "checkers.jvm",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#checkers.jvm[:compiler:fir:checkers:checkers.jvm]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd16",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "checkers.js",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#checkers.js[:compiler:fir:checkers:checkers.js]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd17",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "checkers.native",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#checkers.native[:compiler:fir:checkers:checkers.native]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd18",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "checkers.wasm",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#checkers.wasm[:compiler:fir:checkers:checkers.wasm]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd19",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "checkers.web.common",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#checkers.web.common[:compiler:fir:checkers:checkers.web.common]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd20",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "diagnostic-renderers",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#diagnostic-renderers[:compiler:fir:diagnostic-renderers]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd21",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "entrypoint",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#entrypoint[:compiler:fir:entrypoint]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd22",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "jvm-backend",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#jvm-backend[:compiler:fir:fir2ir:jvm-backend]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  }, {
+    "SPDXID" : "SPDXRef-gnrtd23",
+    "copyrightText" : "NOASSERTION",
+    "description" : "",
+    "downloadLocation" : "NOASSERTION",
+    "filesAnalyzed" : false,
+    "licenseConcluded" : "NOASSERTION",
+    "licenseDeclared" : "NOASSERTION",
+    "licenseInfoFromFiles" : [ ],
+    "name" : "fir2ir",
+    "sourceInfo" : "git+https://github.com/JetBrains/kotlin.git@v2.4.20-ij262-34#fir2ir[:compiler:fir:fir2ir]",
+    "supplier" : "Organization: JetBrains s.r.o.",
+    "versionInfo" : "2.4.20-ij262-34"
+  } ],
+  "relationships" : [ {
+    "spdxElementId" : "SPDXRef-DOCUMENT",
+    "relationshipType" : "DESCRIBES",
+    "relatedSpdxElement" : "SPDXRef-gnrtd0"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd3"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd14"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd2"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd13"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd1"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd16"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd15"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd10"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd21"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd9"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd20"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd12"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd23"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd11"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd22"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd6"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd5"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd4"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd17"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd8"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd19"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd7"
+  }, {
+    "spdxElementId" : "SPDXRef-gnrtd0",
+    "relationshipType" : "DEPENDS_ON",
+    "relatedSpdxElement" : "SPDXRef-gnrtd18"
+  } ]
+}

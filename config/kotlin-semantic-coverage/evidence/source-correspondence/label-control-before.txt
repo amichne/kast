@@ -1,0 +1,28 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+________ test_exact_source_label_without_producer_evidence_cannot_pass _________
+
+tmp_path = PosixPath('/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/pytest-of-amichne/pytest-127/test_exact_source_label_withou0')
+
+    def test_exact_source_label_without_producer_evidence_cannot_pass(tmp_path: Path) -> None:
+        owned = tmp_path / "owned"
+        _ = shutil.copytree(ROOT, owned, ignore=shutil.ignore_patterns("tooling", "evidence"))
+        pin = owned / "pin.toml"
+        _ = pin.write_text(
+            pin.read_text().replace(
+                'correspondence = "ELEMENT_POPULATION_ONLY"', 'correspondence = "EXACT_SOURCE"'
+            )
+        )
+        report = subject.audit(
+            owned, CATALOGUE, gate=subject.InventoryGate.EXACT_SOURCE, evidence=recorded_evidence()
+        )
+>       assert report.status == "FAIL"
+E       AssertionError: assert 'PASS' == 'FAIL'
+E         
+E         - FAIL
+E         + PASS
+
+test_inventory.py:156: AssertionError
+=========================== short test summary info ============================
+FAILED test_inventory.py::test_exact_source_label_without_producer_evidence_cannot_pass
+1 failed in 0.28s

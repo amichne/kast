@@ -1,0 +1,5 @@
+# Keep immutable evidence bytes and upstream source bytes unchanged.
+evidence/** -text -whitespace linguist-generated=true
+upstream/** -text -whitespace linguist-vendored=true
+# Empty final TSV cells preserve the absent executable evidence disposition.
+classifications.tsv -whitespace

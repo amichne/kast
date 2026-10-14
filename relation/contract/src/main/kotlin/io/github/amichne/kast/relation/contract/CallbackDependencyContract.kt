@@ -22,7 +22,10 @@ enum class CallbackDependencyContractProvenance {
 }
 
 enum class CallbackDependencyInvocationKind {
-    EXACTLY_ONCE
+    EXACTLY_ONCE,
+    AT_MOST_ONCE,
+    AT_LEAST_ONCE,
+    UNKNOWN,
 }
 
 /** Declared static calls-in-place evidence. No dependency body or runtime invocation is fabricated. */

@@ -7,9 +7,11 @@ owner with `QueryQuestionDocument.serializer()` and
 `CanonicalQueryCliDocuments.qualificationSerializer`. The result schema reuses
 `installedSemanticResultSchema(QUERY_RUN)`, which composes the actual complete,
 qualified and rejected serializers with existing local output definitions.
-Export used the owned `06f0abdc` product-gate classpath, without services, IDEA,
-credentials or inference. `PiQuestionSchemaParityTest` compares all three
-committed schemas against the current owners. Gradle tracks them as test inputs.
+The current export uses the task checkout at `e62692cc5e0be164941a6c551c00d35ad6739ded` plus its local semantic-coverage changes.
+The exporter uses `cli/build/install/kast/lib` and `query/contract/build/libs` without services, IDEA, credentials, or inference.
+Only `query-result.schema.json` changed. Its SHA256 is `560b9b162ca29619faa084db517ba31707aea152800b96bd2ec63c1575184892`.
+`PiQuestionSchemaParityTest` compares all three committed schemas with the current owners.
+Gradle tracks these schemas as inputs.
 
 ```sh
 java -cp "$KAST_RELEASE/lib/*" experiments/host-observation/PiQuestionSchema.java \

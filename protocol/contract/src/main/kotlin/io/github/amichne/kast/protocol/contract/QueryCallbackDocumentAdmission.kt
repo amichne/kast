@@ -294,6 +294,10 @@ private fun QueryCallbackObservationDocument.admitDeferredDependencyFlow(
     flow: QueryCallbackFlowDocument.Observed,
     binding: QueryCallbackBindingDocument.DeferredDependency,
 ): Refinement<Unit, QueryCallbackDocumentFailure> {
+    when (val admitted = binding.admitExecution()) {
+        is Refinement.Refined -> Unit
+        is Refinement.Rejected -> return admitted
+    }
     if (!binding.owner.validDeclaration()) return rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
     val owner = binding.owner.declaration
     if (

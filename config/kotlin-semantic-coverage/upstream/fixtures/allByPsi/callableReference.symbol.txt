@@ -1,0 +1,1918 @@
+KtFile: 'callableReference.kt'
+  null
+
+KtPackageDirective(0,12): 'package pack'
+  null
+
+KtNameReferenceExpression(8,12): 'pack'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack
+    ]
+
+KtImportList(14,46): 'import kotlin.reflect.KFunction1'
+  null
+
+KtImportDirective(14,46): 'import kotlin.reflect.KFunction1'
+  null
+
+KtDotQualifiedExpression(21,46): 'kotlin.reflect.KFunction1'
+  null
+
+KtDotQualifiedExpression(21,35): 'kotlin.reflect'
+  null
+
+KtNameReferenceExpression(21,27): 'kotlin'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin
+    ]
+
+KtNameReferenceExpression(28,35): 'reflect'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin.reflect
+    ]
+
+KtNameReferenceExpression(36,46): 'KFunction1'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/reflect/KFunction1
+    ]
+
+KtClass(48,134): 'open class MyClass {'
+  null
+
+KtDeclarationModifierList(48,52): 'open'
+  null
+
+KtClassBody(67,134): '{'
+  null
+
+KtNamedFunction(72,101): 'fun memberFunction(): Int = 1'
+  null
+
+KtParameterList(90,92): '()'
+  null
+
+KtTypeReference(94,97): 'Int'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Int
+    ]
+
+KtUserType(94,97): 'Int'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Int
+    ]
+
+KtNameReferenceExpression(94,97): 'Int'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Int
+    ]
+
+KtConstantExpression(100,101): '1'
+  null
+
+KtProperty(105,132): 'val memberProperty: Int = 2'
+  null
+
+KtTypeReference(125,128): 'Int'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Int
+    ]
+
+KtUserType(125,128): 'Int'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Int
+    ]
+
+KtNameReferenceExpression(125,128): 'Int'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Int
+    ]
+
+KtConstantExpression(131,132): '2'
+  null
+
+KtClass(136,159): 'class Child : MyClass()'
+  null
+
+KtSuperTypeList(150,159): 'MyClass()'
+  null
+
+KtSuperTypeCallEntry(150,159): 'MyClass()'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      <constructor>(): pack.MyClass
+    ]
+
+KtConstructorCalleeExpression(150,157): 'MyClass'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      <constructor>(): pack.MyClass
+    ]
+
+KtTypeReference(150,157): 'MyClass'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass
+    ]
+
+KtUserType(150,157): 'MyClass'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass
+    ]
+
+KtNameReferenceExpression(150,157): 'MyClass'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass
+    ]
+
+KtValueArgumentList(157,159): '()'
+  null
+
+KtClass(161,328): 'open class ClassWithType<T> {'
+  null
+
+KtDeclarationModifierList(161,165): 'open'
+  null
+
+KtTypeParameterList(185,188): '<T>'
+  null
+
+KtTypeParameter(186,187): 'T'
+  null
+
+KtClassBody(189,328): '{'
+  null
+
+KtNamedFunction(194,227): 'fun functionWithType(): T? = null'
+  null
+
+KtParameterList(214,216): '()'
+  null
+
+KtTypeReference(218,220): 'T?'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      T
+    ]
+
+KtNullableType(218,220): 'T?'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      T
+    ]
+
+KtUserType(218,219): 'T'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      T
+    ]
+
+KtNameReferenceExpression(218,219): 'T'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      T
+    ]
+
+KtConstantExpression(223,227): 'null'
+  null
+
+KtProperty(231,262): 'var propertyWithType: T? = null'
+  null
+
+KtTypeReference(253,255): 'T?'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      T
+    ]
+
+KtNullableType(253,255): 'T?'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      T
+    ]
+
+KtUserType(253,254): 'T'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      T
+    ]
+
+KtNameReferenceExpression(253,254): 'T'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      T
+    ]
+
+KtConstantExpression(258,262): 'null'
+  null
+
+KtClass(267,289): 'inner class InnerClass'
+  null
+
+KtDeclarationModifierList(267,272): 'inner'
+  null
+
+KtClass(293,326): 'inner class InnerClassWithType<D>'
+  null
+
+KtDeclarationModifierList(293,298): 'inner'
+  null
+
+KtTypeParameterList(323,326): '<D>'
+  null
+
+KtTypeParameter(324,325): 'D'
+  null
+
+KtClass(330,376): 'class ChildWithType : ClassWithType<MyClass>()'
+  null
+
+KtSuperTypeList(352,376): 'ClassWithType<MyClass>()'
+  null
+
+KtSuperTypeCallEntry(352,376): 'ClassWithType<MyClass>()'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      <constructor>(): pack.ClassWithType<T>
+    ]
+
+KtConstructorCalleeExpression(352,374): 'ClassWithType<MyClass>'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      <constructor>(): pack.ClassWithType<T>
+    ]
+
+KtTypeReference(352,374): 'ClassWithType<MyClass>'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtUserType(352,374): 'ClassWithType<MyClass>'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtNameReferenceExpression(352,365): 'ClassWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtTypeArgumentList(365,374): '<MyClass>'
+  null
+
+KtTypeProjection(366,373): 'MyClass'
+  null
+
+KtTypeReference(366,373): 'MyClass'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass
+    ]
+
+KtUserType(366,373): 'MyClass'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass
+    ]
+
+KtNameReferenceExpression(366,373): 'MyClass'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass
+    ]
+
+KtValueArgumentList(374,376): '()'
+  null
+
+KtNamedFunction(378,409): 'fun topLevelFunction(i: Int) {}'
+  null
+
+KtParameterList(398,406): '(i: Int)'
+  null
+
+KtParameter(399,405): 'i: Int'
+  null
+
+KtTypeReference(402,405): 'Int'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Int
+    ]
+
+KtUserType(402,405): 'Int'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Int
+    ]
+
+KtNameReferenceExpression(402,405): 'Int'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Int
+    ]
+
+KtBlockExpression(407,409): '{}'
+  null
+
+KtProperty(411,435): 'var topLevelVariable = 1'
+  null
+
+KtConstantExpression(434,435): '1'
+  null
+
+KtNamedFunction(437,484): 'fun MyClass.extensionFunction(): String = "str"'
+  null
+
+KtTypeReference(441,448): 'MyClass'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass
+    ]
+
+KtUserType(441,448): 'MyClass'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass
+    ]
+
+KtNameReferenceExpression(441,448): 'MyClass'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass
+    ]
+
+KtParameterList(466,468): '()'
+  null
+
+KtTypeReference(470,476): 'String'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/String
+    ]
+
+KtUserType(470,476): 'String'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/String
+    ]
+
+KtNameReferenceExpression(470,476): 'String'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/String
+    ]
+
+KtStringTemplateExpression(479,484): '"str"'
+  null
+
+KtLiteralStringTemplateEntry(480,483): 'str'
+  null
+
+KtProperty(485,536): 'val MyClass.extensionProperty: String get() = "rts"'
+  null
+
+KtTypeReference(489,496): 'MyClass'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass
+    ]
+
+KtUserType(489,496): 'MyClass'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass
+    ]
+
+KtNameReferenceExpression(489,496): 'MyClass'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass
+    ]
+
+KtTypeReference(516,522): 'String'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/String
+    ]
+
+KtUserType(516,522): 'String'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/String
+    ]
+
+KtNameReferenceExpression(516,522): 'String'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/String
+    ]
+
+KtPropertyAccessor(523,536): 'get() = "rts"'
+  null
+
+KtParameterList(526,528): '()'
+  null
+
+KtStringTemplateExpression(531,536): '"rts"'
+  null
+
+KtLiteralStringTemplateEntry(532,535): 'rts'
+  null
+
+KtProperty(538,571): 'lateinit var lateinitVar: MyClass'
+  null
+
+KtDeclarationModifierList(538,546): 'lateinit'
+  null
+
+KtTypeReference(564,571): 'MyClass'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass
+    ]
+
+KtUserType(564,571): 'MyClass'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass
+    ]
+
+KtNameReferenceExpression(564,571): 'MyClass'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass
+    ]
+
+KtNamedFunction(573,1076): 'fun usage() {'
+  null
+
+KtParameterList(582,584): '()'
+  null
+
+KtBlockExpression(585,1076): '{'
+  null
+
+KtDotQualifiedExpression(590,631): 'MyClass::memberFunction.invoke(MyClass())'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/reflect/KFunction1.invoke(<dispatch receiver>: kotlin.reflect.KFunction1<P1, R>, p1: P1): R
+    ]
+
+KtCallableReferenceExpression(590,613): 'MyClass::memberFunction'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass.memberFunction(<dispatch receiver>: pack.MyClass): kotlin.Int
+    ]
+
+KtNameReferenceExpression(590,597): 'MyClass'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass
+    ]
+
+KtNameReferenceExpression(599,613): 'memberFunction'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass.memberFunction(<dispatch receiver>: pack.MyClass): kotlin.Int
+    ]
+
+KtCallExpression(614,631): 'invoke(MyClass())'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/reflect/KFunction1.invoke(<dispatch receiver>: kotlin.reflect.KFunction1<P1, R>, p1: P1): R
+    ]
+
+KtNameReferenceExpression(614,620): 'invoke'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/reflect/KFunction1.invoke(<dispatch receiver>: kotlin.reflect.KFunction1<P1, R>, p1: P1): R
+    ]
+
+KtValueArgumentList(620,631): '(MyClass())'
+  null
+
+KtValueArgument(621,630): 'MyClass()'
+  null
+
+KtCallExpression(621,630): 'MyClass()'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      <constructor>(): pack.MyClass
+    ]
+
+KtNameReferenceExpression(621,628): 'MyClass'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass
+    ]
+
+KtValueArgumentList(628,630): '()'
+  null
+
+KtDotQualifiedExpression(635,663): 'MyClass::memberProperty.name'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      val name: kotlin.String
+    ]
+
+KtCallableReferenceExpression(635,658): 'MyClass::memberProperty'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      val memberProperty: kotlin.Int
+    ]
+
+KtNameReferenceExpression(635,642): 'MyClass'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass
+    ]
+
+KtNameReferenceExpression(644,658): 'memberProperty'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      val memberProperty: kotlin.Int
+    ]
+
+KtNameReferenceExpression(659,663): 'name'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      val name: kotlin.String
+    ]
+
+KtDotQualifiedExpression(668,705): 'Child::memberFunction.invoke(Child())'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/reflect/KFunction1.invoke(<dispatch receiver>: kotlin.reflect.KFunction1<P1, R>, p1: P1): R
+    ]
+
+KtCallableReferenceExpression(668,689): 'Child::memberFunction'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass.memberFunction(<dispatch receiver>: pack.MyClass): kotlin.Int
+    ]
+
+KtNameReferenceExpression(668,673): 'Child'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/Child
+    ]
+
+KtNameReferenceExpression(675,689): 'memberFunction'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass.memberFunction(<dispatch receiver>: pack.MyClass): kotlin.Int
+    ]
+
+KtCallExpression(690,705): 'invoke(Child())'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/reflect/KFunction1.invoke(<dispatch receiver>: kotlin.reflect.KFunction1<P1, R>, p1: P1): R
+    ]
+
+KtNameReferenceExpression(690,696): 'invoke'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/reflect/KFunction1.invoke(<dispatch receiver>: kotlin.reflect.KFunction1<P1, R>, p1: P1): R
+    ]
+
+KtValueArgumentList(696,705): '(Child())'
+  null
+
+KtValueArgument(697,704): 'Child()'
+  null
+
+KtCallExpression(697,704): 'Child()'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      <constructor>(): pack.Child
+    ]
+
+KtNameReferenceExpression(697,702): 'Child'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/Child
+    ]
+
+KtValueArgumentList(702,704): '()'
+  null
+
+KtDotQualifiedExpression(709,735): 'Child::memberProperty.name'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      val name: kotlin.String
+    ]
+
+KtCallableReferenceExpression(709,730): 'Child::memberProperty'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      val memberProperty: kotlin.Int
+    ]
+
+KtNameReferenceExpression(709,714): 'Child'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/Child
+    ]
+
+KtNameReferenceExpression(716,730): 'memberProperty'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      val memberProperty: kotlin.Int
+    ]
+
+KtNameReferenceExpression(731,735): 'name'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      val name: kotlin.String
+    ]
+
+KtProperty(740,779): 'val f = pack.MyClass::extensionFunction'
+  null
+
+KtCallableReferenceExpression(748,779): 'pack.MyClass::extensionFunction'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/extensionFunction(<extension receiver>: pack.MyClass): kotlin.String
+    ]
+
+KtDotQualifiedExpression(748,760): 'pack.MyClass'
+  null
+
+KtNameReferenceExpression(748,752): 'pack'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack
+    ]
+
+KtNameReferenceExpression(753,760): 'MyClass'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass
+    ]
+
+KtNameReferenceExpression(762,779): 'extensionFunction'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/extensionFunction(<extension receiver>: pack.MyClass): kotlin.String
+    ]
+
+KtProperty(783,817): 'val p = MyClass::extensionProperty'
+  null
+
+KtCallableReferenceExpression(791,817): 'MyClass::extensionProperty'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      val extensionProperty: kotlin.String
+    ]
+
+KtNameReferenceExpression(791,798): 'MyClass'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/MyClass
+    ]
+
+KtNameReferenceExpression(800,817): 'extensionProperty'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      val extensionProperty: kotlin.String
+    ]
+
+KtProperty(822,855): 'val cF = Child::extensionFunction'
+  null
+
+KtCallableReferenceExpression(831,855): 'Child::extensionFunction'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/extensionFunction(<extension receiver>: pack.MyClass): kotlin.String
+    ]
+
+KtNameReferenceExpression(831,836): 'Child'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/Child
+    ]
+
+KtNameReferenceExpression(838,855): 'extensionFunction'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/extensionFunction(<extension receiver>: pack.MyClass): kotlin.String
+    ]
+
+KtProperty(859,897): 'val cP = pack.Child::extensionProperty'
+  null
+
+KtCallableReferenceExpression(868,897): 'pack.Child::extensionProperty'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      val extensionProperty: kotlin.String
+    ]
+
+KtDotQualifiedExpression(868,878): 'pack.Child'
+  null
+
+KtNameReferenceExpression(868,872): 'pack'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack
+    ]
+
+KtNameReferenceExpression(873,878): 'Child'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/Child
+    ]
+
+KtNameReferenceExpression(880,897): 'extensionProperty'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      val extensionProperty: kotlin.String
+    ]
+
+KtDotQualifiedExpression(902,938): 'ChildWithType::functionWithType.name'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      val name: kotlin.String
+    ]
+
+KtCallableReferenceExpression(902,933): 'ChildWithType::functionWithType'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ChildWithType.functionWithType(<dispatch receiver>: pack.ChildWithType): pack.MyClass?
+    ]
+
+KtNameReferenceExpression(902,915): 'ChildWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ChildWithType
+    ]
+
+KtNameReferenceExpression(917,933): 'functionWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ChildWithType.functionWithType(<dispatch receiver>: pack.ChildWithType): pack.MyClass?
+    ]
+
+KtNameReferenceExpression(934,938): 'name'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      val name: kotlin.String
+    ]
+
+KtDotQualifiedExpression(942,997): 'ChildWithType::propertyWithType.invoke(ChildWithType())'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/reflect/KMutableProperty1.invoke(<dispatch receiver>: kotlin.reflect.KMutableProperty1<T, V>, p1: T): V
+    ]
+
+KtCallableReferenceExpression(942,973): 'ChildWithType::propertyWithType'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      var propertyWithType: pack.MyClass?
+    ]
+
+KtNameReferenceExpression(942,955): 'ChildWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ChildWithType
+    ]
+
+KtNameReferenceExpression(957,973): 'propertyWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      var propertyWithType: pack.MyClass?
+    ]
+
+KtCallExpression(974,997): 'invoke(ChildWithType())'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/reflect/KMutableProperty1.invoke(<dispatch receiver>: kotlin.reflect.KMutableProperty1<T, V>, p1: T): V
+    ]
+
+KtNameReferenceExpression(974,980): 'invoke'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/reflect/KMutableProperty1.invoke(<dispatch receiver>: kotlin.reflect.KMutableProperty1<T, V>, p1: T): V
+    ]
+
+KtValueArgumentList(980,997): '(ChildWithType())'
+  null
+
+KtValueArgument(981,996): 'ChildWithType()'
+  null
+
+KtCallExpression(981,996): 'ChildWithType()'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      <constructor>(): pack.ChildWithType
+    ]
+
+KtNameReferenceExpression(981,994): 'ChildWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ChildWithType
+    ]
+
+KtValueArgumentList(994,996): '()'
+  null
+
+KtCallableReferenceExpression(1002,1020): '::topLevelFunction'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/topLevelFunction(i: kotlin.Int): kotlin.Unit
+    ]
+
+KtNameReferenceExpression(1004,1020): 'topLevelFunction'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/topLevelFunction(i: kotlin.Int): kotlin.Unit
+    ]
+
+KtCallableReferenceExpression(1024,1042): '::topLevelVariable'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      var topLevelVariable: kotlin.Int
+    ]
+
+KtNameReferenceExpression(1026,1042): 'topLevelVariable'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      var topLevelVariable: kotlin.Int
+    ]
+
+KtDotQualifiedExpression(1047,1074): '::lateinitVar.isInitialized'
+  KaSymbolResolutionError:
+    candidateSymbols = []
+    diagnostic = ERROR<UNRESOLVED_REFERENCE: Unresolved reference 'isInitialized' on receiver of type 'KMutableProperty0<MyClass>'.>
+
+KtCallableReferenceExpression(1047,1060): '::lateinitVar'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      var lateinitVar: pack.MyClass
+    ]
+
+KtNameReferenceExpression(1049,1060): 'lateinitVar'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      var lateinitVar: pack.MyClass
+    ]
+
+KtNameReferenceExpression(1061,1074): 'isInitialized'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionError:
+    candidateSymbols = []
+    diagnostic = ERROR<UNRESOLVED_REFERENCE: Unresolved reference 'isInitialized' on receiver of type 'KMutableProperty0<MyClass>'.>
+
+KtNamedFunction(1078,1299): 'fun <T : Number> typeClass(classWithType: ClassWithType<T>) {'
+  null
+
+KtTypeParameterList(1082,1094): '<T : Number>'
+  null
+
+KtTypeParameter(1083,1093): 'T : Number'
+  null
+
+KtTypeReference(1087,1093): 'Number'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Number
+    ]
+
+KtUserType(1087,1093): 'Number'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Number
+    ]
+
+KtNameReferenceExpression(1087,1093): 'Number'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Number
+    ]
+
+KtParameterList(1104,1137): '(classWithType: ClassWithType<T>)'
+  null
+
+KtParameter(1105,1136): 'classWithType: ClassWithType<T>'
+  null
+
+KtTypeReference(1120,1136): 'ClassWithType<T>'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtUserType(1120,1136): 'ClassWithType<T>'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtNameReferenceExpression(1120,1133): 'ClassWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtTypeArgumentList(1133,1136): '<T>'
+  null
+
+KtTypeProjection(1134,1135): 'T'
+  null
+
+KtTypeReference(1134,1135): 'T'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      T
+    ]
+
+KtUserType(1134,1135): 'T'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      T
+    ]
+
+KtNameReferenceExpression(1134,1135): 'T'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      T
+    ]
+
+KtBlockExpression(1138,1299): '{'
+  null
+
+KtCallableReferenceExpression(1143,1174): 'classWithType::functionWithType'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType.functionWithType(<dispatch receiver>: pack.ClassWithType<T>): T?
+    ]
+
+KtNameReferenceExpression(1143,1156): 'classWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      classWithType: pack.ClassWithType<T>
+    ]
+
+KtNameReferenceExpression(1158,1174): 'functionWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType.functionWithType(<dispatch receiver>: pack.ClassWithType<T>): T?
+    ]
+
+KtCallableReferenceExpression(1178,1209): 'classWithType::propertyWithType'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      var propertyWithType: T?
+    ]
+
+KtNameReferenceExpression(1178,1191): 'classWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      classWithType: pack.ClassWithType<T>
+    ]
+
+KtNameReferenceExpression(1193,1209): 'propertyWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      var propertyWithType: T?
+    ]
+
+KtProperty(1214,1247): 'val t: ClassWithType<Int>? = null'
+  null
+
+KtTypeReference(1221,1240): 'ClassWithType<Int>?'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtNullableType(1221,1240): 'ClassWithType<Int>?'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtUserType(1221,1239): 'ClassWithType<Int>'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtNameReferenceExpression(1221,1234): 'ClassWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtTypeArgumentList(1234,1239): '<Int>'
+  null
+
+KtTypeProjection(1235,1238): 'Int'
+  null
+
+KtTypeReference(1235,1238): 'Int'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Int
+    ]
+
+KtUserType(1235,1238): 'Int'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Int
+    ]
+
+KtNameReferenceExpression(1235,1238): 'Int'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Int
+    ]
+
+KtConstantExpression(1243,1247): 'null'
+  null
+
+KtCallableReferenceExpression(1251,1272): 't!!::functionWithType'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType.functionWithType(<dispatch receiver>: pack.ClassWithType<T>): T?
+    ]
+
+KtPostfixExpression(1251,1254): 't!!'
+  null
+
+KtNameReferenceExpression(1251,1252): 't'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      val t: pack.ClassWithType<kotlin.Int>?
+    ]
+
+KtOperationReferenceExpression(1252,1254): '!!'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  null
+
+KtNameReferenceExpression(1256,1272): 'functionWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType.functionWithType(<dispatch receiver>: pack.ClassWithType<T>): T?
+    ]
+
+KtCallableReferenceExpression(1276,1297): 't!!::propertyWithType'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      var propertyWithType: T?
+    ]
+
+KtPostfixExpression(1276,1279): 't!!'
+  null
+
+KtNameReferenceExpression(1276,1277): 't'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      val t: pack.ClassWithType<kotlin.Int>?
+    ]
+
+KtOperationReferenceExpression(1277,1279): '!!'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  null
+
+KtNameReferenceExpression(1281,1297): 'propertyWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      var propertyWithType: T?
+    ]
+
+KtNamedFunction(1301,1814): 'fun classReferenceWithTypeArgument() {'
+  null
+
+KtParameterList(1335,1337): '()'
+  null
+
+KtBlockExpression(1338,1814): '{'
+  null
+
+KtDotQualifiedExpression(1343,1406): 'ClassWithType<String>::functionWithType.invoke(ClassWithType())'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/reflect/KFunction1.invoke(<dispatch receiver>: kotlin.reflect.KFunction1<P1, R>, p1: P1): R
+    ]
+
+KtCallableReferenceExpression(1343,1382): 'ClassWithType<String>::functionWithType'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType.functionWithType(<dispatch receiver>: pack.ClassWithType<T>): T?
+    ]
+
+KtCallExpression(1343,1364): 'ClassWithType<String>'
+  null
+
+KtNameReferenceExpression(1343,1356): 'ClassWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtTypeArgumentList(1356,1364): '<String>'
+  null
+
+KtTypeProjection(1357,1363): 'String'
+  null
+
+KtTypeReference(1357,1363): 'String'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/String
+    ]
+
+KtUserType(1357,1363): 'String'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/String
+    ]
+
+KtNameReferenceExpression(1357,1363): 'String'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/String
+    ]
+
+KtNameReferenceExpression(1366,1382): 'functionWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType.functionWithType(<dispatch receiver>: pack.ClassWithType<T>): T?
+    ]
+
+KtCallExpression(1383,1406): 'invoke(ClassWithType())'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/reflect/KFunction1.invoke(<dispatch receiver>: kotlin.reflect.KFunction1<P1, R>, p1: P1): R
+    ]
+
+KtNameReferenceExpression(1383,1389): 'invoke'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/reflect/KFunction1.invoke(<dispatch receiver>: kotlin.reflect.KFunction1<P1, R>, p1: P1): R
+    ]
+
+KtValueArgumentList(1389,1406): '(ClassWithType())'
+  null
+
+KtValueArgument(1390,1405): 'ClassWithType()'
+  null
+
+KtCallExpression(1390,1405): 'ClassWithType()'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      <constructor>(): pack.ClassWithType<T>
+    ]
+
+KtNameReferenceExpression(1390,1403): 'ClassWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtValueArgumentList(1403,1405): '()'
+  null
+
+KtDotQualifiedExpression(1410,1475): 'pack.ClassWithType<Int>::propertyWithType.invoke(ClassWithType())'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/reflect/KMutableProperty1.invoke(<dispatch receiver>: kotlin.reflect.KMutableProperty1<T, V>, p1: T): V
+    ]
+
+KtCallableReferenceExpression(1410,1451): 'pack.ClassWithType<Int>::propertyWithType'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      var propertyWithType: T?
+    ]
+
+KtDotQualifiedExpression(1410,1433): 'pack.ClassWithType<Int>'
+  null
+
+KtNameReferenceExpression(1410,1414): 'pack'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack
+    ]
+
+KtCallExpression(1415,1433): 'ClassWithType<Int>'
+  null
+
+KtNameReferenceExpression(1415,1428): 'ClassWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtTypeArgumentList(1428,1433): '<Int>'
+  null
+
+KtTypeProjection(1429,1432): 'Int'
+  null
+
+KtTypeReference(1429,1432): 'Int'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Int
+    ]
+
+KtUserType(1429,1432): 'Int'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Int
+    ]
+
+KtNameReferenceExpression(1429,1432): 'Int'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Int
+    ]
+
+KtNameReferenceExpression(1435,1451): 'propertyWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      var propertyWithType: T?
+    ]
+
+KtCallExpression(1452,1475): 'invoke(ClassWithType())'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/reflect/KMutableProperty1.invoke(<dispatch receiver>: kotlin.reflect.KMutableProperty1<T, V>, p1: T): V
+    ]
+
+KtNameReferenceExpression(1452,1458): 'invoke'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/reflect/KMutableProperty1.invoke(<dispatch receiver>: kotlin.reflect.KMutableProperty1<T, V>, p1: T): V
+    ]
+
+KtValueArgumentList(1458,1475): '(ClassWithType())'
+  null
+
+KtValueArgument(1459,1474): 'ClassWithType()'
+  null
+
+KtCallExpression(1459,1474): 'ClassWithType()'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      <constructor>(): pack.ClassWithType<T>
+    ]
+
+KtNameReferenceExpression(1459,1472): 'ClassWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtValueArgumentList(1472,1474): '()'
+  null
+
+KtDotQualifiedExpression(1479,1538): 'pack.ClassWithType<Int>::InnerClass.invoke(ClassWithType())'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/reflect/KFunction1.invoke(<dispatch receiver>: kotlin.reflect.KFunction1<P1, R>, p1: P1): R
+    ]
+
+KtCallableReferenceExpression(1479,1514): 'pack.ClassWithType<Int>::InnerClass'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      <constructor>(<dispatch receiver>: pack.ClassWithType<T>): pack.ClassWithType.InnerClass<T>
+    ]
+
+KtDotQualifiedExpression(1479,1502): 'pack.ClassWithType<Int>'
+  null
+
+KtNameReferenceExpression(1479,1483): 'pack'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack
+    ]
+
+KtCallExpression(1484,1502): 'ClassWithType<Int>'
+  null
+
+KtNameReferenceExpression(1484,1497): 'ClassWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtTypeArgumentList(1497,1502): '<Int>'
+  null
+
+KtTypeProjection(1498,1501): 'Int'
+  null
+
+KtTypeReference(1498,1501): 'Int'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Int
+    ]
+
+KtUserType(1498,1501): 'Int'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Int
+    ]
+
+KtNameReferenceExpression(1498,1501): 'Int'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Int
+    ]
+
+KtNameReferenceExpression(1504,1514): 'InnerClass'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType.InnerClass
+    ]
+
+KtCallExpression(1515,1538): 'invoke(ClassWithType())'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/reflect/KFunction1.invoke(<dispatch receiver>: kotlin.reflect.KFunction1<P1, R>, p1: P1): R
+    ]
+
+KtNameReferenceExpression(1515,1521): 'invoke'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/reflect/KFunction1.invoke(<dispatch receiver>: kotlin.reflect.KFunction1<P1, R>, p1: P1): R
+    ]
+
+KtValueArgumentList(1521,1538): '(ClassWithType())'
+  null
+
+KtValueArgument(1522,1537): 'ClassWithType()'
+  null
+
+KtCallExpression(1522,1537): 'ClassWithType()'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      <constructor>(): pack.ClassWithType<T>
+    ]
+
+KtNameReferenceExpression(1522,1535): 'ClassWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtValueArgumentList(1535,1537): '()'
+  null
+
+KtCallableReferenceExpression(1543,1585): 'pack.ClassWithType<Long>::functionWithType'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType.functionWithType(<dispatch receiver>: pack.ClassWithType<T>): T?
+    ]
+
+KtDotQualifiedExpression(1543,1567): 'pack.ClassWithType<Long>'
+  null
+
+KtNameReferenceExpression(1543,1547): 'pack'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack
+    ]
+
+KtCallExpression(1548,1567): 'ClassWithType<Long>'
+  null
+
+KtNameReferenceExpression(1548,1561): 'ClassWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtTypeArgumentList(1561,1567): '<Long>'
+  null
+
+KtTypeProjection(1562,1566): 'Long'
+  null
+
+KtTypeReference(1562,1566): 'Long'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Long
+    ]
+
+KtUserType(1562,1566): 'Long'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Long
+    ]
+
+KtNameReferenceExpression(1562,1566): 'Long'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Long
+    ]
+
+KtNameReferenceExpression(1569,1585): 'functionWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType.functionWithType(<dispatch receiver>: pack.ClassWithType<T>): T?
+    ]
+
+KtCallableReferenceExpression(1589,1629): 'ClassWithType<Boolean>::propertyWithType'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      var propertyWithType: T?
+    ]
+
+KtCallExpression(1589,1611): 'ClassWithType<Boolean>'
+  null
+
+KtNameReferenceExpression(1589,1602): 'ClassWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtTypeArgumentList(1602,1611): '<Boolean>'
+  null
+
+KtTypeProjection(1603,1610): 'Boolean'
+  null
+
+KtTypeReference(1603,1610): 'Boolean'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Boolean
+    ]
+
+KtUserType(1603,1610): 'Boolean'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Boolean
+    ]
+
+KtNameReferenceExpression(1603,1610): 'Boolean'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Boolean
+    ]
+
+KtNameReferenceExpression(1613,1629): 'propertyWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      var propertyWithType: T?
+    ]
+
+KtCallableReferenceExpression(1633,1667): 'ClassWithType<Boolean>::InnerClass'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      <constructor>(<dispatch receiver>: pack.ClassWithType<T>): pack.ClassWithType.InnerClass<T>
+    ]
+
+KtCallExpression(1633,1655): 'ClassWithType<Boolean>'
+  null
+
+KtNameReferenceExpression(1633,1646): 'ClassWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtTypeArgumentList(1646,1655): '<Boolean>'
+  null
+
+KtTypeProjection(1647,1654): 'Boolean'
+  null
+
+KtTypeReference(1647,1654): 'Boolean'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Boolean
+    ]
+
+KtUserType(1647,1654): 'Boolean'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Boolean
+    ]
+
+KtNameReferenceExpression(1647,1654): 'Boolean'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Boolean
+    ]
+
+KtNameReferenceExpression(1657,1667): 'InnerClass'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType.InnerClass
+    ]
+
+KtProperty(1672,1812): 'val e: KFunction1<ClassWithType<Boolean>, ClassWithType<Boolean>.InnerClassWithType<Int>> ='
+  null
+
+KtTypeReference(1679,1761): 'KFunction1<ClassWithType<Boolean>, ClassWithType<Boolean>.InnerClassWithType<Int>>'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/reflect/KFunction1
+    ]
+
+KtUserType(1679,1761): 'KFunction1<ClassWithType<Boolean>, ClassWithType<Boolean>.InnerClassWithType<Int>>'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/reflect/KFunction1
+    ]
+
+KtNameReferenceExpression(1679,1689): 'KFunction1'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/reflect/KFunction1
+    ]
+
+KtTypeArgumentList(1689,1761): '<ClassWithType<Boolean>, ClassWithType<Boolean>.InnerClassWithType<Int>>'
+  null
+
+KtTypeProjection(1690,1712): 'ClassWithType<Boolean>'
+  null
+
+KtTypeReference(1690,1712): 'ClassWithType<Boolean>'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtUserType(1690,1712): 'ClassWithType<Boolean>'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtNameReferenceExpression(1690,1703): 'ClassWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtTypeArgumentList(1703,1712): '<Boolean>'
+  null
+
+KtTypeProjection(1704,1711): 'Boolean'
+  null
+
+KtTypeReference(1704,1711): 'Boolean'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Boolean
+    ]
+
+KtUserType(1704,1711): 'Boolean'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Boolean
+    ]
+
+KtNameReferenceExpression(1704,1711): 'Boolean'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Boolean
+    ]
+
+KtTypeProjection(1714,1760): 'ClassWithType<Boolean>.InnerClassWithType<Int>'
+  null
+
+KtTypeReference(1714,1760): 'ClassWithType<Boolean>.InnerClassWithType<Int>'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType.InnerClassWithType
+    ]
+
+KtUserType(1714,1760): 'ClassWithType<Boolean>.InnerClassWithType<Int>'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType.InnerClassWithType
+    ]
+
+KtUserType(1714,1736): 'ClassWithType<Boolean>'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtNameReferenceExpression(1714,1727): 'ClassWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtTypeArgumentList(1727,1736): '<Boolean>'
+  null
+
+KtTypeProjection(1728,1735): 'Boolean'
+  null
+
+KtTypeReference(1728,1735): 'Boolean'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Boolean
+    ]
+
+KtUserType(1728,1735): 'Boolean'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Boolean
+    ]
+
+KtNameReferenceExpression(1728,1735): 'Boolean'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Boolean
+    ]
+
+KtNameReferenceExpression(1737,1755): 'InnerClassWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType.InnerClassWithType
+    ]
+
+KtTypeArgumentList(1755,1760): '<Int>'
+  null
+
+KtTypeProjection(1756,1759): 'Int'
+  null
+
+KtTypeReference(1756,1759): 'Int'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Int
+    ]
+
+KtUserType(1756,1759): 'Int'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Int
+    ]
+
+KtNameReferenceExpression(1756,1759): 'Int'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Int
+    ]
+
+KtCallableReferenceExpression(1770,1812): 'ClassWithType<Boolean>::InnerClassWithType'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      <constructor>(<dispatch receiver>: pack.ClassWithType<T>): pack.ClassWithType.InnerClassWithType<D, T>
+    ]
+
+KtCallExpression(1770,1792): 'ClassWithType<Boolean>'
+  null
+
+KtNameReferenceExpression(1770,1783): 'ClassWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType
+    ]
+
+KtTypeArgumentList(1783,1792): '<Boolean>'
+  null
+
+KtTypeProjection(1784,1791): 'Boolean'
+  null
+
+KtTypeReference(1784,1791): 'Boolean'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Boolean
+    ]
+
+KtUserType(1784,1791): 'Boolean'
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Boolean
+    ]
+
+KtNameReferenceExpression(1784,1791): 'Boolean'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      kotlin/Boolean
+    ]
+
+KtNameReferenceExpression(1794,1812): 'InnerClassWithType'
+  isImplicitReferenceToCompanion: false
+  contextSensitiveResolutionStatus: NotAvailable
+  KaSymbolResolutionSuccess:
+    symbols = [
+      pack/ClassWithType.InnerClassWithType
+    ]

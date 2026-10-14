@@ -1,0 +1,86 @@
+{
+  "command": "mise exec -- ./gradlew :runtime:hosted:nativeFixtureTest --tests '*NativeSemanticOwnersTraceTest.testLocalFunctionFunction' --tests '*NativeSemanticOwnersTraceTest.testLocalFunctionConstructor' --tests '*NativeSemanticOwnersOracleTest' --no-build-cache --console=plain",
+  "outcome": "PASS",
+  "expected_test_count": 13,
+  "actual_test_count": 13,
+  "source_hashes": {
+    "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativeSemanticOwnersCases.kt": "83f870ba878b55ad27247b1e4a7c836b8e3af809c0d143d95844de5eb9f68c3b",
+    "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativeSemanticOwnersOracleTest.kt": "803282c918ad7b71e76c5b2025ff2c8a1f4775b950f29dcdbd7904ddc9a3b2b9",
+    "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativeSemanticOwnersPublicOracle.kt": "9c1dbb5c10b69c8c5d8fd9de80c48785ba1a4dc8d79b10c91575bf410a652a59",
+    "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativeSemanticOwnersTraceTest.kt": "859d2fc11bf4485839e73353183c5ff3971e62f627de22e1200d639c44a28bcc"
+  },
+  "results": [
+    {
+      "id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testLocalFunctionConstructor",
+      "status": "PASS"
+    },
+    {
+      "id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testLocalFunctionFunction",
+      "status": "PASS"
+    },
+    {
+      "id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAnotherWorkspaceGeneration",
+      "status": "PASS"
+    },
+    {
+      "id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testAcceptsTheAuthoredCompletePopulation",
+      "status": "PASS"
+    },
+    {
+      "id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAnOccurrenceOutsideTheExecutionOwner",
+      "status": "PASS"
+    },
+    {
+      "id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsASameNameTargetFromAnotherPackage",
+      "status": "PASS"
+    },
+    {
+      "id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsQualifiedCompletion",
+      "status": "PASS"
+    },
+    {
+      "id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAnInventedExactlyOnceEffect",
+      "status": "PASS"
+    },
+    {
+      "id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAnUnresolvedObligation",
+      "status": "PASS"
+    },
+    {
+      "id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAMissingOuterInvocationRoute",
+      "status": "PASS"
+    },
+    {
+      "id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAnUnrelatedSupplier",
+      "status": "PASS"
+    },
+    {
+      "id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAnInventedNamedCaller",
+      "status": "PASS"
+    },
+    {
+      "id": "io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAnOmittedTargetOccurrence",
+      "status": "PASS"
+    }
+  ],
+  "measurements": [
+    {
+      "case": "R2_local_function_constructor",
+      "query_elapsed_millis": 1593,
+      "canonical_to_projection_millis": 1664,
+      "encoded_utf8_bytes": 15851,
+      "raw_counters": "{DISCOVERY_MODEL_ROOT_ENTRIES=22, DISCOVERY_ROOT_PATH_CONVERSIONS=16, DISCOVERY_DIRECTORY_PATH_CONVERSIONS=3, DISCOVERY_BYTES_CHARGED=3956, DISCOVERY_PLAN_ROOT_ENTRIES=6, DISCOVERY_RETAINED_PARTITIONS=2, DISCOVERY_RETENTION_PARTITION_SAMPLES=3, DISCOVERY_RETENTION_BYTE_SAMPLES=11260, DISCOVERY_PARTITIONS_OBSERVED=2, DISCOVERY_DIRECTORY_CHILD_ENTRIES=1, DISCOVERY_PATH_OWNERSHIP_PROBES=10, DISCOVERY_SCOPE_FILES_ADMITTED=5, DISCOVERY_PARTITIONS_ACCEPTED=2, DISCOVERY_FILE_CANDIDATES=1, DECLARATION_AST_BINDING_BYTES_READ=173712, DECLARATION_AST_MAPPING_PSI_PROBES=116, DECLARATION_AST_NODES_VISITED=68, DECLARATION_AST_PSI_REQUESTS=5, DECLARATION_PSI_NODES_VISITED=5, DISCOVERY_CONSTRAINT_ROOT_ENTRIES=4, CANDIDATES_COLLECTED=1, DECLARATION_AST_PSI_FALLBACKS=4, CANDIDATES_PROJECTED=1, NATIVE_DISCOVERY_PAGES=1, COMPILER_REFINEMENTS=1, RELATION_PATH_OWNERSHIP_PROBES=26, RELATION_SCOPE_FILES_ADMITTED=12, RELATION_FILE_ENUMERATION_NODES=2, RELATION_FILE_ENUMERATION_CHILDREN=1, RELATION_FILE_ENUMERATION_FILES=1, RELATION_FILE_ENUMERATION_COMPLETE=1, NATIVE_RELATION_INVENTORIES_STARTED=1, RELATION_SCOPE_ADMISSIONS_READY=469, RELATION_PROVIDER_SCOPE_ADMITTED=1, RELATION_CANDIDATES=1, RELATION_PARTITIONS_PREPARED=1, RELATION_INVENTORY_REUSE_RETAINED=1, NATIVE_RELATION_INVENTORIES_PREPARED=1, RELATION_REPLAYED_PREFIX=0, RELATION_LOCATORS_RESTORED=1, RELATION_REFERENCE_SHAPES_ADMITTED=1, RELATION_K2_CONFIRMED_TARGETS=1, RELATION_CALL_OWNERS_EXCLUDED=1, COMPILER_NATIVE_CALLABLE_IDENTITIES=2, LOCAL_DECLARATION_IDENTITIES_ADMITTED=2, RELATION_SCOPE_FILES_EXCLUDED=1, CALLBACK_DEPENDENCY_CONTRACT_READS=1, CALLBACK_DEFERRED_MODEL_READS=1, CALLBACK_DEFERRED_MODELS_ADMITTED=1, CALLBACK_DEPENDENCY_CONTRACTS_ADMITTED=1, NATIVE_RELATION_PAGES=1}",
+      "run_count": 1,
+      "cache_state": "No warm or cold classification. Each case owns a fresh project. SDK caches can persist within the test JVM."
+    },
+    {
+      "case": "R2_local_function_function",
+      "query_elapsed_millis": 110,
+      "canonical_to_projection_millis": 111,
+      "encoded_utf8_bytes": 15860,
+      "raw_counters": "{DISCOVERY_MODEL_ROOT_ENTRIES=22, DISCOVERY_ROOT_PATH_CONVERSIONS=16, DISCOVERY_DIRECTORY_PATH_CONVERSIONS=3, DISCOVERY_BYTES_CHARGED=3920, DISCOVERY_PLAN_ROOT_ENTRIES=6, DISCOVERY_RETAINED_PARTITIONS=2, DISCOVERY_RETENTION_PARTITION_SAMPLES=3, DISCOVERY_RETENTION_BYTE_SAMPLES=11170, DISCOVERY_PARTITIONS_OBSERVED=2, DISCOVERY_DIRECTORY_CHILD_ENTRIES=1, DISCOVERY_PATH_OWNERSHIP_PROBES=10, DISCOVERY_SCOPE_FILES_ADMITTED=5, DISCOVERY_PARTITIONS_ACCEPTED=2, DISCOVERY_FILE_CANDIDATES=1, DECLARATION_PSI_NODES_VISITED=75, DISCOVERY_CONSTRAINT_ROOT_ENTRIES=4, CANDIDATES_COLLECTED=1, CANDIDATES_PROJECTED=1, NATIVE_DISCOVERY_PAGES=1, COMPILER_REFINEMENTS=1, COMPILER_NATIVE_CALLABLE_IDENTITIES=3, RELATION_PATH_OWNERSHIP_PROBES=26, RELATION_SCOPE_FILES_ADMITTED=12, RELATION_FILE_ENUMERATION_NODES=2, RELATION_FILE_ENUMERATION_CHILDREN=1, RELATION_FILE_ENUMERATION_FILES=1, RELATION_FILE_ENUMERATION_COMPLETE=1, NATIVE_RELATION_INVENTORIES_STARTED=1, RELATION_SCOPE_ADMISSIONS_READY=3781, RELATION_PROVIDER_SCOPE_ADMITTED=1, RELATION_CANDIDATES=1, RELATION_PARTITIONS_PREPARED=1, RELATION_INVENTORY_REUSE_RETAINED=1, NATIVE_RELATION_INVENTORIES_PREPARED=1, RELATION_REPLAYED_PREFIX=0, RELATION_LOCATORS_RESTORED=1, RELATION_REFERENCE_SHAPES_ADMITTED=1, RELATION_K2_CONFIRMED_TARGETS=1, RELATION_CALL_OWNERS_EXCLUDED=1, LOCAL_DECLARATION_IDENTITIES_ADMITTED=2, RELATION_SCOPE_FILES_EXCLUDED=1, CALLBACK_DEPENDENCY_CONTRACT_READS=1, CALLBACK_DEFERRED_MODEL_READS=1, CALLBACK_DEFERRED_MODELS_ADMITTED=1, CALLBACK_DEPENDENCY_CONTRACTS_ADMITTED=1, NATIVE_RELATION_PAGES=1}",
+      "run_count": 1,
+      "cache_state": "No warm or cold classification. Each case owns a fresh project. SDK caches can persist within the test JVM."
+    }
+  ]
+}

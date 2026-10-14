@@ -136,6 +136,7 @@ internal class IntellijK2RelationSearch(
         private fun processKotlinReference(plan: IntellijRelationPlan.References, reference: KtReference): Boolean {
             if (
                 request.meaning == RelationMeaning.Callers &&
+                    plan.confirmation is IntellijReferenceConfirmationPlan.ExactSymbol &&
                     (reference.element.parent as? org.jetbrains.kotlin.psi.KtCallableReferenceExpression)
                         ?.callableReference === reference.element
             )
