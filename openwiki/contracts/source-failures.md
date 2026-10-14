@@ -26,13 +26,17 @@ code_sources:
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceRetentionAdmission.kt
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-02T02:00:02.467Z
+    at: 2026-10-14T20:46:05.929Z
 sources:
+  - id: openwiki-source-1f4b72dbdebf34d5391e92d7
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReferenceAuthorityMismatch.kt
   - id: openwiki-source-5b732bfe7e48127126e930e6
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceReadFailureDetails.kt
   - id: openwiki-source-4cbc119615e512042aa43ff5
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SourceRequestIngress.kt
-generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+  - id: openwiki-source-fde96433d99d8dd3699dd291
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalSelectorDocumentAdmission.kt
+generated: { by: "codex", at: "2026-10-14T20:46:05.929Z" }
 ---
 
 # Source failure origin
@@ -64,9 +68,15 @@ Valid unordered declaration-kind and visibility selections are accepted and
 normalized by their existing domain owners; ordering is not a caller predicate.
 Native and retained-output continuation syntax remains distinct and supported.
 
-Diagnostics contain only finite authored labels and bounded indexes. They do not
-contain source text, parser messages, raw tokens, or stack traces. Recovery labels
-grant no implicit refresh, retry, or reacquisition effect.
+Diagnostics contain finite labels, bounded indexes, and typed authority mismatch evidence.
+Reference admission compares epochs after it admits the reference version, workspace, host, and content view.
+An epoch mismatch keeps the positive reference epoch as `expected_epoch` and the positive current epoch as `observed_epoch`.
+A content-view mismatch carries a finite marker without a numeric epoch pair.
+Malformed, foreign, unsupported-version, and nonpositive-epoch references supply no epoch pair.
+This evidence covers reference admission, rather than later source-service epoch changes.
+
+Diagnostics contain no source text, parser messages, raw tokens, or stack traces.
+Recovery labels grant no implicit refresh, retry, or reacquisition effect.
 
 The source service checks its admitted context and returned snapshot before
 publication. Snapshot contradictions remain internal failures. Projection failures
