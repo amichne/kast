@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.Refinement
@@ -148,10 +150,24 @@ sealed interface QueryImpactSourceFailureDocument {
     data class Admission(val cause: QueryImpactSourceFailureCode, val position: ProtocolOffset) :
         QueryImpactSourceFailureDocument
 
-    @Serializable
+    @Serializable(with = QueryImpactReferenceRejectedSerializer::class)
+    @kotlinx.serialization.KeepGeneratedSerializer
     @SerialName("REFERENCE")
-    data class Reference(val reason: QueryReferenceRejectionReason, val position: ProtocolOffset) :
-        QueryImpactSourceFailureDocument
+    data class Reference
+    private constructor(
+        val reason: QueryReferenceRejectionReason,
+        val position: ProtocolOffset,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("authority_mismatch")
+        val authorityMismatch: ReferenceAuthorityMismatch? = null,
+    ) : QueryImpactSourceFailureDocument {
+        constructor(reason: QueryReferenceRejectionReason, position: ProtocolOffset) : this(reason, position, null)
+
+        companion object {
+            fun fromReference(rejection: QueryRunRejection.ReferenceRejected): Reference =
+                Reference(rejection.reason, rejection.position, rejection.authorityMismatch)
+        }
+    }
 }
 
 /** Omitted target selection means an empty universe, never inferred targets. */

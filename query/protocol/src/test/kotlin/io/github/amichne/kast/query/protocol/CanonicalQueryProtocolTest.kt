@@ -252,7 +252,7 @@ class CanonicalQueryProtocolTest {
                 1,
             )
         val document = LiveSelectorAuthorityDocument(current.host.value.toString(), 4, current.contentView.name, 1)
-        assertTrue(document.admitReference(root.value, current) is Refinement.Refined)
+        assertTrue(document.admitReference(root.value, current) is CanonicalSelectorDecoding.Decoded)
         assertEquals(
             CanonicalSelectorDecodingFailure.INCOMPATIBLE_WORKSPACE,
             document.admitReference("/foreign", current).rejected(),
@@ -403,6 +403,12 @@ class CanonicalQueryProtocolTest {
         when (this) {
             is Refinement.Refined -> value
             is Refinement.Rejected -> error(failure.toString())
+        }
+
+    private fun CanonicalSelectorDecoding<Unit>.rejected(): CanonicalSelectorDecodingFailure =
+        when (this) {
+            is CanonicalSelectorDecoding.Rejected -> failure
+            is CanonicalSelectorDecoding.Decoded -> error("Expected reference rejection")
         }
 
     private fun <Value, Failure> Refinement<Value, Failure>.rejected(): Failure =
