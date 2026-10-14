@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.wire.QueryCallbackDependencyContractWireTest" tests="4" skipped="0" failures="1" errors="0" timestamp="2026-10-14T00:15:36.520Z" hostname="Austins-MacBook-Pro.local" time="0.148">
+  <properties/>
+  <testcase name="anonymous supplying owner retains its activation obligation()" classname="io.github.amichne.kast.protocol.wire.QueryCallbackDependencyContractWireTest" time="0.117"/>
+  <testcase name="declared contract encodes exact provenance class digest and formal position()" classname="io.github.amichne.kast.protocol.wire.QueryCallbackDependencyContractWireTest" time="0.007"/>
+  <testcase name="wire invocation kinds preserve all four declared Kotlin effects()" classname="io.github.amichne.kast.protocol.wire.QueryCallbackDependencyContractWireTest" time="0.004">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[EXACTLY_ONCE, AT_MOST_ONCE, AT_LEAST_ONCE, UNKNOWN]&gt; but was: &lt;[EXACTLY_ONCE]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[EXACTLY_ONCE, AT_MOST_ONCE, AT_LEAST_ONCE, UNKNOWN]&gt; but was: &lt;[EXACTLY_ONCE]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.protocol.wire.QueryCallbackDependencyContractWireTest.wire invocation kinds preserve all four declared Kotlin effects(QueryCallbackDependencyContractWireTest.kt:17)
+</failure>
+  </testcase>
+  <testcase name="contract projection rejects invented body invocations invalid binary identity and incomplete scans()" classname="io.github.amichne.kast.protocol.wire.QueryCallbackDependencyContractWireTest" time="0.01"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

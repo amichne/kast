@@ -43,10 +43,10 @@ sources:
     resource: repo://runtime/hosted/build.gradle.kts
   - id: openwiki-source-e620d7484b72a53c7fa812cd
     resource: repo://settings.gradle.kts
-generated: { by: "codex", at: "2026-10-08T01:13:49.481Z" }
+generated: { by: "codex", at: "2026-10-14T01:57:02.037Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-13T14:48:27.492Z
+    at: 2026-10-14T01:57:02.037Z
 ---
 
 # Verified module architecture
@@ -132,3 +132,12 @@ requires the hosted contract, without a host archive producer. Independent host
 assembly produces no control package, and independent control assembly produces
 no host package. Fresh-pair assembly composes both artifacts as an installation
 convenience; exact hosted contract equality governs communication.
+
+## Kotlin semantic coverage gates
+
+Root `check` includes three separate semantic coverage gates.
+`verifyKotlinSemanticInputs` compares the required resource population and reviewed carrier hashes.
+`verifyKotlinSemanticInventory` compares the upstream FIR inventory with the current native runtime artifact.
+`verifyKotlinSemanticCoverage` needs exactly the declared executable IDs and successful JUnit outcomes.
+The selected native fixture tasks use the existing native runner.
+Inventory accounting does not establish successful trace completion.

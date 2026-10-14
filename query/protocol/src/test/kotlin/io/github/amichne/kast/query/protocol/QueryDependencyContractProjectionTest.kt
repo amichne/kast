@@ -23,6 +23,10 @@ import org.junit.jupiter.api.Test
 internal class QueryDependencyContractProjectionTest : CompleteOnlyCallbackQueryCase() {
     @Test
     fun `dependency target projection preserves evidence when external source handles are forbidden`() {
+        for (kind in CallbackDependencyInvocationKind.entries) assertProjection(kind)
+    }
+
+    private fun assertProjection(kind: CallbackDependencyInvocationKind) {
         val external = externalEvidence()
         val source = observation(true).callbackObservations.single()
         val previous = (source.flow as CallbackInvocationFlowRead.Observed).flow
@@ -35,7 +39,7 @@ internal class QueryDependencyContractProjectionTest : CompleteOnlyCallbackQuery
                     ValueArgumentPosition.parse(0).refined(),
                     DependencyClassDigest.parse("a".repeat(64)).refined(),
                     CallbackDependencyContractProvenance.KOTLIN_BINARY_CONTRACT,
-                    CallbackDependencyInvocationKind.EXACTLY_ONCE,
+                    kind,
                 )
                 .refined()
         val flow =
@@ -71,6 +75,7 @@ internal class QueryDependencyContractProjectionTest : CompleteOnlyCallbackQuery
         assertEquals("jar:///lib.jar!/sample/Wrapper.class", projected.target.file.value)
         assertEquals(external.compilerIdentity.value, projected.target.compilerEvidence.identity.value)
         assertEquals("a".repeat(64), projected.classDigest.value)
+        assertEquals(kind.name, projected.invocationKind.name)
     }
 
     private fun externalEvidence(): CompilerGroundedSymbolEvidence {

@@ -17,7 +17,6 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import java.security.MessageDigest
 import org.jetbrains.kotlin.analysis.api.contracts.description.KaContractCallsInPlaceContractEffectDeclaration
-import org.jetbrains.kotlin.analysis.api.contracts.description.KaContractInvocationKind
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
@@ -72,8 +71,14 @@ private fun dependencyContract(
                 occurrence = occurrence,
                 binary = effect.binary,
             )
-        NativeDependencyEffect.CallsInPlace ->
-            bindDeclared(context = context, call = call, native = native, occurrence = occurrence)
+        is NativeDependencyEffect.CallsInPlace ->
+            bindDeclared(
+                context = context,
+                call = call,
+                native = native,
+                occurrence = occurrence,
+                invocationKind = effect.kind,
+            )
     }
 }
 
@@ -108,6 +113,7 @@ private fun bindDeclared(
     call: KtCallElement,
     native: NativeDependencyContract,
     occurrence: io.github.amichne.kast.relation.contract.RelationOccurrence,
+    invocationKind: CallbackDependencyInvocationKind,
 ): CallbackBindingPreparation {
     val owner =
         context.owner(call)
@@ -122,7 +128,7 @@ private fun bindDeclared(
                 position = native.position,
                 classDigest = native.digest,
                 provenance = CallbackDependencyContractProvenance.KOTLIN_BINARY_CONTRACT,
-                invocationKind = CallbackDependencyInvocationKind.EXACTLY_ONCE,
+                invocationKind = invocationKind,
             )
     ) {
         is Refinement.Refined -> CallbackBindingPreparation.DependencyContract(result.value)
@@ -146,11 +152,20 @@ private fun org.jetbrains.kotlin.analysis.api.KaSession.binaryContract(
             ?: return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
     if (parameter.returnType !is KaFunctionType)
         return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+    val effects =
+        symbol.contractEffects
+            .filterIsInstance<KaContractCallsInPlaceContractEffectDeclaration>()
+            .filter { it.valueParameterReference.symbol == parameter }
+            .map { it.invocationKind }
     val candidate =
-        when {
-            symbol.exactlyOnce(parameter) -> NativeDependencyCandidate.CallsInPlace
-            symbol.isLazyInitializer(parameter) -> NativeDependencyCandidate.LazyInitializer
-            else -> return Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_CONTRACT_EFFECT_UNPROVEN)
+        if (effects.isEmpty()) {
+            if (symbol.isLazyInitializer(parameter)) NativeDependencyCandidate.LazyInitializer
+            else return Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_CONTRACT_EFFECT_UNPROVEN)
+        } else {
+            when (val admitted = admitDeclaredCallbackInvocationKind(effects)) {
+                is Refinement.Refined -> NativeDependencyCandidate.CallsInPlace(admitted.value)
+                is Refinement.Rejected -> return admitted
+            }
         }
     val position =
         when (val parsed = ValueArgumentPosition.parse(symbol.valueParameters.indexOf(parameter))) {
@@ -183,7 +198,7 @@ private fun org.jetbrains.kotlin.analysis.api.KaSession.loadBinaryContract(
             ?: return Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_TARGET_UNAVAILABLE)
     val effect =
         when (candidate) {
-            NativeDependencyCandidate.CallsInPlace -> NativeDependencyEffect.CallsInPlace
+            is NativeDependencyCandidate.CallsInPlace -> NativeDependencyEffect.CallsInPlace(candidate.kind)
             NativeDependencyCandidate.LazyInitializer ->
                 when (val read = readKotlinLazyBinaryEvidence(context, file, digest)) {
                     is Refinement.Refined -> NativeDependencyEffect.DeferredLazy(read.value)
@@ -203,16 +218,6 @@ private fun KaNamedFunctionSymbol.isLazyInitializer(
     if (typeParameters.size != 1 || valueParameters.size !in 1..2) return false
     if (valueParameters.last() != parameter || parameter.name.asString() != "initializer") return false
     return (returnType as? KaClassType)?.classId?.asSingleFqName()?.asString() == "kotlin.Lazy"
-}
-
-private fun KaNamedFunctionSymbol.exactlyOnce(
-    parameter: org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
-): Boolean {
-    val effects =
-        contractEffects.filterIsInstance<KaContractCallsInPlaceContractEffectDeclaration>().filter {
-            it.valueParameterReference.symbol == parameter
-        }
-    return effects.size == 1 && effects.single().invocationKind == KaContractInvocationKind.EXACTLY_ONCE
 }
 
 internal fun com.intellij.openapi.vfs.VirtualFile.contractClassDigest():
@@ -271,14 +276,15 @@ private data class NativeDependencyContract(
 )
 
 private sealed interface NativeDependencyEffect {
-    data object CallsInPlace : NativeDependencyEffect
+    data class CallsInPlace(val kind: CallbackDependencyInvocationKind) : NativeDependencyEffect
 
     data class DeferredLazy(val binary: KotlinLazyBinaryEvidence) : NativeDependencyEffect
 }
 
 private const val MAX_CONTRACT_CLASS_BYTES = 1_048_576L
 
-private enum class NativeDependencyCandidate {
-    CallsInPlace,
-    LazyInitializer,
+private sealed interface NativeDependencyCandidate {
+    data class CallsInPlace(val kind: CallbackDependencyInvocationKind) : NativeDependencyCandidate
+
+    data object LazyInitializer : NativeDependencyCandidate
 }

@@ -200,6 +200,10 @@ private fun QueryCallbackBindingDocument.DeferredDependency.admitDeferredInvocat
     supply: QueryCallbackBodySupplyDocument.Invocation,
     basis: ImpactSemanticBasisDocument,
 ): Refinement<Unit, QueryCallbackDocumentFailure> {
+    when (val admitted = this.admitExecution()) {
+        is Refinement.Refined -> Unit
+        is Refinement.Rejected -> return admitted
+    }
     if (!this.owner.validDeclaration()) return Refinement.Rejected(QueryCallbackDocumentFailure.OWNER_BINDING_MISMATCH)
     val owner = this.owner.declaration
     return if (this.basis != basis || !supply.occurrence.sameSite(this.occurrence) || !owner.contains(this.occurrence))

@@ -1,15 +1,26 @@
 package io.github.amichne.kast.query.protocol
 
+import io.github.amichne.kast.protocol.contract.QueryCallbackDependencyInvocationKindDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackExclusionReasonDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationScanDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackNamedUnavailableCauseDocument
+import io.github.amichne.kast.relation.contract.CallbackDependencyInvocationKind
 import io.github.amichne.kast.relation.contract.CallbackExclusionReason
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowFailure
 import io.github.amichne.kast.relation.contract.CallbackInvocationScan
 import io.github.amichne.kast.relation.contract.CallbackNamedCallUnavailableCause
+
+internal fun CallbackDependencyInvocationKind.protocolCallbackDocument():
+    QueryCallbackDependencyInvocationKindDocument =
+    when (this) {
+        CallbackDependencyInvocationKind.EXACTLY_ONCE -> QueryCallbackDependencyInvocationKindDocument.EXACTLY_ONCE
+        CallbackDependencyInvocationKind.AT_MOST_ONCE -> QueryCallbackDependencyInvocationKindDocument.AT_MOST_ONCE
+        CallbackDependencyInvocationKind.AT_LEAST_ONCE -> QueryCallbackDependencyInvocationKindDocument.AT_LEAST_ONCE
+        CallbackDependencyInvocationKind.UNKNOWN -> QueryCallbackDependencyInvocationKindDocument.UNKNOWN
+    }
 
 internal fun CallbackNamedCallUnavailableCause.protocolCallbackDocument(): QueryCallbackNamedUnavailableCauseDocument =
     when (this) {

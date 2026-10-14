@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest" tests="20" skipped="0" failures="0" errors="0" timestamp="2026-10-14T01:44:18.905Z" hostname="Austins-MacBook-Pro.local" time="182.62">
+  <properties/>
+  <testcase name="testOtherFormalEffectDoesNotAcquireTheDeclaredEffect" classname="io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest" time="34.77"/>
+  <testcase name="testSameNameStringOverloadDoesNotAcquireTheIntContract" classname="io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest" time="20.31"/>
+  <testcase name="testAtLeastOnceAnonymousFunction" classname="io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest" time="22.028"/>
+  <testcase name="testUnknownAnonymousFunction" classname="io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest" time="16.925"/>
+  <testcase name="testExactlyOnceAnonymousFunction" classname="io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest" time="9.528"/>
+  <testcase name="testUnknownLambdaFunction" classname="io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest" time="9.673"/>
+  <testcase name="testAtLeastOnceLambdaFunction" classname="io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest" time="12.136"/>
+  <testcase name="testAtMostOnceLambdaConstructor" classname="io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest" time="8.066"/>
+  <testcase name="testAtMostOnceLambdaFunction" classname="io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest" time="4.356"/>
+  <testcase name="testAtMostOnceAnonymousConstructor" classname="io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest" time="4.137"/>
+  <testcase name="testExactlyOnceAnonymousConstructor" classname="io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest" time="3.85"/>
+  <testcase name="testAbsentEffectDoesNotAcquireUnknown" classname="io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest" time="3.882"/>
+  <testcase name="testAtMostOnceAnonymousFunction" classname="io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest" time="3.761"/>
+  <testcase name="testUnknownAnonymousConstructor" classname="io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest" time="3.838"/>
+  <testcase name="testAtLeastOnceAnonymousConstructor" classname="io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest" time="3.837"/>
+  <testcase name="testAtLeastOnceLambdaConstructor" classname="io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest" time="3.668"/>
+  <testcase name="testAllAuthoredInputsCompileWithThePinnedCompiler" classname="io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest" time="6.413"/>
+  <testcase name="testUnknownLambdaConstructor" classname="io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest" time="3.697"/>
+  <testcase name="testExactlyOnceLambdaConstructor" classname="io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest" time="3.67"/>
+  <testcase name="testExactlyOnceLambdaFunction" classname="io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest" time="4.032"/>
+  <system-out><![CDATA[R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 case=atLeastOnceAnonymousFunction effect=AT_LEAST_ONCE classSha256=56d3b4c2555efd487088dda3fbfb689611e9c5d1c16066e4c38f14d92ed6222e
+R1 case=atLeastOnceAnonymousFunction obligations=[]
+R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 case=unknownAnonymousFunction effect=UNKNOWN classSha256=56d3b4c2555efd487088dda3fbfb689611e9c5d1c16066e4c38f14d92ed6222e
+R1 case=unknownAnonymousFunction obligations=[]
+R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 case=exactlyOnceAnonymousFunction effect=EXACTLY_ONCE classSha256=56d3b4c2555efd487088dda3fbfb689611e9c5d1c16066e4c38f14d92ed6222e
+R1 case=exactlyOnceAnonymousFunction obligations=[]
+R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 case=unknownLambdaFunction effect=UNKNOWN classSha256=56d3b4c2555efd487088dda3fbfb689611e9c5d1c16066e4c38f14d92ed6222e
+R1 case=unknownLambdaFunction obligations=[]
+R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 case=atLeastOnceLambdaFunction effect=AT_LEAST_ONCE classSha256=56d3b4c2555efd487088dda3fbfb689611e9c5d1c16066e4c38f14d92ed6222e
+R1 case=atLeastOnceLambdaFunction obligations=[]
+R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 case=atMostOnceLambdaConstructor effect=AT_MOST_ONCE classSha256=56d3b4c2555efd487088dda3fbfb689611e9c5d1c16066e4c38f14d92ed6222e
+R1 case=atMostOnceLambdaConstructor obligations=[]
+R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 case=atMostOnceLambdaFunction effect=AT_MOST_ONCE classSha256=56d3b4c2555efd487088dda3fbfb689611e9c5d1c16066e4c38f14d92ed6222e
+R1 case=atMostOnceLambdaFunction obligations=[]
+R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 case=atMostOnceAnonymousConstructor effect=AT_MOST_ONCE classSha256=56d3b4c2555efd487088dda3fbfb689611e9c5d1c16066e4c38f14d92ed6222e
+R1 case=atMostOnceAnonymousConstructor obligations=[]
+R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 case=exactlyOnceAnonymousConstructor effect=EXACTLY_ONCE classSha256=56d3b4c2555efd487088dda3fbfb689611e9c5d1c16066e4c38f14d92ed6222e
+R1 case=exactlyOnceAnonymousConstructor obligations=[]
+R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 case=atMostOnceAnonymousFunction effect=AT_MOST_ONCE classSha256=56d3b4c2555efd487088dda3fbfb689611e9c5d1c16066e4c38f14d92ed6222e
+R1 case=atMostOnceAnonymousFunction obligations=[]
+R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 case=unknownAnonymousConstructor effect=UNKNOWN classSha256=56d3b4c2555efd487088dda3fbfb689611e9c5d1c16066e4c38f14d92ed6222e
+R1 case=unknownAnonymousConstructor obligations=[]
+R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 case=atLeastOnceAnonymousConstructor effect=AT_LEAST_ONCE classSha256=56d3b4c2555efd487088dda3fbfb689611e9c5d1c16066e4c38f14d92ed6222e
+R1 case=atLeastOnceAnonymousConstructor obligations=[]
+R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 case=atLeastOnceLambdaConstructor effect=AT_LEAST_ONCE classSha256=56d3b4c2555efd487088dda3fbfb689611e9c5d1c16066e4c38f14d92ed6222e
+R1 case=atLeastOnceLambdaConstructor obligations=[]
+R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 case=unknownLambdaConstructor effect=UNKNOWN classSha256=56d3b4c2555efd487088dda3fbfb689611e9c5d1c16066e4c38f14d92ed6222e
+R1 case=unknownLambdaConstructor obligations=[]
+R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 case=exactlyOnceLambdaConstructor effect=EXACTLY_ONCE classSha256=56d3b4c2555efd487088dda3fbfb689611e9c5d1c16066e4c38f14d92ed6222e
+R1 case=exactlyOnceLambdaConstructor obligations=[]
+R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 case=exactlyOnceLambdaFunction effect=EXACTLY_ONCE classSha256=56d3b4c2555efd487088dda3fbfb689611e9c5d1c16066e4c38f14d92ed6222e
+R1 case=exactlyOnceLambdaFunction obligations=[]
+]]></system-out>
+  <system-err><![CDATA[[   3093]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   3093]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+[   9212]   WARN - #c.i.w.i.i.WorkspaceModelMessageDeliveryListener - Long WSM event processing. Topic=WorkspaceModelChangeListener, offender=class com.intellij.workspaceModel.ide.impl.legacyBridge.module.LegacyProjectModelListenersBridge, message=changed, time=255ms
+]]></system-err>
+</testsuite>

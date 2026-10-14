@@ -16,7 +16,11 @@ class QueryCallbackDeferredDependencyWireTest {
         fixture.assertAdmitted(wire)
         val raw = wireJson.encodeToJsonElement(QueryCallbackObservationWireDocument.serializer(), wire).jsonObject
         val binding = raw.getValue("flow").jsonObject.getValue("binding").jsonObject
-        assertEquals(setOf("type", "basis", "occurrence", "owner", "target", "position", "binary"), binding.keys)
+        assertEquals(
+            setOf("type", "basis", "occurrence", "owner", "target", "position", "binary", "execution"),
+            binding.keys,
+        )
+        assertEquals("DECLARATION", binding.getValue("execution").jsonObject.getValue("type").jsonPrimitive.content)
         assertEquals("DEFERRED_DEPENDENCY", binding.getValue("type").jsonPrimitive.content)
         val binary = binding.getValue("binary").jsonObject
         assertEquals(
@@ -47,7 +51,7 @@ class QueryCallbackDeferredDependencyWireTest {
             )) fixture.assertRejected(wire.copy(flow = wrong))
     }
 
-    private fun observation(): QueryCallbackObservationWireDocument {
+    internal fun observation(): QueryCallbackObservationWireDocument {
         val wire = fixture.base()
         val flow = fixture.flow(wire)
         val initial = flow.binding as QueryCallbackBindingWireDocument.Bound

@@ -1,0 +1,275 @@
+Calculating task graph as no cached configuration is available for tasks: verifyKotlinSemanticInventory verifyKotlinSemanticCoverage
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :change:apply:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :traversal:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :diagnostic:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :change:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :change:recovery:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :change:verify:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :change:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :evidence:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:intellij-read:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :change:plan:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :diagnostic:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :change:protocol:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :evidence:sqlite:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:registry:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :query:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :diagnostic:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :query:protocol:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:wire:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :query:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :source:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :topology:build:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :runtime:hosted:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :topology:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :traversal:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :topology:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:compileJava NO-SOURCE
+> Task :kernel:processResources NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :protocol:registry:processResources NO-SOURCE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :protocol:contract:processResources UP-TO-DATE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :protocol:wire:processResources NO-SOURCE
+> Task :change:intellij:processResources NO-SOURCE
+> Task :kernel:jar UP-TO-DATE
+> Task :change:apply:processResources NO-SOURCE
+> Task :change:contract:processResources NO-SOURCE
+> Task :change:plan:processResources NO-SOURCE
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :change:recovery:processResources NO-SOURCE
+> Task :change:protocol:processResources NO-SOURCE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :change:verify:processResources NO-SOURCE
+> Task :diagnostic:contract:processResources NO-SOURCE
+> Task :diagnostic:intellij:processResources NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :diagnostic:service:processResources NO-SOURCE
+> Task :evidence:contract:processResources NO-SOURCE
+> Task :evidence:sqlite:processResources NO-SOURCE
+> Task :query:contract:processResources NO-SOURCE
+> Task :query:protocol:processResources NO-SOURCE
+> Task :workspace:contract:jar UP-TO-DATE
+> Task :query:service:processResources NO-SOURCE
+> Task :diagnostic:contract:compileKotlin UP-TO-DATE
+> Task :symbol:intellij:extractSymbolIdeaDistribution UP-TO-DATE
+> Task :relation:contract:processResources NO-SOURCE
+> Task :relation:intellij:processResources NO-SOURCE
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :relation:service:processResources NO-SOURCE
+> Task :diagnostic:contract:compileJava NO-SOURCE
+> Task :symbol:contract:compileJava NO-SOURCE
+> Task :source:contract:processResources NO-SOURCE
+> Task :evidence:contract:compileKotlin UP-TO-DATE
+> Task :runtime:hosted:processNativeTestResources UP-TO-DATE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :evidence:contract:compileJava NO-SOURCE
+> Task :workspace:intellij-read:extractWorkspaceReadIdeaDistribution UP-TO-DATE
+> Task :symbol:service:compileKotlin UP-TO-DATE
+> Task :diagnostic:service:compileKotlin UP-TO-DATE
+> Task :relation:contract:compileKotlin UP-TO-DATE
+> Task :diagnostic:service:compileJava NO-SOURCE
+> Task :symbol:service:compileJava NO-SOURCE
+> Task :protocol:contract:compileKotlin UP-TO-DATE
+> Task :relation:contract:compileJava NO-SOURCE
+> Task :diagnostic:contract:classes UP-TO-DATE
+> Task :topology:contract:compileKotlin UP-TO-DATE
+> Task :source:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :topology:contract:compileJava NO-SOURCE
+> Task :protocol:contract:compileJava NO-SOURCE
+> Task :source:contract:compileJava NO-SOURCE
+> Task :diagnostic:contract:jar UP-TO-DATE
+> Task :relation:service:compileKotlin UP-TO-DATE
+> Task :traversal:contract:compileKotlin UP-TO-DATE
+> Task :traversal:contract:compileJava NO-SOURCE
+> Task :source:service:compileKotlin UP-TO-DATE
+> Task :relation:service:compileJava NO-SOURCE
+> Task :source:service:compileJava NO-SOURCE
+> Task :protocol:registry:compileKotlin UP-TO-DATE
+> Task :protocol:registry:compileJava NO-SOURCE
+> Task :topology:build:compileKotlin UP-TO-DATE
+> Task :change:contract:compileKotlin UP-TO-DATE
+> Task :traversal:service:compileKotlin UP-TO-DATE
+> Task :topology:build:compileJava NO-SOURCE
+> Task :change:contract:compileJava NO-SOURCE
+> Task :query:contract:compileKotlin UP-TO-DATE
+> Task :query:contract:compileJava NO-SOURCE
+> Task :protocol:wire:compileKotlin UP-TO-DATE
+> Task :change:recovery:compileKotlin UP-TO-DATE
+> Task :change:plan:compileKotlin UP-TO-DATE
+> Task :protocol:wire:compileJava NO-SOURCE
+> Task :change:recovery:compileJava NO-SOURCE
+> Task :change:plan:compileJava NO-SOURCE
+> Task :traversal:service:compileJava NO-SOURCE
+> Task :protocol:contract:classes UP-TO-DATE
+> Task :change:protocol:compileKotlin UP-TO-DATE
+> Task :protocol:contract:jar UP-TO-DATE
+> Task :change:protocol:compileJava NO-SOURCE
+> Task :protocol:wire:classes UP-TO-DATE
+> Task :protocol:registry:classes UP-TO-DATE
+> Task :change:contract:classes UP-TO-DATE
+> Task :query:protocol:compileKotlin UP-TO-DATE
+> Task :change:contract:jar UP-TO-DATE
+> Task :query:protocol:compileJava NO-SOURCE
+> Task :change:plan:classes UP-TO-DATE
+> Task :protocol:registry:jar UP-TO-DATE
+> Task :change:protocol:classes UP-TO-DATE
+> Task :protocol:wire:generateHostedContract UP-TO-DATE
+> Task :change:plan:jar UP-TO-DATE
+> Task :change:recovery:classes UP-TO-DATE
+> Task :runtime:hosted:processResources UP-TO-DATE
+> Task :change:protocol:jar UP-TO-DATE
+> Task :diagnostic:service:classes UP-TO-DATE
+> Task :evidence:contract:classes UP-TO-DATE
+> Task :change:apply:compileKotlin UP-TO-DATE
+> Task :change:recovery:jar UP-TO-DATE
+> Task :change:apply:compileJava NO-SOURCE
+> Task :diagnostic:service:jar UP-TO-DATE
+> Task :change:apply:classes UP-TO-DATE
+> Task :evidence:contract:jar UP-TO-DATE
+> Task :protocol:wire:jar UP-TO-DATE
+> Task :query:service:compileKotlin UP-TO-DATE
+> Task :query:contract:classes UP-TO-DATE
+> Task :query:protocol:classes UP-TO-DATE
+> Task :change:apply:jar UP-TO-DATE
+> Task :query:service:compileJava NO-SOURCE
+> Task :query:service:classes UP-TO-DATE
+> Task :relation:contract:classes UP-TO-DATE
+> Task :query:contract:jar UP-TO-DATE
+> Task :relation:service:classes UP-TO-DATE
+> Task :relation:contract:jar UP-TO-DATE
+> Task :source:contract:classes UP-TO-DATE
+> Task :query:service:jar UP-TO-DATE
+> Task :query:protocol:jar UP-TO-DATE
+> Task :source:intellij:processResources NO-SOURCE
+> Task :relation:service:jar UP-TO-DATE
+> Task :source:service:processResources NO-SOURCE
+> Task :symbol:intellij:processResources NO-SOURCE
+> Task :symbol:service:processResources NO-SOURCE
+> Task :symbol:service:classes UP-TO-DATE
+> Task :source:contract:jar UP-TO-DATE
+> Task :source:service:classes UP-TO-DATE
+> Task :topology:build:processResources NO-SOURCE
+> Task :topology:build:classes UP-TO-DATE
+> Task :topology:contract:processResources NO-SOURCE
+> Task :topology:contract:classes UP-TO-DATE
+> Task :topology:build:jar UP-TO-DATE
+> Task :symbol:service:jar UP-TO-DATE
+> Task :source:service:jar UP-TO-DATE
+> Task :traversal:contract:processResources NO-SOURCE
+> Task :traversal:contract:classes UP-TO-DATE
+> Task :topology:contract:jar UP-TO-DATE
+> Task :topology:intellij:processResources NO-SOURCE
+> Task :change:verify:compileKotlin UP-TO-DATE
+> Task :traversal:service:processResources NO-SOURCE
+> Task :traversal:service:classes UP-TO-DATE
+> Task :workspace:intellij-read:processResources NO-SOURCE
+> Task :relation:intellij:processNativeTestResources UP-TO-DATE
+> Task :traversal:contract:jar UP-TO-DATE
+> Task :change:verify:compileJava NO-SOURCE
+> Task :change:verify:classes UP-TO-DATE
+> Task :traversal:service:jar UP-TO-DATE
+> Task :change:verify:jar UP-TO-DATE
+> Task :workspace:intellij-read:compileKotlin UP-TO-DATE
+> Task :workspace:intellij-read:compileJava NO-SOURCE
+> Task :workspace:intellij-read:classes UP-TO-DATE
+> Task :evidence:sqlite:compileKotlin UP-TO-DATE
+> Task :workspace:intellij-read:jar UP-TO-DATE
+> Task :evidence:sqlite:compileJava NO-SOURCE
+> Task :evidence:sqlite:classes UP-TO-DATE
+> Task :evidence:sqlite:jar UP-TO-DATE
+> Task :symbol:intellij:compileKotlin UP-TO-DATE
+> Task :source:intellij:compileKotlin UP-TO-DATE
+> Task :symbol:intellij:compileJava NO-SOURCE
+> Task :symbol:intellij:classes UP-TO-DATE
+> Task :source:intellij:compileJava NO-SOURCE
+> Task :source:intellij:classes UP-TO-DATE
+> Task :symbol:intellij:jar UP-TO-DATE
+> Task :source:intellij:jar UP-TO-DATE
+> Task :change:intellij:compileKotlin UP-TO-DATE
+> Task :change:intellij:compileJava NO-SOURCE
+> Task :change:intellij:classes UP-TO-DATE
+> Task :change:intellij:jar UP-TO-DATE
+> Task :relation:intellij:extractRelationKotlinPlugin UP-TO-DATE
+> Task :diagnostic:intellij:extractDiagnosticKotlinPlugin UP-TO-DATE
+> Task :diagnostic:intellij:compileKotlin UP-TO-DATE
+> Task :diagnostic:intellij:compileJava NO-SOURCE
+> Task :diagnostic:intellij:classes UP-TO-DATE
+> Task :diagnostic:intellij:jar UP-TO-DATE
+> Task :topology:intellij:extractTopologyKotlinPlugin UP-TO-DATE
+> Task :relation:intellij:extractNativeTestIdea UP-TO-DATE
+> Task :topology:intellij:compileKotlin UP-TO-DATE
+> Task :topology:intellij:compileJava NO-SOURCE
+> Task :topology:intellij:classes UP-TO-DATE
+> Task :topology:intellij:jar UP-TO-DATE
+> Task :relation:intellij:compileKotlin
+> Task :relation:intellij:compileJava NO-SOURCE
+> Task :relation:intellij:classes UP-TO-DATE
+> Task :runtime:hosted:compileKotlin UP-TO-DATE
+> Task :runtime:hosted:compileJava NO-SOURCE
+> Task :runtime:hosted:classes UP-TO-DATE
+> Task :runtime:hosted:jar UP-TO-DATE
+> Task :relation:intellij:jar
+
+> Task :relation:intellij:compileNativeTestKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeDependencyCallbackTest.kt:54:20 'static fun <E : Throwable!> run(p0: ThrowableRunnable<E!>): Unit' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeDependencyCallbackTest.kt:65:20 'static fun <E : Throwable!> run(p0: ThrowableRunnable<E!>): Unit' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeDependencyCallbackTest.kt:105:20 'static fun <E : Throwable!> run(p0: ThrowableRunnable<E!>): Unit' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeDependencyCallbackTest.kt:119:24 'static fun <E : Throwable!> run(p0: ThrowableRunnable<E!>): Unit' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeDependencyCallbackTest.kt:165:20 'static fun <E : Throwable!> run(p0: ThrowableRunnable<E!>): Unit' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeDependencyCallbackTest.kt:188:20 'static fun <E : Throwable!> run(p0: ThrowableRunnable<E!>): Unit' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeDependencyCallbackTest.kt:212:20 'static fun <E : Throwable!> run(p0: ThrowableRunnable<E!>): Unit' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeDependencyCallbackTest.kt:262:20 'static fun <E : Throwable!> run(p0: ThrowableRunnable<E!>): Unit' is deprecated. Deprecated in Java.
+
+> Task :relation:intellij:compileNativeTestJava NO-SOURCE
+> Task :relation:intellij:nativeTestClasses UP-TO-DATE
+> Task :runtime:hosted:compileNativeTestKotlin
+> Task :runtime:hosted:compileNativeTestJava NO-SOURCE
+> Task :runtime:hosted:nativeTestClasses UP-TO-DATE
+> Task :relation:intellij:detektNativeTest
+> Task :runtime:hosted:detektNativeTest
+> Task :relation:intellij:semanticCoverageFixtureTest
+> Task :runtime:hosted:semanticCoverageFixtureTest
+
+> Task :verifyKotlinSemanticInventory
+{"status":"PASS","gate":"INVENTORY_ACCOUNTING","upstream_commit":"7342188118e8c24e12b5447f4430730ccc9c1989","element_count":164,"fixture_source_count":1332,"fixture_artifact_count":24,"counts":[{"disposition":"implemented","count":0},{"disposition":"traversal-only","count":1},{"disposition":"unsupported","count":163},{"disposition":"irrelevant","count":0}],"results":[],"issues":[],"correspondence":"ELEMENT_POPULATION_ONLY","distribution":{"type":"LIVE_ELEMENT_IDENTITIES","plugin_sha256":"fb6becc3f5c709a01ee2cb32c834212935e94bbf5b01efb6745b7c0f62831fce","compiler_common_sha256":"5b364960e81389e2576b3156c04f34d5ad0f14845236102940546f3e0794cb73","plugin_version":"262.9437.185-IJ","adapter_compiler_version":"2.4.20-ij262-34","elements":["FirAnnotation","FirAnnotationArgumentMapping","FirAnnotationCall","FirAnnotationContainer","FirAnonymousFunction","FirAnonymousFunctionExpression","FirAnonymousInitializer","FirAnonymousObject","FirAnonymousObjectExpression","FirArgumentList","FirAugmentedAssignment","FirBackingField","FirBackingFieldReference","FirBlock","FirBooleanOperatorExpression","FirBreakExpression","FirCall","FirCallableDeclaration","FirCallableReferenceAccess","FirCatch","FirCheckNotNullCall","FirCheckedSafeCallSubject","FirClass","FirClassLikeDeclaration","FirClassReferenceExpression","FirCodeFragment","FirCollectionLiteral","FirComparisonExpression","FirComponentCall","FirConstructedClassTypeParameterRef","FirConstructor","FirContextArgumentListOwner","FirContinueExpression","FirContractDescription","FirContractDescriptionOwner","FirContractElementDeclaration","FirControlFlowGraphOwner","FirControlFlowGraphReference","FirDanglingModifierList","FirDeclaration","FirDeclarationStatus","FirDelegateFieldReference","FirDelegatedConstructorCall","FirDesugaredAssignmentValueReferenceExpression","FirDiagnosticHolder","FirDoWhileLoop","FirDynamicTypeRef","FirEffectDeclaration","FirElement","FirElementWithResolveState","FirElvisExpression","FirEnumEntry","FirEnumEntryDeserializedAccessExpression","FirEqualityOperatorCall","FirErrorAnnotationCall","FirErrorContractDescription","FirErrorExpression","FirErrorFunction","FirErrorLoop","FirErrorNamedReference","FirErrorPrimaryConstructor","FirErrorProperty","FirErrorResolvedQualifier","FirErrorSuperReference","FirErrorTypeRef","FirExpression","FirField","FirFile","FirFunction","FirFunctionCall","FirFunctionTypeConversionExpression","FirFunctionTypeParameter","FirFunctionTypeRef","FirGetClassCall","FirImplicitInvokeCall","FirImplicitTypeRef","FirImport","FirInaccessibleReceiverExpression","FirIncrementDecrementExpression","FirIndexedAccessAugmentedAssignment","FirIntegerLiteralOperatorCall","FirIntersectionTypeRef","FirJump","FirLabel","FirLazyBlock","FirLazyContractDescription","FirLazyExpression","FirLegacyRawContractDescription","FirLiteralExpression","FirLoop","FirLoopJump","FirMemberDeclaration","FirMultiDelegatedConstructorCall","FirNamedArgumentExpression","FirNamedFunction","FirNamedReference","FirNamedReferenceWithCandidateBase","FirOuterClassTypeParameterRef","FirPackageDirective","FirPlaceholderProjection","FirProperty","FirPropertyAccessExpression","FirPropertyAccessor","FirPropertyWithExplicitBackingFieldResolvedNamedReference","FirQualifiedAccessExpression","FirQualifiedErrorAccessExpression","FirQualifierWithContextSensitiveAlternative","FirRawContractDescription","FirReceiverParameter","FirReference","FirRegularClass","FirReplDeclarationReference","FirReplExpressionReference","FirReplPropertyDelegate","FirReplPropertyInitializer","FirReplSnippet","FirResolvable","FirResolvedCallableReference","FirResolvedContractDescription","FirResolvedDeclarationStatus","FirResolvedErrorReference","FirResolvedImport","FirResolvedNamedReference","FirResolvedQualifier","FirResolvedReifiedParameterReference","FirResolvedTypeRef","FirReturnExpression","FirSafeCallExpression","FirScript","FirScriptReceiverParameter","FirSmartCastExpression","FirSpreadArgumentExpression","FirStarProjection","FirStatement","FirStringConcatenationCall","FirSuperReceiverExpression","FirSuperReference","FirTargetElement","FirThisReceiverExpression","FirThisReference","FirThrowExpression","FirTryExpression","FirTypeAlias","FirTypeOperatorCall","FirTypeParameter","FirTypeParameterRef","FirTypeParameterRefsOwner","FirTypeParametersOwner","FirTypeProjection","FirTypeProjectionWithVariance","FirTypeRef","FirUnresolvedTypeRef","FirUserTypeRef","FirValueParameter","FirVarargArgumentsExpression","FirVariable","FirVariableAssignment","FirWhenBranch","FirWhenExpression","FirWhenSubjectExpression","FirWhileLoop","FirWrappedArgumentExpression","FirWrappedDelegateExpression","FirWrappedExpression"]}}
+
+> Task :verifyKotlinSemanticCoverage
+{"status":"PASS","gate":"EXECUTION_POPULATION","upstream_commit":"","element_count":0,"fixture_source_count":0,"fixture_artifact_count":0,"counts":[],"results":[{"case_id":"R0-lazy-constructor-public","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeScopedCacheManagerTraceTest#testLazyConstructorCallersKeepThePropertySupplyAndOccurrence","status":"PASS","detail":""},{"case_id":"R0-native-testBuildRuntimeStdlibKeepsADeferredSupply","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testBuildRuntimeStdlibKeepsADeferredSupply","status":"PASS","detail":""},{"case_id":"R0-native-testChangedLazyImplementationRejectsWithItsModelOutcome","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testChangedLazyImplementationRejectsWithItsModelOutcome","status":"PASS","detail":""},{"case_id":"R0-native-testLazyExplicitLockKeepsADeferredSupply","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testLazyExplicitLockKeepsADeferredSupply","status":"PASS","detail":""},{"case_id":"R0-native-testLazyInitializerHasACompleteDeferredSupplyWithoutAnImmediateInvocation","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testLazyInitializerHasACompleteDeferredSupplyWithoutAnImmediateInvocation","status":"PASS","detail":""},{"case_id":"R0-native-testLazyInitializerWithSources","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testLazyInitializerWithSources","status":"PASS","detail":""},{"case_id":"R0-native-testLazyNamedArgumentsKeepTheFormalPosition","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testLazyNamedArgumentsKeepTheFormalPosition","status":"PASS","detail":""},{"case_id":"R0-native-testLazyNoneModeKeepsADeferredSupply","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testLazyNoneModeKeepsADeferredSupply","status":"PASS","detail":""},{"case_id":"R0-native-testLazyPropertyKeepsItsInitializerOwner","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testLazyPropertyKeepsItsInitializerOwner","status":"PASS","detail":""},{"case_id":"R0-native-testLazyPublicationKeepsADeferredSupply","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testLazyPublicationKeepsADeferredSupply","status":"PASS","detail":""},{"case_id":"R0-native-testLazyShadowCannotBorrowTheDeferredModel","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testLazyShadowCannotBorrowTheDeferredModel","status":"PASS","detail":""},{"case_id":"R0-native-testMissingExactlyOnceEffectKeepsTheFirstFailedProof","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testMissingExactlyOnceEffectKeepsTheFirstFailedProof","status":"PASS","detail":""},{"case_id":"R0-native-testNamedArgumentsPreserveActualToFormalPosition","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testNamedArgumentsPreserveActualToFormalPosition","status":"PASS","detail":""},{"case_id":"R0-native-testOrdinaryLambdaWithAttachedSources","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testOrdinaryLambdaWithAttachedSources","status":"PASS","detail":""},{"case_id":"R0-native-testOrdinaryLambdaWithoutAttachedSources","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testOrdinaryLambdaWithoutAttachedSources","status":"PASS","detail":""},{"case_id":"R0-native-testReceiverLambdaGraphPreservesExactOccurrenceAndSourceNodes","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testReceiverLambdaGraphPreservesExactOccurrenceAndSourceNodes","status":"PASS","detail":""},{"case_id":"R0-native-testReceiverLambdaWithAttachedSources","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testReceiverLambdaWithAttachedSources","status":"PASS","detail":""},{"case_id":"R0-native-testReceiverLambdaWithoutAttachedSources","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testReceiverLambdaWithoutAttachedSources","status":"PASS","detail":""},{"case_id":"R0-native-testSameNameWithoutInvocationCannotBorrowTheLibraryEffect","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDependencyCallbackTest#testSameNameWithoutInvocationCannotBorrowTheLibraryEffect","status":"PASS","detail":""},{"case_id":"R0-scoped-trace-and-empty-public","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeScopedCacheManagerTraceTest#testScopedTraceAndEmptyReferenceControl","status":"PASS","detail":""},{"case_id":"R1-adapter-control-testAbsentEffectDoesNotAcquireUnknown","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testAbsentEffectDoesNotAcquireUnknown","status":"PASS","detail":""},{"case_id":"R1-adapter-control-testAllAuthoredInputsCompileWithThePinnedCompiler","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testAllAuthoredInputsCompileWithThePinnedCompiler","status":"PASS","detail":""},{"case_id":"R1-adapter-control-testOtherFormalEffectDoesNotAcquireTheDeclaredEffect","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testOtherFormalEffectDoesNotAcquireTheDeclaredEffect","status":"PASS","detail":""},{"case_id":"R1-adapter-control-testSameNameStringOverloadDoesNotAcquireTheIntContract","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testSameNameStringOverloadDoesNotAcquireTheIntContract","status":"PASS","detail":""},{"case_id":"R1-independent-oracle-controls","test_result_id":"io.github.amichne.kast.runtime.hosted.DeclaredEffectTraceOracleTest#testIndependentPredicateRejectsNegativeControls","status":"PASS","detail":""},{"case_id":"R2-oracle-testAcceptsTheAuthoredCompletePopulation","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testAcceptsTheAuthoredCompletePopulation","status":"PASS","detail":""},{"case_id":"R2-oracle-testRejectsAMissingOuterInvocationRoute","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAMissingOuterInvocationRoute","status":"PASS","detail":""},{"case_id":"R2-oracle-testRejectsASameNameTargetFromAnotherPackage","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsASameNameTargetFromAnotherPackage","status":"PASS","detail":""},{"case_id":"R2-oracle-testRejectsAnInventedExactlyOnceEffect","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAnInventedExactlyOnceEffect","status":"PASS","detail":""},{"case_id":"R2-oracle-testRejectsAnInventedNamedCaller","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAnInventedNamedCaller","status":"PASS","detail":""},{"case_id":"R2-oracle-testRejectsAnOccurrenceOutsideTheExecutionOwner","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAnOccurrenceOutsideTheExecutionOwner","status":"PASS","detail":""},{"case_id":"R2-oracle-testRejectsAnOmittedTargetOccurrence","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAnOmittedTargetOccurrence","status":"PASS","detail":""},{"case_id":"R2-oracle-testRejectsAnUnrelatedSupplier","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAnUnrelatedSupplier","status":"PASS","detail":""},{"case_id":"R2-oracle-testRejectsAnUnresolvedObligation","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAnUnresolvedObligation","status":"PASS","detail":""},{"case_id":"R2-oracle-testRejectsAnotherWorkspaceGeneration","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsAnotherWorkspaceGeneration","status":"PASS","detail":""},{"case_id":"R2-oracle-testRejectsQualifiedCompletion","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersOracleTest#testRejectsQualifiedCompletion","status":"PASS","detail":""},{"case_id":"R2_constructor_body_constructor","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testConstructorBodyConstructor","status":"PASS","detail":""},{"case_id":"R2_constructor_body_function","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testConstructorBodyFunction","status":"PASS","detail":""},{"case_id":"R2_depth_two_anonymous_constructor","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testDepthTwoAnonymousConstructor","status":"PASS","detail":""},{"case_id":"R2_depth_two_anonymous_function","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testDepthTwoAnonymousFunction","status":"PASS","detail":""},{"case_id":"R2_depth_two_lambda_constructor","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testDepthTwoLambdaConstructor","status":"PASS","detail":""},{"case_id":"R2_depth_two_lambda_function","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testDepthTwoLambdaFunction","status":"PASS","detail":""},{"case_id":"R2_direct_anonymous_constructor","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testDirectAnonymousConstructor","status":"PASS","detail":""},{"case_id":"R2_direct_anonymous_function","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testDirectAnonymousFunction","status":"PASS","detail":""},{"case_id":"R2_direct_lambda_constructor","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testDirectLambdaConstructor","status":"PASS","detail":""},{"case_id":"R2_direct_lambda_function","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testDirectLambdaFunction","status":"PASS","detail":""},{"case_id":"R2_getter_constructor","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testGetterConstructor","status":"PASS","detail":""},{"case_id":"R2_getter_function","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testGetterFunction","status":"PASS","detail":""},{"case_id":"R2_init_block_constructor","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testInitBlockConstructor","status":"PASS","detail":""},{"case_id":"R2_init_block_function","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testInitBlockFunction","status":"PASS","detail":""},{"case_id":"R2_local_function_constructor","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testLocalFunctionConstructor","status":"PASS","detail":""},{"case_id":"R2_local_function_function","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testLocalFunctionFunction","status":"PASS","detail":""},{"case_id":"R2_local_property_constructor","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testLocalPropertyConstructor","status":"PASS","detail":""},{"case_id":"R2_local_property_function","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testLocalPropertyFunction","status":"PASS","detail":""},{"case_id":"R2_member_property_constructor","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testMemberPropertyConstructor","status":"PASS","detail":""},{"case_id":"R2_member_property_function","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testMemberPropertyFunction","status":"PASS","detail":""},{"case_id":"R2_named_function_constructor","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testNamedFunctionConstructor","status":"PASS","detail":""},{"case_id":"R2_named_function_function","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testNamedFunctionFunction","status":"PASS","detail":""},{"case_id":"R2_setter_constructor","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testSetterConstructor","status":"PASS","detail":""},{"case_id":"R2_setter_function","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testSetterFunction","status":"PASS","detail":""},{"case_id":"R2_top_property_constructor","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testTopPropertyConstructor","status":"PASS","detail":""},{"case_id":"R2_top_property_function","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testTopPropertyFunction","status":"PASS","detail":""},{"case_id":"R4-bare-reference-callers","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testBareConstructorReferenceHasNoCallerInvocation","status":"PASS","detail":""},{"case_id":"R4-bare-reference-references","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testBareConstructorReferenceKeepsTheReferenceOccurrence","status":"PASS","detail":""},{"case_id":"R4-uninvoked-outer","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeSemanticOwnersTraceTest#testAnUninvokedOuterLambdaCannotCompleteItsDeferredTrace","status":"PASS","detail":""},{"case_id":"r1-at_least_once-anonymous-constructor-adapter","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testAtLeastOnceAnonymousConstructor","status":"PASS","detail":""},{"case_id":"r1-at_least_once-anonymous-constructor-public","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testAtLeastOnceAnonymousConstructor","status":"PASS","detail":""},{"case_id":"r1-at_least_once-anonymous-function-adapter","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testAtLeastOnceAnonymousFunction","status":"PASS","detail":""},{"case_id":"r1-at_least_once-anonymous-function-public","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testAtLeastOnceAnonymousFunction","status":"PASS","detail":""},{"case_id":"r1-at_least_once-lambda-constructor-adapter","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testAtLeastOnceLambdaConstructor","status":"PASS","detail":""},{"case_id":"r1-at_least_once-lambda-constructor-public","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testAtLeastOnceLambdaConstructor","status":"PASS","detail":""},{"case_id":"r1-at_least_once-lambda-function-adapter","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testAtLeastOnceLambdaFunction","status":"PASS","detail":""},{"case_id":"r1-at_least_once-lambda-function-public","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testAtLeastOnceLambdaFunction","status":"PASS","detail":""},{"case_id":"r1-at_most_once-anonymous-constructor-adapter","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testAtMostOnceAnonymousConstructor","status":"PASS","detail":""},{"case_id":"r1-at_most_once-anonymous-constructor-public","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testAtMostOnceAnonymousConstructor","status":"PASS","detail":""},{"case_id":"r1-at_most_once-anonymous-function-adapter","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testAtMostOnceAnonymousFunction","status":"PASS","detail":""},{"case_id":"r1-at_most_once-anonymous-function-public","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testAtMostOnceAnonymousFunction","status":"PASS","detail":""},{"case_id":"r1-at_most_once-lambda-constructor-adapter","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testAtMostOnceLambdaConstructor","status":"PASS","detail":""},{"case_id":"r1-at_most_once-lambda-constructor-public","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testAtMostOnceLambdaConstructor","status":"PASS","detail":""},{"case_id":"r1-at_most_once-lambda-function-adapter","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testAtMostOnceLambdaFunction","status":"PASS","detail":""},{"case_id":"r1-at_most_once-lambda-function-public","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testAtMostOnceLambdaFunction","status":"PASS","detail":""},{"case_id":"r1-control-absent-public","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectRejectionTest#testAbsentEffectDoesNotAcquireUnknown","status":"PASS","detail":""},{"case_id":"r1-control-other-formal-public","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectRejectionTest#testOtherFormalEffectDoesNotAcquireTheDeclaredEffect","status":"PASS","detail":""},{"case_id":"r1-control-string-overload-public","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectRejectionTest#testSameNameStringOverloadDoesNotAcquireTheIntContract","status":"PASS","detail":""},{"case_id":"r1-exactly_once-anonymous-constructor-adapter","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testExactlyOnceAnonymousConstructor","status":"PASS","detail":""},{"case_id":"r1-exactly_once-anonymous-constructor-public","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testExactlyOnceAnonymousConstructor","status":"PASS","detail":""},{"case_id":"r1-exactly_once-anonymous-function-adapter","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testExactlyOnceAnonymousFunction","status":"PASS","detail":""},{"case_id":"r1-exactly_once-anonymous-function-public","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testExactlyOnceAnonymousFunction","status":"PASS","detail":""},{"case_id":"r1-exactly_once-lambda-constructor-adapter","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testExactlyOnceLambdaConstructor","status":"PASS","detail":""},{"case_id":"r1-exactly_once-lambda-constructor-public","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testExactlyOnceLambdaConstructor","status":"PASS","detail":""},{"case_id":"r1-exactly_once-lambda-function-adapter","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testExactlyOnceLambdaFunction","status":"PASS","detail":""},{"case_id":"r1-exactly_once-lambda-function-public","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testExactlyOnceLambdaFunction","status":"PASS","detail":""},{"case_id":"r1-unknown-anonymous-constructor-adapter","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testUnknownAnonymousConstructor","status":"PASS","detail":""},{"case_id":"r1-unknown-anonymous-constructor-public","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testUnknownAnonymousConstructor","status":"PASS","detail":""},{"case_id":"r1-unknown-anonymous-function-adapter","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testUnknownAnonymousFunction","status":"PASS","detail":""},{"case_id":"r1-unknown-anonymous-function-public","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testUnknownAnonymousFunction","status":"PASS","detail":""},{"case_id":"r1-unknown-lambda-constructor-adapter","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testUnknownLambdaConstructor","status":"PASS","detail":""},{"case_id":"r1-unknown-lambda-constructor-public","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testUnknownLambdaConstructor","status":"PASS","detail":""},{"case_id":"r1-unknown-lambda-function-adapter","test_result_id":"io.github.amichne.kast.relation.intellij.NativeDeclaredEffectCallbackTest#testUnknownLambdaFunction","status":"PASS","detail":""},{"case_id":"r1-unknown-lambda-function-public","test_result_id":"io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectTraceTest#testUnknownLambdaFunction","status":"PASS","detail":""}],"issues":[],"correspondence":"","distribution":{"type":"UNOBSERVED"}}
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/build/reports/kotlin-build/kast-build-2026-10-13-21-26-31-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 1m 34s
+101 actionable tasks: 10 executed, 91 up-to-date
+Configuration cache entry stored.

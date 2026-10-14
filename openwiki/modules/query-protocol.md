@@ -154,6 +154,8 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackObservationProjection.kt
   - id: openwiki-source-5dda452804594b5fecb6a416
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidenceRead.kt
+  - id: openwiki-source-dc23327b95c2272da395db8e
+    resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryDeferredSupplierProjection.kt
   - id: openwiki-source-c754dabd913ffc31ab2c0d99
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactPeerSelection.kt
   - id: openwiki-source-473a965ca24f2431cb51317a
@@ -208,10 +210,10 @@ sources:
     resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisition.kt
   - id: openwiki-source-614907c76c5e46269ec7d42b
     resource: repo://symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisitionBudgetTest.kt
-generated: { by: "codex", at: "2026-10-13T20:10:11.937Z" }
+generated: { by: "codex", at: "2026-10-14T01:57:02.037Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-13T20:10:11.937Z
+    at: 2026-10-14T01:57:02.037Z
 ---
 
 # Query protocol
@@ -447,5 +449,6 @@ These charges estimate quota use and do not measure JVM heap use.
 
 Deferred dependency projection keeps the source supplier declaration, exact formal position, compiler target, model, and six class digests.
 Its binding has no invocation-kind field or invented invocation record.
-Canonical retention includes the supplier signature and every binary digest.
+The execution projection preserves declaration, accessor, initializer, or ordered direct-invocation evidence.
+Canonical retention includes the supplier signature, execution proof, and every binary digest.
 The public document preserves the original SEMANTIC BASIS and source containment.

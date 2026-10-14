@@ -1,0 +1,20 @@
+{
+  "command": [
+    "java",
+    "--class-path",
+    "/Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/relation/intellij/build/native-test/idea/plugins/Kotlin/lib/kotlin-plugin.jar:/Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/relation/intellij/build/native-test/idea/plugins/Kotlin/lib/kotlinc.kotlin-compiler-common.jar:/Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/relation/intellij/build/native-test/idea/plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar",
+    "/Users/amichne/.codex-workspaces/worktrees/ios-25404958-54a7-4b59-aa7f-0e95342384fd/kast/runtime/hosted/build/semantic-owners-source/UnitTypeRenderingOracle.java"
+  ],
+  "status": "PASS",
+  "expected": {
+    "Unit": "kotlin/Unit",
+    "String": "kotlin/String"
+  },
+  "observed_stdout": "kotlin.Unit=kotlin/Unit\nkotlin.String=kotlin/String\n",
+  "source_sha256": "878595fa9caa403c1b99c141efd31aaf9e1b94c5629b3149785d780feb6778b8",
+  "artifact_sha256": {
+    "relation/intellij/build/native-test/idea/plugins/Kotlin/lib/kotlin-plugin.jar": "fb6becc3f5c709a01ee2cb32c834212935e94bbf5b01efb6745b7c0f62831fce",
+    "relation/intellij/build/native-test/idea/plugins/Kotlin/lib/kotlinc.kotlin-compiler-common.jar": "5b364960e81389e2576b3156c04f34d5ad0f14845236102940546f3e0794cb73",
+    "relation/intellij/build/native-test/idea/plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar": "0ae12504a5040ebaf37703908483420d1a5624dd1d93f357665f8c77c848a01e"
+  }
+}

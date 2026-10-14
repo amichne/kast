@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7c27de4848f76228ccce88b303453516b24bd7f4cacb31adf5b9b2b3f34c4fbf",
+  "pageVersion": "sha256:b92aa4a90e18d2d239f5c72cd93e1b5928e1dc250a84259182fc2ef496c49dd8",
   "claims": [
     {
       "id": "claim_009e763fdd49491b8ddc72813e392412",
@@ -260,19 +260,19 @@
     },
     {
       "id": "claim_ef9f3d90ccfd453498921829894b7509",
-      "statement": "Declared calls-in-place admission needs one matching EXACTLY_ONCE effect and a bounded binary digest. A separate lazy model needs compiler mapping and six reviewed class identities.",
+      "statement": "Declared calls-in-place admission needs one matching EXACTLY_ONCE, AT_MOST_ONCE, AT_LEAST_ONCE, or UNKNOWN effect and a bounded binary digest. Missing or unsupported effects reject. The separate lazy model needs compiler mapping and six reviewed class identities.",
       "evidence": [
         {
-          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackDeferredDependency.kt",
-          "version": "repo-file-v1:sha256:0b0720aa4a3c438ffd8cdc4b524c75751da37b2f3cbb41f5a87163b993a5a899"
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackDeferredDependency.kt#L10-L31",
+          "version": "repo-lines-v1:sha256:e049edbe2712d2e860b3906e2b69e1f6076fc3ca2d42b726c8b6bca91ea4cd17:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlYjUxMDlmMjMzZjYyMTY2YWVlYWJhZjM0OTFkZDY2NGE3Y2FhZGQwOTRjODJiOTU5ODBkYWQ3ODQ3YmM1ZDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlNGNlNTc0YTdmZDgyMDVmN2M2M2VhMzY1YTJmYTJmZjQyY2VmYzhkYzE3Y2I3NGI3YmYyNDM1OWMxMjYxNzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA0OWNlZGQ2NzRmN2JhZDM2ZGY5MDM5N2NmMzI5ZWYwZjdjM2FjMzgzMzgxZGVjODZjNjM5MjZkNGQ1NTczNDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVjYWM2MzVlYmFkZDYxZTFmZjU1NzhkZTkyMzk0MTkwNWM3NDViZjhmY2JhZDRjNTI4YTA0ODM4YzcxNGVlOTEifQ"
         },
         {
-          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt",
-          "version": "repo-file-v1:sha256:b843bdcfa86bb1bb2d07fb5294685fb197ee69a7d6ed5ab97966760940768a60"
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/DeclaredCallbackInvocationKind.kt",
+          "version": "repo-file-v1:sha256:be9d95722a94f1130262388d03569e32068e78fd45f4b3b2c371618be6e2af56"
         },
         {
-          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijKotlinLazyBinaryEvidence.kt",
-          "version": "repo-file-v1:sha256:72deb7ba66ac989c43b8c20bd9ec575b6b2d1a9a41b33b95e2388d33c796f142"
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt#L115-L159",
+          "version": "repo-lines-v1:sha256:dc5fb9250e8625db16d930b066e1bad7f45454f02f64176fd3be6db7f1d2cf79:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkMTA2Njk4MWIxM2MwODk2MzU1OTBjMjYxNTI0ODg2Y2Y5OWIwYzg0NDE3MTQ3ZTljZGU3MGQxMzA3MTAwMzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyZjVkZTkyMTFkMDE4ZTY1ZDZlZTkzOTU1ODcwNzkxOTcyNGRlMTM0MzJhMTEwMzJjNWE4NzExODRkYTQ2ZGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFhNDg3YjI0NThkMjliMTkwYWJhYTYxZDAwODUxYmI4MThmMDA5OThlYTQ3NDI1NTBjNDc5OWQxMzJmNzM5ZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFkMWU2YzgxNDQxOTQyMWY1ZTk3Y2NhOGE2MDNkY2UyYjE1MGE5Mzc4NTA2N2M1NzQ4NWI4NDE5NTQ4NTI1YmQifQ"
         }
       ]
     },
@@ -282,7 +282,7 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt",
-          "version": "repo-file-v1:sha256:b843bdcfa86bb1bb2d07fb5294685fb197ee69a7d6ed5ab97966760940768a60"
+          "version": "repo-file-v1:sha256:5caab847365df145809dde3090a37e539780578941d6ead266269e868441f299"
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijSelectedCallbackSupplies.kt#L252-L265",
@@ -292,25 +292,25 @@
     },
     {
       "id": "claim_a2cc9de2d73a41158e3f31944f17d70d",
-      "statement": "Deferred dependency proofs preserve property suppliers and constructor-class reference edges while keeping named-call exclusions and avoiding a runtime invocation count.",
+      "statement": "Deferred supplier proof preserves the lexical declaration, declaration/accessor/initializer execution region, or complete ordered direct-invocation route. Static graph admission keeps constructor-class references and named-call exclusions without asserting runtime invocation counts.",
       "evidence": [
         {
-          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackDeferredDependency.kt#L40-L106",
-          "version": "repo-lines-v1:sha256:6a418dfaaa360441d1cb33a98bf73a7535ffbae8024022459d515255b16926cd:eyJzZWxlY3RlZExpbmVDb3VudCI6NjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhMjEwZjFiZDY1MjAyNGY4MWQyNGI3YzFhYWVmM2RjYWVhZGVjZWQ4YTBiNzc0ZmNjYjIzOTM5MmRiYjRhNDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5OTJiYTljOGUxNTQ5MzBkZTNhNDZhNmE1NmNkNWUyNDVjZmMwNzFkNTEzMWI3MzBlZmNhNTZlMGY3OGRkNWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlkOTRhODljOTA4OTg0ZDQwZjkxMGM4MjIzMmRiZWVmNzY1YzBiM2IwMjM2NDhiN2NlYzViMzYzZDNlNGQwODcifQ"
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackDeferredSupplier.kt",
+          "version": "repo-file-v1:sha256:87adbed160b683fccd35812aefa50fd6d8e596331c7b5e1b8440ccf2a638ff28"
         },
         {
-          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraph.kt#L132-L195",
-          "version": "repo-lines-v1:sha256:c2bd680c13214dee77127ecc65c9edbf606275d81b58bff580f9ded5b13bd991:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmYjA0MWJhNGRiMjFjOGMxNzQzMjE1NzM3OWMwMjI1MzIzNjY2ZWNkNzhiNmU3M2QwMzQ2NzAyMzMzMTcwYWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0M2ZkMzllOTVmNDVkMGM3MDNjOTliNWIxNDRjYzRlMzRiNjY5ZThjMzUwZTBiMjQwMzdmZjY1ODBlNzE4MWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk0YmU0ZWY5MGZjNWM5YTljODE1ZDBlZTU3Zjg0OWI5ODI0MDVkZmEyMTgzNTc3ZmZiYjU0MDkwOTQ1MTUzMDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJiMmE2MTEyYzY3OTI0NjU4MzBmNzMxMjNjNzdiMjdkMDE5YzdkNjFjYTE4M2JjZDhlNTkxZWE1YzE1ZmZkMjQifQ"
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraph.kt",
+          "version": "repo-file-v1:sha256:b6d88070d4d4e0084bd57ea8f723b1b6a89186944e97297a28d72049b3d37580"
         },
         {
-          "resource": "repo://runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativeScopedCacheManagerTraceTest.kt#L108-L159",
-          "version": "repo-lines-v1:sha256:3eab70f7ab848a3030f2bbaf7bad70f9835e5ef7fa9d637254964645981d02ae:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwMTY0OGM1N2Y1ZjcyNGU2OGJlMGYyZTYyODc3Zjk1MDVmZWVmYmIxYWMzNzg3MmE5ZWMyNWVmOGVjNGM5MTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI0Mzk4Zjc2NTllNzlkMjI0ODM1NjUzY2ExMzg1ZWQ5NTAzMzZiY2I5MmQ1ZjhhOTk0YzQyODM0YWEwYzU5NzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRlMWZjODI5MDY2YmVhZjBhNmYzODIyZjY1MjlkYmIxZjM2MDkwZDRiMDVhNzBmODViOWZhOTg4ZWQzYWUzNWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc5NGI3NmRiZWRiNjU0YjgwZTZmZTQ0OGRlNmYyMDk1NTdkODZiMDdhNDg2MzliOTNjMmYzNDQ1YjgzMTU4ODUifQ"
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijDeferredSupplierExecution.kt",
+          "version": "repo-file-v1:sha256:e341fe3ac4e96726601896449855bb7c5d58cdb4e8997cbf7f390aacd756d7f6"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-13T20:10:11.937Z"
+    "at": "2026-10-14T02:15:18.461Z"
   }
 }

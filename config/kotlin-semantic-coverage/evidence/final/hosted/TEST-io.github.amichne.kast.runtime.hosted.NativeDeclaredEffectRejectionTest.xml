@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectRejectionTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-14T01:44:20.788Z" hostname="Austins-MacBook-Pro.local" time="77.635">
+  <properties/>
+  <testcase name="testOtherFormalEffectDoesNotAcquireTheDeclaredEffect" classname="io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectRejectionTest" time="34.19"/>
+  <testcase name="testSameNameStringOverloadDoesNotAcquireTheIntContract" classname="io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectRejectionTest" time="18.986"/>
+  <testcase name="testAbsentEffectDoesNotAcquireUnknown" classname="io.github.amichne.kast.runtime.hosted.NativeDeclaredEffectRejectionTest" time="24.436"/>
+  <system-out><![CDATA[R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 public negative=OTHER_FORMAL cause=DEPENDENCY_CONTRACT_EFFECT_UNPROVEN retained=QUALIFIED
+R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 public negative=STRING_OVERLOAD cause=DEPENDENCY_CONTRACT_EFFECT_UNPROVEN retained=QUALIFIED
+R1 compilerJarSha256=9acf6e54169c9f6842a2050f146872db327fb6a4216e5623adcdf437e581c1bc
+R1 public negative=ABSENT cause=DEPENDENCY_CONTRACT_EFFECT_UNPROVEN retained=QUALIFIED
+]]></system-out>
+  <system-err><![CDATA[[   3564]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   3564]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

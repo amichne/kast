@@ -196,6 +196,7 @@ val nativeIdeaLibraries =
                     include(
                         "lib/**/*.jar",
                         "plugins/java/lib/**/*.jar",
+                        "plugins/platform-structuralSearch-plugin/lib/**/*.jar",
                         "plugins/Kotlin/lib/**/*.jar",
                         "plugins/toml/lib/**/*.jar",
                     )
@@ -226,28 +227,47 @@ dependencies {
     add(nativeTest.runtimeOnlyConfigurationName, "com.jetbrains.intellij.platform:test-runner:$nativePlatformBuild")
 }
 
-tasks.register<Test>("nativeFixtureTest") {
-    description = "Runs native hosted wait and cancellation fixtures in the pinned IntelliJ Platform."
-    group = "verification"
-    testClassesDirs = nativeTest.output.classesDirs
-    classpath = nativeTest.runtimeClasspath
-    dependsOn("detektNativeTest")
-    maxParallelForks = 1
-    jvmArgumentProviders.add(
-        objects.newInstance<NativeFixtureJvmArguments>().apply {
-            productInfo.set(nativeIdeaHome.file("product-info.json"))
-            pinnedBuild.set(nativePlatformBuild)
-            osName.set(providers.systemProperty("os.name"))
+fun registerHostedNativeFixtures(taskName: String, selectedClasses: List<String>) =
+    tasks.register<Test>(taskName) {
+        description = "Runs native hosted wait and cancellation fixtures in the pinned IntelliJ Platform."
+        group = "verification"
+        testClassesDirs = nativeTest.output.classesDirs
+        classpath = nativeTest.runtimeClasspath
+        dependsOn("detektNativeTest")
+        if (selectedClasses.isNotEmpty()) {
+            dependsOn(":verifyKotlinSemanticInputs")
+            filter { selectedClasses.forEach(::includeTestsMatching) }
         }
-    )
-    systemProperty("java.awt.headless", "true")
-    systemProperty("idea.home.path", nativeIdeaHome.get().asFile.absolutePath)
-    systemProperty("idea.config.path", layout.buildDirectory.dir("native-test/config").get().asFile.absolutePath)
-    systemProperty("idea.system.path", layout.buildDirectory.dir("native-test/system").get().asFile.absolutePath)
-    systemProperty("idea.log.path", layout.buildDirectory.dir("native-test/log").get().asFile.absolutePath)
-    systemProperty("idea.plugins.path", nativeIdeaHome.get().dir("plugins").asFile.absolutePath)
-    systemProperty("idea.load.plugins.id", "com.intellij.java,org.jetbrains.kotlin,org.toml.lang")
-    systemProperty("idea.is.unit.test", "true")
-    systemProperty("idea.force.use.core.classloader", "true")
-    systemProperty("kotlin.plugin.mode", "K2")
-}
+        maxParallelForks = 1
+        jvmArgumentProviders.add(
+            objects.newInstance<NativeFixtureJvmArguments>().apply {
+                productInfo.set(nativeIdeaHome.file("product-info.json"))
+                pinnedBuild.set(nativePlatformBuild)
+                osName.set(providers.systemProperty("os.name"))
+            }
+        )
+        systemProperty("java.awt.headless", "true")
+        systemProperty("idea.home.path", nativeIdeaHome.get().asFile.absolutePath)
+        systemProperty("idea.config.path", layout.buildDirectory.dir("native-test/config").get().asFile.absolutePath)
+        systemProperty("idea.system.path", layout.buildDirectory.dir("native-test/system").get().asFile.absolutePath)
+        systemProperty("idea.log.path", layout.buildDirectory.dir("native-test/log").get().asFile.absolutePath)
+        systemProperty("idea.plugins.path", nativeIdeaHome.get().dir("plugins").asFile.absolutePath)
+        systemProperty("idea.load.plugins.id", "com.intellij.java,org.jetbrains.kotlin,org.toml.lang")
+        systemProperty("idea.is.unit.test", "true")
+        systemProperty("idea.force.use.core.classloader", "true")
+        systemProperty("kotlin.plugin.mode", "K2")
+    }
+
+registerHostedNativeFixtures("nativeFixtureTest", emptyList())
+
+registerHostedNativeFixtures(
+    "semanticCoverageFixtureTest",
+    listOf(
+        "*NativeScopedCacheManagerTraceTest",
+        "*NativeDeclaredEffectTraceTest",
+        "*NativeDeclaredEffectRejectionTest",
+        "*DeclaredEffectTraceOracleTest",
+        "*NativeSemanticOwnersTraceTest",
+        "*NativeSemanticOwnersOracleTest",
+    ),
+)

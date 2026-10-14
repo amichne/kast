@@ -59,6 +59,8 @@ sources:
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackDocumentAdmission.kt
   - id: openwiki-source-6ee6a10decc8306b2fc74bca
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt
+  - id: openwiki-source-c2eebc668e2b6f4fe4c4b7ed
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryDeferredSupplierExecutionDocument.kt
   - id: openwiki-source-207ff2d32f1b70dfee08054c
     resource: repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/OperationRegistry.kt
   - id: openwiki-source-1905c35a82810ccf74696707
@@ -77,10 +79,10 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphNodeRetrievalTest.kt
   - id: openwiki-source-c7caab29dec6e41d0046710e
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackInvocationFlow.kt
-generated: { by: "codex", at: "2026-10-13T20:10:11.937Z" }
+generated: { by: "codex", at: "2026-10-14T02:15:18.461Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-13T20:10:11.937Z
+    at: 2026-10-14T02:15:18.461Z
 ---
 
 # Protocol
@@ -206,3 +208,6 @@ More precise rejection evidence does not establish graph completion.
 Deferred dependency bindings carry `KOTLIN_LAZY_JVM_V1`, an exact supplier declaration, a formal position, and six binary class digests.
 Their wire shape uses `DEFERRED_DEPENDENCY` and has no invocation-kind field.
 The closed document parser preserves source containment and rejects incomplete scans or invented invocations.
+The execution proof distinguishes declarations, accessors, initializers, and ordered direct-invocation routes.
+Each direct route keeps its parent, anonymous body, source occurrence, and SEMANTIC BASIS.
+Dependency-contract bindings separately preserve all four declared Kotlin invocation kinds.

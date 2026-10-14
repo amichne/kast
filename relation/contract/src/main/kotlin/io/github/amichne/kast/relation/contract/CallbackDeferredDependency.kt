@@ -1,12 +1,10 @@
 package io.github.amichne.kast.relation.contract
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.symbol.contract.CanonicalCompilerCallableSignature
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerReceiver
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
-import io.github.amichne.kast.workspace.contract.SemanticReadIdentity
 
 /** Reviewed binary content for the facade, factory, initializer implementations, and mode dispatch. */
 class KotlinLazyBinaryEvidence private constructor(val classes: KotlinLazyClassDigests) {
@@ -36,34 +34,6 @@ data class KotlinLazyClassDigests(
     val unsafe: DependencyClassDigest,
     val modeDispatch: DependencyClassDigest,
 )
-
-/** A named callable or property supplies an initializer. Anonymous activation remains a separate obligation. */
-class CallbackDeferredSupplier
-private constructor(
-    val basis: SemanticReadIdentity,
-    val occurrence: RelationOccurrence,
-    val evidence: CompilerGroundedSymbolEvidence,
-) {
-    val file = evidence.file
-    val range = evidence.range
-
-    companion object {
-        fun fromCompiler(
-            basis: SemanticReadIdentity,
-            occurrence: RelationOccurrence,
-            evidence: CompilerGroundedSymbolEvidence,
-        ): Refinement<CallbackDeferredSupplier, CallbackInvocationFlowCause> {
-            if (occurrence.file != evidence.file || !evidence.range.containsValueRange(occurrence.range))
-                return Refinement.Rejected(CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE)
-            return if (
-                evidence.signature is CanonicalCompilerCallableSignature ||
-                    evidence.signature is CanonicalCompilerSignature.Property
-            )
-                Refinement.Refined(CallbackDeferredSupplier(basis, occurrence, evidence))
-            else Refinement.Rejected(CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE)
-        }
-    }
-}
 
 /** A possible deferred initializer supply. This proof never asserts an invocation or an invocation count. */
 class CallbackDeferredDependency
