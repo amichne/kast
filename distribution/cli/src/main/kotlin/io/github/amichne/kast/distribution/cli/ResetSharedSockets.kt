@@ -51,7 +51,7 @@ internal sealed interface ResetSharedSocketCapture {
     data object Rejected : ResetSharedSocketCapture
 }
 
-/** The selected process owns the descriptor. The captured inode scopes later filesystem retirement. */
+/** A live peer proves the selected owner. The captured inode scopes later filesystem retirement. */
 internal class ResetOwnedSharedSocket private constructor(private val path: Path, private val key: Any) {
     fun retire(): ResetEffect =
         try {
@@ -109,10 +109,15 @@ internal class ResetOwnedSharedSocket private constructor(private val path: Path
             if (result.code in 0..1 && result.output.isEmpty())
                 return ResetSharedSocketCapture.Captured(process, emptyList())
             if (result.code != 0) return ResetSharedSocketCapture.Rejected
-            return captureDocument(process, result.output)
+            return captureDocument(process, result.output, executable, inspect)
         }
 
-        private fun captureDocument(process: ResetScopedProcess, document: String): ResetSharedSocketCapture =
+        private fun captureDocument(
+            process: ResetScopedProcess,
+            document: String,
+            executable: String,
+            inspect: (List<String>) -> ProcessObservation,
+        ): ResetSharedSocketCapture =
             try {
                 val lines = document.lineSequence().filter { it.isNotEmpty() }.toList()
                 if (lines.size > MAXIMUM_SOCKET_RECORDS || lines.firstOrNull() != "p${process.snapshot.pid}")
@@ -128,6 +133,11 @@ internal class ResetOwnedSharedSocket private constructor(private val path: Path
                         .filter { it.endsWith(Path.of("app-server-control/app-server-control.sock")) }
                 for (path in paths) {
                     val key = socketKey(path) ?: return ResetSharedSocketCapture.Rejected
+                    if (
+                        ResetSocketPeerOwnership.prove(path, process.snapshot.pid, executable, inspect) !=
+                            ResetSocketPeerProof.PROVEN || socketKey(path) != key
+                    )
+                        return ResetSharedSocketCapture.Rejected
                     sockets += ResetOwnedSharedSocket(path, key)
                 }
                 ResetSharedSocketCapture.Captured(process, sockets)

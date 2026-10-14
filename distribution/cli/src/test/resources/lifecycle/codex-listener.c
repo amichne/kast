@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/select.h>
 #include <sys/un.h>
 #include <unistd.h>
 
@@ -17,14 +18,28 @@ int main(int argc, char **argv) {
     if (listen(listener, 1) != 0) return 6;
     puts("ready");
     fflush(stdout);
-    int client = accept(listener, NULL, NULL);
-    if (client < 0) return 7;
-    puts("connected");
-    fflush(stdout);
-    char byte;
-    while (read(client, &byte, 1) > 0) {}
-    close(client);
-    close(listener);
-    unlink(address.sun_path);
-    return 0;
+    fd_set clients;
+    FD_ZERO(&clients);
+    FD_SET(listener, &clients);
+    int maximum = listener;
+    for (;;) {
+        fd_set ready = clients;
+        if (select(maximum + 1, &ready, NULL, NULL, NULL) < 0) return 7;
+        if (FD_ISSET(listener, &ready)) {
+            int client = accept(listener, NULL, NULL);
+            if (client < 0 || client >= FD_SETSIZE) return 8;
+            FD_SET(client, &clients);
+            if (client > maximum) maximum = client;
+            puts("connected");
+            fflush(stdout);
+        }
+        for (int client = 0; client <= maximum; client++) {
+            if (client == listener || !FD_ISSET(client, &ready)) continue;
+            char byte;
+            if (read(client, &byte, 1) <= 0) {
+                close(client);
+                FD_CLR(client, &clients);
+            }
+        }
+    }
 }

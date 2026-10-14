@@ -3,6 +3,7 @@ package io.github.amichne.kast.distribution.cli
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
 import java.nio.ByteBuffer
+import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
 import java.nio.file.Files
 import java.nio.file.Path
@@ -109,6 +110,60 @@ class NativeResetListenerTest {
                 captured.retireAfterExit(NativeLifecycleProcesses.observe(listener.pid())),
             )
             assertEquals("foreign replacement", Files.readString(socket))
+        }
+
+    @Test
+    fun `shared socket capture rejects a foreign replacement before capture`() =
+        withScopedDaemon { selected, socket, listener ->
+            Files.delete(socket)
+            ServerSocketChannel.open(StandardProtocolFamily.UNIX).use {
+                it.bind(UnixDomainSocketAddress.of(socket))
+            }
+            assertEquals(
+                ResetSharedSocketCapture.Rejected,
+                ResetOwnedSharedSocket.capture(selected),
+                "a descriptor pathname does not prove ownership of the replacement inode",
+            )
+            assertTrue(listener.isAlive)
+            assertTrue(Files.exists(socket))
+        }
+
+    @Test
+    fun `shared socket capture rejects an active foreign replacement despite an existing owned connection`() =
+        withScopedDaemon { selected, socket, listener ->
+            SocketChannel.open(StandardProtocolFamily.UNIX).use { existing ->
+                existing.connect(UnixDomainSocketAddress.of(socket))
+                Files.delete(socket)
+                ServerSocketChannel.open(StandardProtocolFamily.UNIX).use { replacement ->
+                    replacement.bind(UnixDomainSocketAddress.of(socket))
+                    assertEquals(ResetSharedSocketCapture.Rejected, ResetOwnedSharedSocket.capture(selected))
+                    assertTrue(listener.isAlive)
+                    assertTrue(replacement.isOpen)
+                    assertTrue(Files.exists(socket))
+                }
+            }
+        }
+
+    @Test
+    fun `shared socket peer proof rejects an incomplete descriptor before the next process`() =
+        withScopedDaemon { selected, socket, _ ->
+            val caller = ProcessHandle.current().pid()
+            val documents =
+                ArrayDeque(
+                    listOf(
+                        "p$caller\nf100\nd0xaaaa\nn->(none)\n",
+                        "p$caller\nf100\nd0xaaaa\nn->(none)\nf101\nd0xbbbb\nn->0xcccc\n" +
+                            "f102\nd0xffff\np${selected.snapshot.pid}\nf50\nd0xcccc\nn$socket\n",
+                    )
+                )
+            assertEquals(
+                ResetSocketPeerProof.REJECTED,
+                ResetSocketPeerOwnership.prove(socket, selected.snapshot.pid, "/usr/sbin/lsof") {
+                    assertTrue(documents.isNotEmpty(), "unexpected descriptor inspection")
+                    ProcessObservation.Exited(0, documents.removeFirst())
+                },
+            )
+            assertTrue(documents.isEmpty(), "unconsumed descriptor inspection")
         }
 
     private fun withScopedDaemon(action: (ResetScopedProcess, Path, Process) -> Unit) {
