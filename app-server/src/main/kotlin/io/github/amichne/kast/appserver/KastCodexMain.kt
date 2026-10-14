@@ -6,6 +6,7 @@ import io.github.amichne.kast.appserver.host.CodexIntegrationHost
 import io.github.amichne.kast.appserver.host.DesktopStdioHost
 import io.github.amichne.kast.appserver.host.admission.CodexHostInvocation
 import io.github.amichne.kast.appserver.host.admission.CodexServiceInvocation
+import io.github.amichne.kast.appserver.host.admission.UpstreamCodexExecutable
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamConnector
 import io.github.amichne.kast.appserver.runtime.connectCodexUnixWebSocket
 import io.github.amichne.kast.kernel.Refinement
@@ -20,12 +21,13 @@ sealed interface CodexIntegrationRun {
     data class Completed(val exitCode: Int) : CodexIntegrationRun
 
     data class Rejected(val failure: CodexIntegrationFailure) : CodexIntegrationRun
+
+    data class BrokerRejected(val failure: PersistentBrokerServiceFailure) : CodexIntegrationRun
 }
 
 enum class CodexIntegrationFailure {
     INSTALLATION_UNAVAILABLE,
     CONFIGURATION_REJECTED,
-    BROKER_REJECTED,
     CLIENT_UNAVAILABLE,
     HOST_TRANSPORT_REJECTED,
     UPSTREAM_EXITED,
@@ -36,7 +38,22 @@ enum class CodexIntegrationFailure {
     SHUTDOWN_REJECTED,
 }
 
-suspend fun runInstalledCodex(arguments: List<String>, kast: Path): CodexIntegrationRun {
+suspend fun runInstalledCodex(arguments: List<String>, kast: Path): CodexIntegrationRun =
+    runInstalledCodex(
+        arguments = arguments,
+        kast = kast,
+        userHome = Path.of(System.getProperty("user.home")),
+        environment = System.getenv(),
+        serviceHost = MacOsPersistentBrokerServiceHost(),
+    )
+
+internal suspend fun runInstalledCodex(
+    arguments: List<String>,
+    kast: Path,
+    userHome: Path,
+    environment: Map<String, String>,
+    serviceHost: PersistentBrokerServiceHost,
+): CodexIntegrationRun {
     val requested =
         when (val admitted = CodexHostInvocation.admit(arguments)) {
             is Refinement.Refined -> admitted.value
@@ -47,14 +64,11 @@ suspend fun runInstalledCodex(arguments: List<String>, kast: Path): CodexIntegra
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return CodexIntegrationRun.Rejected(CodexIntegrationFailure.ARGUMENTS_REJECTED)
         }
-    if (System.getenv().containsKey("KAST_SAVED_CONFIGURATION_FAILURE")) {
+    if (environment.containsKey("KAST_SAVED_CONFIGURATION_FAILURE")) {
         return CodexIntegrationRun.Rejected(CodexIntegrationFailure.CONFIGURATION_REJECTED)
     }
     val launch =
-        when (
-            val admitted =
-                BrokerServiceLaunchCommand.resolve(kast, Path.of(System.getProperty("user.home")), System.getenv())
-        ) {
+        when (val admitted = BrokerServiceLaunchCommand.resolve(kast, userHome, environment)) {
             is BrokerServiceLaunchCommandResolution.Resolved -> admitted.command
             is BrokerServiceLaunchCommandResolution.Rejected ->
                 return CodexIntegrationRun.Rejected(CodexIntegrationFailure.CONFIGURATION_REJECTED)
@@ -65,11 +79,18 @@ suspend fun runInstalledCodex(arguments: List<String>, kast: Path): CodexIntegra
             BrokerHostSelection.NotConfigured ->
                 return CodexIntegrationRun.Rejected(CodexIntegrationFailure.CLIENT_UNAVAILABLE)
         }
-    when (MacOsPersistentBrokerServiceHost().ensure(launch)) {
+    when (val admitted = serviceHost.ensure(launch)) {
         PersistentBrokerServiceAdmission.Ready -> Unit
-        is PersistentBrokerServiceAdmission.Rejected ->
-            return CodexIntegrationRun.Rejected(CodexIntegrationFailure.BROKER_REJECTED)
+        is PersistentBrokerServiceAdmission.Rejected -> return CodexIntegrationRun.BrokerRejected(admitted.failure)
     }
+    return attachInstalledCodex(invocation, launch, codex)
+}
+
+private suspend fun attachInstalledCodex(
+    invocation: CodexServiceInvocation,
+    launch: BrokerServiceLaunchCommand,
+    codex: UpstreamCodexExecutable,
+): CodexIntegrationRun {
     val host: CodexIntegrationHost =
         when (invocation) {
             is CodexServiceInvocation.Cli -> {
