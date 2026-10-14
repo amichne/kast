@@ -1,21 +1,25 @@
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-10-12 | hash: 4a2ee205e1c8 -->
+<!-- generated: 2026-10-14 | hash: d3b12ef1de9c -->
 
 # docs
 
 ## Purpose
 
-Contains the Mintlify site with Guide and Reference tabs plus scripts and styles for observer visual evidence.
+Contains the Mintlify site with tutorials, how-to guides, reference, and explanation. It also contains local prose policy and historical acceptance evidence.
 
 ## Key Files
 
 - [public/docs.json](public/docs.json) - public documentation navigation and site configuration.
 - [public/index.mdx](public/index.mdx) - product landing documentation.
 - [public/reference.mdx](public/reference.mdx) - entry point for technical reference material.
-- [documentation-structure.md](documentation-structure.md) - route and content rules.
+- [documentation-structure.md](documentation-structure.md) - reader tracks, source ownership, route preservation, and local Vale procedure.
+- [glossary.json](glossary.json) - provisional terminology source with explicit document scope.
+- [GLOSSARY.md](GLOSSARY.md) - generated glossary reader view.
+- [public/tutorials/first-query.mdx](public/tutorials/first-query.mdx) - controlled query exercise with expected caller and absence evidence.
+- [public/reference/source-map.mdx](public/reference/source-map.mdx) - contract owners, focused tests, and OpenWiki concepts.
 - [public/start.mdx](public/start.mdx) - installation and connection guide.
 - [public/search.mdx](public/search.mdx) - search workflow.
-- [public/reference/change.mdx](public/reference/change.mdx) - one-call change, internal exact-plan signing, application, and recovery workflow.
+- [public/reference/change.mdx](public/reference/change.mdx) - one-call source change, verification, and recovery workflow.
 - [public/troubleshooting.mdx](public/troubleshooting.mdx) - support guidance.
 - [render_kast_observer_snapshots.py](render_kast_observer_snapshots.py) - observer snapshot renderer.
 
@@ -33,18 +37,23 @@ Contains the Mintlify site with Guide and Reference tabs plus scripts and styles
 
 ## Subdirectories
 
+- `public/tutorials` - exercises with expected evidence.
+- `public/how-to` - diagnostic and retained-evidence procedures.
+- `public/explanation` - query lifecycle explanation.
 - `public/reference/internals` - runtime implementation details.
 - `public/reference` - generated and hand-authored reference pages.
 - `public/images` - checked documentation assets.
 - `reviews` - source and runtime acceptance review evidence.
+- `vale-vocabulary` - reviewed spellings for the local Vale consumer.
 
 ## Entry Points
 
-- Validate from `docs/public` with `mint validate`.
+- From `docs/public`, run `mint validate` and `mint broken-links`.
+- Use the root `.vale.ini` with the pinned local consumer described in [documentation-structure.md](documentation-structure.md).
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../openwiki/quickstart.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
+- Start with the [repository knowledge](../openwiki/quickstart.md) and read its `code_sources` for source evidence. Root engineering rules remain authoritative. This map adds navigation only.
 
-- For user-visible behavior, start with the relevant public page, then verify every claim against protocol/source contracts.
+- For user-visible behavior, start with the selected public page. Examine its claims against protocol and source contracts.
 - Treat `site/` as rendered output; edit `docs/public` instead.
