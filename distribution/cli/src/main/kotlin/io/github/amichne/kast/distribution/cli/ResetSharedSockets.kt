@@ -131,6 +131,7 @@ internal class ResetOwnedSharedSocket private constructor(private val path: Path
                         .filter { it.startsWith("n/") }
                         .map { Path.of(it.drop(1)) }
                         .filter { it.endsWith(Path.of("app-server-control/app-server-control.sock")) }
+                        .distinct()
                 for (path in paths) {
                     val key = socketKey(path) ?: return ResetSharedSocketCapture.Rejected
                     if (
