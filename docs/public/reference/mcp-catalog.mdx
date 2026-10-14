@@ -5,7 +5,7 @@ icon: "plug"
 keywords: ["MCP", "tools/list", "tools/call", "structuredContent"]
 ---
 
-Use `tools/list` after MCP negotiation to discover installed tools and schemas. The MCP process uses stdio from the client's repository directory.
+`tools/list` exposes installed tools and schemas after MCP negotiation. The MCP process uses stdio from the client's repository directory.
 
 Each catalog entry defines a tool name, `inputSchema`, and `outputSchema`:
 
@@ -20,7 +20,7 @@ Direct MCP omits `workspace_lifecycle`. Hosted App Server supplies that tool sep
 
 ## Call and result
 
-Send the tool name and arguments through `tools/call`. This example calls `health_check`:
+`tools/call` accepts a catalog tool name and its arguments. This example calls `health_check`:
 
 ```json
 {
@@ -35,6 +35,10 @@ For a semantic query, select `query_symbols`. Use [Query forms](/reference/api) 
 
 The JSON-RPC result carries `content`, `isError`, and admitted `structuredContent`. For semantic tools, `structuredContent` contains the canonical operation document. That document preserves status, references, coverage, failures, and recovery evidence.
 
-Before you use the result, examine `isError` and the semantic status. An invocation failure can omit the structured document. `health_check` uses its own readiness schema.
+`isError` describes tool-call failure. The operation document separately reports its semantic status. An invocation failure can omit the structured document. `health_check` uses its own readiness schema.
 
-Decode the [wrapper](/reference/models/mcp-tool-call-result) separately from the tool-specific [operation document](/reference/schemas). OpenAPI `/callables/…` labels identify documentation sections. Kast does not expose them as HTTP endpoints.
+The [wrapper](/reference/models/mcp-tool-call-result) and tool-specific [operation document](/reference/schemas) have separate schemas. OpenAPI `/callables/…` labels identify documentation sections. Kast does not expose them as HTTP endpoints.
+
+## Source owner and integration procedure
+
+[Source map](/reference/source-map#installation-and-transport) identifies the MCP projection. [Connect your agent](/reference/integrations) gives the setup procedure.

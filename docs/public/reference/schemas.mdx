@@ -21,9 +21,11 @@ Direct MCP exposes `health_check`. Hosted App Server exposes `workspace_lifecycl
 
 The [authored schema](https://github.com/amichne/kast/blob/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json) owns shared definitions and metadata. To examine tool inputs, use that tool's `parameters.json`. Keep the closed variants and `$ref` links intact.
 
-## Read a schema without reading every definition
+<a id="read-a-schema-without-reading-every-definition" />
 
-Read the necessary root properties first. Select the action variant, then read its necessary properties. For `RUN`, choose a source, the necessary steps, and an output. [Query forms](/reference/api) explains supported combinations.
+## Schema structure and admission
+
+Root properties identify the tool arguments. Tagged variants select action-specific fields. A `RUN` variant contains a source, optional steps, and an output. [Query forms](/reference/api) explains supported combinations.
 
 Admission supplies defaults. A valid schema establishes the input shape. Current identity, complete coverage, and permission to change source need separate evidence.
 
@@ -58,6 +60,16 @@ The recording replaces only the absolute checkout prefix with `/workspace/kast`.
 
 To reproduce the example, use the linked source checkout. Send each `request` to `kast-tool-rpc-complete call query_symbols` in order. Substitute newly issued references. During composition, pause builds and source edits. Read the counts and coverage from your own run.
 
-Generated shape checks cover the captured requests and responses. They do not replay the IDEA interaction.
+Generated shape guards cover the captured requests and responses. They do not replay the IDEA interaction.
 
-OpenAPI `/callables/…` labels identify documentation sections. Use [MCP](/reference/mcp-catalog) or [Tool RPC](/reference/rpc-catalog) for the transport interface.
+OpenAPI `/callables/…` labels identify documentation sections. [MCP](/reference/mcp-catalog) and [Tool RPC](/reference/rpc-catalog) define the transport interfaces.
+
+[Source map](/reference/source-map#public-requests) identifies the authored contract and admission tests.
+
+## Public request example
+
+The action discriminator selects the request variant. This argument object uses the generated `RUN` shape.
+
+```json
+{"request":{"type":"RUN","source":{"type":"SEARCH_DECLARATIONS","declarationName":"QueryStepSyntax"}}}
+```

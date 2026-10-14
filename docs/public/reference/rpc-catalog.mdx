@@ -5,11 +5,13 @@ icon: "terminal"
 keywords: ["RPC", "catalog", "Copilot CLI", "Pi"]
 ---
 
-Tool RPC exposes Kast through a one-shot process. Run `kast-tool-rpc-complete` from the Kotlin repository or worktree that you want to inspect. Each invocation writes one JSON object to stdout.
+Tool RPC exposes Kast through a one-shot process. The process binds the Kotlin repository or worktree from its working directory. Each invocation writes one JSON object to stdout.
 
-## Discover
+<a id="discover" />
 
-Use `catalog` to read installed tool names and schemas:
+## Catalog command
+
+`catalog` returns installed tool names and schemas:
 
 ```shell
 "${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-tool-rpc-complete" catalog
@@ -17,9 +19,11 @@ Use `catalog` to read installed tool names and schemas:
 
 The reply uses `type: "catalog"` and `catalog.schemaVersion: 2`. `catalog.tools[]` contains each tool's `name`, `description`, `inputSchema`, and `effect`. The effect is `READ` or `WRITE`. After an upgrade, rediscover the catalog.
 
-## Call
+<a id="call" />
 
-To call a tool, pass its name after `call`. Supply one JSON object on stdin:
+## Call command
+
+`call` accepts the tool name and one JSON object on stdin:
 
 ```shell
 printf '%s\n' '{}' |
@@ -28,9 +32,11 @@ printf '%s\n' '{}' |
 
 For `query_symbols`, use [Query forms](/reference/api) to choose arguments. Tool RPC exposes the same tool names as direct MCP, including change tools. It omits hosted `workspace_lifecycle`.
 
-## Decode
+<a id="decode" />
 
-Select the decoder from the reply's `type`:
+## Reply variants
+
+The reply's `type` selects its payload:
 
 | `type` | Necessary field | Meaning |
 | --- | --- | --- |
@@ -40,4 +46,4 @@ Select the decoder from the reply's `type`:
 | `rejected_document` | `document` | Semantic or hosted rejection. |
 | `rejected` | `failure` | Finite failure at the process interface. |
 
-Decode `document` with the selected tool's response schema. Reject unknown variants as incompatible. See the [reply union](/reference/models/tool-rpc-reply) for the wrapper. Use the [adapter guide](https://github.com/amichne/kast/blob/main/docs/tool-rpc.md) for client integration.
+Each `document` uses the selected tool's response schema. Unknown variants represent an incompatible contract. See the [reply union](/reference/models/tool-rpc-reply) for the wrapper. Use the [adapter guide](https://github.com/amichne/kast/blob/main/docs/tool-rpc.md) for client integration.

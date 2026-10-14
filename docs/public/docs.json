@@ -29,21 +29,53 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Guide",
+        "tab": "Tutorials",
         "groups": [
           {
-            "group": "Discover Kast",
+            "group": "Start here",
             "pages": [
               "index",
+              "tutorials",
+              "tutorials/first-query"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "How-to guides",
+        "groups": [
+          {
+            "group": "Choose a task",
+            "pages": [
+              "how-to",
               "search"
             ]
           },
           {
-            "group": "Get started",
+            "group": "Install and connect",
             "pages": [
               "start",
               "agent-harnesses",
-              "troubleshooting"
+              "reference/installation",
+              "reference/integrations"
+            ]
+          },
+          {
+            "group": "Investigate and change code",
+            "pages": [
+              "reference/search",
+              "how-to/inspect-diagnostics",
+              "how-to/read-retained-evidence",
+              "reference/query-pipelines",
+              "reference/change"
+            ]
+          },
+          {
+            "group": "Recover and maintain",
+            "pages": [
+              "troubleshooting",
+              "reference/troubleshooting",
+              "reference/management"
             ]
           }
         ]
@@ -52,46 +84,34 @@
         "tab": "Reference",
         "groups": [
           {
-            "group": "Reference",
+            "group": "Semantic contracts",
             "pages": [
               "reference",
-              "reference/search",
-              "reference/evidence-boundaries",
-              "reference/change",
-              "reference/query-pipelines"
+              "reference/api",
+              "reference/responses",
+              "reference/symbols",
+              "reference/callback-observations",
+              "reference/composition",
+              "reference/limits"
             ]
           },
           {
-            "group": "Integration and maintenance",
+            "group": "Client contracts",
             "pages": [
-              "reference/integrations",
-              "reference/installation",
-              "reference/troubleshooting",
-              "reference/management"
+              "reference/mcp-catalog",
+              "reference/rpc-catalog",
+              "reference/compatibility"
             ]
           },
           {
-            "group": "Contracts",
+            "group": "Schemas and recorded evidence",
             "openapi": {
               "source": "reference/callables.openapi.json",
               "directory": "reference/callables"
             },
             "pages": [
-              "reference/api",
-              "reference/responses",
-              "reference/symbols",
-              "reference/callbacks",
-              "reference/walkthrough",
               "reference/schemas",
-              {
-                "group": "Integration contracts",
-                "expanded": false,
-                "pages": [
-                  "reference/mcp-catalog",
-                  "reference/rpc-catalog",
-                  "reference/compatibility"
-                ]
-              },
+              "reference/walkthrough",
               {
                 "group": "Detailed schemas",
                 "expanded": false,
@@ -129,15 +149,34 @@
                     ]
                   }
                 ]
-              },
-              {
-                "group": "Internals",
-                "expanded": false,
-                "pages": [
-                  "reference/internals/architecture",
-                  "reference/internals/background-startup"
-                ]
               }
+            ]
+          },
+          {
+            "group": "Source owners",
+            "pages": [
+              "reference/source-map"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Explanation",
+        "groups": [
+          {
+            "group": "Understand the evidence",
+            "pages": [
+              "explanation",
+              "reference/evidence-boundaries",
+              "explanation/query-lifecycle",
+              "reference/callbacks"
+            ]
+          },
+          {
+            "group": "Runtime ownership",
+            "pages": [
+              "reference/internals/architecture",
+              "reference/internals/background-startup"
             ]
           }
         ]
@@ -146,6 +185,10 @@
   },
   "navbar": {
     "links": [
+      {
+        "label": "How-to guides",
+        "href": "/how-to"
+      },
       {
         "label": "Reference",
         "href": "/reference"

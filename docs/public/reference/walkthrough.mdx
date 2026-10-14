@@ -4,7 +4,7 @@ description: "Inspect historical requests and observed results, with their sourc
 icon: "notebook-text"
 ---
 
-Use this recording to see how requests connect to historical results. For your own repository, start with [Find and trace code](/reference/search). Get fresh references for each query.
+This page records requests and results from a historical run. It is a reference artifact rather than the first-query tutorial. For a guided exercise, use [Find a function and its caller](/tutorials/first-query). For your feature, use [Find and trace code](/reference/search). Get fresh references for each query.
 
 ## Start from remembered text
 
@@ -38,7 +38,9 @@ Use this recording to see how requests connect to historical results. For your o
 
 The text-search request illustrates current inputs. The historical recording predates text discovery and uses [Kast at `56df091`](https://github.com/amichne/kast/tree/56df0912e46b182bb4ad8beabd1512823100fd72). [Capture details and full responses](/reference/schemas#recorded-walkthrough) record the environment and evidence.
 
-## 1. Find a declaration and inspect its source
+<a id="1-find-a-declaration-and-inspect-its-source" />
+
+## Recorded declaration lookup
 
 Recorded call `01-discovery` found one `QueryStepSyntax` in `QuerySteps.kt`. The response included exhaustive coverage, its signature, and a source window.
 
@@ -71,9 +73,11 @@ Recorded call `01-discovery` found one `QueryStepSyntax` in `QuerySteps.kt`. The
 
 Examine identity, location, and coverage before you select the declaration. Keep its exact reference for the next query.
 
-## 2. Follow its implementations
+<a id="2-follow-its-implementations" />
 
-Recorded call `02-implementations-a` found ten implementations with exhaustive coverage. The saved result supplies input **A** for [Combine query results](/reference/query-pipelines).
+## Recorded implementation query
+
+Recorded call `02-implementations-a` found ten implementations with exhaustive coverage. The retained result supplies input **A** for [Combine query results](/reference/query-pipelines).
 
 <Accordion title="Request: find implementations and save the result">
   Replace the placeholder with the first query's issued reference:
@@ -99,7 +103,9 @@ Recorded call `02-implementations-a` found ten implementations with exhaustive c
 
 The complete response keeps each implementation's reference and relationship evidence.
 
-## 3. Trace callers to a chosen depth
+<a id="3-trace-callers-to-a-chosen-depth" />
+
+## Recorded caller walk
 
 Find `QueryPlanCompiler.exactStage` under `query/contract` in `main`. Use its exact reference in this caller query:
 

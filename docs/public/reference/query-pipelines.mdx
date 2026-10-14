@@ -4,9 +4,16 @@ description: "Find shared declarations, combine saved sets, or trace one side of
 icon: "workflow"
 ---
 
-Use `retention: "RETAIN"` to save query results for composition. Set operations compare rows by exact symbol identity. Pass each issued result reference unchanged.
+Use this guide to combine result sets in one valid read state. You need admitted inputs and the retained handles from their original responses.
+
+Use `retention: "RETAIN"` to keep query results for composition. Set operations compare rows by canonical identity. [Composition contracts](/reference/composition) defines row kinds and absence rules. Pass each issued result reference unchanged.
 
 <a id="require-a-complete-static-answer" />
+
+
+1. [Keep the second input in the same read state.](#1-keep-a-second-query-result)
+2. [Choose the set operation or join.](#2-combine-the-inputs)
+3. [Read coverage before an absence claim.](#reject-an-incomplete-absence-check)
 
 ## Complete static answers
 
@@ -16,7 +23,11 @@ Automatic execution drains symbol, occurrence, traversal, and binding rows under
 
 The model covers compiler-resolved source relationships in the admitted domain. Runtime activation needs separate evidence. Walk completion applies to the requested maximum depth.
 
-Compiler evidence can establish finite graphs for exact direct and forwarded callback argument routes. Stored, returned, default, recursive, unresolved, and unproven owner routes remain typed rejections. Other value-call interfaces need a supported graph model.
+Compiler evidence can establish finite graphs for supported direct and forwarded callback routes. Unproven storage, return, default, recursive, and owner routes keep typed rejections.
+
+Reviewed dependency models preserve their exact compiler and binary evidence. A `kotlin.lazy` initializer model establishes deferred supply without an invocation claim.
+
+[Callback evidence](/reference/callbacks#reviewed-dependency-models) defines these qualifications. Other value-call interfaces need a supported graph model.
 
 Unsupported outputs return `COMPLETION_UNSUPPORTED`. Incomplete execution or an unproven callback graph returns `COMPLETION_UNPROVEN`. That rejection keeps the original coverage and an evidence reference when storage admits it. A storage failure appears explicitly in the rejection.
 
@@ -26,7 +37,9 @@ These examples use a [historical recording](/reference/schemas#recorded-walkthro
 
 <a id="retain-a-second-query-result" />
 
-## Save a second query result
+<a id="save-a-second-query-result" />
+
+## 1. Keep a second query result
 
 The [walkthrough](/reference/walkthrough) saves **A**, ten implementations of `QueryStepSyntax`. The next query saves **B**, two class-like declarations named `Concat` under `query/contract` in `main`.
 
@@ -55,7 +68,9 @@ Only `QueryStepSyntax.Concat` implements the interface. `ExactQueryStage.Concat`
   ```
 </Accordion>
 
-## Combine both inputs, then filter the combined stream
+<a id="combine-both-inputs-then-filter-the-combined-stream" />
+
+## 2. Combine the inputs
 
 `UNION` combines rows by identity. A later `WHERE` applies to the combined stream.
 
@@ -104,7 +119,9 @@ Recorded call `04-union-filter` returned both declarations with exhaustive cover
   `CONCAT` with `input` preserves order and duplicate rows. To include more saved inputs, add union steps before the filter.
 </Accordion>
 
-## Keep only symbols present in both
+<a id="keep-only-symbols-present-in-both" />
+
+## 3. Select the composition rule
 
 Recorded call `05-intersection` returned only `QueryStepSyntax.Concat`, the shared declaration. Incomplete inputs keep their qualifications through intersection.
 
@@ -123,7 +140,9 @@ Recorded call `05-intersection` returned only `QueryStepSyntax.Concat`, the shar
   ```
 </Accordion>
 
-## Keep the matched pair, then select a side and continue
+<a id="keep-the-matched-pair-then-select-a-side-and-continue" />
+
+## 4. Project a joined cell before another symbol step
 
 An `INNER` join preserves evidence from both rows. Name its cells. Before another relationship step, select one cell with `PROJECT_BINDING`.
 
@@ -241,4 +260,4 @@ The internal runner owns semantic page continuations. A completion rejection can
 
 That historical search ended with `upstream-incomplete` progress. Current exact-name search can keep candidates beyond output limits. `ALL_DECLARATIONS` can keep its discovery position. Native work or byte limits can still leave coverage incomplete.
 
-Edits, builds, and IDEA state changes can invalidate saved results. Before reuse, read the recovery and handle rules in [Results](/reference/responses).
+Edits, builds, and IDEA state changes can invalidate retained results. Before reuse, read the recovery and handle rules in [Results](/reference/responses).

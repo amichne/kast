@@ -1,0 +1,79 @@
+---
+title: "Source map for Kast contracts"
+description: "Trace public documentation to contract owners, focused tests, and source-backed OpenWiki concepts."
+icon: "map"
+---
+
+This map connects the public contracts to source at `e62692cc5e0be164941a6c551c00d35ad6739ded`. It describes the inspected checkout.
+
+OpenWiki supplies architectural context and source citations. Current source, generated schemas, and the installed catalog remain stronger contract evidence.
+
+## Public requests
+
+[tools.schema.json](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json) owns public inputs, metadata, and normalization defaults.
+
+[PublicToolMapping](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt) lowers admitted inputs into canonical operations.
+
+[PublicToolSchemaTest](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolSchemaTest.kt) covers schema admission.
+
+[OpenWiki: public intent tools](https://github.com/amichne/kast/blob/main/openwiki/contracts/public-tools.md) describes projections and the shared tool identities.
+
+## Query execution and retention
+
+[HostedCanonicalQuery](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt) connects admitted IDEA state to canonical query execution.
+
+[CanonicalQueryProtocol](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt) dispatches runs, output continuations, and retained reads.
+
+[QueryRetainedResult](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt) preserves row kind and qualifications.
+
+[PublicToolCompletionRecoveryTest](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolCompletionRecoveryTest.kt) admits emitted recovery requests.
+
+[OpenWiki: semantic query](https://github.com/amichne/kast/blob/main/openwiki/flows/semantic-query.md) connects discovery, composition, execution, and retention.
+
+## Callback and deferred ownership
+
+[CallbackDeferredDependency](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackDeferredDependency.kt) constrains reviewed `kotlin.lazy` initializer supply.
+
+[IntellijCallbackDependencyContract](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt) examines compiler mapping and dependency binaries.
+
+[QueryCallbackDeferredDependencyWireTest](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/QueryCallbackDeferredDependencyWireTest.kt) rejects invented invocations and mismatched binary identities.
+
+[Callback evidence](/reference/callbacks) describes the public facts and limits.
+
+## Changes and recovery
+
+[The authored tool contract](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json) defines the supported source changes.
+
+[OpenWiki: semantic change lifecycle](https://github.com/amichne/kast/blob/main/openwiki/flows/change-lifecycle.md) traces planning, preimage admission, the source effect, and recovery evidence.
+
+The public [change procedure](/reference/change) keeps the receipt and source evidence before another write.
+
+## Installation and transport
+
+[install.sh](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/install.sh) owns the public installer entry point.
+
+[McpStructuredResults](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt) projects operation documents into direct MCP.
+
+[KastToolRpcMain](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt) owns the process interface.
+
+[OpenWiki: distribution and packaging](https://github.com/amichne/kast/blob/main/openwiki/modules/distribution.md) describes managed installation and release contracts.
+
+## Documentation owners
+
+Mintlify reads `docs/public/docs.json`. The callable generator writes `docs/public/reference/callables.openapi.json` from authoritative contracts.
+
+[The documentation policy](https://github.com/amichne/kast/blob/main/docs/documentation-structure.md) defines reader tracks and local Vale assessment.
+
+[glossary.json](https://github.com/amichne/kast/blob/main/docs/glossary.json) owns provisional terminology. Its [generated reader view](https://github.com/amichne/kast/blob/main/docs/GLOSSARY.md) gives definitions, examples, and distinctions.
+
+[The development guide](https://github.com/amichne/kast/blob/main/docs/development.md) supplies contributor commands. Historical review reports keep their original revisions and limits.
+
+## Representative source path
+
+The public query path crosses these owners:
+
+```text
+tools.schema.json -> PublicToolMapping -> HostedCanonicalQuery -> CanonicalQueryProtocol
+```
+
+`READ_RESULT` enters the retained-presentation path inside the same protocol owner. It does not restart discovery.

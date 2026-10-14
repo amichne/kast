@@ -1,12 +1,14 @@
 ---
 title: "Query forms"
-description: "Choose the action, input, steps, and output for a query_symbols request."
+description: "Look up query actions, inputs, ordered stages, output forms, scope defaults, and rejection rules."
 icon: "book-open"
 ---
 
-Choose an action, source, steps, and output for `query_symbols`. It can run a query, present produced output, read saved rows, or read anchored source. Use the [generated schema](/reference/schemas) for exact variants. For agent prompts, use [Find and trace code](/reference/search).
+`query_symbols` accepts four action variants. They select semantic execution, produced output, retained rows, or exact anchored source. Use the [generated schema](/reference/schemas) for exact variants. For agent prompts, use [Find and trace code](/reference/search).
 
-## Choose an action
+<a id="choose-an-action" />
+
+## Actions
 
 The action selects the operation and its necessary input:
 
@@ -35,9 +37,11 @@ Every `RUN` uses complete-only execution within `COMPILER_RESOLVED_STATIC_V1`. T
 
 <a id="start-from-the-right-input" />
 
-## Choose an input
+<a id="choose-an-input" />
 
-Choose the source that matches the evidence you already hold:
+## Sources
+
+Each source uses a specific input authority:
 
 | Source | Purpose |
 | --- | --- |
@@ -53,11 +57,13 @@ Discovery accepts a directory or package scope. By default, it searches the work
 
 For `SEARCH_TEXT`, supply a letter or underscore, then letters, digits, or underscores. Kast rejects phrases, substrings, qualified literals, and regular expressions. A text match explains discovery. A relation query establishes calls.
 
-`ALL_DECLARATIONS` enumerates supported Kotlin classes, functions, properties, and type aliases. It does not support direct library enumeration. Before a completeness claim, examine the restrictions and progress.
+`ALL_DECLARATIONS` enumerates supported Kotlin classes, functions, properties, and type aliases. It does not support direct library enumeration. Completeness applies to the admitted source families, restrictions, and declared scope.
 
-## Apply only the steps you need
+<a id="apply-only-the-steps-you-need" />
 
-Steps run in their supplied order. Choose the smallest sequence that answers your question:
+## Ordered stages
+
+Stages run in their supplied order. Their admitted input and output kinds constrain legal combinations:
 
 | Step | Meaning |
 | --- | --- |
@@ -73,9 +79,11 @@ Steps run in their supplied order. Choose the smallest sequence that answers you
 
 Steps after composition apply to the combined stream. Queries do not support arbitrary-field joins or a general-purpose `MAP`. See [Combine query results](/reference/query-pipelines) for set and join examples.
 
-### Trace an interface or adapter
+<a id="trace-an-interface-or-adapter" />
 
-After you select an exact interface or method, use `steps: [{"type": "TRACE"}]` with `SYMBOLS` output. `TRACE` must be terminal. It groups facts by canonical symbol identity and keeps each compiler relation connection and original reference observation.
+### TRACE topology
+
+`TRACE` operates on an exact interface, type, or callable seed and uses `SYMBOLS` output. `TRACE` must be terminal. It groups facts by canonical symbol identity and keeps each compiler relation connection and original reference observation.
 
 Imports, type references, and code references keep distinct evidence. Their combined count does not represent a call count.
 
@@ -90,9 +98,11 @@ Member calls through inferred receiver types remain eligible. Members keep exact
 
 The trace supplies bounded static evidence for interface and adapter questions. It does not establish an exhaustive runtime graph. To constrain native expansion, supply `expansionScope` on `TRACE`. Each component keeps its domain and incomplete coverage in the answer.
 
-### Choose the relationship search domain
+<a id="choose-the-relationship-search-domain" />
 
-Set `expansionScope` to control native search before enumeration. A later `WHERE` filters returned rows without a reduction in native search work.
+### Relationship search domains
+
+`expansionScope` controls native search before enumeration. A later `WHERE` filters returned rows without a reduction in native search work.
 
 | Scope | Meaning |
 | --- | --- |
@@ -110,7 +120,9 @@ An explicit `maximumDepth` includes nodes at that depth but does not expand them
 
 Result, work, and time limits can pause internal evaluation without a change to the original extent. Terminal incomplete reads leave the walk incomplete. Explicit expansion policies remain part of the completion question.
 
-## Choose the result you need
+<a id="choose-the-result-you-need" />
+
+## Outputs
 
 The output selects the evidence shape. Match it to the pipeline's row type:
 
@@ -125,7 +137,9 @@ The output selects the evidence shape. Match it to the pipeline's row type:
 
 For symbols, explicit `fields: []` requests only the necessary identity and kind. File-scoped occurrences identify use sites. Walks cannot expand them as declaration endpoints.
 
-## Investigate value impact
+<a id="investigate-value-impact" />
+
+## Value impact inputs and qualifications
 
 `KOTLIN_FORWARD_V1` tracks supported Kotlin value transfers. A final try or catch value can supply the enclosing try expression. This transfer needs a compiler-confirmed value type and a try without `finally`.
 
@@ -150,9 +164,11 @@ If a work limit stops the run, completion rejects. Kast can keep empty `VALUE_PA
 
 Strict completion needs every original path and discharged obligations from the original ledger. Missing evidence, incomplete path selection, or unresolved obligations returns `INVESTIGATION_UNPROVEN` with details for that case. Budget rejection keeps original accounting when storage permits it. Cyclic path expansion and mutable or unsupported native flow remain unproven.
 
-### Read retained witnesses
+<a id="read-retained-witnesses" />
 
-To inspect an `IMPACT_WITNESS`, use `READ_RESULT` with a section:
+### Retained witness sections
+
+`READ_RESULT` supports these `IMPACT_WITNESS` sections:
 
 - `PRODUCERS`
 - `MODELS`
@@ -177,4 +193,10 @@ Site identity alone does not establish a producer relationship. Pages of saved w
 
 If you omit a budget, Kast uses configured defaults and ceilings. Omission does not permit unlimited execution. A budget does not change the requested scope or output shape.
 
-Every public tool accepts a root-level boolean `verbose`. Omission or `false` selects compact output and keeps semantic limitations. Use [Results](/reference/responses) to interpret continuation, coverage, and recovery.
+Every public tool accepts a root-level boolean `verbose`. Omission or `false` selects compact output and keeps semantic limitations. [Results](/reference/responses) defines continuation, coverage, and recovery.
+
+## Contract owner
+
+[The authored tool schema](/reference/source-map#public-requests) owns these inputs and defaults. Installed catalogs govern their release.
+
+[Find and trace code](/reference/search) gives the procedure. [Limits and failures](/reference/limits) describes resource and state rejection.

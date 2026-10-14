@@ -5,6 +5,8 @@ openapi-schema: "reference/callables.openapi.json add_declarationSemanticResult"
 mode: "wide"
 ---
 
-Read the `add_declaration` operation document from MCP's `result.structuredContent`. Keep its plan identity, verification outcome, and recovery evidence until you establish the effect.
+MCP places the canonical `add_declaration` operation document in `result.structuredContent`. It preserves plan identity, the reported source effect, and recovery evidence.
 
-`replace_body` uses `replace_bodySemanticResult` as its separate schema. Use [Schemas and samples](/reference/schemas) for the tool-specific shape. If the write outcome is uncertain, read [change recovery](/reference/change#read-the-receipt) before another write.
+`replace_body` uses the separate `replace_bodySemanticResult` schema. A missing reply does not establish that no write occurred.
+
+[Schemas and samples](/reference/schemas) defines tool-specific shapes. The [change procedure](/reference/change#read-the-receipt) establishes the effect before another write.

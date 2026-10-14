@@ -1,0 +1,89 @@
+---
+title: "Find a function and its caller"
+description: "Learn exact identity and caller evidence with a small Kotlin file in your own Gradle project."
+icon: "graduation-cap"
+---
+
+You will find one function, read its source, and identify a named caller. You will compare the answer with source you control.
+
+## Before you start
+
+Use an imported Kotlin/JVM Gradle project with a `main` source set. [Install Kast](/start) and [connect your agent](/agent-harnesses).
+
+Select that exact repository or worktree in the agent. Keep IDEA open with the project imported.
+
+This exercise specifies expected behavior. It does not report a recorded native run.
+
+1. Add the exercise file.
+2. Find its target function.
+3. Compare the caller evidence with the source.
+4. Inspect an absent name.
+5. Remove your exercise file.
+
+## 1. Add the exercise source
+
+Create `src/main/kotlin/kasttutorial/KastTutorial.kt` in the selected JVM module:
+
+If that exercise file already exists, stop before an edit.
+
+```kotlin
+package kasttutorial
+
+fun kastTutorialMessage(): String {
+    return "Ready"
+}
+
+fun kastTutorialCaller(): String {
+    return kastTutorialMessage()
+}
+```
+
+Save the file. Wait for IDEA to finish import and indexing.
+
+The file defines a target and one explicit caller. Neither function contains a callback or an overloaded call.
+
+## 2. Find the target
+
+Ask your agent:
+
+```text wrap
+Use Kast to find kastTutorialMessage in package kasttutorial, in main only. Show its signature, location, source, and completion status. Do not change the source.
+```
+
+You will see `kasttutorial.kastTutorialMessage` in your exercise file when the query completes. Its source must contain `return "Ready"`.
+
+Keep the issued `ref`. A display name alone does not identify the target for the next query.
+
+If Kast reports a setup blocker, resolve that blocker before the next step.
+
+## 3. Find the caller
+
+Ask your agent:
+
+```text wrap
+Use the exact ref from the previous Kast result. Find CALLERS in the workspace and return occurrences. Show the caller, call location, declared scope, and completion status.
+```
+
+The expected evidence includes `kasttutorial.kastTutorialCaller` and the call to `kastTutorialMessage()` in the exercise file.
+
+Compare the occurrence with the source. If the answer rejects completion, keep its cause and evidence instead of a caller-absence claim.
+
+The evidence identifies a compiler-resolved call. It does not prove that either function ran.
+
+## 4. Inspect an absent name
+
+Ask your agent:
+
+```text wrap
+Use Kast to search for kastTutorialMissing in package kasttutorial, in main only. Report completion and the declared scope. Do not infer absence from a rejected answer.
+```
+
+An empty completed search supports absence within that scope. A rejected search does not establish absence.
+
+## 5. Finish the exercise
+
+Remove only the exercise file that you created. Discard its references after the source change.
+
+You now know how to select an exact target and compare relationship evidence with source.
+
+Use [Find and trace code](/reference/search) for your feature. Use [What an answer proves](/reference/evidence-boundaries) for interpretation.

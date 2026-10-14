@@ -4,7 +4,9 @@ description: "Read coverage, identify evidence limits, and decide when to reuse 
 icon: "shield-check"
 ---
 
-An exact reference identifies a declaration. Coverage reports how much of the requested search Kast completed. Keep the workspace, source state, scope, and coverage with each fact.
+Identity and coverage answer different questions. An exact reference identifies a declaration. Coverage describes the completed portion of the declared search. Each fact belongs to a workspace, source state, declared scope, and coverage record.
+
+[Query execution and evidence delivery](/explanation/query-lifecycle) explains the separate execution and presentation owners.
 
 ## Exact facts are not the same as exhaustive coverage
 
@@ -18,17 +20,21 @@ An exact reference identifies a declaration. Coverage reports how much of the re
 
 Coverage applies to the declared, supported Kotlin sources. Excluded sources, libraries, other languages, and runtime execution need separate evidence. Examine restrictions, omissions, and item failures before a conclusion.
 
-## Decide whether to continue
+<a id="decide-whether-to-continue" />
+
+## Evidence delivery cannot strengthen a proof
 
 Public `RESUME` presents produced facts through an issued output token. It performs no semantic execution. Terminal progress names the reason for the stop. `retention_unavailable` means that Kast lost the remaining output suffix. A missing continuation does not prove completeness.
 
 An empty page can advance through saved evidence. All saved rows keep their original coverage limits, even after you read every page. See [Results](/reference/responses#follow-progress-not-row-count) for the next action.
 
-## Can I reuse this result later?
+<a id="can-i-reuse-this-result-later" />
 
-Pass issued handles unchanged. If a reference is stale or saved state is unavailable, report that blocker. Decide whether to start a fresh query. A new query cannot recover the original delivery.
+## The original state constrains reuse
 
-Kast can revalidate an exact symbol with fresh compiler evidence. Saved results and continuations need their original read state and lifetime. See [Saved state and identity](/reference/responses#saved-state-and-identity) before reuse.
+Issued handles identify specific capabilities. Stale references and unavailable saved state prevent their reuse. A fresh query establishes a new answer. A new query cannot recover the original delivery.
+
+Kast can revalidate an exact symbol with fresh compiler evidence. retained results and continuations need their original read state and lifetime. See [Saved state and identity](/reference/responses#saved-state-and-identity) before reuse.
 
 <a id="check-relationship-and-verification-claims" />
 

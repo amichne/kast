@@ -1,12 +1,22 @@
 ---
 title: "Connect your agent"
+sidebarTitle: "Transports and custom destinations"
 description: "Connect Codex, Copilot, or Pi and run your first Kotlin query."
 icon: "plug"
 ---
 
-[Install Kast](/reference/installation) first. Make sure that your terminal can run your agent's command. In these examples, replace `/path/to/kotlin-repository` with the exact repository or worktree that you want to inspect.
+Use this guide for alternate transports, custom destinations, or connection recovery. [Install Kast](/reference/installation) first.
 
-## Choose your agent
+Make sure that your terminal can run your agent's command. In these examples, replace `/path/to/kotlin-repository` with the exact repository or worktree that you want to inspect.
+
+<a id="choose-your-agent" />
+
+
+1. [Choose one client and transport.](#1-choose-the-client-and-transport)
+2. [Establish tool and workspace admission.](#2-establish-tool-and-workspace-admission)
+3. [Set a custom destination only when needed.](#3-set-a-custom-destination-when-needed)
+
+## 1. Choose the client and transport
 
 <Tabs>
   <Tab title="Codex">
@@ -72,11 +82,13 @@ Queries [prepare IntelliJ automatically](/reference/internals/background-startup
 
 <a id="check-that-the-tools-work" />
 
-## Run the first query
+<a id="run-the-first-query" />
+
+## 2. Establish tool and workspace admission
 
 Ask your agent:
 
-> Use Kast to find one Kotlin declaration in this repository. Show its name, kind, signature, source location, and coverage. Report any readiness or proof blocker.
+> Use Kast to find one Kotlin declaration in this repository. Show its name, kind, signature, source location, and coverage. Report the readiness or proof blocker.
 
 A declaration with its location and coverage shows that the agent called Kast. Use `kast status` to inspect the recorded registration.
 
@@ -94,7 +106,9 @@ Use the exact reference for the function I selected to find its callers. Show th
 
 [Find and trace code](/reference/search) explains the results. For missing tools or readiness blockers, use [Troubleshooting](/reference/troubleshooting).
 
-## Choose a connection destination
+<a id="choose-a-connection-destination" />
+
+## 3. Set a custom destination when needed
 
 Pass an absolute directory when connecting:
 
@@ -120,7 +134,9 @@ For a custom directory, run the agent with the same harness home. For example, `
 
 When you change `--destination`, Kast examines the new connection and removes its previous owned slot in the same transaction. Other harness settings remain in place.
 
-## Recover an existing connection
+<a id="recover-an-existing-connection" />
+
+## 4. Recover a conflicting connection
 
 Matching registrations stay in place. By default, `kast connect` recovers a conflicting Kast slot with the verified release payload. Kast keeps the displaced bytes in a private backup and prints its location. Other extensions and registration names remain in place.
 
@@ -132,7 +148,9 @@ If both copies are invalid, Kast reconstructs preferences from recorded connecti
 
 Use `--no-recover` to reject conflicts without replacing them. `--force` remains available for explicit replacement of the selected Kast slot.
 
-## Disconnect or upgrade
+<a id="disconnect-or-upgrade" />
+
+## 5. Reload clients after a lifecycle change
 
 For a registration made with `kast connect`:
 

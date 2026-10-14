@@ -1,42 +1,51 @@
 ---
 title: "Give your agent a better view of Kotlin"
-sidebarTitle: "Why Kast?"
-description: "Help your coding agent find the exact code, understand its connections, and make targeted changes."
+sidebarTitle: "Start here"
+description: "Find exact Kotlin declarations, trace their connections, and choose the documentation that fits your task."
 icon: "scan-search"
 ---
 
-Kast connects your coding agent to IntelliJ IDEA. Your agent gets the Kotlin knowledge your IDE already uses.
+<a id="what-kast-adds" />
+<a id="use-the-agent-you-already-use" />
+<a id="is-kast-for-you" />
 
-Ask which function a call refers to, where an interface has implementations, or what uses the code you want to change.
+Kast connects your coding agent to IntelliJ IDEA. Your agent uses compiler evidence to identify Kotlin declarations and their connections.
 
-## What Kast adds
+Text search finds matching words. Kast distinguishes overloads, reports source relationships, and states the limits of each answer.
 
-Text search finds matching words. Kast identifies Kotlin declarations and their connections through the compiler.
-
-That gives your agent more context before it explains code or changes it:
-
-- **The exact function.** Distinguish functions that share a name and find their source.
-- **The connected code.** Find callers, references, implementations, and overrides across your project.
-- **The limits of the answer.** See when Kast cannot finish a search or establish a result.
-- **Targeted edits.** Add a declaration or replace a supported function body, with a record of the outcome.
-
-## Use the agent you already use
-
-Connect Codex, Copilot, or Pi. After setup, ask questions in your usual conversation.
-
-Kast prepares the selected IntelliJ project when a question needs it. If setup needs your attention, Kast reports the next action.
+## Choose your reader track
 
 <CardGroup cols={2}>
-  <Card title="Get started" icon="download" href="/start">
-    Install Kast and connect your agent.
+  <Card title="Tutorials: learn Kast" icon="graduation-cap" href="/tutorials">
+    Install Kast, connect your agent, and complete a guided query with a known caller.
   </Card>
-  <Card title="See what you can do" icon="search" href="/search">
-    Try questions about your own Kotlin code.
+  <Card title="How-to guides: complete a task" icon="list-checks" href="/how-to">
+    Find callers, inspect diagnostics, read retained evidence, or make a targeted change.
+  </Card>
+  <Card title="Reference: find a contract" icon="braces" href="/reference">
+    Look up query forms, result fields, client protocols, and generated schemas.
+  </Card>
+  <Card title="Explanation: understand the evidence" icon="workflow" href="/explanation">
+    Understand compiler authority, search scope, callback ownership, and the lifetime of saved evidence.
   </Card>
 </CardGroup>
 
-## Is Kast for you?
+## What your agent can do
 
-Use Kast with a Kotlin Gradle project on an Apple silicon Mac and IntelliJ IDEA `262.*`.
+- Find a declaration by name, source location, or matching word.
+- Read source and distinguish declarations with the same name.
+- Find references, callers, implementations, and overrides.
+- Inspect IDEA diagnostics for a file or directory.
+- Add a declaration or replace a supported function body.
 
-Kast helps your agent understand source code. Your project's build and tests still establish whether a change works.
+[Example questions](/search) show these tasks in an agent conversation. Codex, Copilot, and Pi use the same semantic owners through different adapters.
+
+## Before your first query
+
+Kast supports Kotlin Gradle repositories on Apple silicon macOS with IntelliJ IDEA `262.*`, its bundled Kotlin plugin, and Java 25 JBR.
+
+[Install Kast](/start), then [connect your agent](/agent-harnesses). A query prepares the exact IDEA project and reports trust, import, or indexing blockers.
+
+A completed answer applies to its declared source scope and compiler-static model. It does not prove runtime execution or a successful project build.
+
+[What an answer proves](/reference/evidence-boundaries) explains these limits. Your project's build and tests establish behavior after a change.

@@ -5,6 +5,8 @@ openapi-schema: "reference/callables.openapi.json McpToolCallResult"
 mode: "wide"
 ---
 
-The MCP wrapper separates display text in `content[]` from the operation document in `structuredContent`. For semantic tools, that document is the canonical result.
+The MCP wrapper separates display text in `content[]` from the operation document in `structuredContent`. `isError` reports tool-call failure.
 
-Before you use a result, examine `isError` and the document's semantic status. Decode the document with its tool-specific schema. `health_check` uses a separate readiness shape. See [MCP contract](/reference/mcp-catalog) for discovery and calls.
+For semantic tools, `structuredContent` contains the canonical document with its own semantic status. `health_check` uses a separate readiness shape.
+
+A transport-level success alone does not establish semantic completion. [MCP contract](/reference/mcp-catalog) defines catalog discovery and calls.

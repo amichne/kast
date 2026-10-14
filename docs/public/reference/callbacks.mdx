@@ -4,18 +4,14 @@ description: "Interpret anonymous callable ownership, static bindings, and the l
 icon: "route"
 ---
 
-Kast identifies anonymous callables separately from their enclosing named functions. Use that ownership evidence to interpret callers and callees. Static callback paths do not prove runtime execution.
+Kast identifies anonymous callables separately from their enclosing named functions. The ownership evidence qualifies callers and callees separately from lexical containment. Static callback paths do not prove runtime execution.
 
 ## Named callers and lexical ownership
 
 `REFERENCES` records lexical containment. `CALLERS` and `CALLEES` include `callback_observations`. Each observation keeps the exact occurrence, lexical owner, anonymous body, and named-call policy.
 
-| Policy | Named-edge meaning |
-| --- | --- |
-| `EXCLUDED` | Invocation is absent from named callers, with its reason. |
-| `ADMITTED_DIRECT` | A compiler-confirmed immediate invocation admits a named edge while preserving its anonymous body. |
-| `ADMITTED_INLINE` | Inline policy admits a named edge while preserving the anonymous owner. |
-| `UNAVAILABLE` | Ownership remains incomplete. |
+[The named-edge policy reference](/reference/callback-observations#named-edge-policy) defines the closed variants.
+
 
 ## Static bindings and unfinished proof
 
@@ -38,43 +34,44 @@ flowchart TB
   classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
 ```
 
-Read `binding.type` to identify how the callable receives its value:
+`binding.type` identifies how the callable receives its value:
 
-| Binding | Meaning |
-| --- | --- |
-| `BOUND` | An explicit argument supplies the value. |
-| `DEFAULT` | A declared default supplies the value. |
-| `DIRECT` | A literal or anonymous function is invoked directly. |
-| `UNAVAILABLE` | The mapping is unavailable. |
+[The binding forms reference](/reference/callback-observations#binding-forms) defines the closed variants.
+
 
 Direct admission needs the compiler's builtin function invocation. Labels and parentheses preserve the compiler's argument mapping. A default records its defining formal and default expression. A supplied argument replaces the default, so the default does not create caller edges for every call.
 
 Each parameter invocation keeps `forwardings` for every hop. These records identify the source formal, exact supplied expression, and destination argument binding. Immutable local aliases keep their existing value-transfer proof. Forwarding through an alias, mutable storage, returns, and cycles can leave unresolved obligations.
 
-Use `scan` to read the extent of static formal-invocation enumeration:
+`scan` reports the extent of static formal-invocation enumeration:
 
-| Scan | Meaning |
-| --- | --- |
-| `EXHAUSTIVE` | The admitted scan finished. Empty invocations establish no supported invocation sites in that scanned flow. |
-| `INCOMPLETE` | A limit or unsupported flow prevents an absence claim. |
-| `NOT_APPLICABLE` | A directly invoked body has no receiving formal to scan. |
+[The invocation scan reference](/reference/callback-observations#invocation-scan) defines the closed variants.
+
 
 An exhaustive scan can still carry `NESTED_CALLBACK_EXECUTION`. Enumeration identifies sites without proof that a nested callable owner executes. That limit includes local named functions.
 
 `owner_bindings` keeps an anonymous owner's supply and mapping when available. Read the obligations to identify unresolved proof:
 
-| Evidence | Limit |
-| --- | --- |
-| Nested callable owner | `NESTED_CALLBACK_EXECUTION` |
-| Library mapping | `EXTERNAL_CALLABLE` and `OUTSIDE_DOMAIN` |
-| Local initializer | `STORED_CALLBACK` |
-| Returned literal | `RETURNED_CALLBACK` |
-| Unsupported supply | `UNSUPPORTED_CALLBACK_SUPPLY` |
-| Recursive forwarding | `CALLBACK_CYCLE` |
+[The unresolved obligations reference](/reference/callback-observations#unresolved-obligations) defines the closed variants.
+
 
 Unresolved mappings, external callback bodies, escaped parameters, and exhausted resource allowances keep their qualifications. The resource limits cover work, time, results, and bytes. Inline policy excludes `noinline` and `crossinline` bodies from named edges and records the reason.
 
 <a id="symbolic-callees-and-known-boundaries" />
+
+## Reviewed dependency models
+
+A supported calls-in-place dependency contract keeps the compiler-mapped parameter and dependency class digest. It does not invent dependency body invocations.
+
+For `kotlin.lazy`, `KOTLIN_LAZY_JVM_V1` admits reviewed digests for the facade, factory, three initializer implementations, and mode dispatch.
+
+`DEFERRED_DEPENDENCY` records the named callable or property that supplies the initializer. It records no invocation site or invocation count.
+
+The initializer remains a deferred body. Its lexical container does not gain a direct named caller edge merely because it supplies that body.
+
+Unavailable or unreviewed binaries preserve a finite dependency-model rejection. The model does not establish access to the lazy value or initializer execution.
+
+[Source map](/reference/source-map#callback-and-deferred-ownership) identifies the contract and wire rejection tests.
 
 ## Symbolic callees and source exclusions
 
@@ -84,9 +81,11 @@ A `SOURCE_LESS` target keeps the resolved compiler callable identity and compile
 
 If requested library sources are unavailable, the observation keeps `LIBRARY_SOURCE_UNAVAILABLE`. Coverage remains qualified. Missing PSI alone does not establish an external source exclusion.
 
-## Read the exact anonymous source
+<a id="read-the-exact-anonymous-source" />
 
-To read an anonymous body, pass its issued `candidateSelector` unchanged:
+## Anonymous source selectors
+
+`READ_SOURCE` accepts the anonymous body's issued `candidateSelector` as `candidateRef`:
 
 ```json
 {
@@ -97,10 +96,12 @@ To read an anonymous body, pass its issued `candidateSelector` unchanged:
 }
 ```
 
-After an epoch change, get a fresh selector. Keep the anonymous body as the target. Do not substitute its enclosing named function.
+An epoch change needs a fresh selector. The anonymous body remains the target. Its enclosing named function is a separate identity.
 
-## Continue output delivery
+<a id="continue-output-delivery" />
 
-`page_progress` counts page rows and evidence. A zero-row page can advance callback or callable output. Use the issued tokens and `next_action` to continue delivery. Traversal coverage can be complete before delivery finishes. See [Results](/reference/responses#follow-progress-not-row-count) for output progress.
+## Output delivery
+
+`page_progress` counts page rows and evidence. A zero-row page can advance callback or callable output. Issued tokens and `next_action` describe available delivery. [Read retained evidence](/how-to/read-retained-evidence) gives the procedure. Traversal coverage can be complete before delivery finishes. See [Results](/reference/responses#follow-progress-not-row-count) for output progress.
 
 Consumers must use the current advertised schema. Relation and walk schemas need `callable_observations`, including empty arrays. Observed callback flows need `scan`. Parameter invocation entries need `forwardings`, including empty arrays. Payloads without these fields reject admission.
