@@ -3,7 +3,9 @@ package io.github.amichne.kast.appserver
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.attribute.PosixFilePermissions
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
@@ -16,8 +18,52 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 
 class KastCodexMainLifecycleTest {
+    @Test
+    fun `broker rejection preserves the exact service cause without starting a client`(@TempDir temporary: Path) =
+        runBlocking {
+            val root = temporary.toRealPath()
+            val bin = Files.createDirectories(root.resolve("product/bin"))
+            val kast = Files.writeString(bin.resolve("kast"), "unused Kast executable")
+            val codex = Files.writeString(bin.resolve("codex"), "must never start a client")
+            for (executable in listOf(kast, codex)) {
+                Files.setPosixFilePermissions(executable, PosixFilePermissions.fromString("rwx------"))
+            }
+            val home = Files.createDirectories(root.resolve("home"))
+            val environment = mapOf("PATH" to bin.toString()) + selectedBrokerJbr(root)
+            for (cause in
+                listOf(
+                    PersistentBrokerServiceFailure.PUBLIC_SOCKET_OWNED,
+                    PersistentBrokerServiceFailure.READINESS_REJECTED,
+                )) {
+                var calls = 0
+                val result =
+                    assertInstanceOf(
+                        CodexIntegrationRun.BrokerRejected::class.java,
+                        runInstalledCodex(
+                            arguments = listOf("app-server"),
+                            kast = kast,
+                            userHome = home,
+                            environment = environment,
+                            serviceHost =
+                                PersistentBrokerServiceHost { command ->
+                                    calls += 1
+                                    assertEquals(
+                                        home.resolve(".codex/app-server-control/app-server-control.sock"),
+                                        command.publicSocket,
+                                    )
+                                    PersistentBrokerServiceAdmission.Rejected(cause)
+                                },
+                        ),
+                    )
+                assertEquals(1, calls)
+                assertEquals(cause.name, result.failure.name)
+                assertFalse(Files.exists(home.resolve(".codex/app-server-control/app-server-control.sock")))
+            }
+        }
+
     @Test
     fun `remote overrides and oversized arguments reject before installation effects`() = runBlocking {
         for (arguments in
