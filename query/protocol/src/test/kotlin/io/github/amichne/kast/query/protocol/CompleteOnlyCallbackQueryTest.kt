@@ -16,11 +16,55 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /** Compiler-fact admission oracle; no native resolution or runtime activation is fabricated. */
 internal class CompleteOnlyCallbackQueryTest : CompleteOnlyCallbackQueryCase() {
+    @Test
+    fun `failed callback identifies exact source subject while proven rows remain evidence only`() = runTest {
+        val script =
+            Script(
+                listOf(listOf(row)),
+                resultForPage = { rows, _ ->
+                    QueryResult(
+                        QueryRows.Symbols.of(rows),
+                        emptyList(),
+                        relationObservations = listOf(observation(false)),
+                    )
+                },
+            )
+        val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
+        val rejection = completionRejection(protocol.execute(strict, fixture.authority, budget, policy()))
+        val graph =
+            Json.encodeToJsonElement(
+                    io.github.amichne.kast.protocol.contract.QueryCallbackGraphFailureDocument.serializer(),
+                    assertInstanceOf(
+                        io.github.amichne.kast.protocol.contract.QueryCallbackGraphFailureDocument::class.java,
+                        rejection.callbackGraphFailure,
+                    ),
+                )
+                .jsonObject
+        val subject = graph.getValue("subject").jsonObject
+        assertEquals(setOf("type", "occurrence", "body"), subject.keys)
+        assertEquals("CALLBACK", subject.getValue("type").jsonPrimitive.content)
+        val occurrence = subject.getValue("occurrence").jsonObject
+        assertEquals(fixture.selector.file.stableValue, occurrence.getValue("file").jsonPrimitive.content)
+        assertEquals("2", occurrence.getValue("start").jsonPrimitive.content)
+        assertEquals("3", occurrence.getValue("end").jsonPrimitive.content)
+        val body = subject.getValue("body").jsonObject
+        assertEquals("1", body.getValue("start").jsonPrimitive.content)
+        assertEquals("4", body.getValue("end").jsonPrimitive.content)
+        val retained = retainedEvidence(rejection)
+        assertEquals(1, retained.preview.values.size)
+        val read = protocol.executePage(retained.readRequest(), fixture.authority, budget) as OperationOutcome.Qualified
+        assertEquals(1, read.evidence.payload.items.values.size)
+        assertTrue(read.evidence.payload.interpretation is QueryResultInterpretationDocument.EvidenceOnly)
+        assertEquals(1, script.calls, "Retained evidence must never repeat semantic work")
+        script.assertDrained()
+    }
+
     @Test
     fun `exhaustive bound callback graph admits complete static answer`() = runTest {
         val script =
@@ -103,6 +147,14 @@ internal class CompleteOnlyCallbackQueryTest : CompleteOnlyCallbackQueryCase() {
             ),
             rejection.callbackGraphFailure?.cause,
         )
+        val subject =
+            assertInstanceOf(
+                io.github.amichne.kast.protocol.contract.QueryCallbackGraphSubjectDocument.Callback::class.java,
+                rejection.callbackGraphFailure?.subject,
+            )
+        assertEquals(fixture.selector.file.stableValue, subject.occurrence.file.value)
+        assertEquals(2, subject.occurrence.range.startInclusive.value)
+        assertEquals(3, subject.occurrence.range.endExclusive.value)
         script.assertDrained()
     }
 
@@ -147,6 +199,12 @@ internal class CompleteOnlyCallbackQueryTest : CompleteOnlyCallbackQueryCase() {
         val graph = encoded.getValue("cause").jsonObject.getValue("graphFailure").jsonObject
         assertTrue("cause" in graph)
         assertEquals("STORED_CALLBACK", graph.getValue("cause").jsonObject.getValue("cause").jsonPrimitive.content)
+        val subject = graph.getValue("subject").jsonObject
+        assertEquals("CALLBACK", subject.getValue("type").jsonPrimitive.content)
+        assertEquals(
+            fixture.selector.file.stableValue,
+            subject.getValue("occurrence").jsonObject.getValue("file").jsonPrimitive.content,
+        )
         script.assertDrained()
     }
 
