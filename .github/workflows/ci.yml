@@ -111,9 +111,9 @@ jobs:
           cache: pip
           cache-dependency-path: experiments/host-observation/requirements-test.txt
 
-      - name: Install host protocol test dependencies
+      - name: Install host protocol and semantic test tools
         if: steps.reuse.outputs.candidate != 'REUSED'
-        run: python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt
+        run: python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt uv==0.12.9
 
       - name: Set up Gradle
         if: steps.reuse.outputs.candidate != 'REUSED'
