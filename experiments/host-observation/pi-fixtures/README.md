@@ -7,10 +7,11 @@ owner with `QueryQuestionDocument.serializer()` and
 `CanonicalQueryCliDocuments.qualificationSerializer`. The result schema reuses
 `installedSemanticResultSchema(QUERY_RUN)`, which composes the actual complete,
 qualified and rejected serializers with existing local output definitions.
-The 2026-10-14 export uses base `bcd3ce6379cb445203d33982dd0a390623604e71` plus the local change to `QueryCallbackGraphFailureDocument`.
+The 2026-10-14 export uses base `9268d6ba79ce5870f0fafa668e3269b41a294167` plus the local change to `QueryCallbackGraphFailureDocument`.
 That document carries the exact callback or callable occurrence. A callback subject also carries its body range.
 The exporter uses the CLI classpath from this task checkout and the compiled `query/contract` classes.
-Only `query-result.schema.json` changed. The export does no semantic work and supplies no native qualification.
+Only `query-result.schema.json` changed. It includes typed `authority_mismatch` evidence.
+The export does no semantic work and supplies no native qualification.
 
 | Artifact | SHA-256 |
 | --- | --- |
