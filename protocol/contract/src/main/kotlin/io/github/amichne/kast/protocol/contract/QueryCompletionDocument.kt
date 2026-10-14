@@ -185,4 +185,23 @@ data class QueryCallbackGraphFailureDocument(
     val origin: QueryCallbackObservationOrigin,
     val group: ProtocolOffset,
     val observation: ProtocolOffset,
+    val subject: QueryCallbackGraphSubjectDocument,
 )
+
+/** The list kind and exact source occurrence identify the first failed graph proof. */
+@Serializable
+@JsonClassDiscriminator("type")
+sealed interface QueryCallbackGraphSubjectDocument {
+    val occurrence: QueryCallbackGraphBoundaryDocument
+
+    @Serializable
+    @SerialName("CALLBACK")
+    data class Callback(
+        override val occurrence: QueryCallbackGraphBoundaryDocument,
+        val body: QueryCallbackGraphBoundaryDocument,
+    ) : QueryCallbackGraphSubjectDocument
+
+    @Serializable
+    @SerialName("CALLABLE")
+    data class Callable(override val occurrence: QueryCallbackGraphBoundaryDocument) : QueryCallbackGraphSubjectDocument
+}
