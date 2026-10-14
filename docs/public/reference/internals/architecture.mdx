@@ -12,44 +12,59 @@ mode: "wide"
 
 <a id="bounded-execution-preserves-progress" />
 
-The agent chooses a source question. Kast answers it through the IDEA project for the exact repository. Compiler authority stays with IDEA. The answer includes facts, their search scope, source state, and limitations. [Source map](/reference/source-map) identifies the inspected owners and focused tests.
+Kast obtains semantic facts from the IDEA project for one exact repository. Transport adapters carry those facts to the agent with their source state and proof limits.
 
 ## Authority stays with the program
 
-IDEA supplies the imported Gradle model, Kotlin plugin, and indexes. Kast uses indexes to discover candidates and compiler analysis to establish their semantic identity.
+IDEA supplies the imported Gradle model, bundled Kotlin compiler analysis, and indexes. Indexes find candidates, and compiler evidence establishes their meaning.
+
+The owning domain admits exact declarations and relationships. The query protocol coordinates those reads and preserves their qualifications.
 
 ```mermaid
-flowchart TB
-  accTitle: Inference, semantic authority, and retained evidence have separate owners
-  accDescr: The agent chooses a question. Transport adapters carry it to Kast, which obtains semantic facts from the selected IDEA project. Retained rows preserve those facts but require state checks before reuse.
-  A["Agent: question and next action"] --> T["MCP, Tool RPC, or App Server"]
-  T --> K["Kast: scope and admission"]
-  K --> I["IDEA: model and compiler analysis"]
-  I --> E["Facts, coverage, and qualifications"]
-  E --> A
-  E --> S["Retained rows and checkpoints"]
-  S -->|State checks before reuse| K
-  class K,I authority;
-  class E evidence;
-  class S limited;
-  classDef authority fill:#3154C7,color:#FFFFFF,stroke:#8FA7FF,stroke-width:2px;
-  classDef evidence fill:#166534,color:#FFFFFF,stroke:#86EFAC,stroke-width:1.5px;
-  classDef limited fill:#92400E,color:#FFFFFF,stroke:#FCD34D,stroke-width:1.5px;
-  classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
+flowchart LR
+  A["Agent question"] --> T["MCP, Tool RPC, or hosted App Server"]
+  T --> P["Exact workspace preparation"]
+  P --> H["IDEA Host and current read authority"]
+  H --> D["Symbol, relation, source, and traversal domains"]
+  D --> Q["Canonical query and completion proof"]
+  Q --> O["Bounded facts and retained evidence"]
+  O --> A
 ```
 
-MCP, Tool RPC, and App Server adapters preserve the operation document in their transport wrappers. Saved rows and checkpoints keep the evidence from that operation. Compiler authority determines semantic identity because transport wrappers and retained handles cannot establish declaration meaning.
+Control owns installed adapters and coordination. Host owns IDEA integration and project admission. Compatibility connects those components before a semantic operation.
 
 ## Execution and presentation have separate limits
 
-Queries use configured limits for work, bytes, results, and elapsed time. Public `RUN` drains semantic pages within one grant. `RESUME` presents produced output through an issued continuation. A terminal result reports why the operation stopped.
+`CanonicalQueryProtocol` owns public action dispatch and internal semantic continuation. It keeps one question and one execution grant throughout a run.
 
-The internal runner keeps unvisited files and the active file position for `ALL_DECLARATIONS`. A filter can remove every row from a page while execution still advances. [Results](/reference/responses#follow-progress-not-row-count) explains semantic execution and output presentation.
+Discovery preserves unvisited files and active source positions. A filtered empty page can advance execution without a new result row.
+
+`QueryStateStore` owns retained rows and output state. Presentation uses issued authority from that owner and preserves original coverage.
+
+Public `RESUME` and `READ_RESULT` do no semantic replay. A retained preview cannot strengthen completion proof.
 
 ## Read state constrains reuse
 
-Before Kast restores saved work, it examines the workspace root, owning IDEA instance, read epoch, committed source state, and lifetime. Saved work contains references rather than live compiler objects.
+Workspace admission records the exact root, Host, read epoch, and committed source state. Content and compiler revalidation establish request-specific facts.
 
-An exact symbol can undergo fresh compiler revalidation. retained results and continuations need their original read state. See [Saved state and identity](/reference/responses#saved-state-and-identity) for reuse rules.
+Exact references can get fresh authority under their identity policy. Retained evidence needs its original state and lifetime.
 
-Queries [prepare IDEA automatically](/reference/internals/background-startup). Trust, save, import, and indexing blockers produce explicit failures. A tool catalog establishes the available contract. It does not establish project readiness.
+Detached records keep source identities and derivations rather than live PSI or compiler objects. Their stored form cannot replace current native authority.
+
+## Tracing within and between functions
+
+Relationship domains establish compiler-resolved references and calls. Callback flow preserves anonymous ownership, supply, formal mapping, aliases, forwarding, and invocation sites.
+
+Value impact tracks supported transfers from exact producers and preserves supplied representation models. It keeps original investigation accounting through presentation.
+
+Unsupported or incomplete proof remains a finite cause. [Program tracing](/reference/program-tracing) describes the supported claims.
+
+## Runtime ownership
+
+Workspace preparation coordinates IDEA opening and status. Hosted workspace lanes coordinate semantic requests and uncertain mutation settlement.
+
+Service startup and retirement use installation ownership, readiness identity, and lifecycle fences. A client registration does not establish those facts.
+
+[Lifecycles](/reference/lifecycles) connects these owners. [Staleness](/reference/staleness) describes the state each read needs.
+
+[The source map](/reference/source-map) links current owners and focused tests. OpenWiki supplies source-bound context rather than a substitute for these contracts.

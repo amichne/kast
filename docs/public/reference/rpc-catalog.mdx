@@ -5,38 +5,50 @@ icon: "terminal"
 keywords: ["RPC", "catalog", "Copilot CLI", "Pi"]
 ---
 
-Tool RPC exposes Kast through a one-shot process. The process binds the Kotlin repository or worktree from its working directory. Each invocation writes one JSON object to stdout.
+Tool RPC carries JSON through an installed process interface. Its working directory selects the intended Kotlin repository or worktree.
 
 <a id="discover" />
 
 ## Catalog command
 
-`catalog` returns installed tool names and schemas:
+`catalog` returns installed tool names, descriptions, input schemas, and effects.
 
 ```shell
 "${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-tool-rpc-complete" catalog
 ```
 
-The reply uses `type: "catalog"` and `catalog.schemaVersion: 2`. `catalog.tools[]` contains each tool's `name`, `description`, `inputSchema`, and `effect`. The effect is `READ` or `WRITE`. After an upgrade, rediscover the catalog.
+The reply uses `type: "catalog"` and `catalog.schemaVersion: 2`. Each effect is `READ` or `WRITE`.
+
+The catalog also reports call timeout, maximum response bytes, and optional `querySession` capability. An absent capability selects one-shot calls.
 
 <a id="call" />
 
 ## Call command
 
-`call` accepts the tool name and one JSON object on stdin:
+`call` accepts a tool name and one JSON argument object on stdin. It emits one reply object on stdout.
 
 ```shell
 printf '%s\n' '{}' |
   "${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-tool-rpc-complete" call health_check
 ```
 
-For `query_symbols`, use [Query forms](/reference/api) to choose arguments. Tool RPC exposes the same tool names as direct MCP, including change tools. It omits hosted `workspace_lifecycle`.
+Tool RPC shares direct MCP's tool names, including `health_check` and change tools. It omits hosted `workspace_lifecycle`.
+
+The process admits input shape, installation state, and exact root before semantic dispatch. Its reply preserves finite process or operation failures.
+
+## Query session
+
+When advertised, `query-session` accepts newline-delimited `query_symbols` arguments. It owns one initial query and later presentation of authority issued by preceding replies.
+
+The session admits at most 64 requests. Later actions can read the issued retained result or resume the issued output continuation.
+
+A second `RUN`, unrelated result, source action, or unsupported transition returns `QUERY_SESSION_TRANSITION_REJECTED`. The child then ends.
+
+This process lifetime does not extend retained-state expiry or authorize semantic replay. [Staleness](/reference/staleness) still governs each action.
 
 <a id="decode" />
 
 ## Reply variants
-
-The reply's `type` selects its payload:
 
 | `type` | Necessary field | Meaning |
 | --- | --- | --- |
@@ -46,4 +58,10 @@ The reply's `type` selects its payload:
 | `rejected_document` | `document` | Semantic or hosted rejection. |
 | `rejected` | `failure` | Finite failure at the process interface. |
 
-Each `document` uses the selected tool's response schema. Unknown variants represent an incompatible contract. See the [reply union](/reference/models/tool-rpc-reply) for the wrapper. Use the [adapter guide](https://github.com/amichne/kast/blob/main/docs/tool-rpc.md) for client integration.
+Each document uses its tool-specific response schema. Unknown variants identify an incompatible contract.
+
+`rejected_document` preserves a semantic or hosted rejection. `rejected` reports failure at the process interface before an admitted document is available.
+
+[The reply schema](/reference/models/tool-rpc-reply) defines the wrapper. [The adapter guide](https://github.com/amichne/kast/blob/main/docs/tool-rpc.md) supplies integration details.
+
+[The source map](/reference/source-map#installation-and-transport) identifies the process and query-session owners.

@@ -31,6 +31,7 @@ The [reference guidance](https://diataxis.fr/reference/) favors neutral descript
 | Source changes | `/reference/change`. |
 | Installation and maintenance | `/reference/installation`, `/reference/integrations`, `/reference/troubleshooting`, `/reference/management`. |
 | Semantic contracts | `/reference/api`, `/reference/responses`, `/reference/symbols`, `/reference/composition`, `/reference/limits`. |
+| Tracing, state, and lifecycle contracts | `/reference/program-tracing`, `/reference/staleness`, `/reference/lifecycles`. |
 | Client contracts | `/reference/mcp-catalog`, `/reference/rpc-catalog`, `/reference/compatibility`. |
 | Schemas and recorded evidence | `/reference/schemas`, `/reference/walkthrough`, `/reference/models/...`, `/reference/callables/...`. |
 | Evidence explanation | `/reference/evidence-boundaries`, `/reference/callbacks`, `/explanation/query-lifecycle`. |

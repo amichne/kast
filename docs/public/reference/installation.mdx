@@ -6,91 +6,93 @@ icon: "download"
 keywords: ["install", "IntelliJ IDEA", "Kotlin"]
 ---
 
-Use this guide to select a release channel or IDEA installation. The default installation selects stable Control and Host releases independently.
+Use this procedure to select a release channel and IDEA installation. The installer places Control, Host, service configuration, and the public command in their owned locations.
 
-
-1. [Install the selected release.](#1-install-the-selected-release)
-2. [Load the plugin and inspect state.](#2-load-the-plugin-and-inspect-state)
-3. [Establish a semantic connection.](#3-establish-a-semantic-connection)
+1. [Examine platform prerequisites.](#before-you-install)
+2. [Install the selected release.](#1-install-the-selected-release)
+3. [Load Host and inspect state.](#2-load-the-plugin-and-inspect-state)
+4. [Establish a semantic connection.](#3-establish-a-semantic-connection)
 
 ## Before you install
 
-You need an Apple silicon Mac and a Kotlin Gradle repository. IntelliJ IDEA must use build `262.*`, its bundled Kotlin plugin, and Java 25 JBR. A separate JDK does not change IDEA's runtime.
+Use an Apple silicon Mac with a Kotlin Gradle repository. Select IDEA build `262.*` with bundled Kotlin and Java 25 JBR.
 
-<Accordion title="Examine the IDEA build and bundled runtime">
-  If IDEA uses another application path, change the path in this command:
+If IDEA uses another path, change the path in this command.
 
-  ```shell
-  idea="/Applications/IntelliJ IDEA.app/Contents"
-  cat "$idea/Resources/build.txt"
-  cat "$idea/jbr/Contents/Home/release"
-  ```
+```shell
+idea="/Applications/IntelliJ IDEA.app/Contents"
+cat "$idea/Resources/build.txt"
+cat "$idea/jbr/Contents/Home/release"
+```
 
-  Make sure that the build starts with `IU-262.` or `IC-262.`. Make sure that `JAVA_VERSION` starts with `25` and `OS_ARCH` is `aarch64` or `arm64`.
-</Accordion>
+Make sure that the build starts with `IU-262.` or `IC-262.`. Make sure that the runtime reports Java 25 and `aarch64` or `arm64`.
 
 <a id="install" />
 
 ## 1. Install the selected release
 
+Run the public installer from a terminal.
+
 ```shell wrap
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
-The installer adds the IDEA plugin, Kast services, and native `kast` command. It selects stable Control and Host releases independently and examines their contracts. Compatible components can use different version numbers.
+The default selects stable Control and Host independently. The installer examines component contracts before it reports installation success.
 
-For structured diagnostics, append `-- --verbose` to the installation command.
+For structured diagnostics, append `-- --verbose`. Preserve the `--` separator before installer options.
+
+<Accordion title="Latest developer build">
+Developer builds use the published prerelease channel.
+
+```shell wrap
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest
+```
+
+The installer prints the selected version and source revision. Local checkout state and the installed version do not select that published candidate.
+
+Terminal downloads show progress. Ctrl-C stops installation. `kast upgrade` keeps the developer channel.
+
+Developer installation resets stale Kast state before replacement. Stable installation requests the same cleanup with `--force`.
+
+If you need a preview without file or registration changes, use `--dry-run`. To preserve existing Codex MCP registration, use `--skip-codex-mcp`.
+</Accordion>
+
+<Accordion title="Another IDEA installation">
+Select the application path explicitly.
+
+```shell wrap
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --idea-home "/Applications/IntelliJ IDEA.app"
+```
+</Accordion>
+
+<Accordion title="Recorded component pair">
+This command selects the [historical pair](/reference/compatibility#recorded-release-pair), rather than the latest channel release.
+
+```shell wrap
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --version 0.3.1 --host-version 0.4.0
+```
+
+`--version` selects Control. `--host-version` selects Host.
+</Accordion>
 
 ## 2. Load the plugin and inspect state
 
-Restart IDEA to load the plugin. Run:
+Restart IDEA to load Host. Inspect the installed version, command location, and recorded connections.
 
 ```shell
 kast status
 ```
 
-Examine the version and installation path. Use the [first query](/reference/integrations#run-the-first-query) to make sure that your agent can call Kast.
+If `XDG_CONFIG_HOME` is nonempty, the public executable is `$XDG_CONFIG_HOME/kast`. Otherwise, it is `$HOME/.local/bin/kast`.
 
-<AccordionGroup>
-  <Accordion title="Install the latest developer build">
-    Developer builds are prereleases. To select the latest tested developer build, use:
+If the shell cannot find the command, use the installer-reported absolute path. Add its directory to `PATH` when needed.
 
-    ```shell wrap
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest
-    ```
-
-    Keep the `--` separator before installer options. Terminal downloads show progress. Wait for the installation result. Ctrl-C stops installation.
-
-    The installer reads the published GitHub channel to select the version. The local checkout and installed version do not control this selection. The installer prints the selected version and source revision. `kast upgrade` keeps the developer channel.
-
-    Developer installation removes stale Kast state before it installs the selected pair. You do not need a separate uninstall. For the same cleanup during stable installation, append `--force`. To preserve files and registrations, use `--dry-run`.
-
-    To preserve an existing Codex MCP configuration, append `--skip-codex-mcp`. After installation, restart IDEA and your agent.
-  </Accordion>
-
-  <Accordion title="If your shell cannot find kast">
-    If `XDG_CONFIG_HOME` is nonempty, the executable path is `$XDG_CONFIG_HOME/kast`. Otherwise, the path is `$HOME/.local/bin/kast`.
-
-    Use the absolute path from the installer or add its directory to `PATH`. The installer reports a missing `PATH` entry. It does not edit shell profiles.
-  </Accordion>
-
-  <Accordion title="Select another IDEA installation">
-    ```shell wrap
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --idea-home "/Applications/IntelliJ IDEA.app"
-    ```
-  </Accordion>
-
-  <Accordion title="Install a specific release pair">
-    This command pins the [recorded release pair](/reference/compatibility#recorded-release-pair), Control 0.3.1 and Host 0.4.0:
-
-    ```shell wrap
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --version 0.3.1 --host-version 0.4.0
-    ```
-
-    `--version` selects Control. `--host-version` selects Host. Restart IDEA and your agent.
-  </Accordion>
-</AccordionGroup>
+The installer reports a missing `PATH` entry. It does not change shell profiles.
 
 ## 3. Establish a semantic connection
 
-[Connect your agent](/reference/integrations) after installation. Complete [the first-query exercise](/tutorials/first-query). For setup failures, use [Troubleshooting](/reference/troubleshooting). For upgrades or removal, use [Manage Kast](/reference/management).
+[Connect your agent](/reference/integrations). Complete [the first-query exercise](/tutorials/first-query) in the intended worktree.
+
+Installation success does not establish loaded Host identity or workspace readiness. [Lifecycles](/reference/lifecycles) separates those facts.
+
+For recovery or removal, use [Manage Kast](/reference/management). Preserve failure stage and recovery location before another installation try.

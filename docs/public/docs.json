@@ -84,9 +84,17 @@
         "tab": "Reference",
         "groups": [
           {
-            "group": "Semantic contracts",
+            "group": "Kast mechanisms",
             "pages": [
               "reference",
+              "reference/program-tracing",
+              "reference/staleness",
+              "reference/lifecycles"
+            ]
+          },
+          {
+            "group": "Semantic contracts",
+            "pages": [
               "reference/api",
               "reference/responses",
               "reference/symbols",

@@ -4,42 +4,52 @@ description: "Read coverage, identify evidence limits, and decide when to reuse 
 icon: "shield-check"
 ---
 
-Identity and coverage answer different questions. An exact reference identifies a declaration. Coverage describes the completed portion of the declared search. Each fact belongs to a workspace, source state, declared scope, and coverage record.
+A Kast answer states what the compiler established within one admitted question. Identity, coverage, completion, and runtime execution remain separate facts.
 
-[Query execution and evidence delivery](/explanation/query-lifecycle) explains the separate execution and presentation owners.
+Kast keeps those facts separate because each one supports a different conclusion. A stronger claim needs its own evidence.
 
 ## Exact facts are not the same as exhaustive coverage
 
-| Result | Supported conclusion |
-| --- | --- |
-| Exact symbol, complete coverage | The declaration is established, and Kast covered the requested search scope. |
-| Exact symbol, qualified coverage | The declaration is established, but more matches or unresolved proof can remain. |
-| Empty, complete coverage | No match in the declared, supported scope. |
-| Empty, qualified coverage | Absence remains unproven. |
-| Rejected or unavailable | The request did not establish a successful semantic answer. |
+An exact identity establishes one declaration. Complete coverage also establishes finished enumeration within the declared supported scope.
 
-Coverage applies to the declared, supported Kotlin sources. Excluded sources, libraries, other languages, and runtime execution need separate evidence. Examine restrictions, omissions, and item failures before a conclusion.
+Qualified coverage preserves the established declaration with its limits. More matches or unresolved proof can remain.
+
+Complete empty enumeration can establish absence within that supported scope. Qualified empty output cannot establish that conclusion.
+
+A completion rejection preserves the missing execution, graph, or investigation proof. Complete enumeration alone cannot discharge those obligations.
+
+Scope excludes sources that the question does not admit. Libraries, generated sources, unsupported languages, and unavailable bodies keep their stated restrictions.
+
+An exact occurrence can remain useful when complete proof fails. Its qualifications must remain attached to each later interpretation.
 
 <a id="decide-whether-to-continue" />
 
 ## Evidence delivery cannot strengthen a proof
 
-Public `RESUME` presents produced facts through an issued output token. It performs no semantic execution. Terminal progress names the reason for the stop. `retention_unavailable` means that Kast lost the remaining output suffix. A missing continuation does not prove completeness.
+A preview limits output presentation. It does not reduce or expand the original semantic question.
 
-An empty page can advance through saved evidence. All saved rows keep their original coverage limits, even after you read every page. See [Results](/reference/responses#follow-progress-not-row-count) for the next action.
+`RESUME` and `READ_RESULT` present produced facts without new semantic execution. A final output page cannot discharge an unresolved callback or investigation obligation.
+
+`retention_unavailable` records loss of remaining output. Absence of a token does not establish complete coverage.
 
 <a id="can-i-reuse-this-result-later" />
 
 ## The original state constrains reuse
 
-Issued handles identify specific capabilities. Stale references and unavailable saved state prevent their reuse. A fresh query establishes a new answer. A new query cannot recover the original delivery.
+Retained evidence belongs to its original workspace, IDEA owner, read state, and lifetime. A later source state needs a new answer.
 
-Kast can revalidate an exact symbol with fresh compiler evidence. retained results and continuations need their original read state and lifetime. See [Saved state and identity](/reference/responses#saved-state-and-identity) before reuse.
+Exact-reference reacquisition can establish fresh compiler authority under its identity policy. It does not migrate an earlier retained result.
+
+[Staleness](/reference/staleness) explains that difference. [Results](/reference/responses) defines handles and presentation progress.
 
 <a id="check-relationship-and-verification-claims" />
 
 ## Read relationship and edit evidence
 
-A compiler-confirmed call site establishes a source relationship. Lexical containment alone does not establish a named caller. [Callback evidence](/reference/callbacks) identifies anonymous owners and the limits on activation claims.
+A compiler-resolved source call establishes a static relationship. It does not prove runtime execution, branch feasibility, or invocation frequency.
 
-An edit receipt establishes verification for its reported scope. If the outcome is uncertain, keep the receipt. Use [change recovery](/reference/change#read-the-receipt) before another write. Run your project's build and tests after a verified change.
+Callback supply does not prove invocation. Lexical containment does not alone establish a named caller. [Program tracing](/reference/program-tracing) identifies the necessary path evidence.
+
+A verified edit receipt establishes its reported source effect and examination scope. Project tests and builds establish separate behavior.
+
+An uncertain write needs source and recovery evidence before another write. [Change recovery](/reference/change#read-the-receipt) supplies that procedure.

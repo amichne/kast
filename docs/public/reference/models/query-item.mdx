@@ -7,8 +7,12 @@ description: "Decode a query row and preserve its exact identity and evidence."
 openapi-schema: "reference/callables.openapi.json query_symbolsResponse_queryResultItem"
 ---
 
-The selected output determines the row variant: a symbol, occurrence, traversal record, binding row, or impact evidence.
+The output form selects the row kind. A row can describe a symbol, occurrence, traversal record, binding, value path, or impact witness.
 
-Each row preserves its exact identities and supporting evidence. A shared display name does not establish identity equality.
+Each row keeps its established identities and evidence. Equal display names do not establish declaration equality.
 
-Qualifications remain attached to the producing result. [Query forms](/reference/api#choose-the-result-you-need) defines outputs. [Composition contracts](/reference/composition) defines legal row combinations.
+Occurrence and traversal rows keep source-site or hop facts. A binding row keeps named cells, while a value path keeps transfer provenance.
+
+The producing result owns coverage and qualifications. Row selection cannot prove coverage of excluded rows.
+
+[Query outputs](/reference/api#choose-the-result-you-need) defines legal forms. [Composition](/reference/composition) defines row transitions and identity comparison.
