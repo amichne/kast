@@ -14,13 +14,15 @@ import java.nio.file.attribute.BasicFileAttributes
 
 internal sealed interface ResetSharedSocketCapture {
     class Captured
-    internal constructor(private val process: ResetScopedProcess, private val sockets: List<ResetOwnedSharedSocket>) :
+    internal constructor(val process: ResetScopedProcess, private val sockets: List<ResetOwnedSharedSocket>) :
         ResetSharedSocketCapture {
         fun retireAfterExit(
             observation: LifecycleProcessObservation,
             observe: (ResetProcessObservation) -> Unit = {},
         ): LifecycleProcessObservation {
-            val result = if (observation == LifecycleProcessObservation.Absent) retireAll() else socketRejected()
+            val result =
+                if (sockets.isEmpty() || observation == LifecycleProcessObservation.Absent) retireAll()
+                else socketRejected()
             observe(
                 ResetProcessObservation(
                     process.snapshot.pid,

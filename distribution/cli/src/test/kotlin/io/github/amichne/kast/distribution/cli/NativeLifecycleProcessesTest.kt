@@ -100,6 +100,16 @@ class NativeLifecycleProcessesTest {
                         ResetProcessStage.SOCKET_CAPTURE,
                         ResetProcessResult.IDENTITY_VERIFIED,
                     ),
+                    ResetProcessObservation(
+                        child.pid(),
+                        ResetProcessStage.REVALIDATE,
+                        ResetProcessResult.IDENTITY_VERIFIED,
+                    ),
+                    ResetProcessObservation(
+                        child.pid(),
+                        ResetProcessStage.REVALIDATE,
+                        ResetProcessResult.IDENTITY_VERIFIED,
+                    ),
                     ResetProcessObservation(child.pid(), ResetProcessStage.VERIFY, ResetProcessResult.RETIRED),
                     ResetProcessObservation(
                         child.pid(),

@@ -193,11 +193,13 @@ class ResetJournalRecoveryTest {
             val runtime =
                 ResetRuntimeScript(
                     root,
-                    closedRetirementSteps().take(2) +
-                        listOf(
-                            ResetScriptStep.Table(ResetProcessTable.Observed(listOf(snapshot))),
-                            ResetScriptStep.Signal(snapshot, LifecycleProcessObservation.Present(snapshot)),
-                        ),
+                    listOf(
+                        ResetScriptStep.Table(ResetProcessTable.Observed(listOf(snapshot))),
+                        ResetScriptStep.Capture(snapshot, ResetScriptCaptureResult.NO_SHARED_DESCRIPTORS),
+                        ResetScriptStep.Job(true, true, ResetCommandObservation.Exited(113)),
+                        ResetScriptStep.Job(false, true, ResetCommandObservation.Exited(113)),
+                        ResetScriptStep.Signal(snapshot, LifecycleProcessObservation.Present(snapshot)),
+                    ),
                 )
             assertEquals(
                 ResetRetirement.Rejected(ForceResetFailure.PROCESS_RETIREMENT_REJECTED),

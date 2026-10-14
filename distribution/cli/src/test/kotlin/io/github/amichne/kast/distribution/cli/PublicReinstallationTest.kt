@@ -173,7 +173,10 @@ private class PublicReadinessScript(private val installation: Path, private val 
 
     override fun processes() = error("unexpected process observation")
 
-    override fun retire(process: ResetScopedProcess, allowance: Duration) = error("unexpected retirement")
+    override fun capture(process: ResetScopedProcess) = error("unexpected socket capture")
+
+    override fun retire(capture: ResetSharedSocketCapture.Captured, allowance: Duration) =
+        error("unexpected retirement")
 
     override fun activate(installation: Path, home: Path, environment: Map<String, String>) =
         error("unexpected activation")

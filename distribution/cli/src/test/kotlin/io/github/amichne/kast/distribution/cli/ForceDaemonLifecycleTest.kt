@@ -96,13 +96,59 @@ class ForceDaemonLifecycleTest {
         val runtime =
             ResetRuntimeScript(
                 root,
-                absentJobs() +
+                listOf(
+                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(listener))),
+                    ResetScriptStep.Capture(listener, ResetScriptCaptureResult.NO_SHARED_DESCRIPTORS),
+                ) +
+                    absentJobs() +
                     listOf(
-                        ResetScriptStep.Table(ResetProcessTable.Observed(listOf(listener))),
                         ResetScriptStep.Signal(listener, LifecycleProcessObservation.Absent),
                         ResetScriptStep.Table(ResetProcessTable.Observed(emptyList())),
                     ),
             )
+        assertEquals(ResetEffect.Completed, ForceDaemonRetirement(runtime).retire(root, home()))
+        runtime.assertConsumed()
+    }
+
+    @Test
+    fun `capture rejection prevents launch job retirement`() {
+        val root = root()
+        val prior = snapshot(root)
+        val runtime =
+            ResetRuntimeScript(
+                root,
+                listOf(
+                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
+                    ResetScriptStep.Capture(prior, ResetScriptCaptureResult.REJECTED),
+                ),
+            )
+
+        assertEquals(
+            ResetEffect.Rejected(ForceResetFailure.PROCESS_RETIREMENT_REJECTED),
+            ForceDaemonRetirement(runtime).retire(root, home()),
+        )
+        runtime.assertConsumed()
+    }
+
+    @Test
+    fun `captured ownership survives launch job disappearance before process retirement`() {
+        val root = root()
+        val prior = snapshot(root)
+        val runtime =
+            ResetRuntimeScript(
+                root,
+                listOf(
+                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
+                    ResetScriptStep.Capture(prior, ResetScriptCaptureResult.NO_SHARED_DESCRIPTORS),
+                    ResetScriptStep.Job(true, true, ResetCommandObservation.Exited(0)),
+                    ResetScriptStep.Job(true, false, ResetCommandObservation.Exited(0)),
+                    ResetScriptStep.Job(true, true, ResetCommandObservation.Exited(113)),
+                    ResetScriptStep.Job(false, true, ResetCommandObservation.Exited(113)),
+                    ResetScriptStep.Signal(prior, LifecycleProcessObservation.Absent),
+                    ResetScriptStep.Table(ResetProcessTable.Observed(emptyList())),
+                ),
+            )
+
         assertEquals(ResetEffect.Completed, ForceDaemonRetirement(runtime).retire(root, home()))
         runtime.assertConsumed()
     }
@@ -117,6 +163,7 @@ class ForceDaemonLifecycleTest {
             ResetRuntimeScript(
                 root,
                 listOf(
+                    ResetScriptStep.Table(ResetProcessTable.Observed(emptyList())),
                     ResetScriptStep.Job(true, true, ResetCommandObservation.Exited(0)),
                     ResetScriptStep.Job(true, false, ResetCommandObservation.Exited(5)),
                     ResetScriptStep.Job(true, true, ResetCommandObservation.Exited(0)),
@@ -149,11 +196,10 @@ class ForceDaemonLifecycleTest {
         val runtime =
             ResetRuntimeScript(
                 root,
-                absentJobs() +
-                    listOf(
-                        ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
-                        ResetScriptStep.Signal(prior, LifecycleProcessObservation.Present(prior)),
-                    ),
+                listOf(
+                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
+                    ResetScriptStep.Capture(prior, ResetScriptCaptureResult.NO_SHARED_DESCRIPTORS),
+                ) + absentJobs() + listOf(ResetScriptStep.Signal(prior, LifecycleProcessObservation.Present(prior))),
             )
         val result = ForceDaemonRetirement(runtime).retire(root, home())
         assertEquals(ResetEffect.Rejected(ForceResetFailure.PROCESS_RETIREMENT_REJECTED), result)
@@ -173,9 +219,12 @@ class ForceDaemonLifecycleTest {
         val runtime =
             ResetRuntimeScript(
                 root,
-                absentJobs() +
+                listOf(
+                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
+                    ResetScriptStep.Capture(prior, ResetScriptCaptureResult.NO_SHARED_DESCRIPTORS),
+                ) +
+                    absentJobs() +
                     listOf(
-                        ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
                         ResetScriptStep.Signal(prior, LifecycleProcessObservation.Present(replacement)),
                         ResetScriptStep.Table(ResetProcessTable.Observed(listOf(replacement))),
                     ),
@@ -192,11 +241,10 @@ class ForceDaemonLifecycleTest {
         val runtime =
             ResetRuntimeScript(
                 root,
-                absentJobs() +
-                    listOf(
-                        ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
-                        ResetScriptStep.Signal(prior, LifecycleProcessObservation.Present(other)),
-                    ),
+                listOf(
+                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
+                    ResetScriptStep.Capture(prior, ResetScriptCaptureResult.NO_SHARED_DESCRIPTORS),
+                ) + absentJobs() + listOf(ResetScriptStep.Signal(prior, LifecycleProcessObservation.Present(other))),
             )
         assertEquals(
             ResetEffect.Rejected(ForceResetFailure.PROCESS_RETIREMENT_REJECTED),
@@ -212,9 +260,12 @@ class ForceDaemonLifecycleTest {
         val runtime =
             ResetRuntimeScript(
                 root,
-                absentJobs() +
+                listOf(
+                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
+                    ResetScriptStep.Capture(prior, ResetScriptCaptureResult.NO_SHARED_DESCRIPTORS),
+                ) +
+                    absentJobs() +
                     listOf(
-                        ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
                         ResetScriptStep.Signal(prior, LifecycleProcessObservation.Absent),
                         ResetScriptStep.Table(
                             ResetProcessTable.Observed(listOf(prior.copy(pid = 92, startEpochMillis = 300)))
@@ -359,6 +410,7 @@ class ForceDaemonActivationTest {
                 closedRetirementSteps() +
                     listOf(
                         ResetScriptStep.Activate(LifecycleChildObservation.DeadlineExceeded),
+                        ResetScriptStep.Table(ResetProcessTable.Observed(emptyList())),
                         ResetScriptStep.Job(true, true, ResetCommandObservation.Unavailable),
                     ),
             )

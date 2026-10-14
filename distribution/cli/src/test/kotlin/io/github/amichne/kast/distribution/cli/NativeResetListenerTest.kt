@@ -76,6 +76,20 @@ class NativeResetListenerTest {
         }
 
     @Test
+    fun `native retirement consumes captured ownership after a launch job stops its process`() =
+        withScopedDaemon { selected, socket, listener ->
+            val captured = NativeForceDaemonRuntime.captureObserved(selected) {} as ResetSharedSocketCapture.Captured
+            listener.destroyForcibly()
+            assertTrue(listener.waitFor(5, TimeUnit.SECONDS))
+            assertTrue(Files.exists(socket), "the external job stop leaves the socket")
+            assertEquals(
+                LifecycleProcessObservation.Absent,
+                NativeForceDaemonRuntime.retireCapturedObserved(captured, Duration.ofSeconds(5)) {},
+            )
+            assertFalse(Files.exists(socket), "captured ownership survives the external job stop")
+        }
+
+    @Test
     fun `shared socket retirement preserves a live owner`() = withScopedDaemon { selected, socket, listener ->
         val captured = ResetOwnedSharedSocket.capture(selected) as ResetSharedSocketCapture.Captured
         val observations = mutableListOf<ResetProcessObservation>()
