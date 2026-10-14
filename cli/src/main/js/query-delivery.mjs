@@ -42,7 +42,7 @@ function encodeQueryDeliveryEnvelope(value) {
 }
 // End generated outer delivery contract.
 /** Portable output delivery. Canonical replies stay opaque, schema-validated RPC documents. */
-const QUERY_DELIVERY_GUIDANCE = " The client awaits bounded query output in one invocation. Default text contains exact rows, shared descriptions, coverage, original outcome and delivery blockers. Detailed source/evidence is available through the shown authority-bound READ_RESULT request with verbose:true. Distinct occurrences remain distinct; a retained rejection is still a rejection. Handles may expire or become stale; never rerun a query implicitly.";
+const QUERY_DELIVERY_GUIDANCE = " The client awaits bounded query output in one invocation. Default text starts with received row, relation and file counts, original coverage and blockers, then exact rows and compact graph evidence. Signature contracts and detailed source/evidence use the shown authority-bound READ_RESULT request with verbose:true. Counts describe received evidence, not an unread suffix. Distinct occurrences remain distinct; a retained rejection is still a rejection. Handles may expire or become stale; never rerun a query implicitly.";
 const QUERY_DELIVERY_LIMITS = Object.freeze({ pages: 64, bytes: 262_144 });
 const deliveryObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const deliveryInteger = value => Number.isSafeInteger(value) && value >= 0 && value <= 1_000_000;
@@ -222,6 +222,21 @@ function queryPresentation(result, verbose = false, finalDelivery = false) {
   const replies = result.type === 'query_delivery' ? [initial, ...result.pages] : [initial];
   const retained = result.delivery?.result ?? rejectionEvidence?.result ??
     (first.retention?.kind === 'retained' ? first.retention.reference : null);
+  const stop = result.delivery?.stop ?? 'DELIVERED';
+  // Transport/decoder loss does not invalidate authority. Only canonical retention failures do.
+  const detailAuthorityRejected = replies.some(reply =>
+    reply.type === 'qualified' && reply.document?.qualification?.progress?.type === 'retention_unavailable' ||
+    reply.type === 'rejected_document' && reply.document?.rejection?.type === 'execution-rejected' &&
+    ['result-unavailable', 'result-stale-basis'].includes(reply.document.rejection.reason));
+  const detailAvailable = deliveryReference(retained) && !detailAuthorityRejected;
+  const summarizeObservations = !finalDelivery && detailAvailable && stop !== 'DELIVERY_UNAVAILABLE';
+  // Exact compiler identity remains inline. Full signature contracts stay under the same retained authority.
+  const symbolPresentation = value => {
+    if (!summarizeObservations || !deliveryObject(value?.compilerEvidence) ||
+        !Object.hasOwn(value.compilerEvidence, 'signature')) return value;
+    const { signature, ...compilerEvidence } = value.compilerEvidence;
+    return { ...value, compilerEvidence };
+  };
   const rows = replies.flatMap(reply => Array.isArray(reply.document?.items) ? reply.document.items : []);
   // A rejection preview is a copy of the retained prefix. Keep any occurrence not actually delivered.
   if (rejectionEvidence) {
@@ -314,36 +329,75 @@ function queryPresentation(result, verbose = false, finalDelivery = false) {
   }
   const describe = value => {
     const entry = descriptionEntries.get(value);
-    return entry?.label ? { $description: entry.label } : value;
+    return entry?.label ? { $description: entry.label } : symbolPresentation(value);
   };
+  const factPresentation = fact => ({ ...fact,
+    source: symbolPresentation(fact.source), target: symbolPresentation(fact.target) });
   const rowPresentation = row => {
     if (row.type === 'exact-symbol') return Object.fromEntries(Object.entries(row).filter(([key, value]) =>
-      !['name', 'location', 'signature', 'source', 'matches', 'connections'].includes(key) ||
-      value != null && (!Array.isArray(value) || value.length > 0)));
+      !(summarizeObservations && ['signature', 'source'].includes(key)) &&
+      (!['name', 'location', 'signature', 'source', 'matches', 'connections'].includes(key) ||
+      value != null && (!Array.isArray(value) || value.length > 0))).map(([key, value]) =>
+        [key, key === 'connections' && summarizeObservations ? value.map(factPresentation) : value]));
+    if (row.type === 'occurrence' && summarizeObservations) return { ...row, relation: factPresentation(row.relation) };
     if (row.type !== 'reference-occurrence') return row;
     const occurrence = row.occurrence;
     return { ...row, occurrence: { ...occurrence, target: describe(occurrence.target),
       ownership: occurrence.ownership?.type === 'declaration-owned'
         ? { ...occurrence.ownership, declaration: describe(occurrence.ownership.declaration) } : occurrence.ownership } };
   };
-  const stop = result.delivery?.stop ?? 'DELIVERED';
-  // Transport/decoder loss does not invalidate authority. Only explicit canonical result/retention failures do.
-  const detailAuthorityRejected = replies.some(reply =>
-    reply.type === 'qualified' && reply.document?.qualification?.progress?.type === 'retention_unavailable' ||
-    reply.type === 'rejected_document' && reply.document?.rejection?.type === 'execution-rejected' &&
-    ['result-unavailable', 'result-stale-basis'].includes(reply.document.rejection.reason));
-  const detailAvailable = retained && !detailAuthorityRejected;
-  const summarizeObservations = !finalDelivery && detailAvailable && stop !== 'DELIVERY_UNAVAILABLE';
-  const lines = [`Kast query: ${initial.type}; delivery: ${stop}`, 'Summary:', JSON.stringify(summary)];
+  const evidence = Object.fromEntries(queryEvidenceFields.map(field => [field,
+    replies.flatMap(reply => Array.isArray(reply.document?.[field]) ? reply.document[field] : [])]));
+  const relations = new Map(), files = new Map();
+  let rowsWithoutFile = 0, rowsWithoutRelation = 0;
+  for (const row of rows) {
+    const witness = row.type === 'reference-edge' ? graph?.witnesses.get(row.witness) : null;
+    const file = row.location?.file ?? row.occurrence?.occurrence?.file ?? row.relation?.occurrence?.file ??
+      witness?.occurrence?.file ?? (row.type === 'exact-symbol-node' ? graph?.nodes.get(row.node)?.symbol?.file : null);
+    if (file) files.set(file, (files.get(file) ?? 0) + 1);
+    else rowsWithoutFile++;
+    const facts = row.type === 'exact-symbol-node' ? row.connections.map(id => {
+      const connection = graph.connections.get(id);
+      return connection.type === 'reference-backed' ? graph.witnesses.get(connection.witness) : connection;
+    }) : row.type === 'reference-edge' ? [witness] : row.type === 'reference-occurrence' ? [row.occurrence] :
+      row.type === 'occurrence' ? [row.relation] : row.type === 'exact-symbol' ? row.connections ?? [] : [];
+    let counted = false;
+    for (const fact of facts) if (fact?.meaning) {
+      relations.set(fact.meaning, (relations.get(fact.meaning) ?? 0) + 1);
+      counted = true;
+    }
+    if (!counted) rowsWithoutRelation++;
+  }
+  const rejection = first.rejection;
+  const coverage = first.coverage ?? rejection?.detail?.originalCoverage;
+  const overview = {
+    rows: { received: rows.length,
+      ...(first.invocation ? { accumulated: first.invocation.accumulated_row_count } : {}) },
+    relations: [...relations].map(([relation, count]) => ({ relation, received_connections: count })),
+    files: [...files].map(([file, count]) => ({ file, received_rows: count })),
+    rows_without_file: rowsWithoutFile, rows_without_relation: rowsWithoutRelation,
+    ...(coverage ? { coverage } : {}),
+    ...((first.question ?? rejectionEvidence?.question)?.completion
+      ? { completion: (first.question ?? rejectionEvidence.question).completion } : {}),
+    blockers: {
+      ...(stop !== 'DELIVERED' ? { delivery: stop } : {}),
+      ...(rejection ? { rejection: { type: rejection.type,
+        ...(rejection.detail?.cause ? { cause: rejection.detail.cause } : {}),
+        ...(rejection.detail?.stop ? { stop: rejection.detail.stop } : {}) } } : {}),
+      ...(first.qualification ? { qualification: first.qualification } : {}),
+      failures: evidence.failures.length, omissions: evidence.omissions.length,
+    },
+  };
+  const lines = [`Kast query: ${initial.type}; delivery: ${stop}`, 'Overview:', JSON.stringify(overview),
+    'Counts describe received rows and their connections. Files without supplied locations remain unknown.',
+    'Summary:', JSON.stringify(summary)];
   if (stop !== 'DELIVERED') lines.push('Output is incomplete; retain the semantic outcome and delivery blocker above.');
   lines.push(`Rows (${rows.length}):`, ...rows.map(row => JSON.stringify(rowPresentation(row))));
-  if (shared.length) lines.push('Shared descriptions:', ...shared.map(entry => JSON.stringify({ [entry.label]: entry.value })));
+  if (shared.length) lines.push('Shared descriptions:', ...shared.map(entry => JSON.stringify({ [entry.label]: symbolPresentation(entry.value) })));
   for (const received of receivedGraphs.values()) lines.push('Relation graph:', JSON.stringify({ ...received.original,
     nodes: [...received.nodes.values()], witnesses: [...received.witnesses.values()],
     reference_observations: received.observations,
     ...(received.connections.size ? { connection_witnesses: [...received.connections.values()] } : {}) }));
-  const evidence = Object.fromEntries(queryEvidenceFields.map(field => [field,
-    replies.flatMap(reply => Array.isArray(reply.document?.[field]) ? reply.document[field] : [])]));
   const window = replies.map(reply => reply.document?.evidence_window).filter(Boolean).at(-1);
   lines.push('Evidence delivery:', JSON.stringify({ delivered_entries: Object.values(evidence).reduce((sum, entries) => sum + entries.length,
     [...receivedGraphs.values()].reduce((sum, received) => sum + received.observations.length, 0)),
