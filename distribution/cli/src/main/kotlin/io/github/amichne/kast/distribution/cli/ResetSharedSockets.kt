@@ -84,7 +84,7 @@ internal class ResetOwnedSharedSocket private constructor(private val path: Path
             inspect: (List<String>) -> ProcessObservation = { runBounded(it) },
             observe: (ResetProcessObservation) -> Unit = {},
         ): ResetSharedSocketCapture {
-            val result = captureProcess(process, inspect)
+            val result = captureProcess(process, inspect, observe)
             observe(
                 ResetProcessObservation(
                     process.snapshot.pid,
@@ -101,6 +101,7 @@ internal class ResetOwnedSharedSocket private constructor(private val path: Path
         private fun captureProcess(
             process: ResetScopedProcess,
             inspect: (List<String>) -> ProcessObservation,
+            observe: (ResetProcessObservation) -> Unit,
         ): ResetSharedSocketCapture {
             val executable =
                 listOf("/usr/sbin/lsof", "/usr/bin/lsof").firstOrNull { Files.isExecutable(Path.of(it)) }
@@ -111,7 +112,7 @@ internal class ResetOwnedSharedSocket private constructor(private val path: Path
             if (result.code in 0..1 && result.output.isEmpty())
                 return ResetSharedSocketCapture.Captured(process, emptyList())
             if (result.code != 0) return ResetSharedSocketCapture.Rejected
-            return captureDocument(process, result.output, executable, inspect)
+            return captureDocument(process, result.output, executable, inspect, observe)
         }
 
         private fun captureDocument(
@@ -119,6 +120,7 @@ internal class ResetOwnedSharedSocket private constructor(private val path: Path
             document: String,
             executable: String,
             inspect: (List<String>) -> ProcessObservation,
+            observe: (ResetProcessObservation) -> Unit,
         ): ResetSharedSocketCapture =
             try {
                 val lines = document.lineSequence().filter { it.isNotEmpty() }.toList()
@@ -137,8 +139,13 @@ internal class ResetOwnedSharedSocket private constructor(private val path: Path
                 for (path in paths) {
                     val key = socketKey(path) ?: return ResetSharedSocketCapture.Rejected
                     if (
-                        ResetSocketPeerOwnership.prove(path, process.snapshot.pid, executable, inspect) !=
-                            ResetSocketPeerProof.PROVEN || socketKey(path) != key
+                        ResetSocketPeerOwnership.prove(
+                            path,
+                            process.snapshot.pid,
+                            executable,
+                            effects = ResetPeerEffects(unchanged = { socketKey(path) == key }, observe = observe),
+                            inspect = inspect,
+                        ) != ResetSocketPeerProof.PROVEN || socketKey(path) != key
                     )
                         return ResetSharedSocketCapture.Rejected
                     sockets += ResetOwnedSharedSocket(path, key)

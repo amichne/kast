@@ -33,6 +33,9 @@ class ResetProcessContractTest {
                 ResetProcessObservation(123, ResetProcessStage.REVALIDATE, ResetProcessResult.IDENTITY_VERIFIED),
                 ResetProcessObservation(123, ResetProcessStage.SOCKET_CAPTURE, ResetProcessResult.IDENTITY_VERIFIED),
                 ResetProcessObservation(123, ResetProcessStage.SOCKET_CAPTURE, ResetProcessResult.OBSERVATION_REJECTED),
+                ResetProcessObservation(123, ResetProcessStage.SOCKET_PEER, ResetProcessResult.PEER_PENDING),
+                ResetProcessObservation(123, ResetProcessStage.SOCKET_PEER, ResetProcessResult.PEER_REJECTED),
+                ResetProcessObservation(123, ResetProcessStage.SOCKET_PEER, ResetProcessResult.SOCKET_CHANGED),
                 ResetProcessObservation(123, ResetProcessStage.SOCKET_RETIREMENT, ResetProcessResult.RETIRED),
                 ResetProcessObservation(
                     123,

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kast.michne.com/schemas/reset-launch-observation.schema.json",
+  "title": "Kast launch job retirement observation",
+  "type": "object",
+  "required": [
+    "stage",
+    "variant",
+    "outcome",
+    "type"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "stage": {
+      "enum": [
+        "INSPECT",
+        "BOOTOUT",
+        "WAIT"
+      ]
+    },
+    "variant": {
+      "enum": [
+        "LEGACY_LOGIN",
+        "CURRENT"
+      ]
+    },
+    "outcome": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "code"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "EXITED"
+            },
+            "code": {
+              "type": "integer"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "enum": [
+                "UNAVAILABLE",
+                "DEADLINE_EXCEEDED",
+                "INTERRUPTED"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "type": {
+      "const": "LAUNCH_RETIREMENT"
+    }
+  }
+}
