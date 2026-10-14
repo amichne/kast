@@ -8,6 +8,15 @@ Rows without a supplied location remain unknown.
 These counts do not describe an unread suffix or prove exhaustive coverage.
 The first semantic outcome and `COMPLETE_ONLY` policy remain authoritative.
 
+For each received refinement failure, the overview keeps the exact file, offset, and reason.
+Its `read_source_eligibility` is `NOT_ISSUED` because a discovery location is not an issued selector.
+The `next_action` uses existing recovery names as advice.
+Stale locations need fresh authority, and invalid scopes or declaration choices need a corrected request.
+Compiler failures need a failure report.
+Workspace readiness failures need a ready workspace.
+This advice adds no selector, epoch claim, source-read request, or automatic retry.
+An explicit `AT_LOCATION` query can reject again.
+
 Exact rows and the existing compact graph remain inline.
 Graph tables keep endpoint identities, witness identities, directions, relation kinds, source ranges, and qualifiers.
 With available retained authority, connection descriptions omit repeated signature contracts.
