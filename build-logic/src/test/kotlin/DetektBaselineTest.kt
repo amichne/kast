@@ -31,15 +31,15 @@ class DetektBaselineTest {
         source.writeText("package example\nfun existing(value: Int): Int = value + 42\n")
         val runner = GradleRunner.create().withProjectDir(temporaryDirectory.toFile()).withPluginClasspath()
 
-        val original = runner.withArguments("detekt", "--console=plain").buildAndFail()
+        val original = runner.withArguments("detekt", "--console=plain", "--no-watch-fs").buildAndFail()
         assertTrue(original.output.contains("MagicNumber"), original.output)
-        runner.withArguments("detektBaseline", "--console=plain").build()
-        runner.withArguments("detekt", "--console=plain").build()
+        runner.withArguments("detektBaseline", "--console=plain", "--no-watch-fs").build()
+        runner.withArguments("detekt", "--console=plain", "--no-watch-fs").build()
 
         source.writeText(
             "package example\nfun existing(value: Int): Int = value + 42\nfun added(value: Int): Int = value + 43\n"
         )
-        val added = runner.withArguments("detekt", "--console=plain").buildAndFail()
+        val added = runner.withArguments("detekt", "--console=plain", "--no-watch-fs").buildAndFail()
         assertTrue(added.output.contains("MagicNumber"), added.output)
         assertTrue(added.output.contains("Example.kt:3:"), added.output)
     }

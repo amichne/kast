@@ -1,7 +1,7 @@
 package io.github.amichne.kast.cli.installation
 
 import io.github.amichne.kast.appserver.AdmittedAppServerConfiguration
-import io.github.amichne.kast.appserver.BrokerPublicEndpointMode
+import io.github.amichne.kast.distribution.contract.configuration.BrokerPublicEndpointMode
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import kotlinx.serialization.Serializable

@@ -40,6 +40,120 @@ class ForceDaemonLifecycleTest {
     }
 
     @Test
+    fun `reset selects an orphaned shared Codex listener by its exact installation transport`() {
+        val root = Path.of("/fixture/kast")
+        val listener =
+            snapshot(root)
+                .copy(
+                    command = "/fixture/bin/codex",
+                    arguments =
+                        listOf(
+                            "-c",
+                            "features.code_mode_host=true",
+                            "app-server",
+                            "--analytics-default-enabled",
+                            "--listen",
+                            "unix:///fixture/kast/installation/state/run/u.sock",
+                        ),
+                )
+        val selected = ResetScopedProcess.select(listener, root) as ResetProcessSelection.Selected
+        assertEquals(listener, selected.process.snapshot)
+        val excluded =
+            listOf(
+                listener.copy(
+                    arguments =
+                        listener.arguments.dropLast(1) + "unix:///fixture/kast-other/installation/state/run/u.sock"
+                ),
+                listener.copy(arguments = listener.arguments.dropLast(1) + "unix:///fixture/kast/../foreign/u.sock"),
+                listener.copy(
+                    arguments = listener.arguments.dropLast(1) + "unix:///fixture/kast/installation/state/run/c.sock"
+                ),
+                listener.copy(arguments = listOf("app-server", "daemon", "pid-update-loop")),
+                listener.copy(arguments = listOf("-c", "app-server", "exec", "--listen", listener.arguments.last())),
+                listener.copy(
+                    arguments =
+                        listOf("app-server", "--listen", listener.arguments.last(), "--listen", "unix:///foreign.sock")
+                ),
+                listener.copy(command = "/fixture/bin/unrelated"),
+            )
+        excluded.forEach { assertEquals(ResetProcessSelection.Unrelated, ResetScopedProcess.select(it, root)) }
+        assertEquals(
+            ResetProcessSelection.Rejected,
+            ResetScopedProcess.select(listener.copy(startEpochMillis = 0), root),
+        )
+    }
+
+    @Test
+    fun `reset retires a Codex listener after its launch job and parent disappear`() {
+        val root = root()
+        val listener =
+            snapshot(root)
+                .copy(
+                    command = "/fixture/bin/codex",
+                    arguments =
+                        listOf("app-server", "--listen", "unix://${root.resolve("installation/state/run/u.sock")}"),
+                )
+        val runtime =
+            ResetRuntimeScript(
+                root,
+                listOf(
+                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(listener))),
+                    ResetScriptStep.Capture(listener, ResetScriptCaptureResult.NO_SHARED_DESCRIPTORS),
+                ) +
+                    absentJobs() +
+                    listOf(
+                        ResetScriptStep.Signal(listener, LifecycleProcessObservation.Absent),
+                        ResetScriptStep.Table(ResetProcessTable.Observed(emptyList())),
+                    ),
+            )
+        assertEquals(ResetEffect.Completed, ForceDaemonRetirement(runtime).retire(root, home()))
+        runtime.assertConsumed()
+    }
+
+    @Test
+    fun `capture rejection prevents launch job retirement`() {
+        val root = root()
+        val prior = snapshot(root)
+        val runtime =
+            ResetRuntimeScript(
+                root,
+                listOf(
+                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
+                    ResetScriptStep.Capture(prior, ResetScriptCaptureResult.REJECTED),
+                ),
+            )
+
+        assertEquals(
+            ResetEffect.Rejected(ForceResetFailure.PROCESS_RETIREMENT_REJECTED),
+            ForceDaemonRetirement(runtime).retire(root, home()),
+        )
+        runtime.assertConsumed()
+    }
+
+    @Test
+    fun `captured ownership survives launch job disappearance before process retirement`() {
+        val root = root()
+        val prior = snapshot(root)
+        val runtime =
+            ResetRuntimeScript(
+                root,
+                listOf(
+                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
+                    ResetScriptStep.Capture(prior, ResetScriptCaptureResult.NO_SHARED_DESCRIPTORS),
+                    ResetScriptStep.Job(true, true, ResetCommandObservation.Exited(0)),
+                    ResetScriptStep.Job(true, false, ResetCommandObservation.Exited(0)),
+                    ResetScriptStep.Job(true, true, ResetCommandObservation.Exited(113)),
+                    ResetScriptStep.Job(false, true, ResetCommandObservation.Exited(113)),
+                    ResetScriptStep.Signal(prior, LifecycleProcessObservation.Absent),
+                    ResetScriptStep.Table(ResetProcessTable.Observed(emptyList())),
+                ),
+            )
+
+        assertEquals(ResetEffect.Completed, ForceDaemonRetirement(runtime).retire(root, home()))
+        runtime.assertConsumed()
+    }
+
+    @Test
     fun `launch job that survives bootout prevents deletion and preserves prior payload`() {
         val home = home()
         val root = root()
@@ -49,6 +163,7 @@ class ForceDaemonLifecycleTest {
             ResetRuntimeScript(
                 root,
                 listOf(
+                    ResetScriptStep.Table(ResetProcessTable.Observed(emptyList())),
                     ResetScriptStep.Job(true, true, ResetCommandObservation.Exited(0)),
                     ResetScriptStep.Job(true, false, ResetCommandObservation.Exited(5)),
                     ResetScriptStep.Job(true, true, ResetCommandObservation.Exited(0)),
@@ -81,11 +196,10 @@ class ForceDaemonLifecycleTest {
         val runtime =
             ResetRuntimeScript(
                 root,
-                absentJobs() +
-                    listOf(
-                        ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
-                        ResetScriptStep.Signal(prior, LifecycleProcessObservation.Present(prior)),
-                    ),
+                listOf(
+                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
+                    ResetScriptStep.Capture(prior, ResetScriptCaptureResult.NO_SHARED_DESCRIPTORS),
+                ) + absentJobs() + listOf(ResetScriptStep.Signal(prior, LifecycleProcessObservation.Present(prior))),
             )
         val result = ForceDaemonRetirement(runtime).retire(root, home())
         assertEquals(ResetEffect.Rejected(ForceResetFailure.PROCESS_RETIREMENT_REJECTED), result)
@@ -105,9 +219,12 @@ class ForceDaemonLifecycleTest {
         val runtime =
             ResetRuntimeScript(
                 root,
-                absentJobs() +
+                listOf(
+                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
+                    ResetScriptStep.Capture(prior, ResetScriptCaptureResult.NO_SHARED_DESCRIPTORS),
+                ) +
+                    absentJobs() +
                     listOf(
-                        ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
                         ResetScriptStep.Signal(prior, LifecycleProcessObservation.Present(replacement)),
                         ResetScriptStep.Table(ResetProcessTable.Observed(listOf(replacement))),
                     ),
@@ -124,11 +241,10 @@ class ForceDaemonLifecycleTest {
         val runtime =
             ResetRuntimeScript(
                 root,
-                absentJobs() +
-                    listOf(
-                        ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
-                        ResetScriptStep.Signal(prior, LifecycleProcessObservation.Present(other)),
-                    ),
+                listOf(
+                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
+                    ResetScriptStep.Capture(prior, ResetScriptCaptureResult.NO_SHARED_DESCRIPTORS),
+                ) + absentJobs() + listOf(ResetScriptStep.Signal(prior, LifecycleProcessObservation.Present(other))),
             )
         assertEquals(
             ResetEffect.Rejected(ForceResetFailure.PROCESS_RETIREMENT_REJECTED),
@@ -144,9 +260,12 @@ class ForceDaemonLifecycleTest {
         val runtime =
             ResetRuntimeScript(
                 root,
-                absentJobs() +
+                listOf(
+                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
+                    ResetScriptStep.Capture(prior, ResetScriptCaptureResult.NO_SHARED_DESCRIPTORS),
+                ) +
+                    absentJobs() +
                     listOf(
-                        ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
                         ResetScriptStep.Signal(prior, LifecycleProcessObservation.Absent),
                         ResetScriptStep.Table(
                             ResetProcessTable.Observed(listOf(prior.copy(pid = 92, startEpochMillis = 300)))
@@ -291,6 +410,7 @@ class ForceDaemonActivationTest {
                 closedRetirementSteps() +
                     listOf(
                         ResetScriptStep.Activate(LifecycleChildObservation.DeadlineExceeded),
+                        ResetScriptStep.Table(ResetProcessTable.Observed(emptyList())),
                         ResetScriptStep.Job(true, true, ResetCommandObservation.Unavailable),
                     ),
             )

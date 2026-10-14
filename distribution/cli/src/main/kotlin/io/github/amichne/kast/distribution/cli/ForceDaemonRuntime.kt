@@ -54,14 +54,16 @@ internal interface ForceDaemonRuntime {
 
     fun processes(): ResetProcessTable
 
-    fun retire(process: ResetScopedProcess, allowance: Duration): LifecycleProcessObservation
+    fun capture(process: ResetScopedProcess): ResetSharedSocketCapture
+
+    fun retire(process: ResetSharedSocketCapture.Captured, allowance: Duration): LifecycleProcessObservation
 
     fun activate(installation: Path, home: Path, environment: Map<String, String>): LifecycleChildObservation
 
     fun readiness(installation: Path): ResetActivationObservation
 }
 
-internal class ResetScopedProcess private constructor(val snapshot: LifecycleProcessSnapshot) {
+internal class ResetScopedProcess private constructor(val snapshot: LifecycleProcessSnapshot, val root: Path) {
     companion object {
         private val mains =
             setOf(
@@ -88,10 +90,11 @@ internal class ResetScopedProcess private constructor(val snapshot: LifecyclePro
                     index + 2 < snapshot.arguments.size &&
                     snapshot.arguments[index + 2] in mains &&
                     classpathSelected(snapshot.arguments[index + 1], root)
+            val codex = ResetCodexListener.selects(command, snapshot.arguments, root)
             return when {
-                !direct && !java -> ResetProcessSelection.Unrelated
+                !direct && !java && !codex -> ResetProcessSelection.Unrelated
                 snapshot.pid <= 0 || snapshot.startEpochMillis <= 0 -> ResetProcessSelection.Rejected
-                else -> ResetProcessSelection.Selected(ResetScopedProcess(snapshot))
+                else -> ResetProcessSelection.Selected(ResetScopedProcess(snapshot, root))
             }
         }
 
@@ -150,6 +153,16 @@ internal sealed interface ResetEffect {
 
 internal class ForceDaemonRetirement(private val runtime: ForceDaemonRuntime) {
     fun retire(root: Path, home: Path, retained: RetainedResetStorage = RetainedResetStorage.Missing): ResetEffect {
+        val scope =
+            when (retained) {
+                RetainedResetStorage.Missing -> listOf(root)
+                is RetainedResetStorage.Held -> listOf(root, retained.directory.resolve("payload"))
+            }
+        val captured =
+            when (val preparation = captureProcesses(scope)) {
+                is ResetRetirementPreparation.Prepared -> preparation.processes
+                is ResetRetirementPreparation.Rejected -> return preparation.effect
+            }
         val label = ResetServiceLabel.selected(root.resolve("installation"))
         for (variant in ResetLaunchVariant.entries) {
             when (val job = retireJob(label, variant, home)) {
@@ -159,12 +172,7 @@ internal class ForceDaemonRetirement(private val runtime: ForceDaemonRuntime) {
         }
         val removed = ResetLoginEntries.remove(home, label)
         if (removed is ResetEffect.Rejected) return removed
-        val scope =
-            when (retained) {
-                RetainedResetStorage.Missing -> listOf(root)
-                is RetainedResetStorage.Held -> listOf(root, retained.directory.resolve("payload"))
-            }
-        return retireProcesses(scope)
+        return retireProcesses(scope, captured)
     }
 
     private fun retireJob(label: ResetServiceLabel, variant: ResetLaunchVariant, home: Path): ResetEffect {
@@ -178,20 +186,35 @@ internal class ForceDaemonRetirement(private val runtime: ForceDaemonRuntime) {
         else rejected(ForceResetFailure.LAUNCH_JOB_REJECTED)
     }
 
-    private fun retireProcesses(scope: List<Path>): ResetEffect {
+    private fun captureProcesses(scope: List<Path>): ResetRetirementPreparation {
         val table = runtime.processes()
         if (table !is ResetProcessTable.Observed || table.processes.size > MAXIMUM_PROCESSES)
-            return rejected(ForceResetFailure.PROCESS_OBSERVATION_REJECTED)
-        val deadline = System.nanoTime() + Duration.ofSeconds(RETIREMENT_SECONDS).toNanos()
+            return ResetRetirementPreparation.Rejected(rejected(ForceResetFailure.PROCESS_OBSERVATION_REJECTED))
+        val processes = mutableListOf<ResetSharedSocketCapture.Captured>()
         for (snapshot in table.processes) {
             when (val selected = select(snapshot, scope)) {
                 ResetProcessSelection.Unrelated -> Unit
-                ResetProcessSelection.Rejected -> return rejected(ForceResetFailure.PROCESS_OBSERVATION_REJECTED)
+                ResetProcessSelection.Rejected ->
+                    return ResetRetirementPreparation.Rejected(rejected(ForceResetFailure.PROCESS_OBSERVATION_REJECTED))
                 is ResetProcessSelection.Selected -> {
-                    val result = retireSelected(selected.process, deadline)
-                    if (result is ResetEffect.Rejected) return result
+                    when (val captured = runtime.capture(selected.process)) {
+                        is ResetSharedSocketCapture.Captured -> processes += captured
+                        ResetSharedSocketCapture.Rejected ->
+                            return ResetRetirementPreparation.Rejected(
+                                rejected(ForceResetFailure.PROCESS_RETIREMENT_REJECTED)
+                            )
+                    }
                 }
             }
+        }
+        return ResetRetirementPreparation.Prepared(processes)
+    }
+
+    private fun retireProcesses(scope: List<Path>, captured: List<ResetSharedSocketCapture.Captured>): ResetEffect {
+        val deadline = System.nanoTime() + Duration.ofSeconds(RETIREMENT_SECONDS).toNanos()
+        for (process in captured) {
+            val result = retireSelected(process, deadline)
+            if (result is ResetEffect.Rejected) return result
         }
         val final = runtime.processes()
         return if (
@@ -216,11 +239,11 @@ internal class ForceDaemonRetirement(private val runtime: ForceDaemonRuntime) {
         return ResetProcessSelection.Unrelated
     }
 
-    private fun retireSelected(process: ResetScopedProcess, deadline: Long): ResetEffect {
+    private fun retireSelected(process: ResetSharedSocketCapture.Captured, deadline: Long): ResetEffect {
         val remaining = deadline - System.nanoTime()
         if (remaining <= 0) return rejected(ForceResetFailure.PROCESS_RETIREMENT_REJECTED)
         val observed = runtime.retire(process, Duration.ofNanos(remaining))
-        return if (incarnationRetired(process.snapshot, observed)) ResetEffect.Completed
+        return if (incarnationRetired(process.process.snapshot, observed)) ResetEffect.Completed
         else rejected(ForceResetFailure.PROCESS_RETIREMENT_REJECTED)
     }
 
@@ -232,11 +255,17 @@ internal class ForceDaemonRetirement(private val runtime: ForceDaemonRuntime) {
                 observed.snapshot.pid == prior.pid && observed.snapshot.startEpochMillis != prior.startEpochMillis
         }
 
-    private fun rejected(failure: ForceResetFailure) = ResetEffect.Rejected(failure)
+    private fun rejected(failure: ForceResetFailure): ResetEffect.Rejected = ResetEffect.Rejected(failure)
 
     companion object {
         private const val MAXIMUM_PROCESSES = 16384
         private const val SERVICE_ABSENT = 113
         private const val RETIREMENT_SECONDS = 30L
     }
+}
+
+private sealed interface ResetRetirementPreparation {
+    data class Prepared(val processes: List<ResetSharedSocketCapture.Captured>) : ResetRetirementPreparation
+
+    data class Rejected(val effect: ResetEffect.Rejected) : ResetRetirementPreparation
 }
