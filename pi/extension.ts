@@ -573,19 +573,47 @@ function run(args: string[], input: string, cwd: string, policy?: {callTimeoutMi
 
 type ToolRpcResult =
   | { type: "complete" | "qualified" | "rejected_document"; document: Record<string, unknown> }
-  | { type: "rejected"; failure: (typeof TOOL_RPC_FAILURES)[number] };
+  | { type: "rejected"; failure: (typeof TOOL_RPC_FAILURES)[number]; detail?: never }
+  | { type: "rejected"; failure: "INVALID_ARGUMENTS"; detail: {
+      type: "SOURCE_ANCHOR_REJECTED";
+      cause: "UNKNOWN_TOKEN_FAMILY" | "INVALID_TOKEN_STRUCTURE" | "INVALID_PAYLOAD_ENCODING" | "PAYLOAD_DIGEST_MISMATCH";
+      next_action: "USE_ISSUED_CANDIDATE_SELECTOR" } }
+  | { type: "rejected"; failure: "QUERY_SESSION_TRANSITION_REJECTED"; detail:
+      | { type: "NEW_RUN_REQUIRES_NEW_SESSION" | "SOURCE_READ_REQUIRES_NEW_SESSION"; next_action: "START_NEW_QUERY_SESSION" }
+      | { type: "RESULT_NOT_ISSUED_BY_PRECEDING_REPLY"; expected_result: string | null; requested_result: string; next_action: "START_NEW_QUERY_SESSION" }
+      | { type: "CONTINUATION_NOT_ISSUED_BY_PRECEDING_REPLY"; expected_continuation: string | null; requested_continuation: string; next_action: "START_NEW_QUERY_SESSION" } };
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function isToolResult(value: unknown): value is ToolRpcResult {
-  if (!isObject(value) || Object.keys(value).length !== 2) return false;
-  if (value.type === "rejected") return typeof value.failure === "string" &&
-    (TOOL_RPC_FAILURES as readonly string[]).includes(value.failure);
-  // Canonical document is opaque here; the Kotlin RPC validates its owning schema.
-  return typeof value.type === "string" &&
-    ["complete", "qualified", "rejected_document"].includes(value.type) && isObject(value.document);
+  const object = (item: unknown): item is Record<string, unknown> => item !== null && typeof item === "object" && !Array.isArray(item);
+  const keys = (item: unknown, expected: readonly string[]) => object(item) && Object.keys(item).length === expected.length &&
+    expected.every(key => Object.hasOwn(item, key));
+  const uuid = "[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}";
+  const token = (item: unknown, family: string) => typeof item === "string" && new RegExp("^" + family + ":v1:" + uuid + "$").test(item);
+  if (!object(value) || typeof value.type !== "string") return false;
+  if (value.type === "rejected") {
+    if (typeof value.failure !== "string" || !(TOOL_RPC_FAILURES as readonly string[]).includes(value.failure)) return false;
+    if (keys(value, ["type", "failure"])) return true;
+    if (!keys(value, ["type", "failure", "detail"]) || !object(value.detail) || typeof value.detail.type !== "string") return false;
+    const detail = value.detail;
+    if (detail.type === "SOURCE_ANCHOR_REJECTED") return value.failure === "INVALID_ARGUMENTS" &&
+      keys(detail, ["type", "cause", "next_action"]) && detail.next_action === "USE_ISSUED_CANDIDATE_SELECTOR" && typeof detail.cause === "string" &&
+      ["UNKNOWN_TOKEN_FAMILY", "INVALID_TOKEN_STRUCTURE", "INVALID_PAYLOAD_ENCODING", "PAYLOAD_DIGEST_MISMATCH"].includes(detail.cause);
+    if (value.failure !== "QUERY_SESSION_TRANSITION_REJECTED" || detail.next_action !== "START_NEW_QUERY_SESSION") return false;
+    if (["NEW_RUN_REQUIRES_NEW_SESSION", "SOURCE_READ_REQUIRES_NEW_SESSION"].includes(detail.type))
+      return keys(detail, ["type", "next_action"]);
+    if (detail.type === "RESULT_NOT_ISSUED_BY_PRECEDING_REPLY") return keys(detail, ["type", "expected_result", "requested_result", "next_action"]) &&
+      (detail.expected_result === null || token(detail.expected_result, "result")) && token(detail.requested_result, "result");
+    if (detail.type === "CONTINUATION_NOT_ISSUED_BY_PRECEDING_REPLY") return keys(detail, ["type", "expected_continuation", "requested_continuation", "next_action"]) &&
+      (detail.expected_continuation === null || token(detail.expected_continuation, "query-output")) &&
+      token(detail.requested_continuation, "(?:query|query-output)");
+    return false;
+  }
+  // The canonical document stays opaque here. The Kotlin RPC admits its owning schema.
+  return keys(value, ["type", "document"]) && ["complete", "qualified", "rejected_document"].includes(value.type) && object(value.document);
 }
 
 function approvalSummary(tool: Tool, params: Record<string, unknown>, cwd: string): string {
