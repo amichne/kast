@@ -4,11 +4,20 @@ description: "Add one declaration or replace one supported function body, then i
 icon: "file-pen-line"
 ---
 
-Kast can add one declaration to an existing Kotlin file or replace one supported function body. Before a change, [find the target and read its source](/reference/search). Pass the exact reference from that result unchanged.
+<a id="exact-inputs-for-tool-authors" />
+
+Use this guide after you authorize one source change. Kast can add a declaration to an existing file or replace a supported block body. Before a change, [find the target and read its source](/reference/search). Pass the exact reference from that result unchanged.
 
 <a id="check-the-target-and-scope" />
 
-## Select the target and scope
+<a id="select-the-target-and-scope" />
+
+
+1. [Select the exact target and supported change.](#1-select-the-target-and-scope)
+2. [Establish the source effect from the receipt.](#2-establish-the-source-effect)
+3. [Review the diff and run project tests.](#read-the-receipt)
+
+## 1. Select the target and scope
 
 To select the target, substitute your function and directory in this prompt:
 
@@ -24,9 +33,11 @@ Use Kast to replace the chosen function's body with { return 3 }. Keep its signa
 
 Body replacement accepts a non-inline named function with a block body and no contract. Change tools reject file creation, arbitrary range edits, symbol renames, and multi-file refactors.
 
-## Read the receipt
+<a id="read-the-receipt" />
 
-One call plans, applies, and verifies the edit. Examine the receipt and diff before you accept the result.
+## 2. Establish the source effect
+
+One call plans, applies, and verifies the edit. Examine the receipt. Review the diff before you accept the result.
 
 ```mermaid
 flowchart TB
@@ -54,7 +65,7 @@ If the outcome is uncertain, examine the source and recovery evidence before ano
 
 IDEA diagnostics and edit verification cover the scope in the receipt. After a verified change, run your project's build and tests.
 
-## Exact inputs for tool authors
+## 3. Use the supported input form
 
 These examples use placeholders. Replace each placeholder with a current reference from Kast.
 

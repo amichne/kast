@@ -1,6 +1,6 @@
 ---
 title: "How Kast works"
-description: "See how Kast answers queries through IDEA and decides whether saved results remain usable."
+description: "See how Kast answers queries through IDEA and decides whether retained results remain usable."
 icon: "workflow"
 keywords:
   - "architecture"
@@ -10,7 +10,9 @@ keywords:
 mode: "wide"
 ---
 
-Kast answers your agent's questions through the IDEA project for the exact repository. The answer includes facts, their search scope, source state, and limitations.
+<a id="bounded-execution-preserves-progress" />
+
+The agent chooses a source question. Kast answers it through the IDEA project for the exact repository. Compiler authority stays with IDEA. The answer includes facts, their search scope, source state, and limitations. [Source map](/reference/source-map) identifies the inspected owners and focused tests.
 
 ## Authority stays with the program
 
@@ -36,9 +38,9 @@ flowchart TB
   classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
 ```
 
-MCP, Tool RPC, and App Server adapters preserve the operation document in their transport wrappers. Saved rows and checkpoints keep the evidence from that operation. Compiler authority still determines semantic identity.
+MCP, Tool RPC, and App Server adapters preserve the operation document in their transport wrappers. Saved rows and checkpoints keep the evidence from that operation. Compiler authority determines semantic identity because transport wrappers and retained handles cannot establish declaration meaning.
 
-## Bounded execution preserves progress
+## Execution and presentation have separate limits
 
 Queries use configured limits for work, bytes, results, and elapsed time. Public `RUN` drains semantic pages within one grant. `RESUME` presents produced output through an issued continuation. A terminal result reports why the operation stopped.
 
@@ -48,6 +50,6 @@ The internal runner keeps unvisited files and the active file position for `ALL_
 
 Before Kast restores saved work, it examines the workspace root, owning IDEA instance, read epoch, committed source state, and lifetime. Saved work contains references rather than live compiler objects.
 
-An exact symbol can undergo fresh compiler revalidation. Saved results and continuations need their original read state. See [Saved state and identity](/reference/responses#saved-state-and-identity) for reuse rules.
+An exact symbol can undergo fresh compiler revalidation. retained results and continuations need their original read state. See [Saved state and identity](/reference/responses#saved-state-and-identity) for reuse rules.
 
 Queries [prepare IDEA automatically](/reference/internals/background-startup). Trust, save, import, and indexing blockers produce explicit failures. A tool catalog establishes the available contract. It does not establish project readiness.

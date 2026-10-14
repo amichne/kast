@@ -1,0 +1,27 @@
+# Established product names and technical terms in Kast's contracts and source.
+Kast
+Kast's
+Gradle
+worktree
+walkthrough
+diagnostic's
+Mintlify
+substrings
+boolean
+callables
+callees
+initializer
+unreviewed
+callee
+Builtins
+IDEA's
+prereleases
+stdout
+stderr
+unlinks
+HOME's
+stdin
+preimage
+namespace
+submitOrder
+retryLimit

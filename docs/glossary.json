@@ -1,0 +1,518 @@
+{
+  "type": "GLOSSARY",
+  "schemaVersion": 1,
+  "domain": "Kast public semantic query documentation",
+  "review": {
+    "type": "PROVISIONAL",
+    "reason": "The definitions preserve the source-backed draft at the inspected checkout. Independent reader review remains absent. Runtime contracts and code identifiers stay unchanged."
+  },
+  "scope": {
+    "root": "..",
+    "include": [
+      "docs/public/**/*.mdx",
+      "docs/documentation-structure.md",
+      "docs/reviews/documentation-diataxis-audit.md"
+    ],
+    "exclude": []
+  },
+  "entries": [
+    {
+      "id": "workspace-root",
+      "term": "workspace root",
+      "definition": "The canonical root of the exact repository or worktree admitted for an operation.",
+      "scope": "Kast public query documentation and its documentation policy.",
+      "example": "A query belongs to one repository or worktree root.",
+      "distinction": "A second worktree has a different root, even when both contain the same commit.",
+      "justification": "The cited Kast contract or existing public reference supplies this name and meaning. Provisional display spelling uses ordinary prose case.",
+      "usage": [
+        {
+          "url": "https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt",
+          "locator": "SemanticReadAuthority",
+          "examined": "2026-10-13",
+          "meaning": "The canonical root of the exact repository or worktree admitted for an operation."
+        }
+      ],
+      "localSources": [
+        {
+          "path": "workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt",
+          "locator": "SemanticReadAuthority"
+        }
+      ],
+      "related": [],
+      "rejectedForms": []
+    },
+    {
+      "id": "exact-reference",
+      "term": "exact reference",
+      "definition": "An opaque handle issued by Kast for an exact declaration. Reuse needs current identity admission.",
+      "scope": "Kast public query documentation and its documentation policy.",
+      "example": "A discovered function supplies a `ref` for a later `SYMBOL_REFS` query.",
+      "distinction": "A retained result reference identifies a stored result rather than one declaration.",
+      "justification": "The cited Kast contract or existing public reference supplies this name and meaning. Provisional display spelling uses ordinary prose case.",
+      "usage": [
+        {
+          "url": "https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt",
+          "locator": "SymbolSelector",
+          "examined": "2026-10-13",
+          "meaning": "An opaque handle issued by Kast for an exact declaration. Reuse needs current identity admission."
+        }
+      ],
+      "localSources": [
+        {
+          "path": "symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt",
+          "locator": "SymbolSelector"
+        }
+      ],
+      "related": [],
+      "rejectedForms": []
+    },
+    {
+      "id": "canonical-identity",
+      "term": "canonical identity",
+      "definition": "The established declaration identity used to compare symbols. Display names and opaque reference strings alone do not establish equality.",
+      "scope": "Kast public query documentation and its documentation policy.",
+      "example": "Two joined rows can identify the same declaration through different opaque references.",
+      "distinction": "Two functions with the same display name can have different owners and identities.",
+      "justification": "The cited Kast contract or existing public reference supplies this name and meaning. Provisional display spelling uses ordinary prose case.",
+      "usage": [
+        {
+          "url": "https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt",
+          "locator": "SymbolSelector",
+          "examined": "2026-10-13",
+          "meaning": "The established declaration identity used to compare symbols. Display names and opaque reference strings alone do not establish equality."
+        }
+      ],
+      "localSources": [
+        {
+          "path": "symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt",
+          "locator": "SymbolSelector"
+        }
+      ],
+      "related": [],
+      "rejectedForms": []
+    },
+    {
+      "id": "semantic-basis",
+      "term": "semantic basis",
+      "definition": "The provenance of an operation's evidence, expressed as published workspace state or live IDEA read state. A provenance record alone grants no execution authority.",
+      "scope": "Kast public query documentation and its documentation policy.",
+      "example": "Live evidence records the IDEA host, epoch, and content view for a read.",
+      "distinction": "A provenance record does not itself grant permission to run a query.",
+      "justification": "The cited Kast contract or existing public reference supplies this name and meaning. Provisional display spelling uses ordinary prose case.",
+      "usage": [
+        {
+          "url": "https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/kernel/src/main/kotlin/io/github/amichne/kast/kernel/EvidenceEnvelope.kt",
+          "locator": "EvidenceEnvelope",
+          "examined": "2026-10-13",
+          "meaning": "The provenance of an operation's evidence, expressed as published workspace state or live IDEA read state. A provenance record alone grants no execution authority."
+        }
+      ],
+      "localSources": [
+        {
+          "path": "kernel/src/main/kotlin/io/github/amichne/kast/kernel/EvidenceEnvelope.kt",
+          "locator": "EvidenceEnvelope"
+        }
+      ],
+      "related": [],
+      "rejectedForms": []
+    },
+    {
+      "id": "read-epoch",
+      "term": "read epoch",
+      "definition": "An opaque version of an IDEA project's admitted read state. Equality alone does not replace source or compiler revalidation.",
+      "scope": "Kast public query documentation and its documentation policy.",
+      "example": "A retained query result uses the state admitted for its original read.",
+      "distinction": "The same epoch does not replace a source-content or compiler identity examination.",
+      "justification": "The cited Kast contract or existing public reference supplies this name and meaning. Provisional display spelling uses ordinary prose case.",
+      "usage": [
+        {
+          "url": "https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/ProjectReadEpoch.kt",
+          "locator": "ProjectReadEpoch",
+          "examined": "2026-10-13",
+          "meaning": "An opaque version of an IDEA project's admitted read state. Equality alone does not replace source or compiler revalidation."
+        }
+      ],
+      "localSources": [
+        {
+          "path": "workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/ProjectReadEpoch.kt",
+          "locator": "ProjectReadEpoch"
+        }
+      ],
+      "related": [],
+      "rejectedForms": []
+    },
+    {
+      "id": "discovery-scope",
+      "term": "discovery scope",
+      "definition": "The source restrictions used to find seed declarations. They do not restrict later relationship destinations.",
+      "scope": "Kast public query documentation and its documentation policy.",
+      "example": "A declaration lookup searches `main` sources beneath `query/contract`.",
+      "distinction": "A workspace relationship search can reach declarations outside that seed scope.",
+      "justification": "The cited Kast contract or existing public reference supplies this name and meaning. Provisional display spelling uses ordinary prose case.",
+      "usage": [
+        {
+          "url": "https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDiscoveryDocuments.kt",
+          "locator": "PublicToolDiscoveryDocuments",
+          "examined": "2026-10-13",
+          "meaning": "The source restrictions used to find seed declarations. They do not restrict later relationship destinations."
+        }
+      ],
+      "localSources": [
+        {
+          "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDiscoveryDocuments.kt",
+          "locator": "PublicToolDiscoveryDocuments"
+        }
+      ],
+      "related": [],
+      "rejectedForms": []
+    },
+    {
+      "id": "expansion-scope",
+      "term": "expansion scope",
+      "definition": "The domain selected for native relationship search before enumeration. A later row filter does not reduce that search work.",
+      "scope": "Kast public query documentation and its documentation policy.",
+      "example": "`SOURCE_DOMAIN` restricts native relation destinations before enumeration.",
+      "distinction": "A later `WHERE` removes rows after native enumeration.",
+      "justification": "The cited Kast contract or existing public reference supplies this name and meaning. Provisional display spelling uses ordinary prose case.",
+      "usage": [
+        {
+          "url": "https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolExpansionScopeMapping.kt",
+          "locator": "PublicToolExpansionScopeMapping",
+          "examined": "2026-10-13",
+          "meaning": "The domain selected for native relationship search before enumeration. A later row filter does not reduce that search work."
+        }
+      ],
+      "localSources": [
+        {
+          "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolExpansionScopeMapping.kt",
+          "locator": "PublicToolExpansionScopeMapping"
+        }
+      ],
+      "related": [],
+      "rejectedForms": []
+    },
+    {
+      "id": "complete-coverage",
+      "term": "complete coverage",
+      "definition": "Finished enumeration within the declared, supported scope and requested traversal extent. It does not alone establish semantic completion.",
+      "scope": "Kast public query documentation and its documentation policy.",
+      "example": "An exhaustive caller read covers the declared source domain.",
+      "distinction": "A complete enumeration does not alone discharge callback activation obligations.",
+      "justification": "The cited Kast contract or existing public reference supplies this name and meaning. Provisional display spelling uses ordinary prose case.",
+      "usage": [
+        {
+          "url": "https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryExecution.kt",
+          "locator": "QueryExecution",
+          "examined": "2026-10-13",
+          "meaning": "Finished enumeration within the declared, supported scope and requested traversal extent. It does not alone establish semantic completion."
+        }
+      ],
+      "localSources": [
+        {
+          "path": "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryExecution.kt",
+          "locator": "QueryExecution"
+        }
+      ],
+      "related": [],
+      "rejectedForms": []
+    },
+    {
+      "id": "qualified-coverage",
+      "term": "qualified coverage",
+      "definition": "Evidence of a proven minimum with stated limitations or unfinished work. An empty result with this status does not prove absence.",
+      "scope": "Kast public query documentation and its documentation policy.",
+      "example": "A stopped search reports its known rows and the unfinished work.",
+      "distinction": "An empty completed search can establish absence in its declared scope.",
+      "justification": "The cited Kast contract or existing public reference supplies this name and meaning. Provisional display spelling uses ordinary prose case.",
+      "usage": [
+        {
+          "url": "https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryExecution.kt",
+          "locator": "QueryExecution",
+          "examined": "2026-10-13",
+          "meaning": "Evidence of a proven minimum with stated limitations or unfinished work. An empty result with this status does not prove absence."
+        }
+      ],
+      "localSources": [
+        {
+          "path": "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryExecution.kt",
+          "locator": "QueryExecution"
+        }
+      ],
+      "related": [],
+      "rejectedForms": []
+    },
+    {
+      "id": "known-minimum",
+      "term": "known minimum",
+      "definition": "The established count of logical final output, including delivered rows. It does not count remaining pages or unfiltered provider candidates.",
+      "scope": "Kast public query documentation and its documentation policy.",
+      "example": "A preview of two rows can belong to a result with five established final rows.",
+      "distinction": "An unfiltered discovery candidate count is a different measure.",
+      "justification": "The cited Kast contract or existing public reference supplies this name and meaning. Provisional display spelling uses ordinary prose case.",
+      "usage": [
+        {
+          "url": "https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/docs/public/reference/responses.mdx",
+          "locator": "responses",
+          "examined": "2026-10-13",
+          "meaning": "The established count of logical final output, including delivered rows. It does not count remaining pages or unfiltered provider candidates."
+        }
+      ],
+      "localSources": [
+        {
+          "path": "docs/public/reference/responses.mdx",
+          "locator": "responses"
+        }
+      ],
+      "related": [],
+      "rejectedForms": []
+    },
+    {
+      "id": "compiler-static-model",
+      "term": "compiler-static model",
+      "definition": "The fixed `COMPILER_RESOLVED_STATIC_V1` model for compiler-resolved source relationships. It does not establish runtime activation or path feasibility.",
+      "scope": "Kast public query documentation and its documentation policy.",
+      "example": "A call site supports a compiler-resolved source relationship.",
+      "distinction": "A source relationship does not prove that a runtime path executed.",
+      "justification": "The cited Kast contract or existing public reference supplies this name and meaning. Provisional display spelling uses ordinary prose case.",
+      "usage": [
+        {
+          "url": "https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt",
+          "locator": "QueryCompletionDocument",
+          "examined": "2026-10-13",
+          "meaning": "The fixed `COMPILER_RESOLVED_STATIC_V1` model for compiler-resolved source relationships. It does not establish runtime activation or path feasibility."
+        }
+      ],
+      "localSources": [
+        {
+          "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt",
+          "locator": "QueryCompletionDocument"
+        }
+      ],
+      "related": [],
+      "rejectedForms": []
+    },
+    {
+      "id": "semantic-completion",
+      "term": "semantic completion",
+      "definition": "Exhausted execution under the compiler-static model with no item failures or omitted evidence. Callback graphs and original investigation ledgers must also satisfy proof obligations.",
+      "scope": "Kast public query documentation and its documentation policy.",
+      "example": "A completed run exhausts execution and discharges its original proof obligations.",
+      "distinction": "A final output page establishes presentation progress rather than stronger semantic proof.",
+      "justification": "The cited Kast contract or existing public reference supplies this name and meaning. Provisional display spelling uses ordinary prose case.",
+      "usage": [
+        {
+          "url": "https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt",
+          "locator": "QueryCompletionDocument",
+          "examined": "2026-10-13",
+          "meaning": "Exhausted execution under the compiler-static model with no item failures or omitted evidence. Callback graphs and original investigation ledgers must also satisfy proof obligations."
+        }
+      ],
+      "localSources": [
+        {
+          "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt",
+          "locator": "QueryCompletionDocument"
+        }
+      ],
+      "related": [],
+      "rejectedForms": []
+    },
+    {
+      "id": "retained-result",
+      "term": "retained result",
+      "definition": "Immutable query rows and evidence kept under their original read authority. They preserve row kind, limitations, and producer progress.",
+      "scope": "Kast public query documentation and its documentation policy.",
+      "example": "`READ_RESULT` presents rows from the result that a prior query kept.",
+      "distinction": "A new `RUN` establishes a separate semantic answer.",
+      "justification": "The cited Kast contract or existing public reference supplies this name and meaning. Provisional display spelling uses ordinary prose case.",
+      "usage": [
+        {
+          "url": "https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt",
+          "locator": "QueryRetainedResult",
+          "examined": "2026-10-13",
+          "meaning": "Immutable query rows and evidence kept under their original read authority. They preserve row kind, limitations, and producer progress."
+        }
+      ],
+      "localSources": [
+        {
+          "path": "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt",
+          "locator": "QueryRetainedResult"
+        }
+      ],
+      "related": [],
+      "rejectedForms": [
+        {
+          "type": "REPLACE",
+          "form": "saved result",
+          "reason": "This phrase names the same stored query rows in the public query documentation.",
+          "evidence": [
+            {
+              "type": "JUSTIFICATION",
+              "text": "QueryRetainedResult owns immutable query rows, their read authority, coverage, and producer progress."
+            }
+          ]
+        },
+        {
+          "type": "REPLACE",
+          "form": "saved query result",
+          "reason": "This phrase names the same stored query rows in the public query documentation.",
+          "evidence": [
+            {
+              "type": "JUSTIFICATION",
+              "text": "QueryRetainedResult owns immutable query rows, their read authority, coverage, and producer progress."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "retained-result-reference",
+      "term": "retained result reference",
+      "definition": "An issued handle for one retained result. It differs from an exact reference and an output continuation.",
+      "scope": "Kast public query documentation and its documentation policy.",
+      "example": "`result:v1:...` identifies one stored query result.",
+      "distinction": "An exact declaration reference belongs to a different token family.",
+      "justification": "The cited Kast contract or existing public reference supplies this name and meaning. Provisional display spelling uses ordinary prose case.",
+      "usage": [
+        {
+          "url": "https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt",
+          "locator": "QueryResultReferences",
+          "examined": "2026-10-13",
+          "meaning": "An issued handle for one retained result. It differs from an exact reference and an output continuation."
+        }
+      ],
+      "localSources": [
+        {
+          "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt",
+          "locator": "QueryResultReferences"
+        }
+      ],
+      "related": [],
+      "rejectedForms": []
+    },
+    {
+      "id": "row-id",
+      "term": "row id",
+      "definition": "An issued identifier for one row in one retained result. Its owning result must match when Kast restores it.",
+      "scope": "Kast public query documentation and its documentation policy.",
+      "example": "A result row identifier selects a row from its owning result.",
+      "distinction": "A result cursor gives a presentation position rather than row identity.",
+      "justification": "The cited Kast contract or existing public reference supplies this name and meaning. Provisional display spelling uses ordinary prose case.",
+      "usage": [
+        {
+          "url": "https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt",
+          "locator": "QueryResultReferences",
+          "examined": "2026-10-13",
+          "meaning": "An issued identifier for one row in one retained result. Its owning result must match when Kast restores it."
+        }
+      ],
+      "localSources": [
+        {
+          "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt",
+          "locator": "QueryResultReferences"
+        }
+      ],
+      "related": [],
+      "rejectedForms": []
+    },
+    {
+      "id": "output-continuation",
+      "term": "output continuation",
+      "definition": "An issued token that permits `RESUME` to present remaining produced output. It does not authorize semantic execution or renew expiry.",
+      "scope": "Kast public query documentation and its documentation policy.",
+      "example": "`RESUME` presents a produced suffix through its issued token.",
+      "distinction": "A historical execution checkpoint does not authorize public semantic continuation.",
+      "justification": "The cited Kast contract or existing public reference supplies this name and meaning. Provisional display spelling uses ordinary prose case.",
+      "usage": [
+        {
+          "url": "https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryExecutionContinuation.kt",
+          "locator": "QueryExecutionContinuation",
+          "examined": "2026-10-13",
+          "meaning": "An issued token that permits `RESUME` to present remaining produced output. It does not authorize semantic execution or renew expiry."
+        }
+      ],
+      "localSources": [
+        {
+          "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryExecutionContinuation.kt",
+          "locator": "QueryExecutionContinuation"
+        }
+      ],
+      "related": [],
+      "rejectedForms": []
+    },
+    {
+      "id": "result-cursor",
+      "term": "result cursor",
+      "definition": "A presentation position within the rows of a separately identified retained result. It does not authorize semantic execution.",
+      "scope": "Kast public query documentation and its documentation policy.",
+      "example": "`READ_RESULT.cursor` selects a position in stored rows.",
+      "distinction": "The evidence cursor selects a separate position in saved observations.",
+      "justification": "The cited Kast contract or existing public reference supplies this name and meaning. Provisional display spelling uses ordinary prose case.",
+      "usage": [
+        {
+          "url": "https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt",
+          "locator": "QueryResultReferences",
+          "examined": "2026-10-13",
+          "meaning": "A presentation position within the rows of a separately identified retained result. It does not authorize semantic execution."
+        }
+      ],
+      "localSources": [
+        {
+          "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt",
+          "locator": "QueryResultReferences"
+        }
+      ],
+      "related": [],
+      "rejectedForms": []
+    },
+    {
+      "id": "evidence-cursor",
+      "term": "evidence cursor",
+      "definition": "A presentation position within saved failures, omissions, and observations. It advances independently of the result cursor.",
+      "scope": "Kast public query documentation and its documentation policy.",
+      "example": "`evidence_window.end` identifies the next evidence position.",
+      "distinction": "An evidence-only page can advance without a new row.",
+      "justification": "The cited Kast contract or existing public reference supplies this name and meaning. Provisional display spelling uses ordinary prose case.",
+      "usage": [
+        {
+          "url": "https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt",
+          "locator": "CanonicalQueryOperationModels",
+          "examined": "2026-10-13",
+          "meaning": "A presentation position within saved failures, omissions, and observations. It advances independently of the result cursor."
+        }
+      ],
+      "localSources": [
+        {
+          "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt",
+          "locator": "CanonicalQueryOperationModels"
+        }
+      ],
+      "related": [],
+      "rejectedForms": []
+    },
+    {
+      "id": "result-preview",
+      "term": "result preview",
+      "definition": "A bounded presentation of produced rows. It describes output presentation rather than search completeness.",
+      "scope": "Kast public query documentation and its documentation policy.",
+      "example": "A `PREFIX` preview presents an ordered portion of accumulated rows.",
+      "distinction": "Preview truncation does not change the producing query's coverage.",
+      "justification": "The cited Kast contract or existing public reference supplies this name and meaning. Provisional display spelling uses ordinary prose case.",
+      "usage": [
+        {
+          "url": "https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/docs/public/reference/responses.mdx",
+          "locator": "responses",
+          "examined": "2026-10-13",
+          "meaning": "A bounded presentation of produced rows. It describes output presentation rather than search completeness."
+        }
+      ],
+      "localSources": [
+        {
+          "path": "docs/public/reference/responses.mdx",
+          "locator": "responses"
+        }
+      ],
+      "related": [],
+      "rejectedForms": []
+    }
+  ]
+}

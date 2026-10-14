@@ -5,7 +5,14 @@ icon: "search"
 keywords: ["query_symbols", "Kotlin", "compiler references", "relations"]
 ---
 
-Start with one declaration, read its source, and use its exact reference to trace affected uses. Your [connected agent](/reference/integrations) writes the query.
+Use this guide to identify a declaration and inspect its affected uses. You need a connected client and an admitted IDEA project.
+
+Completion needs a selected exact identity, the declared relationship domain, and compiler evidence with its completion status.
+
+
+1. [Find and select one exact declaration.](#1-find-a-declaration-and-inspect-its-source)
+2. [Trace that declaration in the intended domain.](#2-trace-the-selected-declaration)
+3. [Read completion before a conclusion.](#3-read-completion-and-choose-recovery)
 
 ## 1. Find a declaration and inspect its source
 
@@ -64,7 +71,7 @@ To trace a function, interface method, or type, ask:
 Use the exact Kast reference we selected to TRACE affected uses across the workspace. Show signatures, locations, occurrence evidence, and completion. Keep the result for follow-up reads.
 ```
 
-The agent must pass the issued reference unchanged. In this example, replace the placeholder with the `ref` from the previous response:
+The agent must pass the issued reference unchanged. The JSON examples illustrate current inputs and do not record a native run. In this example, replace the placeholder with the `ref` from the previous response:
 
 ```json
 {
@@ -123,4 +130,4 @@ A new opaque reference with the same signature and location does not alone prove
 
 Signature and location help select a declaration. The exact handle supplies authority. Continuations and source snapshots need their original basis. [Read-limit diagnostics](https://github.com/amichne/kast/blob/main/docs/hosted-read-configuration.md#read-the-evidence) explains the bounded epoch-movement signals.
 
-Read [What an answer proves](/reference/evidence-boundaries) before a conclusion. Use [Results](/reference/responses) for progress or [Combine query results](/reference/query-pipelines) for composition with saved results.
+Read [What an answer proves](/reference/evidence-boundaries) before a conclusion. Use [Read retained evidence](/how-to/read-retained-evidence) for the next evidence page. Use [Results](/reference/responses) for fields or [Combine query results](/reference/query-pipelines) for composition with retained results.

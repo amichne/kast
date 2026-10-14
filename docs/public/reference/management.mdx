@@ -4,9 +4,18 @@ description: "Inspect, stop, reinstall, upgrade, connect, disconnect, or uninsta
 icon: "folder-open"
 ---
 
-Use the `kast` command to inspect or change your installation. Use your connected agent for semantic questions about the repository.
+Use this guide to change the owned installation after active calls finish. Use `kast status` before a lifecycle action. Use your connected agent for semantic questions about the repository.
 
-## Inspect the installation
+<a id="inspect-the-installation" />
+
+
+1. [Inspect installation state.](#1-inspect-the-installation)
+2. [Choose one lifecycle action from the sections.](#2-upgrade-a-compatible-installation)
+3. [Read its finite result before a new action.](#stop-and-reinstall)
+
+The lifecycle sections describe separate procedures. Choose one action for your current installation state.
+
+## 1. Inspect the installation
 
 ```shell
 kast status
@@ -14,7 +23,9 @@ kast status
 
 Read recorded registrations and live observations separately. A registration names the installed integration. It does not establish a live process or a ready workspace.
 
-## Upgrade
+<a id="upgrade" />
+
+## 2. Upgrade a compatible installation
 
 Before an upgrade, save your work. Wait for active calls to finish, then run:
 
@@ -24,7 +35,9 @@ kast upgrade
 
 Upgrade stops owned services and interrupts sessions. After the upgrade, restart IDEA and connected agents. Start new calls and sessions.
 
-## Stop and reinstall
+<a id="stop-and-reinstall" />
+
+## 3. Stop and reinstall a recorded version
 
 Before you stop Kast, close the selected IDEA instance. Close the affected agent connections, then run:
 
@@ -39,13 +52,13 @@ To force retirement of recorded tool processes, use `kast stop --force --json`. 
 
 If IDEA still runs, the command returns `REJECTED` with `HOST_RESTART_REQUIRED`. Quit IDEA, then repeat the command. A shutdown rejection keeps the fence and prevents payload replacement.
 
-`reinstall` examines shutdown, installs the recorded version, starts the coordinator, and restores integrations. If coordinator activation fails, Kast restores the fence. It returns `REINSTALLATION_PENDING` with the failed stage.
+`reinstall` examines shutdown, installs the recorded version, starts the coordinator, and restores integrations. If the coordinator cannot start, Kast restores the fence. It returns `REINSTALLATION_PENDING` with the failed stage.
 
 Before another recovery try, examine `kast status --json`. After success, reload the agents. Kast never replays writes.
 
 The published installer also resumes a valid shutdown from `kast stop` after installation completes. Routine installation retires the previous service before it examines the state to keep. Transient live entries and a stopped service's saved configuration do not block replacement.
 
-If service retirement, state retention, or payload activation fails, Kast tries to restart the previous service. The result reports the recovery outcome.
+If service retirement, state retention, or payload startup fails, Kast tries to restart the previous service. The result reports the recovery outcome.
 
 When the next request needs a workspace, an existing tool session reexamines a previously unavailable or incompatible Host or plugin. After a Host update, restart IDEA to load it. Recovery still needs a compatible installed contract and readiness for the exact project before dispatch. Recovery does not replay semantic execution.
 
@@ -59,7 +72,9 @@ After Kast retires a lookup record, a lookup returns `UNKNOWN_OPERATION`. That r
   The schema is `installation/share/kast/schema/management-lifecycle.schema.json`. Older payloads without fence capability reject before effects. To upgrade those payloads, use the published installer.
 </Accordion>
 
-## Force reset
+<a id="force-reset" />
+
+## 4. Reset only after ownership recovery fails
 
 <Note>
   Force reset erases installed state. Erased data has no rollback.

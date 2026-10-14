@@ -4,11 +4,13 @@ description: "Read query facts, completion evidence, output pages, and saved-sta
 icon: "list-checks"
 ---
 
-Read coverage and progress before you use a query's facts. A successful transport call does not alone establish semantic completion.
+A query document reports facts, coverage, producer progress, and output presentation separately. A successful transport call does not alone establish semantic completion.
 
 <a id="interpret-coverage-before-making-a-claim" />
 
-## Read coverage before a claim
+<a id="read-coverage-before-a-claim" />
+
+## Semantic status and coverage
 
 The document's status identifies the strength and limits of its answer:
 
@@ -22,7 +24,9 @@ Established rows keep their value with their qualifications. Empty qualified res
 
 Diagnostics cover the reported IDEA scope. Source changes need separate [verification and recovery evidence](/reference/change#read-the-receipt).
 
-## Read an automatic query
+<a id="read-an-automatic-query" />
+
+## RUN completion
 
 The response shape uses `kast.query.run.v8`. Host and Control must supply the same contract.
 
@@ -37,24 +41,28 @@ Every `RUN` uses `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`. A success
 
 Unsupported questions and missing proof return typed rejections. Saved evidence from a rejection keeps that rejection when you read it.
 
-### Read evidence from a completion rejection
+<a id="read-evidence-from-a-completion-rejection" />
 
-Saved completion evidence includes a bounded `preview`, the original `question`, and a copyable `nextQuery` for `READ_RESULT`. Use `nextQuery` to inspect proven partial facts.
+### Completion rejection evidence
+
+Retained completion evidence includes a bounded `preview`, the original `question`, and a copyable `nextQuery` for `READ_RESULT`.
+
+`nextQuery` contains admitted public arguments for a presentation-only read.
 
 `originalCoverage` keeps the proven minimum, limitations, and original progress. `policyProgress` is `{"type":"EVIDENCE_ONLY"}` and permits presentation of evidence. A historical checkpoint does not authorize more strict execution.
 
 If retention is unavailable, the response names the finite storage cause. It does not invent a result handle. `RETENTION_UNAVAILABLE` preserves complete enumeration when necessary storage fails.
 
-Use the emitted public arguments in `nextQuery`. The saved `question` describes the canonical query. Its source grammar does not replace the public request grammar.
+`nextQuery` uses public arguments. The saved `question` describes the canonical query. Its source grammar does not replace the public request grammar.
 
 If supplied, `seedQuery` starts a new investigation from proven symbol references in the preview. The selection preserves identity. It does not prove coverage of omitted rows or unfinished scope.
 
-Keep the saved question's scope and each relationship observation's effective domain with its facts. To investigate further, issue a narrower query from reported candidates and scope evidence. Zero proven rows do not establish absence.
+The saved question preserves scope. Each relationship observation preserves its effective domain. A narrower query starts a separate investigation from admitted candidates. Zero proven rows do not establish absence.
 
 <Accordion title="Interpret BYTE_LIMIT_REACHED">
   Encoded response bytes and detached callback-proof storage use separate limits. The final response has an encoded-byte guard. The callback graph builder accounts conservative proof storage against its admitted byte allowance. A small row count does not establish available capacity in either allowance.
 
-  Read the finite callback failure cause, scan state, and obligations with the returned-byte execution grant. The public callback evidence does not expose numeric storage accounting.
+  The callback failure cause, scan state, and obligations qualify the returned-byte execution grant. The public callback evidence does not expose numeric storage accounting.
 
   The IDE diagnostic `kast_semantic_read` receipt records the actual retention allowance, admitted accounting, and accounting needed by the rejected request. It also records the latest byte-rejection snapshot and finite decision counters.
 
@@ -67,7 +75,9 @@ The invocation shares one allowance for elapsed time, work, and retention. It st
 
 Strict `VALUE_PATHS` drains issued continuations against one original investigation ledger. Strict `IMPACT_WITNESS` from `IMPACT` completes that investigation before it presents a saved section. `RESUME` presents produced output. `READ_RESULT` presents saved evidence without semantic replay. A rejection's historical checkpoint grants no new execution allowance.
 
-### Read rows and evidence pages
+<a id="read-rows-and-evidence-pages" />
+
+### Row and evidence positions
 
 The invocation reports row counts, preview size, and output positions:
 
@@ -80,21 +90,23 @@ The invocation reports row counts, preview size, and output positions:
 | `retention` and `next_cursor` | Issued result reference and position for more saved rows. |
 | `evidence_window` | Independent evidence positions: `start`, `end`, and `total`. `MORE` means evidence remains. `FINAL` reaches the saved end. |
 
-Small results appear inline. Larger results include a preview with row and byte limits. If retention succeeds, they also include a saved-result reference. To get more rows without semantic replay, use `READ_RESULT` with that reference and cursor.
+Small results appear inline. Larger results include a preview with row and byte limits. If retention succeeds, they also include a saved-result reference. `READ_RESULT` presents more rows with that reference and cursor, without semantic replay.
 
 Accumulated failures, omissions, and observations also use bounded pages. If `evidence_window.type` is `MORE`, set `READ_RESULT.evidence_cursor` to `evidence_window.end`.
 
-Evidence uses a fixed sequence: failures, omissions, walk observations, reference observations, discovery observations, and relation observations. Track row and evidence positions separately. After the last row, keep `cursor` at `invocation.accumulated_row_count` as you advance the evidence cursor. An evidence-only page leaves the row cursor unchanged.
+Evidence uses a fixed sequence: failures, omissions, walk observations, reference observations, discovery observations, and relation observations. Row and evidence positions are independent. After the last row, `cursor` stays at `invocation.accumulated_row_count` while evidence advances. An evidence-only page leaves the row cursor unchanged.
 
 Impact completion needs original ledger conservation and discharged obligations. Selected preview paths and witness sections keep that proof through accounting and a saved presentation window. `INVESTIGATION_UNPROVEN` distinguishes missing original evidence, incomplete path selection, and unresolved necessary obligations. A saved read keeps the original question across witness sections and expanded value paths.
 
-Coverage describes semantic execution. Preview truncation describes presentation. A complete saved result remains complete when the preview omits rows. Every saved page keeps terminal upstream limitations.
+Coverage describes semantic execution. Preview truncation describes presentation. A complete retained result remains complete when the preview omits rows. Every saved page keeps terminal upstream limitations.
 
-If necessary query retention fails, a typed completion rejection preserves the original coverage and actual storage cause. Hosted output fitting can qualify presentation. It keeps the saved result and its original coverage.
+If necessary query retention fails, a typed completion rejection preserves the original coverage and actual storage cause. Hosted output fitting can qualify presentation. It keeps the retained result and its original coverage.
 
-## Follow progress, not row count
+<a id="follow-progress-not-row-count" />
 
-Use coverage and reported progress to choose the next action. The row count alone cannot establish completion or available output.
+## Producer progress and output progress
+
+Coverage and reported progress determine the available next action. The row count alone cannot establish completion or available output.
 
 ```mermaid
 flowchart TB
@@ -115,7 +127,7 @@ flowchart TB
   classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
 ```
 
-An empty saved page can advance evidence. Use the issued `next_action`. If the response requests a budget increase, make a new decision. A result limit alone does not establish a usable output token. `retention_unavailable` keeps a useful prefix but reports loss of the remaining output.
+An empty saved page can advance evidence. The issued `next_action` describes available presentation or recovery. If the response requests a budget increase, make a new decision. A result limit alone does not establish a usable output token. `retention_unavailable` keeps a useful prefix but reports loss of the remaining output.
 
 | Operation | Advances | Handle |
 | --- | --- | --- |
@@ -128,9 +140,11 @@ Exact-name discovery collects candidates within work and byte allowances. Output
 
 Reuse of an issued output token returns stored output without semantic execution or renewed expiry. Stale or unavailable saved state blocks that reuse.
 
-## Carry the correct handle forward
+<a id="carry-the-correct-handle-forward" />
 
-Each handle permits a specific operation. Select it by purpose:
+## Handle families
+
+Each handle permits a specific operation:
 
 | Handle | Use |
 | --- | --- |
@@ -140,11 +154,11 @@ Each handle permits a specific operation. Select it by purpose:
 | Issued output continuation | Output-only `RESUME`. |
 | Result cursor | Page stored rows. |
 
-Pass each handle unchanged. Token spelling, names, and locations do not establish semantic identity. Row selection keeps evidence but does not prove coverage of excluded rows. Retention failure can prevent reuse while returned facts remain useful.
+Each action admits its issued handle unchanged. Token spelling, names, and locations do not establish semantic identity. Row selection keeps evidence but does not prove coverage of excluded rows. Retention failure can prevent reuse while returned facts remain useful.
 
 ## Compact and detailed output
 
-By default, output is compact. To include execution details, set `verbose: true`:
+By default, output is compact. `verbose: true` includes execution details:
 
 ```json
 {
@@ -162,7 +176,7 @@ Compact output keeps facts, coverage, limitations, references, continuation, and
 
 ## Saved state and identity
 
-Exact symbols can undergo fresh compiler revalidation. Saved results and continuations need the workspace, host, read state, and lifetime from their original read.
+Exact symbols can undergo fresh compiler revalidation. retained results and continuations need the workspace, host, read state, and lifetime from their original read.
 
 ```mermaid
 flowchart TB
@@ -182,12 +196,18 @@ flowchart TB
   classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
 ```
 
-Saved results and continuations cannot migrate to another read state. Changed epochs, different owners, expiry, or eviction prevent reuse.
+retained results and continuations cannot migrate to another read state. Changed epochs, different owners, expiry, or eviction prevent reuse.
 
 Composition keeps input qualifications. Before `DIFFERENCE` or an `ANTI` join can establish absence, the `right` input must have complete coverage.
 
 <Accordion title="Where the operation document sits in each transport">
   Direct MCP places the canonical semantic document in `result.structuredContent`. `health_check` uses a separate readiness shape. Tool RPC document variants carry `document`. Completed invocations in hosted App Server also carry `document`.
 
-  Use the [MCP](/reference/mcp-catalog) or [Tool RPC](/reference/rpc-catalog) wrapper for transport decoding. Decode each operation document with its [generated schema](/reference/schemas).
+  The [MCP](/reference/mcp-catalog) and [Tool RPC](/reference/rpc-catalog) wrappers define transport decoding. Each operation uses its [generated schema](/reference/schemas).
 </Accordion>
+
+## Procedures and source evidence
+
+[Read retained evidence](/how-to/read-retained-evidence) gives the page-reading procedure. [Query execution and evidence delivery](/explanation/query-lifecycle) explains the mechanism.
+
+[Source map](/reference/source-map#query-execution-and-retention) identifies the owning protocol and its focused tests.

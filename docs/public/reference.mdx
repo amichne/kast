@@ -1,37 +1,49 @@
 ---
-title: "Kast reference"
-sidebarTitle: "Overview"
-description: "Use Kast contracts, query syntax, runtime details, and recovery procedures."
+title: "Kast technical reference"
+sidebarTitle: "Reference overview"
+description: "Find query syntax, semantic result contracts, client protocols, generated schemas, and their source owners."
 icon: "code"
 ---
 
-Use these docs to write a custom integration, inspect a result contract, or work on Kast itself.
+<a id="understand-the-evidence" />
+<a id="work-on-kast" />
 
-For installation and everyday use, start with the [Kast guide](/).
+This track describes Kast's inputs, outputs, defaults, and rejection rules. The installed catalog governs the release that your client uses.
 
-<CardGroup cols={2}>
-  <Card title="Query reference" icon="search" href="/reference/api">
-    Choose query inputs, steps, outputs, and search scope.
-  </Card>
-  <Card title="Schemas and samples" icon="braces" href="/reference/schemas">
-    Use the generated contracts and recorded examples.
-  </Card>
-  <Card title="Connect a client" icon="plug" href="/reference/integrations">
-    Choose a transport, destination, or custom integration.
-  </Card>
-  <Card title="Runtime and recovery" icon="settings" href="/reference/management">
-    Manage installation state and workspace controls.
-  </Card>
-</CardGroup>
+The schemas on `main` can describe a newer release. [Compatibility](/reference/compatibility) identifies the catalog for each client.
 
-## Understand the evidence
+## Queries and semantic evidence
 
-[What an answer proves](/reference/evidence-boundaries) explains coverage, source state, and the limits of compiler evidence.
+| Contract | Contents |
+| --- | --- |
+| [Query forms](/reference/api) | Actions, sources, ordered steps, outputs, scope, and defaults. |
+| [Results](/reference/responses) | Completion, previews, retained rows, evidence pages, and finite failures. |
+| [Symbol identity](/reference/symbols) | Exact references, signatures, source ranges, and local declarations. |
+| [Composition](/reference/composition) | Set operations, joins, row kinds, and absence rules. |
+| [Limits and failures](/reference/limits) | Resource grants, failure categories, and state needed for recovery. |
 
-[How Kast works](/reference/internals/architecture) describes the request path. [Callback evidence](/reference/callbacks) explains anonymous ownership and static relationships.
+## Client contracts
 
-## Work on Kast
+| Client | Contract |
+| --- | --- |
+| Direct MCP | [Tool discovery, calls, and structured results](/reference/mcp-catalog). |
+| Tool RPC | [Process invocation and the reply union](/reference/rpc-catalog). |
+| Hosted App Server | [Client compatibility](/reference/compatibility) and the conversation's provider catalog. |
 
-Use the repository's [development guide](https://github.com/amichne/kast/blob/main/docs/development.md) for local commands and tests.
+Direct MCP and Tool RPC expose `health_check`. Hosted App Server supplies `workspace_lifecycle` instead.
 
-Generated callable schemas keep their existing owner. Do not edit `reference/callables.openapi.json` directly.
+The four shared tools are `query_symbols`, `check_diagnostics`, `add_declaration`, and `replace_body`.
+
+## Schemas and source owners
+
+[Schemas and samples](/reference/schemas) links generated inputs, outputs, and examples. The model pages describe individual result variants.
+
+[Recorded query evidence](/reference/walkthrough) preserves a historical run. Its counts and handles do not describe a current workspace.
+
+[Source map](/reference/source-map) connects contracts to current source, focused tests, and OpenWiki concepts.
+
+The [provisional glossary](https://github.com/amichne/kast/blob/main/docs/GLOSSARY.md) defines identity, scope, completion, and retained-evidence terms.
+
+For a guided exercise, use [Tutorials](/tutorials). For commands and recovery procedures, use [How-to guides](/how-to).
+
+[Explanation](/explanation) describes why identity, coverage, and runtime activation remain separate facts.

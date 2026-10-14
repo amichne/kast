@@ -1,11 +1,17 @@
 ---
 title: "Install Kast"
+sidebarTitle: "Release channels and installation"
 description: "Install the matched IDEA plugin and native Kast command, then connect your agent."
 icon: "download"
 keywords: ["install", "IntelliJ IDEA", "Kotlin"]
 ---
 
-Install the Kast command and IDEA plugin. Restart IDEA to load the plugin, then [connect your agent](/reference/integrations).
+Use this guide to select a release channel or IDEA installation. The default installation selects stable Control and Host releases independently.
+
+
+1. [Install the selected release.](#1-install-the-selected-release)
+2. [Load the plugin and inspect state.](#2-load-the-plugin-and-inspect-state)
+3. [Establish a semantic connection.](#3-establish-a-semantic-connection)
 
 ## Before you install
 
@@ -23,7 +29,9 @@ You need an Apple silicon Mac and a Kotlin Gradle repository. IntelliJ IDEA must
   Make sure that the build starts with `IU-262.` or `IC-262.`. Make sure that `JAVA_VERSION` starts with `25` and `OS_ARCH` is `aarch64` or `arm64`.
 </Accordion>
 
-## Install
+<a id="install" />
+
+## 1. Install the selected release
 
 ```shell wrap
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
@@ -33,7 +41,9 @@ The installer adds the IDEA plugin, Kast services, and native `kast` command. It
 
 For structured diagnostics, append `-- --verbose` to the installation command.
 
-Restart IDEA to load the plugin. Then run:
+## 2. Load the plugin and inspect state
+
+Restart IDEA to load the plugin. Run:
 
 ```shell
 kast status
@@ -81,4 +91,6 @@ Examine the version and installation path. Use the [first query](/reference/inte
   </Accordion>
 </AccordionGroup>
 
-[Connect your agent](/reference/integrations) after installation. For setup failures, use [Troubleshooting](/reference/troubleshooting). For upgrades or removal, use [Manage Kast](/reference/management).
+## 3. Establish a semantic connection
+
+[Connect your agent](/reference/integrations) after installation. Complete [the first-query exercise](/tutorials/first-query). For setup failures, use [Troubleshooting](/reference/troubleshooting). For upgrades or removal, use [Manage Kast](/reference/management).

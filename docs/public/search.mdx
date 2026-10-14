@@ -1,10 +1,11 @@
 ---
-title: "What you can do"
+title: "Choose a question for your agent"
+sidebarTitle: "Example questions"
 description: "Find code, trace its connections, inspect problems, and make targeted changes through your agent."
 icon: "search"
 ---
 
-Ask your [connected agent](/agent-harnesses) to use Kast. Replace the example names with names from your project.
+Use these prompts with your [connected agent](/agent-harnesses). Each prompt identifies a task and the evidence that the answer must preserve.
 
 ## Find the exact code
 
@@ -34,13 +35,19 @@ Kast can add a declaration to an existing Kotlin file or replace a supported fun
 
 These edits cover specific targets. Kast does not rename symbols, create files, or do multi-file refactors through its change tools.
 
-After an edit, review the diff and run your project's build and tests.
+After an edit, review the diff. Run your project's build and tests.
+
+The [change guide](/reference/change) describes supported targets and the receipt needed before another write.
 
 ## Know when an answer needs more work
 
 Kast reports when it cannot finish a search or establish a relationship. A limited answer does not prove that no matches exist.
 
 Your agent can use the reported reason to narrow the question or resolve a setup problem.
+
+Use [Find and trace code](/reference/search) for scoped discovery. Use [Inspect diagnostics](/how-to/inspect-diagnostics) for reported problems.
+
+Use [Read retained evidence](/how-to/read-retained-evidence) when the response supplies more evidence than one preview.
 
 <Card title="Connect your agent" icon="plug" href="/agent-harnesses">
   Choose Codex, Copilot, or Pi and ask your first question.

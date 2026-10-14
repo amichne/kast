@@ -4,29 +4,40 @@ description: "Resolve common setup problems and return to your agent."
 icon: "life-buoy"
 ---
 
-Use the problem that Kast reports to choose your next action.
+<a id="inspect-or-update-the-installation" />
 
-## Your agent has no Kast tools
+Use this guide when setup or a query stops. Keep the reported cause and selected repository before a recovery command.
+
+
+1. [Identify the failed stage.](#1-identify-the-failed-stage)
+2. [Inspect installation state.](#2-inspect-the-installation-before-recovery)
+3. [Resolve the cause before the original operation repeats.](#3-repeat-the-original-operation)
+
+## 1. Identify the failed stage
+
+Decide whether the failure concerns tool discovery, IDEA readiness, semantic proof, or a source change.
+
+### Your agent has no Kast tools
 
 Complete the [connection commands](/agent-harnesses), then restart your agent. Select the Kotlin repository or worktree that you want to use.
 
-## IntelliJ needs your attention
+### IntelliJ needs your attention
 
 Resolve the trust, project import, or indexing problem that Kast reports in IDEA. Then repeat your question.
 
 If Kast reports an incompatible IDEA installation, compare it with the [installation needs](/start#before-you-install).
 
-## Kast cannot finish a search
+### Kast cannot finish a search
 
 Read the reason in the answer. Ask your agent to narrow the question to a function, package, or directory.
 
 If Kast reports stale code references, ask your agent to find the code again.
 
-## An edit has an uncertain outcome
+### An edit has an uncertain outcome
 
 Ask your agent to inspect the source and edit record before it repeats the change. Review the diff and run your project's tests.
 
-## Inspect or update the installation
+## 2. Inspect the installation before recovery
 
 To inspect Kast, run:
 
@@ -42,4 +53,10 @@ kast upgrade
 
 After an update, restart IDEA and your agent. For the Codex plugin, repeat `kast plugin codex`.
 
-For detailed recovery steps, use the [detailed troubleshooting guide](/reference/troubleshooting).
+## 3. Repeat the original operation
+
+After you resolve the reported cause, repeat the same read in the intended worktree. Keep its new scope and completion evidence.
+
+For an uncertain write, establish the source effect before another write.
+
+Use the [detailed troubleshooting guide](/reference/troubleshooting) for contract and saved-state failures.

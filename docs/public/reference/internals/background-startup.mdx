@@ -5,7 +5,7 @@ description: "Know what Kast starts, what it waits for, and which blockers need 
 icon: "monitor-cog"
 ---
 
-Kast prepares the selected IDEA project when your agent sends a semantic request. Start the agent in the Kotlin Gradle repository or worktree that you want to inspect.
+A semantic request needs an imported and indexed IDEA project for one exact Gradle root. Kast prepares that project when the request needs it.
 
 ## What happens on the first question
 
@@ -29,14 +29,16 @@ flowchart TB
   classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
 ```
 
-The first request can take longer than later queries. Background presentation is not assured. A trust prompt, unsaved document, or failed import can need your attention in IDEA.
+The first request can take longer because IDEA needs import and indexing before semantic admission. Background presentation is not assured. A trust prompt, unsaved document, or failed import can need your attention in IDEA.
 
 Results belong to the selected worktree. References from another worktree need their own admission. Use the [first query](/reference/integrations#run-the-first-query) to examine readiness and tool use.
 
-## Control when an agent uses Kast
+<a id="control-when-an-agent-uses-kast" />
 
-Ask your agent to use Kast for declaration identity, relationships, or saved query results. For text-only work, tell the agent to omit Kast calls.
+## Connection state and project readiness differ
 
-To remove an installed registration, use `kast disconnect <harness>`. Restart that agent to unload the integration. Disconnect leaves IDEA, existing sessions, and other clients in place.
+An installed connection exposes tools. It does not establish IDEA readiness or compiler evidence. A fresh semantic call needs its own project admission.
+
+[Manage Kast](/reference/management) describes disconnection and workspace actions. Disconnection leaves IDEA, existing sessions, and other clients in place.
 
 Semantic queries use automatic preparation. Kast has no management command to disable preparation while those queries remain enabled. Hosted App Server supplies explicit project actions through [workspace lifecycle controls](/reference/management#explicit-workspace-control-in-the-hosted-app-server).

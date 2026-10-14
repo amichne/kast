@@ -7,6 +7,8 @@ description: "Decode a compiler-established relationship without expanding its c
 openapi-schema: "reference/callables.openapi.json query_symbolsResponse_relationFact"
 ---
 
-A relation fact records a compiler-established relationship within the requested domain. Read it with the query's coverage and occurrence evidence.
+A relation fact records a compiler-established relationship in the admitted source domain. The producing query separately reports coverage and occurrence evidence.
 
-Lexical containment alone does not establish a named caller. Static callback evidence does not prove runtime execution. See [Callback evidence](/reference/callbacks) for ownership rules.
+Lexical containment does not alone establish a named caller. A static callback route does not prove runtime execution.
+
+[Callback evidence](/reference/callbacks) describes ownership and deferred initializer supply. [Find and trace code](/reference/search) gives the investigation procedure.

@@ -4,7 +4,12 @@ description: "Install Kast, restart IntelliJ IDEA, and connect your coding agent
 icon: "download"
 ---
 
-Install Kast once. Then connect Codex, Copilot, or Pi.
+Use this guide to install Kast and establish a first connection. You need the supported IDEA runtime and an existing Kotlin Gradle project.
+
+
+1. [Install the supported payload.](#1-install-kast)
+2. [Restart IDEA and inspect the installation.](#2-restart-intellij-idea)
+3. [Connect your agent and request semantic evidence.](#3-connect-your-agent)
 
 ## Before you install
 
@@ -39,5 +44,11 @@ If your terminal cannot find `kast`, use the command path that the installer pri
 <Card title="Choose your agent" icon="plug" href="/agent-harnesses">
   Connect Codex, Copilot, or Pi and ask your first question.
 </Card>
+
+## 4. Establish readiness
+
+Complete [the first-query exercise](/tutorials/first-query) in the selected project. Compare the returned declaration and caller with the exercise source.
+
+`kast status` reports installation state. A fresh semantic query establishes that the selected project admits the requested read.
 
 If setup stops, use [Troubleshoot Kast](/troubleshooting).

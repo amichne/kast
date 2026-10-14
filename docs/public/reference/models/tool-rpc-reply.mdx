@@ -5,9 +5,8 @@ openapi-schema: "reference/callables.openapi.json ToolRpcReply"
 mode: "wide"
 ---
 
-Use the reply's `type` to select its payload. `catalog` lists installed tools and their input schemas.
+The reply's `type` selects the catalog, canonical document, or finite process failure. Each tool document keeps its own semantic status.
 
-`complete`, `qualified`, and `rejected_document` contain a canonical `document`. `rejected` contains one finite process failure. Decode each document with the generated schema for the selected tool.
+`complete`, `qualified`, and `rejected_document` carry `document`. `rejected` carries `failure`. `catalog` carries installed tool schemas.
 
-Reject unknown variants as incompatible. See [Tool RPC contract](/reference/rpc-catalog#decode) for the variant table and call syntax.
-
+Unknown variants represent an incompatible contract. [Tool RPC contract](/reference/rpc-catalog#decode) defines the union and process invocation.

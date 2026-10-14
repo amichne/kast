@@ -6,7 +6,7 @@ icon: "shield-check"
 
 Kast supports Apple silicon macOS and an on-disk Kotlin Gradle repository. IDEA must use build `262.*`, its bundled Kotlin plugin, and Java 25 JBR. Other IDEA release lines reject admission.
 
-Use your installed client's catalog as the contract authority:
+The installed client catalog is the contract authority for that release:
 
 | Client | Installed contract authority |
 | --- | --- |
@@ -14,13 +14,13 @@ Use your installed client's catalog as the contract authority:
 | Tool RPC | `catalog` |
 | Codex App Server | Conversation's provider catalog |
 
-After an upgrade, rediscover tools. If a workspace reference is stale, search again.
+Upgrades can change the catalog. Stale references need fresh identity admission. The [connection guide](/reference/integrations) describes client reload.
 
 <a id="current-release-pair" />
 
 ## Recorded release pair
 
-This recorded release pair dates from October 5, 2026. The installer can select newer stable releases.
+This recorded release pair dates from October 5, 2026. This pair is historical evidence, not the latest-release recommendation. The installer can select newer stable releases.
 
 | Component | Release | Source | Installed part |
 | --- | --- | --- | --- |
@@ -47,6 +47,6 @@ In Host-only mode, `--version` selects Host. Restart IDEA to load the plugin. Co
 
 ## Recorded examples and client limits
 
-Walkthrough counts and offsets describe the recorded revision. For new inputs, use current [query forms](/reference/api) and [schemas](/reference/schemas). If a reference fails, get a fresh reference. Do not change its prefix.
+The recorded walkthrough counts and offsets describe the recorded revision. For new inputs, use current [query forms](/reference/api) and [schemas](/reference/schemas). If a reference fails, get a fresh reference. Do not change its prefix.
 
 Codex App Server remains a preview. Examine the [recorded client compatibility](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md) before client integration.

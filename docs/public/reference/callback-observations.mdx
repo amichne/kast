@@ -1,0 +1,62 @@
+---
+title: "Callback observation fields"
+description: "Look up named-edge policies, binding variants, scan states, and callback proof obligations."
+icon: "route"
+---
+
+These fields qualify `CALLERS` and `CALLEES` evidence. Static observations do not establish runtime activation.
+
+## Named-edge policy
+
+| Policy | Named-edge meaning |
+| --- | --- |
+| `EXCLUDED` | Invocation is absent from named callers, with its reason. |
+| `ADMITTED_DIRECT` | A compiler-confirmed immediate invocation admits a named edge while preserving its anonymous body. |
+| `ADMITTED_INLINE` | Inline policy admits a named edge while preserving the anonymous owner. |
+| `UNAVAILABLE` | Ownership remains incomplete. |
+
+## Binding forms
+
+| Binding | Meaning |
+| --- | --- |
+| `BOUND` | An explicit argument supplies the value. |
+| `DEFAULT` | A declared default supplies the value. |
+| `DIRECT` | A literal or anonymous function is invoked directly. |
+| `DEPENDENCY_CONTRACT` | Compiler contract and dependency binary identity establish a supported calls-in-place effect. |
+| `DEFERRED_DEPENDENCY` | Reviewed dependency binaries establish initializer supply without an invocation claim. |
+| `UNAVAILABLE` | The mapping is unavailable. |
+
+## Invocation scan
+
+| Scan | Meaning |
+| --- | --- |
+| `EXHAUSTIVE` | The admitted scan finished. Empty invocations establish no supported invocation sites in that scanned flow. |
+| `INCOMPLETE` | A limit or unsupported flow prevents an absence claim. |
+| `NOT_APPLICABLE` | A directly invoked body has no receiving formal to scan. |
+
+## Unresolved obligations
+
+| Evidence | Limit |
+| --- | --- |
+| Nested callable owner | `NESTED_CALLBACK_EXECUTION` |
+| Library mapping | `EXTERNAL_CALLABLE` and `OUTSIDE_DOMAIN` |
+| Local initializer | `STORED_CALLBACK` |
+| Returned literal | `RETURNED_CALLBACK` |
+| Unsupported supply | `UNSUPPORTED_CALLBACK_SUPPLY` |
+| Recursive forwarding | `CALLBACK_CYCLE` |
+
+## Candidate source action
+
+An issued anonymous `candidateSelector` supplies `candidateRef` for the source action:
+
+```json
+{"request":{"type":"READ_SOURCE","candidateRef":"<issued candidateSelector>"}}
+```
+
+The selector needs its original read epoch. It does not select the enclosing named function.
+
+## Source owner
+
+[Callback binding documents](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt) own the variants.
+
+[Callback evidence](/reference/callbacks) explains ownership and reviewed dependency models. [Results](/reference/responses) defines evidence presentation.

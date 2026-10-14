@@ -5,6 +5,8 @@ openapi-schema: "reference/callables.openapi.json health_checkSemanticResult"
 mode: "wide"
 ---
 
-For a successful `health_check`, read readiness observations from the `complete` variant's `data`. A rejection reports an error. Semantic tools use separate operation documents.
+The complete `health_check` variant contains readiness observations in `data`. A rejection contains its finite error.
 
-Readiness describes workspace binding at the time of the call. A later query needs its own admission and coverage evidence. See [MCP contract](/reference/mcp-catalog) for discovery and result decoding.
+Readiness describes workspace binding at the time of that call. It does not establish a later query's declaration identity or coverage.
+
+[MCP contract](/reference/mcp-catalog) defines discovery and result wrappers. [The first-query tutorial](/tutorials/first-query) supplies a semantic exercise.

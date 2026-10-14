@@ -1,10 +1,11 @@
 ---
 title: "Troubleshoot Kast"
+sidebarTitle: "Contract and state recovery"
 description: "Recover from missing tools, an IDEA readiness blocker, or an incomplete result."
 icon: "life-buoy"
 ---
 
-Use the reported failure to choose the recovery action. To inspect the installation, run:
+Use this guide after you preserve the finite failure, selected worktree, installed contract, and failed stage. To inspect the installation, run:
 
 ```shell
 kast status
@@ -12,7 +13,14 @@ kast status
 
 Examine the version, installation path, and connections. After recovery, repeat the [first query](/reference/integrations#run-the-first-query) to make sure that the agent can call Kast.
 
-## Choose the symptom
+<a id="choose-the-symptom" />
+
+
+1. [Match the cause to its owner.](#1-match-the-cause-to-its-owner)
+2. [Establish an uncertain source effect before another write.](#2-establish-an-uncertain-source-effect)
+3. [Repeat the read after the cause changes.](#3-establish-recovery)
+
+## 1. Match the cause to its owner
 
 | Symptom | Action |
 | --- | --- |
@@ -42,6 +50,14 @@ If the catalog includes `health_check`, it reports workspace binding and readine
   </Accordion>
 </AccordionGroup>
 
-## A write has an uncertain outcome
+<a id="a-write-has-an-uncertain-outcome" />
+
+## 2. Establish an uncertain source effect
 
 Timeout, cancellation, output overflow, and nonzero exit leave the write outcome uncertain. Keep the plan identity and phase evidence. Before another write, read the source. Use [change recovery](/reference/change#read-the-receipt) to establish the effect.
+
+## 3. Establish recovery
+
+After the cause changes, repeat the original read in the same worktree. Compare the new scope, identity, and completion evidence.
+
+If retained state expired or changed, start a fresh query. Use [Read retained evidence](/how-to/read-retained-evidence) for presentation within valid state.

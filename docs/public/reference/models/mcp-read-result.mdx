@@ -5,6 +5,10 @@ openapi-schema: "reference/callables.openapi.json query_symbolsSemanticResult"
 mode: "wide"
 ---
 
-Read the canonical `query_symbols` document from `result.structuredContent`. Its status is `complete`, `qualified`, or `rejected`. Keep the evidence and qualifications with the result.
+MCP places the canonical `query_symbols` document in `result.structuredContent`. Its semantic status is `complete`, `qualified`, or `rejected`.
 
-Decode `check_diagnostics` with its separate `check_diagnosticsSemanticResult` schema. An invocation failure can omit the structured document. Examine the [MCP wrapper](/reference/models/mcp-tool-call-result) first. Use [Results](/reference/responses) to interpret query coverage and progress.
+The document preserves exact references, coverage, qualifications, and retained evidence. An invocation failure can omit this document.
+
+`check_diagnostics` uses the separate `check_diagnosticsSemanticResult` schema. The [MCP wrapper](/reference/models/mcp-tool-call-result) defines invocation failure.
+
+[Results](/reference/responses) defines query fields. [Read retained evidence](/how-to/read-retained-evidence) gives the presentation procedure.

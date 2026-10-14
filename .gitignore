@@ -36,6 +36,7 @@ __pycache__/
 *.pyc
 
 # Documentation build output
+/.vale-local/
 /.zensical-build-*.toml
 /zensical-stage-*/
 node_modules/
