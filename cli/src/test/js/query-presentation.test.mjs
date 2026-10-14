@@ -89,6 +89,70 @@ test('overview preserves rejection and unknown file counts rather than inferring
   assert.equal(view.overview.blockers.failures, 2);
 });
 
+test('failed refinement advice keeps the exact location and reason without issuing source authority', () => {
+  for (const [reason, next_action] of [
+    ['workspace-not-ready', 'wait_for_workspace'],
+    ['workspace-root-mismatch', 'reacquire_authority'],
+    ['stale-generation', 'reacquire_authority'],
+    ['stale-location', 'reacquire_authority'],
+    ['declaration-moved-or-changed', 'reacquire_authority'],
+    ['scope-rejected', 'correct_request'],
+    ['outside-scope', 'correct_request'],
+    ['ambiguous-declaration', 'correct_request'],
+    ['unsupported-declaration', 'correct_request'],
+    ['workspace-index-unavailable', 'report_failure'],
+    ['compiler-identity-unavailable', 'report_failure'],
+    ['compiler-contract-violation', 'report_failure'],
+  ]) {
+    const result = structuredClone(captured.cases.rejectedProof.result);
+    const failure = { type: 'refinement', location: { file: '/workspace/Search.kt', offset: 1217 }, reason };
+    result.pages[0].document.failures[0] = failure;
+    const view = projected(result);
+    assert.deepEqual(view.overview.blockers.refinement_recovery, [{
+      location: failure.location, reason, read_source_eligibility: 'NOT_ISSUED', next_action,
+    }]);
+    assert.deepEqual(view.evidence.failures[0], failure);
+    assert.equal(view.lines[0], 'Kast query: rejected_document; delivery: DELIVERED');
+    assert.equal(view.overview.completion.type, 'COMPLETE_ONLY');
+    assert.deepEqual(view.summary.rejection, projected(captured.cases.rejectedProof.result).summary.rejection);
+    assert.equal(view.text.includes('"type":"READ_SOURCE"'), false);
+    assert.equal(view.text.includes('"candidateSelector"'), false);
+    assert.equal(view.text.includes('"expected_epoch"'), false);
+    assert.equal(view.text.includes('"observed_epoch"'), false);
+    assert.ok(view.text.includes('Recovery advice does not issue or retry a query.'));
+  }
+});
+
+test('refinement recovery consumes received failures without semantic retry or changing exact-reference failures', async () => {
+  const original = captured.cases.rejectedProof.result;
+  const replies = structuredClone([original.initial, ...original.pages]);
+  const failures = [
+    { type: 'refinement', location: { file: '/workspace/Compiler.kt', offset: 3 }, reason: 'compiler-identity-unavailable' },
+    { type: 'refinement', location: { file: '/workspace/Moved.kt', offset: 19 }, reason: 'stale-location' },
+  ];
+  replies[1].document.failures[0] = failures[0];
+  replies[2].document.failures[0] = failures[1];
+  const requests = [];
+  const result = await awaitQueryDelivery({ request: { type: 'RUN' } }, async request => {
+    requests.push(request);
+    assert.ok(requests.length <= replies.length, 'Recovery advice cannot cause another request');
+    return replies[requests.length - 1];
+  }, { callTimeoutMillis: 1000 }, undefined, () => 0);
+  assert.deepEqual(requests.map(request => request.request.type), ['RUN', 'READ_RESULT', 'READ_RESULT']);
+  const view = projected(result);
+  assert.deepEqual(view.evidence.failures, failures);
+  assert.deepEqual(view.overview.blockers.refinement_recovery.map(entry => entry.location), failures.map(failure => failure.location));
+  assert.equal(projected(original).overview.blockers.refinement_recovery, undefined,
+    'An exact-reference failure does not prove that its selector was never issued');
+});
+
+test('an unknown refinement reason preserves the canonical result instead of inventing recovery advice', () => {
+  const result = structuredClone(captured.cases.rejectedProof.result);
+  result.pages[0].document.failures[0] = { type: 'refinement',
+    location: { file: '/workspace/Search.kt', offset: 1217 }, reason: 'future-unknown' };
+  assert.equal(queryPresentation(result), JSON.stringify(result));
+});
+
 test('retained default descriptions omit signature contracts and keep exact identity and qualifiers', () => {
   const reply = native.cases.occurrences.reply;
   const result = createQueryDeliveryEnvelope(reply, [], { stop: 'BYTE_LIMIT', rpc_count: 1,

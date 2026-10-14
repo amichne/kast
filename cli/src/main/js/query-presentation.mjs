@@ -209,6 +209,22 @@ function queryDeliveryFailed(result) {
 const queryEvidenceFields = Object.freeze([
   'failures', 'omissions', 'walk_observations', 'reference_observations', 'discovery_observations', 'relation_observations',
 ]);
+// Human advice for already admitted QueryExactFailureDocument values, using ReadRecoveryAction names.
+// A refinement location establishes no issued selector or permission to retry semantic work.
+const queryRefinementRecoveryActions = Object.freeze({
+  'workspace-not-ready': 'wait_for_workspace',
+  'workspace-root-mismatch': 'reacquire_authority',
+  'stale-generation': 'reacquire_authority',
+  'stale-location': 'reacquire_authority',
+  'declaration-moved-or-changed': 'reacquire_authority',
+  'scope-rejected': 'correct_request',
+  'outside-scope': 'correct_request',
+  'ambiguous-declaration': 'correct_request',
+  'unsupported-declaration': 'correct_request',
+  'workspace-index-unavailable': 'report_failure',
+  'compiler-identity-unavailable': 'report_failure',
+  'compiler-contract-violation': 'report_failure',
+});
 
 /** Human presentation only. The admitted canonical result remains unchanged in adapter details. */
 function queryPresentation(result, verbose = false, finalDelivery = false) {
@@ -348,6 +364,12 @@ function queryPresentation(result, verbose = false, finalDelivery = false) {
   };
   const evidence = Object.fromEntries(queryEvidenceFields.map(field => [field,
     replies.flatMap(reply => Array.isArray(reply.document?.[field]) ? reply.document[field] : [])]));
+  const refinements = evidence.failures.filter(failure => failure.type === 'refinement');
+  if (refinements.some(failure => !Object.hasOwn(queryRefinementRecoveryActions, failure.reason))) return canonical();
+  const refinementRecovery = refinements.map(failure => ({
+    location: failure.location, reason: failure.reason, read_source_eligibility: 'NOT_ISSUED',
+    next_action: queryRefinementRecoveryActions[failure.reason],
+  }));
   const relations = new Map(), files = new Map();
   let rowsWithoutFile = 0, rowsWithoutRelation = 0;
   for (const row of rows) {
@@ -386,11 +408,13 @@ function queryPresentation(result, verbose = false, finalDelivery = false) {
         ...(rejection.detail?.stop ? { stop: rejection.detail.stop } : {}) } } : {}),
       ...(first.qualification ? { qualification: first.qualification } : {}),
       failures: evidence.failures.length, omissions: evidence.omissions.length,
+      ...(refinementRecovery.length ? { refinement_recovery: refinementRecovery } : {}),
     },
   };
   const lines = [`Kast query: ${initial.type}; delivery: ${stop}`, 'Overview:', JSON.stringify(overview),
     'Counts describe received rows and their connections. Files without supplied locations remain unknown.',
     'Summary:', JSON.stringify(summary)];
+  if (refinementRecovery.length) lines.push('Refinement locations do not issue READ_SOURCE selectors. Recovery advice does not issue or retry a query.');
   if (stop !== 'DELIVERED') lines.push('Output is incomplete; retain the semantic outcome and delivery blocker above.');
   lines.push(`Rows (${rows.length}):`, ...rows.map(row => JSON.stringify(rowPresentation(row))));
   if (shared.length) lines.push('Shared descriptions:', ...shared.map(entry => JSON.stringify({ [entry.label]: symbolPresentation(entry.value) })));
