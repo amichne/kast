@@ -131,8 +131,12 @@ test('full symbol connections keep orientation, occurrence and compiler identity
     provenance: occurrence.provenance, coverage: occurrence.coverage };
   reply.document.items[0].connections = [connection];
   reply.document.items[0].signature = occurrence.ownership.declaration.compilerEvidence.signature;
+  reply.document.items[0].source = { text: 'fun requestedSource() = Unit', lines: { startInclusive: 1, endInclusive: 1 } };
+  reply.document.question.output.fields = ['name', 'signature', 'source'];
   const view = projected(reply);
-  assert.equal(Object.hasOwn(view.rows[0], 'signature'), false);
+  assert.deepEqual(view.rows[0].signature, occurrence.ownership.declaration.compilerEvidence.signature);
+  assert.deepEqual(view.rows[0].source, reply.document.items[0].source);
+  assert.deepEqual(view.details.request.output.fields, ['NAME', 'SIGNATURE', 'SOURCE']);
   assert.deepEqual(view.rows[0].connections[0], withoutSignatures(connection));
   assert.deepEqual(view.overview.relations, [{ relation: 'references', received_connections: 1 }]);
   assert.equal(view.details.request.type, 'READ_RESULT');

@@ -369,9 +369,8 @@ function queryPresentation(result, verbose = false, finalDelivery = false) {
     source: symbolPresentation(fact.source), target: symbolPresentation(fact.target) });
   const rowPresentation = row => {
     if (row.type === 'exact-symbol') return Object.fromEntries(Object.entries(row).filter(([key, value]) =>
-      !(summarizeObservations && ['signature', 'source'].includes(key)) &&
-      (!['name', 'location', 'signature', 'source', 'matches', 'connections'].includes(key) ||
-      value != null && (!Array.isArray(value) || value.length > 0))).map(([key, value]) =>
+      !['name', 'location', 'signature', 'source', 'matches', 'connections'].includes(key) ||
+      value != null && (!Array.isArray(value) || value.length > 0)).map(([key, value]) =>
         [key, key === 'connections' && summarizeObservations ? value.map(factPresentation) : value]));
     if (row.type === 'occurrence' && summarizeObservations) return { ...row, relation: factPresentation(row.relation) };
     if (row.type !== 'reference-occurrence') return row;

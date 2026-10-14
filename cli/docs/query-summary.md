@@ -10,7 +10,8 @@ The first semantic outcome and `COMPLETE_ONLY` policy remain authoritative.
 
 Exact rows and the existing compact graph remain inline.
 Graph tables keep endpoint identities, witness identities, directions, relation kinds, source ranges, and qualifiers.
-With available retained authority, default descriptions omit full signature contracts and source bodies.
+With available retained authority, connection descriptions omit repeated signature contracts.
+Requested `SIGNATURE` and `SOURCE` fields remain inline.
 The issued `READ_RESULT` request with `verbose: true` returns canonical details under that authority.
 An expired or stale handle returns its canonical rejection.
 The client never retries `RUN` to restore details.
