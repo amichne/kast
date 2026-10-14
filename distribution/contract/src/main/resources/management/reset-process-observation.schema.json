@@ -24,13 +24,17 @@
       "type": "string",
       "enum": [
         "REVALIDATE",
+        "SOCKET_CAPTURE",
         "CHILDREN",
         "SIGNAL",
         "WAIT",
-        "VERIFY"
+        "VERIFY",
+        "SOCKET_RETIREMENT"
       ],
       "examples": [
         "REVALIDATE",
+        "SOCKET_CAPTURE",
+        "SOCKET_RETIREMENT",
         "VERIFY"
       ]
     },

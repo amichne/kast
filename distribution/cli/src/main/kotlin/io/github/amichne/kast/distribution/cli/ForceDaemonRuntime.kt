@@ -61,7 +61,7 @@ internal interface ForceDaemonRuntime {
     fun readiness(installation: Path): ResetActivationObservation
 }
 
-internal class ResetScopedProcess private constructor(val snapshot: LifecycleProcessSnapshot) {
+internal class ResetScopedProcess private constructor(val snapshot: LifecycleProcessSnapshot, val root: Path) {
     companion object {
         private val mains =
             setOf(
@@ -88,10 +88,11 @@ internal class ResetScopedProcess private constructor(val snapshot: LifecyclePro
                     index + 2 < snapshot.arguments.size &&
                     snapshot.arguments[index + 2] in mains &&
                     classpathSelected(snapshot.arguments[index + 1], root)
+            val codex = ResetCodexListener.selects(command, snapshot.arguments, root)
             return when {
-                !direct && !java -> ResetProcessSelection.Unrelated
+                !direct && !java && !codex -> ResetProcessSelection.Unrelated
                 snapshot.pid <= 0 || snapshot.startEpochMillis <= 0 -> ResetProcessSelection.Rejected
-                else -> ResetProcessSelection.Selected(ResetScopedProcess(snapshot))
+                else -> ResetProcessSelection.Selected(ResetScopedProcess(snapshot, root))
             }
         }
 

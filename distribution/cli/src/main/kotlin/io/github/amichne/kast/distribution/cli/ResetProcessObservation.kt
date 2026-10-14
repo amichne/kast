@@ -7,10 +7,12 @@ import kotlinx.serialization.encodeToString
 @Serializable
 internal enum class ResetProcessStage {
     REVALIDATE,
+    SOCKET_CAPTURE,
     CHILDREN,
     SIGNAL,
     WAIT,
     VERIFY,
+    SOCKET_RETIREMENT,
 }
 
 @Serializable

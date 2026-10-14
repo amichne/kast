@@ -1,8 +1,8 @@
 package io.github.amichne.kast.cli.installation
 
-import io.github.amichne.kast.appserver.BrokerPublicEndpointMode
 import io.github.amichne.kast.appserver.InstalledSavedConfigurationIngress
 import io.github.amichne.kast.appserver.SavedConfigurationIngress
+import io.github.amichne.kast.distribution.contract.configuration.BrokerPublicEndpointMode
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationOwner
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.kernel.Refinement

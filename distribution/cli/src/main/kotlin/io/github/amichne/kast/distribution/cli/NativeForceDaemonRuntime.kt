@@ -142,23 +142,28 @@ internal object NativeForceDaemonRuntime : ForceDaemonRuntime {
             is NativeResetAdmission.Finished -> return admission.observation
         }
         val handle = ProcessHandle.of(prior.pid).orElse(null) ?: return LifecycleProcessObservation.Absent
-        return retireCurrent(prior, handle, allowance, observe)
+        return retireCurrent(process, handle, allowance, observe)
     }
 
     private fun retireCurrent(
-        prior: LifecycleProcessSnapshot,
+        process: ResetScopedProcess,
         handle: ProcessHandle,
         allowance: Duration,
         observe: (ResetProcessObservation) -> Unit,
     ): LifecycleProcessObservation =
         try {
+            val sockets =
+                when (val captured = ResetOwnedSharedSocket.capture(process, observe = observe)) {
+                    is ResetSharedSocketCapture.Captured -> captured
+                    ResetSharedSocketCapture.Rejected -> return LifecycleProcessObservation.Unavailable
+                }
             val dedicated =
-                when (val children = dedicatedChildren(handle)) {
+                when (val children = dedicatedChildren(handle, process.root)) {
                     is ResetProcessTable.Observed -> children.processes
                     ResetProcessTable.Unavailable -> {
                         observe(
                             ResetProcessObservation(
-                                prior.pid,
+                                process.snapshot.pid,
                                 ResetProcessStage.CHILDREN,
                                 ResetProcessResult.OBSERVATION_REJECTED,
                             )
@@ -167,20 +172,31 @@ internal object NativeForceDaemonRuntime : ForceDaemonRuntime {
                     }
                 }
             val deadline = System.nanoTime() + allowance.toNanos()
-            for (snapshot in dedicated + prior) {
+            for (snapshot in dedicated + process.snapshot) {
                 if (terminateSnapshot(snapshot, deadline, observe) == NativeTermination.REJECTED)
                     return LifecycleProcessObservation.Unavailable
             }
-            verifyRetirement(prior.pid, observe)
+            val retired = verifyRetirement(process.snapshot.pid, observe)
+            sockets.retireAfterExit(retired, observe)
         } catch (_: TimeoutException) {
-            observe(ResetProcessObservation(prior.pid, ResetProcessStage.WAIT, ResetProcessResult.DEADLINE_EXCEEDED))
+            observe(
+                ResetProcessObservation(
+                    process.snapshot.pid,
+                    ResetProcessStage.WAIT,
+                    ResetProcessResult.DEADLINE_EXCEEDED,
+                )
+            )
             LifecycleProcessObservation.Unavailable
         } catch (_: InterruptedException) {
             Thread.currentThread().interrupt()
-            observe(ResetProcessObservation(prior.pid, ResetProcessStage.WAIT, ResetProcessResult.INTERRUPTED))
+            observe(
+                ResetProcessObservation(process.snapshot.pid, ResetProcessStage.WAIT, ResetProcessResult.INTERRUPTED)
+            )
             LifecycleProcessObservation.Unavailable
         } catch (_: Exception) {
-            observe(ResetProcessObservation(prior.pid, ResetProcessStage.WAIT, ResetProcessResult.WAIT_REJECTED))
+            observe(
+                ResetProcessObservation(process.snapshot.pid, ResetProcessStage.WAIT, ResetProcessResult.WAIT_REJECTED)
+            )
             LifecycleProcessObservation.Unavailable
         }
 
@@ -212,17 +228,20 @@ internal object NativeForceDaemonRuntime : ForceDaemonRuntime {
         return admission
     }
 
-    private fun dedicatedChildren(handle: ProcessHandle): ResetProcessTable {
+    private fun dedicatedChildren(handle: ProcessHandle, root: Path): ResetProcessTable {
         val children = handle.descendants().use { stream -> stream.limit(MAXIMUM_PROCESSES + 1).toList() }
         if (children.size > MAXIMUM_PROCESSES) return ResetProcessTable.Unavailable
         val snapshots = mutableListOf<LifecycleProcessSnapshot>()
-        for (child in children.filter(::dedicatedCodexChild)) {
+        for (child in children) {
             when (val observed = NativeLifecycleProcesses.observe(child.pid())) {
                 LifecycleProcessObservation.Absent -> Unit
                 LifecycleProcessObservation.Unavailable -> return ResetProcessTable.Unavailable
                 is LifecycleProcessObservation.Present -> {
-                    if (observed.snapshot.startEpochMillis <= 0) return ResetProcessTable.Unavailable
-                    snapshots += observed.snapshot
+                    when (val selection = ResetScopedProcess.select(observed.snapshot, root)) {
+                        ResetProcessSelection.Unrelated -> Unit
+                        ResetProcessSelection.Rejected -> return ResetProcessTable.Unavailable
+                        is ResetProcessSelection.Selected -> snapshots += selection.process.snapshot
+                    }
                 }
             }
         }
@@ -262,15 +281,6 @@ internal object NativeForceDaemonRuntime : ForceDaemonRuntime {
             observe(ResetProcessObservation(snapshot.pid, ResetProcessStage.WAIT, ResetProcessResult.WAIT_REJECTED))
             NativeTermination.REJECTED
         }
-    }
-
-    private fun dedicatedCodexChild(handle: ProcessHandle): Boolean {
-        val info = handle.info()
-        val command = info.command().orElse("")
-        val arguments = info.arguments().orElse(emptyArray())
-        return command.isNotEmpty() &&
-            Path.of(command).fileName.toString().startsWith("codex") &&
-            arguments.firstOrNull() == "app-server"
     }
 
     override fun activate(installation: Path, home: Path, environment: Map<String, String>): LifecycleChildObservation {

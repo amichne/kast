@@ -31,6 +31,14 @@ class ResetProcessContractTest {
                 ResetProcessObservation(123, ResetProcessStage.WAIT, ResetProcessResult.WAIT_REJECTED),
                 ResetProcessObservation(123, ResetProcessStage.WAIT, ResetProcessResult.INTERRUPTED),
                 ResetProcessObservation(123, ResetProcessStage.REVALIDATE, ResetProcessResult.IDENTITY_VERIFIED),
+                ResetProcessObservation(123, ResetProcessStage.SOCKET_CAPTURE, ResetProcessResult.IDENTITY_VERIFIED),
+                ResetProcessObservation(123, ResetProcessStage.SOCKET_CAPTURE, ResetProcessResult.OBSERVATION_REJECTED),
+                ResetProcessObservation(123, ResetProcessStage.SOCKET_RETIREMENT, ResetProcessResult.RETIRED),
+                ResetProcessObservation(
+                    123,
+                    ResetProcessStage.SOCKET_RETIREMENT,
+                    ResetProcessResult.OBSERVATION_REJECTED,
+                ),
             )
         assertEquals(ResetProcessResult.entries.toSet(), observations.map { it.outcome }.toSet())
         val expected = resourceArray("reset-process-expected-shapes.json")

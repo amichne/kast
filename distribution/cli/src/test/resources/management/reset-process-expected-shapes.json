@@ -52,5 +52,29 @@
     "stage": "REVALIDATE",
     "outcome": "IDENTITY_VERIFIED",
     "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": 123,
+    "stage": "SOCKET_CAPTURE",
+    "outcome": "IDENTITY_VERIFIED",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": 123,
+    "stage": "SOCKET_CAPTURE",
+    "outcome": "OBSERVATION_REJECTED",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": 123,
+    "stage": "SOCKET_RETIREMENT",
+    "outcome": "RETIRED",
+    "type": "PROCESS_RETIREMENT"
+  },
+  {
+    "pid": 123,
+    "stage": "SOCKET_RETIREMENT",
+    "outcome": "OBSERVATION_REJECTED",
+    "type": "PROCESS_RETIREMENT"
   }
 ]

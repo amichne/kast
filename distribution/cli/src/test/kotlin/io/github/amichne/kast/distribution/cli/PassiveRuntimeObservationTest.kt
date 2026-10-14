@@ -49,9 +49,12 @@ class PassiveRuntimeObservationTest {
             readiness,
             Json.encodeToString(RuntimeFixtureReadiness("ready", 3, "12345678-1234-1234-1234-123456789abc")),
         )
+        Files.createDirectories(installation.resolve("config"))
+        write("config/environment", "KAST_APP_SERVER_PUBLIC_ENDPOINT=codex-control\n")
         var requests = 0
         val observed =
-            observeRuntime(installation) { _, request ->
+            observeRuntime(installation) { socket, request ->
+                assertEquals(Path.of("/fixture/codex/app-server-control/app-server-control.sock"), socket)
                 requests++
                 val fields = Json.parseToJsonElement(request).jsonObject
                 assertEquals(setOf("type", "version"), fields.keys)
