@@ -9,13 +9,19 @@ import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.protocol.contract.SourceReadFailureDetail
+import io.github.amichne.kast.protocol.contract.SourceReadRejection
+import io.github.amichne.kast.protocol.contract.SourceReferenceFailure
+import io.github.amichne.kast.protocol.contract.SourceReferenceRole
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
+import io.github.amichne.kast.protocol.wire.presentation.canonicalReadRejectedDocument
 import java.io.ByteArrayInputStream
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -29,6 +35,106 @@ class KastToolRpcQuerySessionTest {
     private val otherResult = parsed(QueryResultReference.parse("result:v1:00000000-0000-0000-0000-000000000003"))
     private val output =
         parsed(QueryExecutionContinuation.Output.parse("query-output:v1:00000000-0000-0000-0000-000000000002"))
+
+    @Test
+    fun `initial source read preserves canonical stale and unsupported authority failures`() {
+        val reasons =
+            listOf(
+                SourceReadRejection.CANDIDATE_STALE,
+                SourceReadFailureDetail.ReferenceRejected(
+                    SourceReferenceRole.CANDIDATE,
+                    SourceReferenceFailure.STALE_AUTHORITY,
+                ),
+                SourceReadFailureDetail.ReferenceRejected(
+                    SourceReferenceRole.CANDIDATE,
+                    SourceReferenceFailure.REVALIDATION_UNSUPPORTED_DECLARATION,
+                ),
+            )
+        for (reason in reasons) {
+            val document = Json.parseToJsonElement(canonicalReadRejectedDocument(reason).value).jsonObject
+            val expected = ToolRpcReply.RejectedDocument(document)
+            val actual = mutableListOf<ToolRpcReply>()
+            var invoked = 0
+            KastToolRpcQuerySession { admitted ->
+                    assertTrue(admitted.canonical is PublicToolCanonical.Source)
+                    invoked++
+                    expected
+                }
+                .run(input(listOf(sourceRequest(), runRequest())), actual::add)
+            assertEquals(listOf(expected), actual)
+            assertEquals(1, invoked)
+            assertTrue("next_action" in document)
+        }
+    }
+
+    @Test
+    fun `source read after a query names session policy without claiming candidate staleness`() {
+        val invoked = mutableListOf<QueryRunRequest>()
+        val actual = run(listOf(runRequest(), sourceRequest()), listOf(cases.getValue("prefix")), invoked)
+        val rejection = Json.encodeToJsonElement<ToolRpcReply>(actual.last()).jsonObject
+        assertEquals("QUERY_SESSION_TRANSITION_REJECTED", rejection.getValue("failure").jsonPrimitive.content)
+        val detail = rejection.getValue("detail").jsonObject
+        assertEquals("SOURCE_READ_REQUIRES_NEW_SESSION", detail.getValue("type").jsonPrimitive.content)
+        assertEquals("START_NEW_QUERY_SESSION", detail.getValue("next_action").jsonPrimitive.content)
+        assertEquals(setOf("type", "next_action"), detail.keys)
+        assertEquals(1, invoked.size)
+    }
+
+    @Test
+    fun `malformed source selector preserves anchor admission cause and safe action`() {
+        val request =
+            Json.encodeToString(
+                QuerySessionTestSourceQuery(QuerySessionTestSource("candidate:v3:YQ:" + "0".repeat(64)))
+            )
+        val actual = mutableListOf<ToolRpcReply>()
+        KastToolRpcQuerySession { error("Invalid source selector must not dispatch") }
+            .run(input(listOf(request)), actual::add)
+        val rejection = Json.encodeToJsonElement<ToolRpcReply>(actual.single()).jsonObject
+        assertEquals("INVALID_ARGUMENTS", rejection.getValue("failure").jsonPrimitive.content)
+        val detail = rejection.getValue("detail").jsonObject
+        assertEquals("SOURCE_ANCHOR_REJECTED", detail.getValue("type").jsonPrimitive.content)
+        assertEquals("PAYLOAD_DIGEST_MISMATCH", detail.getValue("cause").jsonPrimitive.content)
+        assertEquals("USE_ISSUED_CANDIDATE_SELECTOR", detail.getValue("next_action").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `exact symbol cannot replace an issued source candidate`() {
+        val request =
+            PublicToolContract.examples(PublicToolIdentity.QUERY_SYMBOLS)
+                .invalidExamples
+                .getValue("readSourceExactSymbol")
+                .value
+                .toString()
+        val actual = mutableListOf<ToolRpcReply>()
+        KastToolRpcQuerySession { error("Exact symbol cannot dispatch a source read") }
+            .run(input(listOf(request)), actual::add)
+        assertEquals(listOf(ToolRpcReply.Rejected(ToolRpcFailure.INVALID_ARGUMENTS)), actual)
+    }
+
+    @Test
+    fun `missing preceding capability rejects without inventing expected authority`() {
+        val cases =
+            listOf(
+                Triple(
+                    this.cases.getValue("prefix"),
+                    resumeRequest(),
+                    QuerySessionRejectionDetail.ContinuationNotIssued(null, output),
+                ),
+                Triple(
+                    this.cases.getValue("outputPrefix"),
+                    readRequest(),
+                    QuerySessionRejectionDetail.ResultNotIssued(null, result),
+                ),
+            )
+        for ((initial, successor, detail) in cases) {
+            val invoked = mutableListOf<QueryRunRequest>()
+            assertEquals(
+                listOf(initial, ToolRpcReply.Rejected.querySession(detail)),
+                run(listOf(runRequest(), successor), listOf(initial), invoked),
+            )
+            assertEquals(1, invoked.size)
+        }
+    }
 
     @Test
     fun `one run drains exact canonical result and evidence replies without semantic replay`() {
@@ -52,10 +158,15 @@ class KastToolRpcQuerySessionTest {
 
     @Test
     fun `second run and unrelated retained handle fail before dispatch`() {
-        for (successor in listOf(runRequest(), readRequest(reference = otherResult))) {
+        for ((successor, detail) in
+            listOf(
+                runRequest() to QuerySessionRejectionDetail.NewRun.value,
+                readRequest(reference = otherResult) to
+                    QuerySessionRejectionDetail.ResultNotIssued(result, otherResult),
+            )) {
             val invoked = mutableListOf<QueryRunRequest>()
             assertEquals(
-                listOf(cases.getValue("prefix"), transitionRejected()),
+                listOf(cases.getValue("prefix"), ToolRpcReply.Rejected.querySession(detail)),
                 run(listOf(runRequest(), successor, readRequest()), listOf(cases.getValue("prefix")), invoked),
             )
             assertEquals(1, invoked.size)
@@ -73,7 +184,10 @@ class KastToolRpcQuerySessionTest {
             parsed(QueryExecutionContinuation.Output.parse("query-output:v1:00000000-0000-0000-0000-000000000003"))
         val rejectedInvoked = mutableListOf<QueryRunRequest>()
         assertEquals(
-            listOf(expected.first(), transitionRejected()),
+            listOf(
+                expected.first(),
+                ToolRpcReply.Rejected.querySession(QuerySessionRejectionDetail.ContinuationNotIssued(output, unissued)),
+            ),
             run(listOf(runRequest(), resumeRequest(unissued)), listOf(expected.first()), rejectedInvoked),
         )
         assertEquals(1, rejectedInvoked.size)
@@ -202,6 +316,13 @@ class KastToolRpcQuerySessionTest {
     private fun runRequest(): String =
         PublicToolContract.examples(PublicToolIdentity.QUERY_SYMBOLS).examples.getValue("runByName").value.toString()
 
+    private fun sourceRequest(): String =
+        PublicToolContract.examples(PublicToolIdentity.QUERY_SYMBOLS)
+            .examples
+            .getValue("readCallbackSource")
+            .value
+            .toString()
+
     private fun readRequest(cursor: Int = 0, reference: QueryResultReference = result): String {
         val selectedCursor = parsed(QueryResultCursor.parse(cursor))
         return Json.encodeToString(QuerySessionTestReadQuery(QuerySessionTestRead(reference, selectedCursor)))
@@ -209,8 +330,6 @@ class KastToolRpcQuerySessionTest {
 
     private fun resumeRequest(continuation: QueryExecutionContinuation.Output = output): String =
         Json.encodeToString(QuerySessionTestResumeQuery(QuerySessionTestResume(continuation)))
-
-    private fun transitionRejected() = ToolRpcReply.Rejected(ToolRpcFailure.QUERY_SESSION_TRANSITION_REJECTED)
 
     private fun <T> parsed(refinement: Refinement<T, *>): T =
         when (refinement) {
@@ -236,8 +355,17 @@ private data class QuerySessionTestResume(
     @Required val type: QuerySessionTestAction = QuerySessionTestAction.RESUME,
 )
 
+@Serializable private data class QuerySessionTestSourceQuery(val request: QuerySessionTestSource)
+
+@Serializable
+private data class QuerySessionTestSource(
+    val candidateRef: String,
+    @Required val type: QuerySessionTestAction = QuerySessionTestAction.READ_SOURCE,
+)
+
 @Serializable
 internal enum class QuerySessionTestAction {
     READ_RESULT,
     RESUME,
+    READ_SOURCE,
 }

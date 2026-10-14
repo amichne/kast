@@ -22,6 +22,9 @@ import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeRejection
 import io.github.amichne.kast.protocol.contract.ChangeRunDocument
 import io.github.amichne.kast.protocol.contract.ChangeRunError
+import io.github.amichne.kast.protocol.contract.QueryExecutionContinuation
+import io.github.amichne.kast.protocol.contract.QueryResultReference
+import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocumentFailure
 import io.github.amichne.kast.protocol.registry.AgentToolName
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.registry.SupportToolIdentity
@@ -128,6 +131,8 @@ class KastToolRpcBridgeTest {
         Files.writeString(failures, Json.encodeToString(ToolRpcFailure.entries.toList()))
         val delivery = temporary.resolve("query-delivery.json")
         Files.writeString(delivery, QueryDeliveryFixtures.serialized())
+        val recovery = temporary.resolve("query-recovery.json")
+        Files.writeString(recovery, Json.encodeToString<List<ToolRpcReply>>(recoveryFailures()))
         val output = Path.of("build/reports/query-delivery/adapter-test.log")
         Files.createDirectories(output.parent)
         val process =
@@ -138,6 +143,7 @@ class KastToolRpcBridgeTest {
                     environment()["KAST_ADAPTER_TEST_CATALOG"] = catalog.toString()
                     environment()["KAST_ADAPTER_TEST_FAILURES"] = failures.toString()
                     environment()["KAST_ADAPTER_TEST_DELIVERY"] = delivery.toString()
+                    environment()["KAST_ADAPTER_TEST_RECOVERY"] = recovery.toString()
                 }
                 .start()
         try {
@@ -149,6 +155,31 @@ class KastToolRpcBridgeTest {
         } finally {
             process.destroyForcibly()
         }
+    }
+
+    private fun recoveryFailures(): List<ToolRpcReply> {
+        val result =
+            (QueryResultReference.parse("result:v1:00000000-0000-0000-0000-000000000001") as Refinement.Refined).value
+        val otherResult =
+            (QueryResultReference.parse("result:v1:00000000-0000-0000-0000-000000000003") as Refinement.Refined).value
+        val output =
+            (QueryExecutionContinuation.Output.parse("query-output:v1:00000000-0000-0000-0000-000000000002")
+                    as Refinement.Refined)
+                .value
+        val otherOutput =
+            (QueryExecutionContinuation.Output.parse("query-output:v1:00000000-0000-0000-0000-000000000004")
+                    as Refinement.Refined)
+                .value
+        val details: List<QuerySessionRejectionDetail> =
+            listOf(
+                QuerySessionRejectionDetail.NewRun.value,
+                QuerySessionRejectionDetail.SourceRead.value,
+                QuerySessionRejectionDetail.ResultNotIssued(result, otherResult),
+                QuerySessionRejectionDetail.ResultNotIssued(null, result),
+                QuerySessionRejectionDetail.ContinuationNotIssued(output, otherOutput),
+                QuerySessionRejectionDetail.ContinuationNotIssued(null, output),
+            ) + SourceReadAnchorDocumentFailure.entries.map(QuerySessionRejectionDetail::SourceAnchor)
+        return details.map(ToolRpcReply.Rejected::querySession)
     }
 
     private fun mcpCatalog(session: KastDirectToolSession): Map<String, JsonElement> {
