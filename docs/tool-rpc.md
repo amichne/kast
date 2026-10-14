@@ -34,6 +34,37 @@ printf '%s\n' '{"request":{"type":"RUN","source":{"type":"SEARCH_DECLARATIONS","
   "${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-tool-rpc-complete" call query_symbols
 ```
 
+### Examine a query before execution
+
+`plan-query` reads the same public `RUN` JSON as `call query_symbols`.
+It returns request facts and narrowing advice before installation access or host preparation.
+It needs no imported project or retained result.
+
+```shell
+"${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-tool-rpc-complete" plan-query < query.json
+```
+
+A `planned` reply preserves the admitted canonical request, including its scope, expansion domains, and requested budget.
+Its `basis` is `REQUEST_SHAPE_ONLY`, and its `estimate` is `NOT_MEASURED`.
+The reply does not prove symbol identity, workspace membership, semantic completion, or budget admission.
+The command uses the same 1 MiB input limit as `call`.
+`READ_SOURCE`, `READ_RESULT`, and `RESUME` return `RUN_REQUIRED`.
+
+| Advice | Action |
+| --- | --- |
+| `NARROW_DISCOVERY_SCOPE` | Select a known directory or package before discovery. |
+| `USE_EXACT_NAME_OR_REFERENCE` | Use an exact name or an issued reference when the question permits it. |
+| `RESTRICT_DECLARATION_KINDS` | Select only the declaration kinds that the question needs. |
+| `SET_EXPANSION_DOMAIN` | Select an explicit source domain when the question permits a smaller expansion scope. |
+| `TRACE_HAS_MULTIPLE_RELATION_PHASES` | Consider separate retained one-hop stages for independent migration questions. |
+| `EXHAUSTIVE_WALK_HAS_NO_DEPTH_LIMIT` | Select a depth limit only when that limit preserves the question. |
+| `LATE_FILTER_DOES_NOT_NARROW_DISCOVERY` | Put known discovery constraints in the source instead of a later `WHERE`. |
+
+Advice describes request structure, not measured cost.
+A directory scope can still consume more work than a package scope.
+An empty advice list does not promise that a query will finish.
+Actual work counts and finite failures remain properties of the host result.
+
 Use the exact `ref` and qualification returned by one tool in follow-up calls.
 The `add_declaration` and `replace_body` tools are marked `WRITE`; each plans,
 applies, verifies, and attempts recovery within one call. Clients must request
