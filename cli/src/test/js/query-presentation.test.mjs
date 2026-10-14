@@ -35,7 +35,7 @@ const parsed = text => {
     }
     return values;
   };
-  return { lines, rows: section('Rows'), summary: section('Summary:')[0], details: section('Details:')[0],
+  return { lines, rows: section('Rows'), overview: section('Overview:')[0], summary: section('Summary:')[0], details: section('Details:')[0],
     evidence: Object.assign({}, ...section('Evidence:')), shared: Object.assign({}, ...section('Shared descriptions:')) };
 };
 const expand = (value, shared) => {
@@ -50,12 +50,97 @@ const expand = (value, shared) => {
   }
   return value;
 };
+// The allowed default omission is a signature contract. All other pinned fields remain exact.
+const withoutSignatures = rows => JSON.parse(JSON.stringify(rows, (key, value) => key === 'signature' ? undefined : value));
 const projected = result => {
   const before = JSON.stringify(result), text = queryPresentation(result);
   assert.equal(JSON.stringify(result), before, 'Presentation cannot mutate authoritative results');
   assert.equal(queryPresentation(result, true), before, 'Verbose remains byte-for-byte canonical JSON');
   return { text, ...parsed(text) };
 };
+
+test('overview distinguishes received counts from the accumulated total before contract details', () => {
+  const reply = native.cases.retainedEvidence.reply;
+  const result = createQueryDeliveryEnvelope(reply, [], { stop: 'BYTE_LIMIT', rpc_count: 1,
+    request_bytes: 0, response_bytes: Buffer.byteLength(JSON.stringify(reply)), result: reply.document.retention.reference });
+  const view = projected(result);
+  assert.equal(view.lines[1], 'Overview:');
+  assert.deepEqual(view.overview.rows, { received: 16, accumulated: 185 });
+  assert.deepEqual(view.overview.relations, [{ relation: 'references', received_connections: 16 }]);
+  assert.equal(view.overview.files.reduce((total, entry) => total + entry.received_rows, 0), 16);
+  assert.equal(view.overview.rows_without_file, 0);
+  assert.deepEqual(view.overview.coverage, { exhaustive: true });
+  assert.equal(view.overview.completion.type, 'COMPLETE_ONLY');
+  assert.equal(view.overview.blockers.delivery, 'BYTE_LIMIT');
+  assert.ok(view.lines.indexOf('Overview:') < view.lines.indexOf('Summary:'));
+});
+
+test('overview preserves rejection and unknown file counts rather than inferring absence', () => {
+  const result = captured.cases.rejectedProof.result;
+  const view = projected(result);
+  assert.deepEqual(view.overview.rows, { received: 43 });
+  assert.deepEqual(view.overview.files, []);
+  assert.equal(view.overview.rows_without_file, 43);
+  assert.deepEqual(view.overview.relations, []);
+  assert.equal(view.overview.rows_without_relation, 43);
+  assert.deepEqual(view.overview.coverage, result.initial.document.rejection.detail.originalCoverage);
+  assert.equal(view.overview.blockers.rejection.type, 'COMPLETION_UNPROVEN');
+  assert.deepEqual(view.overview.blockers.rejection.cause, { type: 'INCOMPLETE_EXECUTION' });
+  assert.equal(view.overview.blockers.failures, 2);
+});
+
+test('retained default descriptions omit signature contracts and keep exact identity and qualifiers', () => {
+  const reply = native.cases.occurrences.reply;
+  const result = createQueryDeliveryEnvelope(reply, [], { stop: 'BYTE_LIMIT', rpc_count: 1,
+    request_bytes: 0, response_bytes: Buffer.byteLength(JSON.stringify(reply)), result: reply.document.retention.reference });
+  const view = projected(result), row = expand(view.rows[0], view.shared), original = reply.document.items[0];
+  assert.equal(Object.hasOwn(row.occurrence.target.compilerEvidence, 'signature'), false);
+  assert.equal(row.occurrence.target.selector, original.occurrence.target.selector);
+  assert.equal(row.occurrence.target.compilerEvidence.identity, original.occurrence.target.compilerEvidence.identity);
+  assert.deepEqual(row.occurrence.occurrence, original.occurrence.occurrence);
+  assert.equal(row.occurrence.coverage, 'exact-compiler-confirmed');
+  assert.equal(view.details.request.type, 'READ_RESULT');
+  assert.equal(view.details.verbose, true);
+  assert.deepEqual(expand(parsed(queryPresentation(result, false, true)).rows[0],
+    parsed(queryPresentation(result, false, true)).shared), original);
+});
+
+test('missing, stale and transport-lost detail authority keep received signature contracts inline', () => {
+  const reply = structuredClone(native.cases.occurrences.reply);
+  const originalRows = structuredClone(reply.document.items);
+  delete reply.document.retention;
+  const inline = projected(reply);
+  assert.deepEqual(inline.rows.map(row => expand(row, inline.shared)), originalRows);
+  for (const [stop, pages] of [
+    ['DELIVERY_UNAVAILABLE', []],
+    ['DELIVERY_UNAVAILABLE', captured.cases.expired.result.pages],
+  ]) {
+    const first = native.cases.occurrences.reply;
+    const result = createQueryDeliveryEnvelope(first, pages, { stop, rpc_count: pages.length + 2,
+      request_bytes: 0, response_bytes: 1, result: first.document.retention.reference });
+    const view = projected(result);
+    assert.deepEqual(view.rows.map(row => expand(row, view.shared)), originalRows);
+  }
+});
+
+test('full symbol connections keep orientation, occurrence and compiler identity beside a detail request', () => {
+  const reply = structuredClone(captured.cases.complete.result.initial);
+  const occurrence = native.cases.occurrences.reply.document.items[0].occurrence;
+  const connection = { meaning: occurrence.meaning, source: occurrence.ownership.declaration,
+    target: occurrence.target, occurrence: occurrence.occurrence,
+    provenance: occurrence.provenance, coverage: occurrence.coverage };
+  reply.document.items[0].connections = [connection];
+  reply.document.items[0].signature = occurrence.ownership.declaration.compilerEvidence.signature;
+  const view = projected(reply);
+  assert.equal(Object.hasOwn(view.rows[0], 'signature'), false);
+  assert.deepEqual(view.rows[0].connections[0], withoutSignatures(connection));
+  assert.deepEqual(view.overview.relations, [{ relation: 'references', received_connections: 1 }]);
+  assert.equal(view.details.request.type, 'READ_RESULT');
+  delete reply.document.retention;
+  const inline = projected(reply);
+  assert.deepEqual(inline.rows[0].connections, [connection]);
+  assert.deepEqual(inline.rows[0].signature, occurrence.ownership.declaration.compilerEvidence.signature);
+});
 
 test('compact retained graph pages preserve evidence progress and deliver all 53 occurrences', async () => {
   const requests = [];
@@ -86,6 +171,8 @@ test('compact retained graph pages preserve evidence progress and deliver all 53
     assert.equal(document.coverage.exhaustive, true);
   }
   const rendered = projected(result);
+  assert.deepEqual(rendered.overview.relations, [{ relation: 'references', received_connections: 53 }]);
+  assert.deepEqual(rendered.overview.files, [{ file: '/workspace/Subject.kt', received_rows: 53 }]);
   const evidenceLine = rendered.lines[rendered.lines.indexOf('Evidence delivery:') + 1];
   assert.equal(JSON.parse(evidenceLine).delivered_entries, 53);
   const graphLine = rendered.lines[rendered.lines.indexOf('Relation graph:') + 1];
@@ -157,6 +244,8 @@ test('minimal SYMBOLS delivers all 53 exact rows under the unchanged aggregate a
   assert.equal(graph.witnesses.length, 53);
   assert.equal(graph.connection_witnesses.length, 53);
   assert.equal(rendered.rows.length, 53);
+  assert.deepEqual(rendered.overview.relations, [{ relation: 'references', received_connections: 53 }]);
+  assert.deepEqual(rendered.overview.files, [{ file: '/workspace/Subject.kt', received_rows: 53 }]);
   assert.equal(rendered.summary.coverage.exhaustive, true);
   assert.deepEqual(rendered.details.request.output, { type: 'SYMBOLS', fields: [] });
   assert.ok(Buffer.byteLength(rendered.text) < Buffer.byteLength(JSON.stringify(result)));
@@ -320,7 +409,7 @@ test('shared descriptions preserve distinct occurrence rows, exact handles and s
   const view = projected(result), rows = view.rows.map(row => expand(row, view.shared));
   assert.equal(rows.length, 20);
   assert.equal(new Set(rows.map(row => row.row_id)).size, 20);
-  assert.deepEqual(rows, reply.document.items);
+  assert.deepEqual(rows, withoutSignatures(reply.document.items));
   assert.equal(rows[0].row_id, 'result-row:v1:57a91d5f-0b80-432b-a3c0-96a5f993a922');
   assert.equal(rows[1].row_id, 'result-row:v1:e9e3a4c8-9d0b-4c79-91fe-0c328e55fd25');
   assert.deepEqual(rows[0].occurrence.occurrence.range, { startInclusive: 3542, endExclusive: 3557 });
@@ -425,7 +514,8 @@ test('fixed result oracle reproduces saved work and byte measurements without se
       requestBytes: requests.reduce((bytes, request) => bytes + Buffer.byteLength(JSON.stringify(request)), 0),
       responseBytes, modelVisibleBytes: Buffer.byteLength(queryPresentation(result)),
     };
-    assert.deepEqual(metrics, measurement.after);
+    assert.deepEqual(metrics, { ...measurement.after,
+      modelVisibleBytes: measurements.summaryFollowUp.cases[measurement.name].modelVisibleBytes });
     assert.deepEqual({ ...metrics, modelVisibleBytes: Buffer.byteLength(JSON.stringify(frozen)) }, measurement.before);
     assert.equal(metrics.semanticExecutions, 1);
     assert.equal(metrics.requestBytes, result.delivery.request_bytes);
@@ -433,7 +523,7 @@ test('fixed result oracle reproduces saved work and byte measurements without se
   }
 });
 
-test('presentation serialization avoids full declaration keys while preserving exact text', async () => {
+test('presentation serialization avoids full declaration keys while the summary preserves exact evidence', async () => {
   let calls = 0, bytes = 0, dictionaryCalls = 0, dictionaryBytes = 0;
   const dictionaryObjects = new Set(native.cases.occurrences.reply.document.items.flatMap(row =>
     [row.occurrence.target, row.occurrence.ownership.declaration]));
@@ -457,9 +547,9 @@ test('presentation serialization avoids full declaration keys while preserving e
     assert.equal(instrumented.namespace.queryPresentation(result), queryPresentation(result));
     if (measurement.name === 'occurrencesPrefix')
       assert.equal(createHash('sha256').update(queryPresentation(result)).digest('hex'),
-        'faa2cb563ad42d980c22ab93a401b3565a0a64839528ee4a6b311c83a26447a2',
-        'Dictionary implementation cannot change one byte of the merged compact projection');
-    assert.deepEqual({ calls, bytes }, measurement.after);
+        measurements.summaryFollowUp.cases.occurrencesPrefix.textSha256,
+        'The fixed compact presentation remains reproducible');
+    assert.deepEqual({ calls, bytes }, measurements.summaryFollowUp.cases[measurement.name].serialization);
     if (measurement.dictionaryKeyConstruction)
       assert.deepEqual({ calls: dictionaryCalls, bytes: dictionaryBytes }, measurement.dictionaryKeyConstruction);
     assert.deepEqual({ calls: 1, bytes: Buffer.byteLength(JSON.stringify(result)) }, measurement.before);
@@ -487,7 +577,7 @@ test('shared declaration identity is only a candidate bucket, never proof of equ
   initial.document.items = rows;
   const view = projected(initial);
   assert.equal(view.rows.length, rows.length, 'Distinct occurrence rows are never deduplicated');
-  assert.deepEqual(view.rows.map(row => expand(row, view.shared)), rows);
+  assert.deepEqual(view.rows.map(row => expand(row, view.shared)), withoutSignatures(rows));
   assert.equal(Object.keys(view.shared).length, variants.length + 2,
     'Every different target shape/order and the shared owner have separate exact descriptions');
   assert.equal(new Set(view.rows.map(row => row.row_id)).size, rows.length);
@@ -533,7 +623,7 @@ test('smaller description-key work cannot buy extra canonical envelope drainage'
   const view = projected(result), received = [result.initial, ...result.pages].flatMap(reply => reply.document.items);
   assert.equal(received.length, 120);
   assert.deepEqual(received, oracle.slice(0, received.length));
-  assert.deepEqual(view.rows.map(row => expand(row, view.shared)), received);
+  assert.deepEqual(view.rows.map(row => expand(row, view.shared)), withoutSignatures(received));
   assert.equal(view.summary.invocation.accumulated_row_count, oracle.length);
   assert.equal(view.summary.invocation.stop.type, 'COMPLETED');
   assert.ok(received.length < oracle.length);
@@ -542,7 +632,7 @@ test('smaller description-key work cannot buy extra canonical envelope drainage'
   assert.equal(queryPresentation(result, true), JSON.stringify(result));
   assert.ok(Buffer.byteLength(JSON.stringify(result)) <= 262144);
   assert.equal(Buffer.byteLength(JSON.stringify(result)), 239645);
-  assert.equal(Buffer.byteLength(view.text), 92614);
+  assert.equal(Buffer.byteLength(view.text), measurements.summaryFollowUp.synthetic185.visibleBytes);
   assert.equal(readBytes, 279333);
   console.log(JSON.stringify({ boundary: 'Synthetic pure canonical-envelope drainage',
     rpcCount: result.delivery.rpc_count, includedPages: result.pages.length + 1, rows: received.length,
