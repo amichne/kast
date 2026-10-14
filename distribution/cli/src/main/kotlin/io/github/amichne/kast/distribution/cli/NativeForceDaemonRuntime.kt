@@ -10,7 +10,20 @@ internal object NativeForceDaemonRuntime : ForceDaemonRuntime {
     private const val MAXIMUM_PROCESSES = 16384L
     private const val LAUNCHCTL_SECONDS = 10L
 
-    override fun launch(command: ResetLaunchCommand, home: Path): ResetCommandObservation {
+    override fun launch(command: ResetLaunchCommand, home: Path): ResetCommandObservation =
+        launchObserved(command, home) { System.err.println(it.asJson()) }
+
+    fun launchObserved(
+        command: ResetLaunchCommand,
+        home: Path,
+        observe: (ResetLaunchObservation) -> Unit,
+    ): ResetCommandObservation {
+        val result = launchCommand(command, home)
+        observe(ResetLaunchObservation.from(command, result))
+        return result
+    }
+
+    private fun launchCommand(command: ResetLaunchCommand, home: Path): ResetCommandObservation {
         if (!Files.isExecutable(Path.of("/bin/launchctl"))) return ResetCommandObservation.Unavailable
         val label =
             command.label.value +
@@ -27,21 +40,27 @@ internal object NativeForceDaemonRuntime : ForceDaemonRuntime {
                         listOf("bootout", "gui/$uid/$label")
                     }
                 }
+            val allowance =
+                when (command) {
+                    is ResetLaunchCommand.Inspect -> minOf(command.allowance, Duration.ofSeconds(LAUNCHCTL_SECONDS))
+                    is ResetLaunchCommand.Bootout -> Duration.ofSeconds(LAUNCHCTL_SECONDS)
+                }
+            if (allowance <= Duration.ZERO) return ResetCommandObservation.DeadlineExceeded
             val process =
                 ProcessBuilder(listOf("/bin/launchctl") + arguments)
                     .redirectOutput(ProcessBuilder.Redirect.DISCARD)
                     .redirectError(ProcessBuilder.Redirect.DISCARD)
                     .start()
             try {
-                if (process.waitFor(LAUNCHCTL_SECONDS, TimeUnit.SECONDS))
+                if (process.waitFor(allowance.toNanos(), TimeUnit.NANOSECONDS))
                     ResetCommandObservation.Exited(process.exitValue())
-                else ResetCommandObservation.Unavailable
+                else ResetCommandObservation.DeadlineExceeded
             } finally {
                 if (process.isAlive) process.destroyForcibly()
             }
         } catch (_: InterruptedException) {
             Thread.currentThread().interrupt()
-            ResetCommandObservation.Unavailable
+            ResetCommandObservation.Interrupted
         } catch (_: Exception) {
             ResetCommandObservation.Unavailable
         }

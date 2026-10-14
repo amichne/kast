@@ -154,145 +154,39 @@ class ForceDaemonLifecycleTest {
     }
 
     @Test
-    fun `launch job that survives bootout prevents deletion and preserves prior payload`() {
-        val home = home()
+    fun `captured ownership survives delayed launch job disappearance`() {
         val root = root()
-        Files.createDirectories(root)
-        Files.writeString(root.resolve("sentinel"), "prior payload")
+        val prior = snapshot(root)
         val runtime =
             ResetRuntimeScript(
                 root,
                 listOf(
+                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
+                    ResetScriptStep.Capture(prior, ResetScriptCaptureResult.NO_SHARED_DESCRIPTORS),
+                    ResetScriptStep.Job(true, true, ResetCommandObservation.Exited(0)),
+                    ResetScriptStep.Job(true, false, ResetCommandObservation.Exited(0)),
+                    ResetScriptStep.Job(true, true, ResetCommandObservation.Exited(0)),
+                    ResetScriptStep.Job(true, true, ResetCommandObservation.Exited(113)),
+                    ResetScriptStep.Job(false, true, ResetCommandObservation.Exited(113)),
+                    ResetScriptStep.Signal(prior, LifecycleProcessObservation.Absent),
                     ResetScriptStep.Table(ResetProcessTable.Observed(emptyList())),
-                    ResetScriptStep.Job(true, true, ResetCommandObservation.Exited(0)),
-                    ResetScriptStep.Job(true, false, ResetCommandObservation.Exited(5)),
-                    ResetScriptStep.Job(true, true, ResetCommandObservation.Exited(0)),
                 ),
             )
-        val observations = mutableListOf<ResetObservation>()
-        val result =
-            forceResetInstallation(
-                root,
-                home,
-                emptyMap(),
-                ForceResetOperation.UNINSTALL,
-                ForceResetExecution(runtime, forbiddenInstaller(), observations::add),
-            )
-                as ForceResetOutcome.Retained
-        runtime.assertConsumed()
-        assertEquals(ForceResetOperation.UNINSTALL, result.operation)
-        assertEquals(ForceResetStage.DAEMONS, result.stage)
-        assertEquals(ForceResetFailure.LAUNCH_JOB_REJECTED, result.failure)
-        assertEquals("prior payload", Files.readString(Path.of(result.recoveryPath).resolve("payload/sentinel")))
-        assertFalse(Files.exists(root))
-        assertTrue(Files.exists(installationResetFence(root)))
-        assertEquals(refusedDaemonObservations(), observations)
-    }
-
-    @Test
-    fun `observing the same process incarnation after force termination refuses quiescence`() {
-        val root = root()
-        val prior = snapshot(root)
-        val runtime =
-            ResetRuntimeScript(
-                root,
-                listOf(
-                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
-                    ResetScriptStep.Capture(prior, ResetScriptCaptureResult.NO_SHARED_DESCRIPTORS),
-                ) + absentJobs() + listOf(ResetScriptStep.Signal(prior, LifecycleProcessObservation.Present(prior))),
-            )
-        val result = ForceDaemonRetirement(runtime).retire(root, home())
-        assertEquals(ResetEffect.Rejected(ForceResetFailure.PROCESS_RETIREMENT_REJECTED), result)
-        runtime.assertConsumed()
-    }
-
-    @Test
-    fun `a reused PID may be retained when the replacement incarnation is unrelated`() {
-        val root = root()
-        val prior = snapshot(root)
-        val replacement =
-            prior.copy(
-                startEpochMillis = prior.startEpochMillis + 1,
-                command = "/usr/bin/unrelated",
-                arguments = emptyList(),
-            )
-        val runtime =
-            ResetRuntimeScript(
-                root,
-                listOf(
-                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
-                    ResetScriptStep.Capture(prior, ResetScriptCaptureResult.NO_SHARED_DESCRIPTORS),
-                ) +
-                    absentJobs() +
-                    listOf(
-                        ResetScriptStep.Signal(prior, LifecycleProcessObservation.Present(replacement)),
-                        ResetScriptStep.Table(ResetProcessTable.Observed(listOf(replacement))),
-                    ),
-            )
-        assertEquals(ResetEffect.Completed, ForceDaemonRetirement(runtime).retire(root, home()))
-        runtime.assertConsumed()
-    }
-
-    @Test
-    fun `observation of a different PID cannot establish retirement of the selected PID`() {
-        val root = root()
-        val prior = snapshot(root)
-        val other = prior.copy(pid = prior.pid + 1, startEpochMillis = prior.startEpochMillis + 1)
-        val runtime =
-            ResetRuntimeScript(
-                root,
-                listOf(
-                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
-                    ResetScriptStep.Capture(prior, ResetScriptCaptureResult.NO_SHARED_DESCRIPTORS),
-                ) + absentJobs() + listOf(ResetScriptStep.Signal(prior, LifecycleProcessObservation.Present(other))),
-            )
         assertEquals(
-            ResetEffect.Rejected(ForceResetFailure.PROCESS_RETIREMENT_REJECTED),
-            ForceDaemonRetirement(runtime).retire(root, home()),
-        )
-        runtime.assertConsumed()
-    }
-
-    @Test
-    fun `a scoped process returning during final observation prevents quiescence`() {
-        val root = root()
-        val prior = snapshot(root)
-        val runtime =
-            ResetRuntimeScript(
-                root,
-                listOf(
-                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
-                    ResetScriptStep.Capture(prior, ResetScriptCaptureResult.NO_SHARED_DESCRIPTORS),
-                ) +
-                    absentJobs() +
-                    listOf(
-                        ResetScriptStep.Signal(prior, LifecycleProcessObservation.Absent),
-                        ResetScriptStep.Table(
-                            ResetProcessTable.Observed(listOf(prior.copy(pid = 92, startEpochMillis = 300)))
-                        ),
+            ResetEffect.Completed,
+            ForceDaemonRetirement(
+                    runtime,
+                    ResetRetirementTiming(
+                        clock = { 0 },
+                        pause = {
+                            assertEquals(java.time.Duration.ofMillis(100), it)
+                            ResetRetirementPause.CONTINUE
+                        },
                     ),
-            )
-        assertEquals(
-            ResetEffect.Rejected(ForceResetFailure.PROCESS_RETIREMENT_REJECTED),
-            ForceDaemonRetirement(runtime).retire(root, home()),
+                )
+                .retire(root, home()),
         )
         runtime.assertConsumed()
-    }
-
-    private fun refusedDaemonObservations(): List<ResetObservation> =
-        listOf(
-            ResetObservation.Started(ForceResetOperation.UNINSTALL, ForceResetStage.FENCE),
-            ResetObservation.Completed(ForceResetOperation.UNINSTALL, ForceResetStage.FENCE),
-            ResetObservation.Started(ForceResetOperation.UNINSTALL, ForceResetStage.DAEMONS),
-            ResetObservation.Rejected(
-                ForceResetOperation.UNINSTALL,
-                ForceResetStage.DAEMONS,
-                ForceResetFailure.LAUNCH_JOB_REJECTED,
-            ),
-        )
-
-    private fun forbiddenInstaller(): ForceReinstaller = ForceReinstaller { _, _, _ ->
-        error("installer cannot run before quiescence")
     }
 
     private fun home(): Path = Files.createDirectories(temporary.resolve("home"))

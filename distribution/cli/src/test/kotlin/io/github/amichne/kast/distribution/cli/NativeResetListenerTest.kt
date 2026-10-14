@@ -180,6 +180,24 @@ class NativeResetListenerTest {
             assertTrue(documents.isEmpty(), "unconsumed descriptor inspection")
         }
 
+    @Test
+    fun `shared socket peer proof keeps one connection through delayed acceptance`() =
+        withScopedDaemon { selected, socket, _ ->
+            val caller = ProcessHandle.current().pid()
+            val baseline = "p$caller\nf100\nd0xaaaa\nn->(none)\n"
+            val probe = baseline + "f101\nd0xbbbb\nn->0xcccc\n"
+            val documents =
+                ArrayDeque(listOf(baseline, probe, probe + "p${selected.snapshot.pid}\nf50\nd0xcccc\nn$socket\n"))
+            assertEquals(
+                ResetSocketPeerProof.PROVEN,
+                ResetSocketPeerOwnership.prove(socket, selected.snapshot.pid, "/usr/sbin/lsof") {
+                    assertTrue(documents.isNotEmpty(), "unexpected descriptor inspection")
+                    ProcessObservation.Exited(0, documents.removeFirst())
+                },
+            )
+            assertTrue(documents.isEmpty(), "unconsumed descriptor inspection")
+        }
+
     private fun withScopedDaemon(action: (ResetScopedProcess, Path, Process) -> Unit) {
         val owned = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kr-")
         val reader = Executors.newSingleThreadExecutor()

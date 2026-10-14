@@ -29,7 +29,8 @@
         "SIGNAL",
         "WAIT",
         "VERIFY",
-        "SOCKET_RETIREMENT"
+        "SOCKET_RETIREMENT",
+        "SOCKET_PEER"
       ],
       "examples": [
         "REVALIDATE",
@@ -49,7 +50,10 @@
         "DEADLINE_EXCEEDED",
         "WAIT_REJECTED",
         "INTERRUPTED",
-        "IDENTITY_VERIFIED"
+        "IDENTITY_VERIFIED",
+        "PEER_PENDING",
+        "PEER_REJECTED",
+        "SOCKET_CHANGED"
       ],
       "examples": [
         "IDENTITY_VERIFIED",
