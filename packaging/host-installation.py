@@ -1,7 +1,7 @@
 """Install only the IntelliJ-owned Kast Host plugin through its ordinary restart lifecycle."""
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from enum import Enum
 from pathlib import Path
 import argparse
@@ -28,9 +28,18 @@ class Failure(str, Enum):
     RECOVERY_REQUIRED = 'RECOVERY_REQUIRED'
 
 
+class HostInstallationStage(str, Enum):
+    INSTALLATION = 'INSTALLATION'
+    ACTIVE_ROOT = 'ACTIVE_ROOT'
+    ACTIVE_DESTINATION = 'ACTIVE_DESTINATION'
+    ACTIVE_INVENTORY = 'ACTIVE_INVENTORY'
+    RETAINED_RECOVERY = 'RETAINED_RECOVERY'
+
+
 class Rejected(Exception):
-    def __init__(self, failure):
+    def __init__(self, failure: Failure, stage: HostInstallationStage = HostInstallationStage.INSTALLATION):
         self.failure = failure
+        self.stage = stage
 
 
 @dataclass(frozen=True)
@@ -200,6 +209,11 @@ class HostActiveReceipt:
     inventory: tuple[HostDirectoryArtifact | HostFileArtifact, ...]
 
 
+class HostAdmissionMode(str, Enum):
+    REINSTALL = 'REINSTALL'
+    REMOVE = 'REMOVE'
+
+
 class HostRemovalType(str, Enum):
     REMOVED = 'REMOVED'
 
@@ -222,6 +236,11 @@ class HostReport:
 class HostRejection:
     type: HostRejectionType
     failure: Failure
+
+
+@dataclass(frozen=True)
+class HostInstallRejection(HostRejection):
+    stage: HostInstallationStage
 
 
 def encode(value):
@@ -374,22 +393,42 @@ def read_active_receipt(path):
                              parse_identity(value['destinationIdentity']), value['version'], value['sha256'], tuple(artifacts))
 
 
-def admit_active(root, receipt, missing=False):
+def admit_active(root: Path, receipt: HostActiveReceipt,
+                 mode: HostAdmissionMode = HostAdmissionMode.REINSTALL) -> HostActiveReceipt:
     destination = root / 'kast-ide-hosted'
-    if receipt.destination != str(destination) or Identity.observe(root) != receipt.pluginRootIdentity:
-        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    current_root = Identity.observe(root)
+    recorded_root = receipt.pluginRootIdentity
+    if (receipt.destination != str(destination) or current_root.inode != recorded_root.inode
+            or current_root.owner != recorded_root.owner):
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN, HostInstallationStage.ACTIVE_ROOT)
+    if current_root.device != recorded_root.device:
+        def current_identity(identity: Identity) -> Identity:
+            if identity.device != recorded_root.device:
+                raise Rejected(Failure.OWNERSHIP_UNPROVEN, HostInstallationStage.ACTIVE_INVENTORY)
+            return replace(identity, device=current_root.device)
+        receipt = replace(receipt, pluginRootIdentity=current_root,
+                          destinationIdentity=current_identity(receipt.destinationIdentity),
+                          inventory=tuple(replace(artifact, identity=current_identity(artifact.identity))
+                                          for artifact in receipt.inventory))
     if not os.path.lexists(destination):
-        if missing:
-            return
-        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        return receipt
     if Identity.observe(destination) != receipt.destinationIdentity:
-        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN, HostInstallationStage.ACTIVE_DESTINATION)
     actual = inventory(destination)
     expected = {artifact.path: artifact for artifact in receipt.inventory}
     if any(expected.get(artifact.path) != artifact for artifact in actual):
-        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
-    if not missing and actual != receipt.inventory:
-        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN, HostInstallationStage.ACTIVE_INVENTORY)
+    if mode is not HostAdmissionMode.REMOVE and actual != receipt.inventory:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN, HostInstallationStage.ACTIVE_INVENTORY)
+    if Identity.observe(root) != current_root or Identity.observe(destination) != receipt.destinationIdentity:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN, HostInstallationStage.ACTIVE_DESTINATION)
+    return receipt
+
+
+def admit_retained_entries(retained: Path) -> None:
+    with os.scandir(retained) as entries:
+        if any(entry.name not in ('host-install.lock', 'host-install.json') for entry in entries):
+            raise Rejected(Failure.RECOVERY_REQUIRED, HostInstallationStage.RETAINED_RECOVERY)
 
 
 def admit_root(root):
@@ -476,7 +515,7 @@ def remove_host_files(root):
     if not os.path.lexists(lock_path):
         # A prior removal may have retired the lock before deleting its final receipt.
         admitted = read_active_receipt(receipt_path)
-        admit_active(root, admitted, missing=True)
+        admit_active(root, admitted, HostAdmissionMode.REMOVE)
         descriptor = os.open(lock_path, os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
         os.close(descriptor)
     lock_identity = owned_file(lock_path, private=True)
@@ -488,10 +527,8 @@ def remove_host_files(root):
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         receipt_identity = owned_file(receipt_path, private=True)
         receipt = read_active_receipt(receipt_path)
-        admit_active(root, receipt, missing=True)
-        with os.scandir(retained) as entries:
-            if any(entry.name not in ('host-install.lock', 'host-install.json') for entry in entries):
-                raise Rejected(Failure.RECOVERY_REQUIRED)
+        receipt = admit_active(root, receipt, HostAdmissionMode.REMOVE)
+        admit_retained_entries(retained)
         for artifact in sorted(receipt.inventory, key=lambda item: (len(Path(item.path).parts), item.path), reverse=True):
             admit_root(root)
             if Identity.observe(retained) != retained_identity or owned_file(receipt_path, private=True) != receipt_identity:
@@ -503,7 +540,7 @@ def remove_host_files(root):
                     path.rmdir()
                 else:
                     path.unlink()
-        admit_active(root, receipt, missing=True)
+        admit_active(root, receipt, HostAdmissionMode.REMOVE)
         if os.path.lexists(destination):
             destination.rmdir()
             sync(root)
@@ -589,6 +626,7 @@ def install(request):
             if os.fstat(lock.fileno()).st_uid != os.getuid():
                 raise Rejected(Failure.OWNERSHIP_UNPROVEN)
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            admit_retained_entries(retained)
             receipt_path = retained / 'host-install.json'
             previous_receipt = None
             if os.path.lexists(receipt_path):
@@ -674,10 +712,14 @@ def main():
         print(encode(report), end='')
         return 0
     except Rejected as rejected:
-        print(encode(HostRejection(HostRejectionType.REJECTED, rejected.failure)), end='', file=sys.stdout if arguments.remove else sys.stderr)
+        report = (HostRejection(HostRejectionType.REJECTED, rejected.failure) if arguments.remove else
+                  HostInstallRejection(HostRejectionType.REJECTED, rejected.failure, rejected.stage))
+        print(encode(report), end='', file=sys.stdout if arguments.remove else sys.stderr)
         return 1
     except (OSError, ValueError, zipfile.BadZipFile, XML.ParseError):
-        print(encode(HostRejection(HostRejectionType.REJECTED, Failure.FILESYSTEM_REJECTED)), end='', file=sys.stdout if arguments.remove else sys.stderr)
+        report = (HostRejection(HostRejectionType.REJECTED, Failure.FILESYSTEM_REJECTED) if arguments.remove else
+                  HostInstallRejection(HostRejectionType.REJECTED, Failure.FILESYSTEM_REJECTED, HostInstallationStage.INSTALLATION))
+        print(encode(report), end='', file=sys.stdout if arguments.remove else sys.stderr)
         return 1
 
 
