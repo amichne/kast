@@ -40,12 +40,15 @@ This recipe covers caller layers, not the full TRACE topology.
 ## Task 3: Preserve source-read failures and explain session rejection
 
 - Consumer: Pi or Copilot that sends `READ_SOURCE` through `query-session`.
-- Owner: `KastToolRpcQuerySession` and its typed RPC rejection documents.
+- Owners: `KastToolRpcQuerySession`, canonical selector admission, and shared query presentation.
 - Result: an initial source read reaches the canonical source owner and preserves its exact outcome.
 - Result: a rejected later transition names its reason and a safe next action before dispatch.
+- Result: a stale reference keeps its compared epochs after workspace and host admission.
+- Result: failed text refinement names its location, finite cause, source-read eligibility, and safe next action.
 - Proof: focused session cases and serialized rejection shapes exercise real admission and dispatch rules.
-- Negative control: an unrelated result or continuation cannot enter the session.
-- Limit: the session cannot report an epoch that it never reads.
+- Proof: canonical source and query cases preserve mismatch evidence from the original decoder without another token parse.
+- Negative controls: unrelated handles cannot enter the session, and foreign authorities cannot acquire local epoch evidence.
+- Limit: a compared authority describes that admission, not the state of a later read.
 
 ## Task 4: Put a compact summary first
 
