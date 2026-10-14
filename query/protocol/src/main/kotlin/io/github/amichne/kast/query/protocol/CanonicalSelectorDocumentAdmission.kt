@@ -2,6 +2,8 @@ package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ReferenceAuthorityEpoch
+import io.github.amichne.kast.protocol.contract.ReferenceAuthorityMismatch
 import io.github.amichne.kast.symbol.contract.*
 import io.github.amichne.kast.symbol.contract.CandidateSelector
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
@@ -456,18 +458,33 @@ private const val EXTERNAL_FILE = "external"
 internal fun LiveSelectorAuthorityDocument.admitReference(
     root: String,
     current: LiveSemanticReadReference,
-): Refinement<Unit, CanonicalSelectorDecodingFailure> =
+): CanonicalSelectorDecoding<Unit> {
     when {
         version != LiveSemanticReadReference.VERSION || version != current.version ->
-            Refinement.Rejected(CanonicalSelectorDecodingFailure.UNSUPPORTED_REFERENCE_VERSION)
+            return CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.UNSUPPORTED_REFERENCE_VERSION)
         root != current.workspaceRoot.value ->
-            Refinement.Rejected(CanonicalSelectorDecodingFailure.INCOMPATIBLE_WORKSPACE)
+            return CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.INCOMPATIBLE_WORKSPACE)
         host != current.host.value.toString() ->
-            Refinement.Rejected(CanonicalSelectorDecodingFailure.INCOMPATIBLE_AUTHORITY)
-        epoch != current.epoch.value || contentView != current.contentView.name ->
-            Refinement.Rejected(CanonicalSelectorDecodingFailure.STALE_AUTHORITY)
-        else -> Refinement.Refined(Unit)
+            return CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.INCOMPATIBLE_AUTHORITY)
     }
+    val expected =
+        when (val parsed = ReferenceAuthorityEpoch.parse(epoch)) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected ->
+                return CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.STALE_AUTHORITY)
+        }
+    if (contentView != current.contentView.name)
+        return CanonicalSelectorDecoding.Rejected.staleAuthority(ReferenceAuthorityMismatch.ContentViewMismatch)
+    val observed =
+        when (val parsed = ReferenceAuthorityEpoch.parse(current.epoch.value)) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> error("Current live authority must carry a positive epoch")
+        }
+    return when (val compared = ReferenceAuthorityMismatch.EpochMismatch.compare(expected, observed)) {
+        is Refinement.Refined -> CanonicalSelectorDecoding.Rejected.staleAuthority(compared.value)
+        is Refinement.Rejected -> CanonicalSelectorDecoding.Decoded(Unit)
+    }
+}
 
 internal fun admitSelectorReference(
     root: String,
@@ -481,8 +498,8 @@ internal fun admitSelectorReference(
         if (current !is LiveSemanticReadAuthority)
             return CanonicalSelectorDecoding.Rejected(CanonicalSelectorDecodingFailure.LIVE_AUTHORITY_REQUIRED)
         return when (val admitted = live.admitReference(root, current.reference)) {
-            is Refinement.Refined -> CanonicalSelectorDecoding.Decoded(current)
-            is Refinement.Rejected -> CanonicalSelectorDecoding.Rejected(admitted.failure)
+            is CanonicalSelectorDecoding.Decoded -> CanonicalSelectorDecoding.Decoded(current)
+            is CanonicalSelectorDecoding.Rejected -> admitted
         }
     }
     return when (val published = admitAuthority(root, generation, null, null)) {

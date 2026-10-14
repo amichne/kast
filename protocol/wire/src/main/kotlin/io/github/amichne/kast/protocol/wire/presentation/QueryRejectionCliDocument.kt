@@ -40,6 +40,9 @@ internal sealed interface QueryRejectionCliDocument {
         val path: String,
         @Serializable(with = QueryReferenceRejectionCliSerializer::class)
         val reason: io.github.amichne.kast.protocol.contract.QueryReferenceRejectionReason,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("authority_mismatch")
+        val authorityMismatch: io.github.amichne.kast.protocol.contract.ReferenceAuthorityMismatch? = null,
     ) : QueryRejectionCliDocument
 
     @Serializable
@@ -72,11 +75,13 @@ internal fun QueryRunRejection.toCliDocument(): QueryRejectionCliDocument =
             QueryRejectionCliDocument.ReferenceRejected(
                 "from.values[${position.value}]",
                 reason,
+                authorityMismatch,
             )
         is QueryRunRejection.StepReferenceRejected ->
             QueryRejectionCliDocument.ReferenceRejected(
                 "steps[${stepPosition.value}].input.values[${referencePosition.value}]",
                 reason,
+                authorityMismatch,
             )
         is QueryRunRejection.SourceRejected ->
             QueryRejectionCliDocument.SourceRejected(

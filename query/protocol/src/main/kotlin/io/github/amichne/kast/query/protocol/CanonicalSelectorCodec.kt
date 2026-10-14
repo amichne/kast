@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.ReferenceAuthorityMismatch
 import io.github.amichne.kast.symbol.contract.*
 import io.github.amichne.kast.symbol.contract.CandidateSelector
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
@@ -64,7 +65,18 @@ enum class CanonicalSelectorDecodingFailure {
 sealed interface CanonicalSelectorDecoding<out Value> {
     data class Decoded<Value>(val value: Value) : CanonicalSelectorDecoding<Value>
 
-    data class Rejected(val failure: CanonicalSelectorDecodingFailure) : CanonicalSelectorDecoding<Nothing>
+    data class Rejected
+    private constructor(
+        val failure: CanonicalSelectorDecodingFailure,
+        val authorityMismatch: ReferenceAuthorityMismatch?,
+    ) : CanonicalSelectorDecoding<Nothing> {
+        constructor(failure: CanonicalSelectorDecodingFailure) : this(failure, null)
+
+        companion object {
+            fun staleAuthority(mismatch: ReferenceAuthorityMismatch): Rejected =
+                Rejected(CanonicalSelectorDecodingFailure.STALE_AUTHORITY, mismatch)
+        }
+    }
 }
 
 private val selectorJson = Json {

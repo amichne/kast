@@ -214,23 +214,13 @@ private fun SourceReadAnchorDocument.admit(
                 is CanonicalSelectorDecoding.Decoded ->
                     Refinement.Refined(DomainSourceReadAnchor.Candidate(lookup.value))
                 is CanonicalSelectorDecoding.Rejected ->
-                    return Refinement.Rejected(
-                        SourceReadFailureDetail.ReferenceRejected(
-                            SourceReferenceRole.CANDIDATE,
-                            lookup.failure.sourceFailure(),
-                        )
-                    )
+                    return Refinement.Rejected(lookup.sourceRejection(SourceReferenceRole.CANDIDATE))
             }
         is SourceReadAnchorDocument.Symbol ->
             when (val lookup = authority.restoreExact(requested.selector, current)) {
                 is CanonicalSelectorDecoding.Decoded -> Refinement.Refined(DomainSourceReadAnchor.Symbol(lookup.value))
                 is CanonicalSelectorDecoding.Rejected ->
-                    return Refinement.Rejected(
-                        SourceReadFailureDetail.ReferenceRejected(
-                            SourceReferenceRole.SYMBOL,
-                            lookup.failure.sourceFailure(),
-                        )
-                    )
+                    return Refinement.Rejected(lookup.sourceRejection(SourceReferenceRole.SYMBOL))
             }
         is SourceReadAnchorDocument.Source -> {
             val token =

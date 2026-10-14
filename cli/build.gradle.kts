@@ -261,6 +261,7 @@ val queryPresentationTest =
         description = "Verifies compact query text against pinned authoritative row and evidence oracles."
         inputs.files("src/main/js/query-delivery.mjs", "src/test/js/query-presentation.test.mjs")
         inputs.files("src/main/js/query-session.mjs", "src/test/js/query-session.test.mjs")
+        inputs.file("src/test/js/tool-rpc-rejection.test.mjs")
         inputs.file(rootProject.file("copilot/extension.mjs"))
         inputs.file("src/test/resources/query-presentation-native.json")
         inputs.file("src/test/resources/query-compact-graph-pages.json")
@@ -273,6 +274,7 @@ val queryPresentationTest =
             "--test",
             "cli/src/test/js/query-presentation.test.mjs",
             "cli/src/test/js/query-session.test.mjs",
+            "cli/src/test/js/tool-rpc-rejection.test.mjs",
         )
     }
 
