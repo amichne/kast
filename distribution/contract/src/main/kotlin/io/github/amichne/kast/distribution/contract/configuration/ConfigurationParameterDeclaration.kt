@@ -1,5 +1,44 @@
 package io.github.amichne.kast.distribution.contract.configuration
 
+import io.github.amichne.kast.kernel.ReadLimitParameter
+
+internal fun readLimitDescription(parameter: ReadLimitParameter): String =
+    readLimitDescriptions[parameter]?.let { "$it IDE JVM property: ${parameter.propertyKey}." }
+        ?: ("${parameter.name.lowercase().replace('_', ' ')}; " +
+            "also available to the IDE as ${parameter.propertyKey}.")
+
+private val readLimitDescriptions =
+    mapOf(
+        ReadLimitParameter.SEMANTIC_MILLIS to
+            "Default elapsed allowance when executionBudget.maxElapsedMs is absent. This is a ceiling, not a wait.",
+        ReadLimitParameter.SEMANTIC_WORK to
+            ("Default semantic work allowance when executionBudget.maxWorkUnits is absent. " +
+                "It does not increase response size."),
+        ReadLimitParameter.SEMANTIC_RESULTS to
+            ("Default semantic result allowance when executionBudget.maxResults is absent. " +
+                "It does not establish completeness."),
+        ReadLimitParameter.SEMANTIC_RETURNED_BYTES to
+            ("Default encoded response allowance when executionBudget.maxReturnedBytes is absent. " +
+                "It does not increase execution capacity."),
+        ReadLimitParameter.EXECUTION_MAX_MILLIS to
+            ("Operator ceiling for default and requested elapsed allowances. " +
+                "Remaining host time can reduce the admitted grant."),
+        ReadLimitParameter.EXECUTION_MAX_WORK to
+            "Operator ceiling for default and requested work allowances. It does not set the default grant.",
+        ReadLimitParameter.EXECUTION_MAX_RESULTS to
+            "Operator ceiling for default and requested result allowances. It does not set the default grant.",
+        ReadLimitParameter.EXECUTION_MAX_RETURNED_BYTES to
+            ("Operator ceiling for default and requested response bytes. " +
+                "Transport capacity can reduce the admitted grant."),
+        ReadLimitParameter.QUERY_CHECKPOINT_BYTES to
+            "Maximum charged bytes per query checkpoint. This storage limit is separate from response pagination.",
+        ReadLimitParameter.QUERY_CONTINUATION_BYTES to
+            "Maximum charged bytes per query continuation store. This accounting is not a heap measurement.",
+        ReadLimitParameter.QUERY_CONTINUATION_ENTRIES to "Maximum entries per query continuation store.",
+        ReadLimitParameter.QUERY_CONTINUATION_TTL_MILLIS to
+            "Maximum query continuation age. Output pagination does not renew this lifetime.",
+    )
+
 internal fun ConfigurationParameter.baseDeclaration(): ConfigurationDeclaration =
     ConfigurationDeclaration(
         key,

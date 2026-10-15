@@ -25,6 +25,7 @@ class HostedPublicationDeadlineTest {
             ReadLimits.resolve(
                     environment =
                         mapOf(
+                            "KAST_READ_SEMANTIC_MILLIS" to "2000",
                             "KAST_READ_EXECUTION_MAX_MILLIS" to ceiling.toString(),
                             "KAST_READ_HOST_QUERY_MILLIS" to "4000",
                             "KAST_READ_HOST_CONNECTION_MILLIS" to "5000",
