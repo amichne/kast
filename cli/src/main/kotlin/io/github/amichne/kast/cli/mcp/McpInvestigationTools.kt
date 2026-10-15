@@ -5,6 +5,8 @@ package io.github.amichne.kast.cli.mcp
 import com.networknt.schema.InputFormat
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
+import io.github.amichne.kast.appserver.DaemonOperationFailure
+import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.cli.CliExit
@@ -12,6 +14,7 @@ import io.github.amichne.kast.cli.generatedRequestSchema
 import io.github.amichne.kast.cli.ide.ExistingIdeCliCapabilities
 import io.github.amichne.kast.cli.ide.executeExistingIdeCli
 import io.github.amichne.kast.cli.unionSchema
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ToolOutputDetail
 import io.github.amichne.kast.protocol.registry.SupportToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
@@ -27,6 +30,7 @@ internal class McpInvestigationTools(
     private val directory: Path,
     private val capabilities: ExistingIdeCliCapabilities,
     private val expectedOperations: Set<String>,
+    private val prepare: (CanonicalRoot) -> Refinement<Unit, DaemonOperationFailure>,
 ) {
     fun invoke(identity: SupportToolIdentity, arguments: JsonObject): CliExit =
         when (identity) {
@@ -38,9 +42,18 @@ internal class McpInvestigationTools(
         if (healthRequestSchema.validate(arguments.toString(), InputFormat.JSON).isNotEmpty())
             return healthRejected(McpHealthErrorCode.INVALID_REQUEST, "Expected an optional boolean verbose")
         val request = Json.decodeFromJsonElement(McpHealthInput.serializer(), arguments)
-        val root =
+        val workspace =
             canonicalRoot()
                 ?: return healthRejected(McpHealthErrorCode.OUT_OF_SCOPE, "No Gradle workspace owns this directory")
+        when (prepare(workspace)) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected ->
+                return healthRejected(McpHealthErrorCode.HOST_UNAVAILABLE, "The existing IDE host is unavailable")
+        }
+        return nativeHealth(workspace.path, request)
+    }
+
+    private fun nativeHealth(root: Path, request: McpHealthInput): CliExit {
         val exit =
             executeExistingIdeCli(
                 argv = listOf("ide", "status"),
@@ -76,8 +89,8 @@ internal class McpInvestigationTools(
         )
     }
 
-    private fun canonicalRoot(): Path? =
-        (FilesystemCanonicalRootDiscovery.discover(directory) as? CanonicalRootDiscovery.Discovered)?.root?.path
+    private fun canonicalRoot(): CanonicalRoot? =
+        (FilesystemCanonicalRootDiscovery.discover(directory) as? CanonicalRootDiscovery.Discovered)?.root
 
     private fun healthRejected(code: McpHealthErrorCode, message: String): CliExit.OperationRejected =
         CliExit.OperationRejected(

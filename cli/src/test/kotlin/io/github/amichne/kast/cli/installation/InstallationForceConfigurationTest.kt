@@ -19,7 +19,7 @@ internal class InstallationForceConfigurationTest {
         val plan = fixture.plan(InstallationSwitch.ENABLED)
         val selected = fixture.select(plan)
         assertEquals(InstallationConfigurationSelection.FreshDefault, selected)
-        fixture.assertFreshConfiguration(plan, selected, BrokerPublicEndpointMode.CODEX_CONTROL)
+        fixture.assertFreshConfiguration(plan, selected, BrokerPublicEndpointMode.PRIVATE)
         assertEquals(saved, Files.readString(fixture.configuration))
     }
 
@@ -43,7 +43,7 @@ internal class InstallationForceConfigurationTest {
         Files.writeString(fixture.configuration, malformed)
         val plan = fixture.plan(InstallationSwitch.ENABLED)
         val selected = fixture.select(plan)
-        fixture.assertFreshConfiguration(plan, selected, BrokerPublicEndpointMode.CODEX_CONTROL)
+        fixture.assertFreshConfiguration(plan, selected, BrokerPublicEndpointMode.PRIVATE)
         assertEquals(malformed, Files.readString(fixture.configuration))
     }
 
@@ -52,7 +52,7 @@ internal class InstallationForceConfigurationTest {
         val fixture = Fixture(temporary)
         val plan = fixture.plan(InstallationSwitch.ENABLED)
         val selected = fixture.select(plan)
-        fixture.assertFreshConfiguration(plan, selected, BrokerPublicEndpointMode.CODEX_CONTROL)
+        fixture.assertFreshConfiguration(plan, selected, BrokerPublicEndpointMode.PRIVATE)
         assertFalse(Files.exists(fixture.configuration))
     }
 
@@ -86,7 +86,7 @@ internal class InstallationForceConfigurationTest {
     }
 
     @Test
-    fun `force unspecified endpoint keeps Codex control when its socket is occupied`(@TempDir temporary: Path) {
+    fun `force unspecified endpoint selects private and preserves an occupied Codex socket`(@TempDir temporary: Path) {
         val fixture = Fixture(temporary)
         fixture.customized(BrokerPublicEndpointMode.CODEX_CONTROL)
         val socket =
@@ -97,7 +97,7 @@ internal class InstallationForceConfigurationTest {
         val plan = fixture.plan(InstallationSwitch.ENABLED)
         val selected = fixture.select(plan)
         assertEquals(InstallationConfigurationSelection.FreshDefault, selected)
-        fixture.assertFreshConfiguration(plan, selected, BrokerPublicEndpointMode.CODEX_CONTROL)
+        fixture.assertFreshConfiguration(plan, selected, BrokerPublicEndpointMode.PRIVATE)
         assertEquals("incumbent", Files.readString(socket))
     }
 

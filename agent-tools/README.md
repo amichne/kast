@@ -2,8 +2,21 @@
 
 This package bundles the Kast query skill with the MCP configuration for the
 managed Kast installation. Install Kast and restart IntelliJ IDEA to load the
-matched Host plugin before using its semantic tools. Queries prepare the exact
-repository automatically; start the agent from that repository or worktree.
+matched Host plugin before you use its semantic tools. Start the agent from the
+repository or worktree that you need.
+
+The plugin includes a background `SessionStart` hook. For a repository with
+`settings.gradle.kts`, it opens the IDEA project and prepares its indexes through
+the existing direct tool RPC. The hook uses the nearest project root within the
+Git checkout. It skips other repositories and session compaction.
+
+The hook needs `uv` on `PATH`. Codex needs your trust decision for the hook before
+it can run. Examine the hook in Codex settings after installation. The hook reports
+indexed readiness only for the exact project. A failure reports its finite code
+without stopping the Codex session. Queries also prepare the exact repository.
+
+Kast uses its private socket by default. The plugin does not need Kast to serve
+Codex's control socket or publish desktop discovery.
 
 Preparation can save existing editor buffers and refresh the imported project.
 MCP annotations include these effects, even for semantic read tools.

@@ -15,11 +15,12 @@ import org.junit.jupiter.api.io.TempDir
 
 class BrokerPublicEndpointTest {
     @Test
-    fun `implicit endpoint selects the standard Codex control socket`(@TempDir temporary: Path) {
-        val fixture = installedFixture(temporary)
+    fun `implicit endpoint selects an installation private socket`(@TempDir temporary: Path) {
+        val initial = installedFixture(temporary)
+        val fixture = initial.copy(environment = initial.environment - "KAST_APP_SERVER_PUBLIC_ENDPOINT")
         val command = resolvedCommand(fixture)
-        assertTrue(command.publicEndpoint is BrokerPublicEndpoint.CodexControl)
-        assertEquals(fixture.home.resolve(".codex/app-server-control/app-server-control.sock"), command.publicSocket)
+        assertTrue(command.publicEndpoint is BrokerPublicEndpoint.Private)
+        assertNotEquals(fixture.home.resolve(".codex/app-server-control/app-server-control.sock"), command.publicSocket)
     }
 
     @Test
@@ -233,7 +234,12 @@ class BrokerPublicEndpointTest {
         val daemon = Files.createDirectories(bin.parent.resolve("share/kast/libexec")).resolve("kast-daemon")
         Files.writeString(daemon, "#!/bin/sh\nexit 0\n")
         Files.setPosixFilePermissions(daemon, PosixFilePermissions.fromString("rwx------"))
-        return EndpointFixture(bin.resolve("kast"), home, mapOf("PATH" to bin.toString()) + selectedBrokerJbr(root))
+        return EndpointFixture(
+            bin.resolve("kast"),
+            home,
+            mapOf("PATH" to bin.toString(), "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "codex-control") +
+                selectedBrokerJbr(root),
+        )
     }
 
     private fun resolvedCommand(fixture: EndpointFixture): BrokerServiceLaunchCommand =

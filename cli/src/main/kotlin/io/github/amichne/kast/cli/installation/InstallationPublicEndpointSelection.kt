@@ -35,7 +35,7 @@ internal sealed interface InstallationConfigurationSelection {
     val reason: InstallationPublicEndpointSelectionReason
 
     data object FreshDefault : InstallationConfigurationSelection {
-        override val endpoint = BrokerPublicEndpointMode.CODEX_CONTROL
+        override val endpoint = BrokerPublicEndpointMode.PRIVATE
         override val reason = InstallationPublicEndpointSelectionReason.FRESH_DEFAULT
     }
 

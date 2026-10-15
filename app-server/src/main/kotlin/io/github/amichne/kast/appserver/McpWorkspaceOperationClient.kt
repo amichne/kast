@@ -13,8 +13,10 @@ import io.github.amichne.kast.appserver.ide.observeExistingIdeStage
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.runtime.JsonLineWorkspacePreparationObserver
 import io.github.amichne.kast.appserver.runtime.PreparedWorkspaceDemand
+import io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandFailure
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandResult
+import io.github.amichne.kast.appserver.runtime.WorkspacePreparationOutcome
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparations
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.kernel.Refinement
@@ -27,6 +29,8 @@ import java.nio.file.Path
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.runInterruptible
 
@@ -47,6 +51,31 @@ internal constructor(
         return when (val admission = owner.prepare(root)) {
             is Refinement.Refined -> Refinement.Refined(Unit)
             is Refinement.Rejected -> Refinement.Rejected(DaemonOperationFailure.Preparation(admission.failure))
+        }
+    }
+
+    /** Health waits for the existing preparation owner before it inspects native readiness. */
+    suspend fun awaitPreparation(root: CanonicalRoot): Refinement<Unit, DaemonOperationFailure> {
+        val owner =
+            preparations
+                ?: return Refinement.Rejected(DaemonOperationFailure.Host(ExistingIdeFailure.CONFIGURATION_REJECTED))
+        val entry =
+            when (val admitted = owner.prepare(root)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected ->
+                    return Refinement.Rejected(DaemonOperationFailure.Preparation(admitted.failure))
+            }
+        return when (val outcome = entry.state.filterIsInstance<WorkspacePreparationOutcome.Terminal>().first()) {
+            is WorkspacePreparationOutcome.Complete -> Refinement.Refined(Unit)
+            is WorkspacePreparationOutcome.Rejected ->
+                Refinement.Rejected(DaemonOperationFailure.Preparation(outcome.failure))
+            is WorkspacePreparationOutcome.Blocked ->
+                Refinement.Rejected(
+                    DaemonOperationFailure.Workspace(
+                        entry.id.value.toString(),
+                        WorkspaceDemandCause.Lifecycle(outcome.reason),
+                    )
+                )
         }
     }
 }

@@ -7,6 +7,7 @@ import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.direct.directSupportTools
 import io.github.amichne.kast.cli.ide.ExistingIdeCliCapabilities
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.SupportToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.nio.file.Files
@@ -29,6 +30,33 @@ class McpInvestigationToolsTest {
     @TempDir lateinit var root: Path
 
     @Test
+    fun `health rejects failed preparation before native status`() {
+        Files.writeString(root.resolve("settings.gradle.kts"), "rootProject.name = \"fixture\"")
+        var preparations = 0
+        val native = ExistingIdeClient { _, _ -> error("failed preparation cannot inspect native status") }
+        val tools =
+            McpInvestigationTools(
+                root,
+                ExistingIdeCliCapabilities(FilesystemCanonicalRootDiscovery, native),
+                setOf("QUERY_RUN"),
+                prepare = { selected ->
+                    assertEquals(root.toRealPath(), selected.path)
+                    preparations++
+                    Refinement.Rejected(
+                        io.github.amichne.kast.appserver.DaemonOperationFailure.Preparation(
+                            io.github.amichne.kast.appserver.runtime.WorkspacePreparationFailure.CLOSED
+                        )
+                    )
+                },
+            )
+        val exit = tools.invoke(SupportToolIdentity.HEALTH_CHECK, emptyArguments())
+        assertTrue(exit is CliExit.OperationRejected)
+        assertEquals(1, preparations)
+        val document = Json.parseToJsonElement(exit.document.value).jsonObject
+        assertEquals("HOST_UNAVAILABLE", document.getValue("error").jsonObject.getValue("code").jsonPrimitive.content)
+    }
+
+    @Test
     fun `public direct support catalog excludes workspace validation`() {
         assertEquals(listOf("health_check"), directSupportTools().map { it.name })
     }
@@ -47,7 +75,8 @@ class McpInvestigationToolsTest {
             )
         }
         val capabilities = ExistingIdeCliCapabilities(FilesystemCanonicalRootDiscovery, native)
-        val tools = McpInvestigationTools(root, capabilities, setOf("QUERY_RUN", "SOURCE_READ"))
+        val tools =
+            McpInvestigationTools(root, capabilities, setOf("QUERY_RUN", "SOURCE_READ")) { Refinement.Refined(Unit) }
         val exit = tools.invoke(SupportToolIdentity.HEALTH_CHECK, emptyArguments())
         assertTrue(exit is CliExit.Complete, exit.document.value)
         val data = Json.parseToJsonElement(exit.document.value).jsonObject.getValue("data").jsonObject
@@ -74,6 +103,7 @@ class McpInvestigationToolsTest {
                 root,
                 ExistingIdeCliCapabilities(FilesystemCanonicalRootDiscovery, native),
                 setOf("QUERY_RUN"),
+                prepare = { Refinement.Refined(Unit) },
             )
         for (verbose in listOf(false, true)) {
             val result =
@@ -114,6 +144,7 @@ class McpInvestigationToolsTest {
                 launchDirectory,
                 ExistingIdeCliCapabilities(FilesystemCanonicalRootDiscovery, native),
                 setOf("QUERY_RUN", "SOURCE_READ"),
+                prepare = { Refinement.Refined(Unit) },
             )
         val exit = tools.invoke(SupportToolIdentity.HEALTH_CHECK, emptyArguments())
         assertTrue(exit is CliExit.Complete, exit.document.value)
@@ -136,6 +167,7 @@ class McpInvestigationToolsTest {
                 root,
                 ExistingIdeCliCapabilities(FilesystemCanonicalRootDiscovery, native),
                 setOf("QUERY_RUN"),
+                prepare = { Refinement.Refined(Unit) },
             )
         val exit = tools.invoke(SupportToolIdentity.HEALTH_CHECK, emptyArguments())
         assertTrue(exit is CliExit.OperationRejected)
