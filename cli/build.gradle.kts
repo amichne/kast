@@ -38,6 +38,7 @@ tasks.named<Test>("test") {
     inputs
         .files(rootProject.file("copilot/extension.mjs"), rootProject.file("pi/extension.ts"))
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(rootProject.file("pi/mcp-extension.ts")).withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir("src/test/js").withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file("src/main/js/query-session.mjs").withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file("src/main/js/query-delivery.mjs").withPathSensitivity(PathSensitivity.RELATIVE)
@@ -186,8 +187,9 @@ distributions.main {
         from(rootProject.layout.projectDirectory.file("copilot/extension.mjs")) {
             into("share/kast/adapters/copilot")
         }
-        from(rootProject.layout.projectDirectory.file("pi/extension.ts")) {
+        from(rootProject.layout.projectDirectory.file("pi/mcp-extension.ts")) {
             into("share/kast/adapters/pi")
+            rename { "extension.ts" }
         }
     }
 }

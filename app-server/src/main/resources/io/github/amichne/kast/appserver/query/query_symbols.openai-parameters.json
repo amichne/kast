@@ -141,7 +141,7 @@
           },
           "minItems": 1,
           "maxItems": 4,
-          "description": "null includes all four supported declaration families. Supply a non-empty, non-duplicate list to restrict them. The class family means Kast's supported class-like declarations. Constructors are not included."
+          "description": "null includes all families. Use a non-empty, unique subset. CLASS includes interfaces, classes, objects, enums, and annotation classes. INTERFACE is invalid. Constructors and enum entries are excluded."
         },
         "scope": {
           "anyOf": [

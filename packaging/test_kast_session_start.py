@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "agent-tools/hooks"))
-from session_start import (  # noqa: E402
+from prepare_workspace import (  # noqa: E402
     PREPARATION_SECONDS,
     KotlinWorkspace,
     Prepared,
@@ -34,12 +34,12 @@ from session_start import (  # noqa: E402
 class CommandHook(BaseModel):
     type: Literal["command"]
     command: str
-    background: bool = Field(alias="async")
+    background: bool = Field(default=False, alias="async")
     timeout: int
 
 
 class HookGroup(BaseModel):
-    matcher: str
+    matcher: str = ""
     hooks: list[CommandHook]
 
 
@@ -68,7 +68,9 @@ class FixtureReply:
 
 
 def response(root: Path, readiness: str = "READY") -> str:
-    return json.dumps(asdict(FixtureReply(FixtureDocument(FixtureData(str(root), readiness)))))
+    return json.dumps(
+        asdict(FixtureReply(FixtureDocument(FixtureData(str(root), readiness))))
+    )
 
 
 def event(
@@ -142,8 +144,12 @@ def test_missing_launcher_never_calls_rpc(tmp_path: Path) -> None:
     )
 
 
-@pytest.mark.parametrize("reply", ["not JSON", '{"type":"rejected","failure":"UNKNOWN"}'])
-def test_rejected_or_malformed_rpc_never_claims_readiness(tmp_path: Path, reply: str) -> None:
+@pytest.mark.parametrize(
+    "reply", ["not JSON", '{"type":"rejected","failure":"UNKNOWN"}']
+)
+def test_rejected_or_malformed_rpc_never_claims_readiness(
+    tmp_path: Path, reply: str
+) -> None:
     root = workspace(tmp_path)
     installation = tmp_path / "installation"
     launcher(installation, reply)
@@ -174,7 +180,9 @@ def test_rpc_rejection_preserves_the_original_failure(tmp_path: Path) -> None:
     root = workspace(tmp_path)
     installation = tmp_path / "installation"
     launcher(installation, '{"type":"rejected","failure":"OUT_OF_SCOPE"}')
-    assert prepare(event(root), installation, invoke_rpc) == Rejected(RpcFailure.OUT_OF_SCOPE)
+    assert prepare(event(root), installation, invoke_rpc) == Rejected(
+        RpcFailure.OUT_OF_SCOPE
+    )
 
 
 def test_process_exit_and_timeout_remain_failures(tmp_path: Path) -> None:
@@ -188,16 +196,20 @@ def test_process_exit_and_timeout_remain_failures(tmp_path: Path) -> None:
     def timed_out(_launcher: Path, _workspace: KotlinWorkspace) -> Rejected:
         return Rejected(SetupFailure.PREPARATION_TIMEOUT)
 
-    assert prepare(event(root), installation, failed) == Rejected(SetupFailure.PROCESS_FAILED)
+    assert prepare(event(root), installation, failed) == Rejected(
+        SetupFailure.PROCESS_FAILED
+    )
     assert prepare(event(root), installation, timed_out) == Rejected(
         SetupFailure.PREPARATION_TIMEOUT
     )
 
 
 @pytest.mark.parametrize("raw", [b"not JSON", b"{}", b"x" * 65537])
-def test_malformed_host_input_reports_failure_without_context(tmp_path: Path, raw: bytes) -> None:
+def test_malformed_host_input_reports_failure_without_context(
+    tmp_path: Path, raw: bytes
+) -> None:
     result = subprocess.run(
-        [sys.executable, str(ROOT / "agent-tools/hooks/session_start.py")],
+        [sys.executable, str(ROOT / "agent-tools/hooks/prepare_workspace.py")],
         input=raw,
         cwd=tmp_path,
         capture_output=True,
@@ -217,13 +229,15 @@ def test_configured_hook_runs_outside_plugin_root(tmp_path: Path) -> None:
     configuration = HookConfiguration.model_validate_json(
         (ROOT / "agent-tools/hooks/hooks.json").read_bytes()
     )
-    [group] = configuration.hooks["SessionStart"]
+    [group] = [group for group in configuration.hooks["SessionStart"] if group.matcher]
     [handler] = group.hooks
     assert group.matcher == "^(startup|resume|fork|clear)$"
     assert handler.background
     assert handler.timeout > PREPARATION_SECONDS
     result = subprocess.run(
-        shlex.split(handler.command.replace("${PLUGIN_ROOT}", str(ROOT / "agent-tools"))),
+        shlex.split(
+            handler.command.replace("${PLUGIN_ROOT}", str(ROOT / "agent-tools"))
+        ),
         input=event(root).model_dump_json(),
         text=True,
         cwd=tmp_path,

@@ -1,235 +1,183 @@
-#!/usr/bin/env -S uv run --locked --script
+#!/usr/bin/env -S uv run --offline --locked --script
 # /// script
-# requires-python = ">=3.12,<3.14"
-# dependencies = ["pydantic==2.12.3"]
+# requires-python = ">=3.11,<3.15"
+# dependencies = []
 # [tool.uv]
 # no-build = true
-# [[tool.uv.index]]
-# name = "pypi"
-# url = "https://pypi.org/simple"
-# default = true
 # ///
-"""Prepare a Kotlin Gradle workspace through the installed direct tool RPC."""
+"""Read bundled Kast context without starting an IDE, tool server, or model turn."""
 
 from __future__ import annotations
 
-import os
-import subprocess
+import json
 import sys
-from dataclasses import dataclass
-from enum import StrEnum
+from dataclasses import asdict, dataclass
+from enum import Enum
 from pathlib import Path
-from typing import Literal, Protocol
+from typing import Literal, TypeAlias, assert_never
 
-from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
-
-MAXIMUM_INPUT = 65536
-PREPARATION_SECONDS = 1260
-
-
-class SessionStart(BaseModel):
-    model_config = ConfigDict(strict=True, frozen=True)
-    hook_event_name: Literal["SessionStart"]
-    source: Literal["startup", "resume", "fork", "clear", "compact"]
-    cwd: str
-
-
-class HealthRequest(BaseModel):
-    verbose: Literal[True] = True
-
-
-class IndexedWorkspace(BaseModel):
-    model_config = ConfigDict(strict=True, frozen=True)
-    workspaceBinding: str
-    readiness: Literal["READY"]
-    hostState: Literal["INDEXED"]
-    contentView: Literal["SAVED_PSI_COMMITTED"]
-
-
-class HealthDocument(BaseModel):
-    status: Literal["complete"]
-    data: IndexedWorkspace
-
-
-class HealthReply(BaseModel):
-    type: Literal["complete"]
-    document: HealthDocument
-
-
-class RpcFailure(StrEnum):
-    INSTALLATION_STOPPED = "INSTALLATION_STOPPED"
-    OBSERVATION_UNAVAILABLE = "OBSERVATION_UNAVAILABLE"
-    CATALOG_UNAVAILABLE = "CATALOG_UNAVAILABLE"
-    INVALID_COMMAND = "INVALID_COMMAND"
-    REQUEST_TOO_LARGE = "REQUEST_TOO_LARGE"
-    UNKNOWN_TOOL = "UNKNOWN_TOOL"
-    INVALID_ARGUMENTS = "INVALID_ARGUMENTS"
-    OUT_OF_SCOPE = "OUT_OF_SCOPE"
-    INVOCATION_FAILED = "INVOCATION_FAILED"
-    INVALID_RESULT = "INVALID_RESULT"
-    QUERY_SESSION_TRANSITION_REJECTED = "QUERY_SESSION_TRANSITION_REJECTED"
-
-
-class HealthFailure(StrEnum):
-    INVALID_REQUEST = "INVALID_REQUEST"
-    HOST_UNAVAILABLE = "HOST_UNAVAILABLE"
-    OUT_OF_SCOPE = "OUT_OF_SCOPE"
-    INTERNAL_ERROR = "INTERNAL_ERROR"
-
-
-class RpcRejection(BaseModel):
-    type: Literal["rejected"]
-    failure: RpcFailure
-
-
-class HealthError(BaseModel):
-    code: HealthFailure
-
-
-class HealthRejectionDocument(BaseModel):
-    status: Literal["rejected"]
-    error: HealthError
-
-
-class HealthRejection(BaseModel):
-    type: Literal["rejected_document"]
-    document: HealthRejectionDocument
-
-
-health_reply = TypeAdapter[HealthReply | RpcRejection | HealthRejection](
-    HealthReply | RpcRejection | HealthRejection
+JsonValue: TypeAlias = (
+    "dict[str, JsonValue] | list[JsonValue] | str | int | float | bool | None"
 )
 
-
-class SetupFailure(StrEnum):
-    INVALID_INPUT = "INVALID_INPUT"
-    WORKSPACE_UNAVAILABLE = "WORKSPACE_UNAVAILABLE"
-    INSTALLATION_UNAVAILABLE = "INSTALLATION_UNAVAILABLE"
-    PROCESS_FAILED = "PROCESS_FAILED"
-    PREPARATION_TIMEOUT = "PREPARATION_TIMEOUT"
-    READINESS_UNPROVEN = "READINESS_UNPROVEN"
-    WORKSPACE_MISMATCH = "WORKSPACE_MISMATCH"
+MAX_INPUT_BYTES = 65_536
+MAX_CONTEXT_BYTES = 8_192
+MAX_RESOURCE_BYTES = 262_144
+RESOURCE_NAMES = ("onboarding.md", "query-schema.json", "query-examples.json")
 
 
-@dataclass(frozen=True, slots=True)
+class Host(Enum):
+    CODEX = "codex"
+    COPILOT = "copilot"
+    PI = "pi"
+
+
+class Failure(Enum):
+    INVALID_EVENT = "INVALID_EVENT"
+    RESOURCE_UNAVAILABLE = "RESOURCE_UNAVAILABLE"
+    RESOURCE_REJECTED = "RESOURCE_REJECTED"
+    CONTEXT_TOO_LARGE = "CONTEXT_TOO_LARGE"
+
+
+@dataclass(frozen=True)
 class Rejected:
-    reason: SetupFailure | RpcFailure | HealthFailure
+    outcome: Failure
 
 
-@dataclass(frozen=True, slots=True)
-class Skipped:
-    pass
+@dataclass(frozen=True)
+class Context:
+    text: str
 
 
-@dataclass(frozen=True, slots=True)
-class Prepared:
-    root: Path
+@dataclass(frozen=True)
+class CodexContext:
+    additionalContext: str
+    hookEventName: Literal["SessionStart"] = "SessionStart"
 
 
-@dataclass(frozen=True, slots=True)
-class KotlinWorkspace:
-    root: Path
+@dataclass(frozen=True)
+class CodexOutput:
+    hookSpecificOutput: CodexContext
 
 
-@dataclass(frozen=True, slots=True)
-class RpcOutput:
-    returncode: int
-    stdout: str
+@dataclass(frozen=True)
+class CopilotOutput:
+    additionalContext: str
 
 
-type SetupOutcome = Prepared | Skipped | Rejected
+@dataclass(frozen=True)
+class Diagnostic:
+    outcome: str
+    stage: Literal["KAST_SESSION_CONTEXT"] = "KAST_SESSION_CONTEXT"
 
 
-class RpcExecutor(Protocol):
-    def __call__(self, launcher: Path, workspace: KotlinWorkspace, /) -> RpcOutput | Rejected: ...
-
-
-def discover(event: SessionStart) -> KotlinWorkspace | Skipped | Rejected:
-    if event.source == "compact":
-        return Skipped()
-    directory = Path(event.cwd)
-    if not directory.is_absolute():
-        return Rejected(SetupFailure.INVALID_INPUT)
+def workspace_from_event(raw: bytes) -> Path | Rejected:
+    if len(raw) > MAX_INPUT_BYTES:
+        return Rejected(Failure.INVALID_EVENT)
     try:
-        directory = directory.resolve(strict=True)
-        if not directory.is_dir():
-            return Rejected(SetupFailure.WORKSPACE_UNAVAILABLE)
-        for parent in (directory, *directory.parents):
-            if (parent / "settings.gradle.kts").is_file():
-                return KotlinWorkspace(parent)
-            if (parent / ".git").exists():
-                break
-    except OSError:
-        return Rejected(SetupFailure.WORKSPACE_UNAVAILABLE)
-    return Skipped()
+        event: JsonValue = json.loads(raw)
+    except (ValueError, UnicodeDecodeError):
+        return Rejected(Failure.INVALID_EVENT)
+    if not isinstance(event, dict):
+        return Rejected(Failure.INVALID_EVENT)
+    cwd: object = event.get("cwd")
+    return workspace_from_path(cwd)
 
 
-def invoke_rpc(launcher: Path, workspace: KotlinWorkspace) -> RpcOutput | Rejected:
+def workspace_from_path(raw: object) -> Path | Rejected:
+    if (
+        not isinstance(raw, str)
+        or not raw
+        or len(raw) > 4096
+        or any(ord(c) < 32 for c in raw)
+    ):
+        return Rejected(Failure.INVALID_EVENT)
+    path = Path(raw)
+    if not path.is_absolute():
+        return Rejected(Failure.INVALID_EVENT)
     try:
-        result = subprocess.run(
-            [str(launcher), "call", "health_check"],
-            cwd=workspace.root,
-            input=HealthRequest().model_dump_json(),
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            timeout=PREPARATION_SECONDS,
-            check=False,
+        return (
+            path.resolve(strict=True)
+            if path.is_dir()
+            else Rejected(Failure.INVALID_EVENT)
         )
-    except subprocess.TimeoutExpired:
-        return Rejected(SetupFailure.PREPARATION_TIMEOUT)
-    except OSError:
-        return Rejected(SetupFailure.PROCESS_FAILED)
-    return RpcOutput(result.returncode, result.stdout)
+    except (OSError, ValueError, RuntimeError):
+        return Rejected(Failure.INVALID_EVENT)
 
 
-def prepare(event: SessionStart, installation: Path, execute: RpcExecutor) -> SetupOutcome:
-    workspace = discover(event)
-    if not isinstance(workspace, KotlinWorkspace):
-        return workspace
-    launcher = installation / "bin/kast-tool-rpc-complete"
-    if not launcher.is_file() or not os.access(launcher, os.X_OK):
-        return Rejected(SetupFailure.INSTALLATION_UNAVAILABLE)
-    result = execute(launcher, workspace)
-    if isinstance(result, Rejected):
-        return result
-    if result.returncode != 0:
-        return Rejected(SetupFailure.PROCESS_FAILED)
+def read_context(plugin: Path, workspace: Path) -> Context | Rejected:
     try:
-        reply = health_reply.validate_json(result.stdout)
-    except ValidationError:
-        return Rejected(SetupFailure.READINESS_UNPROVEN)
-    if isinstance(reply, RpcRejection):
-        return Rejected(reply.failure)
-    if isinstance(reply, HealthRejection):
-        return Rejected(reply.document.error.code)
-    if reply.document.data.workspaceBinding != str(workspace.root):
-        return Rejected(SetupFailure.WORKSPACE_MISMATCH)
-    return Prepared(workspace.root)
+        references = plugin.resolve(strict=True) / "references"
+        if references.is_symlink():
+            return Rejected(Failure.RESOURCE_REJECTED)
+        for name in RESOURCE_NAMES:
+            path = references / name
+            if (
+                path.is_symlink()
+                or not path.is_file()
+                or path.stat().st_size > MAX_RESOURCE_BYTES
+            ):
+                return Rejected(Failure.RESOURCE_REJECTED)
+        brief = (references / "onboarding.md").read_text(encoding="utf-8")
+        # Paths are JSON strings, so spaces and shell metacharacters remain literal context.
+        text = (
+            brief.rstrip()
+            + "\nWorkspace: "
+            + json.dumps(str(workspace), ensure_ascii=False)
+            + "\nQuery schema: "
+            + json.dumps(str(references / "query-schema.json"), ensure_ascii=False)
+            + "\nQuery examples: "
+            + json.dumps(str(references / "query-examples.json"), ensure_ascii=False)
+            + "\n"
+        )
+    except (OSError, UnicodeError, RuntimeError):
+        return Rejected(Failure.RESOURCE_UNAVAILABLE)
+    if not brief.strip() or "{{" in brief:
+        return Rejected(Failure.RESOURCE_REJECTED)
+    if len(text.encode("utf-8")) > MAX_CONTEXT_BYTES:
+        return Rejected(Failure.CONTEXT_TOO_LARGE)
+    return Context(text)
 
 
-def main() -> int:
-    outcome: SetupOutcome
-    raw = sys.stdin.buffer.read(MAXIMUM_INPUT + 1)
-    try:
-        event = SessionStart.model_validate_json(raw) if len(raw) <= MAXIMUM_INPUT else None
-    except ValidationError:
-        event = None
-    if event is None:
-        outcome = Rejected(SetupFailure.INVALID_INPUT)
+def encode(host: Host, context: Context) -> str:
+    match host:
+        case Host.CODEX:
+            return json.dumps(
+                asdict(CodexOutput(CodexContext(context.text))), ensure_ascii=False
+            )
+        case Host.COPILOT:
+            return json.dumps(asdict(CopilotOutput(context.text)), ensure_ascii=False)
+        case Host.PI:
+            return context.text
+    assert_never(host)
+
+
+def main(arguments: list[str]) -> int:
+    if (
+        len(arguments) not in (1, 2)
+        or arguments[0] not in {host.value for host in Host}
+        or len(arguments) == 2
+        and arguments[0] != Host.PI.value
+    ):
+        result = Rejected(Failure.INVALID_EVENT)
     else:
-        installation = Path.home() / ".local/share/kast/installation"
-        outcome = prepare(event, installation, invoke_rpc)
-    match outcome:
-        case Prepared():
-            print("Kast prepared this Kotlin Gradle workspace. IntelliJ reports indexed readiness.")
+        host = Host(arguments[0])
+        workspace = (
+            workspace_from_path(arguments[1])
+            if len(arguments) == 2 and host is Host.PI
+            else workspace_from_event(sys.stdin.buffer.read(MAX_INPUT_BYTES + 1))
+        )
+        result = (
+            workspace
+            if isinstance(workspace, Rejected)
+            else read_context(Path(__file__).resolve().parent.parent, workspace)
+        )
+        if isinstance(result, Context):
+            print(encode(host, result))
             return 0
-        case Skipped():
-            return 0
-        case Rejected(reason):
-            print(f"kast session setup: {reason.value}", file=sys.stderr)
-            return 1
+    print(json.dumps(asdict(Diagnostic(result.outcome.value))), file=sys.stderr)
+    return 1
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv[1:]))

@@ -148,23 +148,23 @@ class PluginInstallationTest {
     @Test
     fun `changed or unmanifested bundled files reject before Codex runs`() {
         val root = pluginFixture(temporary)
-        val skill = root.resolve("installation/$AGENT_TOOLS_RELATIVE_PATH/plugins/kast/skills/kast/SKILL.md")
-        Files.writeString(skill, "changed skill")
+        val context = root.resolve("installation/$AGENT_TOOLS_RELATIVE_PATH/plugins/kast/references/onboarding.md")
+        Files.writeString(context, "changed context")
         assertPayloadRejection(root)
         Files.writeString(
-            skill,
-            "---\nname: kast\ndescription: Query Kotlin with Kast.\n---\nUse the installed Kast tools.\n",
+            context,
+            "Use the installed Kast tools.\n",
         )
-        Files.writeString(skill.resolveSibling("unmanifested.md"), "unverified content")
+        Files.writeString(context.resolveSibling("unmanifested.md"), "unverified content")
         assertPayloadRejection(root)
     }
 
     @Test
-    fun `missing required skill and symlink bundle reject before Codex runs`() {
+    fun `missing required context and symlink bundle reject before Codex runs`() {
         val root = pluginFixture(temporary)
         val bundle = root.resolve("installation/$AGENT_TOOLS_RELATIVE_PATH")
-        val skill = bundle.resolve("plugins/kast/skills/kast/SKILL.md")
-        Files.delete(skill)
+        val context = bundle.resolve("plugins/kast/references/onboarding.md")
+        Files.delete(context)
         assertPayloadRejection(root)
         val retained = bundle.resolveSibling("retained-agent-tools")
         Files.move(bundle, retained)
@@ -369,10 +369,9 @@ private fun pluginFixture(temporary: Path): Path {
                         )
                     )
                 ),
-            "plugins/kast/skills/kast/SKILL.md" to
-                "---\nname: kast\ndescription: Query Kotlin with Kast.\n---\nUse the installed Kast tools.\n",
+            "plugins/kast/references/onboarding.md" to "Use the installed Kast tools.\n",
         )
-    documents.forEach { (relative, content) ->
+    (documents + sharedPluginDocuments()).forEach { (relative, content) ->
         val file = bundle.resolve(relative)
         Files.createDirectories(file.parent)
         Files.writeString(file, content)
@@ -394,3 +393,19 @@ private fun pluginFixture(temporary: Path): Path {
     assertFalse(Files.exists(bundle.resolve("unmanifested")))
     return root
 }
+
+private fun sharedPluginDocuments(): Map<String, String> =
+    listOf(
+            ".github/plugin/plugin.json",
+            "hooks/hooks.json",
+            "hooks/copilot.json",
+            "hooks/session_start.py",
+            "hooks/session_start.py.lock",
+            "hooks/prepare_workspace.py",
+            "hooks/prepare_workspace.py.lock",
+            "references/query-schema.json",
+            "references/query-examples.json",
+        )
+        .associate { relative ->
+            "plugins/kast/$relative" to Files.readString(Path.of("../../agent-tools/$relative"))
+        }

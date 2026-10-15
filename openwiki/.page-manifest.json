@@ -14,11 +14,11 @@
       "pageVersion": "sha256:6f72d7a9b10170c49dec29c583559b3c8645d85d5b4f604c7774e7adeff0eff5"
     },
     "/openwiki/contracts/configuration.md": {
-      "gitHead": "5d58252bf82fc11e3dcd4a71e65edcc7a2b5cbca",
-      "sourceFingerprint": "sha256:9aef2fee8334824658178e147627b5bb7d6ab0c62a072c8bfe6ef7b777fc9372",
-      "pageVersion": "sha256:b41d9233caa65a47ccaa936356c438b7a40aad56a342cb9a254b70f113eafe85",
+      "pageVersion": "sha256:e95f2b56c031479efe6818ce0d7c19bab0326a6a8bd8971ea26781f9e44a6a6c",
       "completedBy": "codex",
-      "completedRunId": "30faedc1-fefd-40d3-a536-fa1df1863e0d"
+      "completedRunId": "cd918962-a908-4772-9dd0-ffc9057c7e3b",
+      "gitHead": "0b95306caef9f314f4419bd73ed0171bc67da230",
+      "sourceFingerprint": "sha256:897d693abee7da28e60c9e92a9fc94ba99be3acacb6888c0dfe98e26301884c9"
     },
     "/openwiki/contracts/installed-knowledge.md": {
       "gitHead": "6457734bc3400451d4fdd3e47beb519159518dcd",
@@ -42,11 +42,11 @@
       "completedRunId": "ac636f95-b4c5-406a-b7fa-053064382265"
     },
     "/openwiki/contracts/public-tools.md": {
-      "gitHead": "ae29a62e9eaa93acc1f6dab29e20909073a649f9",
-      "sourceFingerprint": "sha256:efa4beebb64f4c26f56c878faee2bf08a39681f2ffb54e230370f5cf4788235f",
-      "pageVersion": "sha256:6e2011d20fdc219678f72acdae1a07276187aa7c9f35b8a9e6675274d51049b8",
+      "pageVersion": "sha256:76d104afc62c18661b12ec2893a83dd1f42e1aec3bf73204f1f628e4ec8bb0c3",
       "completedBy": "codex",
-      "completedRunId": "ed7702a7-3b56-434f-8bf6-5df9c28ede39"
+      "completedRunId": "cd918962-a908-4772-9dd0-ffc9057c7e3b",
+      "gitHead": "0b95306caef9f314f4419bd73ed0171bc67da230",
+      "sourceFingerprint": "sha256:897d693abee7da28e60c9e92a9fc94ba99be3acacb6888c0dfe98e26301884c9"
     },
     "/openwiki/contracts/source-failures.md": {
       "gitHead": "c12da828cf979fe180afd5fbbc29fda38dbeb8dd",
@@ -67,19 +67,25 @@
       "pageVersion": "sha256:8b09505ea8f3d24f0169b3c4a9a50e0b1c998bac3b8aadf51055ec8ff2b6c6f6"
     },
     "/openwiki/development/contracts-and-generation.md": {
-      "gitHead": "ae29a62e9eaa93acc1f6dab29e20909073a649f9",
-      "sourceFingerprint": "sha256:efa4beebb64f4c26f56c878faee2bf08a39681f2ffb54e230370f5cf4788235f",
-      "pageVersion": "sha256:5bb2fb73182ace2bed1d9b17a3f4198fcca364990303c9ee001b2b7b4593725f",
+      "pageVersion": "sha256:d71487adc050d00d6320c0d21e66c27e5d2e61e70aae37458694d675b0ee865b",
       "completedBy": "codex",
-      "completedRunId": "ed7702a7-3b56-434f-8bf6-5df9c28ede39"
+      "completedRunId": "cd918962-a908-4772-9dd0-ffc9057c7e3b",
+      "gitHead": "0b95306caef9f314f4419bd73ed0171bc67da230",
+      "sourceFingerprint": "sha256:897d693abee7da28e60c9e92a9fc94ba99be3acacb6888c0dfe98e26301884c9"
     },
     "/openwiki/development/knowledge-upkeep.md": {
-      "gitHead": "c12da828cf979fe180afd5fbbc29fda38dbeb8dd",
-      "pageVersion": "sha256:3e1ba53ae34d46562bce3177ced4e2355e7acb67564d94523ac4c191846b1112"
+      "pageVersion": "sha256:a5c0fe1055080397e5b77ad0f36eecb61b8a74778384ba736af669d58ad28660",
+      "completedBy": "codex",
+      "completedRunId": "cd918962-a908-4772-9dd0-ffc9057c7e3b",
+      "gitHead": "0b95306caef9f314f4419bd73ed0171bc67da230",
+      "sourceFingerprint": "sha256:897d693abee7da28e60c9e92a9fc94ba99be3acacb6888c0dfe98e26301884c9"
     },
     "/openwiki/development/testing-and-native-qualification.md": {
-      "gitHead": "c12da828cf979fe180afd5fbbc29fda38dbeb8dd",
-      "pageVersion": "sha256:eae3b2863bcfe2b19770866f9125344547d334b1f85a9afc3c131bce825cfc97"
+      "pageVersion": "sha256:e753f6a93ccf3347bf03c23131f3b5e893a80e13d09a296c8161e8a9b84abdf7",
+      "completedBy": "codex",
+      "completedRunId": "cd918962-a908-4772-9dd0-ffc9057c7e3b",
+      "gitHead": "0b95306caef9f314f4419bd73ed0171bc67da230",
+      "sourceFingerprint": "sha256:897d693abee7da28e60c9e92a9fc94ba99be3acacb6888c0dfe98e26301884c9"
     },
     "/openwiki/distribution/installation-and-managed-files.md": {
       "gitHead": "5d58252bf82fc11e3dcd4a71e65edcc7a2b5cbca",
@@ -175,11 +181,11 @@
       "pageVersion": "sha256:0b94512ae83ce63208167a9a5ff00c32a07899f49db9b6207bdba5c459a18b33"
     },
     "/openwiki/modules/architecture.md": {
-      "gitHead": "ae29a62e9eaa93acc1f6dab29e20909073a649f9",
-      "sourceFingerprint": "sha256:efa4beebb64f4c26f56c878faee2bf08a39681f2ffb54e230370f5cf4788235f",
-      "pageVersion": "sha256:135db625a2c3363fb01a91fe82b60e36e33c7c7c15839f8af9e6265cfdb7f938",
+      "pageVersion": "sha256:3a270eee351b16ac19f5e9feee22a17e2fd266a8575d60edf17c9bb0922a0df2",
       "completedBy": "codex",
-      "completedRunId": "ed7702a7-3b56-434f-8bf6-5df9c28ede39"
+      "completedRunId": "cd918962-a908-4772-9dd0-ffc9057c7e3b",
+      "gitHead": "0b95306caef9f314f4419bd73ed0171bc67da230",
+      "sourceFingerprint": "sha256:897d693abee7da28e60c9e92a9fc94ba99be3acacb6888c0dfe98e26301884c9"
     },
     "/openwiki/modules/change.md": {
       "gitHead": "7fcf114b5d9e5b4835cd49903858792ade0a4157",
@@ -189,11 +195,11 @@
       "completedRunId": "2e69370a-834c-47d2-b0f0-f117ab96a8e5"
     },
     "/openwiki/modules/distribution.md": {
-      "gitHead": "5d58252bf82fc11e3dcd4a71e65edcc7a2b5cbca",
-      "sourceFingerprint": "sha256:9aef2fee8334824658178e147627b5bb7d6ab0c62a072c8bfe6ef7b777fc9372",
-      "pageVersion": "sha256:aa277d19add61bdc78f4286092a0a86851f35d8d829209751f69efb3896cc107",
+      "pageVersion": "sha256:9b77f52b9c13e734d44619cf95b846060f5bdc2ccc6dcc1f31cc71df08f67712",
       "completedBy": "codex",
-      "completedRunId": "30faedc1-fefd-40d3-a536-fa1df1863e0d"
+      "completedRunId": "cd918962-a908-4772-9dd0-ffc9057c7e3b",
+      "gitHead": "0b95306caef9f314f4419bd73ed0171bc67da230",
+      "sourceFingerprint": "sha256:897d693abee7da28e60c9e92a9fc94ba99be3acacb6888c0dfe98e26301884c9"
     },
     "/openwiki/modules/kernel.md": {
       "gitHead": "bfa5a1201c725b7fa4f92d95762e8bc662ede7b2",
@@ -253,11 +259,11 @@
       "pageVersion": "sha256:0578045c6dcdf528f4042c485768b8c2c9b95c0e779f4d593ad4eb688535e4c5"
     },
     "/openwiki/queries/public-admission.md": {
-      "gitHead": "ae29a62e9eaa93acc1f6dab29e20909073a649f9",
-      "sourceFingerprint": "sha256:efa4beebb64f4c26f56c878faee2bf08a39681f2ffb54e230370f5cf4788235f",
-      "pageVersion": "sha256:70c470ab2818288f10bbcbc7172bf8b083084f46bd1f7ee139bbedc94c8207a8",
+      "pageVersion": "sha256:abf34b6df01fe3dce46af45491f702cf6e3d1396489db7814e40d843487ea184",
       "completedBy": "codex",
-      "completedRunId": "ed7702a7-3b56-434f-8bf6-5df9c28ede39"
+      "completedRunId": "cd918962-a908-4772-9dd0-ffc9057c7e3b",
+      "gitHead": "0b95306caef9f314f4419bd73ed0171bc67da230",
+      "sourceFingerprint": "sha256:897d693abee7da28e60c9e92a9fc94ba99be3acacb6888c0dfe98e26301884c9"
     },
     "/openwiki/queries/retention-and-presentation.md": {
       "gitHead": "ae29a62e9eaa93acc1f6dab29e20909073a649f9",
@@ -347,11 +353,11 @@
       "pageVersion": "sha256:f0272b1ca38f3d8f96f119c7f07e7535347702031758db54134ce49cbcf29887"
     },
     "/openwiki/transport/codex-hosts-and-framing.md": {
+      "gitHead": "cc761d321fd0d87a7d3e95d1cf65015d70ffc476",
+      "sourceFingerprint": "sha256:7710d88fd8f4e59adfcb03eca2e859891f75dd22e7d7e10a067efd505f268726",
       "pageVersion": "sha256:d3871b20c5bcb570b9fa1fca3ef979111e2ae1346fb9f68695e8c141599ea703",
       "completedBy": "codex",
-      "completedRunId": "8494d310-40bd-43d4-9c15-f929bb89bd29",
-      "gitHead": "cc761d321fd0d87a7d3e95d1cf65015d70ffc476",
-      "sourceFingerprint": "sha256:7710d88fd8f4e59adfcb03eca2e859891f75dd22e7d7e10a067efd505f268726"
+      "completedRunId": "8494d310-40bd-43d4-9c15-f929bb89bd29"
     },
     "/openwiki/transport/coordinator-and-workspace-preparation.md": {
       "gitHead": "c12da828cf979fe180afd5fbbc29fda38dbeb8dd",
@@ -365,11 +371,11 @@
       "completedRunId": "ed7702a7-3b56-434f-8bf6-5df9c28ede39"
     },
     "/openwiki/transport/harness-delivery.md": {
-      "gitHead": "ae29a62e9eaa93acc1f6dab29e20909073a649f9",
-      "sourceFingerprint": "sha256:efa4beebb64f4c26f56c878faee2bf08a39681f2ffb54e230370f5cf4788235f",
-      "pageVersion": "sha256:c219f55e1fe49055549642449381db934449fb8daae5bfd5ee27762541d866e7",
+      "pageVersion": "sha256:77f1704b48c80359239aa9a92039afc8158429e6bf21a2b8626adc66be8772cc",
       "completedBy": "codex",
-      "completedRunId": "ed7702a7-3b56-434f-8bf6-5df9c28ede39"
+      "completedRunId": "cd918962-a908-4772-9dd0-ffc9057c7e3b",
+      "gitHead": "0b95306caef9f314f4419bd73ed0171bc67da230",
+      "sourceFingerprint": "sha256:897d693abee7da28e60c9e92a9fc94ba99be3acacb6888c0dfe98e26301884c9"
     },
     "/openwiki/transport/invocations-and-durable-records.md": {
       "gitHead": "c12da828cf979fe180afd5fbbc29fda38dbeb8dd",

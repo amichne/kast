@@ -132,7 +132,6 @@ def validate(directory: Path, version: str, revision: str) -> None:
     archives = (
         f"kast-control-v{version}-macos-aarch64.tar.gz",
         plugins[0].name,
-        f"kast-skill-v{version}.zip",
         f"kast-plugin-v{version}.zip",
         f"kast-marketplace-v{version}.zip",
     )

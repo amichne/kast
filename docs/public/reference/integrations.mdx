@@ -20,7 +20,9 @@ Make sure that your terminal can run your agent's command. In these examples, re
 
 <Tabs>
   <Tab title="Codex">
-    The bundled plugin supplies MCP tools, the query skill, and examples. If direct MCP is already registered, run `kast disconnect codex` before plugin installation.
+    The bundled plugin supplies MCP tools and a compact brief at session start. The brief includes absolute paths to the schema and examples.
+
+    If direct MCP is already registered, run `kast disconnect codex` before plugin installation.
 
     ```shell
     kast plugin codex
@@ -28,7 +30,7 @@ Make sure that your terminal can run your agent's command. In these examples, re
     codex
     ```
 
-    Restart Codex after installation.
+    Restart Codex after installation. Review and trust its session hook in Codex. Untrusted hooks do not inject context.
 
     <Accordion title="Direct MCP without the bundled plugin">
       ```shell
@@ -41,7 +43,7 @@ Make sure that your terminal can run your agent's command. In these examples, re
     </Accordion>
 
     <Accordion title="App Server transport">
-      New persistent installations use the standard Codex control socket when it is available. If another service occupies it or Kast cannot inspect it, installation uses a private endpoint. Routine installation preserves your saved endpoint.
+      New persistent installations use a private endpoint. Routine installation preserves your saved endpoint. Select `codex-control` explicitly to expose the standard Codex control socket.
 
       At the standard socket, managed `codex` invocations can discover Kast automatically. Compatible desktop builds use the service's daemon-selection flag on a fresh launch.
 
@@ -59,13 +61,15 @@ Make sure that your terminal can run your agent's command. In these examples, re
     </Accordion>
   </Tab>
   <Tab title="Copilot">
+    If `kast connect copilot` installed the RPC extension, first remove it with `kast disconnect copilot`.
+
     ```shell
-    kast connect copilot
+    copilot plugin install "$HOME/.local/share/kast/installation/share/kast/agent-tools/plugins/kast"
     cd /path/to/kotlin-repository
     copilot
     ```
 
-    Restart Copilot to load the extension and installed catalog.
+    Restart Copilot to load the plugin. Its session hook supplies the same brief and absolute reference paths as Codex.
   </Tab>
   <Tab title="Pi">
     ```shell
@@ -74,9 +78,14 @@ Make sure that your terminal can run your agent's command. In these examples, re
     pi
     ```
 
-    Restart Pi to load the extension and installed catalog.
+    Restart Pi to load the extension. It supplies the shared brief and registers the server through Pi's native MCP support.
   </Tab>
 </Tabs>
+
+Session context needs `uv` and Python 3.11 through 3.14. Pi uses `~/.local/bin/uv`.
+Codex and Copilot accept `uv` on `PATH` and add `~/.local/bin` before the hook command.
+The context script runs offline and uses no third-party Python packages.
+Codex also prepares Kotlin Gradle projects through a background hook. That hook needs Python 3.12 or 3.13 and its locked Pydantic dependency.
 
 Queries [prepare IntelliJ automatically](/reference/internals/background-startup). You do not need a separate workspace-open step.
 
@@ -162,12 +171,12 @@ kast disconnect copilot
 
 After `kast upgrade`, restart IDEA and connected agents. For the bundled Codex plugin, repeat `kast plugin codex`.
 
-## Install the skill independently
+## Plugin archives and custom clients
 
 <Accordion title="Release archives and custom clients">
-  [Control 0.3.1](https://github.com/amichne/kast/releases/tag/control-v0.3.1) supplies `kast-skill-v0.3.1.zip`, `kast-plugin-v0.3.1.zip`, and `kast-marketplace-v0.3.1.zip` with SHA-256 checksums.
-
-  Extract the skill's `kast/` directory into `~/.agents/skills/` or your repository's `.agents/skills/`. The generated examples use the public contract. Replace example references with handles from your current workspace.
+  Control releases supply a plugin archive and a marketplace archive with SHA-256 checksums.
+  The plugin includes session context, the schema, and a JSON array of named query examples.
+  Replace example references with handles from your current workspace.
 
   Examine the checksums, then extract the marketplace. To install it, use:
 

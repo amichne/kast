@@ -1,0 +1,7 @@
+{
+  "name": "kast",
+  "version": "0.0.0",
+  "description": "Compiler-grounded Kotlin tools with compact context at session start.",
+  "hooks": "./hooks/copilot.json",
+  "mcpServers": "./.mcp.json"
+}

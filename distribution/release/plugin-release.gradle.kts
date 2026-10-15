@@ -10,15 +10,6 @@ val controlArchive = tasks.named<Tar>("assembleKastControlDist")
 val pluginArchive = project(":runtime:hosted").tasks.named<Zip>("hostedPlugin")
 val agentToolsDirectory = layout.buildDirectory.dir("generated/agent-tools")
 
-val skillArchive = tasks.register<Zip>("assembleKastSkill") {
-    group = "distribution"
-    dependsOn("generateKastAgentTools")
-    from(agentToolsDirectory.map { it.dir("plugins/kast/skills/kast") }) { into("kast") }
-    destinationDirectory.set(layout.buildDirectory.dir("distributions"))
-    archiveFileName.set("kast-skill-v$controlVersion.zip")
-    isPreserveFileTimestamps = false
-    isReproducibleFileOrder = true
-}
 val agentPluginArchive = tasks.register<Zip>("assembleKastAgentPlugin") {
     group = "distribution"
     dependsOn("generateKastAgentTools")
@@ -46,7 +37,7 @@ tasks.register<Sync>("assembleControlRelease") {
     description = "Assembles a control release without producing a hosted plugin."
     dependsOn(controlRecord, "verifyKastControlDistLayout", ":app-server:verifyReleaseRuntimeAdmission")
     into(layout.buildDirectory.dir("release/control-v$controlVersion"))
-    from(controlArchive.flatMap(Tar::getArchiveFile), skillArchive.flatMap(Zip::getArchiveFile),
+    from(controlArchive.flatMap(Tar::getArchiveFile),
         agentPluginArchive.flatMap(Zip::getArchiveFile), marketplaceArchive.flatMap(Zip::getArchiveFile))
     from(layout.buildDirectory.dir("generated/control-release"))
 }
@@ -65,11 +56,10 @@ val assembleRelease = tasks.register<Sync>("assembleRelease") {
     group = "distribution"
     description =
         "Assembles a tested fresh-install pair; component versions may differ."
-    dependsOn(controlArchive, pluginArchive, skillArchive, agentPluginArchive, marketplaceArchive, hostRecord, "verifyDistributionContent")
+    dependsOn(controlArchive, pluginArchive, agentPluginArchive, marketplaceArchive, hostRecord, "verifyDistributionContent")
     into(releaseDirectory)
     from(controlArchive.flatMap(Tar::getArchiveFile))
     from(pluginArchive.flatMap(Zip::getArchiveFile))
-    from(skillArchive.flatMap(Zip::getArchiveFile))
     from(agentPluginArchive.flatMap(Zip::getArchiveFile))
     from(marketplaceArchive.flatMap(Zip::getArchiveFile))
     from(layout.buildDirectory.dir("generated/host-release"))

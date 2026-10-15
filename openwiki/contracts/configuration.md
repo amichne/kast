@@ -50,7 +50,7 @@ code_sources:
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/gradle/GradleImportEnvironment.kt
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-15T03:36:06.201Z
+    at: 2026-10-15T19:07:35.337Z
 sources:
   - id: openwiki-source-b49f63bec354bf14b4c28692
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt

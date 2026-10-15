@@ -1,0 +1,781 @@
+[
+  {
+    "name": "runByName",
+    "summary": "Find declarations by exact name.",
+    "arguments": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SEARCH_DECLARATIONS",
+          "declarationName": "Order"
+        }
+      }
+    }
+  },
+  {
+    "name": "scopedExactDeclaration",
+    "summary": "Find a class by exact simple name in one package and source set, including its committed source context.",
+    "arguments": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SEARCH_DECLARATIONS",
+          "declarationName": "OrderService",
+          "declarationKinds": [
+            "CLASS"
+          ],
+          "scope": {
+            "type": "PACKAGE",
+            "packageName": "com.example.orders",
+            "includeSubpackages": false,
+            "sourceSetNames": [
+              "main"
+            ]
+          }
+        },
+        "output": {
+          "type": "SYMBOLS",
+          "fields": [
+            "NAME",
+            "LOCATION",
+            "SIGNATURE",
+            "SOURCE"
+          ]
+        },
+        "executionBudget": {
+          "maxResults": 20
+        }
+      }
+    }
+  },
+  {
+    "name": "publicFunctionInventory",
+    "summary": "List public functions with a known name prefix in one module directory; strict execution proves the full answer before returning a bounded presentation.",
+    "arguments": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "ALL_DECLARATIONS",
+          "declarationKinds": [
+            "FUNCTION"
+          ],
+          "scope": {
+            "type": "DIRECTORY",
+            "relativeDirectoryPath": "services/orders",
+            "sourceSetNames": [
+              "main"
+            ]
+          }
+        },
+        "steps": [
+          {
+            "type": "WHERE",
+            "predicate": {
+              "type": "VISIBILITY",
+              "values": [
+                "PUBLIC"
+              ]
+            }
+          },
+          {
+            "type": "WHERE",
+            "predicate": {
+              "type": "PRIMITIVE",
+              "field": "NAME",
+              "operator": "STARTS_WITH",
+              "value": "create"
+            }
+          }
+        ],
+        "output": {
+          "type": "SYMBOLS",
+          "fields": [
+            "NAME",
+            "LOCATION",
+            "SIGNATURE"
+          ]
+        },
+        "executionBudget": {
+          "maxResults": 50
+        }
+      }
+    }
+  },
+  {
+    "name": "fuzzyDeclarationDiscovery",
+    "summary": "Opt into fuzzy simple-name discovery under a known directory, then select the returned exact declaration.",
+    "arguments": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SEARCH_DECLARATIONS",
+          "declarationName": "OrderServ",
+          "nameMatch": "FUZZY",
+          "declarationKinds": [
+            "CLASS",
+            "FUNCTION"
+          ],
+          "scope": {
+            "type": "DIRECTORY",
+            "relativeDirectoryPath": "services/orders",
+            "sourceSetNames": [
+              "main"
+            ]
+          }
+        },
+        "output": {
+          "type": "SYMBOLS",
+          "fields": [
+            "NAME",
+            "LOCATION",
+            "SIGNATURE"
+          ]
+        },
+        "executionBudget": {
+          "maxResults": 20
+        }
+      }
+    }
+  },
+  {
+    "name": "containingDeclaration",
+    "summary": "Find the named declaration containing a known UTF-16 offset; adapt the illustrative relative file and offset.",
+    "arguments": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "AT_LOCATION",
+          "file": "services/orders/src/main/kotlin/com/example/orders/OrderService.kt",
+          "offset": 100
+        },
+        "output": {
+          "type": "SYMBOLS",
+          "fields": [
+            "NAME",
+            "LOCATION",
+            "SIGNATURE",
+            "SOURCE"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "name": "referenceOccurrences",
+    "summary": "Return individual compiler-confirmed references. Replace the illustrative exact-ref placeholder with an issued ref.",
+    "arguments": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SYMBOL_REFS",
+          "symbolRefs": [
+            "<exact-ref-returned-by-Kast>"
+          ]
+        },
+        "steps": [
+          {
+            "type": "EXPAND_RELATION",
+            "relation": "REFERENCES"
+          }
+        ],
+        "output": {
+          "type": "OCCURRENCES"
+        },
+        "executionBudget": {
+          "maxResults": 50
+        }
+      }
+    }
+  },
+  {
+    "name": "directCallers",
+    "summary": "Find distinct declarations calling an exact function. Replace the illustrative exact-ref placeholder with an issued ref.",
+    "arguments": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SYMBOL_REFS",
+          "symbolRefs": [
+            "<exact-ref-returned-by-Kast>"
+          ]
+        },
+        "steps": [
+          {
+            "type": "EXPAND_RELATION",
+            "relation": "CALLERS"
+          },
+          {
+            "type": "DISTINCT_SYMBOLS"
+          }
+        ],
+        "output": {
+          "type": "SYMBOLS",
+          "fields": [
+            "NAME",
+            "LOCATION",
+            "SIGNATURE"
+          ]
+        },
+        "executionBudget": {
+          "maxResults": 50
+        }
+      }
+    }
+  },
+  {
+    "name": "directCallees",
+    "summary": "Find distinct declarations called by an exact function. Replace the illustrative exact-ref placeholder with an issued ref.",
+    "arguments": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SYMBOL_REFS",
+          "symbolRefs": [
+            "<exact-ref-returned-by-Kast>"
+          ]
+        },
+        "steps": [
+          {
+            "type": "EXPAND_RELATION",
+            "relation": "CALLEES"
+          },
+          {
+            "type": "DISTINCT_SYMBOLS"
+          }
+        ],
+        "output": {
+          "type": "SYMBOLS",
+          "fields": [
+            "NAME",
+            "LOCATION",
+            "SIGNATURE"
+          ]
+        },
+        "executionBudget": {
+          "maxResults": 50
+        }
+      }
+    }
+  },
+  {
+    "name": "implementations",
+    "summary": "Find distinct implementations of an exact declaration. Replace the illustrative exact-ref placeholder with an issued ref.",
+    "arguments": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SYMBOL_REFS",
+          "symbolRefs": [
+            "<exact-ref-returned-by-Kast>"
+          ]
+        },
+        "steps": [
+          {
+            "type": "EXPAND_RELATION",
+            "relation": "IMPLEMENTATIONS"
+          },
+          {
+            "type": "DISTINCT_SYMBOLS"
+          }
+        ],
+        "output": {
+          "type": "SYMBOLS",
+          "fields": [
+            "NAME",
+            "LOCATION",
+            "SIGNATURE"
+          ]
+        },
+        "executionBudget": {
+          "maxResults": 50
+        }
+      }
+    }
+  },
+  {
+    "name": "boundedCallerWalk",
+    "summary": "Trace callers for two hops with depth-bearing records. Replace the illustrative exact-ref placeholder with an issued ref.",
+    "arguments": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SYMBOL_REFS",
+          "symbolRefs": [
+            "<exact-ref-returned-by-Kast>"
+          ]
+        },
+        "steps": [
+          {
+            "type": "WALK",
+            "relation": "CALLERS",
+            "maximumDepth": 2
+          }
+        ],
+        "output": {
+          "type": "TRAVERSAL_RECORDS"
+        },
+        "executionBudget": {
+          "maxResults": 50
+        }
+      }
+    }
+  },
+  {
+    "name": "retainByName",
+    "summary": "Retain a bounded exact-name result for same-basis presentation or composition; inspect the retention outcome.",
+    "arguments": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SEARCH_DECLARATIONS",
+          "declarationName": "OrderService",
+          "declarationKinds": [
+            "CLASS"
+          ]
+        },
+        "output": {
+          "type": "SYMBOLS",
+          "fields": [
+            "NAME",
+            "LOCATION",
+            "SIGNATURE"
+          ]
+        },
+        "retention": "RETAIN",
+        "executionBudget": {
+          "maxResults": 20
+        }
+      }
+    }
+  },
+  {
+    "name": "readRetained",
+    "summary": "Present retained symbol rows without new semantic evaluation. Replace the non-issued all-zero result handle.",
+    "arguments": {
+      "request": {
+        "type": "READ_RESULT",
+        "result": "result:v1:00000000-0000-0000-0000-000000000000",
+        "output": {
+          "type": "SYMBOLS",
+          "fields": [
+            "NAME",
+            "LOCATION",
+            "SIGNATURE"
+          ]
+        },
+        "executionBudget": {
+          "maxResults": 20
+        }
+      }
+    }
+  },
+  {
+    "name": "intersectRetained",
+    "summary": "Intersect two retained symbol results by canonical identity. Replace both non-issued illustrative result handles.",
+    "arguments": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "RESULT",
+          "result": "result:v1:00000000-0000-0000-0000-000000000000"
+        },
+        "steps": [
+          {
+            "type": "INTERSECT",
+            "right": {
+              "type": "RESULT",
+              "result": "result:v1:00000000-0000-0000-0000-000000000001"
+            }
+          }
+        ],
+        "output": {
+          "type": "SYMBOLS",
+          "fields": [
+            "NAME",
+            "LOCATION",
+            "SIGNATURE"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "name": "resumeQuery",
+    "summary": "Deliver already-produced output without semantic execution. Replace the illustrative all-zero continuation with an issued output token.",
+    "arguments": {
+      "request": {
+        "type": "RESUME",
+        "continuation": "query-output:v1:00000000-0000-0000-0000-000000000000",
+        "executionBudget": {
+          "maxResults": 50
+        }
+      }
+    }
+  },
+  {
+    "name": "knownAppServerClass",
+    "summary": "Use direct exact declaration discovery for a known class name.",
+    "arguments": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SEARCH_DECLARATIONS",
+          "declarationName": "InstalledAppServerManager",
+          "declarationKinds": [
+            "CLASS"
+          ],
+          "scope": {
+            "type": "DIRECTORY",
+            "relativeDirectoryPath": "app-server"
+          }
+        },
+        "executionBudget": {
+          "maxResults": 10
+        }
+      }
+    }
+  },
+  {
+    "name": "scopedTextWord",
+    "summary": "Find functions containing the indexed word launchd under app-server; inspect or traverse each exact returned ref.",
+    "arguments": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SEARCH_TEXT",
+          "word": "launchd",
+          "scope": {
+            "type": "DIRECTORY",
+            "relativeDirectoryPath": "app-server",
+            "sourceSetNames": [
+              "main"
+            ]
+          },
+          "declarationKinds": [
+            "FUNCTION"
+          ]
+        },
+        "output": {
+          "type": "SYMBOLS",
+          "fields": [
+            "NAME",
+            "LOCATION"
+          ]
+        },
+        "executionBudget": {
+          "maxResults": 10
+        }
+      }
+    }
+  },
+  {
+    "name": "representationImpact",
+    "summary": "Illustrative handles only: investigate an exact producer invocation across the workspace and retain value paths. Empty reviewed models leave representation and boundary obligations qualified; native admission must revalidate the handles and whole invocation anchor.",
+    "arguments": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "IMPACT",
+          "seeds": [
+            {
+              "enclosing": "exact:v5:illustrative-enclosing-handle",
+              "callable": "exact:v5:illustrative-producer-handle",
+              "anchor": {
+                "start": 120,
+                "end": 136
+              }
+            }
+          ],
+          "declarations": [],
+          "domain": {
+            "type": "WORKSPACE"
+          },
+          "flow": "KOTLIN_FORWARD_V1",
+          "models": []
+        },
+        "steps": [],
+        "output": {
+          "type": "VALUE_PATHS"
+        },
+        "retention": "RETAIN"
+      }
+    }
+  },
+  {
+    "name": "readImpactProducers",
+    "summary": "Read retained producer witnesses using an illustrative result handle; this presentation preserves the original investigation question and qualification.",
+    "arguments": {
+      "request": {
+        "type": "READ_RESULT",
+        "result": "result:v1:00000000-0000-4000-8000-000000000001",
+        "output": {
+          "type": "IMPACT_WITNESS",
+          "section": "PRODUCERS"
+        }
+      }
+    }
+  },
+  {
+    "name": "readImpactFindings",
+    "summary": "Read compact findings for an illustrative retained investigation. Each finding preserves its terminal qualification and links to the exact original VALUE_PATHS row; expand that row using its path ordinal as the presentation cursor and executionBudget.maxResults 1.",
+    "arguments": {
+      "request": {
+        "type": "READ_RESULT",
+        "result": "result:v1:00000000-0000-4000-8000-000000000001",
+        "output": {
+          "type": "IMPACT_WITNESS",
+          "section": "FINDINGS"
+        }
+      }
+    }
+  },
+  {
+    "name": "narrowReferenceExpansion",
+    "summary": "Illustrative exact reference with native expansion restricted to one imported source set and directory. Replace the handle with an issued current-basis reference; the directory restricts destinations, not seed selection.",
+    "arguments": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SYMBOL_REFS",
+          "symbolRefs": [
+            "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ"
+          ]
+        },
+        "steps": [
+          {
+            "type": "EXPAND_RELATION",
+            "relation": "REFERENCES",
+            "expansionScope": {
+              "type": "SOURCE_DOMAIN",
+              "sourceSets": [
+                "main"
+              ],
+              "directory": "logging/src/main/kotlin/representation/fixture",
+              "includeSubdirectories": false,
+              "sourcePolicy": "PRODUCTION_ONLY",
+              "generatedSources": "EXCLUDE"
+            }
+          }
+        ],
+        "output": {
+          "type": "OCCURRENCES"
+        },
+        "retention": "RETAIN"
+      }
+    }
+  },
+  {
+    "name": "workspaceReferenceWalk",
+    "summary": "Illustrative one-hop walk with explicit workspace expansion independent of the selected symbol scope.",
+    "arguments": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SYMBOL_REFS",
+          "symbolRefs": [
+            "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ"
+          ]
+        },
+        "steps": [
+          {
+            "type": "WALK",
+            "relation": "REFERENCES",
+            "maximumDepth": 1,
+            "expansionScope": {
+              "type": "WORKSPACE"
+            }
+          }
+        ],
+        "output": {
+          "type": "TRAVERSAL_RECORDS"
+        },
+        "retention": "RETAIN"
+      }
+    }
+  },
+  {
+    "name": "representationImpactRequestedSite",
+    "summary": "Illustrative exact site claims only: native admission revalidates every requested range and role on the current basis. Unlinked sites remain RELATIONSHIP_UNPROVEN; they do not prove absence or inferred routes.",
+    "arguments": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "IMPACT",
+          "seeds": [
+            {
+              "enclosing": "exact:v5:illustrative-enclosing-handle",
+              "callable": "exact:v5:illustrative-producer-handle",
+              "anchor": {
+                "start": 120,
+                "end": 136
+              }
+            }
+          ],
+          "declarations": [],
+          "domain": {
+            "type": "WORKSPACE"
+          },
+          "flow": "KOTLIN_FORWARD_V1",
+          "models": [],
+          "requestedSites": [
+            {
+              "enclosing": {
+                "basis": {
+                  "type": "PUBLISHED",
+                  "root": "/illustrative",
+                  "generation": 7
+                },
+                "file": "/illustrative/File.kt",
+                "range": {
+                  "start": 0,
+                  "end": 200
+                },
+                "compilerIdentity": "canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              "range": {
+                "start": 160,
+                "end": 165
+              },
+              "role": {
+                "type": "LOCAL_READ"
+              }
+            }
+          ]
+        },
+        "steps": [],
+        "output": {
+          "type": "VALUE_PATHS"
+        },
+        "retention": "RETAIN"
+      }
+    }
+  },
+  {
+    "name": "readImpactSiteAccounting",
+    "summary": "Read accounting for the original native-admitted requested-site universe from an illustrative retained result. Reached and excluded rows link exact original paths; unmatched rows preserve required relationship obligations.",
+    "arguments": {
+      "request": {
+        "type": "READ_RESULT",
+        "result": "result:v1:00000000-0000-4000-8000-000000000001",
+        "output": {
+          "type": "IMPACT_WITNESS",
+          "section": "SITE_ACCOUNTING"
+        }
+      }
+    }
+  },
+  {
+    "name": "readCallbackSource",
+    "summary": "Inspect the exact source range of an issued callback candidate.",
+    "arguments": {
+      "request": {
+        "type": "READ_SOURCE",
+        "candidateRef": "candidate:v5:AAAAAAAAAAAAAAAAAAAAAA"
+      }
+    }
+  },
+  {
+    "name": "completeImpactFindings",
+    "summary": "Complete the original impact investigation, then present compact findings linked to retained original path evidence.",
+    "arguments": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "IMPACT",
+          "seeds": [
+            {
+              "enclosing": "exact:v5:illustrative-enclosing-handle",
+              "callable": "exact:v5:illustrative-producer-handle",
+              "anchor": {
+                "start": 120,
+                "end": 136
+              }
+            }
+          ],
+          "declarations": [],
+          "domain": {
+            "type": "WORKSPACE"
+          },
+          "flow": "KOTLIN_FORWARD_V1",
+          "models": []
+        },
+        "steps": [],
+        "output": {
+          "type": "IMPACT_WITNESS",
+          "section": "FINDINGS"
+        },
+        "retention": "RETAIN"
+      }
+    }
+  },
+  {
+    "name": "traceAffectedUses",
+    "summary": "Trace one previously selected exact declaration and its affected uses in the workspace under one shared grant.",
+    "arguments": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SYMBOL_REFS",
+          "symbolRefs": [
+            "<exact-ref-returned-by-Kast>"
+          ]
+        },
+        "steps": [
+          {
+            "type": "TRACE",
+            "expansionScope": {
+              "type": "WORKSPACE"
+            }
+          }
+        ],
+        "output": {
+          "type": "SYMBOLS",
+          "fields": [
+            "NAME",
+            "LOCATION",
+            "SIGNATURE"
+          ]
+        },
+        "retention": "RETAIN",
+        "executionBudget": {
+          "maxElapsedMs": 30000
+        }
+      }
+    }
+  },
+  {
+    "name": "scopedInterfaceDeclaration",
+    "summary": "Find an interface by its simple name and Kotlin package. Interfaces use the CLASS declaration family.",
+    "arguments": {
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SEARCH_DECLARATIONS",
+          "declarationName": "OrderRepository",
+          "declarationKinds": [
+            "CLASS"
+          ],
+          "scope": {
+            "type": "PACKAGE",
+            "packageName": "com.example.orders",
+            "includeSubpackages": false,
+            "sourceSetNames": [
+              "main"
+            ]
+          }
+        },
+        "output": {
+          "type": "SYMBOLS",
+          "fields": [
+            "NAME",
+            "LOCATION",
+            "SIGNATURE"
+          ]
+        },
+        "executionBudget": {
+          "maxResults": 20
+        }
+      }
+    }
+  }
+]

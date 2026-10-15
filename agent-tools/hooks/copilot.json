@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [{
+      "type": "command",
+      "bash": "PATH=\"${HOME}/.local/bin:${PATH}\" uv run --offline --locked --script \"${COPILOT_PLUGIN_ROOT}/hooks/session_start.py\" copilot",
+      "timeoutSec": 10
+    }]
+  }
+}

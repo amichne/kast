@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:135db625a2c3363fb01a91fe82b60e36e33c7c7c15839f8af9e6265cfdb7f938",
+  "pageVersion": "sha256:3a270eee351b16ac19f5e9feee22a17e2fd266a8575d60edf17c9bb0922a0df2",
   "claims": [
     {
       "id": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
@@ -36,7 +36,7 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:5683109104e81537aeb7cae517ba6e312240633724e63ad6141d3907b625fd39"
+          "version": "repo-file-v1:sha256:20f66494a7f382ba9fcb9fb0e7100a5c739c588da34de139c8685f995f1732b5"
         },
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
@@ -49,7 +49,7 @@
       "statement": "Root check separately enforces semantic resource identity, live FIR inventory accounting, and exact successful execution of the declared native case population.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L507-L543",
+          "resource": "repo://build.gradle.kts#L506-L542",
           "version": "repo-lines-v1:sha256:380ba793655cf330b90370a085295d9087dde539e37f25d46aa6115d0b31b677:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5MzhiODgxNmE3MDNlMjYwM2UyZTE0ZWU4NWFmZGVkYTE1YWY4ZGRkMDIwOTFjZGRmMDZiYmE0YTc0ZjAzOGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYTU1Y2M1ZGIyODA5NmM3ZmQ4MzYxZmEwNTFmYTRmNGJjMjM2YjI0ZDQ0M2I0NTBkZGU3YWIxOGJhMjkxNjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgzM2I3YTQzNGIzYTQxYjRhZjUxNjZjZTA0M2E0YzU5ZTZjNzE3MjFmY2I4MTc5M2NkMzllMDI2ZjNmNzY5ZmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
@@ -75,6 +75,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T01:04:37.434Z"
+    "at": "2026-10-15T19:07:35.337Z"
   }
 }

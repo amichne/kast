@@ -99,12 +99,12 @@ val controlProductDirectory = layout.buildDirectory.dir("control-product")
 val agentToolsDirectory = layout.buildDirectory.dir("generated/agent-tools")
 val generateKastAgentTools = tasks.register<GenerateAgentToolsTask>("generateKastAgentTools") {
     group = "distribution"
-    description = "Validates and versions the canonical skill, MCP plugin, and marketplace."
+    description = "Validates and versions session context, MCP plugins, and the marketplace."
     dependsOn(":app-server:verifyPublicQueryGeneration")
     sourceDirectory.set(layout.projectDirectory.dir("agent-tools"))
     marketplaceFile.set(layout.projectDirectory.file(".agents/plugins/marketplace.json"))
     canonicalQueryExamplesFile.set(layout.projectDirectory.file(
-        "app-server/src/main/resources/io/github/amichne/kast/appserver/query/query_symbols.examples.json",
+        "agent-tools/references/query-examples.json",
     ))
     productVersion.set(controlVersion)
     outputDirectory.set(agentToolsDirectory)
@@ -185,14 +185,13 @@ val releaseSourceRevision = providers.gradleProperty("kastSourceRevision").orEls
     workingDir(rootDir)
 }.standardOutput.asText.map(String::trim))
 tasks.register<GenerateComponentReleaseTask>("generateControlReleaseRecord") {
-    dependsOn(assembleKastControlDist, "assembleKastSkill", "assembleKastAgentPlugin", "assembleKastMarketplace", ":protocol:wire:generateHostedContract")
+    dependsOn(assembleKastControlDist, "assembleKastAgentPlugin", "assembleKastMarketplace", ":protocol:wire:generateHostedContract")
     component.set(ReleaseComponent.CONTROL)
     releaseVersion.set(controlVersion)
     sourceRevision.set(releaseSourceRevision)
     archive.set(assembleKastControlDist.flatMap(Tar::getArchiveFile))
     hostedContractFile.set(contractFile)
     companionArtifacts.from(
-        tasks.named<Zip>("assembleKastSkill").flatMap(Zip::getArchiveFile),
         tasks.named<Zip>("assembleKastAgentPlugin").flatMap(Zip::getArchiveFile),
         tasks.named<Zip>("assembleKastMarketplace").flatMap(Zip::getArchiveFile),
     )
@@ -370,8 +369,8 @@ val agentSessionSetupTest = tasks.register<Exec>("agentSessionSetupTest") {
     group = "verification"
     description = "Exercises the plugin session hook through the installed direct RPC adapter."
     inputs.files("agent-tools/pyproject.toml", "agent-tools/uv.lock",
-        "agent-tools/hooks/hooks.json", "agent-tools/hooks/session_start.py",
-        "agent-tools/hooks/session_start.py.lock", "packaging/test_kast_session_start.py")
+        "agent-tools/hooks/hooks.json", "agent-tools/hooks/prepare_workspace.py",
+        "agent-tools/hooks/prepare_workspace.py.lock", "packaging/test_kast_session_start.py")
     environment("PYTHONDONTWRITEBYTECODE", "1")
     environment("UV_PROJECT_ENVIRONMENT", layout.buildDirectory.dir("python-tests/session-setup").get().asFile)
     commandLine("uv", "run", "--locked", "--project", "agent-tools", "pytest",

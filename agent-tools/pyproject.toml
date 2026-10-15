@@ -17,7 +17,7 @@ default = true
 
 [tool.pyright]
 typeCheckingMode = "strict"
-include = ["hooks/session_start.py", "../packaging/test_kast_session_start.py"]
+include = ["hooks/prepare_workspace.py", "../packaging/test_kast_session_start.py"]
 extraPaths = ["hooks"]
 
 [tool.ruff]
