@@ -43,7 +43,7 @@ Make sure that your terminal can run your agent's command. In these examples, re
     </Accordion>
 
     <Accordion title="App Server transport">
-      New persistent installations use the standard Codex control socket when it is available. If another service occupies it or Kast cannot inspect it, installation uses a private endpoint. Routine installation preserves your saved endpoint.
+      New persistent installations use a private endpoint. Routine installation preserves your saved endpoint. Select `codex-control` explicitly to expose the standard Codex control socket.
 
       At the standard socket, managed `codex` invocations can discover Kast automatically. Compatible desktop builds use the service's daemon-selection flag on a fresh launch.
 
@@ -84,7 +84,8 @@ Make sure that your terminal can run your agent's command. In these examples, re
 
 Session context needs `uv` and Python 3.11 through 3.14. Pi uses `~/.local/bin/uv`.
 Codex and Copilot accept `uv` on `PATH` and add `~/.local/bin` before the hook command.
-The script runs offline and uses no third-party Python packages.
+The context script runs offline and uses no third-party Python packages.
+Codex also prepares Kotlin Gradle projects through a background hook. That hook needs Python 3.12 or 3.13 and its locked Pydantic dependency.
 
 Queries [prepare IntelliJ automatically](/reference/internals/background-startup). You do not need a separate workspace-open step.
 
