@@ -425,10 +425,36 @@ def admit_active(root: Path, receipt: HostActiveReceipt,
     return receipt
 
 
+def is_control_history(name: str) -> bool:
+    # These inactive entries belong to legacy Control recovery. Host never traverses or changes them.
+    return re.fullmatch(r'(?:\.kast-ide-hosted\.(?:baseline|detached)-|\.replaced-kast-ide-hosted-)[0-9a-f]{32}', name) is not None
+
+
 def admit_retained_entries(retained: Path) -> None:
     with os.scandir(retained) as entries:
-        if any(entry.name not in ('host-install.lock', 'host-install.json') for entry in entries):
+        if any(entry.name not in ('host-install.lock', 'host-install.json')
+               and not is_control_history(entry.name) for entry in entries):
             raise Rejected(Failure.RECOVERY_REQUIRED, HostInstallationStage.RETAINED_RECOVERY)
+
+
+def admit_installation_target(root: Path) -> HostActiveReceipt | None:
+    if os.path.lexists(root):
+        Identity.observe(root)
+    retained = root.parent / '.kast-plugin-recovery'
+    receipt = None
+    if os.path.lexists(retained):
+        Identity.observe(retained)
+        if stat.S_IMODE(retained.lstat().st_mode) != 0o700:
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        admit_retained_entries(retained)
+        receipt_path = retained / 'host-install.json'
+        if os.path.lexists(receipt_path):
+            receipt = read_active_receipt(receipt_path)
+            admit_active(root, receipt)
+    destination = root / 'kast-ide-hosted'
+    if os.path.lexists(destination):
+        Identity.observe(destination)
+    return receipt
 
 
 def admit_root(root):
@@ -489,6 +515,16 @@ def admit_empty_retained(retained):
 
 
 def retire_empty_retained(root, retained):
+    Identity.observe(retained)
+    if stat.S_IMODE(retained.lstat().st_mode) != 0o700:
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    with os.scandir(retained) as entries:
+        names = tuple(entry.name for entry in entries)
+    if names and all(is_control_history(name) for name in names):
+        admit_removal_root(root)
+        if os.path.lexists(root / 'kast-ide-hosted'):
+            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        return
     captured = admit_empty_retained(retained)
     admit_removal_root(root)
     if os.path.lexists(root / 'kast-ide-hosted') or admit_empty_retained(retained) != captured:
@@ -553,8 +589,7 @@ def remove_host_files(root):
             raise Rejected(Failure.OWNERSHIP_UNPROVEN)
         receipt_path.unlink()
         sync(retained)
-        retained.rmdir()
-        sync(retained.parent)
+        retire_empty_retained(root, retained)
     return HostRemoval(HostRemovalType.REMOVED, str(destination))
 
 
@@ -613,6 +648,7 @@ def install(request):
     with tempfile.TemporaryDirectory(prefix='kast-host-stage-') as temporary:
         plugin = validate_payload(request.payload, Path(temporary))
         if request.mode is HostInstallMode.PLAN:
+            admit_installation_target(root)
             return HostReport(HostReportType.PLANNED, request.payload.version, str(root / 'kast-ide-hosted'))
         root.mkdir(parents=True, exist_ok=True)
         Identity.observe(root)
@@ -626,12 +662,8 @@ def install(request):
             if os.fstat(lock.fileno()).st_uid != os.getuid():
                 raise Rejected(Failure.OWNERSHIP_UNPROVEN)
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            admit_retained_entries(retained)
             receipt_path = retained / 'host-install.json'
-            previous_receipt = None
-            if os.path.lexists(receipt_path):
-                previous_receipt = read_active_receipt(receipt_path)
-                admit_active(root, previous_receipt)
+            previous_receipt = admit_installation_target(root)
             destination = root / 'kast-ide-hosted'
             prior = Identity.observe(destination) if os.path.lexists(destination) else None
             token = uuid.uuid4().hex

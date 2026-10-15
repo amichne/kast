@@ -23,6 +23,7 @@ import io.github.amichne.kast.kernel.RefinementDefinition
 import io.github.amichne.kast.kernel.Validation
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -38,6 +39,101 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class CodexWorkspaceBindingTest {
+    @Test
+    fun `non Gradle thread starts unchanged without a Kast binding or tool access`(@TempDir temporary: Path) =
+        runBlocking {
+            val fixture = PlainCodexFixture(temporary)
+            val adapter = fixture.adapter()
+            try {
+                val request =
+                    Json.encodeToString(
+                        BindingRequestFixture(
+                            1,
+                            "thread/start",
+                            PlainStartFixture(fixture.root.toString(), "Existing host policy.", emptyList()),
+                        )
+                    )
+                assertEquals(
+                    request,
+                    assertInstanceOf(ProtocolRouting.ForwardUpstream::class.java, adapter.fromDownstream(request))
+                        .message,
+                )
+                val response =
+                    Json.encodeToString(
+                        BindingResponseFixture(
+                            1,
+                            ThreadResultFixture(ThreadFixture("thread-1", emptyList()), fixture.root.toString()),
+                        )
+                    )
+                assertEquals(
+                    response,
+                    assertInstanceOf(ProtocolRouting.ForwardDownstream::class.java, adapter.fromUpstream(response))
+                        .message,
+                )
+                assertEquals(ThreadStoreRead.Missing, fixture.store.read("thread-1"))
+                assertFalse(Files.exists(fixture.registryFile))
+                val call = adapter.fromUpstream(callOverlapMessage()) as ProtocolRouting.ReplyUpstream
+                assertFalse(call.message.objectValue("result").getValue("success").jsonPrimitive.content.toBoolean())
+                assertEquals(0, fixture.invocations.get())
+            } finally {
+                adapter.close()
+            }
+        }
+
+    @Test
+    fun `unbound Codex threads resume and fork without a Kast binding`(@TempDir temporary: Path) = runBlocking {
+        val fixture = PlainCodexFixture(temporary)
+        for ((requestId, method) in listOf("thread/resume", "thread/fork").withIndex()) {
+            val adapter = fixture.adapter()
+            try {
+                val request =
+                    Json.encodeToString(BindingRequestFixture(requestId, method, ResumeBindingFixture("ordinary")))
+                assertEquals(
+                    request,
+                    assertInstanceOf(ProtocolRouting.ForwardUpstream::class.java, adapter.fromDownstream(request))
+                        .message,
+                )
+                val returnedThread = if (method == "thread/resume") "ordinary" else "forked"
+                val response =
+                    Json.encodeToString(
+                        BindingResponseFixture(
+                            requestId,
+                            ThreadResultFixture(ThreadFixture(returnedThread, emptyList()), fixture.root.toString()),
+                        )
+                    )
+                assertEquals(
+                    response,
+                    assertInstanceOf(ProtocolRouting.ForwardDownstream::class.java, adapter.fromUpstream(response))
+                        .message,
+                )
+                assertEquals(ThreadStoreRead.Missing, fixture.store.read(returnedThread))
+            } finally {
+                adapter.close()
+            }
+        }
+    }
+
+    @Test
+    fun `explicit Kast root still rejects a missing Gradle marker`(@TempDir temporary: Path) = runBlocking {
+        val fixture = PlainCodexFixture(temporary)
+        val adapter = fixture.adapter()
+        try {
+            val rejected =
+                assertInstanceOf(
+                    ProtocolRouting.ReplyDownstream::class.java,
+                    adapter.fromDownstream(startOverlapMessage(1, fixture.root, fixture.root)),
+                )
+            assertEquals(
+                "WORKSPACE_ROOT_MARKER_NOT_FOUND",
+                rejected.message.objectValue("error").getValue("data").jsonObject.getValue("failure")
+                    .jsonPrimitive.content,
+            )
+            assertFalse(Files.exists(fixture.registryFile))
+        } finally {
+            adapter.close()
+        }
+    }
+
     @Test
     fun `legacy home binding cannot resume or admit tools and is never retargeted`(@TempDir temporary: Path) =
         runBlocking {
@@ -225,7 +321,28 @@ class CodexWorkspaceBindingTest {
             )
     }
 
-    private fun echoBroker(): Broker {
+    private inner class PlainCodexFixture(temporary: Path) {
+        val root: Path = temporary.toRealPath()
+        val registryFile: Path = root.resolve("config/workspaces.json")
+        private val registry = io.github.amichne.kast.appserver.WorkspaceEnrollmentStore(registryFile)
+        private val enrollment = (registry.read() as io.github.amichne.kast.appserver.EnrollmentRead.Read).enrollment
+        private val owner =
+            ThreadBindingOwner.admit("installation", "00000000-0000-0000-0000-000000000001").refinedValue()
+        val store = MemoryThreadCatalogStore()
+        val invocations = AtomicInteger()
+
+        fun adapter() =
+            CodexProtocolAdapter(
+                broker = echoBroker(invocations),
+                contracts = protocolContracts(),
+                threadStore = store,
+                enrollment = enrollment,
+                bindingOwner = owner,
+                sessionBootstrap = agentSessionBootstrapFixture(),
+            )
+    }
+
+    private fun echoBroker(invocations: AtomicInteger = AtomicInteger()): Broker {
         val inputSchema = NetworkntJsonSchemaCompiler.compile(resource("echo-input.json")).refinedValue()
         val outputSchema = NetworkntJsonSchemaCompiler.compile(resource("echo-output.json")).refinedValue()
         val input =
@@ -242,7 +359,10 @@ class CodexWorkspaceBindingTest {
                 loading = ToolLoading.EAGER,
                 input = input,
                 outputSchema = outputSchema,
-                invoke = { _, argument, _ -> ProviderCall.Completed(argument) },
+                invoke = { _, argument, _ ->
+                    invocations.incrementAndGet()
+                    ProviderCall.Completed(argument)
+                },
                 encode = { output -> Json.encodeToJsonElement(serializer<EchoValue>(), output).jsonObject },
                 present = { output -> ToolPresentation.text(output.value, success = true) },
             )
@@ -306,6 +426,13 @@ class CodexWorkspaceBindingTest {
 @Serializable private data class ResumeBindingFixture(val threadId: String)
 
 @Serializable private data class StartBindingFixture(val cwd: String)
+
+@Serializable
+private data class PlainStartFixture(
+    val cwd: String,
+    val developerInstructions: String,
+    val dynamicTools: List<String>,
+)
 
 @Serializable private data class SelectedBindingFixture(val cwd: String, val kastWorkspaceRoot: String)
 

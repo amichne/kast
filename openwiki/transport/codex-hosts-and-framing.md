@@ -17,9 +17,6 @@ code_sources:
 - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolQualifierTest.kt
 - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/host/DesktopStdioHostTest.kt
 - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/host/DesktopStdioProtocolIntegrationTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-fd0bb1368910225038bc043b
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/host/CliRemoteClientHost.kt
@@ -29,7 +26,12 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt
   - id: openwiki-source-bfcf45ac084c05e7ecc799ce
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolQualifier.kt
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+  - id: openwiki-source-9f60205156bd3db8303b18a7
+    resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexWorkspaceBindingTest.kt
+generated: { by: "codex", at: "2026-10-15T03:22:02.735Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-15T03:22:02.735Z
 ---
 
 # Codex hosts and protocol framing
@@ -43,9 +45,15 @@ The owned schema inventory and compiled schema contracts constrain the integrati
 
 `AgentSessionBootstrap` qualifies the hosted tool catalog and its policy.
 `CodexProtocolAdapter` connects that qualified catalog to thread operations and dynamic tool calls.
-It keeps pending thread starts, resumes, and forks under explicit binding state.
+It keeps pending Kast thread starts, resumes, and forks under explicit binding state.
 Owned request fields and result projections pass through their schema owners.
 Malformed frames, missing owned fields, rejected bindings, and invalid projections produce finite protocol failures.
+
+If canonical discovery reports no settings marker, an implicit `thread/start` passes upstream unchanged.
+This path adds no Kast tools, policy, registration, or thread binding.
+An unbound `thread/resume` or `thread/fork` also passes upstream unchanged.
+Explicit Kast roots and stored Kast bindings still need exact owner and catalog admission.
+A Kast tool call without a binding rejects before provider dispatch.
 
 ## Two hosts reach the shared broker
 

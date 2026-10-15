@@ -1,40 +1,28 @@
 ---
-type: System Explanation
-title: Installation and managed files
-description: Explains Control and Host installation ownership, managed receipts, payload
-  admission, and endpoint identity.
-tags:
-- kast
-- distribution
-code_sources:
-- path: install.sh
-- path: packaging/install-checkout.sh
-- path: packaging/install-local.sh
-- path: packaging/host-installation.py
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationInput.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationRecovery.kt
-- path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt
-- path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ControlPayloadInventory.kt
-- path: cli/src/test/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflowTest.kt
-- path: packaging/test-host-installation.py
-- path: packaging/test-installer-entrypoint.py
-- path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt
-- path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/endpoint/InstalledEndpointAlias.kt
+type: "System Explanation"
+title: "Installation and managed files"
+description: "Explains Control and Host installation ownership, managed receipts, payload admission, and endpoint identity."
+tags: [kast, distribution]
+
 sources:
-- id: openwiki-source-8f4d86f42434fcc1ce269879
-  resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
-- id: openwiki-source-f3718a29d9c6d868d0d9d73e
-  resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt
-- id: openwiki-source-6fea3b3b86300de08664c4ee
-  resource: repo://packaging/host-installation.py
-generated:
-  by: codex
-  at: '2026-10-15T00:57:31.735Z'
+  - id: openwiki-source-8f4d86f42434fcc1ce269879
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
+  - id: openwiki-source-f3718a29d9c6d868d0d9d73e
+    resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt
+  - id: openwiki-source-6fea3b3b86300de08664c4ee
+    resource: repo://packaging/host-installation.py
+  - id: openwiki-source-fd4b4980f80cb901046d8f0e
+    resource: repo://packaging/installation-lifecycle.py
+  - id: openwiki-source-2a77c42fb15d42188a60711b
+    resource: repo://packaging/test-host-installation.py
+  - id: openwiki-source-a219ab80b9383d47a0037637
+    resource: repo://packaging/test-installation-lifecycle.py
+generated: { by: "codex", at: "2026-10-15T03:39:16.872Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-15T00:59:49.803Z
+    at: 2026-10-15T03:39:16.872Z
 ---
+
 
 
 # Installation and managed files
@@ -77,10 +65,23 @@ Removal permits missing recorded entries, but each remaining entry must match th
 A foreign or changed file rejects ownership admission.
 An absent plugin destination does not erase the receipt's root proof or permit deletion elsewhere.
 
+Plan mode examines the existing target and recovery entries before Control installation changes.
+Host installation and removal keep historical Control backups in `.kast-plugin-recovery`.
+Host does not read or delete these backups.
+This exception covers exact legacy baseline, detached, and replaced names with 32-character hexadecimal tokens.
+Pending Host transactions, legacy installation candidates, and unknown retained names still reject the operation.
+An active receipt still needs the exact plugin inventory before replacement.
+
 ## Recovery and evidence limits
 
 Control recovery keeps the previous payload and qualified settings when replacement fails.
 Failures during retirement, retention, activation, or recovery remain explicit.
+
+Without a workspace registry, retirement admits only a stopped coordinator with exact empty stores and private ownership.
+Current thread and invocation stores need their exact layout versions, empty record directories, and empty lock files.
+The protocol cache must stay empty, and desktop discovery can contain only its empty lock file.
+Durable records, unknown artifacts, live readiness evidence, symlinks, and foreign ownership still block retirement.
+
 Host receipt tests establish selected-target and artifact protection under private files.
 They do not establish that a running IDEA process loaded the new Host.
 Read native lifecycle evidence before a claim about loaded components or workspace semantics.

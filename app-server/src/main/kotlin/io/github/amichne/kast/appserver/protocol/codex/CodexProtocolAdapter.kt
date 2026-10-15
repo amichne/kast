@@ -3,6 +3,7 @@ package io.github.amichne.kast.appserver.protocol.codex
 import io.github.amichne.kast.appserver.WorkspaceEnrollment
 import io.github.amichne.kast.appserver.WorkspaceRegistration
 import io.github.amichne.kast.appserver.WorkspaceSelection
+import io.github.amichne.kast.appserver.WorkspaceSelectionFailure
 import io.github.amichne.kast.appserver.core.AgentSessionBootstrap
 import io.github.amichne.kast.appserver.core.Broker
 import io.github.amichne.kast.appserver.core.BrokerCallId
@@ -523,8 +524,11 @@ internal class CodexProtocolAdapter(
                     return ownedRequestFailure(document, "BINDING_OWNER_UNPROVEN")
                 when (val selected = enrollment.selectForStart(rawParams.string("cwd"), explicitRoot)) {
                     is WorkspaceSelection.Selected -> PendingWorkspaceBinding.Selected(selected)
-                    is WorkspaceSelection.Rejected ->
+                    is WorkspaceSelection.Rejected -> {
+                        if (explicitRoot == null && selected.failure == WorkspaceSelectionFailure.ROOT_MARKER_NOT_FOUND)
+                            return ProtocolRouting.ForwardUpstream(message)
                         return ownedRequestFailure(document, "WORKSPACE_${selected.failure.name}")
+                    }
                 }
             }
         val paramsObject = params
@@ -620,7 +624,7 @@ internal class CodexProtocolAdapter(
                 is ThreadStoreRead.Found ->
                     stored.binding.takeIf(::validBinding)
                         ?: return ownedRequestFailure(document, "CATALOG_INCOMPATIBLE")
-                ThreadStoreRead.Missing -> return ownedRequestFailure(document, "THREAD_BINDING_MISSING")
+                ThreadStoreRead.Missing -> return ProtocolRouting.ForwardUpstream(message)
                 is ThreadStoreRead.Rejected -> return ownedRequestFailure(document, stored.failure.name)
             }
         paramsObject.string("cwd")?.let { requested ->
