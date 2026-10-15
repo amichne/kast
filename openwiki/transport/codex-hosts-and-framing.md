@@ -31,7 +31,7 @@ sources:
 generated: { by: "codex", at: "2026-10-15T03:22:02.735Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-15T03:22:02.735Z
+    at: 2026-10-15T04:27:04.727Z
 ---
 
 # Codex hosts and protocol framing

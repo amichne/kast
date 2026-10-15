@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:94f888f55c77604256fa3132a2221df022985cddb05b911d1f36088c8826f203",
+  "pageVersion": "sha256:d3871b20c5bcb570b9fa1fca3ef979111e2ae1346fb9f68695e8c141599ea703",
   "claims": [
     {
       "id": "claim_38dafc6c84934c4686aef201b1729568",
@@ -45,14 +45,14 @@
           "version": "repo-lines-v1:sha256:b96063e17468d0ed0f2769009b82eb20cb31fb8097ee8744cdac3e71f87cf68b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIzYWEyNWRkODhkN2Q4MDgxNzM4NTZmZDE4MmIxYzY4OWQ0ZDg2Y2YyZjg4OWE1MzhkODlkNzJmMzZmZjVkZGY2IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJjYjU3NzBiOTlmYjcyY2E0ODQ2ZjE2ZWU5NzcwYjNhYzkzNzk2NjAyNmVhMTdhNTA0ZTU2ODE2ZjM2NTc2OTM0IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxNDliNTUyN2I2ZGVkZWU0YThhNTk3YzlmYmE3NzRiYWFhZWJhMjJlYThlZjZkM2Y3Y2IzMTI2ZThlYTlhMWM2IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIzMjA5OTliNmE0NmFlMTkxNDUzMmNlMTBlY2Y0MGM4MDBhYzYwMzFhMjIzMzk2NzAwMzFkZTg3OTdlNzFjODE3In0"
         },
         {
-          "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexWorkspaceBindingTest.kt#L42-L135",
-          "version": "repo-lines-v1:sha256:11d6c3fddccbf5c7966588e6bf39307e8a9ada7ff3f2dbda8cc3be51bf2b3a15:eyJzZWxlY3RlZExpbmVDb3VudCI6OTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjZjA5ZWIwYzU3NDRmYjk3MzMxYjk4ZmYzZmJmMDVhNjAyYmEzZjdmNjdlNWRhNWJlOTA5NTAzM2Y2MjU4MjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI1OTNjNjEyNGEyYzQ5YjUyYjM4NjllYzcyZWY1NjUxOThmNGEwNDlhZjZkZDRjOTcwYzU5MWRmYmQxMzZjNTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJlOGJlNzBmMzYxYWJmNjFhN2RmOTAzMjE0OTZmMDk0Zjk1YTBhZWU0MDE1MjY3ZmU5YWY1OGE1MDkzOTA2NjUifQ"
+          "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexWorkspaceBindingTest.kt#L41-L162",
+          "version": "repo-lines-v1:sha256:eb4043880df0e40aabe96bbece7dc1f0904974ba446f1773d7b819d18fbcfcc8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIyLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIyNDNkNGM5MGE1ZWY1ODQwYTkyY2EzN2Q2ZTQ0NDE5YWQwNDcwNWNlOGY2OGVkYTgzMjRmZTVhMTI0ZjQ4N2Y5IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJkOTBkMzE2MTI0YmY4MjBiZDI0MTQwOWJkMGVhNDNhYWI4M2E1MTY2MDc0MTU4YjI5MDdiNmUxMjk5MDIwYzM5IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIwNTYxNjM5MDI2YjQxNWRlOTM4ZDdkMTlkMDUwODI5MWEzMDAxZDBkMWU4NThhZjJiYzkzZmYzZTBhOGFkOTdhIn0"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T03:22:02.735Z"
+    "at": "2026-10-15T04:27:04.727Z"
   }
 }

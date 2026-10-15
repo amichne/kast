@@ -82,11 +82,11 @@
       "pageVersion": "sha256:eae3b2863bcfe2b19770866f9125344547d334b1f85a9afc3c131bce825cfc97"
     },
     "/openwiki/distribution/installation-and-managed-files.md": {
+      "gitHead": "5d58252bf82fc11e3dcd4a71e65edcc7a2b5cbca",
+      "sourceFingerprint": "sha256:9aef2fee8334824658178e147627b5bb7d6ab0c62a072c8bfe6ef7b777fc9372",
       "pageVersion": "sha256:b7819f300ca42eebc8718f5456c4e809bdb33b643a52a09542c83f5bc05bf687",
       "completedBy": "codex",
-      "completedRunId": "2fb30412-18fe-4956-bb0a-d7da4c2035da",
-      "gitHead": "5d58252bf82fc11e3dcd4a71e65edcc7a2b5cbca",
-      "sourceFingerprint": "sha256:9aef2fee8334824658178e147627b5bb7d6ab0c62a072c8bfe6ef7b777fc9372"
+      "completedRunId": "2fb30412-18fe-4956-bb0a-d7da4c2035da"
     },
     "/openwiki/distribution/management-and-connections.md": {
       "gitHead": "c12da828cf979fe180afd5fbbc29fda38dbeb8dd",
@@ -217,11 +217,11 @@
       "completedRunId": "fbeeb8e8-c7d3-4173-bf24-fac2c20e781a"
     },
     "/openwiki/modules/runtime-hosts.md": {
+      "gitHead": "5d58252bf82fc11e3dcd4a71e65edcc7a2b5cbca",
+      "sourceFingerprint": "sha256:9aef2fee8334824658178e147627b5bb7d6ab0c62a072c8bfe6ef7b777fc9372",
       "pageVersion": "sha256:23d93cc613aef69203df30ef09bcdc01777593d64f17f1db6fb4c6715e343373",
       "completedBy": "codex",
-      "completedRunId": "2fb30412-18fe-4956-bb0a-d7da4c2035da",
-      "gitHead": "5d58252bf82fc11e3dcd4a71e65edcc7a2b5cbca",
-      "sourceFingerprint": "sha256:9aef2fee8334824658178e147627b5bb7d6ab0c62a072c8bfe6ef7b777fc9372"
+      "completedRunId": "2fb30412-18fe-4956-bb0a-d7da4c2035da"
     },
     "/openwiki/modules/semantic-reads.md": {
       "gitHead": "e62692cc5e0be164941a6c551c00d35ad6739ded",
@@ -347,11 +347,11 @@
       "pageVersion": "sha256:f0272b1ca38f3d8f96f119c7f07e7535347702031758db54134ce49cbcf29887"
     },
     "/openwiki/transport/codex-hosts-and-framing.md": {
-      "gitHead": "5d58252bf82fc11e3dcd4a71e65edcc7a2b5cbca",
-      "sourceFingerprint": "sha256:b3076e0278642a96287ee091c9d90dd79170f9b29b20f7bf5f5d61d446b5aa26",
-      "pageVersion": "sha256:94f888f55c77604256fa3132a2221df022985cddb05b911d1f36088c8826f203",
+      "pageVersion": "sha256:d3871b20c5bcb570b9fa1fca3ef979111e2ae1346fb9f68695e8c141599ea703",
       "completedBy": "codex",
-      "completedRunId": "7115e990-2f2c-49d7-bba2-464ece1de883"
+      "completedRunId": "8494d310-40bd-43d4-9c15-f929bb89bd29",
+      "gitHead": "cc761d321fd0d87a7d3e95d1cf65015d70ffc476",
+      "sourceFingerprint": "sha256:7710d88fd8f4e59adfcb03eca2e859891f75dd22e7d7e10a067efd505f268726"
     },
     "/openwiki/transport/coordinator-and-workspace-preparation.md": {
       "gitHead": "c12da828cf979fe180afd5fbbc29fda38dbeb8dd",
