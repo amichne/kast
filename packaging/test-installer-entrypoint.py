@@ -78,6 +78,36 @@ class CompletionRejectedFixture:
     component: str = 'kast-lifecycle'
 
 
+@dataclass(frozen=True)
+class StageOutcomeFixture:
+    type: str
+
+
+@dataclass(frozen=True)
+class RetirementStageFixture:
+    stage: str
+    outcome: str | StageOutcomeFixture
+    event: str = 'kast_installation_retirement'
+
+
+@dataclass(frozen=True)
+class InstallationRejectedFixture:
+    operation: str = 'installation.install'
+    status: str = 'rejected'
+    reason: str = 'replacement-exit-rejected'
+
+
+@dataclass(frozen=True)
+class RegistryRejectedFixture:
+    type: str = 'REJECTED'
+    failure: str = 'REGISTRY_REJECTED'
+
+
+@dataclass(frozen=True)
+class ControlRecoveryFixture:
+    type: str = 'ROLLED_BACK'
+
+
 class InstallerEntrypointTest(unittest.TestCase):
     def installer_fixture(self, directory: str, *, plugin_line: str = "262", version: str = "1.2.3", reset_capability: bool = False,
                           completion_capability: bytes | None = b"1\n"):
@@ -258,7 +288,8 @@ else:
         binary.chmod(0o755)
         return {"PATH": str(binary.parent) + os.pathsep + TOOL_PATH}
 
-    def upgrade_fixture(self, directory, *, cold_staging=False, version='1.2.4', completion_capability=True):
+    def upgrade_fixture(self, directory, *, cold_staging=False, version='1.2.4', completion_capability=True,
+                        service_failure_report: str | None = None):
         idea, assets, environment = self.installer_fixture(
             directory, version=version, completion_capability=b'1\n' if completion_capability else None,
         )
@@ -306,8 +337,7 @@ fi
 set -eu
 [ "$1" = install ] || exit 91
 if [ "${FAIL_SERVICE:-0}" != 0 ]; then
-  printf '%s\\n' '{"event":"kast_installation_retirement","stage":"OBSERVE_AFTER","outcome":{"type":"DEADLINE_EXCEEDED"}}' >&2
-  printf '%s\\n' '{"operation":"installation.install","status":"rejected","reason":"replacement-exit-rejected"}' >&2
+  __SERVICE_FAILURE_REPORT__
   exit "$FAIL_SERVICE"
 fi
 mkdir -p "$KAST_INSTALL_ROOT/installation/bin" "$KAST_INSTALL_ROOT/installation/share/kast"
@@ -363,6 +393,14 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
         }
         scripts['share/kast/libexec/kast-management'] = scripts['share/kast/libexec/kast-management'].replace(
             b'__COMPLETION_REJECTED__', json.dumps(asdict(CompletionRejectedFixture())).encode(),
+        )
+        if service_failure_report is None:
+            service_failure_report = '\n'.join(json.dumps(asdict(item), separators=(',', ':')) for item in (
+                RetirementStageFixture('OBSERVE_AFTER', StageOutcomeFixture('DEADLINE_EXCEEDED')),
+                InstallationRejectedFixture(),
+            ))
+        scripts['share/kast/libexec/kast-service'] = scripts['share/kast/libexec/kast-service'].replace(
+            b'__SERVICE_FAILURE_REPORT__', ("printf '%s\\n' " + shlex.quote(service_failure_report) + ' >&2').encode(),
         )
         scripts['share/kast/public-reset-v1'] = b'1\n'
         if completion_capability:
@@ -563,6 +601,65 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             self.assertIn('exit 42', result.stderr)
             self.assertTrue(prior.exists())
             self.assertNotIn('installed Kast 1.2.4', result.stderr)
+
+    def test_default_failure_keeps_rejection_and_recovery_after_long_stage_report(self):
+        for stage_count in (20, 80):
+            with self.subTest(stage_count=stage_count), tempfile.TemporaryDirectory(prefix='kast-long-rejected-') as directory:
+                report = '\n'.join(json.dumps(asdict(item)) for item in (
+                    *(RetirementStageFixture(f'STAGE_{number}_' + 'x' * 900, 'COMPLETED') for number in range(stage_count)),
+                    RegistryRejectedFixture(), ControlRecoveryFixture(),
+                ))
+                idea, environment, prior, _ = self.upgrade_fixture(directory, service_failure_report=report)
+                environment['FAIL_SERVICE'] = '9'
+                result = subprocess.run(
+                    [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--skip-codex-mcp'],
+                    cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+                )
+                self.assertEqual(9, result.returncode)
+                self.assertEqual('', result.stdout)
+                self.assertNotIn('{', result.stderr)
+                self.assertIn('REGISTRY_REJECTED', result.stderr)
+                self.assertIn('ROLLED_BACK', result.stderr)
+                details = [line for line in result.stderr.splitlines() if line.startswith('  > ')]
+                self.assertLessEqual(len(details), 13)
+                self.assertTrue(all(len(line) <= 260 for line in details))
+                self.assertTrue(prior.exists())
+
+    def test_verbose_failure_preserves_the_complete_long_stage_report(self):
+        with tempfile.TemporaryDirectory(prefix='kast-long-rejected-verbose-') as directory:
+            report = '\n'.join(json.dumps(asdict(item)) for item in (
+                *(RetirementStageFixture(f'STAGE_{number}_' + 'x' * 900, 'COMPLETED') for number in range(80)),
+                RegistryRejectedFixture(), ControlRecoveryFixture(),
+            ))
+            idea, environment, _, _ = self.upgrade_fixture(directory, service_failure_report=report)
+            environment['FAIL_SERVICE'] = '9'
+            result = subprocess.run(
+                [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--skip-codex-mcp', '--verbose'],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+            )
+            self.assertEqual(9, result.returncode)
+            self.assertEqual('', result.stdout)
+            self.assertIn(report + '\n', result.stderr)
+
+    def test_default_failure_projects_safe_text_from_structured_diagnostics(self):
+        with tempfile.TemporaryDirectory(prefix='kast-rejected-safe-text-') as directory:
+            report = '\n'.join(json.dumps(asdict(item)) for item in (
+                RetirementStageFixture('STAGE\n\tCONTROL\x1b[31m', StageOutcomeFixture('DEADLINE_EXCEEDED')),
+                RegistryRejectedFixture(), ControlRecoveryFixture(),
+            ))
+            idea, environment, _, _ = self.upgrade_fixture(directory, service_failure_report=report)
+            environment['FAIL_SERVICE'] = '9'
+            result = subprocess.run(
+                [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--skip-codex-mcp'],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+            )
+            self.assertEqual(9, result.returncode)
+            self.assertEqual('', result.stdout)
+            self.assertIn('STAGE  CONTROL [31m; DEADLINE_EXCEEDED', result.stderr)
+            self.assertIn('REGISTRY_REJECTED', result.stderr)
+            self.assertIn('ROLLED_BACK', result.stderr)
+            for control in ('\x1b', '\t', '\r'):
+                self.assertNotIn(control, result.stderr)
 
     def test_default_output_preserves_pending_activation_qualification(self):
         with tempfile.TemporaryDirectory(prefix='kast-upgrade-pending-') as directory:

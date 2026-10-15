@@ -5,6 +5,7 @@ import hashlib
 import importlib.util
 import io
 from contextlib import redirect_stderr
+from dataclasses import asdict, dataclass
 from unittest.mock import patch
 from pathlib import Path
 import subprocess
@@ -18,6 +19,132 @@ spec = importlib.util.spec_from_file_location('lifecycle_under_test', SCRIPT)
 lifecycle = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = lifecycle
 spec.loader.exec_module(lifecycle)
+
+
+@dataclass(frozen=True)
+class ThreadStoreLayoutFixture:
+    version: int = 3
+
+
+@dataclass(frozen=True)
+class InvocationStoreLayoutFixture:
+    schemaVersion: int = 2
+
+
+def initialized_stopped_profile(state):
+    profile = state / 'broker' / ('a' * 16)
+    profile.mkdir(parents=True, mode=0o700)
+    (profile / 'stopped').write_bytes(b'stopped\n')
+    (profile / 'protocol').mkdir(mode=0o700)
+    discovery = profile / 'desktop-discovery'
+    discovery.mkdir(mode=0o700)
+    (discovery / '.lock').touch(mode=0o600)
+    # These fixtures use the fields of ThreadStoreLayout and InvocationStoreLayout.
+    for name, records, marker in (
+            ('threads.json.d', 'records-v3', ThreadStoreLayoutFixture()),
+            ('invocations.json.d', 'records-v2', InvocationStoreLayoutFixture())):
+        store = profile / name
+        store.mkdir(mode=0o700)
+        (store / '.lock').touch(mode=0o600)
+        (store / records).mkdir(mode=0o700)
+        layout = store / 'layout.json'
+        layout.write_text(json.dumps(asdict(marker), separators=(',', ':')) + '\n')
+        layout.chmod(0o600)
+    return profile
+
+
+class UnregisteredBrokerStateTest(unittest.TestCase):
+    def setUp(self):
+        self.fixture = tempfile.TemporaryDirectory(prefix='kast-unregistered-state-')
+        self.root = Path(self.fixture.name).resolve()
+        self.state = self.root / 'state'
+        self.state.mkdir(mode=0o700)
+        (self.state / 'run').mkdir(mode=0o700)
+        self.profile = initialized_stopped_profile(self.state)
+
+    def tearDown(self):
+        self.fixture.cleanup()
+
+    def test_current_empty_stores_prove_no_durable_workspace_history(self):
+        self.assertTrue(lifecycle.admits_unregistered_broker_state(self.state))
+
+    def test_durable_record_or_partial_shard_blocks_missing_registry_admission(self):
+        for store, records in (('threads.json.d', 'records-v3'), ('invocations.json.d', 'records-v2')):
+            with self.subTest(store=store):
+                shard = self.profile / store / records / 'ab'
+                shard.mkdir(mode=0o700)
+                self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+                record = shard / ('ab' + 'c' * 62 + '.json')
+                record.write_text('{"phase":"COMPLETED"}\n')
+                self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+                record.unlink()
+                shard.rmdir()
+
+    def test_unknown_layout_or_extra_store_entry_blocks_admission(self):
+        for store, marker in (('threads.json.d', ThreadStoreLayoutFixture()),
+                              ('invocations.json.d', InvocationStoreLayoutFixture())):
+            with self.subTest(store=store):
+                layout = self.profile / store / 'layout.json'
+                for malformed in ('{}', '{"version":99}', '{"schemaVersion":2,"unknown":true}'):
+                    layout.write_text(malformed)
+                    self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+                layout.write_text(json.dumps(asdict(marker), separators=(',', ':')) + '\n')
+                unknown = self.profile / store / 'unknown'
+                unknown.touch()
+                self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+                unknown.unlink()
+
+    def test_layout_versions_need_exact_integers_and_unique_fields(self):
+        cases = (
+            ('threads.json.d', ThreadStoreLayoutFixture(),
+             ('{"version":3.0}', '{"version":true}', '{"version":3,"version":3}')),
+            ('invocations.json.d', InvocationStoreLayoutFixture(),
+             ('{"schemaVersion":2.0}', '{"schemaVersion":true}', '{"schemaVersion":2,"schemaVersion":2}')),
+        )
+        for store, valid, rejected in cases:
+            layout = self.profile / store / 'layout.json'
+            for document in rejected:
+                with self.subTest(store=store, document=document):
+                    layout.write_text(document)
+                    self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+            layout.write_text(json.dumps(asdict(valid), separators=(',', ':')) + '\n')
+
+    def test_live_or_unknown_runtime_evidence_blocks_admission(self):
+        for relative in ('service-readiness.json', 'protocol/partial-schema.json',
+                         'desktop-discovery/ownership.json'):
+            with self.subTest(path=relative):
+                evidence = self.profile / relative
+                evidence.write_text('{}')
+                self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+                evidence.unlink()
+        workers = self.state / 'workers'
+        workers.mkdir()
+        (workers / 'unknown.json').write_text('{}')
+        self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+
+    def test_missing_stop_marker_and_active_run_state_block_admission(self):
+        marker = self.profile / 'stopped'
+        marker.unlink()
+        self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+        marker.write_bytes(b'stopped\n')
+        (self.state / 'run/public.sock').touch()
+        self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+
+    def test_private_store_links_foreign_ownership_and_permissions_block_admission(self):
+        records = self.profile / 'threads.json.d/records-v3'
+        records.rmdir()
+        external = self.root / 'foreign'
+        external.mkdir(mode=0o700)
+        records.symlink_to(external, target_is_directory=True)
+        self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+        records.unlink()
+        records.mkdir(mode=0o700)
+        lock = self.profile / 'invocations.json.d/.lock'
+        lock.chmod(0o666)
+        self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
+        lock.chmod(0o600)
+        with patch.object(lifecycle.os, 'getuid', return_value=lifecycle.os.getuid() + 1):
+            self.assertFalse(lifecycle.admits_unregistered_broker_state(self.state))
 
 
 class ScriptedRetirementExecutor:
@@ -433,6 +560,18 @@ class LifecycleTest(unittest.TestCase):
         code, result = self.invoke('reset')
         self.assertEqual(0, code, result)
         self.assertEqual('reset', result['status'])
+        self.assertEqual(0, result['workspaceCount'])
+        self.assertEqual(['app-server disable'], self.log.read_text().splitlines())
+    def test_initialized_stopped_broker_without_registry_retires_without_workspace_stop(self):
+        (self.root / 'config/workspaces.json').unlink()
+        shutil.rmtree(self.root / 'state/broker/profile')
+        profile = initialized_stopped_profile(self.root / 'state')
+        (profile / 'launch-environment').write_text('private fixture')
+        (profile / 'service-start.lock').touch()
+        (profile / 'service.log').touch()
+        (profile / 'service.plist').write_text('fixture')
+        code, result = self.invoke('reset')
+        self.assertEqual(0, code, result)
         self.assertEqual(0, result['workspaceCount'])
         self.assertEqual(['app-server disable'], self.log.read_text().splitlines())
     def test_unknown_broker_evidence_without_registry_blocks_retirement(self):

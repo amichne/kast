@@ -275,10 +275,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-73144b588342a1cc6d17731e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-15T01:04:37.434Z" }
+generated: { by: "codex", at: "2026-10-15T03:39:16.872Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-15T01:04:37.434Z
+    at: 2026-10-15T03:39:16.872Z
 ---
 
 # Runtime and process hosts
@@ -309,7 +309,16 @@ The hosted provider admits public intent tools and supported changes through the
 
 Installation lifecycle admission fences automatic coordinator startup while detachment, shutdown, transition or reset markers remain. Unknown observation rejects. A reset marker permits startup only for an exact installation-bound `ACTIVATING` record and a currently held exclusive reset lease; malformed, foreign, oversized or unlocked records remain fenced. Installed direct tools separately reject shutdown or reset markers, including unproven absence, before workspace discovery or dispatch. This allows the reset owner to establish daemon readiness while tool calls remain stopped until it lifts the exterior fence. The focused `InstallationLifecycleFenceTest` covers absent installation state, held versus released activation locks, and malformed, foreign and oversized records. See [distribution lifecycle](distribution.md) for retirement, cold staging and readiness obligations.
 
-App Server owns persistent sessions, the invocation journal, project-close controller confirmation, provider qualification and workspace lanes. A cancelled change apply settles the journal and releases its lane only after native recovery proves `prior_state` or `rolled_back`; unresolved effects retain uncertainty. `CoordinatorControl` provides bounded owner-correlated status with zero worker reservations and rejects retired worker demands. Service enablement starts the daemon without enrolling its current directory. New Codex threads discover the nearest canonical `settings.gradle.kts` owner, or validate the explicit exact owner, before registration and binding. Broad historical HOME registration cannot replace that repository owner; saved incorrect bindings reject without retargeting. Registration preserves closed failures and emits bounded, payload-free startup evidence. Thread-binding validation for resume and invocation remains read-only. Workspace enrollment remains routing data. It grants no importer or worker capability. Provider qualification verifies the packaged catalog against the canonical registry. Installed semantic provider calls first use the shared workspace preparation owner. They then use the App Server-owned IDEA client directly; canonical changes use the same workspace demand before immutable plan loading, preserving canonical request admission, finite failures, root/host binding and operation output validation. Pure request and result projection lives in `protocol:wire`.
+App Server owns persistent sessions, the invocation journal, project-close controller confirmation, provider qualification and workspace lanes. A cancelled change apply settles the journal and releases its lane only after native recovery proves `prior_state` or `rolled_back`; unresolved effects retain uncertainty. `CoordinatorControl` provides bounded owner-correlated status with zero worker reservations and rejects retired worker demands. Service enablement starts the daemon without enrolling its current directory.
+
+New Codex threads with Kast tools admit the nearest canonical `settings.gradle.kts` owner or the explicit exact owner before registration and binding.
+Ordinary threads outside Gradle projects pass upstream without a Kast binding.
+Unbound resume and fork requests also pass upstream.
+Explicit Kast roots still need the canonical settings owner.
+
+Broad historical HOME registration cannot replace that repository owner; saved incorrect bindings reject without retargeting. Registration preserves closed failures and emits bounded, payload-free startup evidence. Thread-binding validation for resume and invocation remains read-only. Workspace enrollment remains routing data. It grants no importer or worker capability.
+
+Provider qualification verifies the packaged catalog against the canonical registry. Installed semantic provider calls first use the shared workspace preparation owner. They then use the App Server-owned IDEA client directly; canonical changes use the same workspace demand before immutable plan loading, preserving canonical request admission, finite failures, root/host binding and operation output validation. Pure request and result projection lives in `protocol:wire`.
 
 Installed service admission uses the existing explicitly owned Java candidate when supplied, otherwise the saved IDEA selection's bundled JBR. It admits canonical executable paths and a bounded Java release declaration with feature 25 or newer into `BrokerJavaRuntime`, which command construction retains. Exactly one `JAVA_VERSION` declaration must be present and fully quoted; a malformed duplicate beside a valid declaration also rejects. An absent selection or incompatible runtime rejects with `JAVA_RUNTIME_UNAVAILABLE`; ambient `JAVA_HOME` supplies no fallback. A managed upstream socket alias is admitted only when its resolved socket is open in the launched Codex process; the alias and target identities are retained and rechecked before and after later connections. A successful WebSocket probe alone does not prove ownership. Unproven aliases reject with `SOCKET_ALIAS_OWNER_UNPROVEN`.
 

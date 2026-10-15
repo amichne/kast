@@ -316,10 +316,10 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-10-15T01:04:37.434Z" }
+generated: { by: "codex", at: "2026-10-15T03:36:06.201Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-15T01:04:37.434Z
+    at: 2026-10-15T03:36:06.201Z
 ---
 
 # Distribution and packaging
@@ -345,6 +345,10 @@ The control product also includes `kast-tool-rpc`. Installation retains its conf
 Codex registration requires the explicit `mcp` or `app-server` transport. MCP owns the selected `kast` server entry in Codex configuration. App Server owns `~/.local/bin/kast-codex`, an executable launcher for the selected installation's existing `kast-codex-complete` facade; the launcher accepts interactive Codex and `app-server` stdio invocation without adding an MCP entry or redirecting ordinary Desktop sessions. Schema-2 management receipts retain the closed connection identity. Schema-1 receipt admission refines existing Codex ownership to MCP while preserving its destination and payload digest. Both recorded Codex transports are independently owned; disconnecting Codex removes its recorded routes.
 
 The public installer renders progress, activation qualifications, and finite failure details for people. `--verbose` retains full child JSON reports and diagnostics. Native upgrades retain the private installation report on disk without printing it by default.
+
+Default failure presentation reads a bounded tail of each child stream and gives rejection and recovery details priority over routine telemetry.
+It displays at most 12 details and one truncation notice.
+The child exit status remains authoritative, and `--verbose` preserves the complete child streams.
 
 CI selects documentation and graph checks on Linux before allocating product runners. Every PR runs product and portable validation, including documentation-only changes. The completion job requires every selected job to succeed. One product invocation tests and assembles the complete Control/Host pair at `0.0.<CI run number>`. Pre-push retains its published stable-version admission independently.
 

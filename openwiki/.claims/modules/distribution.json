@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:43259a3f836c9e0bd7aa9e8f4415d55d39465923d49b338fe6e60c4a8d6f2f60",
+  "pageVersion": "sha256:aa277d19add61bdc78f4286092a0a86851f35d8d829209751f69efb3896cc107",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -90,7 +90,7 @@
         },
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:6bc007dabe913233214921f6c65d40d2212f735f24ba62d6ff0420f9fbf339d4"
+          "version": "repo-file-v1:sha256:68a21012b64b75f8faa4e97d46cd701db894cfd576fcf8473b8f55b00569fb98"
         }
       ]
     },
@@ -122,7 +122,7 @@
         },
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:0cbd08f040ca1756f7b35bd51cbccfe57604ccc6fc87f99ec7d773f176af5062"
+          "version": "repo-file-v1:sha256:c31224a0f02de12664464ff2918b22be23eb3812524b9a03d238d3aa6790842b"
         }
       ]
     },
@@ -135,7 +135,7 @@
           "version": "repo-file-v1:sha256:25a0bddfbcc6fcde44e799fdd58fdf1b5e080f33172a043694dfb8c9ede86282"
         },
         {
-          "resource": "repo://install.sh#L580-L604",
+          "resource": "repo://install.sh#L600-L624",
           "version": "repo-lines-v1:sha256:61b79c53302dbd050f51a56b9467d1271544d67aad22237e5c8febf726ae7526:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVmYTE4NWY2MGNlZWUwNGJmOTI0OTI0YWQ1NzRjYzZiM2M5MGRhNDI0ZGI2YjBjOGNjMDZiNGJhNjI2YmE2NmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM1ZmM5MGZmOGE0NDE0YzU0NDFkMGY2NzdjNWNiZmRhMzhiNDc0ZTUxYmZkNTU5YTU1NTlkZTBmODc3MDU1MjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ1ZjYzMTQ1NzAyOWY2ZjgxNzc0M2VkMTQ2MmJlMjg1YTFmYmNjMjM2ZWVlMTQwMmQ4NjQ4NjkwODJkOTk2N2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhkYzRiNDU2M2QwODdmM2Y1ZjI2ZWEwOWI0YTBkMDkxZDc5ZTkzMjg3NTc5ZDY2MDFiZTMyMDdjMTJkMmI2MmQifQ"
         },
         {
@@ -258,11 +258,11 @@
       "evidence": [
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:0cbd08f040ca1756f7b35bd51cbccfe57604ccc6fc87f99ec7d773f176af5062"
+          "version": "repo-file-v1:sha256:c31224a0f02de12664464ff2918b22be23eb3812524b9a03d238d3aa6790842b"
         },
         {
           "resource": "repo://packaging/test-installer-entrypoint.py",
-          "version": "repo-file-v1:sha256:a34ab690e33be19092a386ac3ea43b1c8be304037099be8f7351809edde4fc3e"
+          "version": "repo-file-v1:sha256:fca63bf11a7c3ff7f7b5257191784696d88a4bcee36527e71c4b8686fb8137a3"
         }
       ]
     },
@@ -380,13 +380,27 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:6bc007dabe913233214921f6c65d40d2212f735f24ba62d6ff0420f9fbf339d4"
+          "version": "repo-file-v1:sha256:68a21012b64b75f8faa4e97d46cd701db894cfd576fcf8473b8f55b00569fb98"
+        }
+      ]
+    },
+    {
+      "id": "claim_c0d802cfaf904b648f45d929cc29ab7e",
+      "statement": "Default installer failure presentation reads bounded stream tails and prioritizes rejection and recovery details over routine telemetry. It keeps the child exit status and limits display to 12 details plus one truncation notice. Verbose output keeps complete child streams.",
+      "evidence": [
+        {
+          "resource": "repo://install.sh#L75-L195",
+          "version": "repo-lines-v1:sha256:a2abdcf6f95bfacb4d7bdec3087b6747dd0c1629a376c46de164697829aa9513:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjNTg1ZjgxMzFkNTg5MGJiMGUzMTNmZDM0YzhlMzViNmU0OWJkMDYzYWNlNmFhMjE5ZGMwYjliM2QzZjI5MmVjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI1MjJjYjVkYjA2NTY4OWFkOGJlNmVlYWY4ZDVjYmY0MjRiN2VlZGMzODY1YTUyYTIwMDVlYTg4YWM4MmViZDFkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJmMjQ4MDUxODRmODZkNGVlZDExOWVkZjNiMTBlZDc0YTNhOGRhMWVhOTg4MzUwMzUwNGFhODk0Zjk2M2I4Y2RhIn0"
+        },
+        {
+          "resource": "repo://packaging/test-installer-entrypoint.py#L605-L662",
+          "version": "repo-lines-v1:sha256:72ed803b67a7c29c67caad1d8974e873e2c70a76e549ffb5072c33f616d412a9:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxOWUzNzA5ZTg1MTg4MTE5MDBkODEzNWI4MTY1ZjI1MmU4NDUwMGQ2ZmQyYTcxZDRhNGI2ODU4ZGQ3ZDA3OTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhZjM2YzVhNTg1ZGM4YWUwNTlmM2JmNDlkM2JlY2YxNzliYmI4MTU0MDI5ZjQwNWNiMGZiM2FhZDkzYjEzZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZhMWI3NGViNzI0ZjA2YzlhNDRjMTFkZTJiYmUzODYyMzdiMzIxZWJjYmNlMjFlMGJiOGYyMDZhMzk1MDEzZjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjMjgwNDc1ODQzYTA3MTc2NDlkNDdhMzVlNDM1Yzk0OTFiNDI5YzE0ZGQ0N2ExMTQ1ODE1MWNlOTVlMWQ2MTUifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T01:04:37.434Z"
+    "at": "2026-10-15T03:36:06.201Z"
   }
 }

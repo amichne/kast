@@ -120,24 +120,33 @@ def details(document):
 
 if code:
     print(f'  x {label} failed (exit {code})')
-shown = 0
+important, routine = [], []
+truncated = False
 for name in sys.argv[3:]:
     try:
         with Path(name).open('rb') as source:
+            size = source.seek(0, 2)
+            offset = max(0, size - 65536) if code else 0
+            source.seek(offset)
             raw = source.read(65537)
     except OSError:
         print('  > Installer diagnostics could not be read; rerun with --verbose to inspect them.')
         continue
+    truncated = truncated or offset > 0 or len(raw) > 65536
+    if offset:
+        # The tail can start inside a record; never display a partial structured payload.
+        raw = raw.partition(b'\n')[2]
     decoded = raw[:65536].decode('utf-8', errors='replace')
     try:
         json.loads(decoded)
     except (ValueError, RecursionError):
-        lines = decoded.splitlines()[:64]
+        lines = decoded.splitlines()
+        truncated = truncated or len(lines) > 64
+        lines = lines[-64:] if code else lines[:64]
     else:
         lines = [decoded]
     for line in lines:
-        if shown >= 12:
-            break
+        priority = False
         stripped = line.lstrip()
         try:
             document = json.loads(line)
@@ -149,8 +158,12 @@ for name in sys.argv[3:]:
         else:
             if not isinstance(document, dict):
                 continue
+            priority = document.get('type') in ('REJECTED', 'ROLLED_BACK', 'RECOVERY_REQUIRED') or any(
+                document.get(key) for key in ('reason', 'failure', 'recoveryFailure', 'unresolved', 'blockers')
+            )
             activation = document.get('activation')
             if isinstance(activation, dict) and activation.get('type') == 'pending':
+                priority = True
                 text = 'App server activation is pending: ' + details(activation)
                 resume = readable(activation.get('resume'))
                 if resume:
@@ -163,10 +176,17 @@ for name in sys.argv[3:]:
                 # Routine structured telemetry remains available through --verbose.
                 continue
         if text:
-            print('  > ' + text)
-            shown += 1
-    if len(raw) > 65536:
-        print('  > Additional diagnostics are available with --verbose.')
+            (important if code and priority else routine).append(text)
+if code:
+    selected = important[-12:]
+    if len(selected) < 12:
+        selected = routine[-(12 - len(selected)):] + selected
+else:
+    selected = routine[:12]
+for text in selected:
+    print('  > ' + text)
+if truncated or len(important) + len(routine) > 12:
+    print('  > More diagnostics are available with --verbose.')
 PYTHON
   fi
   rm -rf -- "$output_root" || status=$?

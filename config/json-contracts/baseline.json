@@ -2844,16 +2844,6 @@
     {
       "fingerprint": {
         "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapterTest.kt",
-        "scope": "type:CodexProtocolAdapterTest/fun:production resume rejects missing durable binding(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_LITERAL",
-        "sha256": "958640b1cd8a0926160c90ea9869a135bca7c98a08763dc7055d79f658a957a3"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapterTest.kt",
         "scope": "type:CodexProtocolAdapterTest/fun:protocolContracts()/val:objectSchema",
         "kind": "JSON_LITERAL",
         "sha256": "b3887bad234d8ca6d1e065e3cca3fd27d084efddbe409e921825e82b84a2c6ce"
@@ -3847,26 +3837,6 @@
         "scope": "type:BrokerSessionHubTest/fun:tool display records bounded success and rejection evidence without payloads(4:Path)/declaration:<anonymous>/val:completed",
         "kind": "JSON_LITERAL",
         "sha256": "2c2e41d1057b449f5fe1eed483f0265af3c1d71c10ef3b4d6cfa559eaf8cba88"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHubTest.kt",
-        "scope": "type:BrokerSessionHubTest/fun:unenrolled start and resume reject missing workspace ownership(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_LITERAL",
-        "sha256": "164a818222cdc94459a0f28c3e197b8ab96e2417a4c5d204ff005ab5d6ce707a"
-      },
-      "count": 1,
-      "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."
-    },
-    {
-      "fingerprint": {
-        "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionHubTest.kt",
-        "scope": "type:BrokerSessionHubTest/fun:unenrolled start and resume reject missing workspace ownership(4:Path)/declaration:<anonymous>",
-        "kind": "JSON_LITERAL",
-        "sha256": "79b6457323334000d66f92b88a05bf812da161be843f06c05ed9a1e070410db4"
       },
       "count": 1,
       "justification": "Existing test or fixture syntax; migrate fixed valid shapes when this expression changes."

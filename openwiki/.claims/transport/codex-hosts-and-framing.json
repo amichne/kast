@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:d4e9de410d22d52f12157dd6cfd14036a059d10c82bd69f67fba31133c60d262",
+  "pageVersion": "sha256:d3871b20c5bcb570b9fa1fca3ef979111e2ae1346fb9f68695e8c141599ea703",
   "claims": [
     {
       "id": "claim_38dafc6c84934c4686aef201b1729568",
@@ -32,13 +32,27 @@
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt",
-          "version": "repo-file-v1:sha256:bea2a047cd9befdff67e1b99b93fdb7057a96db854d980b33f24ca3a4c93f428"
+          "version": "repo-file-v1:sha256:d2dca295ac03839db9de00d5a990e72275b96c266d626681273608a4ea814ebc"
+        }
+      ]
+    },
+    {
+      "id": "claim_6d7e1beb5f554e81af20f91c6ee1c7c7",
+      "statement": "Implicit Codex starts with no settings marker and unbound resume or fork requests pass upstream unchanged without a Kast binding. Explicit Kast roots and stored bindings remain strict, and unbound Kast tool calls reject before provider dispatch.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt#L504-L634",
+          "version": "repo-lines-v1:sha256:b96063e17468d0ed0f2769009b82eb20cb31fb8097ee8744cdac3e71f87cf68b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIzYWEyNWRkODhkN2Q4MDgxNzM4NTZmZDE4MmIxYzY4OWQ0ZDg2Y2YyZjg4OWE1MzhkODlkNzJmMzZmZjVkZGY2IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJjYjU3NzBiOTlmYjcyY2E0ODQ2ZjE2ZWU5NzcwYjNhYzkzNzk2NjAyNmVhMTdhNTA0ZTU2ODE2ZjM2NTc2OTM0IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxNDliNTUyN2I2ZGVkZWU0YThhNTk3YzlmYmE3NzRiYWFhZWJhMjJlYThlZjZkM2Y3Y2IzMTI2ZThlYTlhMWM2IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIzMjA5OTliNmE0NmFlMTkxNDUzMmNlMTBlY2Y0MGM4MDBhYzYwMzFhMjIzMzk2NzAwMzFkZTg3OTdlNzFjODE3In0"
+        },
+        {
+          "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexWorkspaceBindingTest.kt#L41-L162",
+          "version": "repo-lines-v1:sha256:eb4043880df0e40aabe96bbece7dc1f0904974ba446f1773d7b819d18fbcfcc8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIyLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIyNDNkNGM5MGE1ZWY1ODQwYTkyY2EzN2Q2ZTQ0NDE5YWQwNDcwNWNlOGY2OGVkYTgzMjRmZTVhMTI0ZjQ4N2Y5IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJkOTBkMzE2MTI0YmY4MjBiZDI0MTQwOWJkMGVhNDNhYWI4M2E1MTY2MDc0MTU4YjI5MDdiNmUxMjk5MDIwYzM5IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIwNTYxNjM5MDI2YjQxNWRlOTM4ZDdkMTlkMDUwODI5MWEzMDAxZDBkMWU4NThhZjJiYzkzZmYzZTBhOGFkOTdhIn0"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T00:33:05.932Z"
+    "at": "2026-10-15T04:27:04.727Z"
   }
 }
