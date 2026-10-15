@@ -1,0 +1,91 @@
+{
+  "type": "VALE_POLICY_LOCK",
+  "schemaVersion": 1,
+  "valeVersion": "3.24.0",
+  "files": {
+    ".vale.ini": "1d0c5184a807a038537de2ae47695b700dbce1d6c87601631b9d405db0e0a5fa",
+    "assessment.ini": "f20ba19d6c7b22d03f21de4dbe1afe65334449f977f03c20358bca74ddb27afc",
+    "licenses/Commits/LICENSE": "aa431e1653f927cf92be0fcc77fe388b97780b5f0f541085e30c4abe626b1074",
+    "licenses/Commits/NOTICE": "59f50430ab07c2ce3ada06ce613cf6b3ae80fff1ce3a646a0deb3279cdb42284",
+    "licenses/Diataxis/LICENSE": "aa431e1653f927cf92be0fcc77fe388b97780b5f0f541085e30c4abe626b1074",
+    "licenses/Diataxis/NOTICE": "bfefe6a4e5bb38768a66828030911791b6b175f143eae04c6e52ec19f8df964d",
+    "licenses/Google/LICENSE": "f661986be23c000812a439e03dfed8d16ff23117e8d1219fc2beb7cd01393640",
+    "licenses/Std/LICENSE": "aa431e1653f927cf92be0fcc77fe388b97780b5f0f541085e30c4abe626b1074",
+    "licenses/Std/NOTICE": "7dfb553d84f2641d8fee959532f0f74d3c98fdd4011d4e5dfda87be312f8f121",
+    "licenses/readability/LICENSE": "aa431e1653f927cf92be0fcc77fe388b97780b5f0f541085e30c4abe626b1074",
+    "styles/Commits/Blank.yml": "30ab33ff89cb45c3a79dcf0b1bbed6953dd494f2c922e56639dc26fd617a74d0",
+    "styles/Commits/Imperative.yml": "f616cdc18f1d979b596df8afa3d58d2f155e0919797d866836fcb2e58e452b94",
+    "styles/Commits/Placeholder.yml": "d0bc9bdaaf1548d905bb72cf3ce53770246cb5cba0a08f531f453f5cbda445d1",
+    "styles/Commits/Whitespace.yml": "46201cc37ffac126364d083845afbf4c1f6f9a24bb2f16c5f9d040678bb08669",
+    "styles/Commits/_shared/Capitalized.yml": "32661de605260bb561e6f052eaafb21fa8f272e60fd13fc9dfa3b4beb3c55837",
+    "styles/Commits/_shared/Period.yml": "39608ab45350e0499899a3e47925bdbdc14950b3a12ae014ffacd1230ae22a27",
+    "styles/Commits/_shared/SubjectLength.yml": "02b7d78b8449622104e411eafbb50bdb701907f9d7f5e2b3b7358a2c2e362b6f",
+    "styles/Commits/_shared/TypeCase.yml": "f1653910da985055307e07f258cbe4cbbc2b7a7002c523bda6bf07e0ccbcb6e4",
+    "styles/Commits/_shared/Wrap.yml": "76354e4a9ff6ba7aa86fc3f09664fe20d8ced27c26aa2dd34036262bebf345ec",
+    "styles/Conventional/Breaking.yml": "08d6ccc9628d14657355fe6ec4a04c9e4f44800b28eb6441f59064f990738d5b",
+    "styles/Conventional/Description.yml": "7823437c078e0a375b95ca0b2db8aef6813499fb78782da8f0d2573885be2079",
+    "styles/Conventional/Footer.yml": "971c92cc94ae61081bcbccda7bd2a7d70f518511b391305984df745eac836b86",
+    "styles/Conventional/Scope.yml": "ab45989a9fae35cea2ad30b77159c7a6f795bfb40146c2597d6ce5b900eaacd1",
+    "styles/Conventional/Space.yml": "83e4a6b5a2982ca5cd0eeddd163f2d27f1c9343ff6aaf2fac6312adcf19e4286",
+    "styles/Conventional/Token.yml": "bc001865f1705885e5e67204d299222484e86c507694ad91163c2a823d469fbe",
+    "styles/Conventional/Type.yml": "d2335993efb78595aa59069a17d58cf29442643e13660a42c8a958644c84b312",
+    "styles/Explanation/Instruction.yml": "2057598df4d55e20fbbeafb20bb4ce8866bc25873d0120b9a0b7a6485896daea",
+    "styles/Explanation/Reference.yml": "956b630f17ad9f62c83a59cc62161d36faa8c695ef9748ccfcce08f1cd387699",
+    "styles/Explanation/Why.yml": "9fb1b62c390bccf48fc39c0dfe7ef090f020f4403bb89b8686b2d11982b450fc",
+    "styles/Google/ExcessiveClaims.yml": "9587449c33f9f00f1508e935094c4c817050e886ff18b70422db42278c3f7388",
+    "styles/HowTo/Explanation.yml": "774588d4ebcadd27c96f724555abcb68baadd2ad8a5ea129b32e3d7f356bb713",
+    "styles/HowTo/Imperative.yml": "da511be38866e8ea3b264864c7e3246e2a72cec7dcca38063b22020db46b4216",
+    "styles/HowTo/Opening.yml": "b05f7476b31add82ce4a4bd70a83249ea4f1715f2b792271129b5f0b0467ec8e",
+    "styles/HowTo/Reference.yml": "bb616ef66c810f5cb54624e7376610cd08ec0dbbca432bb61cc8dfd8a1eda56e",
+    "styles/HowTo/Steps.yml": "550402b45e1582fb036973e2df22de9f984c8f92ba3a1c9e80ac14b07ed798b6",
+    "styles/HowTo/Teaching.yml": "aa5d649350f4dfec4809d20ec10e7d3f1ec4b76f5a6c96a5fd3f91bf56732ecb",
+    "styles/HowTo/Title.yml": "c2aa6681dea663401cc4be37f3eeb560d29e02aa6cf5b1cf76964ac97dd88f43",
+    "styles/Readability/FleschKincaid.yml": "1dae60f0d0e9e0a6ed96dedd799900fcb9495efa0afcc995588413d09a1fda21",
+    "styles/Reference/Examples.yml": "6446fe7d13b0b669c20fd92c688b925f764eb5efceeb731af5207ac15d48a7a2",
+    "styles/Reference/Instruction.yml": "aaa17bb248eef455beaaa3f1a1727de3023e15bcbbfef483de12a7f3b079edc6",
+    "styles/Reference/Opinion.yml": "cc500bca0df656fddc5399b3ec7fd56e124b8c373a3a53b93eefc732477cfe43",
+    "styles/Reference/Walkthrough.yml": "1171f0bd286390de671deb14d3ae8cde152e91ce822e2ecafb4cacdbb79ec674",
+    "styles/Slopsentral/Claims.yml": "249319ce4c1b5ee78208f03a009a6e57a70b7997f82d94590eb6e4c925fbd4b1",
+    "styles/Slopsentral/CommitLength.yml": "9cd6e09003847c7b1726caaa20a85a3f9b63fec1b0742eea562adbd46c79ebbf",
+    "styles/Slopsentral/CommitPeriod.yml": "6a0aad808eee05753171cafb37870afc44255d41b2ffc473b575347b2efe61e3",
+    "styles/Slopsentral/CommitWrap.yml": "e193e8c8a32f24fd1a7afb0bb49e26bafe7dd8053c06fb2b2584e9a3259f0241",
+    "styles/Slopsentral/Contractions.yml": "b85e04d8607eacc001639fbdf7dfa74e2518ac28de8a646415f9a4339cb14a76",
+    "styles/Slopsentral/Diction.yml": "4510a075da23a9dabe61d37aa4b4c0ece5fccc6214937e994330f66ed42a6035",
+    "styles/Slopsentral/GlossaryMarker.yml": "a39a2e950a628dade7e1f340ed0d630c1d1386fe75f26a91a92c8ea2c8f4e3eb",
+    "styles/Slopsentral/Grade.yml": "2c050700d919486ed3ad515c775864b30f6634a451d644f3ec4814be702d5a81",
+    "styles/Slopsentral/LongSentence.yml": "9e6bfd8a005699310ae559d8b3068239ddf05bf792f2c295c719b7a7e6c4c1ec",
+    "styles/Slopsentral/Modals.yml": "efdaa0a56fcfa30755dbe06575900328cd783c30fc293bd8cc2382e0726de827",
+    "styles/Slopsentral/ProcedureLength.yml": "55e4cc3bc25d5447bb0b9f9ff3b502ad7b9a4775821ef4655c7ad27b5fb3edaa",
+    "styles/Std/Readability/SentenceLength.yml": "1b8073531ff09bd4bf26c8844d71e0e6aef467d3803738d3533b478ace40f9fb",
+    "styles/Tutorial/Expectations.yml": "19b64e4b3c02aa8c5ad268f0dc671a863ab95a2e984b00870831a8fe961a36ee",
+    "styles/Tutorial/Explanation.yml": "92eda27ca525a53d6e162e412a4fa7c656369d896a3a88e9af6f998e1157c8b0",
+    "styles/Tutorial/Opening.yml": "0313ff38254a469726db243ccb5b2756b594730cdf64576ddbacd6352cb65b78",
+    "styles/Tutorial/Options.yml": "fd1984d44fb70f9d60004c670ab2d96cf9d3fbee59e58ced5698e84cf4fba6de",
+    "styles/Tutorial/Steps.yml": "0b736034b1af362ae623970e84310ac412a679027a24dc0120cd5fe1fd79932c",
+    "styles/Tutorial/We.yml": "03a9131aceb60e8a090e58a7e89dd173f327d40773ba3fd40952c0f3e2725f17",
+    "styles/config/views/Commit.yml": "a9e58f2ba8f8979487233727cd5c496ace9977adbc78bfebcd880896f0989e52",
+    "styles/config/vocabularies/Slopsentral/accept.txt": "c35b7156488ab087b9f07c831caaac8363771b5aa4f80f90674e23a55ac4d1ec"
+  },
+  "upstream": [
+    {
+      "repository": "vale-cli/Std",
+      "revision": "5ce764fb447663c3eca000978c4fbab2aeb2b41c"
+    },
+    {
+      "repository": "vale-cli/readability",
+      "revision": "20b367bc5febf7ec9b83e176b8e611d230855838"
+    },
+    {
+      "repository": "vale-cli/Google",
+      "revision": "9e2483e2f09e7f623bacbbc154adb9627bed563b"
+    },
+    {
+      "repository": "jdkato/commits",
+      "revision": "0da7f6cf17e334f0f47692980215ecf604c3836d"
+    },
+    {
+      "repository": "jdkato/diataxis",
+      "revision": "748174dbe8e0224cf7bfa7c368b2855841765464"
+    }
+  ]
+}

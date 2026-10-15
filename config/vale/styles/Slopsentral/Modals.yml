@@ -1,0 +1,10 @@
+extends: existence
+message: "Replace '%s' with a direct statement or can, will, or must. Keep the source meaning."
+level: warning
+ignorecase: true
+tokens:
+  - should
+  - would
+  - could
+  - may
+  - might
