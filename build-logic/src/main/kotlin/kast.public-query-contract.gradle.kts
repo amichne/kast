@@ -8,6 +8,7 @@ val verifyPublicQueryGeneratorRules = tasks.register<Exec>("verifyPublicQueryGen
     val generator = rootProject.layout.projectDirectory.file("packaging/generate-public-query.py")
     val tests = rootProject.layout.projectDirectory.file("packaging/test-public-query-generation.py")
     inputs.files(generator, tests)
+    inputs.file(rootProject.file("agent-tools/onboarding.template.md"))
     inputs.file(rootProject.file("cli/src/main/js/query-delivery.mjs"))
     inputs.file(rootProject.file("cli/src/main/resources/query-delivery.schema.json"))
     inputs.file(rootProject.file("packaging/query_delivery_contract.py"))
@@ -23,6 +24,8 @@ val verifyPublicQueryGeneration = tasks.register<Exec>("verifyPublicQueryGenerat
     description = "Rejects drift between the public query schema, Kotlin syntax/defaults, and provider projections."
     val generator = rootProject.layout.projectDirectory.file("packaging/generate-public-query.py")
     inputs.file(generator)
+    inputs.file(rootProject.file("agent-tools/onboarding.template.md"))
+    inputs.dir(rootProject.file("agent-tools/references"))
     inputs.file(rootProject.file("cli/src/main/js/query-delivery.mjs"))
     inputs.file(rootProject.file("cli/src/main/resources/query-delivery.schema.json"))
     inputs.file(rootProject.file("packaging/query_delivery_contract.py"))

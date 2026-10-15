@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test
 
 class InstalledCoordinatorEndpointTest {
     @Test
-    fun `explicit private coordinator serves status alongside a live native Codex endpoint`() =
+    fun `default private coordinator serves status alongside a live native Codex endpoint`() =
         withPayload { root, kast ->
             runBlocking {
                 val native = root.resolve(".codex/app-server-control/app-server-control.sock")
@@ -86,6 +86,7 @@ class InstalledCoordinatorEndpointTest {
         val environment =
             mapOf(
                 "PATH" to "/usr/bin:/bin",
+                "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "codex-control",
                 "BROKER_SERVICE_IDENTITY" to "sha256:${"b".repeat(64)}",
                 "BROKER_READINESS_FILE" to readiness.toString(),
             )
@@ -99,9 +100,7 @@ class InstalledCoordinatorEndpointTest {
     }
 
     private fun privateOptions(kast: Path, root: Path): InstalledCoordinatorOptions =
-        (InstalledCoordinatorConfiguration.admit(kast, root, mapOf("KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private"))
-                as Refinement.Refined)
-            .value
+        (InstalledCoordinatorConfiguration.admit(kast, root, emptyMap()) as Refinement.Refined).value
 
     private fun withPayload(test: (Path, Path) -> Unit) {
         val root = Files.createTempDirectory(Path.of("/private/tmp"), "kast-c-").toRealPath()

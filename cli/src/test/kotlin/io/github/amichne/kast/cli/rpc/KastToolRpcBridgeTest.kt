@@ -136,7 +136,13 @@ class KastToolRpcBridgeTest {
         val output = Path.of("build/reports/query-delivery/adapter-test.log")
         Files.createDirectories(output.parent)
         val process =
-            ProcessBuilder("node", "--experimental-vm-modules", "src/test/js/harness-adapters.test.mjs")
+            ProcessBuilder(
+                    "node",
+                    "--experimental-vm-modules",
+                    "--test",
+                    "src/test/js/harness-adapters.test.mjs",
+                    "src/test/js/native-onboarding.test.mjs",
+                )
                 .redirectErrorStream(true)
                 .redirectOutput(output.toFile())
                 .apply {

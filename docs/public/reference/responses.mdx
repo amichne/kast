@@ -90,7 +90,7 @@ The invocation reports row counts, preview size, and output positions:
 | `retention` and `next_cursor` | Issued result reference and position for more saved rows. |
 | `evidence_window` | Independent evidence positions: `start`, `end`, and `total`. `MORE` means evidence remains. `FINAL` reaches the saved end. |
 
-Small results appear inline. Larger results include a preview with row and byte limits. If retention succeeds, they also include a saved-result reference. `READ_RESULT` presents more rows with that reference and cursor, without semantic replay.
+Small results appear inline. Larger results include a preview with row and byte limits. If retention succeeds, they also include a retained result reference. `READ_RESULT` presents more rows with that reference and cursor, without semantic replay.
 
 Accumulated failures, omissions, and observations also use bounded pages. If `evidence_window.type` is `MORE`, set `READ_RESULT.evidence_cursor` to `evidence_window.end`.
 

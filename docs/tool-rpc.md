@@ -7,7 +7,7 @@ Kast's existing IDEA preparation and semantic operation path.
 
 The installed command is
 `${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-tool-rpc-complete`.
-Both adapters below call this command directly. Set `KAST_TOOL_RPC_COMMAND` to an
+The optional RPC adapters call this command directly. Set `KAST_TOOL_RPC_COMMAND` to an
 absolute executable path when trying a checkout build.
 
 ## Contract
@@ -88,6 +88,13 @@ request permission to bypass tool prompts when it loads. No Copilot MCP server i
 
 ## Pi
 
+`kast connect pi` installs the context extension with native MCP support.
+It registers `kast-mcp-complete` through Pi's `registerMcpServer` API.
+Pi owns tool discovery, permissions, and connection lifetime.
+The extension reads the shared brief at session start and adds it to the system prompt before each model request.
+It does not use Tool RPC.
+See [the shared context guide](../agent-tools/README.md) for plugin installation and runtime needs.
+
 Register the bundled Pi adapter:
 
 ```shell
@@ -105,13 +112,17 @@ and retains a private backup of the displaced bytes. Failed transactions restore
 the prior connection and Kast configuration. Use `--no-recover` to reject a
 conflict without replacement.
 
-It registers the same live catalog in Pi.
+The optional source adapter at `pi/extension.ts` still supports Tool RPC.
+It registers the live RPC catalog in Pi.
 For every catalog tool marked `WRITE`, including `add_declaration` and
 `replace_body`, it asks for interactive approval and refuses the call without an
 approving UI. Both clients pass their current workspace to the same RPC
 command, so one Kast installation serves different repositories and worktrees.
 
 ## Client-owned query delivery
+
+`pi/extension.ts` and `copilot/extension.mjs` own the behavior in this section.
+The installed Pi extension uses native MCP instead.
 
 Pi and Copilot invoke `query_symbols` once at the model boundary. Their shared
 portable delivery rule may then make output-only `RESUME` or retained

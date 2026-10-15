@@ -1,0 +1,11 @@
+Slopsentral
+Vale
+Diátaxis
+Diataxis
+CMS
+MCP
+Pyright
+Ruff
+pytest
+uv
+projeKtor

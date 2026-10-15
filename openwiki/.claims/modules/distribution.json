@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:aa277d19add61bdc78f4286092a0a86851f35d8d829209751f69efb3896cc107",
+  "pageVersion": "sha256:9b77f52b9c13e734d44619cf95b846060f5bdc2ccc6dcc1f31cc71df08f67712",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -86,7 +86,7 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:5683109104e81537aeb7cae517ba6e312240633724e63ad6141d3907b625fd39"
+          "version": "repo-file-v1:sha256:20f66494a7f382ba9fcb9fb0e7100a5c739c588da34de139c8685f995f1732b5"
         },
         {
           "resource": "repo://packaging/host-installation.py",
@@ -167,7 +167,7 @@
       "statement": "Assembled-product acceptance stages production Control in an owned HOME, verifies canonical cold staging and publication, then stages the receipted Host, creates an empty canonical mutation database and invokes the real published native uninstall, requiring owned Host, Control, public executable and user-state removal while preserving an unrelated sentinel; it does not establish live IDE or Codex behavior.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L271-L293",
+          "resource": "repo://build.gradle.kts#L270-L292",
           "version": "repo-lines-v1:sha256:c63ebb273fccf68e2a3c0f1cbab575687a341afc2488c43a61044c28d63cfb1d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlYTVmNjVjMTE2ZTQzZGMzODJmNzkzYzE2MGI4NmE1ZTBjZDMwMjc4Nzg5ZTkxM2M0NDdhMGJlYjkyMzc3NGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdjMmM1MTE5MzI3MjZkMjc5MTVmMDlhZGUxNTlmMThlZjE3NjkzYzY2ODk3NGZjZjg0MDQ0YmE3YzRmMTU5N2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ2ZDE3ZjYwNzhkNzM1YTY5MmM1OWM5MTAwOWE2NDYwZmYzZTQxZjZjZDU5MzBjOGFiYmU3ZDFmMmU1NTI0MTgifQ"
         },
         {
@@ -330,7 +330,7 @@
         },
         {
           "resource": "repo://.github/scripts/release/publish-developer.sh",
-          "version": "repo-file-v1:sha256:6359f1013310332479b79685805c57d3eb86cc5e144c05e2c26be148f8cb0499"
+          "version": "repo-file-v1:sha256:e19984dcb008a19be5cba9f34ee40127ed0eb5b2f884eedaa02d4c9f8be35530"
         },
         {
           "resource": "repo://.github/workflows/developer-release.yml",
@@ -401,6 +401,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T03:36:06.201Z"
+    "at": "2026-10-15T19:07:35.337Z"
   }
 }

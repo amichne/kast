@@ -4,10 +4,13 @@ title: "Kast repository engineering guide"
 description: "Defines repository rules, source owners, development entry points, and the contract for scoped OKF guides."
 resource: "repo://kast"
 tags: [kast, navigation]
-timestamp: "2026-10-14T23:25:10Z"
-source_revision: e014a489bfd7e69cbf2c4b61140ee771d857a03e
+timestamp: "2026-10-15T19:04:53Z"
+source_revision: 0b95306caef9f314f4419bd73ed0171bc67da230
 code_sources:
   - path: build.gradle.kts
+  - path: .vale.ini
+  - path: docs/glossary.json
+  - path: config/vale/styles/Kast/Terminology.yml
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
@@ -19,7 +22,7 @@ code_sources:
   - path: settings.gradle.kts
 ---
 
-# kast
+# Kast
 
 ## Purpose
 
@@ -29,7 +32,9 @@ This guide owns repository rules and routes source investigation.
 ## Key Files
 
 - `AGENTS.md` - durable engineering rules for every change.
-- `README.md` - product purpose, installation, connection, development, and failure semantics.
+- `README.md` - product value, one installation path, and links to task guides.
+- [Glossary](docs/GLOSSARY.md) - canonical terms for documentation and agent instructions, with source evidence in `docs/glossary.json`.
+- `.vale.ini` - repository Vale configuration with checked-in rules in `config/vale/`.
 - `settings.gradle.kts` - authoritative included-build and module inventory.
 - `build.gradle.kts` - root build configuration and shared task wiring.
 - `gradle/libs.versions.toml` - dependency and plugin versions.
@@ -50,9 +55,10 @@ This guide owns repository rules and routes source investigation.
 - [`indexer/`](indexer/AGENTS.md) - retirement record for the former isolated semantic sidecar.
 - [`app-server/`](app-server/AGENTS.md) - persistent coordinator, host adapters, workspace lanes, and Codex protocol integration.
 - [`cli/`](cli/AGENTS.md) - private JVM entry points, direct tools, installation workflows, and typed output projections.
-- [`copilot/`](copilot/extension.mjs) and [`pi/`](pi/extension.ts) - thin agent extensions over the shared tool RPC.
+- [`copilot/`](copilot/extension.mjs) - optional agent extension over the shared tool RPC.
+- [`pi/`](pi/mcp-extension.ts) - shared context and native MCP registration for Pi.
 - [`distribution/`](distribution/AGENTS.md) and [`packaging/`](packaging/AGENTS.md) - installation contracts, managed artifacts, release assembly, and acceptance harnesses.
-- [`agent-tools/`](agent-tools/README.md) - independently installable query skill, MCP plugin, and marketplace source.
+- [`agent-tools/`](agent-tools/AGENTS.md) - shared context, generated query references, MCP plugins, and marketplace source.
 - [`build-logic/`](build-logic/AGENTS.md) - Gradle conventions and architecture enforcement.
 - [`docs/`](docs/AGENTS.md) - public Mintlify documentation and visual evidence helpers.
 
@@ -82,7 +88,7 @@ This guide owns repository rules and routes source investigation.
 - For public syntax, start with the authored schema and admission in the [public query guide](app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/AGENTS.md).
 - For semantic execution, trace direct MCP or tool RPC through the existing-IDE client into `runtime/hosted` and the domain protocol owner.
 - For wire contracts, trace `protocol/contract` -> `protocol/registry` -> `protocol/wire`.
-- For startup or connectivity, start with `README.md`, then `cli`, `app-server`, `runtime/hosted`, and `workspace/intellij-read` in that order.
+- For startup or connectivity, start with `docs/public/start.mdx` and `docs/public/reference/installation.mdx`, then examine `cli`, `app-server`, and `runtime/hosted`.
 - For installation failures, start with `install.sh`, `distribution`, and `packaging`; use `app-server/docs/compatibility.md` for known Codex integration gates.
 - For architecture violations, start with `build-logic/src/main/kotlin/kast.architecture.gradle.kts` and `build-logic/src/main/kotlin/support/architecture`.
 - For implementation details, read the cited source and its focused tests.
@@ -157,6 +163,19 @@ This guide owns repository rules and routes source investigation.
 - Verify actual encoded output against an independent expected shape or authoritative schema. Cover each closed outcome variant, required defaults/discriminators, and rejection of unknown values. A round trip through the same serializer alone is not contract proof.
 - When changing an existing manual JSON boundary, migrate the affected shape and its callers in the same change. Do not extend manual construction or erase a typed failure to make a test pass.
 - Run `./gradlew verifyJsonContracts`; `check` and `productBuildGate` require it. Its [syntax guard and exact baseline](config/json-contracts/README.md) reject new, changed, duplicated, and stale manual JSON expressions. Do not expand legacy allowances to pass a check. This guard supplements the encoded-shape and schema tests above; it does not replace them.
+
+## Documentation and terminology
+
+- Use the [glossary](docs/GLOSSARY.md) as the canonical vocabulary for repository prose. `docs/glossary.json` owns definitions, distinctions, source evidence, and rejected forms.
+- Use each term for its defined concept. Add a source-backed definition before a new domain term becomes shared vocabulary.
+- Preserve code identifiers, commands, UI labels, generated contracts, and attributed quotations. Do not rename a distinct concept because its wording resembles another term.
+- Keep historical reports tied to their recorded revision. Apply terminology changes to current prose within the glossary's declared scope.
+- Edit the JSON source. Regenerate its reader view and Vale terminology rules through [the documentation policy](docs/documentation-structure.md#glossary-ownership).
+- Keep the README focused on reader value and one default installation path. Put options, lifecycle behavior, and runtime detail in reference documentation.
+- Use Vale `3.24.0` from `mise.toml` with `.vale.ini`. Rules and licenses reside in `config/vale/` and need no runtime package download.
+- Run `mise exec -- vale --no-global --config=.vale.ini --output=JSON` with each changed prose path. Keep the report.
+- Run the pinned Repository Knowledge assessment for changed prose. Keep unresolved findings with their rule, location, and reason.
+- Report `ASSESSED` separately from a clean report. Prose metrics and lexical rules do not prove source truth or reader comprehension.
 
 ## Repository Knowledge
 

@@ -1,0 +1,8 @@
+extends: existence
+message: "Write '%s' without a contraction."
+level: warning
+ignorecase: true
+tokens:
+  - "[A-Za-z]+n['’]t"
+  - "(?:I|you|we|they|he|she|it|that|there|what|who)['’](?:m|re|ve|ll|d|s)"
+  - "let['’]s"

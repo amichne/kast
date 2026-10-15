@@ -91,7 +91,7 @@ class HostedExecutionBudgetTest {
                 )
                 .proven()
         val grant = HostedReadDeadline(limits, { 0L }).admit(null).proven().executionBudget
-        assertEquals(2_000L, grant.elapsed.configuredDefault.value)
+        assertEquals(15_000L, grant.elapsed.configuredDefault.value)
         assertEquals(800L, grant.elapsed.effective.value)
         assertEquals(12L, grant.work.effective.value)
         assertEquals(3, grant.results.effective.value)

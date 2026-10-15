@@ -85,7 +85,6 @@ def generate(root: Path, directory: Path, version: str, sha: str) -> None:
     names = (
         f"kast-control-v{version}-macos-aarch64.tar.gz",
         plugins[0].name,
-        f"kast-skill-v{version}.zip",
         f"kast-plugin-v{version}.zip",
         f"kast-marketplace-v{version}.zip",
     )

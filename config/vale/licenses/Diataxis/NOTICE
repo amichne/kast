@@ -1,0 +1,9 @@
+Diataxis (the Vale package) is MIT licensed; see LICENSE.
+
+The rules enforce, in their own words, the distinctions drawn by Diátaxis,
+a framework for technical documentation authorship by Daniele Procida
+(https://diataxis.fr), published under the Creative Commons
+Attribution-ShareAlike 4.0 International License. Each rule links to the
+page it follows. No text from diataxis.fr is reproduced beyond short
+quotations in rule comments; the checks, messages, and cases are this
+project's own. Diátaxis is not affiliated with this package.

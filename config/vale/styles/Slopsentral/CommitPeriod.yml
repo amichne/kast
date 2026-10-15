@@ -1,0 +1,2 @@
+extends: Commits._shared.Period
+message: "Remove the period at the end of the commit subject."

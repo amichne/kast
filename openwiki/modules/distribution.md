@@ -319,7 +319,7 @@ sources:
 generated: { by: "codex", at: "2026-10-15T03:36:06.201Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-15T03:36:06.201Z
+    at: 2026-10-15T19:07:35.337Z
 ---
 
 # Distribution and packaging

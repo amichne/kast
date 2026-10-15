@@ -154,7 +154,7 @@
           },
           "minItems": 1,
           "maxItems": 4,
-          "description": "null includes all four supported declaration families. Supply a non-empty, non-duplicate list to restrict them. The class family means Kast's supported class-like declarations. Constructors are not included.",
+          "description": "null includes all families. Use a non-empty, unique subset. CLASS includes interfaces, classes, objects, enums, and annotation classes. INTERFACE is invalid. Constructors and enum entries are excluded.",
           "uniqueItems": true
         },
         "scope": {
@@ -692,6 +692,7 @@
       "description": "Optional execution allowances. Null or omitted dimensions use configured defaults; positive values are independently clamped to operator and transport ceilings. These controls do not alter query take, scope, or projection.",
       "properties": {
         "maxElapsedMs": {
+          "description": "Elapsed allowance in milliseconds. It does not impose a wait. Omission uses KAST_READ_SEMANTIC_MILLIS. Remaining host time can reduce the admitted grant.",
           "type": [
             "integer",
             "null"
@@ -700,6 +701,7 @@
           "maximum": 9223372036854775807
         },
         "maxWorkUnits": {
+          "description": "Accounted work allowance, independent of response size. Query omission uses KAST_READ_SEMANTIC_WORK. More time alone does not raise this allowance.",
           "type": [
             "integer",
             "null"
@@ -708,6 +710,7 @@
           "maximum": 9223372036854775807
         },
         "maxResults": {
+          "description": "Result allowance, independent of execution work. Query omission uses KAST_READ_SEMANTIC_RESULTS. A short presentation page does not prove completion.",
           "type": [
             "integer",
             "null"
@@ -716,6 +719,7 @@
           "maximum": 2147483647
         },
         "maxReturnedBytes": {
+          "description": "Encoded response allowance in bytes. Query omission uses KAST_READ_SEMANTIC_RETURNED_BYTES. Checkpoint storage has separate operator quotas.",
           "type": [
             "integer",
             "null"

@@ -1,0 +1,4 @@
+extends: Commits._shared.SubjectLength
+message: "Commit subject: %d characters. Keep the subject at 72 characters or fewer."
+level: error
+max: 72

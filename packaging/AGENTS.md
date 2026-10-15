@@ -51,6 +51,7 @@ Owns installer adapters, offline lifecycle helpers, contract generation, and ass
 - Native reset scripts need the disposable installation setup stated in their own arguments and documentation.
 - [test-host-installation.py](test-host-installation.py) - Host target and receipt protection.
 - [test-installer-entrypoint.py](test-installer-entrypoint.py) - published-channel selection and installer ingress.
+- For the Kast plugin session hook, run `./gradlew agentSessionSetupTest`. Its locked uv environment stays in the build directory.
 
 ## Navigation Hints
 
