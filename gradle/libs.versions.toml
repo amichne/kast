@@ -13,7 +13,7 @@ ide-host-build = "262.10315.125"
 ide-kotlin-plugin-build = "262.10315.125-IJ"
 sqlite-jdbc = "3.53.2.0"
 json-schema-validator = "3.0.3"
-ktor = "3.5.2"
+ktor = "3.6.0"
 mcp-kotlin = "0.15.0"
 
 [libraries]
