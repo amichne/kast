@@ -1,13 +1,18 @@
 package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryCallbackGraphBoundaryDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackGraphCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackGraphFailureDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackGraphSubjectDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackObservationOrigin
+import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.query.contract.QueryRelationObservation
 import io.github.amichne.kast.query.contract.QueryWalkObservation
 import io.github.amichne.kast.relation.contract.CompleteStaticCallbackGraph
 import io.github.amichne.kast.relation.contract.RelationCallbackObservation
+import io.github.amichne.kast.relation.contract.RelationOccurrence
 import io.github.amichne.kast.relation.contract.admitCallbackWorkspace
 
 internal fun callbackProof(
@@ -54,7 +59,14 @@ private fun callbackGroupProof(
     callables.forEachIndexed { position, value ->
         when (val proof = value.callableProof()) {
             is Refinement.Refined -> Unit
-            is Refinement.Rejected -> return callbackRejected(proof.failure, origin, group, position)
+            is Refinement.Rejected ->
+                return callbackRejected(
+                    proof.failure,
+                    origin,
+                    group,
+                    position,
+                    QueryCallbackGraphSubjectDocument.Callable(value.occurrence.graphLocation()),
+                )
         }
     }
     callbacks.forEachIndexed { position, observation ->
@@ -62,13 +74,15 @@ private fun callbackGroupProof(
             is Refinement.Refined -> Unit
             is Refinement.Rejected ->
                 return when (val projected = admitted.failure.protocolGraphCause()) {
-                    is Refinement.Refined -> callbackRejected(projected.value, origin, group, position)
+                    is Refinement.Refined ->
+                        callbackRejected(projected.value, origin, group, position, observation.graphSubject())
                     is Refinement.Rejected ->
                         callbackRejected(
                             QueryCallbackGraphCauseDocument.InvalidGraphFailure(projected.failure),
                             origin,
                             group,
                             position,
+                            observation.graphSubject(),
                         )
                 }
         }
@@ -81,11 +95,21 @@ private fun callbackRejected(
     origin: QueryCallbackObservationOrigin,
     group: Int,
     position: Int,
+    subject: QueryCallbackGraphSubjectDocument,
 ) =
     Refinement.Rejected(
         QueryCompletionFailure.Callback(
-            QueryCallbackGraphFailureDocument(cause, origin, queryPosition(group), queryPosition(position))
+            QueryCallbackGraphFailureDocument(cause, origin, queryPosition(group), queryPosition(position), subject)
         )
+    )
+
+private fun RelationCallbackObservation.graphSubject() =
+    QueryCallbackGraphSubjectDocument.Callback(occurrence.graphLocation(), callbackBody.graphLocation())
+
+private fun RelationOccurrence.graphLocation() =
+    QueryCallbackGraphBoundaryDocument.from(
+        ProtocolText.parse(file.stableValue).required(),
+        SourceRangeDocument.create(queryPosition(range.startInclusive), queryPosition(range.endExclusive)).required(),
     )
 
 private fun io.github.amichne.kast.relation.contract.NamedCallbackReferenceFlow.Unavailable.namedReferenceFailure():

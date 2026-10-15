@@ -39,6 +39,10 @@ Run the public installer from a terminal.
 
 The default selects stable Control and Host independently. The installer examines component contracts before it reports installation success.
 
+The installer offers a user-level Codex MCP connection. Accept the default to use Codex after you restart IDEA and Codex.
+
+For registration without a prompt, append `-- --register-codex-mcp`. To preserve existing Codex MCP configuration, append `-- --skip-codex-mcp`.
+
 For structured diagnostics, append `-- --verbose`. Preserve the `--` separator before installer options.
 
 <Accordion title="Latest developer build">
@@ -88,6 +92,14 @@ If `XDG_CONFIG_HOME` is nonempty, the public executable is `$XDG_CONFIG_HOME/kas
 If the shell cannot find the command, use the installer-reported absolute path. Add its directory to `PATH` when needed.
 
 The installer reports a missing `PATH` entry. It does not change shell profiles.
+
+### Coordinator endpoint
+
+Fresh installations use a private endpoint. Routine installation preserves admitted saved settings unless you select another endpoint.
+
+Select `codex-control` explicitly to expose the standard Codex control socket. An occupied or unreadable socket does not establish ownership.
+
+Read [App Server compatibility](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md) for endpoint admission and migration details.
 
 ## 3. Establish a semantic connection
 

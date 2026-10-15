@@ -5,188 +5,193 @@ description: The existing IDEA plugin owns semantic execution; CLI and App Serve
   own installation, transport, sessions and canonical native mutation admission.
 resource: file://runtime
 tags:
-- kotlin
-- runtime
-- server
-- indexer
-- cli
+  - kotlin
+  - runtime
+  - server
+  - indexer
+  - cli
 code_sources:
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerJavaRuntime.kt
-  symbols: [BrokerJavaRuntime]
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolRegistration.kt
-  symbols: [DirectToolRegistration]
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
-  symbols: [KastDirectToolSession]
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServiceAdmissionScan.kt
-  symbols:
-  - observeHostedEntries
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedEndpointDocuments.kt
-  symbols:
-  - RecordedHostedEndpointOwner
-  - DeclaredHostedEndpoint
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedAdmissionEvidence.kt
-  symbols:
-  - HostedAdmissionEvidence
-  - BoundedHostedAdmissionObserver
-- path: app-server/src/main/resources/control/hosted-endpoint-owner.schema.json
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFence.kt
-  symbols:
-  - InstallationLifecycleFence
-  - InstallationLifecycleStartAdmission
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ResetActivationAdmission.kt
-  symbols:
-  - ResetActivationAdmission
-  - ResetActivationLease
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt
-  symbols:
-  - InstalledToolAdmission
-  - observeInstalledToolAdmission
-- path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFenceTest.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/SessionRequests.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeAdmission.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeGate.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeDocument.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeObservation.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionMessages.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecutionPolicy.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/FileThreadCatalogStore.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/ThreadBindingDocuments.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/ThreadCatalogStore.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/ThreadMigrationObservation.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationResponses.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationCapacityLimit.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationFence.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationRecords.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/FileInvocationRecords.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/storage/PrivateRecordFiles.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationMigrationObservation.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceDemand.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparation.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonWorkspacePreparation.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparationActivity.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonManagementProtocol.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonManagementClient.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonOperationProtocol.kt
-  symbols:
-  - DaemonOperationProtocol
-  - DaemonOperationSelection
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonOperationClient.kt
-  symbols:
-  - DaemonOperationClient
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonUpgrade.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonManagement.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/CoordinatorRoutes.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastCatalogObservation.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastInputSchema.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastCatalogSource.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastDirectInvocation.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastInvocationAdmission.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleReadiness.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedVfsRefreshOutcome.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedGradleChangeTracker.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceStartupEnrollment.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerPublicEndpoint.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/ManagedCodexUpstream.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/UnixSocketOwnership.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/CodexUnixWebSocket.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerControlRoute.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/PersistentBrokerService.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerManagement.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/LegacyLoginBootstrap.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ServiceLoginAgent.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerServiceStartLock.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerLaunchdServiceDocument.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/PublishedBrokerServiceCommand.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/NativeCodexReadiness.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinatorClient.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ConfigurationAppliedInspection.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerStatus.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerStatusDocument.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTransportObservation.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadBudgetReports.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryContinuations.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
-- path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
-- path: docs/reviews/live-semantic-read-acceptance.md
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinator.kt
-  symbols:
-  - InstalledCoordinator
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
-  symbols:
-  - main
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/IndexingWait.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
-- path: runtime/hosted/build.gradle.kts
-- path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/compatibility/IdeHostCompatibility.kt
-  symbols:
-  - IdeHostCompatibilityPolicy
-  - IdeReleaseLine
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointProtocol.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerCancellation.kt
-  symbols:
-  - HostedPeerTermination
-  - dispatchUntilPeerTermination
-- path: query/protocol/build.gradle.kts
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeQuery.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/ide/IdeCommands.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeCoordinator.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceStartupEnrollment.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/ProjectCloseAuthority.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedResponse.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/CoordinatorControl.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResponse.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceStateStore.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyGraph.kt
-  symbols:
-  - sourceDependencyClosure
-  - sourceExpiredEntries
-- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticCheckpointStore.kt
-- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateRecords.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRetentionMeasurements.kt
-- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticStateRecords.kt
-- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticRetentionOwnership.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceRetentionAdmission.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourcePublicationSession.kt
-- path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyExpiryTest.kt
-- path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceClaimExpiryTest.kt
-- path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyBindingTest.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRetentionOwner.kt
-- path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt
-  symbols:
-  - HostedContract
-  - HostedCompatibilityPolicy
-  - HostedCompatibilityRequirements
-  - HostProvenance
-- path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt
-  symbols:
-  - CanonicalHostedContract
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCompatibilityMetadata.kt
-  symbols:
-  - HostedCompatibilityMetadata
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServicesObservation.kt
-  symbols:
-  - HostedServicesObservation
-  - observeRunningHostedServices
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt
-  symbols:
-  - IdeLifecycleClient
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServices.kt
-- path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostedServiceStatus.kt
-- path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerJavaRuntime.kt
+    symbols:
+      - BrokerJavaRuntime
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolRegistration.kt
+    symbols:
+      - DirectToolRegistration
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
+    symbols:
+      - KastDirectToolSession
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServiceAdmissionScan.kt
+    symbols:
+      - observeHostedEntries
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedEndpointDocuments.kt
+    symbols:
+      - RecordedHostedEndpointOwner
+      - DeclaredHostedEndpoint
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedAdmissionEvidence.kt
+    symbols:
+      - HostedAdmissionEvidence
+      - BoundedHostedAdmissionObserver
+  - path: app-server/src/main/resources/control/hosted-endpoint-owner.schema.json
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFence.kt
+    symbols:
+      - InstallationLifecycleFence
+      - InstallationLifecycleStartAdmission
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ResetActivationAdmission.kt
+    symbols:
+      - ResetActivationAdmission
+      - ResetActivationLease
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt
+    symbols:
+      - InstalledToolAdmission
+      - observeInstalledToolAdmission
+  - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFenceTest.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/SessionRequests.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeAdmission.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeGate.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeDocument.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeObservation.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerSessionMessages.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecutionPolicy.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/FileThreadCatalogStore.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/ThreadBindingDocuments.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/ThreadCatalogStore.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/ThreadMigrationObservation.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationResponses.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationCapacityLimit.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationFence.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationRecords.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/FileInvocationRecords.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/storage/PrivateRecordFiles.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationMigrationObservation.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceDemand.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparation.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonWorkspacePreparation.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparationActivity.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonManagementProtocol.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonManagementClient.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonOperationProtocol.kt
+    symbols:
+      - DaemonOperationProtocol
+      - DaemonOperationSelection
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonOperationClient.kt
+    symbols:
+      - DaemonOperationClient
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonUpgrade.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonManagement.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/CoordinatorRoutes.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastCatalogObservation.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastInputSchema.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastCatalogSource.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastDirectInvocation.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastInvocationAdmission.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleReadiness.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedVfsRefreshOutcome.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedGradleChangeTracker.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceStartupEnrollment.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerPublicEndpoint.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/ManagedCodexUpstream.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/UnixSocketOwnership.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/CodexUnixWebSocket.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerControlRoute.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/PersistentBrokerService.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerManagement.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/LegacyLoginBootstrap.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ServiceLoginAgent.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerServiceStartLock.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerLaunchdServiceDocument.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/PublishedBrokerServiceCommand.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/NativeCodexReadiness.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinatorClient.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ConfigurationAppliedInspection.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerStatus.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerStatusDocument.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTransportObservation.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReadBudgetReports.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryContinuations.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
+  - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
+  - path: docs/reviews/live-semantic-read-acceptance.md
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinator.kt
+    symbols:
+      - InstalledCoordinator
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
+    symbols:
+      - main
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/IndexingWait.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
+  - path: runtime/hosted/build.gradle.kts
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/compatibility/IdeHostCompatibility.kt
+    symbols:
+      - IdeHostCompatibilityPolicy
+      - IdeReleaseLine
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointProtocol.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerCancellation.kt
+    symbols:
+      - HostedPeerTermination
+      - dispatchUntilPeerTermination
+  - path: query/protocol/build.gradle.kts
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeQuery.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/ide/IdeCommands.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeCoordinator.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceStartupEnrollment.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/ProjectCloseAuthority.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedResponse.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSemanticServices.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/CoordinatorControl.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedReferenceStore.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResponse.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceStateStore.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyGraph.kt
+    symbols:
+      - sourceDependencyClosure
+      - sourceExpiredEntries
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticCheckpointStore.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateRecords.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRetentionMeasurements.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticStateRecords.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/DiagnosticRetentionOwnership.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceRetentionAdmission.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourcePublicationSession.kt
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyExpiryTest.kt
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceClaimExpiryTest.kt
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedSourceDependencyBindingTest.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedRetentionOwner.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt
+    symbols:
+      - HostedContract
+      - HostedCompatibilityPolicy
+      - HostedCompatibilityRequirements
+      - HostProvenance
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt
+    symbols:
+      - CanonicalHostedContract
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCompatibilityMetadata.kt
+    symbols:
+      - HostedCompatibilityMetadata
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServicesObservation.kt
+    symbols:
+      - HostedServicesObservation
+      - observeRunningHostedServices
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt
+    symbols:
+      - IdeLifecycleClient
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServices.kt
+  - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostedServiceStatus.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QuerySessionRejectionDetail.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt
 sources:
   - id: openwiki-source-948a9971897847e7bf395c0e
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerManagement.kt
@@ -270,10 +275,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-73144b588342a1cc6d17731e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-09T14:52:54.878Z" }
+generated: { by: "codex", at: "2026-10-15T03:39:16.872Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-14T01:57:02.037Z
+    at: 2026-10-15T03:39:16.872Z
 ---
 
 # Runtime and process hosts
@@ -304,7 +309,16 @@ The hosted provider admits public intent tools and supported changes through the
 
 Installation lifecycle admission fences automatic coordinator startup while detachment, shutdown, transition or reset markers remain. Unknown observation rejects. A reset marker permits startup only for an exact installation-bound `ACTIVATING` record and a currently held exclusive reset lease; malformed, foreign, oversized or unlocked records remain fenced. Installed direct tools separately reject shutdown or reset markers, including unproven absence, before workspace discovery or dispatch. This allows the reset owner to establish daemon readiness while tool calls remain stopped until it lifts the exterior fence. The focused `InstallationLifecycleFenceTest` covers absent installation state, held versus released activation locks, and malformed, foreign and oversized records. See [distribution lifecycle](distribution.md) for retirement, cold staging and readiness obligations.
 
-App Server owns persistent sessions, the invocation journal, project-close controller confirmation, provider qualification and workspace lanes. A cancelled change apply settles the journal and releases its lane only after native recovery proves `prior_state` or `rolled_back`; unresolved effects retain uncertainty. `CoordinatorControl` provides bounded owner-correlated status with zero worker reservations and rejects retired worker demands. Service enablement starts the daemon without enrolling its current directory. New Codex threads discover the nearest canonical `settings.gradle.kts` owner, or validate the explicit exact owner, before registration and binding. Broad historical HOME registration cannot replace that repository owner; saved incorrect bindings reject without retargeting. Registration preserves closed failures and emits bounded, payload-free startup evidence. Thread-binding validation for resume and invocation remains read-only. Workspace enrollment remains routing data. It grants no importer or worker capability. Provider qualification verifies the packaged catalog against the canonical registry. Installed semantic provider calls first use the shared workspace preparation owner. They then use the App Server-owned IDEA client directly; canonical changes use the same workspace demand before immutable plan loading, preserving canonical request admission, finite failures, root/host binding and operation output validation. Pure request and result projection lives in `protocol:wire`.
+App Server owns persistent sessions, the invocation journal, project-close controller confirmation, provider qualification and workspace lanes. A cancelled change apply settles the journal and releases its lane only after native recovery proves `prior_state` or `rolled_back`; unresolved effects retain uncertainty. `CoordinatorControl` provides bounded owner-correlated status with zero worker reservations and rejects retired worker demands. Service enablement starts the daemon without enrolling its current directory.
+
+New Codex threads with Kast tools admit the nearest canonical `settings.gradle.kts` owner or the explicit exact owner before registration and binding.
+Ordinary threads outside Gradle projects pass upstream without a Kast binding.
+Unbound resume and fork requests also pass upstream.
+Explicit Kast roots still need the canonical settings owner.
+
+Broad historical HOME registration cannot replace that repository owner; saved incorrect bindings reject without retargeting. Registration preserves closed failures and emits bounded, payload-free startup evidence. Thread-binding validation for resume and invocation remains read-only. Workspace enrollment remains routing data. It grants no importer or worker capability.
+
+Provider qualification verifies the packaged catalog against the canonical registry. Installed semantic provider calls first use the shared workspace preparation owner. They then use the App Server-owned IDEA client directly; canonical changes use the same workspace demand before immutable plan loading, preserving canonical request admission, finite failures, root/host binding and operation output validation. Pure request and result projection lives in `protocol:wire`.
 
 Installed service admission uses the existing explicitly owned Java candidate when supplied, otherwise the saved IDEA selection's bundled JBR. It admits canonical executable paths and a bounded Java release declaration with feature 25 or newer into `BrokerJavaRuntime`, which command construction retains. Exactly one `JAVA_VERSION` declaration must be present and fully quoted; a malformed duplicate beside a valid declaration also rejects. An absent selection or incompatible runtime rejects with `JAVA_RUNTIME_UNAVAILABLE`; ambient `JAVA_HOME` supplies no fallback. A managed upstream socket alias is admitted only when its resolved socket is open in the launched Codex process; the alias and target identities are retained and rechecked before and after later connections. A successful WebSocket probe alone does not prove ownership. Unproven aliases reject with `SOCKET_ALIAS_OWNER_UNPROVEN`.
 
@@ -547,3 +561,18 @@ owner. Canonical public request admission and installation shutdown admission st
 precede workspace preparation and execution.
 
 Only known root admission failures before dispatch (`WORKSPACE_START_UNAVAILABLE`, `WORKSPACE_START_NOT_DIRECTORY`, `WORKSPACE_ROOT_MARKER_NOT_FOUND`, `WORKSPACE_INVALID_ROOT_MARKER`) settle as known without fencing recovery. Other provider or interrupted effect outcomes preserve uncertainty unless native recovery proves settlement.
+
+## Focused runtime and transport explanations
+
+- [Hosted composition and publication](../runtime/hosted-composition-and-publication.md) traces the project endpoint into final response ownership.
+- [IDEA lifecycle and refresh](../runtime/idea-lifecycle-and-refresh.md) explains explicit project preparation and task evidence.
+- [Coordinator preparation](../transport/coordinator-and-workspace-preparation.md) explains exact-root enrollment and coalesced work.
+- [Invocation fencing and durable records](../transport/invocations-and-durable-records.md) traces replay, interruption, and restart settlement.
+- [Codex hosts](../transport/codex-hosts-and-framing.md) explains host-owned transport and bounded framing.
+- [Direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) explains the shared direct session.
+- [Harness delivery](../transport/harness-delivery.md) explains Copilot, Pi, and portable output adapters.
+
+The tool RPC query session now admits one initial READ_SOURCE as a terminal source read.
+After query output, another source read needs a new session.
+Typed session rejection preserves the expected and requested result or continuation and the next permitted action.
+Request-only `plan-query` returns scope advice before installation access or host effects.

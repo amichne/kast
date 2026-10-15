@@ -63,6 +63,7 @@
           {
             "group": "Investigate and change code",
             "pages": [
+              "how-to/complete-engineering-task",
               "reference/search",
               "how-to/inspect-diagnostics",
               "how-to/read-retained-evidence",

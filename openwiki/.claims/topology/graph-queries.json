@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:1019eda69d9a7d367130555c225cf89cb8538c00fea893c102908c67cc0f7371",
+  "claims": [
+    {
+      "id": "claim_64e1afc7834442d29d17bde0d5626da8",
+      "statement": "Topology graph operations construct algorithms only after the content reader admits one detached published snapshot.",
+      "evidence": [
+        {
+          "resource": "repo://topology/service/src/main/kotlin/io/github/amichne/kast/topology/service/TopologyGraphService.kt",
+          "version": "repo-file-v1:sha256:364d5be2d29af11b102b9a5cdea204b1c3dcc1eb0275b4856f649d3ae746caed"
+        }
+      ]
+    },
+    {
+      "id": "claim_30629afc339e4dd685d30ae21df950b6",
+      "statement": "GraphIndex uses canonical symbol and edge order and implements breadth-first traversal and shortest-path reachability.",
+      "evidence": [
+        {
+          "resource": "repo://topology/service/src/main/kotlin/io/github/amichne/kast/topology/service/GraphIndex.kt",
+          "version": "repo-file-v1:sha256:4f08ed3e07915153dfe9e11d33ea360eb08dadc4e9e3384a0cfcdd17c4831e89"
+        }
+      ]
+    },
+    {
+      "id": "claim_6a93e8a633f341b7a8042de52c4000c0",
+      "statement": "The SQLite relation adapter retains exact admitted snapshot content and rejects wrong roots, generations, live leases, and unsupported discovery constraints.",
+      "evidence": [
+        {
+          "resource": "repo://evidence/topology-sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/topology/SqliteTopologyRelationCompiler.kt",
+          "version": "repo-file-v1:sha256:1290ca652e594fa1cc19d32569a29ff51b240bf96a3e84a53c302ec832323742"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}

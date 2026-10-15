@@ -32,6 +32,30 @@ kast upgrade
 
 Upgrade stops owned services and interrupts sessions. Restart IDEA and clients after success, then start fresh sessions and calls.
 
+<Accordion title="Upgrade Control without replacing Host">
+  Control supplies the command, coordinator, agent adapters, and sessions. Host supplies the IDEA plugin and semantic runtime.
+
+  ```shell
+  kast upgrade --control-only
+  ```
+
+  This command needs a running compatible Host. It preserves IDEA and its plugin files. Control sessions can stop during the upgrade.
+
+  Kast examines the Host contract before shutdown and after startup. Failure restores the previous Control or reports that recovery is necessary.
+
+  [Compatibility](/reference/compatibility) depends on protocol, registry, schema, capabilities, and IDEA admission. Equal version numbers do not establish compatibility.
+</Accordion>
+
+<Accordion title="Load a Host update or migrate an older installation">
+  For Host-only installation, use the public installer with `--host-only --version <host-version>`. Restart IDEA to load the plugin.
+
+  Hosted changes use a private local endpoint and native workspace admission. Installation does not create approval keys.
+
+  An older Host needs a matching Control contract. Upgrade both components. Restart IDEA before a fresh agent session.
+
+  Read [the keyless migration](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md#keyless-hosted-change-migration) for the compatibility gate.
+</Accordion>
+
 <a id="stop-and-reinstall" />
 
 ## 3. Stop and reinstall a recorded version

@@ -1,0 +1,2 @@
+extends: Commits._shared.Wrap
+message: "Wrap the commit body at 72 characters. This line continues from '%s'."

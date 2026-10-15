@@ -4,22 +4,62 @@ description: "Look up execution dimensions, presentation limits, completion fail
 icon: "gauge"
 ---
 
-Execution grants limit resource use for a fixed question. They do not change source scope, traversal extent, or the completion model.
+Execution allowances constrain resource use. They do not change the requested source scope, traversal extent, or output shape.
 
 ## Execution budget
 
-| Field | Unit | Meaning |
+`executionBudget` accepts these optional dimensions. Omission or `null` selects configured defaults. Positive requests remain subject to operator and transport ceilings.
+
+| Field | Query default | Meaning |
+| --- | ---: | --- |
+| `maxElapsedMs` | 15,000 milliseconds | Elapsed allowance for semantic execution. This ceiling does not impose a wait. |
+| `maxWorkUnits` | 2,000,000 work units | Allowance for accounted semantic work, independent of response size. |
+| `maxResults` | 128 rows | Result allowance. A row limit alone does not prove completed semantic work. |
+| `maxReturnedBytes` | 49,152 bytes | Encoded response allowance, equal to 48 KiB. Evidence storage has separate quotas. |
+
+More time does not raise the work allowance. More work does not enlarge the response allowance.
+
+Source reads keep their separate default of 10,000 work units and 128 entities. They share the 15,000-millisecond elapsed default.
+
+The response reports the admitted grant. A requested value does not establish that Kast admitted the full value.
+
+An internal continuation shares the original operation's grant. Public output continuations and retained result cursors grant presentation only.
+
+## Operator controls
+
+The Host selects defaults from its admitted configuration. These settings also have IDE JVM properties, such as `kast.read.semantic.work`.
+
+| Per-call field | Default setting | Operator ceiling |
 | --- | --- | --- |
-| `maxElapsedMs` | Milliseconds | Elapsed allowance for the admitted operation. |
-| `maxWorkUnits` | Work units | Allowance for accounted semantic work. |
-| `maxResults` | Rows | Result allowance. A row limit alone does not prove completed semantic work. |
-| `maxReturnedBytes` | Bytes | Allowance for returned data. Callback-proof storage uses separate accounting. |
+| `maxElapsedMs` | `KAST_READ_SEMANTIC_MILLIS` | `KAST_READ_EXECUTION_MAX_MILLIS` |
+| `maxWorkUnits` | `KAST_READ_SEMANTIC_WORK` | `KAST_READ_EXECUTION_MAX_WORK` |
+| `maxResults` | `KAST_READ_SEMANTIC_RESULTS` | `KAST_READ_EXECUTION_MAX_RESULTS` |
+| `maxReturnedBytes` | `KAST_READ_SEMANTIC_RETURNED_BYTES` | `KAST_READ_EXECUTION_MAX_RETURNED_BYTES` |
 
-Omission or `null` selects configured defaults. Positive requests remain subject to operator and transport ceilings.
+Each operator ceiling defaults to 2,147,483,646. A lower ceiling clamps both default and requested allowances.
+Transport capacity and remaining host time can reduce the effective allowance further.
 
-The response reports the admitted grant. Internal semantic pages share the original run's grant rather than a fresh allowance for each page.
+The installed `share/kast/configuration-schema.json` describes each setting, range, accepted source, and default.
+The public CLI does not expose a `config` command.
+The response's admitted grant establishes the limits for one call.
 
-Public output continuations and result cursors permit presentation only. They do not enlarge the original semantic grant.
+The default host deadline is 30,000 milliseconds. Model capture and completion work also consume this deadline.
+If a configured host deadline is less than 15,000 milliseconds, `KAST_READ_SEMANTIC_MILLIS` must fit that deadline.
+An inconsistent configuration rejects before semantic execution.
+
+The [configuration guide](https://github.com/amichne/kast/blob/main/docs/hosted-read-configuration.md) explains saved settings, IDE properties, and service lifetimes.
+
+## Retention controls
+
+| Setting | Default | Limit |
+| --- | ---: | --- |
+| `KAST_READ_QUERY_CHECKPOINT_BYTES` | 33,554,432 bytes | Charged bytes per query checkpoint. |
+| `KAST_READ_QUERY_CONTINUATION_BYTES` | 134,217,728 bytes | Charged bytes per query continuation store. |
+| `KAST_READ_QUERY_CONTINUATION_ENTRIES` | 64 | Entries per query continuation store. |
+| `KAST_READ_QUERY_CONTINUATION_TTL_MILLIS` | 600,000 milliseconds | Continuation lifetime. |
+
+The checkpoint limit cannot exceed the store limit. Charged bytes are conservative accounting, not a heap measurement.
+Larger response pages do not increase these quotas. Public `RESUME` presents existing output and cannot continue unfinished semantic execution.
 
 ## Completion failures
 
@@ -31,36 +71,45 @@ Public output continuations and result cursors permit presentation only. They do
 | `RETENTION_UNAVAILABLE` | Necessary evidence storage failed. | Original enumeration coverage and the storage cause. |
 | `RESULT_FIELD_UNAVAILABLE` | The retained result lacks the requested field or finalized witness section. | The result's original qualifications. |
 
-The generated result schemas define closed variants and case-specific details. The table groups common proof failures rather than every external error.
-
-Complete enumeration can coexist with unproven callback activation or an unavailable investigation ledger. Completion preserves each independent reason.
+This table groups common failures. The generated result schemas define the complete closed variants and case-specific details.
 
 ## Identity and state failures
 
-Retained results and output continuations need their original workspace, owner, read state, and lifetime. Exact references need current compiler identity admission.
+Exact references need current compiler identity admission. Retained results and output continuations need their original workspace, owner, read state, and lifetime.
 
-A larger grant cannot restore evicted state, renew expiry, or repair an owner mismatch. [Staleness](/reference/staleness) explains those failures.
+Expiry, eviction, owner retirement, incompatible identity, or stale state can prevent reuse. A larger resource grant cannot restore missing state. [Staleness](/reference/staleness) explains these failures.
 
-`READ_SOURCE` needs an issued `candidateSelector` as `candidateRef`. An exact symbol token cannot substitute for that anchored-source capability.
+`compiler-identity-unavailable` needs an identity or refinement investigation. Clean file diagnostics do not establish identity for every declaration.
+
+`READ_SOURCE` accepts an issued `candidateSelector` as `candidateRef`. An exact symbol reference does not belong to that action's token family.
 
 ## Write failures
 
-A lost response does not establish absence of a source effect. A timeout or cancellation after dispatch needs phase and recovery evidence.
+A missing response, timeout, or cancellation does not establish that no source effect occurred. A change result keeps its plan and phase evidence.
 
-Known pre-write rejection can establish that no effect occurred within its reported phase. Uncertain settlement needs source inspection before another write.
-
-[Change recovery](/reference/change#read-the-receipt) supplies that procedure. [Lifecycles](/reference/lifecycles) describes the hosted mutation fence.
+The [change procedure](/reference/change#read-the-receipt) establishes the effect before another write. The project's tests establish behavior beyond the receipt's scope.
 
 ## Recovery procedures and source evidence
 
-[Retained evidence procedures](/how-to/read-retained-evidence) cover presentation. [Troubleshooting](/reference/troubleshooting) covers installation, state, and contract recovery.
+[Read retained evidence](/how-to/read-retained-evidence) covers presentation. [Troubleshooting](/reference/troubleshooting) covers identity, state, and setup failures.
 
-[Completion contracts](/reference/source-map#query-execution-and-retention) own finite proof failures. Public schema defaults own requested resource dimensions.
+[The authored tool contract](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json) defines budget inputs.
+
+[Completion documents](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt) define the fixed completion model.
 
 ## Budget example
 
-These values illustrate units. They are neither defaults nor promised grants.
+This per-call profile selects the execution defaults explicitly. It leaves response allowances at their configured values.
 
 ```json
-{"maxElapsedMs":15000,"maxWorkUnits":1000,"maxResults":20,"maxReturnedBytes":65536}
+{
+  "executionBudget": {
+    "maxElapsedMs": 15000,
+    "maxWorkUnits": 2000000
+  }
+}
 ```
+
+For `query_symbols`, this object belongs inside `request`. A requested value remains subject to admission.
+
+[Complete a targeted engineering task](/how-to/complete-engineering-task) combines discovery, relationship evidence, an exact change, and project tests.

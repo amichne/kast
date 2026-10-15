@@ -277,7 +277,7 @@ failure leaves the installation available and reports failure.
 
 ## Validate documentation
 
-Kast uses one Mintlify site with Guide and Reference tabs. Guide covers product value and setup. Reference contains technical guides and generated contracts.
+Kast uses one Mintlify site with four reader tracks: Tutorials, How-to guides, Reference, and Explanation. The README presents product value and the default installation path.
 
 From `docs/public`, run:
 

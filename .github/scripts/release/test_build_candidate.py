@@ -120,14 +120,14 @@ class PayloadAdmissionTest(unittest.TestCase):
         payload = self.bundle / "payload"
         payload.mkdir(parents=True)
         names = (f"kast-control-v{VERSION}-macos-aarch64.tar.gz", f"kast-ide-hosted-v{VERSION}-idea-262.zip",
-                 *(f"kast-{name}-v{VERSION}.zip" for name in ("skill", "plugin", "marketplace")),
+                 *(f"kast-{name}-v{VERSION}.zip" for name in ("plugin", "marketplace")),
                  f"kast-host-release-v{VERSION}.json", "host-installation.py", f"kast-hosted-catalog-v{VERSION}.json",
                  f"kast-module-knowledge-v{VERSION}.json", f"kast-sbom-v{VERSION}.cdx.json")
         for name in names[:-1]:
             (payload / name).write_bytes(name.encode())
         sbom = Sbom("CycloneDX", Metadata((Property("kast:source-revision", BUILD),
                      *(Property(f"kast:archive:{name}", "sha256:" + candidate.legacy.digest(payload / name))
-                       for name in names[:5]))))
+                       for name in names[:4]))))
         (payload / names[-1]).write_text(json.dumps(asdict(sbom)))
         for name in names:
             (payload / (name + ".sha256")).write_text(f"{candidate.legacy.digest(payload / name)}  {name}\n")

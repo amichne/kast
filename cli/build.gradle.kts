@@ -38,6 +38,7 @@ tasks.named<Test>("test") {
     inputs
         .files(rootProject.file("copilot/extension.mjs"), rootProject.file("pi/extension.ts"))
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(rootProject.file("pi/mcp-extension.ts")).withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir("src/test/js").withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file("src/main/js/query-session.mjs").withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file("src/main/js/query-delivery.mjs").withPathSensitivity(PathSensitivity.RELATIVE)
@@ -186,8 +187,9 @@ distributions.main {
         from(rootProject.layout.projectDirectory.file("copilot/extension.mjs")) {
             into("share/kast/adapters/copilot")
         }
-        from(rootProject.layout.projectDirectory.file("pi/extension.ts")) {
+        from(rootProject.layout.projectDirectory.file("pi/mcp-extension.ts")) {
             into("share/kast/adapters/pi")
+            rename { "extension.ts" }
         }
     }
 }
@@ -261,6 +263,7 @@ val queryPresentationTest =
         description = "Verifies compact query text against pinned authoritative row and evidence oracles."
         inputs.files("src/main/js/query-delivery.mjs", "src/test/js/query-presentation.test.mjs")
         inputs.files("src/main/js/query-session.mjs", "src/test/js/query-session.test.mjs")
+        inputs.file("src/test/js/tool-rpc-rejection.test.mjs")
         inputs.file(rootProject.file("copilot/extension.mjs"))
         inputs.file("src/test/resources/query-presentation-native.json")
         inputs.file("src/test/resources/query-compact-graph-pages.json")
@@ -273,6 +276,7 @@ val queryPresentationTest =
             "--test",
             "cli/src/test/js/query-presentation.test.mjs",
             "cli/src/test/js/query-session.test.mjs",
+            "cli/src/test/js/tool-rpc-rejection.test.mjs",
         )
     }
 

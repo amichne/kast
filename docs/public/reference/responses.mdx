@@ -62,6 +62,8 @@ Retention failure reports its actual storage cause without an invented handle. `
 
 The preview uses `INLINE` when all accumulated rows fit. `PREFIX` presents an ordered portion under row and encoded-byte limits.
 
+If retention succeeds, `READ_RESULT` presents more rows with the retained reference and cursor, without semantic replay.
+
 Preview truncation does not change producer coverage. A complete retained result stays complete through its presentation pages.
 
 Row and evidence cursors advance independently. An evidence-only page can advance `evidence_window` while its row cursor stays unchanged.

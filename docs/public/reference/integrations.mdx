@@ -5,85 +5,89 @@ description: "Connect Codex, Copilot, or Pi and run your first Kotlin query."
 icon: "plug"
 ---
 
-Use this procedure to choose a transport or repair a client connection. [Install Kast](/reference/installation) before client registration.
+Use this guide for alternate transports, custom destinations, or connection recovery. [Install Kast](/reference/installation) first.
 
-Start the client from the intended repository or worktree. Replace the example directory with that exact Gradle root.
-
-1. [Choose the client and transport.](#1-choose-the-client-and-transport)
-2. [Establish tool and workspace admission.](#2-establish-tool-and-workspace-admission)
-3. [Set a custom destination when needed.](#3-set-a-custom-destination-when-needed)
+Make sure that your terminal can run your agent's command. In these examples, replace `/path/to/kotlin-repository` with the exact repository or worktree that you want to inspect.
 
 <a id="choose-your-agent" />
+
+
+1. [Choose one client and transport.](#1-choose-the-client-and-transport)
+2. [Establish tool and workspace admission.](#2-establish-tool-and-workspace-admission)
+3. [Set a custom destination only when needed.](#3-set-a-custom-destination-when-needed)
 
 ## 1. Choose the client and transport
 
 <Tabs>
-<Tab title="Codex">
-The bundled plugin supplies MCP tools, a query skill, and examples. If direct MCP already exists, disconnect it before plugin installation.
+  <Tab title="Codex">
+    The bundled plugin supplies MCP tools and a compact brief at session start. The brief includes absolute paths to the schema and examples.
 
-```shell
-kast plugin codex
-cd /path/to/kotlin-repository
-codex
-```
+    If direct MCP is already registered, run `kast disconnect codex` before plugin installation.
 
-Restart Codex to load the plugin.
+    ```shell
+    kast plugin codex
+    cd /path/to/kotlin-repository
+    codex
+    ```
 
-<Accordion title="Direct MCP">
-Choose an explicit transport for `kast connect codex`.
+    Restart Codex after installation. Review and trust its session hook in Codex. Untrusted hooks do not inject context.
 
-```shell
-kast connect codex mcp
-cd /path/to/kotlin-repository
-codex
-```
+    <Accordion title="Direct MCP without the bundled plugin">
+      ```shell
+      kast connect codex mcp
+      cd /path/to/kotlin-repository
+      codex
+      ```
 
-Start a new client session to load the registration.
-</Accordion>
+      Start a new session to load the registration. `kast connect codex` needs an explicit transport.
+    </Accordion>
 
-<Accordion title="Hosted App Server">
-Explicit attachment uses the installed `kast-codex` launcher.
+    <Accordion title="App Server transport">
+      New persistent installations use a private endpoint. Routine installation preserves your saved endpoint. Select `codex-control` explicitly to expose the standard Codex control socket.
 
-```shell
-kast connect codex app-server
-cd /path/to/kotlin-repository
-kast-codex
-```
+      At the standard socket, managed `codex` invocations can discover Kast automatically. Compatible desktop builds use the service's daemon-selection flag on a fresh launch.
 
-Start a fresh thread to admit its provider catalog and workspace. Custom clients can use `kast-codex app-server` for JSONL stdio.
+      Quit and reopen the desktop app. Saved `private` endpoints and client overrides can bypass discovery. Examine the [recorded client compatibility](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md) for limits on desktop tools.
 
-Persistent installation selects the standard Codex control socket when available. An occupied socket or failed socket inspection selects a private endpoint.
+      To attach explicitly, use:
 
-Routine installation preserves the saved endpoint. Standard-socket clients can discover the admitted daemon automatically.
+      ```shell
+      kast connect codex app-server
+      cd /path/to/kotlin-repository
+      kast-codex
+      ```
 
-Compatible desktop builds also need a fresh launch with the daemon-selection flag. Private endpoints or client overrides can bypass discovery.
+      This command installs `~/.local/bin/kast-codex`. Start a fresh thread to load dynamic tools. Custom clients can use `kast-codex app-server` for JSONL stdio.
+    </Accordion>
+  </Tab>
+  <Tab title="Copilot">
+    If `kast connect copilot` installed the RPC extension, first remove it with `kast disconnect copilot`.
 
-Examine [recorded client compatibility](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md) before desktop integration.
-</Accordion>
-</Tab>
-<Tab title="Copilot">
-Connect the extension. Start Copilot in the intended root.
+    ```shell
+    copilot plugin install "$HOME/.local/share/kast/installation/share/kast/agent-tools/plugins/kast"
+    cd /path/to/kotlin-repository
+    copilot
+    ```
 
-```shell
-kast connect copilot
-cd /path/to/kotlin-repository
-copilot
-```
+    Restart Copilot to load the plugin. Its session hook supplies the same brief and absolute reference paths as Codex.
+  </Tab>
+  <Tab title="Pi">
+    ```shell
+    kast connect pi
+    cd /path/to/kotlin-repository
+    pi
+    ```
 
-Restart Copilot to load its adapter and installed catalog.
-</Tab>
-<Tab title="Pi">
-Connect the extension. Start Pi in the intended root.
-
-```shell
-kast connect pi
-cd /path/to/kotlin-repository
-pi
-```
-
-Restart Pi to load its adapter and installed catalog.
-</Tab>
+    Restart Pi to load the extension. It supplies the shared brief and registers the server through Pi's native MCP support.
+  </Tab>
 </Tabs>
+
+Session context needs `uv` and Python 3.11 through 3.14. Pi uses `~/.local/bin/uv`.
+Codex and Copilot accept `uv` on `PATH` and add `~/.local/bin` before the hook command.
+The context script runs offline and uses no third-party Python packages.
+Codex also prepares Kotlin Gradle projects through a background hook. That hook needs Python 3.12 or 3.13 and its locked Pydantic dependency.
+
+Queries [prepare IntelliJ automatically](/reference/internals/background-startup). You do not need a separate workspace-open step.
 
 <a id="check-that-the-tools-work" />
 <a id="run-the-first-query" />
@@ -168,19 +172,21 @@ Restart the affected client to unload its adapter. After an upgrade, restart IDE
 
 For the bundled Codex plugin, repeat `kast plugin codex`. Disconnection does not itself retire IDEA or the shared daemon.
 
-## Install the skill independently
+## Plugin archives and custom clients
 
-Historical [Control 0.3.1](https://github.com/amichne/kast/releases/tag/control-v0.3.1) supplies skill, plugin, and marketplace archives with SHA-256 checksums.
+<Accordion title="Release archives and custom clients">
+  Control releases supply a plugin archive and a marketplace archive with SHA-256 checksums.
+  The plugin includes session context, the schema, and a JSON array of named query examples.
+  Replace example references with handles from your current workspace.
 
-Examine the selected archive checksum. Extract the skill's `kast/` directory into a personal or repository `.agents/skills/` directory.
+  Examine the checksums, then extract the marketplace. To install it, use:
 
-For an extracted marketplace, use its absolute path.
+  ```shell
+  codex plugin marketplace add /absolute/path/to/extracted-marketplace
+  codex plugin add kast@kast
+  ```
 
-```shell
-codex plugin marketplace add /absolute/path/to/extracted-marketplace
-codex plugin add kast@kast
-```
+  The source marketplace is available through `codex plugin marketplace add amichne/kast`. Install Kast and a compatible Host first.
 
-The source marketplace uses `codex plugin marketplace add amichne/kast`. Generated example references still need current workspace handles.
-
-[MCP](/reference/mcp-catalog), [Tool RPC](/reference/rpc-catalog), and hosted App Server support custom clients. Their installed catalogs own each release's contract.
+  Custom clients can use [MCP](/reference/mcp-catalog), [Tool RPC](/reference/rpc-catalog), or App Server. See the [adapter guide](https://github.com/amichne/kast/blob/main/docs/tool-rpc.md).
+</Accordion>

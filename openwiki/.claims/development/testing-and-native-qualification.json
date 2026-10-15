@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:e753f6a93ccf3347bf03c23131f3b5e893a80e13d09a296c8161e8a9b84abdf7",
+  "claims": [
+    {
+      "id": "claim_b360f4c00a974d9fa3febbb40e81500c",
+      "statement": "The development contract chooses the smallest execution mechanism that can establish the named behavior and separates runner provisioning from the behavior dependency budget.",
+      "evidence": [
+        {
+          "resource": "repo://docs/development.md",
+          "version": "repo-file-v1:sha256:fbd1899f99d87f4c25c3c94f2d41089be3d921ca0b626a4ef5e405a8d9b38ffd"
+        }
+      ]
+    },
+    {
+      "id": "claim_6dcd0fb988634a25ab7708ca6caf1b59",
+      "statement": "The portable packaging runner uses owned process state, enumerates offline suites, and rejects unexpected skipped cases.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/run-portable-tests.py",
+          "version": "repo-file-v1:sha256:445b4a7319ef34ee94d63b7cde9eb4a344c595c8468cae33a44c025e74b585e4"
+        }
+      ]
+    },
+    {
+      "id": "claim_a8dc48f0b8fe46ef8f27477e0af2d1ae",
+      "statement": "Native fixture and installed-host procedures require separate environment and identity evidence beyond source and scripted adapter tests.",
+      "evidence": [
+        {
+          "resource": "repo://experiments/host-observation/ACCEPTANCE.md",
+          "version": "repo-file-v1:sha256:2df0a519ae6dd2d44a7030285c8abc8165d2ea772d6862e99e488e8e610ef9f3"
+        },
+        {
+          "resource": "repo://runtime/hosted/NATIVE_FIXTURES.md",
+          "version": "repo-file-v1:sha256:76b683121f0bfe035c2314368318a5d3245a2a2a7feed54145658f1309fce323"
+        },
+        {
+          "resource": "repo://runtime/hosted/native/README.md",
+          "version": "repo-file-v1:sha256:fc247d569820f8ba286481b22f0f0e20ed0a4e775d1b891a51250eaa1ec189c9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T19:07:35.337Z"
+  }
+}

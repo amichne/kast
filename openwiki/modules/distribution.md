@@ -1,67 +1,107 @@
 ---
 type: Kotlin Module Group
 title: Distribution and packaging
-description: Typed configuration and runtime identity contracts constrain managed installation effects, release assembly, and acceptance harnesses.
+description: Typed configuration and runtime identity contracts constrain managed
+  installation effects, release assembly, and acceptance harnesses.
 resource: file://distribution
-tags: [distribution, configuration, packaging, release]
+tags:
+  - distribution
+  - configuration
+  - packaging
+  - release
 code_sources:
   - path: packaging/install-checkout.sh
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt
-    symbols: [installationJavaRuntimeEnvironment]
+    symbols:
+      - installationJavaRuntimeEnvironment
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-    symbols: [HostedQueryProgress]
+    symbols:
+      - HostedQueryProgress
   - path: runtime/hosted/native/README.md
   - path: runtime/hosted/native/mixed_version_acceptance.py
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
-    symbols: [PluginInstallOutcome, PluginInstallFailure, installCodexPlugin]
+    symbols:
+      - PluginInstallOutcome
+      - PluginInstallFailure
+      - installCodexPlugin
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginBundle.kt
-    symbols: [AdmittedPluginBundle]
+    symbols:
+      - AdmittedPluginBundle
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/IntegrationRegistration.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RegistrationPayload.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt
-    symbols: [ForceResetRoot]
+    symbols:
+      - ForceResetRoot
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetExecution.kt
-    symbols: [forceResetInstallation, ForceResetExecution]
+    symbols:
+      - forceResetInstallation
+      - ForceResetExecution
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt
-    symbols: [FencedReset, QuiescentReset, ErasedReset, StagedReset, ActiveReset]
+    symbols:
+      - FencedReset
+      - QuiescentReset
+      - ErasedReset
+      - StagedReset
+      - ActiveReset
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ReadyReset.kt
-    symbols: [ReadyReset]
+    symbols:
+      - ReadyReset
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ResetProcessObservation.kt
-    symbols: [ResetProcessObservation]
+    symbols:
+      - ResetProcessObservation
   - path: distribution/contract/src/main/resources/management/reset-process-observation.schema.json
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetFence.kt
-    symbols: [ForceResetFence, RetainedResetStorage]
+    symbols:
+      - ForceResetFence
+      - RetainedResetStorage
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceDaemonRuntime.kt
-    symbols: [ForceDaemonRetirement, ResetScopedProcess]
+    symbols:
+      - ForceDaemonRetirement
+      - ResetScopedProcess
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/NativeForceDaemonRuntime.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/FreshResetInstallation.kt
-    symbols: [FreshResetInstallation]
+    symbols:
+      - FreshResetInstallation
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RuntimeServiceGeneration.kt
-    symbols: [RuntimeServiceGeneration]
+    symbols:
+      - RuntimeServiceGeneration
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ResetLoginEntries.kt
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/InstallationResetFence.kt
-    symbols: [InstallationResetRequest, InstallationResetStorage, installationResetFence]
+    symbols:
+      - InstallationResetRequest
+      - InstallationResetStorage
+      - installationResetFence
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceReinstallation.kt
-    symbols: [installFresh, ForceReinstaller]
+    symbols:
+      - installFresh
+      - ForceReinstaller
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetOutcome.kt
-    symbols: [ForceResetOutcome]
+    symbols:
+      - ForceResetOutcome
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementShutdown.kt
-    symbols: [executeInstallationLifecycle, LifecycleExecution]
+    symbols:
+      - executeInstallationLifecycle
+      - LifecycleExecution
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt
-    symbols: [InstallationLifecycle]
+    symbols:
+      - InstallationLifecycle
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationRequestRetirement.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/LifecycleProcesses.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/LifecycleOutcome.kt
-    symbols: [LifecycleOutcome, LifecycleObservation]
+    symbols:
+      - LifecycleOutcome
+      - LifecycleObservation
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/InstallationShutdownFence.kt
   - path: distribution/contract/src/main/resources/management/management-lifecycle.schema.json
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/InstalledToolInvocation.kt
   - path: distribution/contract/src/main/resources/management/installation-reset.schema.json
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ResetActivationAdmission.kt
-    symbols: [ResetActivationAdmission, ResetActivationLease]
+    symbols:
+      - ResetActivationAdmission
+      - ResetActivationLease
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFence.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt
   - path: copilot/extension.mjs
@@ -81,25 +121,33 @@ code_sources:
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SelectedIdeInstallation.kt
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/PriorInstallationPreparation.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationChild.kt
-    symbols: [executeInstallationChild]
+    symbols:
+      - executeInstallationChild
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/PriorInstallationReplacement.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/PriorRetirement.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationDaemonUpgrade.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRegistryObservation.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledEpochRetention.kt
-    symbols: [InstalledEpochRetention, InstalledEpochRetentionFailure]
+    symbols:
+      - InstalledEpochRetention
+      - InstalledEpochRetentionFailure
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerInstallationState.kt
-    symbols: [BrokerInstallationState]
+    symbols:
+      - BrokerInstallationState
   - path: packaging/run-portable-tests.py
   - path: packaging/run-portable-tests-container.sh
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt
-    symbols: [ControlDistributionLimits]
+    symbols:
+      - ControlDistributionLimits
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt
-    symbols: [ConfigurationSchemaDocument]
+    symbols:
+      - ConfigurationSchemaDocument
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/configuration/InstalledConfigurationSchema.kt
-    symbols: [InstalledConfigurationSchema]
+    symbols:
+      - InstalledConfigurationSchema
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt
-    symbols: [ManagedInstallationOwnedTree]
+    symbols:
+      - ManagedInstallationOwnedTree
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/InstallationReplacementReceipt.kt
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/InstallationSnapshot.kt
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedCopiedEpoch.kt
@@ -117,25 +165,41 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/OneShotInvocationRecord.kt
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/InstallationReplacementReceipt.kt
-    symbols: [InstallationReplacementReceipt, PreviousInstallationPayload, InstallationReplacementStage]
+    symbols:
+      - InstallationReplacementReceipt
+      - PreviousInstallationPayload
+      - InstallationReplacementStage
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/PendingInstallationReplacement.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
-    symbols: [InstallationWorkflow]
+    symbols:
+      - InstallationWorkflow
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationActivation.kt
-    symbols: [InstallationActivation, InstallationActivationPolicy]
+    symbols:
+      - InstallationActivation
+      - InstallationActivationPolicy
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationCliInspection.kt
-    symbols: [InstallationCliInspection]
+    symbols:
+      - InstallationCliInspection
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationManifest.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationOutcome.kt
-    symbols: [InstallationFailure, InstallationOutcome]
+    symbols:
+      - InstallationFailure
+      - InstallationOutcome
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt
-    symbols: [ControlInstallRequest, ControlPayload, InstallationProfile]
+    symbols:
+      - ControlInstallRequest
+      - ControlPayload
+      - InstallationProfile
   - path: build-logic/src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt
   - path: build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt
   - path: distribution/release/resolve_version.py
-    symbols: [observe_releases, published_versions]
+    symbols:
+      - observe_releases
+      - published_versions
   - path: distribution/release/run_product_gate.py
-    symbols: [latest_version, run_gate]
+    symbols:
+      - latest_version
+      - run_gate
   - path: .github/scripts/ci/routine_gate.py
   - path: .github/scripts/ci/validation_scope.py
   - path: .github/scripts/ci/required_checks.py
@@ -143,7 +207,8 @@ code_sources:
   - path: .githooks/pre-push
   - path: distribution/release/plugin-release.gradle.kts
   - path: build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt
-    symbols: [GenerateAgentToolsTask]
+    symbols:
+      - GenerateAgentToolsTask
   - path: agent-tools/.codex-plugin/plugin.json
   - path: agent-tools/.mcp.json
   - path: .agents/plugins/marketplace.json
@@ -160,16 +225,22 @@ code_sources:
   - path: .github/workflows/release.yml
   - path: .github/workflows/developer-release.yml
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationRecovery.kt
-    symbols: [ControlInstallationRecovery]
+    symbols:
+      - ControlInstallationRecovery
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/VerifiedInstallationPlan.kt
-    symbols: [VerifiedInstallationPlan]
+    symbols:
+      - VerifiedInstallationPlan
   - path: packaging/host-installation.py
-    symbols: [HostInstallRequest, HostedPluginPayload, install]
+    symbols:
+      - HostInstallRequest
+      - HostedPluginPayload
+      - install
   - path: distribution/release/component_release.py
   - path: distribution/release/component-release.schema.json
   - path: .github/workflows/release-component.yml
   - path: build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt
-    symbols: [GenerateComponentReleaseTask]
+    symbols:
+      - GenerateComponentReleaseTask
 sources:
   - id: openwiki-source-3b28c686cbf92ac682eb5142
     resource: repo://.github/scripts/ci/build_execution.py
@@ -245,10 +316,10 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-10-09T14:48:51.708Z" }
+generated: { by: "codex", at: "2026-10-15T03:36:06.201Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-14T01:57:02.037Z
+    at: 2026-10-15T19:07:35.337Z
 ---
 
 # Distribution and packaging
@@ -274,6 +345,10 @@ The control product also includes `kast-tool-rpc`. Installation retains its conf
 Codex registration requires the explicit `mcp` or `app-server` transport. MCP owns the selected `kast` server entry in Codex configuration. App Server owns `~/.local/bin/kast-codex`, an executable launcher for the selected installation's existing `kast-codex-complete` facade; the launcher accepts interactive Codex and `app-server` stdio invocation without adding an MCP entry or redirecting ordinary Desktop sessions. Schema-2 management receipts retain the closed connection identity. Schema-1 receipt admission refines existing Codex ownership to MCP while preserving its destination and payload digest. Both recorded Codex transports are independently owned; disconnecting Codex removes its recorded routes.
 
 The public installer renders progress, activation qualifications, and finite failure details for people. `--verbose` retains full child JSON reports and diagnostics. Native upgrades retain the private installation report on disk without printing it by default.
+
+Default failure presentation reads a bounded tail of each child stream and gives rejection and recovery details priority over routine telemetry.
+It displays at most 12 details and one truncation notice.
+The child exit status remains authoritative, and `--verbose` preserves the complete child streams.
 
 CI selects documentation and graph checks on Linux before allocating product runners. Every PR runs product and portable validation, including documentation-only changes. The completion job requires every selected job to succeed. One product invocation tests and assembles the complete Control/Host pair at `0.0.<CI run number>`. Pre-push retains its published stable-version admission independently.
 
@@ -500,3 +575,19 @@ malformed duplicate reject before Gradle or child execution.
 Full native uninstall admits the exact Host removal target and immutable plugin receipt before invoking the private Host owner. A persistent exterior retirement journal preserves payload, executable, configuration and recovery identities so a failure after Control removal can resume without rerunning an erased helper. Cleanup removes only admitted registrations, public executable, private configuration, managed root and the closed user-owned `~/.kast` layout; the management receipt and journal remain until those effects complete.
 
 User-state inventory retains endpoint locks and physical identities through retirement and deletion. Unknown contents, live hosts, changed identities, malformed or unsettled mutation evidence, or an uncheckpointed WAL reject and preserve recovery state. The owning SQLite adapter inspects exact schemas and bounded typed plan, attempt, journal and receipt records read-only; it does not initialize, checkpoint or manufacture recovery. Upgrade does not invoke this full user-state cleanup.
+
+## Detailed distribution routes
+
+- [Installation and managed files](../distribution/installation-and-managed-files.md) explains Control replacement and independent Host receipts.
+- [Native management and connections](../distribution/management-and-connections.md) explains public command scope and host-owned registrations.
+- [Upgrade, shutdown, and reset](../distribution/upgrades-shutdown-and-reset.md) traces guarded lifecycle transitions.
+- [Release candidates and promotion](../distribution/release-candidates-and-promotion.md) explains immutable source and artifact proof.
+
+Host receipt admission now qualifies a device change through the recorded root inode and owner.
+It consistently rebases the receipt's device identities before it examines the current destination and inventory.
+Removal permits missing recorded artifacts, but each remaining artifact must match its receipt.
+Reinstall still needs the exact inventory. Foreign or changed artifacts remain protected.
+
+The private tool RPC also admits `plan-query` before installation composition.
+That request-only path supplies scope advice without starting an installed host.
+It does not add a public native management command.

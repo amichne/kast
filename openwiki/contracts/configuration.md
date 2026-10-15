@@ -46,9 +46,11 @@ code_sources:
   - path: packaging/install-local.sh
   - path: packaging/test-install-local.py
   - path: build.gradle.kts
+  - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/bootstrap/ModelInputFailure.kt
+  - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/gradle/GradleImportEnvironment.kt
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-14T01:57:02.037Z
+    at: 2026-10-15T19:07:35.337Z
 sources:
   - id: openwiki-source-b49f63bec354bf14b4c28692
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt
@@ -78,7 +80,7 @@ sources:
     resource: repo://packaging/install-checkout.sh
   - id: openwiki-source-37ffb827b915bda4bcca9865
     resource: repo://packaging/install-local.sh
-generated: { by: "codex", at: "2026-10-08T01:13:49.481Z" }
+generated: { by: "codex", at: "2026-10-15T00:57:31.735Z" }
 ---
 
 # Installation configuration
@@ -190,3 +192,12 @@ neither input. The assembled-product acceptance runner retains its separate
 `KAST_ACCEPTANCE_JAVA_EXECUTABLE` binding.
 
 The checkout installer admits the selected IDEA bundled JBR with executable and Java release feature >=25 before Gradle, setting Java only for its own children. Installed launchers recheck their recorded selected JBR before child startup. Both require exactly one `JAVA_VERSION` declaration with a fully quoted numeric feature; duplicate declarations, missing quotes and trailing text reject before execution, including a valid declaration beside a malformed duplicate. Missing or incompatible runtime rejects with repair guidance. Ambient Java does not select either runtime.
+
+## Imported model inputs
+
+`ModelInputPath` admits a bounded logical path without absolute paths, parent traversal, or control characters.
+Model input failures preserve the selected path and a finite reason.
+`GradleImportEnvironment` admits explicitly selected variables and executable directories.
+It rejects reserved process inputs and excludes unselected ambient values from its identity.
+Public evidence contains admitted names and content digests without the raw selected values.
+Only the launch adapter receives those raw values through the explicit process projection.

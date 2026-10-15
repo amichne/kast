@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:d9a71159ca778b11dc85b986eff52292c92b850f5e41febb4278f247017c8a37",
+  "pageVersion": "sha256:23d93cc613aef69203df30ef09bcdc01777593d64f17f1db6fb4c6715e343373",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -274,13 +274,13 @@
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt",
-          "version": "repo-file-v1:sha256:11822ffc2451f8e5ef9cebb2d8657497558949ef051539c7f69fcfce7ffa3948"
+          "version": "repo-file-v1:sha256:29448da17163573fd1c81280b87a75fc91a9bcdcdf04e569ffbea0415d770afb"
         }
       ]
     },
     {
       "id": "claim_ebe9bb72fa27453c890cb02ffe10ff02",
-      "statement": "Service enablement does not enroll its current directory; fresh Codex startup discovers or validates the exact canonical settings.gradle.kts owner, and saved incorrect bindings reject without retargeting.",
+      "statement": "Service enablement does not enroll its current directory. Kast-enabled Codex threads admit the canonical settings.gradle.kts owner. Ordinary implicit starts outside Gradle and unbound resume or fork requests pass upstream without a Kast binding. Explicit roots and saved incorrect bindings still reject invalid state.",
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerManagement.kt",
@@ -291,8 +291,8 @@
           "version": "repo-file-v1:sha256:3fa42eecd562307c13b18cb1258e539e2af0fc1c405aaa94a598b7f7d4eeecba"
         },
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt",
-          "version": "repo-file-v1:sha256:bea2a047cd9befdff67e1b99b93fdb7057a96db854d980b33f24ca3a4c93f428"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt#L504-L634",
+          "version": "repo-lines-v1:sha256:b96063e17468d0ed0f2769009b82eb20cb31fb8097ee8744cdac3e71f87cf68b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIzYWEyNWRkODhkN2Q4MDgxNzM4NTZmZDE4MmIxYzY4OWQ0ZDg2Y2YyZjg4OWE1MzhkODlkNzJmMzZmZjVkZGY2IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJjYjU3NzBiOTlmYjcyY2E0ODQ2ZjE2ZWU5NzcwYjNhYzkzNzk2NjAyNmVhMTdhNTA0ZTU2ODE2ZjM2NTc2OTM0IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxNDliNTUyN2I2ZGVkZWU0YThhNTk3YzlmYmE3NzRiYWFhZWJhMjJlYThlZjZkM2Y3Y2IzMTI2ZThlYTlhMWM2IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIzMjA5OTliNmE0NmFlMTkxNDUzMmNlMTBlY2Y0MGM4MDBhYzYwMzFhMjIzMzk2NzAwMzFkZTg3OTdlNzFjODE3In0"
         }
       ]
     },
@@ -309,6 +309,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-14T01:57:02.037Z"
+    "at": "2026-10-15T03:39:16.872Z"
   }
 }

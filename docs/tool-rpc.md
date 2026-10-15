@@ -7,7 +7,7 @@ Kast's existing IDEA preparation and semantic operation path.
 
 The installed command is
 `${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-tool-rpc-complete`.
-Both adapters below call this command directly. Set `KAST_TOOL_RPC_COMMAND` to an
+The optional RPC adapters call this command directly. Set `KAST_TOOL_RPC_COMMAND` to an
 absolute executable path when trying a checkout build.
 
 ## Contract
@@ -34,6 +34,37 @@ printf '%s\n' '{"request":{"type":"RUN","source":{"type":"SEARCH_DECLARATIONS","
   "${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-tool-rpc-complete" call query_symbols
 ```
 
+### Examine a query before execution
+
+`plan-query` reads the same public `RUN` JSON as `call query_symbols`.
+It returns request facts and narrowing advice before installation access or host preparation.
+It needs no imported project or retained result.
+
+```shell
+"${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-tool-rpc-complete" plan-query < query.json
+```
+
+A `planned` reply preserves the admitted canonical request, including its scope, expansion domains, and requested budget.
+Its `basis` is `REQUEST_SHAPE_ONLY`, and its `estimate` is `NOT_MEASURED`.
+The reply does not prove symbol identity, workspace membership, semantic completion, or budget admission.
+The command uses the same 1 MiB input limit as `call`.
+`READ_SOURCE`, `READ_RESULT`, and `RESUME` return `RUN_REQUIRED`.
+
+| Advice | Action |
+| --- | --- |
+| `NARROW_DISCOVERY_SCOPE` | Select a known directory or package before discovery. |
+| `USE_EXACT_NAME_OR_REFERENCE` | Use an exact name or an issued reference when the question permits it. |
+| `RESTRICT_DECLARATION_KINDS` | Select only the declaration kinds that the question needs. |
+| `SET_EXPANSION_DOMAIN` | Select an explicit source domain when the question permits a smaller expansion scope. |
+| `TRACE_HAS_MULTIPLE_RELATION_PHASES` | Consider separate retained one-hop stages for independent migration questions. |
+| `EXHAUSTIVE_WALK_HAS_NO_DEPTH_LIMIT` | Select a depth limit only when that limit preserves the question. |
+| `LATE_FILTER_DOES_NOT_NARROW_DISCOVERY` | Put known discovery constraints in the source instead of a later `WHERE`. |
+
+Advice describes request structure, not measured cost.
+A directory scope can still consume more work than a package scope.
+An empty advice list does not promise that a query will finish.
+Actual work counts and finite failures remain properties of the host result.
+
 Use the exact `ref` and qualification returned by one tool in follow-up calls.
 The `add_declaration` and `replace_body` tools are marked `WRITE`; each plans,
 applies, verifies, and attempts recovery within one call. Clients must request
@@ -57,6 +88,13 @@ request permission to bypass tool prompts when it loads. No Copilot MCP server i
 
 ## Pi
 
+`kast connect pi` installs the context extension with native MCP support.
+It registers `kast-mcp-complete` through Pi's `registerMcpServer` API.
+Pi owns tool discovery, permissions, and connection lifetime.
+The extension reads the shared brief at session start and adds it to the system prompt before each model request.
+It does not use Tool RPC.
+See [the shared context guide](../agent-tools/README.md) for plugin installation and runtime needs.
+
 Register the bundled Pi adapter:
 
 ```shell
@@ -74,13 +112,17 @@ and retains a private backup of the displaced bytes. Failed transactions restore
 the prior connection and Kast configuration. Use `--no-recover` to reject a
 conflict without replacement.
 
-It registers the same live catalog in Pi.
+The optional source adapter at `pi/extension.ts` still supports Tool RPC.
+It registers the live RPC catalog in Pi.
 For every catalog tool marked `WRITE`, including `add_declaration` and
 `replace_body`, it asks for interactive approval and refuses the call without an
 approving UI. Both clients pass their current workspace to the same RPC
 command, so one Kast installation serves different repositories and worktrees.
 
 ## Client-owned query delivery
+
+`pi/extension.ts` and `copilot/extension.mjs` own the behavior in this section.
+The installed Pi extension uses native MCP instead.
 
 Pi and Copilot invoke `query_symbols` once at the model boundary. Their shared
 portable delivery rule may then make output-only `RESUME` or retained

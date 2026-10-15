@@ -1,0 +1,2 @@
+extends: Std.Readability.SentenceLength
+level: warning

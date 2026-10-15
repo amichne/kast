@@ -120,7 +120,7 @@ class InstallationRequestTest {
             InstallationPublicEndpointSelection.Unspecified,
             default.value.publicEndpoint,
         )
-        for (endpoint in io.github.amichne.kast.appserver.BrokerPublicEndpointMode.entries) {
+        for (endpoint in io.github.amichne.kast.distribution.contract.configuration.BrokerPublicEndpointMode.entries) {
             val request =
                 InstallationRequest.parse(
                     validEnvironment() + (InstallationEnvironment.PUBLIC_ENDPOINT.key to endpoint.configurationValue)

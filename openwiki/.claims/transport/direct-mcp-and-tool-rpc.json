@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:878012a69d7227fe27f9363d428b5f67c1e48edae1dee8971bc84bdb91d3f58b",
+  "claims": [
+    {
+      "id": "claim_ff079a4bad1c49b29e631747df0a01a1",
+      "statement": "KastDirectToolSession shares compiled tool registration, installation admission, and existing-IDE invocation between direct transports.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt",
+          "version": "repo-file-v1:sha256:e967da36d7e6e6c8c65aa00328adbb18e8e5103ea0b8f9aa22cc54f9f72f15a1"
+        }
+      ]
+    },
+    {
+      "id": "claim_05307cdbcd41467ca1c4f1fbda84e2dd",
+      "statement": "KastMcpServer fixes one protocol era per connection and starts workspace preparation once.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt",
+          "version": "repo-file-v1:sha256:97627bef40f0a606bcc45e429672d18e527cf771d3be5448f0d4f318dc7b96c9"
+        }
+      ]
+    },
+    {
+      "id": "claim_6ff0a69637ee412b80a7178fec723a48",
+      "statement": "The tool RPC query session bounds one child to 64 records and permits only presentation authority issued by the preceding reply after its first query.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt",
+          "version": "repo-file-v1:sha256:29448da17163573fd1c81280b87a75fc91a9bcdcdf04e569ffbea0415d770afb"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt",
+          "version": "repo-file-v1:sha256:35c90850bca24c6b6cd85163634fc24b654e2ec9d43aaceefc1bff473d1c47e9"
+        }
+      ]
+    },
+    {
+      "id": "claim_67b8ad2fd960498192eae7225e6c9e32",
+      "statement": "The private plan-query path admits public RUN syntax before installation or host effects and returns request-shape advice without measured cost or an execution grant.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt",
+          "version": "repo-file-v1:sha256:29448da17163573fd1c81280b87a75fc91a9bcdcdf04e569ffbea0415d770afb"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt",
+          "version": "repo-file-v1:sha256:83737c4ac9d37f3e0cecdada4770d7beca024bc65f4fbcce0ae20f8794017766"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T01:04:37.434Z"
+  }
+}

@@ -2,6 +2,7 @@ package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.runtime.BrokerSocketPath
 import io.github.amichne.kast.appserver.runtime.BrokerSocketPathFailure
+import io.github.amichne.kast.distribution.contract.configuration.BrokerPublicEndpointMode
 import io.github.amichne.kast.kernel.Validation
 import java.nio.file.Path
 

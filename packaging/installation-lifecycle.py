@@ -717,6 +717,11 @@ def admits_unregistered_broker_state(state):
             if len(profiles) > 16:
                 return False
     allowed_files = {'stopped', 'launch-environment', 'service-start.lock', 'service.log', 'service.plist'}
+    record_stores: dict[str, tuple[str, dict[str, int]]] = {
+        'threads.json.d': ('records-v3', {'version': 3}),
+        'invocations.json.d': ('records-v2', {'schemaVersion': 2}),
+    }
+    allowed_directories = {'protocol', 'desktop-discovery', *record_stores}
     for profile in profiles:
         if (not re.fullmatch(r'[0-9a-f]{16}', profile.name) or not profile.is_dir()
                 or profile.is_symlink() or profile.stat().st_uid != os.getuid()):
@@ -725,15 +730,71 @@ def admits_unregistered_broker_state(state):
         with os.scandir(profile) as entries:
             for entry in entries:
                 files.append(Path(entry.path))
-                if len(files) > len(allowed_files):
+                if len(files) > len(allowed_files) + len(allowed_directories):
                     return False
         stopped = profile / 'stopped'
         if not stopped_broker_marker(stopped):
             return False
-        if any(file.name not in allowed_files or not file.is_file() or file.is_symlink()
-               or file.stat().st_uid != os.getuid() for file in files):
-            return False
+        for file in files:
+            if file.name in allowed_files:
+                if not file.is_file() or file.is_symlink() or file.stat().st_uid != os.getuid():
+                    return False
+            elif file.name == 'protocol':
+                if not admits_empty_private_directory(file):
+                    return False
+            elif file.name == 'desktop-discovery':
+                if not admits_empty_desktop_discovery(file):
+                    return False
+            elif file.name in record_stores:
+                records, marker = record_stores[file.name]
+                if not admits_empty_broker_record_store(file, records, marker):
+                    return False
+            else:
+                return False
     return True
+
+
+def owned_private_broker_directory(path: Path) -> bool:
+    observed = path.lstat()
+    return (stat.S_ISDIR(observed.st_mode) and observed.st_uid == os.getuid()
+            and stat.S_IMODE(observed.st_mode) == 0o700)
+
+
+def owned_private_broker_file(path: Path) -> bool:
+    observed = path.lstat()
+    return (stat.S_ISREG(observed.st_mode) and observed.st_uid == os.getuid()
+            and stat.S_IMODE(observed.st_mode) == 0o600)
+
+
+def admits_empty_private_directory(path: Path) -> bool:
+    try:
+        return owned_private_broker_directory(path) and not any(path.iterdir())
+    except OSError:
+        return False
+
+
+def admits_empty_desktop_discovery(path: Path) -> bool:
+    try:
+        return (owned_private_broker_directory(path)
+                and all(entry.name == '.lock' for entry in path.iterdir())
+                and owned_private_broker_file(path / '.lock') and (path / '.lock').stat().st_size == 0)
+    except OSError:
+        return False
+
+
+def admits_empty_broker_record_store(path: Path, records: str, marker: dict[str, int]) -> bool:
+    try:
+        if (not owned_private_broker_directory(path)
+                or any(entry.name not in {'.lock', 'layout.json', records} for entry in path.iterdir())
+                or not owned_private_broker_file(path / '.lock') or (path / '.lock').stat().st_size != 0
+                or not owned_private_broker_file(path / 'layout.json')
+                or not admits_empty_private_directory(path / records)):
+            return False
+        document = read_json(path / 'layout.json', 1024, Failure.REGISTRY_REJECTED)
+        return (document.keys() == marker.keys()
+                and all(type(document[key]) is int and document[key] == version for key, version in marker.items()))
+    except (OSError, Rejected):
+        return False
 
 
 def stopped_broker_marker(path):

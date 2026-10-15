@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:5e9c566f270a78626365a3a1e2c720bd58d3195a5663ec19f30492a0d2c86cc6",
+  "pageVersion": "sha256:3a270eee351b16ac19f5e9feee22a17e2fd266a8575d60edf17c9bb0922a0df2",
   "claims": [
     {
       "id": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
@@ -14,15 +14,15 @@
     },
     {
       "id": "claim_8fbe8cf0364241bd9c44e5851da8c409",
-      "statement": "Change and query protocol modules retain service roles with contract-only dependency policies; the native distribution CLI reuses distribution contracts and managed adapters plus the durable SQLite owner for read-only settled-state inspection through an exact named cross-role edge, retaining explicitly scoped lifecycle, uninstall and reset effects.",
+      "statement": "The hosted runtime composes live topology contracts, build logic, and IntelliJ dependency capture while historical graph service and SQLite capture remain separate.",
       "evidence": [
         {
-          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L3-L54",
-          "version": "repo-lines-v1:sha256:7f0dc0cc4e814847846539f46e04ba3a7dd6adf134d11a8725b4ddbed0cdb3c7:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwM2M4MWRjMDJiY2Q2ZGM1YTA0ZGRiMTA5ODQ0MDhiNWM4MjM1OTVlNmFiNzg5ZWQzOWMwZDg2NjY1MWI1ZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkOWM1ZmYyYmQ2MzYxNWFhMGQ0ZTc2ZmQyMDU0OTY3MDk1MDZlNTU1YWViYjBkYWVhYzhlZjVlYjU1ZmQ4YmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjZTdlYjg1MjYzN2ZjZGZkMDIwYjBmZmVlZjg0YmNmNDYwYTZiNjU0OGIzMzAzY2YzOTNkNDFjZGYxNjczNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFiMWRlMGRlN2NlNjg4OTZiMzc4Yzc1OTI2NDZiMjcyZmM4NzNkZGU0NjE1NTE1OTNiMGE2NzkzZTk1MTE0ZTYifQ"
+          "resource": "repo://runtime/hosted/build.gradle.kts",
+          "version": "repo-file-v1:sha256:de7d0cd8c9eb98249bea33741eea1f7700bd752aee2fdce71f2e7774239d9d9f"
         },
         {
-          "resource": "repo://build-logic/src/main/kotlin/support/architecture/validation/ModulePolicyValidator.kt#L161-L181",
-          "version": "repo-lines-v1:sha256:694665a83cf13aa6c8b5a354b715e5e7b887a701edcd094a9bd69923b62c384b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE1Y2MwODE0NzdhMjRjOTk0OGJkZTRiNGQzNjI2NjVkZmZjMTFjOTM5ZWQ5Y2RhODc1NDc5M2Y0YmZmOTdjZmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNkNGVjZTEyZTEzYjU4NGViYzc3MjI4Mjg3YTExOWJkNjJjMGY4ZTNlNWVlNjQxYmIyMjA4Y2ZiYjcxODM3YmMifQ"
+          "resource": "repo://topology/service/build.gradle.kts",
+          "version": "repo-file-v1:sha256:cc343414abe74c6d94f3b500b62e0ca89540f031acc2b797125858bf5edb8a6b"
         }
       ]
     },
@@ -36,7 +36,7 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:5683109104e81537aeb7cae517ba6e312240633724e63ad6141d3907b625fd39"
+          "version": "repo-file-v1:sha256:20f66494a7f382ba9fcb9fb0e7100a5c739c588da34de139c8685f995f1732b5"
         },
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
@@ -49,7 +49,7 @@
       "statement": "Root check separately enforces semantic resource identity, live FIR inventory accounting, and exact successful execution of the declared native case population.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L507-L543",
+          "resource": "repo://build.gradle.kts#L506-L542",
           "version": "repo-lines-v1:sha256:380ba793655cf330b90370a085295d9087dde539e37f25d46aa6115d0b31b677:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5MzhiODgxNmE3MDNlMjYwM2UyZTE0ZWU4NWFmZGVkYTE1YWY4ZGRkMDIwOTFjZGRmMDZiYmE0YTc0ZjAzOGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYTU1Y2M1ZGIyODA5NmM3ZmQ4MzYxZmEwNTFmYTRmNGJjMjM2YjI0ZDQ0M2I0NTBkZGU3YWIxOGJhMjkxNjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgzM2I3YTQzNGIzYTQxYjRhZjUxNjZjZTA0M2E0YzU5ZTZjNzE3MjFmY2I4MTc5M2NkMzllMDI2ZjNmNzY5ZmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
@@ -57,10 +57,24 @@
           "version": "repo-lines-v1:sha256:39edff19be44a4a32177c3513b003b8517b02b893fd5eba3e9c4508e3a9cdcfb:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1MmZiNTUyMjRhNGU5ZjQzMmMwOGI5NDNkMjlhMTQ2NjYyYjAyMDY1ZmIzNDhhOTVmZGYwN2MyMjEwNmUzOTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU4ZWQ0MmMyN2RlZWIzZDkzNjYxNDBkMDcwOGY3YzQ4M2I0ZTU2MzdhZmY5MDA1NmNhZDQwMzIwZjdjZDNlMWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_54f2a2e4c8df43fdae34c80ce389e8c6",
+      "statement": "The hosted runtime directly composes topology contract, build, and IntelliJ modules for live semantic dependencies, while historical graph services and topology SQLite remain separate.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/build.gradle.kts",
+          "version": "repo-file-v1:sha256:de7d0cd8c9eb98249bea33741eea1f7700bd752aee2fdce71f2e7774239d9d9f"
+        },
+        {
+          "resource": "repo://topology/service/build.gradle.kts",
+          "version": "repo-file-v1:sha256:cc343414abe74c6d94f3b500b62e0ca89540f031acc2b797125858bf5edb8a6b"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-14T01:57:02.037Z"
+    "at": "2026-10-15T19:07:35.337Z"
   }
 }

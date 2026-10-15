@@ -23,7 +23,12 @@ class HostedReadTransactionTest {
     fun `final freshness consumes caller grant and preserves admitted report`() = runTest {
         var now = 0L
         var validations = 0
-        val progress = HostedQueryProgress(clock = { now }, completion = HostedReadCompletionPolicy.CALLER_ELAPSED)
+        val progress =
+            HostedQueryProgress(
+                shortHostLimits(),
+                clock = { now },
+                completion = HostedReadCompletionPolicy.CALLER_ELAPSED,
+            )
         val result =
             runHostedReadTransaction(
                 progress,

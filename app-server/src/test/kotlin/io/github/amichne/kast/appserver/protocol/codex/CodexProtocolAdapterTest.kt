@@ -41,6 +41,8 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -1298,7 +1300,7 @@ class CodexProtocolAdapterTest {
         }
 
     @Test
-    fun `production resume rejects missing durable binding`(@TempDir temporary: Path) = runBlocking {
+    fun `production resume without a durable binding stays upstream owned`(@TempDir temporary: Path) = runBlocking {
         val root = temporary.toRealPath()
         val registry = io.github.amichne.kast.appserver.WorkspaceEnrollmentStore(root.resolve("workspaces.json"))
         registry.enroll(root)
@@ -1318,8 +1320,12 @@ class CodexProtocolAdapterTest {
                 bindingOwner = owner,
             )
         assertInstanceOf(
-            ProtocolRouting.ReplyDownstream::class.java,
-            adapter.fromDownstream("""{"id":1,"method":"thread/resume","params":{"threadId":"missing"}}"""),
+            ProtocolRouting.ForwardUpstream::class.java,
+            adapter.fromDownstream(
+                Json.encodeToString(
+                    UnboundResumeRequestFixture(1, "thread/resume", UnboundResumeParamsFixture("missing"))
+                )
+            ),
         )
         adapter.close()
     }
@@ -1622,4 +1628,13 @@ class CodexProtocolAdapterTest {
     private data class ObserverInput(val arguments: JsonElement)
 
     private data class ObserverOutput(val document: JsonObject)
+
+    @Serializable
+    private data class UnboundResumeRequestFixture(
+        val id: Int,
+        val method: String,
+        val params: UnboundResumeParamsFixture,
+    )
+
+    @Serializable private data class UnboundResumeParamsFixture(val threadId: String)
 }
