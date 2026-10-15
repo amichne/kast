@@ -12,7 +12,17 @@ class PassiveRuntimeSocketTest {
     @TempDir lateinit var temporary: Path
 
     @Test
-    fun `absent saved endpoint uses the shared default and recorded Codex home`() {
+    fun `absent saved endpoint selects the private socket`() {
+        assertEquals(
+            temporary.resolve("state/run/c.sock"),
+            selected(runtimeSocket(temporary, "/selected/codex")),
+        )
+    }
+
+    @Test
+    fun `explicit Codex control selects the recorded Codex home`() {
+        val configuration = Files.createDirectories(temporary.resolve("config")).resolve("environment")
+        Files.writeString(configuration, "KAST_APP_SERVER_PUBLIC_ENDPOINT=codex-control\n")
         assertEquals(
             Path.of("/selected/codex/app-server-control/app-server-control.sock"),
             selected(runtimeSocket(temporary, "/selected/codex")),

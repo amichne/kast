@@ -365,6 +365,20 @@ val productGateVersionTest = tasks.register<Exec>("productGateVersionTest") {
     commandLine("python3", layout.projectDirectory.file("distribution/release/test_run_product_gate.py"))
 }
 
+val agentSessionSetupTest = tasks.register<Exec>("agentSessionSetupTest") {
+    group = "verification"
+    description = "Exercises the plugin session hook through the installed direct RPC adapter."
+    inputs.files("agent-tools/pyproject.toml", "agent-tools/uv.lock",
+        "agent-tools/hooks/hooks.json", "agent-tools/hooks/prepare_workspace.py",
+        "agent-tools/hooks/prepare_workspace.py.lock", "packaging/test_kast_session_start.py")
+    environment("PYTHONDONTWRITEBYTECODE", "1")
+    environment("UV_PROJECT_ENVIRONMENT", layout.buildDirectory.dir("python-tests/session-setup").get().asFile)
+    commandLine("uv", "run", "--locked", "--project", "agent-tools", "pytest",
+        "-c", "agent-tools/pyproject.toml", "packaging/test_kast_session_start.py")
+}
+
+tasks.named("check") { dependsOn(agentSessionSetupTest) }
+
 val productBuildGate = tasks.register("productBuildGate") {
     group = "verification"
     description = "Builds every module and verifies deterministic contracts, architecture and packaging without runtime qualification."

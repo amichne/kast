@@ -187,7 +187,7 @@ class InstallationWorkflowTest {
                 .variables
         assertEquals(null, configuration["CODEX_HOME"])
         assertEquals("0", configuration["KAST_DEBUG"])
-        assertEquals("codex-control", configuration["KAST_APP_SERVER_PUBLIC_ENDPOINT"])
+        assertEquals("private", configuration["KAST_APP_SERVER_PUBLIC_ENDPOINT"])
         assertEquals("keep", Files.readString(unrelated))
         assertTrue(Files.notExists(root.resolve("home/.local/bin/kast")))
         assertTrue(Files.notExists(selected.resolve(".recovery-detached")))

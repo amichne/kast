@@ -69,6 +69,7 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
         }
         check(paths.filter(Files::isRegularFile).sumOf(Files::size) <= 1_048_576) { "agent plugin source exceeds one MiB" }
         val required = listOf("hooks/hooks.json", "hooks/copilot.json", "hooks/session_start.py", "hooks/session_start.py.lock",
+            "hooks/prepare_workspace.py", "hooks/prepare_workspace.py.lock",
             "references/onboarding.md", "references/query-schema.json", "references/query-examples.json")
         check(required.all { source.resolve(it).isFile }) { "shared session context and generated references are required" }
         check(!source.resolve("skills").exists()) { "Kast onboarding must not publish a discoverable skill" }

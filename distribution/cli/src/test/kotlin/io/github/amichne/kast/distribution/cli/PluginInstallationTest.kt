@@ -378,6 +378,8 @@ private fun pluginFixture(temporary: Path): Path {
                 "hooks/copilot.json",
                 "hooks/session_start.py",
                 "hooks/session_start.py.lock",
+                "hooks/prepare_workspace.py",
+                "hooks/prepare_workspace.py.lock",
                 "references/query-schema.json",
                 "references/query-examples.json",
             )

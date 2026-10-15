@@ -9,6 +9,11 @@ Install Kast and restart IntelliJ IDEA before a semantic query.
 Start your agent from the exact Kotlin repository or worktree.
 Preparation can save editor buffers and refresh the imported project.
 
+Codex also uses a background hook to prepare the nearest Kotlin Gradle project within the Git checkout.
+It skips other repositories and session compaction.
+The setup hook reports indexed readiness only for the exact project.
+Kast uses its private socket by default.
+
 ## Codex
 
 ```sh
@@ -52,9 +57,10 @@ Use a Pi version with native MCP support.
 
 ## Runtime and references
 
-The hooks need `uv` and Python 3.11 through 3.14.
+The context hooks need `uv` and Python 3.11 through 3.14.
+The Codex setup hook needs Python 3.12 or 3.13 and its locked Pydantic dependency.
 Install `uv` on `PATH` or at `~/.local/bin/uv`. Pi uses `~/.local/bin/uv`.
-The locked script uses only the Python standard library and runs offline.
+The locked context script uses only the Python standard library and runs offline.
 It reads bundled resources without IDE calls, workspace writes, or model requests.
 An invalid event, absent resource, or oversized brief rejects without partial context.
 The host decides whether a hook failure stops the session.

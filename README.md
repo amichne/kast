@@ -43,8 +43,10 @@ Restart IDEA and Codex. Select your Kotlin repository or worktree. Ask:
 > Use Kast to find a Kotlin declaration in this workspace. Show its signature
 > and source location.
 
-The first query prepares the IDEA project. Kast reports setup blockers if the
-project needs attention.
+The first query prepares the IDEA project. The Kast plugin can start preparation
+at session start for `settings.gradle.kts` projects after you trust its hook.
+Kast uses a private socket by default. Kast reports setup blockers if the project
+needs attention.
 
 [Use Copilot or Pi](https://kast.michne.com/agent-harnesses/) ·
 [Installation options](https://kast.michne.com/reference/installation/) ·

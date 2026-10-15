@@ -9,6 +9,7 @@ source_revision: 0b95306caef9f314f4419bd73ed0171bc67da230
 code_sources:
   - path: agent-tools/onboarding.template.md
   - path: agent-tools/hooks/session_start.py
+  - path: agent-tools/hooks/prepare_workspace.py
   - path: packaging/generate-public-query.py
   - path: build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt
   - path: pi/mcp-extension.ts
@@ -24,6 +25,8 @@ Do not add a discoverable `SKILL.md` or a standalone skill archive.
 `hooks/session_start.py` owns context assembly and host envelopes.
 Keep its runtime passive, bounded, offline, and free of semantic calls or workspace writes.
 Keep its PEP 723 metadata and lock together.
+`hooks/prepare_workspace.py` owns the separate background setup through direct RPC.
+Keep its locked Pydantic runtime and `agentSessionSetupTest` under their existing owners.
 The Codex and Copilot manifests select their own hook configuration and share the same MCP entry.
 The Pi adapter in `pi/mcp-extension.ts` uses the shared script and native MCP support.
 
