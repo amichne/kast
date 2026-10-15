@@ -371,22 +371,7 @@ private fun pluginFixture(temporary: Path): Path {
                 ),
             "plugins/kast/references/onboarding.md" to "Use the installed Kast tools.\n",
         )
-    val shared =
-        listOf(
-                ".github/plugin/plugin.json",
-                "hooks/hooks.json",
-                "hooks/copilot.json",
-                "hooks/session_start.py",
-                "hooks/session_start.py.lock",
-                "hooks/prepare_workspace.py",
-                "hooks/prepare_workspace.py.lock",
-                "references/query-schema.json",
-                "references/query-examples.json",
-            )
-            .associate { relative ->
-                "plugins/kast/$relative" to Files.readString(Path.of("../../agent-tools/$relative"))
-            }
-    (documents + shared).forEach { (relative, content) ->
+    (documents + sharedPluginDocuments()).forEach { (relative, content) ->
         val file = bundle.resolve(relative)
         Files.createDirectories(file.parent)
         Files.writeString(file, content)
@@ -408,3 +393,19 @@ private fun pluginFixture(temporary: Path): Path {
     assertFalse(Files.exists(bundle.resolve("unmanifested")))
     return root
 }
+
+private fun sharedPluginDocuments(): Map<String, String> =
+    listOf(
+            ".github/plugin/plugin.json",
+            "hooks/hooks.json",
+            "hooks/copilot.json",
+            "hooks/session_start.py",
+            "hooks/session_start.py.lock",
+            "hooks/prepare_workspace.py",
+            "hooks/prepare_workspace.py.lock",
+            "references/query-schema.json",
+            "references/query-examples.json",
+        )
+        .associate { relative ->
+            "plugins/kast/$relative" to Files.readString(Path.of("../../agent-tools/$relative"))
+        }
