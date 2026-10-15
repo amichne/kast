@@ -32,7 +32,9 @@ class KastCodexMainLifecycleTest {
                 Files.setPosixFilePermissions(executable, PosixFilePermissions.fromString("rwx------"))
             }
             val home = Files.createDirectories(root.resolve("home"))
-            val environment = mapOf("PATH" to bin.toString()) + selectedBrokerJbr(root)
+            val environment =
+                mapOf("PATH" to bin.toString(), "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "codex-control") +
+                    selectedBrokerJbr(root)
             for (cause in
                 listOf(
                     PersistentBrokerServiceFailure.PUBLIC_SOCKET_OWNED,

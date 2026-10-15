@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "^(startup|resume|fork|clear)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --locked --script \"${PLUGIN_ROOT}/hooks/session_start.py\"",
+            "async": true,
+            "timeout": 1320,
+            "statusMessage": "Prepare Kast Kotlin workspace"
+          }
+        ]
+      }
+    ]
+  }
+}

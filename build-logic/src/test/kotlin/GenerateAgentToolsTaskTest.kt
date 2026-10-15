@@ -36,6 +36,10 @@ class GenerateAgentToolsTaskTest {
         }
         assertArrayEquals(Files.readAllBytes(task.sourceDirectory.get().asFile.toPath().resolve(".mcp.json")),
             Files.readAllBytes(plugin.resolve(".mcp.json")))
+        for (name in listOf("hooks.json", "session_start.py", "session_start.py.lock")) {
+            assertArrayEquals(Files.readAllBytes(task.sourceDirectory.get().asFile.toPath().resolve("hooks/$name")),
+                Files.readAllBytes(plugin.resolve("hooks/$name")))
+        }
         val mcp = Json.parseToJsonElement(Files.readString(plugin.resolve(".mcp.json"))).jsonObject
         assertEquals(listOf("-c", "exec \"\${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-mcp-complete\""),
             mcp.getValue("mcpServers").jsonObject.getValue("kast").jsonObject.getValue("args").jsonArray.map {
@@ -73,6 +77,17 @@ class GenerateAgentToolsTaskTest {
         val output = task.outputDirectory.get().asFile.resolve("plugins/kast/skills/kast/references/query-examples.json")
         val original = output.readBytes()
         task.sourceDirectory.get().asFile.resolve("skills/kast/references/query-examples.json").writeText("not-json")
+        assertThrows(IllegalStateException::class.java) { task.generate() }
+        assertArrayEquals(original, output.readBytes())
+    }
+
+    @Test
+    fun `missing setup script rejects before replacing admitted output`() {
+        val task = task()
+        task.generate()
+        val output = task.outputDirectory.get().asFile.resolve("plugins/kast/hooks/session_start.py")
+        val original = output.readBytes()
+        task.sourceDirectory.get().asFile.resolve("hooks/session_start.py").delete()
         assertThrows(IllegalStateException::class.java) { task.generate() }
         assertArrayEquals(original, output.readBytes())
     }

@@ -1,0 +1,32 @@
+[project]
+name = "kast-session-setup"
+version = "0.0.0"
+requires-python = ">=3.12,<3.14"
+dependencies = ["pydantic==2.12.3"]
+
+[dependency-groups]
+dev = ["pyright==1.1.407", "pytest==8.4.2", "ruff==0.14.0"]
+
+[tool.uv]
+no-build = true
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+default = true
+
+[tool.pyright]
+typeCheckingMode = "strict"
+include = ["hooks/session_start.py", "../packaging/test_kast_session_start.py"]
+extraPaths = ["hooks"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["../packaging/test_kast_session_start.py"]
+addopts = "-p no:cacheprovider"

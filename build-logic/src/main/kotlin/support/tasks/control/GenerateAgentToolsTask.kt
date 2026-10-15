@@ -65,7 +65,8 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
         }
         check(paths.filter(Files::isRegularFile).sumOf(Files::size) <= 1_048_576) { "agent plugin source exceeds one MiB" }
         val required = listOf("skills/kast/SKILL.md", "skills/kast/references/query-examples.json",
-            "skills/kast/references/connection.md", "skills/kast/references/query-patterns.md")
+            "skills/kast/references/connection.md", "skills/kast/references/query-patterns.md",
+            "hooks/hooks.json", "hooks/session_start.py", "hooks/session_start.py.lock")
         check(required.all { source.resolve(it).isFile }) { "canonical skill and generated examples are required" }
         check(source.resolve("skills/kast/references/query-examples.json").readBytes()
             .contentEquals(canonicalQueryExamplesFile.get().asFile.readBytes())) { "skill examples must match the canonical query projection" }

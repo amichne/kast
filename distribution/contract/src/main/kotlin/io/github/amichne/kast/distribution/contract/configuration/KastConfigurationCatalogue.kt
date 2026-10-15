@@ -108,7 +108,7 @@ enum class ConfigurationParameter(
         ConfigurationSyntax.OWNER_INPUT,
         ConfigurationScope.HOST_PROFILE,
         ":app-server",
-        "codex-control",
+        "private",
         children = setOf(ConfigurationChild.BROKER),
     ),
     REAL_CODEX_EXECUTABLE(
