@@ -28,8 +28,21 @@ sealed interface SourceReadFailureDetail : SourceReadCause {
 
     @Serializable
     @SerialName("reference-rejected")
-    data class ReferenceRejected(val role: SourceReferenceRole, val reason: SourceReferenceFailure) :
-        SourceReadFailureDetail
+    data class ReferenceRejected
+    private constructor(
+        val role: SourceReferenceRole,
+        val reason: SourceReferenceFailure,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("authority_mismatch")
+        val authorityMismatch: ReferenceAuthorityMismatch? = null,
+    ) : SourceReadFailureDetail {
+        constructor(role: SourceReferenceRole, reason: SourceReferenceFailure) : this(role, reason, null)
+
+        companion object {
+            fun staleAuthority(role: SourceReferenceRole, mismatch: ReferenceAuthorityMismatch): ReferenceRejected =
+                ReferenceRejected(role, SourceReferenceFailure.STALE_AUTHORITY, mismatch)
+        }
+    }
 
     @Serializable
     @SerialName("internal-contract-failure")
@@ -241,8 +254,18 @@ object SourceReadCauseSerializer : KSerializer<SourceReadCause> {
                 cause.expected != cause.reason.expectation(cause.field.path)
         )
             throw SerializationException("Contradictory source request expectation")
-        return cause
+        return cause.requireConsistentAuthority()
     }
+}
+
+private fun SourceReadCause.requireConsistentAuthority(): SourceReadCause {
+    if (
+        this is SourceReadFailureDetail.ReferenceRejected &&
+            authorityMismatch != null &&
+            reason != SourceReferenceFailure.STALE_AUTHORITY
+    )
+        throw SerializationException("Authority mismatch needs a stale authority rejection")
+    return this
 }
 
 /** Static alternatives and bounds are safe to publish even for malicious inputs. */

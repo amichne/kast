@@ -305,6 +305,26 @@ for (const harness of ['copilot', 'pi']) {
       else assert.equal(result.resultType, 'failure');
     }
   });
+  test(`${harness} preserves a typed recovery detail as a host failure`, async () => {
+    const outcomes = process.env.KAST_ADAPTER_TEST_RECOVERY
+      ? JSON.parse(readFileSync(process.env.KAST_ADAPTER_TEST_RECOVERY, 'utf8')) : [
+      { type: 'rejected', failure: 'QUERY_SESSION_TRANSITION_REJECTED', detail: {
+        type: 'RESULT_NOT_ISSUED_BY_PRECEDING_REPLY', expected_result: null,
+        requested_result: 'result:v1:00000000-0000-0000-0000-000000000001', next_action: 'START_NEW_QUERY_SESSION' } },
+      { type: 'rejected', failure: 'INVALID_ARGUMENTS', detail: {
+        type: 'SOURCE_ANCHOR_REJECTED', cause: 'UNKNOWN_TOKEN_FAMILY', next_action: 'USE_ISSUED_CANDIDATE_SELECTOR' } },
+    ];
+    if (process.env.KAST_ADAPTER_TEST_RECOVERY) {
+      assert.equal(outcomes.length, 10, 'Kotlin serializes every detail and both expected-authority states');
+      assert.equal(new Set(outcomes.map(outcome => outcome.detail.type)).size, 5);
+    }
+    for (const outcome of outcomes) {
+      const result = await invokeRead(outcome);
+      assert.deepEqual(JSON.parse(harness === 'pi' ? result.content[0].text : result.textResultForLlm), outcome);
+      if (harness === 'pi') { assert.equal(result.isError, true); assert.deepEqual(JSON.parse(JSON.stringify(result.details)), outcome); }
+      else assert.equal(result.resultType, 'failure');
+    }
+  });
   test(`${harness} preserves document rejection and qualified continuation`, async () => {
     for (const type of ['qualified', 'rejected_document']) {
       const outcome = {type, document:{status:type === 'qualified' ? 'qualified' : 'rejected', qualification:{type:'PARTIAL'}, continuation:'opaque:test'}};

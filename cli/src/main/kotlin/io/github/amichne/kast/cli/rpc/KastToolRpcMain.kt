@@ -207,7 +207,31 @@ internal sealed interface ToolRpcReply {
 
     @Serializable @SerialName("rejected_document") data class RejectedDocument(val document: JsonObject) : ToolRpcReply
 
-    @Serializable @SerialName("rejected") data class Rejected(val failure: ToolRpcFailure) : ToolRpcReply
+    @Serializable
+    @SerialName("rejected")
+    data class Rejected
+    private constructor(
+        val failure: ToolRpcFailure,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        val detail: QuerySessionRejectionDetail? = null,
+    ) : ToolRpcReply {
+        constructor(failure: ToolRpcFailure) : this(failure, null)
+
+        companion object {
+            fun querySession(detail: QuerySessionRejectionDetail): Rejected =
+                Rejected(
+                    when (detail) {
+                        is QuerySessionRejectionDetail.SourceAnchor -> ToolRpcFailure.INVALID_ARGUMENTS
+                        is QuerySessionRejectionDetail.NewRun,
+                        is QuerySessionRejectionDetail.SourceRead,
+                        is QuerySessionRejectionDetail.ResultNotIssued,
+                        is QuerySessionRejectionDetail.ContinuationNotIssued ->
+                            ToolRpcFailure.QUERY_SESSION_TRANSITION_REJECTED
+                    },
+                    detail,
+                )
+        }
+    }
 }
 
 @Serializable

@@ -1,5 +1,9 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.protocol.contract
 
+import io.github.amichne.kast.kernel.Refinement
+import kotlinx.serialization.KeepGeneratedSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -45,20 +49,57 @@ sealed interface QueryRunRejection : QueryRunFailure {
 
     @Serializable @SerialName("WORKSPACE_NOT_READY") data object WorkspaceNotReady : QueryOriginalFailureDocument
 
-    @Serializable
+    @Serializable(with = QueryReferenceRejectedSerializer::class)
+    @KeepGeneratedSerializer
     @SerialName("REFERENCE")
-    data class ReferenceRejected(
+    data class ReferenceRejected
+    private constructor(
         val position: ProtocolOffset,
         val reason: QueryReferenceRejectionReason,
-    ) : QueryOriginalFailureDocument
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("authority_mismatch")
+        val authorityMismatch: ReferenceAuthorityMismatch? = null,
+    ) : QueryOriginalFailureDocument {
+        constructor(position: ProtocolOffset, reason: QueryReferenceRejectionReason) : this(position, reason, null)
 
-    @Serializable
+        companion object {
+            fun staleAuthority(position: ProtocolOffset, mismatch: ReferenceAuthorityMismatch): ReferenceRejected =
+                ReferenceRejected(position, QueryReferenceRejectionReason.STALE_AUTHORITY, mismatch)
+
+            fun admit(
+                position: ProtocolOffset,
+                reason: QueryReferenceRejectionReason,
+                mismatch: ReferenceAuthorityMismatch?,
+            ): Refinement<ReferenceRejected, QueryReferenceEvidenceFailure> =
+                if (mismatch != null && reason != QueryReferenceRejectionReason.STALE_AUTHORITY)
+                    Refinement.Rejected(QueryReferenceEvidenceFailure.MISMATCH_REQUIRES_STALE_AUTHORITY)
+                else Refinement.Refined(ReferenceRejected(position, reason, mismatch))
+        }
+    }
+
+    @Serializable(with = QueryStepReferenceRejectedSerializer::class)
+    @KeepGeneratedSerializer
     @SerialName("STEP_REFERENCE")
-    data class StepReferenceRejected(
+    data class StepReferenceRejected
+    private constructor(
         val stepPosition: ProtocolOffset,
         val referencePosition: ProtocolOffset,
         val reason: QueryReferenceRejectionReason,
-    ) : QueryOriginalFailureDocument
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("authority_mismatch")
+        val authorityMismatch: ReferenceAuthorityMismatch? = null,
+    ) : QueryOriginalFailureDocument {
+        constructor(
+            stepPosition: ProtocolOffset,
+            referencePosition: ProtocolOffset,
+            reason: QueryReferenceRejectionReason,
+        ) : this(stepPosition, referencePosition, reason, null)
+
+        companion object {
+            fun fromReference(step: ProtocolOffset, reference: ReferenceRejected): StepReferenceRejected =
+                StepReferenceRejected(step, reference.position, reference.reason, reference.authorityMismatch)
+        }
+    }
 
     @Serializable
     @SerialName("SOURCE")

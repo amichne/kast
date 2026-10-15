@@ -53,16 +53,9 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName
 internal sealed interface QuerySyntaxAdmission {
     data class Admitted(val syntax: QueryPlanSyntax) : QuerySyntaxAdmission
 
-    data class ReferenceRejected(
-        val position: Int,
-        val reason: QueryReferenceRejectionReason,
-    ) : QuerySyntaxAdmission
+    data class ReferenceRejected(val rejection: QueryRunRejection.ReferenceRejected) : QuerySyntaxAdmission
 
-    data class StepReferenceRejected(
-        val stepPosition: Int,
-        val referencePosition: Int,
-        val reason: QueryReferenceRejectionReason,
-    ) : QuerySyntaxAdmission
+    data class StepReferenceRejected(val rejection: QueryRunRejection.StepReferenceRejected) : QuerySyntaxAdmission
 
     data object RequestRejected : QuerySyntaxAdmission
 }
@@ -77,7 +70,7 @@ internal fun QueryRunRequest.Run.admitSyntax(
         when (val admitted = from.admitSource(lease, authority, retained, impact)) {
             is QueryReferenceSourceAdmission.Admitted -> admitted.source
             is QueryReferenceSourceAdmission.Rejected ->
-                return QuerySyntaxAdmission.ReferenceRejected(admitted.position, admitted.reason)
+                return QuerySyntaxAdmission.ReferenceRejected(admitted.rejection)
             QueryReferenceSourceAdmission.RequestRejected -> return QuerySyntaxAdmission.RequestRejected
         }
     val querySteps = mutableListOf<QueryStepSyntax>()
@@ -85,7 +78,9 @@ internal fun QueryRunRequest.Run.admitSyntax(
         when (val admitted = step.admitStep(lease, authority, retained)) {
             is QueryStepAdmission.Admitted -> querySteps += admitted.step
             is QueryStepAdmission.ReferenceRejected ->
-                return QuerySyntaxAdmission.StepReferenceRejected(index, admitted.position, admitted.reason)
+                return QuerySyntaxAdmission.StepReferenceRejected(
+                    QueryRunRejection.StepReferenceRejected.fromReference(queryPosition(index), admitted.rejection)
+                )
             QueryStepAdmission.RequestRejected -> return QuerySyntaxAdmission.RequestRejected
         }
     }
@@ -126,7 +121,7 @@ private fun QueryFromDocument.admitSource(
 private sealed interface QueryStepAdmission {
     data class Admitted(val step: QueryStepSyntax) : QueryStepAdmission
 
-    data class ReferenceRejected(val position: Int, val reason: QueryReferenceRejectionReason) : QueryStepAdmission
+    data class ReferenceRejected(val rejection: QueryRunRejection.ReferenceRejected) : QueryStepAdmission
 
     data object RequestRejected : QueryStepAdmission
 }
@@ -173,8 +168,7 @@ private fun QueryStepDocument.Concat.admitConcat(
                         QueryStepSyntax.Concat(QueryCompositionInput.ExactReferences(source.references))
                     )
                 }
-                is QueryReferenceSourceAdmission.Rejected ->
-                    QueryStepAdmission.ReferenceRejected(admitted.position, admitted.reason)
+                is QueryReferenceSourceAdmission.Rejected -> QueryStepAdmission.ReferenceRejected(admitted.rejection)
                 QueryReferenceSourceAdmission.RequestRejected -> QueryStepAdmission.RequestRejected
             }
         is QueryFromDocument.Result ->
@@ -207,10 +201,7 @@ private fun QueryBindingNameDocument.domainName(): QueryBindingName? = QueryBind
 private sealed interface QueryReferenceSourceAdmission {
     data class Admitted(val source: QuerySourceSyntax) : QueryReferenceSourceAdmission
 
-    data class Rejected(
-        val position: Int,
-        val reason: QueryReferenceRejectionReason,
-    ) : QueryReferenceSourceAdmission
+    data class Rejected(val rejection: QueryRunRejection.ReferenceRejected) : QueryReferenceSourceAdmission
 
     data object RequestRejected : QueryReferenceSourceAdmission
 }
@@ -226,8 +217,7 @@ private fun List<QueryReferenceDocument.ExactSymbol>.admitExactReferences(
                 is CanonicalSelectorDecoding.Decoded -> decoded.value
                 is CanonicalSelectorDecoding.Rejected ->
                     return QueryReferenceSourceAdmission.Rejected(
-                        index,
-                        decoded.failure.queryRejection(reference.token),
+                        decoded.queryReferenceRejection(index, reference.token)
                     )
             }
         selectors += selector

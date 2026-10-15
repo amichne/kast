@@ -563,11 +563,32 @@ function run(args, input = "", policy = null, signal = null, cwd = process.cwd()
 }
 
 function isToolResult(value) {
-  if (value === null || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length !== 2) return false;
-  if (value.type === "rejected") return TOOL_RPC_FAILURES.includes(value.failure);
-  // Canonical document is opaque here; the Kotlin RPC validates its owning schema.
-  return ["complete", "qualified", "rejected_document"].includes(value.type) &&
-    value.document !== null && typeof value.document === "object" && !Array.isArray(value.document);
+  const object = item => item !== null && typeof item === "object" && !Array.isArray(item);
+  const keys = (item, expected) => object(item) && Object.keys(item).length === expected.length &&
+    expected.every(key => Object.hasOwn(item, key));
+  const uuid = "[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}";
+  const token = (item, family) => typeof item === "string" && new RegExp("^" + family + ":v1:" + uuid + "$").test(item);
+  if (!object(value) || typeof value.type !== "string") return false;
+  if (value.type === "rejected") {
+    if (typeof value.failure !== "string" || !TOOL_RPC_FAILURES.includes(value.failure)) return false;
+    if (keys(value, ["type", "failure"])) return true;
+    if (!keys(value, ["type", "failure", "detail"]) || !object(value.detail) || typeof value.detail.type !== "string") return false;
+    const detail = value.detail;
+    if (detail.type === "SOURCE_ANCHOR_REJECTED") return value.failure === "INVALID_ARGUMENTS" &&
+      keys(detail, ["type", "cause", "next_action"]) && detail.next_action === "USE_ISSUED_CANDIDATE_SELECTOR" && typeof detail.cause === "string" &&
+      ["UNKNOWN_TOKEN_FAMILY", "INVALID_TOKEN_STRUCTURE", "INVALID_PAYLOAD_ENCODING", "PAYLOAD_DIGEST_MISMATCH"].includes(detail.cause);
+    if (value.failure !== "QUERY_SESSION_TRANSITION_REJECTED" || detail.next_action !== "START_NEW_QUERY_SESSION") return false;
+    if (["NEW_RUN_REQUIRES_NEW_SESSION", "SOURCE_READ_REQUIRES_NEW_SESSION"].includes(detail.type))
+      return keys(detail, ["type", "next_action"]);
+    if (detail.type === "RESULT_NOT_ISSUED_BY_PRECEDING_REPLY") return keys(detail, ["type", "expected_result", "requested_result", "next_action"]) &&
+      (detail.expected_result === null || token(detail.expected_result, "result")) && token(detail.requested_result, "result");
+    if (detail.type === "CONTINUATION_NOT_ISSUED_BY_PRECEDING_REPLY") return keys(detail, ["type", "expected_continuation", "requested_continuation", "next_action"]) &&
+      (detail.expected_continuation === null || token(detail.expected_continuation, "query-output")) &&
+      token(detail.requested_continuation, "(?:query|query-output)");
+    return false;
+  }
+  // The canonical document stays opaque here. The Kotlin RPC admits its owning schema.
+  return keys(value, ["type", "document"]) && ["complete", "qualified", "rejected_document"].includes(value.type) && object(value.document);
 }
 
 const reply = await run(["catalog"]);

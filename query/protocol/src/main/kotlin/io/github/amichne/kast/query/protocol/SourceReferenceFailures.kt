@@ -1,7 +1,17 @@
 package io.github.amichne.kast.query.protocol
 
+import io.github.amichne.kast.protocol.contract.SourceReadFailureDetail
 import io.github.amichne.kast.protocol.contract.SourceReferenceFailure
+import io.github.amichne.kast.protocol.contract.SourceReferenceRole
 import io.github.amichne.kast.source.contract.SourceSelectorTokenFailure
+
+internal fun CanonicalSelectorDecoding.Rejected.sourceRejection(
+    role: SourceReferenceRole
+): SourceReadFailureDetail.ReferenceRejected =
+    when (val mismatch = authorityMismatch) {
+        null -> SourceReadFailureDetail.ReferenceRejected(role, failure.sourceFailure())
+        else -> SourceReadFailureDetail.ReferenceRejected.staleAuthority(role, mismatch)
+    }
 
 internal fun CanonicalSelectorDecodingFailure.sourceFailure(): SourceReferenceFailure =
     when (this) {

@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli.rpc
 import io.github.amichne.kast.appserver.query.AdmittedPublicTool
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.query.PublicToolContract
+import io.github.amichne.kast.appserver.query.PublicToolInputFailure
 import io.github.amichne.kast.cli.MAXIMUM_PROTOCOL_TEXT_LENGTH
 import io.github.amichne.kast.cli.direct.DirectToolStage
 import io.github.amichne.kast.cli.direct.observeDirectToolStage
@@ -27,7 +28,7 @@ import kotlinx.serialization.json.decodeFromJsonElement
 
 internal const val MAXIMUM_QUERY_SESSION_REQUESTS = 64
 
-/** One caller-owned child, one query, then only presentation of authority issued by its preceding reply. */
+/** One initial read, then only presentation of query authority issued by its preceding reply. */
 internal class KastToolRpcQuerySession(private val invoke: (AdmittedPublicTool) -> ToolRpcReply) {
     fun run(input: InputStream, emit: (ToolRpcReply) -> Unit) {
         val records = BufferedInputStream(input)
@@ -46,16 +47,26 @@ internal class KastToolRpcQuerySession(private val invoke: (AdmittedPublicTool) 
                 when (val request = admitQuerySessionInput(bytes)) {
                     is Refinement.Refined -> request.value
                     is Refinement.Rejected -> {
-                        emit(ToolRpcReply.Rejected(request.failure))
+                        emit(request.failure)
                         return
                     }
                 }
-            if (!state.permits(admitted.query)) {
-                emit(ToolRpcReply.Rejected(ToolRpcFailure.QUERY_SESSION_TRANSITION_REJECTED))
-                return
+            val transition =
+                when (val current = state) {
+                    QuerySessionState.First -> Refinement.Refined(Unit)
+                    QuerySessionState.Closed -> return
+                    is QuerySessionState.Output -> current.admit(admitted)
+                }
+            when (transition) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> {
+                    emit(ToolRpcReply.Rejected.querySession(transition.failure))
+                    return
+                }
             }
             val reply = invoke(admitted.tool)
             emit(reply)
+            if (admitted is QuerySessionInput.Source) return
             state = reply.nextQuerySessionState()
             if (state == QuerySessionState.Closed) return
         }
@@ -74,32 +85,45 @@ private sealed interface QuerySessionState {
     data object Closed : QuerySessionState
 }
 
-private fun QuerySessionState.permits(request: QueryRunRequest): Boolean =
-    when (this) {
-        QuerySessionState.First -> true
-        QuerySessionState.Closed -> false
-        is QuerySessionState.Output ->
-            when (request) {
-                is QueryRunRequest.Run -> false
-                is QueryRunRequest.ReadResult ->
-                    result is QueryResultRetention.Retained && request.result == result.reference
-                is QueryRunRequest.Resume -> continuation != null && request.continuation == continuation
+private fun QuerySessionState.Output.admit(input: QuerySessionInput): Refinement<Unit, QuerySessionRejectionDetail> =
+    when (input) {
+        is QuerySessionInput.Source -> Refinement.Rejected(QuerySessionRejectionDetail.SourceRead.value)
+        is QuerySessionInput.Query ->
+            when (val request = input.request) {
+                is QueryRunRequest.Run -> Refinement.Rejected(QuerySessionRejectionDetail.NewRun.value)
+                is QueryRunRequest.ReadResult -> {
+                    val expected = (result as? QueryResultRetention.Retained)?.reference
+                    if (expected == request.result) Refinement.Refined(Unit)
+                    else Refinement.Rejected(QuerySessionRejectionDetail.ResultNotIssued(expected, request.result))
+                }
+                is QueryRunRequest.Resume ->
+                    if (continuation != null && request.continuation == continuation) Refinement.Refined(Unit)
+                    else
+                        Refinement.Rejected(
+                            QuerySessionRejectionDetail.ContinuationNotIssued(continuation, request.continuation)
+                        )
             }
     }
 
-private data class QuerySessionInput(val tool: AdmittedPublicTool, val query: QueryRunRequest)
+private sealed interface QuerySessionInput {
+    val tool: AdmittedPublicTool
 
-private fun admitQuerySessionInput(bytes: ByteArray): Refinement<QuerySessionInput, ToolRpcFailure> {
+    data class Query(override val tool: AdmittedPublicTool, val request: QueryRunRequest) : QuerySessionInput
+
+    data class Source(override val tool: AdmittedPublicTool) : QuerySessionInput
+}
+
+private fun admitQuerySessionInput(bytes: ByteArray): Refinement<QuerySessionInput, ToolRpcReply.Rejected> {
     val input =
         when (val decoded = decodeToolRpcInput(bytes)) {
             is Refinement.Refined -> decoded.value
-            is Refinement.Rejected -> return decoded
+            is Refinement.Rejected -> return Refinement.Rejected(ToolRpcReply.Rejected(decoded.failure))
         }
     val arguments =
         try {
             Json.decodeFromString<JsonObject>(input)
         } catch (_: SerializationException) {
-            return Refinement.Rejected(ToolRpcFailure.INVALID_ARGUMENTS)
+            return Refinement.Rejected(ToolRpcReply.Rejected(ToolRpcFailure.INVALID_ARGUMENTS))
         }
     return when (
         val admitted =
@@ -109,12 +133,24 @@ private fun admitQuerySessionInput(bytes: ByteArray): Refinement<QuerySessionInp
     ) {
         is Refinement.Refined ->
             when (val canonical = admitted.value.canonical) {
-                is PublicToolCanonical.Query -> Refinement.Refined(QuerySessionInput(admitted.value, canonical.request))
-                is PublicToolCanonical.Source,
+                is PublicToolCanonical.Query ->
+                    Refinement.Refined(QuerySessionInput.Query(admitted.value, canonical.request))
+                is PublicToolCanonical.Source -> Refinement.Refined(QuerySessionInput.Source(admitted.value))
                 is PublicToolCanonical.Diagnostics,
-                is PublicToolCanonical.Change -> Refinement.Rejected(ToolRpcFailure.QUERY_SESSION_TRANSITION_REJECTED)
+                is PublicToolCanonical.Change ->
+                    Refinement.Rejected(ToolRpcReply.Rejected(ToolRpcFailure.INVALID_ARGUMENTS))
             }
-        is Refinement.Rejected -> Refinement.Rejected(ToolRpcFailure.INVALID_ARGUMENTS)
+        is Refinement.Rejected ->
+            Refinement.Rejected(
+                when (val failure = admitted.failure) {
+                    is PublicToolInputFailure.SourceAnchor ->
+                        ToolRpcReply.Rejected.querySession(QuerySessionRejectionDetail.SourceAnchor(failure.cause))
+                    is PublicToolInputFailure.Parameter,
+                    PublicToolInputFailure.SchemaMismatch,
+                    PublicToolInputFailure.SchemaRejected,
+                    PublicToolInputFailure.SyntaxRejected -> ToolRpcReply.Rejected(ToolRpcFailure.INVALID_ARGUMENTS)
+                }
+            )
     }
 }
 
