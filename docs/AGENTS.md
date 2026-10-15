@@ -4,8 +4,8 @@ title: "Kast docs"
 description: "Contains the Mintlify site, contributor procedures, glossary policy, and revision-bound acceptance reports."
 resource: "repo://docs"
 tags: [kast, navigation]
-timestamp: "2026-10-15T01:07:09Z"
-source_revision: 5a82727f790d365936682699502ee32a792b3634
+timestamp: "2026-10-15T06:18:36Z"
+source_revision: 3e843eb6eb7c45ff402ba4b1103821afee059408
 code_sources:
   - path: docs/development.md
   - path: docs/documentation-structure.md
@@ -15,6 +15,7 @@ code_sources:
   - path: docs/public/docs.json
   - path: docs/public/reference/source-map.mdx
   - path: docs/tool-rpc.md
+  - path: docs/topology-impact.md
 ---
 
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
@@ -32,6 +33,7 @@ Contains the Mintlify site, contributor procedures, glossary policy, and revisio
 - [documentation-structure.md](documentation-structure.md) - Diátaxis, source ownership, routes, and the local Vale procedure.
 - [glossary.json](glossary.json) - provisional terms and explicit document scope.
 - [development.md](development.md) - development commands and focused test selection.
+- [topology-impact.md](topology-impact.md) - opt-in declared dependency impact, report fields, and the disable switch.
 - [tool-rpc.md](tool-rpc.md) - tool RPC and harness extension behavior.
 - [source-map.mdx](public/reference/source-map.mdx) - source owners and their focused tests.
 - [installation-recovery.md](installation-recovery.md) - offline installation recovery.

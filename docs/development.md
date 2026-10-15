@@ -25,6 +25,9 @@ to a current Java 25 patch or supply the newer JDK's path through these inputs.
 Read [AGENTS.md](../AGENTS.md) before making changes. The
 [OpenWiki guide](../openwiki/quickstart.md) maps architecture to source and tests.
 
+Use the opt-in [topology impact report](topology-impact.md) to find declared production consumers of changed Kast modules.
+Each consumer includes a shortest dependency path for source review and focused tests.
+
 ## Test one behavior at a time
 
 Kast's default testing approach is to virtualize the dependencies of one named
