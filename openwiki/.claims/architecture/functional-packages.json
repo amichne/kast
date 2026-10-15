@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:65310bf8f22a0cd2cf570cf530097674405ec8d84b8e64761d22ee67bd01997c",
+  "claims": [
+    {
+      "id": "claim_449573d278134379993a9d52760e0573",
+      "statement": "The active Gradle graph separates semantic contracts, services, native adapters, hosted composition, transport, and distribution owners.",
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt",
+          "version": "repo-file-v1:sha256:2d3ce43975929b037731df167df69680e66fcfa4d6dca40d48787254eca55fc6"
+        },
+        {
+          "resource": "repo://settings.gradle.kts",
+          "version": "repo-file-v1:sha256:66bb4ba1e1c7730a0106924aa55cf08732f4e6a498ca7f490239cddae7125474"
+        }
+      ]
+    },
+    {
+      "id": "claim_68019442b8ea4a5094354b4436923050",
+      "statement": "The hosted runtime uses live topology contract, build, and IntelliJ dependencies while historical graph storage remains a separate composition.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/build.gradle.kts",
+          "version": "repo-file-v1:sha256:de7d0cd8c9eb98249bea33741eea1f7700bd752aee2fdce71f2e7774239d9d9f"
+        },
+        {
+          "resource": "repo://topology/service/build.gradle.kts",
+          "version": "repo-file-v1:sha256:cc343414abe74c6d94f3b500b62e0ca89540f031acc2b797125858bf5edb8a6b"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}

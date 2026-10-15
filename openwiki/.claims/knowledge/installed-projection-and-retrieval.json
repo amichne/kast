@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:0b94512ae83ce63208167a9a5ff00c32a07899f49db9b6207bdba5c459a18b33",
+  "claims": [
+    {
+      "id": "claim_ace555ef5bde4d7ca87a186cd8d9b62d",
+      "statement": "Installed knowledge extraction uses an isolated Kotlin PSI syntax process and rejects the inventory when a source input cannot be admitted.",
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeDocsMain.kt",
+          "version": "repo-file-v1:sha256:c35a1af79639466be27cf52126927ac8551e057e023977bba541662c2c62b109"
+        },
+        {
+          "resource": "repo://build-logic/src/main/kotlin/conventions/jsoncontracts/KotlinDocumentationScanner.kt",
+          "version": "repo-file-v1:sha256:312a2c8df4f956c244a866d38d1dca894807c109f62948aaee4bc00ce1ad6b47"
+        }
+      ]
+    },
+    {
+      "id": "claim_9666dfadca43494eab4688feb902e298",
+      "statement": "Installed knowledge projection binds declarations to admitted module owners and exact governing guide scopes, with bounded resources and collision rejection.",
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/knowledge/GenerateInstalledKnowledgeTask.kt",
+          "version": "repo-file-v1:sha256:df0032418bc256a75f3db364fb6566784ffba0df3ca45c127dbedf2bfd148896"
+        },
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/knowledge/InstalledKnowledgeValidation.kt",
+          "version": "repo-file-v1:sha256:35ce18375456005fed6ccf7269f6811d3cc20f3a8b7a29765e578b7a4b240480"
+        }
+      ]
+    },
+    {
+      "id": "claim_81fdb11270614d368046c66565ad82d7",
+      "statement": "The installed reader admits the manifest, returns at most 20 shallow search matches, and restricts exact reads to admitted typed resources.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledge.kt",
+          "version": "repo-file-v1:sha256:3e77b73f06c0d9e5b956f044fb339f64109bf4cfe3db275ef4becef628c7b4a2"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/KnowledgeAdmission.kt",
+          "version": "repo-file-v1:sha256:7d6988b499d1c871b611577ff899ab747e2adbfff601a7a40c79cf2f47db39e4"
+        }
+      ]
+    },
+    {
+      "id": "claim_1659f69613e74465ad0aac5e87bc6a8f",
+      "statement": "The public native command graph and private installer version ingress do not expose the retained private knowledge command family as a public semantic command.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt",
+          "version": "repo-file-v1:sha256:babf6fffa7d46a8c1627226b29f49fb29c5203bbfb91a90b7c9e44891c97b491"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt",
+          "version": "repo-file-v1:sha256:928e0c77420469a2a31481421f08c3a6fa5e51477aedee5bbc9324ad210b5ee4"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}

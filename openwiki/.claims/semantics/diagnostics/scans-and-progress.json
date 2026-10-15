@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:8be3a8b2e6404871f6d034e225774e2e5350c6383558442478d19d6726490c06",
+  "claims": [
+    {
+      "id": "claim_fcb6cc070b3c43f78b90afb1e26c01e3",
+      "statement": "DiagnosticScanService advances detached enumeration, analysis, and output under the original query authority and bounded grants while preserving complete-file output suffixes.",
+      "evidence": [
+        {
+          "resource": "repo://diagnostic/contract/src/main/kotlin/io/github/amichne/kast/diagnostic/contract/DiagnosticScan.kt",
+          "version": "repo-file-v1:sha256:cda2fe3841e36543e8a852421f3db1243a095ebab2038701506a980c0177bceb"
+        },
+        {
+          "resource": "repo://diagnostic/service/src/main/kotlin/io/github/amichne/kast/diagnostic/service/DiagnosticScanService.kt",
+          "version": "repo-file-v1:sha256:fc957426f64abeb89a967ee52e8f9cdb9cc8dc4e78d14d9ea8433cc805b3e06d"
+        }
+      ]
+    },
+    {
+      "id": "claim_eea274fc806846c384e1cb0c5aeb8177",
+      "statement": "Project diagnostic enumeration uses the selected native scope and preserves cancellation while mapping unavailable platform state to finite rejection.",
+      "evidence": [
+        {
+          "resource": "repo://diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/ProjectBoundDiagnosticEnumeration.kt",
+          "version": "repo-file-v1:sha256:ced0b3e96d7f90f2835ffaa7c5668b2423d85f8482893c494cf222a50f0d876e"
+        }
+      ]
+    },
+    {
+      "id": "claim_2a16f352410647dbaccd770d1b02a059",
+      "statement": "Hosted diagnostic presentation fits the full envelope and keeps produced suffixes without relabeling unfinished scan coverage as absence.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedDiagnosticResponse.kt",
+          "version": "repo-file-v1:sha256:e306466ba6c842f17ff0f789ebeac9020cb5a9bfb519b2cb5553f394bc473d32"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}

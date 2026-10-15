@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:4709d1a3cddf47493c71126b890205e1f5c1aec15206ab3d766108390c0f50d0",
+  "claims": [
+    {
+      "id": "claim_cef6aa14cee14d75b0fedd02c53e9033",
+      "statement": "HostedEndpointService owns the existing IDEA project's endpoint, explicit lifecycle composition, and retirement under the plugin service registration.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt",
+          "version": "repo-file-v1:sha256:54245f06891c2c6f10193390b3b21045114e1b702392e1d0cc0cb0f0057c6e56"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/resources/META-INF/plugin.xml",
+          "version": "repo-file-v1:sha256:5ffa5cbec74786e8702f0dbd21e881083b13c9996b9783958054759c922c7d80"
+        }
+      ]
+    },
+    {
+      "id": "claim_ee41761235244553bcf1a058d83d8d5c",
+      "statement": "Hosted connection admission bounds concurrent jobs and uses one bounded rejection exchange when capacity is unavailable.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt",
+          "version": "repo-file-v1:sha256:34eb8f85b44bae9f8686ab4875992f1a0b4088ca892ef189b1669a628b25b846"
+        }
+      ]
+    },
+    {
+      "id": "claim_26f95245a9504d42b7eff20050887f4d",
+      "statement": "The read executor and hosted publication session preserve admitted budgets, cancellation settlement, full-envelope fitting, and owned publication commit.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt",
+          "version": "repo-file-v1:sha256:3382cb70a19b0ef3652426972f6efb993986c2f121ecd5d8b3c0f897accb1ef5"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt",
+          "version": "repo-file-v1:sha256:ace0a8de562298f2de4f6307121a922b5b96af9ec95a635f440f3a405fdb3044"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationAdmission.kt",
+          "version": "repo-file-v1:sha256:29ca2358617f039ff68feb5eec35b99a9a09f5d2fc42a2d27c3c3175dd89a3cc"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:57:31.735Z"
+  }
+}

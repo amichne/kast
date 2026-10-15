@@ -1,52 +1,62 @@
+---
+type: Module Guide
+title: "Kast symbol"
+description: "Defines declaration discovery and exact identity, with domain services and Kotlin compiler adapters for IntelliJ IDEA."
+resource: "repo://symbol"
+tags: [kast, navigation]
+timestamp: "2026-10-14T23:25:10Z"
+source_revision: e014a489bfd7e69cbf2c4b61140ee771d857a03e
+code_sources:
+  - path: symbol/contract/build.gradle.kts
+  - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt
+  - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/LocalDeclarationAddress.kt
+  - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/discovery/SymbolDiscoveryRequest.kt
+  - path: symbol/intellij/build.gradle.kts
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIncrementalDeclarationDiscovery.kt
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijPsiExactDeclarationLookup.kt
+  - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt
+  - path: symbol/service/build.gradle.kts
+  - path: symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt
+  - path: symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolDiscoveryService.kt
+  - path: symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolExactService.kt
+---
+
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-30 | hash: e9e206c7a991 -->
+<!-- generated: 2026-10-14 | hash: e9e206c7a991 -->
 
 # symbol
 
 ## Purpose
 
-Defines symbol discovery and exact declaration identity, provides domain services, and implements compiler/PSI-backed IntelliJ adapters.
+Defines declaration discovery and exact identity, with domain services and Kotlin compiler adapters for IntelliJ IDEA.
 
 ## Key Files
 
-- [SymbolDiscoveryProgress.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/SymbolDiscoveryProgress.kt) - declared source universe, coverage, and detached advancing remainder.
-- [IntellijIncrementalDeclarationDiscovery.kt](intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIncrementalDeclarationDiscovery.kt) - lexical unopened partitions and active-file structural positions for bounded Kotlin discovery.
-
-- [ExactRevalidation.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactRevalidation.kt) - detached locator and fresh compiler revalidation contracts.
-- [ExactRevalidationService.kt](service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt) - read-only reacquisition with current content, scope and compiler identity proof.
-
-- [IntellijCallableIdentity.kt](intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijCallableIdentity.kt) - native and compiler-owned enum-entry member identity.
-
-- [CanonicalSymbolId.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalSymbolId.kt) - snapshot-local canonical equality without widening selector scope.
-- [LocalDeclarationAddress.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/LocalDeclarationAddress.kt) - pure qualified/local address alternatives, exact compiler and lexical ownership, and closed admission failures.
-- [CanonicalCompilerSignatureEncoding.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignatureEncoding.kt) - qualified byte compatibility and versioned local signature encoding.
-- [BoundedLexicalCandidates.kt](intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/BoundedLexicalCandidates.kt) - bounded lexical ranking before compiler projection.
-- [contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt) - canonical signature identity.
-- [contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactDeclarationSelector.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/ExactDeclarationSelector.kt) - exact selector.
-- [contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/discovery/SymbolDiscoveryRequest.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/discovery/SymbolDiscoveryRequest.kt) - discovery request.
-- [service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolDiscoveryService.kt](service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolDiscoveryService.kt) - discovery orchestration.
-- [service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolExactService.kt](service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolExactService.kt) - exact lookup orchestration.
-- [intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/exact/IntellijKotlinCompilerSymbolLookup.kt](intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/exact/IntellijKotlinCompilerSymbolLookup.kt) - compiler lookup.
-
-- [intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt](intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt) - constraint-first scoped declaration discovery.
+- [SymbolDiscoveryRequest.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/discovery/SymbolDiscoveryRequest.kt) - discovery scope and constraints.
+- [CanonicalCompilerSignature.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt) - compiler-grounded declaration identity.
+- [LocalDeclarationAddress.kt](contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/LocalDeclarationAddress.kt) - qualified and local declaration addresses.
+- [SymbolDiscoveryService.kt](service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolDiscoveryService.kt) - current-authority discovery admission.
+- [SymbolExactService.kt](service/src/main/kotlin/io/github/amichne/kast/symbol/service/SymbolExactService.kt) - exact lookup admission.
+- [ExactRevalidationService.kt](service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt) - fresh reacquisition of a detached exact locator.
+- [IntellijScopedDeclarationEnumeration.kt](intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt) - scope and kind constraints before enumeration.
+- [IntellijIncrementalDeclarationDiscovery.kt](intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIncrementalDeclarationDiscovery.kt) - bounded discovery with structural continuation positions.
+- [IntellijPsiExactDeclarationLookup.kt](intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijPsiExactDeclarationLookup.kt) - declaration ancestry within one file.
 
 ## Subdirectories
 
-- `contract` - exact and discovery identities, requests, facts, and outcomes.
-- `service` - discovery and exact services.
-- `intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery` - search and scope compilation.
-- `intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/exact` - compiler/PSI exact resolution.
+- [contract/](contract/) - identities, selectors, discovery requests, and outcomes.
+- [service/](service/) - discovery, exact lookup, and revalidation.
+- [intellij/](intellij/) - PSI enumeration, K2 identity, and exact resolution.
 
 ## Entry Points
 
-- Gradle projects: `:symbol:contract`, `:symbol:service`, `:symbol:intellij`.
+- Gradle projects: `:symbol:contract`, `:symbol:service`, and `:symbol:intellij`.
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../openwiki/modules/semantic-reads.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
-
-- Use discovery to narrow candidates, then retain an exact selector through subsequent operations.
-- For ambiguity, start in contract/service admission before reading PSI or compiler adapters.
+- For excessive candidate work, examine scope and kind admission before compiler projection.
+- For ambiguity or stale identity, examine contract and service admission before the compiler adapter.
+- Read the [root guide](../AGENTS.md) for engineering rules and optional OpenWiki retrieval.
 
 ## Exact declaration boundary
 

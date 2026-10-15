@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:f9544a3bd1693f3bb2c39921025d17d4811c171b749b5e2358dd5995daf87d5d",
+  "pageVersion": "sha256:3096fe1d728f2cff1ba914bcc9a0199e221aea2bbf422a766e8b6646a3d20ca2",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -90,7 +90,7 @@
         },
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:6183aa4fdddcd307842d016f27a5dbc0d833b0c38ab91782d92d032fef7934df"
+          "version": "repo-file-v1:sha256:6bc007dabe913233214921f6c65d40d2212f735f24ba62d6ff0420f9fbf339d4"
         }
       ]
     },
@@ -316,7 +316,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:f57f16469672f26932cd5b781561f3619d67cf4b2d9e44d127d8a33d0fd44d04"
+          "version": "repo-file-v1:sha256:ed5a3ae6abadf4c94be4300c76c04f152820e1d5aba17b793400c305e7b3135a"
         }
       ]
     },
@@ -348,7 +348,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml#L104-L149",
-          "version": "repo-lines-v1:sha256:086d7db241f5324bec78cf4c33a9dc9571e48bf12f940347902ef31ad0c00fe9:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1OTRjZmRjNjRjMzAyZDQ0MDE1NDE5ZjdiMDJiYmJkYjMxNDk2OTJlNWY1OTBjN2Q3MDU3ZjYzYWMyZjdkOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OGJmMzg0ZmQyMGNkZjkwZGQ5OTVhZWZkZjI2NWRjNDNjZWViY2Q0NjdjYzU5NTlkZDdkMjMxNTkxMTE3NDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRlNGNiZGE4MTE5YjBiNmVmMTI3ZGVhZjlkNjEyODJlODQ0MjEwZTk1MzY1OThjZDc0Y2IwOGJjNTcyNGZmYmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIyZmUzYjc4Y2ZlOWMwYmUzMjFhODNmNzc2MjUwMDdjODJjOTgyNDRhOThkZDNhZGJlYzhlZGE3NTU0ZmM2OTkifQ"
+          "version": "repo-lines-v1:sha256:f608a2b2088d686f0d141de98e9626da38504b289e1ae6e8db8158e823317a44:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1OTRjZmRjNjRjMzAyZDQ0MDE1NDE5ZjdiMDJiYmJkYjMxNDk2OTJlNWY1OTBjN2Q3MDU3ZjYzYWMyZjdkOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OGJmMzg0ZmQyMGNkZjkwZGQ5OTVhZWZkZjI2NWRjNDNjZWViY2Q0NjdjYzU5NTlkZDdkMjMxNTkxMTE3NDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRlNGNiZGE4MTE5YjBiNmVmMTI3ZGVhZjlkNjEyODJlODQ0MjEwZTk1MzY1OThjZDc0Y2IwOGJjNTcyNGZmYmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIyZmUzYjc4Y2ZlOWMwYmUzMjFhODNmNzc2MjUwMDdjODJjOTgyNDRhOThkZDNhZGJlYzhlZGE3NTU0ZmM2OTkifQ"
         },
         {
           "resource": "repo://distribution/cli/build.gradle.kts#L60-L69",
@@ -373,10 +373,20 @@
           "version": "repo-lines-v1:sha256:6db2f6dba5c14a620f16d2fe377c5320fa4a99bfd31938f55f8f4d17e3efda21:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNlNGMyMzRlZTg1YTM5NzhlODMyNzRhZjZjNzIzYmI3NmU1YzkyMTlkYmRlMGQ5YTNjNWUxMzYzNWMyZjliZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEzYTI3ZWVjZTU3ZGI5M2VjMDhiNWY0YzE2OTVjMzFjMjZkZTkzZjg4YjcwYWMyZWNiZDAyNjQ3NTBiYjU0MGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE3NzI2ZjQxMTdhMmM0Mzg3NzkwNGQyYjdkZTFlYmQ2MTk3OTc5MjhmM2MwZDgzZjMxZTVlNTNjNWYxNGEwNGUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_fa7ede3831df4f9988c811351a4d2ae4",
+      "statement": "Host receipt admission qualifies device changes through stable root inode and owner evidence and permits missing recorded entries only for protected removal, while exact reinstall inventory remains necessary.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/host-installation.py",
+          "version": "repo-file-v1:sha256:6bc007dabe913233214921f6c65d40d2212f735f24ba62d6ff0420f9fbf339d4"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-14T01:57:02.037Z"
+    "at": "2026-10-15T00:33:05.932Z"
   }
 }

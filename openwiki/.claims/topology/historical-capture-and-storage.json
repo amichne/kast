@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:b57e6d072408573c9d685070e58023ece15fc64cba62765c3dccbefb7a0670cc",
+  "claims": [
+    {
+      "id": "claim_65f0e5393ebd4431996c310c651593a1",
+      "statement": "HistoricalCaptureCoordinator admits Git attribution, native capture, exact capture basis, and matching publication identity under one sequence.",
+      "evidence": [
+        {
+          "resource": "repo://topology/build/src/main/kotlin/io/github/amichne/kast/topology/build/historical/HistoricalCaptureCoordinator.kt",
+          "version": "repo-file-v1:sha256:82287ef113f0041743695f44cc3107eb3afc0dd0af82a399dd2917078e743ed5"
+        }
+      ]
+    },
+    {
+      "id": "claim_506b70da575147f9af538660a224265a",
+      "statement": "The current IntelliJ historical capture adapter returns EXTERNAL_INPUT_STABILITY_UNPROVEN before semantic extraction and publication.",
+      "evidence": [
+        {
+          "resource": "repo://topology/intellij/src/main/kotlin/io/github/amichne/kast/topology/intellij/historical/IntellijHistoricalCaptureAdapter.kt",
+          "version": "repo-file-v1:sha256:0c69523a10828e386ab29c15aebcb216e24d564fb676e4672b322d1d6166886d"
+        }
+      ]
+    },
+    {
+      "id": "claim_8dbbbefd0e9a4b24958e03ccf53e04d8",
+      "statement": "Historical SQLite staging admits the exact basis, resumes bounded per-file progress, and rejects publication of incomplete stages.",
+      "evidence": [
+        {
+          "resource": "repo://evidence/topology-sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/historical/SqliteHistoricalSnapshotStaging.kt",
+          "version": "repo-file-v1:sha256:f19a51d4d450a85c147cfabf4fdcf8e45dc803ec55f2cdbde65747112113d9aa"
+        },
+        {
+          "resource": "repo://evidence/topology-sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/historical/SqliteHistoricalSnapshotStore.kt",
+          "version": "repo-file-v1:sha256:6e1347c14083158b1ae547391679c79db9a10a1dfd05c099ab81ff006ada043d"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}

@@ -1,36 +1,55 @@
+---
+type: Module Guide
+title: "Kast distribution"
+description: "Defines installation contracts, the public native management executable, managed filesystem effects, and independent component releases."
+resource: "repo://distribution"
+tags: [kast, navigation]
+timestamp: "2026-10-14T23:25:10Z"
+source_revision: e014a489bfd7e69cbf2c4b61140ee771d857a03e
+code_sources:
+  - path: distribution/cli/build.gradle.kts
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
+  - path: distribution/contract/build.gradle.kts
+  - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt
+  - path: distribution/managed/build.gradle.kts
+  - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt
+  - path: distribution/release/component_release.py
+  - path: distribution/release/plugin-release.gradle.kts
+---
+
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-28 | hash: eac47d85f0bd -->
+<!-- generated: 2026-10-14 | hash: 130861782e6b -->
 
 # distribution
 
 ## Purpose
 
-Defines installation/runtime configuration contracts, the native management CLI, safe managed filesystem realization, and release assembly metadata.
+Defines installation contracts, the public native management executable, managed filesystem effects, and independent component releases.
 
 ## Key Files
 
-- [contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt) - configuration model.
-- [managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt](managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt) - owned installation tree.
-- [release/plugin-release.gradle.kts](release/plugin-release.gradle.kts) - independent Control and Host release wiring and fresh-pair assembly.
-- [release/component_release.py](release/component_release.py) and [release/component-release.schema.json](release/component-release.schema.json) - exact-source component records, owned asset inventories and checksum admission.
+- [ConfigurationSchemaDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt) - typed installed configuration.
+- [ManagedInstallationOwnedTree.kt](managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt) - the admitted installation tree.
+- [KastManagementMain.kt](cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt) - the public native process entry.
+- [plugin-release.gradle.kts](release/plugin-release.gradle.kts) - Control and Host release tasks.
+- [component_release.py](release/component_release.py) - component asset records and checksum admission.
 
 ## Subdirectories
 
-- `contract` - bootstrap, configuration, transport qualification, and runtime identity types.
-- `cli` - native public management command, passive status, integration registration, and lifecycle entry points.
-- `managed` - owned installation trees, recovery receipts, selected IDE discovery, and endpoint effects.
-- `release` - Python/Gradle release and SBOM utilities.
+- [contract/](contract/) - configuration, bootstrap, transport, and runtime identities.
+- [cli/](cli/AGENTS.md) - the public command and authored lifecycle rules.
+- [managed/](managed/) - installation trees, recovery receipts, IDE discovery, and endpoint effects.
+- [release/](release/) - release records, product gates, SBOMs, and archive assembly.
 
 ## Entry Points
 
-- Gradle projects: `:distribution:contract`, `:distribution:cli`, `:distribution:managed`.
-- Release tasks are applied from `release/plugin-release.gradle.kts`.
-- `assembleControlRelease` and `assembleHostRelease` package their selected component independently; `assembleRelease` composes a fresh-install pair.
+- Gradle projects: `:distribution:contract`, `:distribution:cli`, and `:distribution:managed`.
+- `assembleControlRelease` and `assembleHostRelease` package separate components. `assembleRelease` makes a fresh pair.
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../openwiki/modules/distribution.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
-
-- For configuration meaning, begin in `contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration`; for filesystem effects, follow admitted values into `managed`.
-- For the public executable, begin in `cli/src/main/kotlin/io/github/amichne/kast/distribution/cli`.
-- For packaged layout failures, pair this map with [packaging instructions](../packaging/AGENTS.md).
+- For public command behavior, read the nested native CLI guide.
+- For configuration meaning, start in `contract`. For filesystem effects, trace admitted values into `managed`.
+- For archive or installer failures, continue into the packaging guide.
+- Component versions are independent. Hosted compatibility uses exact contract identities and platform admission.
+- Read the [root guide](../AGENTS.md) for engineering rules and optional OpenWiki retrieval.

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:f0272b1ca38f3d8f96f119c7f07e7535347702031758db54134ce49cbcf29887",
+  "claims": [
+    {
+      "id": "claim_8b4558b4ee2349efad79e24bde383051",
+      "statement": "Live dependency snapshots compare current-owner environment continuity, complete resolution inputs, dependency domains, and source content before fact reuse.",
+      "evidence": [
+        {
+          "resource": "repo://topology/contract/src/main/kotlin/io/github/amichne/kast/topology/contract/SemanticDependencySnapshot.kt",
+          "version": "repo-file-v1:sha256:f1b4951b42e05c6bc3263e8b5c6ad784dfea578e90dd8be3b6e90a8dc0ccf8bd"
+        }
+      ]
+    },
+    {
+      "id": "claim_439475de0ac34ee89ca96df3005ca8fe",
+      "statement": "The native dependency capture scope charges preparation cost even when reuse eligibility fails and releases native carriers before return.",
+      "evidence": [
+        {
+          "resource": "repo://topology/intellij/src/main/kotlin/io/github/amichne/kast/topology/intellij/IntellijSemanticDependencyCapture.kt",
+          "version": "repo-file-v1:sha256:c012eee2eea1a8acbb5d4a1615cd57d3682e759e86bddc945ef8d7bb0e1ba3be"
+        }
+      ]
+    },
+    {
+      "id": "claim_4d5ab6a0127b41a68061cdfde9ec3fc2",
+      "statement": "SemanticCallbackFactStore keeps bounded complete facts under one original authority and permanent retirement.",
+      "evidence": [
+        {
+          "resource": "repo://topology/build/src/main/kotlin/io/github/amichne/kast/topology/build/SemanticCallbackFactStore.kt",
+          "version": "repo-file-v1:sha256:20dca8b4e9e3c31ee4b9bd3a08f8ad99e6322949721a384f4aa336680561abcd"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}

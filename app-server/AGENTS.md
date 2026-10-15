@@ -1,87 +1,71 @@
+---
+type: Module Guide
+title: "Kast app-server"
+description: "Owns the shared coordinator, workspace preparation, host adapters, Codex transport, and public tool admission."
+resource: "repo://app-server"
+tags: [kast, navigation]
+timestamp: "2026-10-14T23:25:10Z"
+source_revision: e014a489bfd7e69cbf2c4b61140ee771d857a03e
+code_sources:
+  - path: app-server/README.md
+  - path: app-server/build.gradle.kts
+  - path: app-server/docs/compatibility.md
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinator.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeGate.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/storage/PrivateRecordFiles.kt
+  - path: app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
+  - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolCompletionPolicyTest.kt
+  - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolContractTest.kt
+---
+
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-10-05 | hash: 626bfa30e216 -->
+<!-- generated: 2026-10-14 | hash: 79fb7323575e -->
 
 # app-server
 
 ## Purpose
 
-Owns the persistent broker/coordinator, host attachment, existing-IDE invocation routing, and Codex protocol projection.
+Owns the shared coordinator, workspace preparation, host adapters, Codex transport, and public tool admission.
 
 ## Key Files
 
-- [BrokerJavaRuntime.kt](src/main/kotlin/io/github/amichne/kast/appserver/BrokerJavaRuntime.kt) - retained canonical Java home/executable and bounded Java 25 compatibility proof for broker launch.
-
-- [DaemonUpgradeGate.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeGate.kt) - shared session, lazy frontend and management admission; `DaemonUpgradeAdmission` owns pending/sealed/committed transitions.
-
-- [FileThreadCatalogStore.kt](src/main/kotlin/io/github/amichne/kast/appserver/protocol/FileThreadCatalogStore.kt) - lazy thread-binding shards and legacy conversation migration; `ThreadBindingDocuments` owns stored identities and refinement.
-- [PrivateRecordFiles.kt](src/main/kotlin/io/github/amichne/kast/appserver/storage/PrivateRecordFiles.kt) - shared private-file, lock, atomic-write and directory-sync boundary for durable records.
-
-- [InvocationFence.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationFence.kt) - active admission and durable replay settlement; `FileInvocationRecords` owns sharded storage and legacy migration.
-
-- [InstalledWorkspacePreparation.kt](src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt) - shared installed preparation owner and native-bound semantic demand.
-- [HostedServicesObservation.kt](src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServicesObservation.kt) - live hosted-contract admission and finite observations for Control upgrade preflight.
-- [HostedServiceAdmissionScan.kt](src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServiceAdmissionScan.kt) - owned project-endpoint selection, absent-owner exclusion and exact live identity checks.
-- [ExistingIdeDocuments.kt](src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt) - strict raw descriptor validation and retained process-owner proof.
-- [ExistingIdeResponseFrame.kt](src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseFrame.kt) - existing socket frame/body admission with bounded typed byte evidence.
-- [ExistingIdeResponseEvidence.kt](src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseEvidence.kt) - private response stage/outcome records; pure decoder causes stay separate from semantic authority.
-- [ExistingIdeStageObservation.kt](src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeStageObservation.kt) - opt-in bounded JFR lifecycle and exact-socket exchange stages.
-- [McpWorkspaceOperationClient.kt](src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt) - session-owned preparation of an exact Gradle root for the Codex MCP process.
-- [KastSingleChangeInvocation.kt](src/main/kotlin/io/github/amichne/kast/appserver/provider/KastSingleChangeInvocation.kt) - one broker call that plans, retains the exact plan identity, applies, and attempts recovery through the existing local endpoint.
-- [WorkspaceRecoverySettlement.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceRecoverySettlement.kt) - typed proof that a cancelled change recovered before the workspace lane settles.
-
-- [WorkspacePreparations.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt) - daemon-owned, coalesced IDEA preparation and retained operation outcomes.
-- [WorkspacePreparation.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparation.kt) - request identity, stage admission, and finite preparation failures.
-
-- [DaemonManagementProtocol.kt](src/main/kotlin/io/github/amichne/kast/appserver/DaemonManagementProtocol.kt) - versioned local management requests and finite rejections.
-- [InstalledDaemonManagementClient.kt](src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonManagementClient.kt) - ownership-qualified registration, session inspection, controller operations and update handoff without Codex initialization.
-- [InstalledDaemonUpgrade.kt](src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonUpgrade.kt) - installer-facing service presence proof and exact sealed or committed update permit.
-- [LegacyLoginBootstrap.kt](src/main/kotlin/io/github/amichne/kast/appserver/LegacyLoginBootstrap.kt) - exact legacy login-agent ownership admission before lifecycle effects.
-- [BrokerLaunchdServiceDocument.kt](src/main/kotlin/io/github/amichne/kast/appserver/BrokerLaunchdServiceDocument.kt) - exact private daemon launchd documents for current-session and login starts.
-- [ServiceLoginAgent.kt](src/main/kotlin/io/github/amichne/kast/appserver/ServiceLoginAgent.kt) - exact owned login entry for the persistent service job and legacy one-shot migration.
-- [BrokerServiceStartLock.kt](src/main/kotlin/io/github/amichne/kast/appserver/BrokerServiceStartLock.kt) - shared installation lock for service start, retirement, and direct login resumption.
-
-- [KastCatalogSource.kt](src/main/kotlin/io/github/amichne/kast/appserver/provider/KastCatalogSource.kt) - bounded packaged provider-contract reads without a Kast subprocess.
-
-- [SavedConfigurationIngress.kt](src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt) - physical saved-file admission, bounded reads and configuration provenance.
-
-- [KastSourcePresentation.kt](src/main/kotlin/io/github/amichne/kast/appserver/provider/KastSourcePresentation.kt) - compact returned source precedes the unchanged canonical provider envelope.
-- [CodexToolTerminalReply.kt](src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexToolTerminalReply.kt) - single-document finite broker failure and cancellation replies.
-- [README.md](README.md) - architecture, lifecycle, status, and public integration behavior.
-- [docs/compatibility.md](docs/compatibility.md) - tested compatibility evidence and open release gates.
-- [../openwiki/contracts/public-tools.md](../openwiki/contracts/public-tools.md) - externally visible tool and query semantics.
-- [src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt](src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt) - Codex-facing executable entry.
-- [src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinator.kt](src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinator.kt) - installed coordinator assembly.
-- [src/main/kotlin/io/github/amichne/kast/appserver/runtime/CoordinatorControl.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/CoordinatorControl.kt) - passive coordinator status and retired-worker rejection.
-- [src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt](src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt) - Codex protocol boundary.
-
-- [src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt](src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt) - intent-tool admission and schema identity.
-
-- [tools.schema.json](src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json) - authored public actions, expansion scope, impact inputs, outputs, and examples.
-- [PublicToolExpansionScopeMapping.kt](src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolExpansionScopeMapping.kt) - one closed expansion domain shared by relation stages and impact sources.
-- [PublicToolImpactSourceMapping.kt](src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactSourceMapping.kt) - impact source syntax lowering into the canonical query owner.
+- [README.md](README.md) - coordinator lifecycle and integration architecture.
+- [compatibility.md](docs/compatibility.md) - compatibility evidence and release gates.
+- [KastCodexMain.kt](src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt) - the Codex-facing process entry.
+- [InstalledCoordinator.kt](src/main/kotlin/io/github/amichne/kast/appserver/InstalledCoordinator.kt) - installed coordinator composition.
+- [WorkspacePreparations.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt) - coalesced IDEA preparation and retained outcomes.
+- [DaemonUpgradeGate.kt](src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonUpgradeGate.kt) - session and management admission during upgrades.
+- [ExistingIdeDocuments.kt](src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt) - endpoint identity and process ownership admission.
+- [PublicToolContract.kt](src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt) - public syntax admission and schema identity.
+- [tools.schema.json](src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json) - the authored public schema and examples.
+- [PrivateRecordFiles.kt](src/main/kotlin/io/github/amichne/kast/appserver/storage/PrivateRecordFiles.kt) - private durable records, locks, and atomic writes.
 
 ## Subdirectories
 
-- `src/main/kotlin/io/github/amichne/kast/appserver/core` - pure broker/session domain.
-- `src/main/kotlin/io/github/amichne/kast/appserver/query` - public query grammar, admission, and canonical lowering; preserve its authored guide.
-- `src/main/kotlin/io/github/amichne/kast/appserver/host` - CLI, desktop, and installed-client host adapters; read its nested `AGENTS.md` first.
-- `src/main/kotlin/io/github/amichne/kast/appserver/protocol` - Codex and Copilot projections plus thread catalog state.
-- `src/main/kotlin/io/github/amichne/kast/appserver/provider` - process, Gradle, invocation, and observer boundaries.
-- `src/main/kotlin/io/github/amichne/kast/appserver/runtime` - workspace registration, broker sessions, and invocation control.
-- `src/main/kotlin/io/github/amichne/kast/appserver/storage` - shared private-file admission, locking and atomic durable-record writes.
-- `src/test` - focused broker, provider, and protocol behavior tests.
+- [src/main/kotlin/io/github/amichne/kast/appserver/core/](src/main/kotlin/io/github/amichne/kast/appserver/core/) - broker and session types.
+- [src/main/kotlin/io/github/amichne/kast/appserver/host/](src/main/kotlin/io/github/amichne/kast/appserver/host/AGENTS.md) - Codex host adapters and authored rules.
+- [src/main/kotlin/io/github/amichne/kast/appserver/query/](src/main/kotlin/io/github/amichne/kast/appserver/query/AGENTS.md) - public admission and canonical mappings with authored rules.
+- [src/main/kotlin/io/github/amichne/kast/appserver/ide/](src/main/kotlin/io/github/amichne/kast/appserver/ide/) - existing-IDE endpoints and live compatibility.
+- [src/main/kotlin/io/github/amichne/kast/appserver/protocol/](src/main/kotlin/io/github/amichne/kast/appserver/protocol/) - Codex and Copilot transport projections.
+- [src/main/kotlin/io/github/amichne/kast/appserver/runtime/](src/main/kotlin/io/github/amichne/kast/appserver/runtime/) - registration, preparation, session, and invocation control.
+- [src/main/kotlin/io/github/amichne/kast/appserver/provider/](src/main/kotlin/io/github/amichne/kast/appserver/provider/) - provider requests and projections.
 
 ## Entry Points
 
 - Gradle project: `:app-server`.
-- Private lifecycle and workspace registration are surfaced through
-  [KastServiceMain.kt](../cli/src/main/kotlin/io/github/amichne/kast/cli/KastServiceMain.kt);
-  semantic requests arrive through the hosted Codex provider.
+- Run `./gradlew :app-server:verifyPublicQueryGeneration` after public schema or generator changes.
+- Private service entry points live in `cli`. Direct MCP and tool RPC share `KastDirectToolSession` there.
+- [PublicToolContractTest.kt](src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolContractTest.kt) - public admission cases.
+- [PublicToolCompletionPolicyTest.kt](src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolCompletionPolicyTest.kt) - strict completion policy cases.
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../openwiki/modules/runtime-hosts.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
-
-- For transport/session faults, read `README.md`, then `core`, `host`, and protocol tests.
-- For coordinator readiness, start with `CoordinatorControl`, `CoordinatorStatus`, and `InstalledCoordinatorClient`. Status admits exactly zero isolated workers.
-- For public tool shape, begin with [public tool contracts](../openwiki/contracts/public-tools.md), then `query/PublicToolContract.kt` and the schema generator. For Codex projection, follow `protocol/codex`.
+- For host faults, read the nested host guide before changing transport arguments or process ownership.
+- For public syntax, read the nested query guide, authored schema, and canonical mappings.
+- For preparation failures, trace the exact root through `WorkspacePreparations` into the existing-IDE client.
+- Coordinator readiness alone does not establish workspace enrollment or semantic availability.
+- Read the [root guide](../AGENTS.md) for engineering rules and optional OpenWiki retrieval.

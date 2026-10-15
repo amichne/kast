@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:4f61a651393ca3727572b7d51c9d1c1a0eaf7390598a2a6b00833694c2596e13",
+  "claims": [
+    {
+      "id": "claim_798895ae650c48729590630fac020cc9",
+      "statement": "Traversal composes bounded one-hop relation reads under an exact selector, meaning, strategy, extent, and independent expansion domain.",
+      "evidence": [
+        {
+          "resource": "repo://traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPlan.kt",
+          "version": "repo-file-v1:sha256:4464036f12bc52cff78b800bb54707d221751793d9b873b0dbc281af6211b305"
+        },
+        {
+          "resource": "repo://traversal/service/src/main/kotlin/io/github/amichne/kast/traversal/service/RelationBackedTraversal.kt",
+          "version": "repo-file-v1:sha256:0c52ba178d0a2bdbf598ee0b1a3a9c2ad73a36fc340cf520b9ff140af1a1fbfa"
+        }
+      ]
+    },
+    {
+      "id": "claim_ca419d13013a4317b5fda1402ac1729a",
+      "statement": "Traversal continuation integrity binds frontier, visited state, pending relation work, progress, and retained limitations to the original plan identity.",
+      "evidence": [
+        {
+          "resource": "repo://traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalContinuation.kt",
+          "version": "repo-file-v1:sha256:d53b55256653b182340d59d378d5d6b5977c4845fd0d80d952fe2096250b4a9e"
+        }
+      ]
+    },
+    {
+      "id": "claim_7002a39560a64280b4b1d50881396ff6",
+      "statement": "Partial expansion and scope exclusion preserve unfinished or out-of-domain evidence instead of claiming a complete frontier.",
+      "evidence": [
+        {
+          "resource": "repo://traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPartialExpansion.kt",
+          "version": "repo-file-v1:sha256:4f5eb0b68f73b18ffb738793c37f724b09d7facf513a0e62049e8c1c92aa4495"
+        },
+        {
+          "resource": "repo://traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalScopeExclusion.kt",
+          "version": "repo-file-v1:sha256:d40aec746d8698dcb020ff0cace93cdd4baa6792eefaf370a1cb81da96c93afe"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}

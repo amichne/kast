@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:41e57e4524ce05262919ec5472db7557873401facf4b74dda13f50f8bc923268",
+  "claims": [
+    {
+      "id": "claim_06e2aac3fd894966a82caf7cfced11b7",
+      "statement": "IDE lifecycle state binds projects and bounded operations to host, root, ownership, client, and request identities while keeping native effects outside its monitor.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleState.kt",
+          "version": "repo-file-v1:sha256:3f2d1aaafa56677c5552e5075420236bac7bc3b670d0c5f1ed0371174728c961"
+        }
+      ]
+    },
+    {
+      "id": "claim_b0db390ee1024ec7b43f6f582a2fa2aa",
+      "statement": "Hosted workspace refresh uses one service for explicit queued effects and status, with task completion and imported-model evidence under separate admitted owners.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/HostedWorkspaceRefresh.kt",
+          "version": "repo-file-v1:sha256:5f61b96dda295ac25c1ed988fd39c94049b061b9a34fba63df28f0cac2a1674a"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshImportCompletion.kt",
+          "version": "repo-file-v1:sha256:6eec798f28b236295e16d866bdf1a4e4ad961b8f076a0388281888a6d67bf0fb"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshService.kt",
+          "version": "repo-file-v1:sha256:78c2c5f48d338f7ab2d38e1c9f444203a23ebd84f3ea2ccd0d4dba2b30aa8f22"
+        }
+      ]
+    },
+    {
+      "id": "claim_fb51b4c2d102485aa991583169b152e7",
+      "statement": "The passive read refresh path requests file comparison and maps only terminal outcomes into read readiness without granting arbitrary import authority.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/HostedWorkspaceRefresh.kt",
+          "version": "repo-file-v1:sha256:5f61b96dda295ac25c1ed988fd39c94049b061b9a34fba63df28f0cac2a1674a"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}

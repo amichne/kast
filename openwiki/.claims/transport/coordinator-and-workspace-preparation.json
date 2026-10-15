@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:517323baa11e067984ea257044132d4ca72aca0e0e2867d04edef8c9b99f9289",
+  "claims": [
+    {
+      "id": "claim_9afc4ce3301b4badb9651eeb2f54f674",
+      "statement": "WorkspacePreparations owns one native preparation sequence per canonical root and separates passive historical observation from authorized retries.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt",
+          "version": "repo-file-v1:sha256:c5c9c861ce0574aa6e3a4d272101f334ba73ee666578bdbc5af97a557041bef9"
+        }
+      ]
+    },
+    {
+      "id": "claim_e26a437aa26b41068e118b49725d068c",
+      "statement": "PreparedWorkspaceDemand inspects exact current host identity before dispatch and limits recovery to explicit presemantic cases.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceDemand.kt",
+          "version": "repo-file-v1:sha256:218e1f3a602a8320e101d88e4cec00961185226296335b7e37d370150c9aa570"
+        }
+      ]
+    },
+    {
+      "id": "claim_3132b601e00a4c51b5f58ddd167fc71f",
+      "statement": "WorkspaceExecution gives each workspace one active semantic permit, bounded queue admission, and one aggregate interaction budget.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt",
+          "version": "repo-file-v1:sha256:3ef4b5a06f3c167b69ce474dded988494a9aec8f3099488ab47510a2d3b33eff"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecutionPolicy.kt",
+          "version": "repo-file-v1:sha256:4f5e06e50436c587eef84a642e85e684076fe51089bb919fdac8425dc93a4d69"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:8b09505ea8f3d24f0169b3c4a9a50e0b1c998bac3b8aadf51055ec8ff2b6c6f6",
+  "claims": [
+    {
+      "id": "claim_546361d120424763b6b92ed63548328f",
+      "statement": "Architecture acceptance combines observed Gradle dependencies, role conventions, class ownership, and compiled effect evidence before it publishes success.",
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/kast.architecture.gradle.kts",
+          "version": "repo-file-v1:sha256:6faecd4b9c84a58088bfb0b9d04199fbf60f60685351dc7e73ec4e947bc97fc8"
+        },
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/architecture/gradle/ArchitectureTasks.kt",
+          "version": "repo-file-v1:sha256:bdcb263f90300d0568505d69bc8f8a0028f3fbc80d60bc463ed8b681925fe5f9"
+        }
+      ]
+    },
+    {
+      "id": "claim_2a1613e0175b414584e26234475052ad",
+      "statement": "The quality convention enforces 400 production lines and 600 test lines while exact baselines preserve existing debt without automatic allowance growth.",
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/kast.kotlin-quality.gradle.kts",
+          "version": "repo-file-v1:sha256:0546c35a087fc69a574aec5a66b440b6bbc0b0a21a0d36236a930927306fbcbb"
+        },
+        {
+          "resource": "repo://config/README.md",
+          "version": "repo-file-v1:sha256:dff84ff6694c3ebc2330b8b47662dc8874e069f0a15f520482a4c9577233431a"
+        }
+      ]
+    },
+    {
+      "id": "claim_e0301fecfc124faa925072259a0bcd2d",
+      "statement": "CI retains its full check selection for unclassified paths or unavailable exact-diff evidence.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/ci/validation_scope.py",
+          "version": "repo-file-v1:sha256:be6d08bd489d34a9cdcce720d7fa5d4c1ba2bc45ec9151d99446021d9df46adf"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T01:01:20.051Z"
+  }
+}

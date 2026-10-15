@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:6f72d7a9b10170c49dec29c583559b3c8645d85d5b4f604c7774e7adeff0eff5",
+  "claims": [
+    {
+      "id": "claim_dc2d49cf58b747fc88ba662decc24659",
+      "statement": "The hosted mutation stores share one admitted SQLite database while preserving distinct database, plan, and receipt failure causes.",
+      "evidence": [
+        {
+          "resource": "repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteHostedChangeStores.kt",
+          "version": "repo-file-v1:sha256:f94ba165c8309c8ad8d07ea78611e8685fc0189c7b257840232f49c172da6c86"
+        }
+      ]
+    },
+    {
+      "id": "claim_5080f028d52a42a8a215549e2b5ff473",
+      "statement": "Recovery persists exact pre-write evidence and distinguishes preparation from independently observed application and rollback.",
+      "evidence": [
+        {
+          "resource": "repo://change/recovery/src/main/kotlin/io/github/amichne/kast/change/recovery/AddDeclarationRecoveryService.kt",
+          "version": "repo-file-v1:sha256:c4720c305aed0b7e12c0808fde3ad726ca062ec7195a6bdf5e3981f071045680"
+        },
+        {
+          "resource": "repo://evidence/contract/src/main/kotlin/io/github/amichne/kast/evidence/contract/MutationRecoveryRecord.kt",
+          "version": "repo-file-v1:sha256:f7cd0716e26bc4a6828a2755d3b44120e6766834b651d78a68931bfe14302208"
+        }
+      ]
+    },
+    {
+      "id": "claim_4b7e03c805ff49edb4b21a94cde8c734",
+      "statement": "Live declaration verification replays retained relation, traversal, and diagnostic requests with their original scopes and grants under a fresh compiler anchor.",
+      "evidence": [
+        {
+          "resource": "repo://change/verify/src/main/kotlin/io/github/amichne/kast/change/verify/LiveAddDeclarationVerification.kt",
+          "version": "repo-file-v1:sha256:0c87e14d5adde7f58c1d9000cab9c9024523ffdb6477a202b8d16b2595266840"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:5e9c566f270a78626365a3a1e2c720bd58d3195a5663ec19f30492a0d2c86cc6",
+  "pageVersion": "sha256:0598787d05f014491f81fefe522bae36142bef26f6fde9c4d5f488eeb06a6e1a",
   "claims": [
     {
       "id": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
@@ -17,8 +17,8 @@
       "statement": "Change and query protocol modules retain service roles with contract-only dependency policies; the native distribution CLI reuses distribution contracts and managed adapters plus the durable SQLite owner for read-only settled-state inspection through an exact named cross-role edge, retaining explicitly scoped lifecycle, uninstall and reset effects.",
       "evidence": [
         {
-          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L3-L54",
-          "version": "repo-lines-v1:sha256:7f0dc0cc4e814847846539f46e04ba3a7dd6adf134d11a8725b4ddbed0cdb3c7:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwM2M4MWRjMDJiY2Q2ZGM1YTA0ZGRiMTA5ODQ0MDhiNWM4MjM1OTVlNmFiNzg5ZWQzOWMwZDg2NjY1MWI1ZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkOWM1ZmYyYmQ2MzYxNWFhMGQ0ZTc2ZmQyMDU0OTY3MDk1MDZlNTU1YWViYjBkYWVhYzhlZjVlYjU1ZmQ4YmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjZTdlYjg1MjYzN2ZjZGZkMDIwYjBmZmVlZjg0YmNmNDYwYTZiNjU0OGIzMzAzY2YzOTNkNDFjZGYxNjczNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFiMWRlMGRlN2NlNjg4OTZiMzc4Yzc1OTI2NDZiMjcyZmM4NzNkZGU0NjE1NTE1OTNiMGE2NzkzZTk1MTE0ZTYifQ"
+          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L3-L56",
+          "version": "repo-lines-v1:sha256:554acbb98bcb050fb2b8c48c969d92b50875fc22fb4f1b5919a5640f506a6e09:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwM2M4MWRjMDJiY2Q2ZGM1YTA0ZGRiMTA5ODQ0MDhiNWM4MjM1OTVlNmFiNzg5ZWQzOWMwZDg2NjY1MWI1ZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkOWM1ZmYyYmQ2MzYxNWFhMGQ0ZTc2ZmQyMDU0OTY3MDk1MDZlNTU1YWViYjBkYWVhYzhlZjVlYjU1ZmQ4YmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjZTdlYjg1MjYzN2ZjZGZkMDIwYjBmZmVlZjg0YmNmNDYwYTZiNjU0OGIzMzAzY2YzOTNkNDFjZGYxNjczNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFiMWRlMGRlN2NlNjg4OTZiMzc4Yzc1OTI2NDZiMjcyZmM4NzNkZGU0NjE1NTE1OTNiMGE2NzkzZTk1MTE0ZTYifQ"
         },
         {
           "resource": "repo://build-logic/src/main/kotlin/support/architecture/validation/ModulePolicyValidator.kt#L161-L181",
@@ -57,10 +57,24 @@
           "version": "repo-lines-v1:sha256:39edff19be44a4a32177c3513b003b8517b02b893fd5eba3e9c4508e3a9cdcfb:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1MmZiNTUyMjRhNGU5ZjQzMmMwOGI5NDNkMjlhMTQ2NjYyYjAyMDY1ZmIzNDhhOTVmZGYwN2MyMjEwNmUzOTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU4ZWQ0MmMyN2RlZWIzZDkzNjYxNDBkMDcwOGY3YzQ4M2I0ZTU2MzdhZmY5MDA1NmNhZDQwMzIwZjdjZDNlMWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_a7fb8f9bd19c40c4920906c13615e266",
+      "statement": "The hosted runtime directly composes topology contract, build, and IntelliJ modules for live semantic dependencies, while historical graph services and topology SQLite remain separate.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/build.gradle.kts",
+          "version": "repo-file-v1:sha256:de7d0cd8c9eb98249bea33741eea1f7700bd752aee2fdce71f2e7774239d9d9f"
+        },
+        {
+          "resource": "repo://topology/service/build.gradle.kts",
+          "version": "repo-file-v1:sha256:cc343414abe74c6d94f3b500b62e0ca89540f031acc2b797125858bf5edb8a6b"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-14T01:57:02.037Z"
+    "at": "2026-10-15T00:33:05.932Z"
   }
 }

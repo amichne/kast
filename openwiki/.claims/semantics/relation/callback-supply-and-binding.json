@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:95acf436b06f96ee42ec78baf472d68d545241a47bdc6de16ebfbd1822a6f46e",
+  "claims": [
+    {
+      "id": "claim_1c2e0b7673bd4f38bdb1b7ebfc49034b",
+      "statement": "Callback argument binding uses compiler-mapped callable and formal parameter identity and rejects invocations or parameters outside their admitted owners.",
+      "evidence": [
+        {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackArgumentBinding.kt",
+          "version": "repo-file-v1:sha256:b389a022ff7be11e878f9f089f237a94e42b29e6abebcb9a3ccb93b9c886a73c"
+        }
+      ]
+    },
+    {
+      "id": "claim_6d1407bb491244049bfd778d3c1b5807",
+      "statement": "Callback invocation flow preserves lexical and anonymous-body ownership instead of treating containment as a named caller edge.",
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackBindingReader.kt",
+          "version": "repo-file-v1:sha256:ad929d4c8a0c34c74999e48fa9257b89686f6e8e4d683e818fb5aeb4770c8668"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackInvocationFlow.kt",
+          "version": "repo-file-v1:sha256:7a6e34c69f5997149b337ec3010fbda424e037758524b9f1bca61074be754d0d"
+        }
+      ]
+    },
+    {
+      "id": "claim_904d48e1835d43179ec27ad16a73f1c7",
+      "statement": "Dependency callback admission uses declared effects or the exact reviewed kotlin.lazy model and does not derive external behavior from dependency PSI bodies.",
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt",
+          "version": "repo-file-v1:sha256:5caab847365df145809dde3090a37e539780578941d6ead266269e868441f299"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}

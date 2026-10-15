@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:6567c27626874525dd6b1a207bd206fd14d12ba5e1f1c8022431cc79b2c25099",
+  "claims": [
+    {
+      "id": "claim_74d7122619d54a03bab3bd3cb1810841",
+      "statement": "Workspace model capture uses the existing IDEA imported model and preserves named Gradle source ownership rather than starting a second importer.",
+      "evidence": [
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/DetachedModelCapture.kt",
+          "version": "repo-file-v1:sha256:617a77dd698ecaa639c802fe02169626b5dc2032f31b588ba8fca9c9da3e975a"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/LiveNamedGradleSourceScopeCapture.kt",
+          "version": "repo-file-v1:sha256:15f62166d64fa8dbee44736c7201e73ec41eba90e21f48b62e803050a02e0467"
+        }
+      ]
+    },
+    {
+      "id": "claim_bb4d6ccd18304f0b85cf4d2c3b7cfcdc",
+      "statement": "The hosted read transaction runs the full evaluator between freshness checks without a surrounding platform read lock.",
+      "evidence": [
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt",
+          "version": "repo-file-v1:sha256:b3aba114de92ebad961ba2a6c7ce788cd30d74d072d4832c9790eac425bc6141"
+        }
+      ]
+    },
+    {
+      "id": "claim_b0f8e75e7552464384086eae0e9bffb2",
+      "statement": "Semantic dependency reuse needs current original-owner environment continuity and matching source and resolution inventories beyond a matching epoch signal.",
+      "evidence": [
+        {
+          "resource": "repo://topology/contract/src/main/kotlin/io/github/amichne/kast/topology/contract/SemanticDependencySnapshot.kt",
+          "version": "repo-file-v1:sha256:f1b4951b42e05c6bc3263e8b5c6ad784dfea578e90dd8be3b6e90a8dc0ccf8bd"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadFreshnessOwner.kt",
+          "version": "repo-file-v1:sha256:48fb8df67d4987eba1ff0b150d467c1cd87ccca873f8efb6db90ef780192114d"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}

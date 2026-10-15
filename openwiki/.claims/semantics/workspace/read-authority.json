@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:94fbd94ef0cc6f9ecf10a6b3909a4cf2558020468c5eaefd38996d94406078e4",
+  "claims": [
+    {
+      "id": "claim_fcdb3f93b2664084afe3b3d46c1e4c2f",
+      "statement": "SemanticReadAuthority separates published leases from original-owner live IDEA admission and rejects live authority at effects that need publication.",
+      "evidence": [
+        {
+          "resource": "repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt",
+          "version": "repo-file-v1:sha256:ad7f01cd585e6e4144892d78b67f791cab743243df0de6c172468fbeaa285a7e"
+        }
+      ]
+    },
+    {
+      "id": "claim_f043a05a5f6149e1a038629ff8c32bf6",
+      "statement": "A detached live reference proves representation validity only, while the private original owner must admit current epoch evidence before selectors recheck source and compiler identity.",
+      "evidence": [
+        {
+          "resource": "repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt",
+          "version": "repo-file-v1:sha256:ad7f01cd585e6e4144892d78b67f791cab743243df0de6c172468fbeaa285a7e"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/epoch/execution/AdmittedProjectReadExecution.kt",
+          "version": "repo-file-v1:sha256:403213a8d0dd02f4f034eac6ffe1ba85cca5184fbb397c7257aa71a8238b6f5c"
+        }
+      ]
+    },
+    {
+      "id": "claim_f6cda0f6be964f169da4b3b71c4345fb",
+      "statement": "Admitted execution budgets keep requested, default, ceiling, effective, and clamp facts for each resource while respecting deadline and transport capacity.",
+      "evidence": [
+        {
+          "resource": "repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/ExecutionBudget.kt",
+          "version": "repo-file-v1:sha256:7931b70059310ef9ddacbc334a25c28b2dc0177707141efc8da0ce71fbff0b60"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}

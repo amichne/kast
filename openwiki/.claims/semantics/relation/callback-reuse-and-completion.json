@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:97163d00b6b6ec480c7ba2e8ac8cdd63a8639668b16a6a2e05ac3af4fe26bd91",
+  "claims": [
+    {
+      "id": "claim_7fda699bacbb4390ab5eb06aef3b31b3",
+      "statement": "Callback fact reuse needs complete dependency continuity under the original live owner and fresh compiler admission of retained endpoints.",
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackSummaryReadmission.kt",
+          "version": "repo-file-v1:sha256:693fc1782aa3ce939313d00ba5ee92a3a92f3906f2921e5d344a316872b3a4df"
+        },
+        {
+          "resource": "repo://topology/contract/src/main/kotlin/io/github/amichne/kast/topology/contract/SemanticDependencySnapshot.kt",
+          "version": "repo-file-v1:sha256:f1b4951b42e05c6bc3263e8b5c6ad784dfea578e90dd8be3b6e90a8dc0ccf8bd"
+        }
+      ]
+    },
+    {
+      "id": "claim_416ed2f733024f8eb95a5f2dc4bc3809",
+      "statement": "Callback summary capture needs an exhaustive scan, while optional storage follows final flow and owner-binding admission.",
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/CallbackSummaryReuse.kt",
+          "version": "repo-file-v1:sha256:80860835a0d45c94221e2982a1632d43004403d0a7ddd5d0fe4859f99d5f3bd9"
+        }
+      ]
+    },
+    {
+      "id": "claim_2e766e540ddd49919e14d6fb6d7d0438",
+      "statement": "Complete static callback graph admission rejects unresolved or unsupported invocation evidence before query completion can use it.",
+      "evidence": [
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt",
+          "version": "repo-file-v1:sha256:60af5b256a9636bd8d1637f6775fe28424b711da0fd22698745c0a1787297803"
+        },
+        {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraph.kt",
+          "version": "repo-file-v1:sha256:b6d88070d4d4e0084bd57ea8f723b1b6a89186944e97297a28d72049b3d37580"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}

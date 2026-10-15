@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:3e1ba53ae34d46562bce3177ced4e2355e7acb67564d94523ac4c191846b1112",
+  "claims": [
+    {
+      "id": "claim_f1f223d6ff6c46a1a8c1642d015d3929",
+      "statement": "The repository knowledge gate examines OpenWiki links, source paths, and Kotlin PSI or Python AST declaration citations without establishing native semantic behavior.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/code_kb.py",
+          "version": "repo-file-v1:sha256:58a71742e8489fbd54236314b7546f991c6dad602ad31ba96cc5ca86f6b90301"
+        },
+        {
+          "resource": "repo://build.gradle.kts",
+          "version": "repo-file-v1:sha256:5683109104e81537aeb7cae517ba6e312240633724e63ad6141d3907b625fd39"
+        }
+      ]
+    },
+    {
+      "id": "claim_f1d994a062774fb58bb2d6de1c15a874",
+      "statement": "The checked-in OpenWiki workflow starts only through workflow_dispatch and preserves completed page progress in a pull request even when generation fails.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/openwiki-update.yml",
+          "version": "repo-file-v1:sha256:b32e06710d81e47e54e69aaa6b0dc7d47a27be6d763fe136d8f4baf4b5391de8"
+        }
+      ]
+    },
+    {
+      "id": "claim_a4698415b95b4edd968e7796fafb14f1",
+      "statement": "Repository policy keeps authored engineering rules distinct from generated navigation and OpenWiki Claims, indexes, and provenance.",
+      "evidence": [
+        {
+          "resource": "repo://AGENTS.md",
+          "version": "repo-file-v1:sha256:db50e191cf569b066f43dff528d589d323219d62d8d835977f15856acf1f3760"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}
