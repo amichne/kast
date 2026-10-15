@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:258c7f158b3975348b5a980f5f01439ef436dcc741c2f52895353bde6d27ca50",
+  "claims": [
+    {
+      "id": "claim_8c0d2193cfc6423db92d99f0cda80e68",
+      "statement": "Scoped discovery applies cheap source and declaration constraints before native enumeration and expensive compiler refinement.",
+      "evidence": [
+        {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIncrementalDeclarationDiscovery.kt",
+          "version": "repo-file-v1:sha256:35e61f6c1617c5842be7f437f0916559471df6885f3bd3288cc1dfd15067d3c4"
+        },
+        {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt",
+          "version": "repo-file-v1:sha256:993d3657f58ca657420e6a8132944a38f0e15e5970bd2ccbd440b3aefa919cea"
+        }
+      ]
+    },
+    {
+      "id": "claim_0854a24bb81f45f6a6a4ad96e132e890",
+      "statement": "Exact PSI lookup stays within the selected file, excludes filesystem containers, and preserves stale, ambiguous, and unsupported matching declarations.",
+      "evidence": [
+        {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijPsiExactDeclarationLookup.kt",
+          "version": "repo-file-v1:sha256:120c44788382c43d79d03bf3a8a847e3486bbfb95ab8b7ba5a4de636928b2f86"
+        }
+      ]
+    },
+    {
+      "id": "claim_a065ffb60d3e421b83203c92205fff20",
+      "statement": "Exact revalidation needs current live authority from the original root and host, fresh compiler confirmation, policy-specific identity equality, and final authority admission.",
+      "evidence": [
+        {
+          "resource": "repo://symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt",
+          "version": "repo-file-v1:sha256:1dacbb29b54269cf7de0a13088a2ad2513a3b63125b67d242b0840f0754a81ed"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}

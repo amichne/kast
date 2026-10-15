@@ -270,10 +270,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-73144b588342a1cc6d17731e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-09T14:52:54.878Z" }
+generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-14T20:46:05.929Z
+    at: 2026-10-15T00:33:05.932Z
 ---
 
 # Runtime and process hosts
@@ -547,3 +547,13 @@ owner. Canonical public request admission and installation shutdown admission st
 precede workspace preparation and execution.
 
 Only known root admission failures before dispatch (`WORKSPACE_START_UNAVAILABLE`, `WORKSPACE_START_NOT_DIRECTORY`, `WORKSPACE_ROOT_MARKER_NOT_FOUND`, `WORKSPACE_INVALID_ROOT_MARKER`) settle as known without fencing recovery. Other provider or interrupted effect outcomes preserve uncertainty unless native recovery proves settlement.
+
+## Focused runtime and transport explanations
+
+- [Hosted composition and publication](../runtime/hosted-composition-and-publication.md) traces the project endpoint into final response ownership.
+- [IDEA lifecycle and refresh](../runtime/idea-lifecycle-and-refresh.md) explains explicit project preparation and task evidence.
+- [Coordinator preparation](../transport/coordinator-and-workspace-preparation.md) explains exact-root enrollment and coalesced work.
+- [Invocation fencing and durable records](../transport/invocations-and-durable-records.md) traces replay, interruption, and restart settlement.
+- [Codex hosts](../transport/codex-hosts-and-framing.md) explains host-owned transport and bounded framing.
+- [Direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) explains the shared direct session.
+- [Harness delivery](../transport/harness-delivery.md) explains Copilot, Pi, and portable output adapters.

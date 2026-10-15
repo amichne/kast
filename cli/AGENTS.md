@@ -1,90 +1,75 @@
+---
+type: Module Guide
+title: "Kast cli"
+description: "Owns private JVM entry points, direct MCP and tool RPC sessions, installation workflows, and typed output projections."
+resource: "repo://cli"
+tags: [kast, navigation]
+timestamp: "2026-10-14T23:25:10Z"
+source_revision: e014a489bfd7e69cbf2c4b61140ee771d857a03e
+code_sources:
+  - path: cli/build.gradle.kts
+  - path: cli/src/main/js/query-delivery.mjs
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastServiceMain.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledge.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt
+  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySessionTest.kt
+  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcResultAdmissionTest.kt
+---
+
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-10-05 | hash: c83eaff59f53 -->
+<!-- generated: 2026-10-14 | hash: 71ef615ec17d -->
 
 # cli
 
 ## Purpose
 
-Owns the private installation and service entry points, installed configuration,
-legacy command graph retained for migration, and hosted output projections.
+Owns private JVM entry points, direct MCP and tool RPC sessions, installation workflows, and typed output projections.
 
 ## Key Files
 
-- [KastToolRpcQuerySession.kt](src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt) - bounded invocation-owned query framing and authority-bound output successors.
-- [query-delivery.mjs](src/main/js/query-delivery.mjs) and [query-session.mjs](src/main/js/query-session.mjs) - portable bounded delivery, compact human presentation and owned subprocess transport, embedded into Pi/Copilot by the public-query generator.
-- [query-presentation.mjs](src/main/js/query-presentation.mjs) - generated importable companion of the same presentation owner; explicit final delivery keeps received evidence inline and preserves original verbose data.
-- [query-delivery-simplification.md](docs/query-delivery-simplification.md) - compact delivery contract, measured work/bytes and compatibility boundaries.
-- [query-presentation-serialization.md](docs/query-presentation-serialization.md) - exact description comparison, measured dictionary-string reduction and the unchanged canonical drain boundary.
-
-- [InstallationJavaRuntime.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt) - installed launcher admission of the selected IDEA JBR before starting its child JVM.
-
-- [KastDaemonMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt) - private managed daemon entry point with exact login admission outside the public command graph.
-- [KastServiceMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastServiceMain.kt) - private installation service control with typed rejection output.
-- [KastMcpMain.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt) - installed Kast stdio MCP transport and session tool dispatch.
-- [KastDirectToolSession.kt](src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt) - shared direct IDEA tool composition for MCP and harness-neutral RPC.
-- [DirectToolRegistration.kt](src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolRegistration.kt) - compiled registration authority and deferred discovery catalog projection.
-- [DirectToolStageObservation.kt](src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolStageObservation.kt) - opt-in bounded JFR stage/outcome events for direct tool startup and invocation.
-- [KastToolRpcMain.kt](src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt) - catalog, one-shot invocation and bounded query-session boundary for agent extensions.
-- [McpWire.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpWire.kt) - typed MCP discovery, request, and result envelopes.
-- [McpStructuredResults.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt) - schema-validated MCP result envelopes and concise health and validation summaries.
-- [HostedChangeCliInput.kt](src/main/kotlin/io/github/amichne/kast/cli/ide/HostedChangeCliInput.kt) - canonical hosted mutation request input retaining the operation and exact stored plan identity.
-- [McpSingleChangeTool.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeTool.kt) - one-call direct MCP planning, application, and attempted recovery.
-
-- [PackagedProviderCatalog.kt](src/main/kotlin/io/github/amichne/kast/cli/PackagedProviderCatalog.kt) - build-time hosted schema projection for App Server qualification.
-
-- [CanonicalReadRejectionSchemas.kt](src/main/kotlin/io/github/amichne/kast/cli/CanonicalReadRejectionSchemas.kt) - canonical finite source-read rejection schemas.
-- [RelationOmissionSchema.kt](src/main/kotlin/io/github/amichne/kast/cli/RelationOmissionSchema.kt) - bounded provider-omission schema.
-- [InstalledBootstrapSchemas.kt](src/main/kotlin/io/github/amichne/kast/cli/InstalledBootstrapSchemas.kt) - shared installed process and bootstrap schemas.
-- [src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt](src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt) - executable main.
-- [src/main/kotlin/io/github/amichne/kast/cli/KastCli.kt](src/main/kotlin/io/github/amichne/kast/cli/KastCli.kt) - root CLI assembly.
-- [src/main/kotlin/io/github/amichne/kast/cli/command/model/CliCommandGraph.kt](src/main/kotlin/io/github/amichne/kast/cli/command/model/CliCommandGraph.kt) - command topology.
-- [src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt](src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt) - retired public command graph retained as internal migration code.
-- [src/main/kotlin/io/github/amichne/kast/cli/configuration/SavedConfigurationIngress.kt](src/main/kotlin/io/github/amichne/kast/cli/configuration/SavedConfigurationIngress.kt) - saved configuration boundary.
-- [src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt) - Control-owned installation and live host admission, including committed daemon upgrade resumption.
-- [InstallationRequest.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt) - Control payload and installation request, without a Host archive requirement.
-- [ControlInstallationInput.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationInput.kt) - sole HOME installation and executable path admission.
-- [ControlInstallationRecovery.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationRecovery.kt) - Control-only restoration and verified recovery outcomes.
-- [src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationDaemonUpgrade.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationDaemonUpgrade.kt) - prior daemon update admission before service retirement.
-- [src/main/kotlin/io/github/amichne/kast/cli/installation/PriorRetirement.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/PriorRetirement.kt) - admitted private or legacy prior command and environment retained across sealing and retirement.
-
-- [src/main/kotlin/io/github/amichne/kast/cli/ide](src/main/kotlin/io/github/amichne/kast/cli/ide) - existing-IDE client, semantic read projection, and hosted change/apply/recovery admission and projection.
-
-- [src/main/kotlin/io/github/amichne/kast/cli/command/knowledge/KnowledgeCommands.kt](src/main/kotlin/io/github/amichne/kast/cli/command/knowledge/KnowledgeCommands.kt) - local installed knowledge selector.
-- [src/main/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledge.kt](src/main/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledge.kt) - shallow search and exact typed resource reads.
-
-- [InstalledServerProjectionDocuments.kt](src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt) - installed query result schemas derived from canonical result serializers.
-- [MintlifyCallableSchemaProjection.kt](src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt) - documentation projection preserving canonical schema assertions.
+- [KastMcpMain.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt) - the client-owned stdio MCP process.
+- [KastToolRpcMain.kt](src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt) - catalog, one-shot invocation, and query-session entry.
+- [KastDirectToolSession.kt](src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt) - shared direct tool admission and existing-IDE composition.
+- [KastToolRpcQuerySession.kt](src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt) - bounded query framing and output successors.
+- [query-delivery.mjs](src/main/js/query-delivery.mjs) - portable query delivery shared by generated harness extensions.
+- [McpStructuredResults.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt) - schema-backed MCP result projection.
+- [InstallationWorkflow.kt](src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt) - Control installation, prior retirement, activation, and recovery.
+- [KastCliMain.kt](src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt) - the private installer version entry.
+- [KastServiceMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastServiceMain.kt) - private installed service control.
+- [KastDaemonMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt) - the private managed daemon entry.
+- [InstalledServerProjectionDocuments.kt](src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt) - installed schemas from canonical serializers.
+- [InstalledKnowledge.kt](src/main/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledge.kt) - local installed knowledge reads.
 
 ## Subdirectories
 
-- `src/main/kotlin/io/github/amichne/kast/cli/bootstrap` - executable and installed-resource assembly.
-- `src/main/kotlin/io/github/amichne/kast/cli/command` - command groups and command model.
-- `src/main/kotlin/io/github/amichne/kast/cli/configuration` - typed configuration inspection and ingress.
-- `src/main/kotlin/io/github/amichne/kast/cli/direct` - shared native tool composition.
-- `src/main/kotlin/io/github/amichne/kast/cli/installation` - installation requests and workflow.
-- `src/main/kotlin/io/github/amichne/kast/cli/mcp` - on-demand Kast MCP process.
-- `src/main/kotlin/io/github/amichne/kast/cli/rpc` - harness-neutral tool RPC process.
-- `src/main/resources/mcp` - self-contained MCP Apps validation view.
-- `src/main/kotlin/io/github/amichne/kast/cli/projection` - canonical JSON/text documents.
-- `src/test` - command, projection, and workflow evidence.
+- [src/main/kotlin/io/github/amichne/kast/cli/direct/](src/main/kotlin/io/github/amichne/kast/cli/direct/) - shared native tool composition.
+- [src/main/kotlin/io/github/amichne/kast/cli/mcp/](src/main/kotlin/io/github/amichne/kast/cli/mcp/) - MCP transport and support tools.
+- [src/main/kotlin/io/github/amichne/kast/cli/rpc/](src/main/kotlin/io/github/amichne/kast/cli/rpc/) - tool RPC and query sessions.
+- [src/main/kotlin/io/github/amichne/kast/cli/installation/](src/main/kotlin/io/github/amichne/kast/cli/installation/) - installation and recovery workflows.
+- [src/main/kotlin/io/github/amichne/kast/cli/command/](src/main/kotlin/io/github/amichne/kast/cli/command/) - private command graph and migration code.
+- [src/main/js/](src/main/js/) - portable delivery and presentation owners.
 
 ## Entry Points
 
 - Gradle project: `:cli`.
-- The operational JVM CLI stays private; `install.sh` publishes the native
-  management executable owned by `distribution/cli`. Private service control
-  lives at `share/kast/libexec/kast-service` in the ordinary installation.
+- The public native `kast` executable lives in `distribution/cli`.
+- The private installer entry in `KastCliMain.kt` admits only `--version`.
+- The installation places private service control at `share/kast/libexec/kast-service`.
+- [KastToolRpcQuerySessionTest.kt](src/test/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySessionTest.kt) - query framing and retained delivery.
+- [KastToolRpcResultAdmissionTest.kt](src/test/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcResultAdmissionTest.kt) - result admission and rejection cases.
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../openwiki/modules/runtime-hosts.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
-
-- For parsing or command ownership, start with `CliCommandGraph` and the owning command package.
-- For query output compatibility, start with `InstalledServerProjectionDocuments.kt` and follow to `protocol/wire/presentation/CanonicalQueryCliDocuments.kt`; its typed serializers own the installed query schema. Other output projections live in `projection`.
-
-- Semantic operations use the hosted provider. The installed MCP starts
-  preparation for the discovered Gradle root on its first valid request, launching the
-  selected IDE when needed; reads wait for its endpoint. The private installed
-  control owns registration and lifecycle actions. Hosted mutations use the
-  existing private endpoint and native workspace admission; no approval keys are enrolled. Former
-  public semantic commands reject at process ingress.
+- Trace MCP and tool RPC through `KastDirectToolSession`. The MCP transport does not start an App Server broker.
+- MCP starts preparation at legacy initialization or its first admitted modern request. Semantic calls wait for the selected workspace endpoint.
+- For query output, trace canonical serializers into `InstalledServerProjectionDocuments` and the shared JavaScript delivery owner.
+- For generated Copilot and Pi sections, change the delivery owner or public-query generator. Preserve authored extension adapters.
+- Read the [root guide](../AGENTS.md) for engineering rules and optional OpenWiki retrieval.

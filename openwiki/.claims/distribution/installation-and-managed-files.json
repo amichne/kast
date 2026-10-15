@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:c8e9658047ae9d6172f18d2e5540053c9cb28be899feb42308da15654d8fa0d0",
+  "claims": [
+    {
+      "id": "claim_2c9e43d8ffac41339c5ff59e614427da",
+      "statement": "Control installation and Host plugin installation have independent effect owners, receipts, and compatibility evidence.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
+          "version": "repo-file-v1:sha256:e227b44fca152f313889a870fd65a096fd512091cb8bfdb35d7d9ced10971144"
+        },
+        {
+          "resource": "repo://packaging/host-installation.py",
+          "version": "repo-file-v1:sha256:6bc007dabe913233214921f6c65d40d2212f735f24ba62d6ff0420f9fbf339d4"
+        }
+      ]
+    },
+    {
+      "id": "claim_7a3df1d6acce4a28ab3756a890afffc5",
+      "statement": "Host active-receipt admission qualifies device changes with stable root inode and owner evidence and distinguishes exact reinstall inventory from protected removal of remaining entries.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/host-installation.py",
+          "version": "repo-file-v1:sha256:6bc007dabe913233214921f6c65d40d2212f735f24ba62d6ff0420f9fbf339d4"
+        }
+      ]
+    },
+    {
+      "id": "claim_1d06d658c78b456b960fba22b9053804",
+      "statement": "Managed destructive-recovery trees need exact physical installation scope before deletion.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt",
+          "version": "repo-file-v1:sha256:595fc2611a1f5d63e30d3522e583a946d6252680e36013de6cb39c6156c81589"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:59:49.803Z"
+  }
+}

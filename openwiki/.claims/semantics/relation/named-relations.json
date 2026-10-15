@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:6ee749ce60019b348b34057da95f3fb4bcc37cf8854da1218a54eabaecbf03e8",
+  "claims": [
+    {
+      "id": "claim_fe33fe126b7646c38ff54533310b15dd",
+      "statement": "RelationService validates current authority before and after native work and admits only output that preserves the original request evidence.",
+      "evidence": [
+        {
+          "resource": "repo://relation/service/src/main/kotlin/io/github/amichne/kast/relation/service/RelationService.kt",
+          "version": "repo-file-v1:sha256:7825affd760ee3b199e1f1a01414a0e0b858b5c7c8071d2a95cdde42250c3c28"
+        }
+      ]
+    },
+    {
+      "id": "claim_2b99ef3b0940447ab38d313dcc1dfafb",
+      "statement": "Relation requests preserve subject selection and an independent native expansion domain through scoped file enumeration.",
+      "evidence": [
+        {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationRequest.kt",
+          "version": "repo-file-v1:sha256:c2e5a7f67661a0dda689c969e81de2c0a90c8f8640dfac0be1f8dcaa134d3af4"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/RelationFileEnumerationPlan.kt",
+          "version": "repo-file-v1:sha256:84c5d26be39e0c4bb1f4351382b8e12f8b1d47b271e23554116072f4eadbde77"
+        }
+      ]
+    },
+    {
+      "id": "claim_2b0c9413a11647f39523394329154353",
+      "statement": "Reference occurrences retain declaration, file, or unavailable ownership, while scope exclusions remain distinct from provider omissions.",
+      "evidence": [
+        {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationOmissionEvidence.kt",
+          "version": "repo-file-v1:sha256:871fa8d7bc5f7a4a425fa60ece9f2190a881bc0289a0d7657290c20bc18af69f"
+        },
+        {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationReferenceOccurrence.kt",
+          "version": "repo-file-v1:sha256:9f3253aca17addf83c5964d0f82c59b5875864dd4bce4272ea6bcdf5824df4fe"
+        },
+        {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationScopeExclusion.kt",
+          "version": "repo-file-v1:sha256:e258a1ab5fcdf5d9b25d51a99eca51af0295b2ed726c1ab7850a02fac5e0855a"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}

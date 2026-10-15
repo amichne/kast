@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:ddc92afbd3b8532f01122f1de205a0f2d6ba5f75e32ed662fbb900ed79a89ef8",
+  "claims": [
+    {
+      "id": "claim_0fe7af4106b045dd82c65489eb808ff3",
+      "statement": "CI seals one tested candidate with exact source, producer run, toolchain, and asset identities before retaining it for reuse.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/release/build_candidate.py",
+          "version": "repo-file-v1:sha256:f94c7770b7f32aa78eec9e4ecc745ec0c05adba1a7bdb6e9dff233ab6fb78af1"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml",
+          "version": "repo-file-v1:sha256:ed5a3ae6abadf4c94be4300c76c04f152820e1d5aba17b793400c305e7b3135a"
+        }
+      ]
+    },
+    {
+      "id": "claim_ce4b8eae80b545c9a408e2eff1fce670",
+      "statement": "Candidate reuse admits source-tree equality and exact payload digests while preserving the original producer and merged revision in promotion evidence.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/release/build_candidate.py",
+          "version": "repo-file-v1:sha256:f94c7770b7f32aa78eec9e4ecc745ec0c05adba1a7bdb6e9dff233ab6fb78af1"
+        }
+      ]
+    },
+    {
+      "id": "claim_813b53dc9a15475aacfd62433224ea52",
+      "statement": "Component release admission checks the selected component and revision, exact asset inventory, checksums, byte counts, and archive contents.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/release/component-release.schema.json",
+          "version": "repo-file-v1:sha256:5aab86181097f9067e67c98c3ee93baa72292366ed884d37d7705e195df76abc"
+        },
+        {
+          "resource": "repo://distribution/release/component_release.py",
+          "version": "repo-file-v1:sha256:23d97f48512b32f20a2c0ea9fd68efb57c9906821abe37a505af477b4589f4fe"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}

@@ -176,10 +176,10 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt
   - id: openwiki-source-89238fabaeb4e17c02186073
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphNodeRetrievalTest.kt
-generated: { by: "codex", at: "2026-10-14T02:15:18.461Z" }
+generated: { by: "codex", at: "2026-10-15T00:57:31.735Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-14T20:46:05.929Z
+    at: 2026-10-15T00:57:31.735Z
 ---
 
 # Public intent tools
@@ -264,7 +264,7 @@ The published agent policy delegates ordinary workspace preparation to the insta
 daemon. Agents do not orchestrate opening, polling, enablement or repair commands
 for semantic reads. Preparation blockers retain their cause and operation identity.
 Installation authorization excludes cache invalidation, forced synchronization and
-unrelated IDE restarts. Exact-plan mutation approvals remain separate.
+unrelated IDE restarts. Mutation uses current native plan admission and the keyless change workflow.
 
 Kast's Codex response retains the admitted CLI envelope in its final JSON text
 item. Compact source reads with returned text prepend the unchanged source in a

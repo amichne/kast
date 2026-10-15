@@ -43,10 +43,12 @@ sources:
     resource: repo://runtime/hosted/build.gradle.kts
   - id: openwiki-source-e620d7484b72a53c7fa812cd
     resource: repo://settings.gradle.kts
-generated: { by: "codex", at: "2026-10-14T01:57:02.037Z" }
+  - id: openwiki-source-0d3b3349cf83bfefc48ef336
+    resource: repo://topology/service/build.gradle.kts
+generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-14T20:46:05.929Z
+    at: 2026-10-15T00:33:05.932Z
 ---
 
 # Verified module architecture
@@ -75,7 +77,7 @@ The IntelliJ read adapter also depends on symbol contracts for the existing-IDE
 without introducing an isolated workspace opener or importing implementation
 dependencies from semantic service modules.
 
-`runtime:hosted` is the sole active semantic host. Its declared dependencies include the semantic contracts, services, read adapters and controlled change adapters used by the plugin. The former composition, server, telemetry, indexer and workspace importer/coordinator remain explicit retired policy entries with no dependencies or effects. No active module can acquire a retired owner through its production dependency graph. Explicit application lifecycle opening and the project refresh adapter have narrowly scoped native effect owners. The four topology modules and `evidence:topology-sqlite` remain active and buildable for upcoming graph work, outside the plugin, CLI and coordinator dependency graphs. Topology build, bounded source-root synchronization and snapshot publication retain their exclusive owners in these modules.
+`runtime:hosted` is the sole active semantic host. Its declared dependencies include the semantic contracts, services, read adapters and controlled change adapters used by the plugin. The former composition, server, telemetry, indexer and workspace importer/coordinator remain explicit retired policy entries with no dependencies or effects. No active module can acquire a retired owner through its production dependency graph. Explicit application lifecycle opening and the project refresh adapter have narrowly scoped native effect owners. The hosted runtime uses `topology:contract`, `topology:build`, and `topology:intellij` for live semantic dependencies and callback fact reuse. The graph service and historical SQLite adapter remain separate from hosted composition. Topology build, bounded source-root synchronization and snapshot publication retain their exclusive owners in these modules.
 
 `change:protocol` similarly owns planning-request lowering and detached previews.
 It depends only on `kernel`, `protocol:contract`, and `change:contract`; the
@@ -141,3 +143,10 @@ Root `check` includes three separate semantic coverage gates.
 `verifyKotlinSemanticCoverage` needs exactly the declared executable IDs and successful JUnit outcomes.
 The selected native fixture tasks use the existing native runner.
 Inventory accounting does not establish successful trace completion.
+
+## Detailed architecture routes
+
+- [Functional package coverage](../architecture/functional-packages.md) maps every production package to its owning explanation.
+- [Build roles and gates](../development/build-and-architecture.md) traces dependency and effect admission.
+- [Contract generation](../development/contracts-and-generation.md) identifies authored contracts and their generated projections.
+- [Live topology dependencies](../topology/live-dependencies-and-reuse.md) explains callback reuse without cached semantic authority.

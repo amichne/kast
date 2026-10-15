@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:4917494de5ffa7a01d7b0a0fa3a325722efc6036b0b4de4d6167b46a0a7eeb21",
+  "claims": [
+    {
+      "id": "claim_c66596f4eaa14e3089be4959d60c6a0d",
+      "statement": "Invocation transition policy distinguishes conflicting content, completed identity, uncertain history, and legal one-time settlement.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationRecords.kt",
+          "version": "repo-file-v1:sha256:bf23cd7e1ab2581b233ef4d6577b7906286d57689d23466771f7bed13682786e"
+        }
+      ]
+    },
+    {
+      "id": "claim_efdff3774eca4127bfbcb4e7bab84d63",
+      "statement": "InvocationFence separates durable history from bounded process-active capacity and releases active capacity only after durable settlement.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationFence.kt",
+          "version": "repo-file-v1:sha256:a00af59dd71f1f0943ad989532a0ebcdd62471b66d2935b85d962e0988e02850"
+        }
+      ]
+    },
+    {
+      "id": "claim_8fdc52dc2bdf40c0b2e15ac2c5cbf8b1",
+      "statement": "Private record adapters use addressed shards, bounded canonical typed records, private ownership admission, and atomic durable replacement.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/FileInvocationRecords.kt",
+          "version": "repo-file-v1:sha256:ab597c7fd752a271e348b6d3ebbdb2345a778bf62ef803a3e888d56a28126273"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/storage/PrivateRecordFiles.kt",
+          "version": "repo-file-v1:sha256:391a1aed173cc57e130251855726c244d199f653054d143d4d1072e938e904f5"
+        }
+      ]
+    },
+    {
+      "id": "claim_f28702d2eb28477d8cef3e9a8ec3a94b",
+      "statement": "Thread records preserve current installation and workspace binding while migrated legacy records need a new conversation.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/FileThreadCatalogStore.kt",
+          "version": "repo-file-v1:sha256:2c379f3776804c3f095a6378f82371813fb6c814d835ed3df730b1d9d527ffbc"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/ThreadBindingDocuments.kt",
+          "version": "repo-file-v1:sha256:9453b88a6a3a8aef4ece9dde14b472c4016ea2156bc35d5c6ac8ab703734519c"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}

@@ -245,10 +245,10 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-10-09T14:48:51.708Z" }
+generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-14T20:46:05.929Z
+    at: 2026-10-15T00:33:05.932Z
 ---
 
 # Distribution and packaging
@@ -500,3 +500,15 @@ malformed duplicate reject before Gradle or child execution.
 Full native uninstall admits the exact Host removal target and immutable plugin receipt before invoking the private Host owner. A persistent exterior retirement journal preserves payload, executable, configuration and recovery identities so a failure after Control removal can resume without rerunning an erased helper. Cleanup removes only admitted registrations, public executable, private configuration, managed root and the closed user-owned `~/.kast` layout; the management receipt and journal remain until those effects complete.
 
 User-state inventory retains endpoint locks and physical identities through retirement and deletion. Unknown contents, live hosts, changed identities, malformed or unsettled mutation evidence, or an uncheckpointed WAL reject and preserve recovery state. The owning SQLite adapter inspects exact schemas and bounded typed plan, attempt, journal and receipt records read-only; it does not initialize, checkpoint or manufacture recovery. Upgrade does not invoke this full user-state cleanup.
+
+## Detailed distribution routes
+
+- [Installation and managed files](../distribution/installation-and-managed-files.md) explains Control replacement and independent Host receipts.
+- [Native management and connections](../distribution/management-and-connections.md) explains public command scope and host-owned registrations.
+- [Upgrade, shutdown, and reset](../distribution/upgrades-shutdown-and-reset.md) traces guarded lifecycle transitions.
+- [Release candidates and promotion](../distribution/release-candidates-and-promotion.md) explains immutable source and artifact proof.
+
+Host receipt admission now qualifies a device change through the recorded root inode and owner.
+It consistently rebases the receipt's device identities before it examines the current destination and inventory.
+Removal permits missing recorded artifacts, but each remaining artifact must match its receipt.
+Reinstall still needs the exact inventory. Foreign or changed artifacts remain protected.

@@ -1,3 +1,22 @@
+---
+type: Engineering Guide
+title: "Public query engineering rules"
+description: "Defines schema ownership, typed query admission, strict completion, and distinct retained-output capabilities."
+resource: "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query"
+tags: [kast, navigation]
+timestamp: "2026-10-14T23:25:10Z"
+source_revision: e014a489bfd7e69cbf2c4b61140ee771d857a03e
+code_sources:
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolTrace.kt
+  - path: app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
+  - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolCompletionPolicyTest.kt
+  - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolTraceContractTest.kt
+  - path: packaging/generate-public-query.py
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt
+---
+
 # Public query interface
 
 Follow the root Engineering Dictum and `openwiki/contracts/public-tools.md`.
@@ -45,3 +64,24 @@ Encoding is a transport projection of retained typed syntax, not a reverse parse
 for arbitrary canonical requests. No public constructor/copy may bypass admission.
 Schema constraints and canonical syntax guards remain enforced even when a provider
 supports a weaker generation schema. Passing a JSON Schema is not a capability.
+
+## Completion and trace
+
+Every public `RUN` uses `COMPLETE_ONLY` under `COMPILER_RESOLVED_STATIC_V1`.
+Completion needs exhausted execution, no item failures, and no omitted evidence.
+Callback graphs and original impact investigations keep their own proof obligations.
+Unproved completion preserves typed rejection and recovery evidence.
+
+`TRACE` has a fixed topology for references, implementations or overrides, direct callers, and one further caller layer.
+It accepts an expansion scope, without arbitrary depth controls.
+
+## Navigation
+
+- [tools.schema.json](../../../../../../../resources/io/github/amichne/kast/appserver/query/tools.schema.json)
+- [PublicToolContract.kt](PublicToolContract.kt)
+- [PublicToolMapping.kt](PublicToolMapping.kt)
+- [PublicToolTrace.kt](PublicToolTrace.kt)
+- [PublicToolCompletionPolicyTest.kt](../../../../../../../../test/kotlin/io/github/amichne/kast/appserver/query/PublicToolCompletionPolicyTest.kt)
+- [PublicToolTraceContractTest.kt](../../../../../../../../test/kotlin/io/github/amichne/kast/appserver/query/PublicToolTraceContractTest.kt)
+- [generate-public-query.py](../../../../../../../../../../packaging/generate-public-query.py)
+- [QueryCompletionDocument.kt](../../../../../../../../../../protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt)

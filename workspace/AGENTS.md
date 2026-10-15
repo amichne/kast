@@ -1,47 +1,60 @@
+---
+type: Module Guide
+title: "Kast workspace"
+description: "Defines workspace identity and read authority, then admits bounded semantic reads from projects open in IntelliJ IDEA."
+resource: "repo://workspace"
+tags: [kast, navigation]
+timestamp: "2026-10-14T23:25:10Z"
+source_revision: e014a489bfd7e69cbf2c4b61140ee771d857a03e
+code_sources:
+  - path: workspace/contract/build.gradle.kts
+  - path: workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/CanonicalSemanticProjectRoot.kt
+  - path: workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt
+  - path: workspace/intellij-read/build.gradle.kts
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/DetachedModelCapture.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationAdmission.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationEffect.kt
+  - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt
+  - path: workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutorTest.kt
+  - path: workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransactionTest.kt
+---
+
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-10-03 | hash: ba0248f76aa7 -->
+<!-- generated: 2026-10-14 | hash: ba0248f76aa7 -->
 
 # workspace
 
 ## Purpose
 
-Defines canonical workspace identity and read evidence, and admits bounded semantic reads from projects already open in IntelliJ. IDEA owns project import, indexing, and lifetime.
+Defines workspace identity and read authority, then admits bounded semantic reads from projects open in IntelliJ IDEA.
 
 ## Key Files
 
-- [IntellijReadObservation.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt) - bounded stage and counter vocabulary covers exclusive traversal coordination, native relation preparation, producer seeds, model revalidation, value-flow outcomes, and finite query-retention capture and issuance outcomes without source payloads.
-
-- [HostedQueryLifetime.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryLifetime.kt) - bounded concurrent permits with exact invocation ownership.
-- [HostedReadFreshnessOwner.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadFreshnessOwner.kt) - native freshness reobservation within short semantic authority transitions.
-
-- [HostedReadCompletion.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadCompletion.kt) - typed operation-selected caller deadline through final freshness and publication.
-
-- [HostedReadPublicationEffect.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationEffect.kt) - attempt-owned final publication and exact fitted rejection evidence or progress.
-
-- [HostedReadPublicationAdmission.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationAdmission.kt) - pre-provider containment capacity and candidate-versus-admitted budget evidence.
-
-- [HostedReadinessDocument.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadinessDocument.kt) - passive fresh model admission status.
-- [HostedReadRecovery.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadRecovery.kt) - closed recovery prerequisites and actions.
 - [CanonicalSemanticProjectRoot.kt](contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/CanonicalSemanticProjectRoot.kt) - canonical root identity.
-- [HostedQueryExecutor.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt) - bounded read execution and outcome observation.
+- [SemanticReadAuthority.kt](contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt) - published and live read authority.
+- [HostedQueryExecutor.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt) - admission, cancellation, deadlines, and final publication.
 - [HostedReadTransaction.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt) - freshness admission and revalidation.
-- [HostedReadDiagnostics.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt) - typed stage and outcome evidence.
-- [HostedReadTraceIdentity.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTraceIdentity.kt) - one diagnostic allocation identity; observation grants no semantic admission or freshness authority.
-- [DetachedModelCapture.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/DetachedModelCapture.kt) - detached project model capture.
-
-- [HostedReadDeadline.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDeadline.kt) - semantic allowance admission from remaining host time.
+- [HostedReadPublicationAdmission.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationAdmission.kt) - response capacity admission before provider work.
+- [HostedReadPublicationEffect.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationEffect.kt) - the admitted publication effect and rejection evidence.
+- [DetachedModelCapture.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/DetachedModelCapture.kt) - capture of the existing imported project model.
+- [IntellijReadObservation.kt](intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt) - bounded read stages and counters.
 
 ## Subdirectories
 
-- `contract` - roots, identities, readiness and read evidence; historical publication contracts remain for compatibility.
-- `intellij-read` - passive VFS/IDE model reads, read admission, and freshness listeners; oversized VFS batches invalidate conservatively without claiming root relevance.
+- [contract/](contract/) - roots, model identities, epochs, and read evidence.
+- [intellij-read/](intellij-read/) - IDE model capture, freshness listeners, read admission, and diagnostics.
 
 ## Entry Points
 
-- Gradle projects: `:workspace:contract`, `:workspace:intellij-read`.
-- The isolated `service` and `intellij` import/runtime modules are retired.
+- Gradle projects: `:workspace:contract` and `:workspace:intellij-read`.
+- [HostedReadTransactionTest.kt](intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransactionTest.kt) - freshness transitions.
+- [HostedQueryExecutorTest.kt](intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutorTest.kt) - execution and cancellation outcomes.
 
 ## Navigation Hints
 
-- Start with [workspace authority](../openwiki/modules/workspace.md).
-- For stale or rejected reads, trace transaction checkpoints and diagnostics before opening platform adapters.
+- For stale reads, start with `HostedReadTransaction` and the reported execution stage.
+- For cancellation or output capacity, start with `HostedQueryExecutor` and the publication owners.
+- IDEA owns project import, indexing, and project lifetime. Explicit refresh orchestration lives in `runtime/hosted`.
+- Read the [root guide](../AGENTS.md) for engineering rules and optional OpenWiki retrieval.
