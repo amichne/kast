@@ -17,6 +17,16 @@ class QueryCompletionCauseDocumentTest {
             QueryCallbackObservationOrigin.RELATION,
             (ProtocolOffset.parse(0) as Refinement.Refined).value,
             (ProtocolOffset.parse(1) as Refinement.Refined).value,
+            QueryCallbackGraphSubjectDocument.Callable(
+                QueryCallbackGraphBoundaryDocument.from(
+                    (ProtocolText.parse("src/sample.kt") as Refinement.Refined).value,
+                    (SourceRangeDocument.create(
+                            (ProtocolOffset.parse(2) as Refinement.Refined).value,
+                            (ProtocolOffset.parse(3) as Refinement.Refined).value,
+                        ) as Refinement.Refined)
+                        .value,
+                )
+            ),
         )
 
     @Test
@@ -129,7 +139,27 @@ class QueryCompletionCauseDocumentTest {
             }
         }
     }
+
+    @Test
+    fun `callback graph failure without exact subject is rejected`() {
+        val encoded =
+            Json.encodeToJsonElement(
+                MissingGraphSubject.serializer(),
+                MissingGraphSubject(graph.cause, graph.origin, graph.group, graph.observation),
+            )
+        assertThrows(SerializationException::class.java) {
+            Json.decodeFromJsonElement(QueryCallbackGraphFailureDocument.serializer(), encoded)
+        }
+    }
 }
+
+@Serializable
+private data class MissingGraphSubject(
+    val cause: QueryCallbackGraphCauseDocument,
+    val origin: QueryCallbackObservationOrigin,
+    val group: ProtocolOffset,
+    val observation: ProtocolOffset,
+)
 
 @Serializable
 private data class InvalidCompletionCause(val type: String, val graphFailure: QueryCallbackGraphFailureDocument? = null)

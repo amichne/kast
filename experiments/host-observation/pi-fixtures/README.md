@@ -7,10 +7,18 @@ owner with `QueryQuestionDocument.serializer()` and
 `CanonicalQueryCliDocuments.qualificationSerializer`. The result schema reuses
 `installedSemanticResultSchema(QUERY_RUN)`, which composes the actual complete,
 qualified and rejected serializers with existing local output definitions.
-The current export uses recovery checkout `bcd3ce6379cb445203d33982dd0a390623604e71`.
-The exporter uses `cli/build/install/kast/lib` and `query/contract/build/libs` without services, IDEA, credentials, or inference.
+The 2026-10-14 export uses base `9268d6ba79ce5870f0fafa668e3269b41a294167` plus the local change to `QueryCallbackGraphFailureDocument`.
+That document carries the exact callback or callable occurrence. A callback subject also carries its body range.
+The exporter uses the CLI classpath from this task checkout and the compiled `query/contract` classes.
 Only `query-result.schema.json` changed. It includes typed `authority_mismatch` evidence.
-Its SHA256 is `3458c28fbf05f479ad30e44c3eb2e92980bd921fc8c3b4a2053ab9ac1f8b2c47`.
+The export does no semantic work and supplies no native qualification.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `query-result.schema.json` | `a88d359cbb870164dbfef5b0b0b3bd3121288f07efd921363aaeb3f55a682e74` |
+| `protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt` | `7fad3ba487381dab19a441ff9e31e5871df954bcebbb5e66dd689fb08dff226c` |
+| `query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt` | `2df97bd07c0f07872a5e95d8da74dabf67c98b5bac2c833f34c8bf6d2171a34f` |
+
 `PiQuestionSchemaParityTest` compares all three committed schemas with the current owners.
 Gradle tracks these schemas as inputs.
 
