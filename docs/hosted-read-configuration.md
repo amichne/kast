@@ -1,6 +1,15 @@
 # Configure semantic reads and diagnose limits
 
-The existing-IDE read path admits an immutable settings policy when its project service starts. The CLI and provider admit their policy when their processes start. Caller execution budgets control semantic output; default transport byte capacities impose only the JVM representation ceiling. The authoritative parameter identities, ranges and cross-limit checks are in [ReadLimits.kt](../kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt); `kast config schema --json` exposes the generated catalogue. Client exchange time must strictly exceed host connection time, and both provider invocation deadlines must strictly exceed client exchange time. Equality rejects configuration so an outer timer cannot expire at the inner boundary. Semantic and hosted query settings may remain equal because hosted admission reserves completion time before selecting the effective semantic grant.
+Semantic queries default to 15,000 milliseconds and 2,000,000 work units. Responses keep the defaults of 128 results and 49,152 bytes.
+The elapsed allowance is a ceiling. It does not impose a wait. More work does not force a larger response.
+
+The existing-IDE read path admits an immutable policy when its project service starts.
+The CLI and provider admit their policies when their processes start.
+[ReadLimits.kt](../kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt) owns the defaults, ranges, and relationships between limits.
+The installed `share/kast/configuration-schema.json` exposes the generated catalog.
+
+Client exchange time must exceed host connection time. Both provider deadlines must exceed client exchange time.
+Semantic and host query limits can be equal because hosted admission reserves completion time before it selects the semantic grant.
 
 ## Apply a setting
 
@@ -12,27 +21,49 @@ Every row below has an environment key `KAST_READ_<NAME>` and an IDE JVM propert
 
 Restart the IDE to activate changed JVM settings. Explicit plugin reactivation also creates fresh project services; the native regression check uses this route. Editing settings during a query cannot change that query's admitted policy or its epoch authority. IDEA module counts include source-set modules and can exceed Gradle project counts.
 
-CLI and provider settings can be supplied as environment values or literal assignments in the installation's selected `config/environment` file. Preserve other assignments when editing that file. Validate the file before activation:
+CLI and provider settings accept environment values or literal assignments in the installation's selected `config/environment` file.
+Preserve other assignments in that file.
+To inspect the installed declaration for one setting, use:
 
 ```sh
-kast config validate --file /absolute/installation/config/environment --json
-kast config show --json
-kast config explain KAST_READ_HOST_RESPONSE_BYTES
+jq '.parameters[] | select(.key == "KAST_READ_SEMANTIC_WORK")' \
+  /absolute/installation/share/kast/configuration-schema.json
 ```
 
-The IDE does not read the CLI installation file. Apply the IDE's corresponding JVM/environment values as well. The provider retains its settings until the broker is restarted; new CLI processes read the selected saved configuration. The existing-IDE CLI route performs configuration admission before opening the socket.
+The catalog describes defaults and accepted sources. It does not establish the policy of a loaded service.
+The public CLI does not expose a `config` command.
+The developer task `:cli:generateConfigurationCatalogue` regenerates the catalog from its typed owners.
+
+The IDE does not read the CLI installation file. Apply the corresponding IDE JVM properties or launch environment values.
+The provider keeps its settings until the broker restarts. New CLI processes read the selected saved configuration.
+The existing-IDE route admits configuration before it opens the socket.
 
 JVM properties take precedence over the IDE environment. CLI precedence is command-line settings, process environment, saved workspace settings where supported, saved installation settings, then defaults. Shadowed supplied values are still validated. Unknown reserved keys, nondecimal numbers, zero, overflow and inconsistent paired limits reject configuration; they never silently fall back. Rejections expose parameter identities and finite conditions, without echoing raw values.
 
-For a five-second semantic budget, a consistent IDE configuration is:
+To select execution defaults explicitly, use these IDE JVM properties:
 
 ```text
--Dkast.read.semantic.millis=5000
--Dkast.read.host.query.millis=6000
--Dkast.read.host.connection.millis=7000
+-Dkast.read.semantic.millis=15000
+-Dkast.read.semantic.work=2000000
 ```
 
-Also set `-Dkast.read.client.exchange.millis=8000` in the IDE policy, and apply the same four values with their `KAST_READ_` environment names in the CLI/provider configuration. The inner semantic and diagnostic deadlines must fit the host query deadline, which must fit connection, client, provider and process deadlines. Result/source bytes must fit host responses, provider output and process output. Increasing one inner value beyond its outer value is rejected. A larger result cap does not establish complete coverage when work, time or bytes run out.
+The default transport deadlines already accommodate these values. The corresponding saved settings are:
+
+```text
+KAST_READ_SEMANTIC_MILLIS=15000
+KAST_READ_SEMANTIC_WORK=2000000
+```
+
+If the host deadline is less than 15,000 milliseconds, also set a semantic deadline that fits it.
+For example, `KAST_READ_HOST_QUERY_MILLIS=4000` needs `KAST_READ_SEMANTIC_MILLIS=4000` or less.
+An inconsistent configuration rejects before semantic execution.
+
+The Host needs its own JVM properties or launch environment. A CLI setting alone does not change the loaded IDE policy.
+After a service restart, examine the admitted grant in a fresh response.
+
+Use `KAST_READ_EXECUTION_MAX_MILLIS` and `KAST_READ_EXECUTION_MAX_WORK` to cap default and requested grants.
+These operator ceilings do not set defaults. Each defaults to 2,147,483,646.
+Keep `SEMANTIC_RESULTS` and `SEMANTIC_RETURNED_BYTES` unchanged when only execution capacity needs adjustment.
 
 ## Default values
 
@@ -52,13 +83,17 @@ All values are positive decimal integers, up to 2,147,483,646. Transport and pro
 | `EPOCH_PATH_CHARACTERS` | 4,096 | characters |
 | `EPOCH_PATH_BYTES` | 8,192 | bytes |
 | `HOST_QUERY_MILLIS` | 30,000 | milliseconds |
-| `SEMANTIC_MILLIS` | 2,000 | milliseconds |
-| `SEMANTIC_WORK` | 100,000 | count |
+| `SEMANTIC_MILLIS` | 15,000 | milliseconds |
+| `SEMANTIC_WORK` | 2,000,000 | count |
 | `SEMANTIC_RESULTS` | 128 | count |
 | `SEMANTIC_RETURNED_BYTES` | 49,152 | bytes |
-| `QUERY_CHECKPOINT_BYTES` | 8,388,608 | bytes |
+| `EXECUTION_MAX_MILLIS` | 2,147,483,646 | milliseconds |
+| `EXECUTION_MAX_WORK` | 2,147,483,646 | count |
+| `EXECUTION_MAX_RESULTS` | 2,147,483,646 | count |
+| `EXECUTION_MAX_RETURNED_BYTES` | 2,147,483,646 | bytes |
+| `QUERY_CHECKPOINT_BYTES` | 33,554,432 | bytes |
 | `QUERY_CONTINUATION_ENTRIES` | 64 | count |
-| `QUERY_CONTINUATION_BYTES` | 33,554,432 | bytes |
+| `QUERY_CONTINUATION_BYTES` | 134,217,728 | bytes |
 | `QUERY_CONTINUATION_TTL_MILLIS` | 600,000 | milliseconds |
 | `DISCOVERY_NAMES` | 10,000 | count |
 | `DISCOVERY_CANDIDATES` | 10,000 | count |
@@ -141,11 +176,11 @@ The [reproduction guide](../experiments/host-observation/SEMANTIC_REPRODUCTION.m
 ## Deadline admission and search ordering
 
 The host deadline covers admission, model capture, semantic evaluation, freshness
-revalidation and detachment. Its default is 30,000 ms; semantic work retains a
-2,000 ms default. Caller allowances may raise that default within the operator and
-host limits. At semantic entry, the host subtracts elapsed request time and
-reserves the smaller of 250 ms or one eighth of the host limit (at least 1 ms)
-for completion. Semantic and diagnostic-scope allowances are each capped by the
+revalidation and detachment. Its default is 30,000 ms. Semantic work has a
+15,000 ms default. Caller allowances can raise that default within the operator and
+host limits. At semantic entry, the host subtracts elapsed request time.
+It reserves the smaller of 250 ms or one eighth of the host limit for completion.
+The reserve is at least 1 ms. Semantic and diagnostic-scope allowances are each capped by the
 remaining time after that reserve. A nonpositive allowance rejects before the
 evaluator runs. Configured equal limits remain supported through this runtime
 refinement. The hard timer still cancels and drains work that overruns; cooperative
@@ -189,9 +224,20 @@ Query continuations retain detached pipeline state and encoded-output suffixes i
 
 ## Per-call execution budgets
 
-`query_symbols` and `source_read`
-accept an optional `execution_budget` object with
-`max_elapsed_ms`, `max_work_units`, `max_results`, and `max_returned_bytes`.
+Public `query_symbols` accepts an optional `executionBudget` object inside `request`.
+Its fields are `maxElapsedMs`, `maxWorkUnits`, `maxResults`, and `maxReturnedBytes`.
+The `READ_SOURCE` action uses the source profile and its separate work and entity defaults.
+
+```json
+{
+  "executionBudget": {
+    "maxElapsedMs": 15000,
+    "maxWorkUnits": 2000000
+  }
+}
+```
+
+This fragment explicitly selects query execution defaults. Response defaults remain unchanged.
 Supplied numbers must be positive integers. Omitted controls select configured
 defaults. Intent tools also normalize null controls to defaults. The IDE admits each dimension against the corresponding
 `KAST_READ_EXECUTION_MAX_*` operator ceiling and applicable transport capacity.
