@@ -1,14 +1,18 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:c9d642437c1a1789912eecba6107f595c4c81f2d80749181367f626926b33cb6",
+  "pageVersion": "sha256:d523d76955220fd67613d710c48d1af30b5183bebb2d51f9191c2f5e76c7e77e",
   "claims": [
     {
       "id": "claim_68b3b4212912400cb4aaca348651f813",
-      "statement": "Kast's active Gradle graph contains domain contracts, services, adapters, the existing-IDE hosted runtime, App Server, CLI, distribution and separate retained topology modules; the former isolated importer and indexer are absent.",
+      "statement": "The active Gradle graph includes live topology dependencies in hosted composition while historical graph services and the former isolated importer have separate ownership.",
       "evidence": [
         {
-          "resource": "repo://settings.gradle.kts#L21-L67",
-          "version": "repo-lines-v1:sha256:844bd7a78acaa6abfd1d40e709bbeb1cfff7b3bd71a3c632f7efaabc16600d15:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyODgzMmZhZDlmOWExZmY5NTEwOGYyMTVlYmJhZTZiNmE0ODFmNDVhMDE5NWUxZDU5ZDNjNDI1YjM2M2I1NjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIxMDMxN2JhZWIzNjU5Y2I0N2EzMWMwZjI5NTg4MzRlMzRkOWFiNDkzOTM4MzhhY2U1NzFjZWMzMTJiYzc1ODMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://runtime/hosted/build.gradle.kts",
+          "version": "repo-file-v1:sha256:de7d0cd8c9eb98249bea33741eea1f7700bd752aee2fdce71f2e7774239d9d9f"
+        },
+        {
+          "resource": "repo://settings.gradle.kts",
+          "version": "repo-file-v1:sha256:66bb4ba1e1c7730a0106924aa55cf08732f4e6a498ca7f490239cddae7125474"
         }
       ]
     },
@@ -33,6 +37,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-08T01:13:49.481Z"
+    "at": "2026-10-15T00:33:05.932Z"
   }
 }

@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:c219f55e1fe49055549642449381db934449fb8daae5bfd5ee27762541d866e7",
+  "claims": [
+    {
+      "id": "claim_a5aabd0ac08b46be89a2eef490220d68",
+      "statement": "Copilot and Pi admit the shared tool RPC catalog and preserve generated contract and delivery owners.",
+      "evidence": [
+        {
+          "resource": "repo://copilot/extension.mjs",
+          "version": "repo-file-v1:sha256:aaddeb3869dffbdd8bce5e673b2c4c3138389dc251de15cc8783af3ae70f96cd"
+        },
+        {
+          "resource": "repo://pi/extension.ts",
+          "version": "repo-file-v1:sha256:f026a5a35f8071a4315cfcb604daa6239f9d80f3315ed3014d440651073394a4"
+        }
+      ]
+    },
+    {
+      "id": "claim_beaf777103fa404bbc0ecd3138f871de",
+      "statement": "Portable query delivery invokes once, uses issued presentation authority, and preserves canonical outcomes under aggregate output limits.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/js/query-delivery-contract.mjs",
+          "version": "repo-file-v1:sha256:b2c31f3784b6fa39c71ba6f527dfaad63135c1d774baf204a6c3d0f9b7df2ae1"
+        },
+        {
+          "resource": "repo://cli/src/main/js/query-delivery.mjs",
+          "version": "repo-file-v1:sha256:1bdf2403520ca33c916a6675c1024fd77dfd171ba71e6fbea13cb45e383838c1"
+        }
+      ]
+    },
+    {
+      "id": "claim_78a64609716545669cc9c59323266ccd",
+      "statement": "The outer delivery schema distinguishes client output delivery from canonical semantic completion.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/resources/query-delivery.schema.json",
+          "version": "repo-file-v1:sha256:e2f5cd0ecb8959e452a63ddccecaa1992d01fb5dc10ff5f07317fe8771de32e6"
+        }
+      ]
+    },
+    {
+      "id": "claim_75e753fdf35a4d0484644740c3c9541c",
+      "statement": "Query presentation counts only received evidence and keeps refinement locations as NOT_ISSUED source-read authority without automatic semantic retries.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/js/query-presentation.mjs",
+          "version": "repo-file-v1:sha256:026909c60f1ea12306152153fa5f962cb06f18afd9d166117d9302362a329672"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T01:04:37.434Z"
+  }
+}

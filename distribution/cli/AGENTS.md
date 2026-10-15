@@ -1,3 +1,20 @@
+---
+type: Engineering Guide
+title: "Native management CLI engineering rules"
+description: "Defines public command scope, installation ownership, guarded lifecycle transitions, and Codex plugin installation."
+resource: "repo://distribution/cli"
+tags: [kast, navigation]
+timestamp: "2026-10-14T23:25:10Z"
+source_revision: e014a489bfd7e69cbf2c4b61140ee771d857a03e
+code_sources:
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatus.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
+---
+
 # Native management CLI
 
 This module owns the public `kast` executable. Keep its command graph limited to status, version, supported harness registration and plugin installation, upgrade, verified stop/reinstall (with force flags), and uninstall. The operational JVM CLI and transport launchers are private managed payloads.
@@ -13,3 +30,14 @@ The managed root contains one ordinary `installation` directory. Its stable `bin
 The connection owner may migrate an exactly recorded legacy MCP command only during a proven `PAYLOAD_COMMITTED` legacy replacement transaction. Preserve the canonical replacement receipt, old launcher digest, filesystem identities, selector target, and observed Codex command proof. Restore the complete host configuration and management receipt if the connection transaction fails; the installer seals replacement recovery.
 
 Run `./gradlew :distribution:cli:test :distribution:cli:nativeCompile` for changes here, then the affected release, architecture, JSON, and knowledge guards.
+
+## Navigation
+
+- [KastManagementMain.kt](src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt)
+- [ManagementCommand.kt](src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt)
+- [ManagementStatus.kt](src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatus.kt)
+- [ForceInstallationReset.kt](src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt)
+- [PluginInstallation.kt](src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt)
+- [ConnectionConfiguration.kt](src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt)
+
+For connection selection, read `ManagementCommand` and `ConnectionDirectory`.

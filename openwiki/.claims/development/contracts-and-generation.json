@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:5bb2fb73182ace2bed1d9b17a3f4198fcca364990303c9ee001b2b7b4593725f",
+  "claims": [
+    {
+      "id": "claim_33e6522130644483961b71cc571e663b",
+      "statement": "Public query compilation depends on generator parity and generator regression rules for the authored schema and its Kotlin and harness projections.",
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/kast.public-query-contract.gradle.kts",
+          "version": "repo-file-v1:sha256:274a60e15e376083aad31145ae574d9eab2ab6d145f991ece3ae05d7c36c272b"
+        }
+      ]
+    },
+    {
+      "id": "claim_85f0a8f6a79c483dbc93cd950011ea81",
+      "statement": "Installed CLI query schemas and callable documentation project canonical serializer contracts through the existing CLI generators.",
+      "evidence": [
+        {
+          "resource": "repo://cli/build.gradle.kts",
+          "version": "repo-file-v1:sha256:3c52075dbdff24ac560132cbcd8831dd32808b0ec8a5f8c038c971d018240a3b"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt",
+          "version": "repo-file-v1:sha256:8a20cb06cdf3eb95f42a4f1d43eadc9de704f5adb34566cf9cc0e205aa3ad609"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt",
+          "version": "repo-file-v1:sha256:b285265f537001c24343b42145630e13f09cdf1bd68bdf024efeefc69a71bc17"
+        }
+      ]
+    },
+    {
+      "id": "claim_e3273679851841aab458e9a8ca4d8b99",
+      "statement": "The JSON contract syntax gate rejects changed manual expressions against an exact baseline and remains distinct from encoded-shape or schema proof.",
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/conventions/JsonContractVerification.kt",
+          "version": "repo-file-v1:sha256:717897a3aa97869a486c4cffbeb6e00e595b520c54a1a74a6033e164677bf7b7"
+        },
+        {
+          "resource": "repo://config/json-contracts/README.md",
+          "version": "repo-file-v1:sha256:308d467fc4b0e205a6f3dbb339b3ed95425f49a01561d044c1dc948bdb7df8e1"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T01:04:37.434Z"
+  }
+}

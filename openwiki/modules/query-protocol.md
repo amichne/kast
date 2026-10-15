@@ -210,7 +210,7 @@ sources:
     resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisition.kt
   - id: openwiki-source-614907c76c5e46269ec7d42b
     resource: repo://symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisitionBudgetTest.kt
-generated: { by: "codex", at: "2026-10-14T01:57:02.037Z" }
+generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
 verified:
   - by: openwiki/0.6.1
     at: 2026-10-14T20:46:05.929Z
@@ -452,3 +452,11 @@ Its binding has no invocation-kind field or invented invocation record.
 The execution projection preserves declaration, accessor, initializer, or ordered direct-invocation evidence.
 Canonical retention includes the supplier signature, execution proof, and every binary digest.
 The public document preserves the original SEMANTIC BASIS and source containment.
+
+## Focused query explanations
+
+- [Public admission](../queries/public-admission.md) separates schema intent from canonical authority.
+- [Execution and composition](../queries/execution-and-composition.md) traces row transitions, stages, and joins.
+- [TRACE and completion](../queries/trace-and-completion.md) explains fixed topology and strict compiler-static proof.
+- [Retention and presentation](../queries/retention-and-presentation.md) separates semantic execution from output delivery.
+- [Impact and peer proof](../queries/impact-and-peer-proof.md) traces conservation, native sites, and original investigation completion.

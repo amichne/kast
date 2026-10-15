@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:c77dafc3f61687679972392845b8a77d500409a8c5bf7313b1a5ce53a6c48058",
+  "claims": [
+    {
+      "id": "claim_dce9b1010e3841d895b0ab00b6bd1625",
+      "statement": "TRACE uses a fixed seed, implementation, use, and caller topology through the existing query task interpreter and relation operations.",
+      "evidence": [
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryTraceMembers.kt",
+          "version": "repo-file-v1:sha256:246a2a9fd2e0716ffca200459d32b9c0f0fd8dc853678ff24889a0b6de0fcfed"
+        },
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryTraceTasks.kt",
+          "version": "repo-file-v1:sha256:588e6fc362dc5d20e5dcc74ca11d0902619668a3e6ee4c1a7813f5d534e210bd"
+        }
+      ]
+    },
+    {
+      "id": "claim_c2aebcd56ee5482899fe0526fc06fe1c",
+      "statement": "Public invocation execution automatically accumulates one admitted question and rejects internal pipeline continuations at the public resume path.",
+      "evidence": [
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt",
+          "version": "repo-file-v1:sha256:680933b85bef3cb29892f3bbccee8dedd2c055201681774d70f3544112d9b0b6"
+        }
+      ]
+    },
+    {
+      "id": "claim_28952c9d3fb348e3979b0ab38e5f2d98",
+      "statement": "COMPLETE_ONLY retains distinct unproved execution, item, omission, callback, investigation, and retention causes and can attach retained rejection evidence without semantic replay.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt",
+          "version": "repo-file-v1:sha256:7fad3ba487381dab19a441ff9e31e5871df954bcebbb5e66dd689fb08dff226c"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt",
+          "version": "repo-file-v1:sha256:2df97bd07c0f07872a5e95d8da74dabf67c98b5bac2c833f34c8bf6d2171a34f"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidence.kt",
+          "version": "repo-file-v1:sha256:11ca826d64661179b37213267cab57f3a04d8a2a1abbce18713a0cade621faa8"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T01:04:37.434Z"
+  }
+}

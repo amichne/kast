@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:01a75cd18915aae5bea08f1c90b4da9be0e6bbe5a9d2c264b255cfa2867a7b5b",
+  "claims": [
+    {
+      "id": "claim_90cad2d488b6484a870c9ed1f1528dbf",
+      "statement": "SourceReadService preserves distinct candidate, symbol, and source-selector admission and rechecks the exact source context around native reads.",
+      "evidence": [
+        {
+          "resource": "repo://source/service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt",
+          "version": "repo-file-v1:sha256:5f2f59b6ed5386d09e4dc58666f8f03f5f72c588c4cc011d109e6f5da89ed28b"
+        }
+      ]
+    },
+    {
+      "id": "claim_eab67fb51ca041b1a6c9365f502a7a11",
+      "statement": "Source entity collection applies containment and declaration-kind eligibility before deferred projection and counts only matching entities toward page capacity.",
+      "evidence": [
+        {
+          "resource": "repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceEntityPageCollector.kt",
+          "version": "repo-file-v1:sha256:60249931bcf34b2473f38176eb2feb5f8f661729482362e498053b67a444f5a7"
+        }
+      ]
+    },
+    {
+      "id": "claim_86579eeaeb3d4b2bb4b52770dddf1b7e",
+      "statement": "Source cursors bind request, snapshot, region, and structural progress so continuation restores pending work without ordinal prefix replay.",
+      "evidence": [
+        {
+          "resource": "repo://source/contract/src/main/kotlin/io/github/amichne/kast/source/contract/SourceReadCursor.kt",
+          "version": "repo-file-v1:sha256:a3f15b266c624a0eaaae66dbc6ec717e6ac80bca822628de94cc456fa2d1ead7"
+        },
+        {
+          "resource": "repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceTraversal.kt",
+          "version": "repo-file-v1:sha256:211c40ba5ea8dde5b9ea48d4cdfe9389338ec1431e82e2816a987d525b272fd2"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T01:04:37.434Z"
+  }
+}

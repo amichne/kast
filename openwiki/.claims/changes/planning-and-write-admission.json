@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:4ae9fd2097511b77525c80a0548eb39b34836beba883f82bb318ad3a8c94354d",
+  "claims": [
+    {
+      "id": "claim_ff1f6ede0c994f92bbe64a21db0bea0b",
+      "statement": "Live mutation admission compares the current basis, exact source, writable preimage, and derived postimage before it permits a source write.",
+      "evidence": [
+        {
+          "resource": "repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt",
+          "version": "repo-file-v1:sha256:4dc797b8e08692e4892d9ab74bc8b0d61fce53a82ff1edaf28c11cc3f67a53af"
+        },
+        {
+          "resource": "repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/MutationAdmission.kt",
+          "version": "repo-file-v1:sha256:c90d0809fd2d3dcfd501704dd63ba50429c08bdbf950f25ae3c63d160bb0ac6f"
+        }
+      ]
+    },
+    {
+      "id": "claim_3fdbf46103494028ab4de6c13029a442",
+      "statement": "Live mutation preparation permanently claims the plan application before recovery preparation and returns a distinct claimed-without-recovery outcome on failure.",
+      "evidence": [
+        {
+          "resource": "repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt",
+          "version": "repo-file-v1:sha256:4dc797b8e08692e4892d9ab74bc8b0d61fce53a82ff1edaf28c11cc3f67a53af"
+        }
+      ]
+    },
+    {
+      "id": "claim_3fedc63a3fb24fdb8a95089e5f6555e1",
+      "statement": "The pure live declaration planner produces detached plan proof without granting a published lease or native write authority.",
+      "evidence": [
+        {
+          "resource": "repo://change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/LiveChangeBasis.kt",
+          "version": "repo-file-v1:sha256:8d70d7f66a6a06add33c18d6b3be596fcaa18e331872a0dc8d325f6181701c36"
+        },
+        {
+          "resource": "repo://change/plan/src/main/kotlin/io/github/amichne/kast/change/plan/PureAddDeclarationPlanningService.kt",
+          "version": "repo-file-v1:sha256:23164ff36ef3cae5bb9afaa62456d5c2ac22c7c5ba9250ebedde86610088798e"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}

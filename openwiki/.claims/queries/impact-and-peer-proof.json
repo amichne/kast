@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:0578045c6dcdf528f4042c485768b8c2c9b95c0e779f4d593ad4eb688535e4c5",
+  "claims": [
+    {
+      "id": "claim_d660f92a2d904afb96d1e64ad069e99b",
+      "statement": "Impact source admission acquires native seeds, declarations, positions, and requested sites under one original authority and grant before plan compilation.",
+      "evidence": [
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceAdmission.kt",
+          "version": "repo-file-v1:sha256:1eb0e9945415056bd7970fbec11587a700d8fa64fd4738ed12a392a7e35c27a3"
+        }
+      ]
+    },
+    {
+      "id": "claim_1eb5fc4e08c94622ba18bae19d422cdc",
+      "statement": "The impact ledger preserves branch conservation and unresolved obligations, while original investigation completion remains separate from retained presentation.",
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt",
+          "version": "repo-file-v1:sha256:b4075058124b94361f5e39775e3c61fea2c7dfd70cd6425d8a93c3bd5710eb40"
+        },
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryInvestigationCompletion.kt",
+          "version": "repo-file-v1:sha256:7c6b931696ffe959a2443d144f94b54e386029526d7720bf9397719efcda688d"
+        }
+      ]
+    },
+    {
+      "id": "claim_4b981e9969e84699808441b3e5c250f5",
+      "statement": "An impact peer connection needs exact independently completed target authority and site evidence, and does not permit arbitrary peer native expansion.",
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactPeerBoundary.kt",
+          "version": "repo-file-v1:sha256:919e39fdbc5dd7f94f155ab388666a01313c743ab648b37236115e668400c149"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedPeerSiteAdmissions.kt",
+          "version": "repo-file-v1:sha256:ef7f8fdb1645360b0f393b80eaca06b49940c039932c1f19e507bc20c3f8a3a7"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}
