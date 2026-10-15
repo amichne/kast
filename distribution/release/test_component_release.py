@@ -72,7 +72,7 @@ class ComponentReleaseTest(unittest.TestCase):
                     info = tarfile.TarInfo(name)
                     info.size = len(content)
                     stream.addfile(info, io.BytesIO(content))
-            for name in ("skill", "plugin", "marketplace"):
+            for name in ("plugin", "marketplace"):
                 (self.root / f"kast-{name}-v2.1.0.zip").write_bytes(b"agent attachment")
             record = ControlRelease(Artifact(archive.name, "sha256:" + release.digest(archive), archive.stat().st_size))
         else:
@@ -115,8 +115,14 @@ class ComponentReleaseTest(unittest.TestCase):
     def test_control_release_needs_no_host_archive(self) -> None:
         self.fixture(release.Component.CONTROL)
         admitted = release.admit(self.root, release.Component.CONTROL, "2.1.0", "a" * 40)
-        self.assertEqual(len(admitted.assets), 10)
+        self.assertEqual(len(admitted.assets), 8)
         self.assertFalse(any("ide-hosted" in asset.name for asset in admitted.assets))
+
+    def test_obsolete_skill_archive_is_rejected(self) -> None:
+        self.fixture(release.Component.CONTROL)
+        (self.root / "kast-skill-v2.1.0.zip").write_bytes(b"obsolete skill")
+        self.checksums()
+        self.assertRejected(release.Component.CONTROL, release.ReleaseFailure.INVENTORY_MISMATCH)
 
     def test_host_release_needs_no_control_archive(self) -> None:
         self.fixture(release.Component.HOST)
