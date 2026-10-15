@@ -1,0 +1,6 @@
+extends: existence
+message: "Glossary markers belong only in the glossary; use the canonical term without markers."
+level: error
+nonword: true
+tokens:
+  - '\x{00A7}[^\x{00A7}\n]+\x{00A7}'

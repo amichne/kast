@@ -1,0 +1,5 @@
+extends: Std.Readability.SentenceLength
+message: "Instruction: %d words. Keep an instruction at 20 words or fewer."
+level: warning
+scope: 'sentence & list'
+max: 20
