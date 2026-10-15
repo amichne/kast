@@ -213,7 +213,7 @@ sources:
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
+    at: 2026-10-14T20:46:05.929Z
 ---
 
 # Query protocol

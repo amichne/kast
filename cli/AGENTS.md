@@ -4,11 +4,12 @@ title: "Kast cli"
 description: "Owns private JVM entry points, direct MCP and tool RPC sessions, installation workflows, and typed output projections."
 resource: "repo://cli"
 tags: [kast, navigation]
-timestamp: "2026-10-14T23:25:10Z"
-source_revision: e014a489bfd7e69cbf2c4b61140ee771d857a03e
+timestamp: "2026-10-15T01:04:25Z"
+source_revision: 5a82727f790d365936682699502ee32a792b3634
 code_sources:
   - path: cli/build.gradle.kts
   - path: cli/src/main/js/query-delivery.mjs
+  - path: cli/src/main/js/query-presentation.mjs
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastServiceMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
@@ -20,12 +21,14 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QuerySessionRejectionDetail.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySessionTest.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcResultAdmissionTest.kt
 ---
 
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-10-14 | hash: 71ef615ec17d -->
+<!-- generated: 2026-10-15 | hash: b96782f52fd4 -->
 
 # cli
 
@@ -36,7 +39,8 @@ Owns private JVM entry points, direct MCP and tool RPC sessions, installation wo
 ## Key Files
 
 - [KastMcpMain.kt](src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt) - the client-owned stdio MCP process.
-- [KastToolRpcMain.kt](src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt) - catalog, one-shot invocation, and query-session entry.
+- [KastToolRpcMain.kt](src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt) - catalog, request-only plans, one-shot invocation, and query sessions.
+- [QueryCostPlan.kt](src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt) - request-shape advice before installation access or host effects.
 - [KastDirectToolSession.kt](src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt) - shared direct tool admission and existing-IDE composition.
 - [KastToolRpcQuerySession.kt](src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt) - bounded query framing and output successors.
 - [query-delivery.mjs](src/main/js/query-delivery.mjs) - portable query delivery shared by generated harness extensions.
@@ -70,6 +74,7 @@ Owns private JVM entry points, direct MCP and tool RPC sessions, installation wo
 
 - Trace MCP and tool RPC through `KastDirectToolSession`. The MCP transport does not start an App Server broker.
 - MCP starts preparation at legacy initialization or its first admitted modern request. Semantic calls wait for the selected workspace endpoint.
-- For query output, trace canonical serializers into `InstalledServerProjectionDocuments` and the shared JavaScript delivery owner.
+- For query output, trace canonical serializers into `InstalledServerProjectionDocuments` and the shared JavaScript delivery and presentation owners.
+- For source reads and session rejection, examine `KastToolRpcQuerySession` and `QuerySessionRejectionDetail`. Issued selectors keep their current authority.
 - For generated Copilot and Pi sections, change the delivery owner or public-query generator. Preserve authored extension adapters.
 - Read the [root guide](../AGENTS.md) for engineering rules and optional OpenWiki retrieval.

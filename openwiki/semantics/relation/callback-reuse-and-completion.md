@@ -4,22 +4,20 @@ title: Callback reuse and graph completion
 description: Explains bounded callback fact storage, dependency continuity, fresh
   endpoint readmission, supplier coverage, and static graph obligations.
 tags:
-- kast
-- semantics
+  - kast
+  - semantics
 code_sources:
-- path: topology/contract/src/main/kotlin/io/github/amichne/kast/topology/contract/SemanticDependencySnapshot.kt
-- path: topology/build/src/main/kotlin/io/github/amichne/kast/topology/build/SemanticCallbackFactStore.kt
-- path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/CallbackSummaryReuse.kt
-- path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackSummaryReadmission.kt
-- path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteCallbackSupplierInventory.kt
-- path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraph.kt
-- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt
-- path: relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/CallbackSummaryReuseTest.kt
-- path: relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/CallbackSummaryReadmissionTest.kt
-- path: topology/build/src/test/kotlin/io/github/amichne/kast/topology/build/SemanticCallbackSupplierStoreTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
+  - path: topology/contract/src/main/kotlin/io/github/amichne/kast/topology/contract/SemanticDependencySnapshot.kt
+  - path: topology/build/src/main/kotlin/io/github/amichne/kast/topology/build/SemanticCallbackFactStore.kt
+  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/CallbackSummaryReuse.kt
+  - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackSummaryReadmission.kt
+  - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteCallbackSupplierInventory.kt
+  - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraph.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt
+  - path: relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/CallbackSummaryReuseTest.kt
+  - path: relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/CallbackSummaryReadmissionTest.kt
+  - path: topology/build/src/test/kotlin/io/github/amichne/kast/topology/build/SemanticCallbackSupplierStoreTest.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt
 sources:
   - id: openwiki-source-b40db0ab2fa6f0ddc8926bd4
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt
@@ -31,7 +29,10 @@ sources:
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackSummaryReadmission.kt
   - id: openwiki-source-3be5d9cf3fcc7a7b479b3444
     resource: repo://topology/contract/src/main/kotlin/io/github/amichne/kast/topology/contract/SemanticDependencySnapshot.kt
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+generated: { by: "codex", at: "2026-10-15T01:04:37.434Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-15T01:04:37.434Z
 ---
 
 # Callback reuse and graph completion
@@ -99,3 +100,9 @@ A measured cache hit or lower work count does not independently prove installed-
 - [Supply and bindings](callback-supply-and-binding.md)
 - [Live dependency store](../../topology/live-dependencies-and-reuse.md)
 - [Query completion](../../queries/trace-and-completion.md)
+
+## Failure subjects identify the unproved fact
+
+Callback completion failures carry a typed callable or callback subject beside the original cause and observation positions.
+The subject keeps exact file and source ranges for the failed callable or callback site and body.
+A subject identifies the proof failure without a claim of runtime activation or a new source selector.

@@ -1,9 +1,13 @@
 ---
 type: Kotlin Architecture
 title: Verified module architecture
-description: Gradle verifies module roles, dependencies, exports, and scoped agent guidance before projecting module knowledge.
+description: Gradle verifies module roles, dependencies, exports, and scoped agent
+  guidance before projecting module knowledge.
 resource: file://settings.gradle.kts
-tags: [kotlin, gradle, architecture]
+tags:
+  - kotlin
+  - gradle
+  - architecture
 code_sources:
   - path: gradle.properties
   - path: gradle/libs.versions.toml
@@ -20,21 +24,23 @@ code_sources:
   - path: distribution/cli/build.gradle.kts
   - path: build-logic/src/main/kotlin/kast.architecture.gradle.kts
   - path: build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt
-    symbols: [KastCleanSlateModules]
+    symbols:
+      - KastCleanSlateModules
   - path: build-logic/src/main/kotlin/support/architecture/validation/ModulePolicyValidator.kt
-    symbols: [ModuleRoleConvention, ValidatedModulePolicy]
+    symbols:
+      - ModuleRoleConvention
+      - ValidatedModulePolicy
   - path: build-logic/src/main/kotlin/support/architecture/policy/JvmEffectRules.kt
   - path: build-logic/src/main/kotlin/support/architecture/knowledge/ModuleKnowledgeProjection.kt
-    symbols: [ModuleKnowledgeProjection, ModuleKnowledgeDocument]
+    symbols:
+      - ModuleKnowledgeProjection
+      - ModuleKnowledgeDocument
   - path: change/protocol/build.gradle.kts
   - path: query/protocol/build.gradle.kts
   - path: runtime/hosted/build.gradle.kts
   - path: build-logic/src/main/kotlin/support/architecture/policy/KastQueryModules.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt
 sources:
-  - id: openwiki-source-48edfaeb8d917960adc80600
-    resource: repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt
-  - id: openwiki-source-5c861b8d15a750f35fef8a31
-    resource: repo://build-logic/src/main/kotlin/support/architecture/validation/ModulePolicyValidator.kt
   - id: openwiki-source-dfe8403e5aee6d5722e08a79
     resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt
   - id: openwiki-source-2a9daaac1604f238ef4c63fb
@@ -45,10 +51,10 @@ sources:
     resource: repo://settings.gradle.kts
   - id: openwiki-source-0d3b3349cf83bfefc48ef336
     resource: repo://topology/service/build.gradle.kts
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+generated: { by: "codex", at: "2026-10-15T01:04:37.434Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
+    at: 2026-10-15T01:04:37.434Z
 ---
 
 # Verified module architecture
@@ -150,3 +156,7 @@ Inventory accounting does not establish successful trace completion.
 - [Build roles and gates](../development/build-and-architecture.md) traces dependency and effect admission.
 - [Contract generation](../development/contracts-and-generation.md) identifies authored contracts and their generated projections.
 - [Live topology dependencies](../topology/live-dependencies-and-reuse.md) explains callback reuse without cached semantic authority.
+
+The current transport separates request-only scope advice from admitted host execution.
+`plan-query` consumes public syntax without installation or semantic capabilities.
+Its advice does not establish compiler identity or measured execution cost.

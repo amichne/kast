@@ -4,23 +4,20 @@ title: TRACE and compiler-static completion
 description: Explains fixed affected-use topology, original invocation completion,
   callback graph obligations, and typed recovery on unproved completion.
 tags:
-- kast
-- queries
+  - kast
+  - queries
 code_sources:
-- path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryTraceTasks.kt
-- path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryTraceMembers.kt
-- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
-- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidence.kt
-- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt
-- path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt
-- path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryInvestigationCompletion.kt
-- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/AdmittedBoundaryModel.kt
-- path: query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryTraceTest.kt
-- path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CompleteOnlyCallbackQueryTest.kt
-- path: protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionContractTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
+  - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryTraceTasks.kt
+  - path: query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryTraceMembers.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCompletionEvidence.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt
+  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryInvestigationCompletion.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/AdmittedBoundaryModel.kt
+  - path: query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryTraceTest.kt
+  - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CompleteOnlyCallbackQueryTest.kt
+  - path: protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionContractTest.kt
 sources:
   - id: openwiki-source-01b72c0031ed69c6870649b2
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt
@@ -34,7 +31,10 @@ sources:
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryTraceMembers.kt
   - id: openwiki-source-884fbecd15a59fc68fc423de
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryTraceTasks.kt
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+generated: { by: "codex", at: "2026-10-15T01:04:37.434Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-15T01:04:37.434Z
 ---
 
 # TRACE and compiler-static completion
@@ -107,3 +107,10 @@ It does not establish runtime activation, path feasibility, or behavior outside 
 - [Callback proof](../semantics/relation/callback-reuse-and-completion.md)
 - [Retained rejection evidence](retention-and-presentation.md)
 - [Execution stages](execution-and-composition.md)
+
+## Exact callback failure subjects
+
+A callback graph rejection keeps its cause, origin, group, and observation position.
+It also carries the exact callable location or callback site and body locations that identify the failed proof.
+These locations explain the rejection without a new invocation edge or completion claim.
+The callback graph admission owner supplies the subject through the canonical result schema.

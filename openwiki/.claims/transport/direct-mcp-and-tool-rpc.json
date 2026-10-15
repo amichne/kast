@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:9f46a8ee1f3c85f80c7aa35eacea83ade2598f45fb0ab5ba8e37c606c09249bf",
+  "pageVersion": "sha256:878012a69d7227fe27f9363d428b5f67c1e48edae1dee8971bc84bdb91d3f58b",
   "claims": [
     {
       "id": "claim_ff079a4bad1c49b29e631747df0a01a1",
@@ -28,17 +28,31 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt",
-          "version": "repo-file-v1:sha256:11822ffc2451f8e5ef9cebb2d8657497558949ef051539c7f69fcfce7ffa3948"
+          "version": "repo-file-v1:sha256:29448da17163573fd1c81280b87a75fc91a9bcdcdf04e569ffbea0415d770afb"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt",
-          "version": "repo-file-v1:sha256:d6ba5928a4a9be376dcfe760dbe22e0fa870562c998dafcdda5be5514d2ef8cd"
+          "version": "repo-file-v1:sha256:35c90850bca24c6b6cd85163634fc24b654e2ec9d43aaceefc1bff473d1c47e9"
+        }
+      ]
+    },
+    {
+      "id": "claim_67b8ad2fd960498192eae7225e6c9e32",
+      "statement": "The private plan-query path admits public RUN syntax before installation or host effects and returns request-shape advice without measured cost or an execution grant.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt",
+          "version": "repo-file-v1:sha256:29448da17163573fd1c81280b87a75fc91a9bcdcdf04e569ffbea0415d770afb"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt",
+          "version": "repo-file-v1:sha256:83737c4ac9d37f3e0cecdada4770d7beca024bc65f4fbcce0ae20f8794017766"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T00:33:05.932Z"
+    "at": "2026-10-15T01:04:37.434Z"
   }
 }

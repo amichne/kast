@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:a9e61b70cb92bf0df02de3005046b62859fdd1130459f76a6d9ba7a7b34a3720",
+  "pageVersion": "sha256:6e2011d20fdc219678f72acdae1a07276187aa7c9f35b8a9e6675274d51049b8",
   "claims": [
     {
       "id": "claim_d5f49799d6a64a78a95f34b3ba0fa09a",
@@ -170,11 +170,11 @@
       "evidence": [
         {
           "resource": "repo://copilot/extension.mjs",
-          "version": "repo-file-v1:sha256:ab04d157dfde6c5bbbde1b9ca807ee65777b7e1fe4c68c161a973542658979cb"
+          "version": "repo-file-v1:sha256:aaddeb3869dffbdd8bce5e673b2c4c3138389dc251de15cc8783af3ae70f96cd"
         },
         {
           "resource": "repo://pi/extension.ts",
-          "version": "repo-file-v1:sha256:322375b4fdb1980f53cc8e3276783e1fca9aef3fbee835f1b117168c889e6bcb"
+          "version": "repo-file-v1:sha256:f026a5a35f8071a4315cfcb604daa6239f9d80f3315ed3014d440651073394a4"
         },
         {
           "resource": "repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt",
@@ -192,7 +192,7 @@
         },
         {
           "resource": "repo://copilot/extension.mjs",
-          "version": "repo-file-v1:sha256:ab04d157dfde6c5bbbde1b9ca807ee65777b7e1fe4c68c161a973542658979cb"
+          "version": "repo-file-v1:sha256:aaddeb3869dffbdd8bce5e673b2c4c3138389dc251de15cc8783af3ae70f96cd"
         },
         {
           "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt",
@@ -200,7 +200,7 @@
         },
         {
           "resource": "repo://pi/extension.ts",
-          "version": "repo-file-v1:sha256:322375b4fdb1980f53cc8e3276783e1fca9aef3fbee835f1b117168c889e6bcb"
+          "version": "repo-file-v1:sha256:f026a5a35f8071a4315cfcb604daa6239f9d80f3315ed3014d440651073394a4"
         }
       ]
     },
@@ -330,7 +330,7 @@
         },
         {
           "resource": "repo://cli/src/test/js/query-presentation.test.mjs",
-          "version": "repo-file-v1:sha256:a16e2cb4469fc8d8916bf0a21ceefc3c0538c8ebdf0bfa88df316ec77f742da4"
+          "version": "repo-file-v1:sha256:223e85899e704b650c8bb2781c936862ae7c3f50ffd677910a9143269c8c7245"
         }
       ]
     },
@@ -387,6 +387,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-14T20:46:05.929Z"
+    "at": "2026-10-15T01:04:37.434Z"
   }
 }

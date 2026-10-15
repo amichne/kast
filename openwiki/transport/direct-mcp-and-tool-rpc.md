@@ -4,34 +4,35 @@ title: Direct MCP and tool RPC
 description: Explains shared tool registration, protocol-era admission, one-shot RPC,
   invocation-scoped query sessions, and canonical result preservation.
 tags:
-- kast
-- transport
+  - kast
+  - transport
 code_sources:
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolRegistration.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/CanonicalLiveOperationSupport.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/CliOptions.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/appserver/AppServerCommands.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/change/ChangeCommands.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/codex/CodexCommands.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/ide/IdeCommands.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/product/ProductCommands.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/source/SourceCommands.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/workspace/IndexCommands.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolDocument.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
-- path: cli/src/test/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServerTest.kt
-- path: cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcBridgeTest.kt
-- path: cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySessionProcessTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolRegistration.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/CanonicalLiveOperationSupport.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/CliOptions.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/appserver/AppServerCommands.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/change/ChangeCommands.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/codex/CodexCommands.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/ide/IdeCommands.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/product/ProductCommands.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/source/SourceCommands.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/workspace/IndexCommands.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolDocument.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
+  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServerTest.kt
+  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcBridgeTest.kt
+  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySessionProcessTest.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QuerySessionRejectionDetail.kt
+  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlanTest.kt
+  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/QuerySessionRejectionDetailTest.kt
 sources:
   - id: openwiki-source-7685e27063adfdefffa21252
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
@@ -41,7 +42,12 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - id: openwiki-source-021e60454b473f51dc29603a
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+  - id: openwiki-source-210e5a1fdf9d35bc022594a2
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt
+generated: { by: "codex", at: "2026-10-15T01:04:37.434Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-15T01:04:37.434Z
 ---
 
 # Direct MCP and tool RPC
@@ -74,7 +80,7 @@ A read query therefore does not imply an entirely effect-free client invocation.
 
 ## RPC owns bounded invocation scope
 
-`KastToolRpcMain` exposes `catalog`, `call`, and `query-session` to agent adapters.
+`KastToolRpcMain` exposes `catalog`, `plan-query`, `call`, and `query-session` to agent adapters.
 It bounds input bytes before JSON and public contract admission.
 Unknown tools, malformed arguments, unavailable observation, stopped installation, and invalid results remain finite failures.
 The bridge does not rewrite a canonical rejection as success.
@@ -121,3 +127,18 @@ Installed compiler authority remains a separate host obligation.
 
 - [Public request admission](../queries/public-admission.md)
 - [Agent adapters](harness-delivery.md)
+
+## Request-only query advice
+
+`plan-query` reads public RUN JSON before installation access or host preparation.
+`QueryCostPlan` reuses public admission and preserves the canonical request, scopes, expansion domains, and requested budget.
+Its basis is `REQUEST_SHAPE_ONLY`, and its estimate is `NOT_MEASURED`.
+Advice identifies broad discovery, fuzzy names, late filters, unrestricted expansion, and unbounded walk depth.
+It does not measure cost, admit an execution budget, or change the request.
+READ_SOURCE, READ_RESULT, and RESUME reject with RUN_REQUIRED.
+
+The query session also admits one initial READ_SOURCE and ends after its reply.
+After query output, a source read or another RUN needs a new session.
+`QuerySessionRejectionDetail` distinguishes that case from a foreign result, foreign continuation, or malformed source anchor.
+The rejection keeps expected and requested authority and the next permitted local action.
+The canonical owner still decides semantic freshness.

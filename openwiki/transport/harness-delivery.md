@@ -4,34 +4,38 @@ title: Agent harness adapters and output delivery
 description: Explains Copilot and Pi adapters, generated delivery owners, bounded
   presentation, identity preservation, and the absence of implicit semantic retries.
 tags:
-- kast
-- transport
+  - kast
+  - transport
 code_sources:
-- path: cli/src/main/js/query-delivery.mjs
-- path: cli/src/main/js/query-delivery-contract.mjs
-- path: cli/src/main/js/query-session.mjs
-- path: cli/src/main/resources/query-delivery.schema.json
-- path: copilot/extension.mjs
-- path: pi/extension.ts
-- path: agent-tools/skills/kast/SKILL.md
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/copilot/CopilotFixtureProjection.kt
-- path: cli/src/test/js/harness-adapters.test.mjs
-- path: cli/src/test/js/query-delivery-contract.test.mjs
+  - path: cli/src/main/js/query-delivery.mjs
+  - path: cli/src/main/js/query-delivery-contract.mjs
+  - path: cli/src/main/js/query-session.mjs
+  - path: cli/src/main/resources/query-delivery.schema.json
+  - path: copilot/extension.mjs
+  - path: pi/extension.ts
+  - path: agent-tools/skills/kast/SKILL.md
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/copilot/CopilotFixtureProjection.kt
+  - path: cli/src/test/js/harness-adapters.test.mjs
+  - path: cli/src/test/js/query-delivery-contract.test.mjs
+  - path: cli/src/main/js/query-presentation.mjs
+  - path: cli/src/test/js/query-presentation.test.mjs
 sources:
   - id: openwiki-source-784aad5c07345736dc67037f
     resource: repo://cli/src/main/js/query-delivery-contract.mjs
   - id: openwiki-source-82cf2cb34e9f56bad15bc34f
     resource: repo://cli/src/main/js/query-delivery.mjs
+  - id: openwiki-source-777e160a643777b302b4cc98
+    resource: repo://cli/src/main/js/query-presentation.mjs
   - id: openwiki-source-268c7ef978bdd77cf949ddc4
     resource: repo://cli/src/main/resources/query-delivery.schema.json
   - id: openwiki-source-ffafcc2936c3877f4b78db93
     resource: repo://copilot/extension.mjs
   - id: openwiki-source-32e1c94e6e0a0ff71b06b0e3
     resource: repo://pi/extension.ts
-generated: { by: "codex", at: "2026-10-15T00:57:31.735Z" }
+generated: { by: "codex", at: "2026-10-15T01:04:37.434Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-15T00:57:31.735Z
+    at: 2026-10-15T01:04:37.434Z
 ---
 
 # Agent harness adapters and output delivery
@@ -97,3 +101,15 @@ A successful fixture or tool catalog does not prove a real Copilot or Pi session
 - [Tool RPC](direct-mcp-and-tool-rpc.md)
 - [Retained output](../queries/retention-and-presentation.md)
 - [Native qualification](../development/testing-and-native-qualification.md)
+
+## Summaries keep received evidence distinct
+
+`query-presentation.mjs` starts compact text with received row, relation, and file counts, original coverage, and blockers.
+Relation counts include repeated connections in received rows.
+Rows without supplied file locations remain unknown.
+These counts do not describe an unread suffix or replace the invocation's accumulated count.
+
+Refinement failures keep the exact location and reason with `read_source_eligibility` set to `NOT_ISSUED`.
+A discovery location cannot become an issued selector through presentation.
+The summary supplies existing recovery advice without a new epoch claim, source-read request, or automatic retry.
+Callback proof subjects and authority-mismatch details remain visible through their canonical variants.

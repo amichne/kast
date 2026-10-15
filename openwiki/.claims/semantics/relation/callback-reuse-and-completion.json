@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:97163d00b6b6ec480c7ba2e8ac8cdd63a8639668b16a6a2e05ac3af4fe26bd91",
+  "pageVersion": "sha256:8d33271ea6d058aca60c628ff99b5722b22f18248faee546442632584be93cd6",
   "claims": [
     {
       "id": "claim_7fda699bacbb4390ab5eb06aef3b31b3",
@@ -32,7 +32,7 @@
       "evidence": [
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt",
-          "version": "repo-file-v1:sha256:60af5b256a9636bd8d1637f6775fe28424b711da0fd22698745c0a1787297803"
+          "version": "repo-file-v1:sha256:2df97bd07c0f07872a5e95d8da74dabf67c98b5bac2c833f34c8bf6d2171a34f"
         },
         {
           "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraph.kt",
@@ -43,6 +43,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T00:33:05.932Z"
+    "at": "2026-10-15T01:04:37.434Z"
   }
 }

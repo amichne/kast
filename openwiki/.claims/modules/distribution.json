@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:c5cef203a409c8260c81cf06aef0f16f66d2f32cb2ba3110e4c916510d4d02ff",
+  "pageVersion": "sha256:43259a3f836c9e0bd7aa9e8f4415d55d39465923d49b338fe6e60c4a8d6f2f60",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -373,10 +373,20 @@
           "version": "repo-lines-v1:sha256:6db2f6dba5c14a620f16d2fe377c5320fa4a99bfd31938f55f8f4d17e3efda21:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNlNGMyMzRlZTg1YTM5NzhlODMyNzRhZjZjNzIzYmI3NmU1YzkyMTlkYmRlMGQ5YTNjNWUxMzYzNWMyZjliZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEzYTI3ZWVjZTU3ZGI5M2VjMDhiNWY0YzE2OTVjMzFjMjZkZTkzZjg4YjcwYWMyZWNiZDAyNjQ3NTBiYjU0MGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE3NzI2ZjQxMTdhMmM0Mzg3NzkwNGQyYjdkZTFlYmQ2MTk3OTc5MjhmM2MwZDgzZjMxZTVlNTNjNWYxNGEwNGUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_db3d83383ac64f35b420656aef43d715",
+      "statement": "Host receipt admission qualifies device changes through stable root inode and owner evidence and permits missing recorded entries only for protected removal, while exact reinstall inventory remains necessary.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/host-installation.py",
+          "version": "repo-file-v1:sha256:6bc007dabe913233214921f6c65d40d2212f735f24ba62d6ff0420f9fbf339d4"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-14T20:46:05.929Z"
+    "at": "2026-10-15T01:04:37.434Z"
   }
 }

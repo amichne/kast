@@ -4,47 +4,47 @@ title: Contract ownership and generated projections
 description: Traces canonical operations into public schemas, generated query syntax,
   typed wire output, and callable documentation.
 tags:
-- kast
-- development
+  - kast
+  - development
 code_sources:
-- path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalOperationDefinitions.kt
-- path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
-- path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireTable.kt
-- path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/CanonicalQueryCliDocuments.kt
-- path: build-logic/src/main/kotlin/kast.public-query-contract.gradle.kts
-- path: build-logic/src/main/kotlin/conventions/JsonContractVerification.kt
-- path: build-logic/src/main/kotlin/conventions/VerifyJsonContractsTask.kt
-- path: packaging/generate-public-query.py
-- path: cli/build.gradle.kts
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt
-- path: config/json-contracts/README.md
-- path: protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionContractTest.kt
-- path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolSchemaTest.kt
-- path: build-logic/src/main/kotlin/conventions/jsoncontracts/JsonContractBaseline.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/HostedRejectionSchemas.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/projection/CliBoundaryDocuments.kt
-- path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/AdmittedReadRejections.kt
-- path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/metadata/HostedCapabilityDescriptor.kt
+  - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalOperationDefinitions.kt
+  - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/CanonicalAgentToolDefinitions.kt
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/OperationWireTable.kt
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/CanonicalQueryCliDocuments.kt
+  - path: build-logic/src/main/kotlin/kast.public-query-contract.gradle.kts
+  - path: build-logic/src/main/kotlin/conventions/JsonContractVerification.kt
+  - path: build-logic/src/main/kotlin/conventions/VerifyJsonContractsTask.kt
+  - path: packaging/generate-public-query.py
+  - path: cli/build.gradle.kts
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt
+  - path: config/json-contracts/README.md
+  - path: protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionContractTest.kt
+  - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolSchemaTest.kt
+  - path: build-logic/src/main/kotlin/conventions/jsoncontracts/JsonContractBaseline.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/HostedRejectionSchemas.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/projection/CliBoundaryDocuments.kt
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/AdmittedReadRejections.kt
+  - path: protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/metadata/HostedCapabilityDescriptor.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QuerySessionRejectionDetail.kt
+  - path: cli/src/test/js/tool-rpc-rejection.test.mjs
 sources:
-- id: openwiki-source-9c15e352c1a80cb81e9b0fed
-  resource: repo://build-logic/src/main/kotlin/conventions/JsonContractVerification.kt
-- id: openwiki-source-1fa0b28f94ec8950b78f5e48
-  resource: repo://build-logic/src/main/kotlin/kast.public-query-contract.gradle.kts
-- id: openwiki-source-19c1ebaf58581a8fc0c5c10a
-  resource: repo://cli/build.gradle.kts
-- id: openwiki-source-1d64f9c2cdc32afac226c9c0
-  resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
-- id: openwiki-source-1e1d1563882058df6fa2e4da
-  resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt
-- id: openwiki-source-cc6a899b4b43717488dde542
-  resource: repo://config/json-contracts/README.md
-generated:
-  by: codex
-  at: '2026-10-15T00:57:31.735Z'
+  - id: openwiki-source-9c15e352c1a80cb81e9b0fed
+    resource: repo://build-logic/src/main/kotlin/conventions/JsonContractVerification.kt
+  - id: openwiki-source-1fa0b28f94ec8950b78f5e48
+    resource: repo://build-logic/src/main/kotlin/kast.public-query-contract.gradle.kts
+  - id: openwiki-source-19c1ebaf58581a8fc0c5c10a
+    resource: repo://cli/build.gradle.kts
+  - id: openwiki-source-1d64f9c2cdc32afac226c9c0
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt
+  - id: openwiki-source-1e1d1563882058df6fa2e4da
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt
+  - id: openwiki-source-cc6a899b4b43717488dde542
+    resource: repo://config/json-contracts/README.md
+generated: { by: "codex", at: "2026-10-15T01:04:37.434Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-15T00:59:49.803Z
+    at: 2026-10-15T01:04:37.434Z
 ---
 
 
@@ -124,3 +124,10 @@ CLI bootstrap schema selection keeps canonical read rejection separate from host
 `CliBoundaryDocuments` serializes private process-ingress rejection with typed DTOs.
 The JSON syntax baseline admits only exact, justified fingerprints and counts.
 It supplies no wildcard or baseline-write operation.
+
+## New query-feedback projections
+
+The public-query generator projects typed authority-mismatch and callback-subject details into the adapter contracts.
+The JavaScript presentation owner supplies received-evidence summaries without a second semantic outcome.
+Tool RPC rejection fields keep their typed local session or canonical authority detail.
+The focused rejection and presentation cases exercise those encoded projections.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:0981f80270f27bd36524e35515a776a996ffcc1ef91b43ad35327ec2b6eeea6a",
+  "pageVersion": "sha256:70c470ab2818288f10bbcbc7172bf8b083084f46bd1f7ee139bbedc94c8207a8",
   "claims": [
     {
       "id": "claim_f582456c7d50479bb6b1a848a1c7e9a9",
@@ -40,13 +40,13 @@
         },
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt",
-          "version": "repo-file-v1:sha256:d9fa14cb28d64d42c96cbfc822591205893b0a00e928a6d55d2b74b6d7646799"
+          "version": "repo-file-v1:sha256:7fad3ba487381dab19a441ff9e31e5871df954bcebbb5e66dd689fb08dff226c"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T00:33:05.932Z"
+    "at": "2026-10-15T01:04:37.434Z"
   }
 }

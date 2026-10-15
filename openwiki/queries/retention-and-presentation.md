@@ -4,20 +4,22 @@ title: Retained results and output delivery
 description: Explains immutable result authority, publication claims, output continuations,
   independent evidence cursors, expiry, and replay.
 tags:
-- kast
-- queries
+  - kast
+  - queries
 code_sources:
-- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt
-- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationPublication.kt
-- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt
-- path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
-- path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
-- path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt
-- path: cli/src/main/js/query-delivery.mjs
-- path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryRetainedOccurrencePresentationTest.kt
-- path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryRetainedCallbackPresentationTest.kt
-- path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationProjectionTest.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationPublication.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
+  - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt
+  - path: cli/src/main/js/query-delivery.mjs
+  - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryRetainedOccurrencePresentationTest.kt
+  - path: query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryRetainedCallbackPresentationTest.kt
+  - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationProjectionTest.kt
+  - path: cli/src/main/js/query-presentation.mjs
+  - path: cli/src/test/js/query-presentation.test.mjs
 sources:
   - id: openwiki-source-a184ae82a49703816522523e
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt
@@ -31,10 +33,10 @@ sources:
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt
   - id: openwiki-source-94796d308902e0d5ca80c5fc
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt
-generated: { by: "codex", at: "2026-10-15T00:57:31.735Z" }
+generated: { by: "codex", at: "2026-10-15T01:04:37.434Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-15T00:57:31.735Z
+    at: 2026-10-15T01:04:37.434Z
 ---
 
 # Retained results and output delivery
@@ -101,3 +103,10 @@ They do not establish the latency or completeness of an unmeasured native query.
 - [Completion](trace-and-completion.md)
 - [Shared delivery](../transport/harness-delivery.md)
 - [Impact witnesses](impact-and-peer-proof.md)
+
+## Received-evidence summaries
+
+The shared presentation starts with received row, relation, and file counts, original coverage, and blockers.
+Received counts do not describe an unread suffix or the invocation's entire accumulated output.
+Refinement failures keep exact locations and finite reasons without an issued source selector.
+Recovery advice does not grant authority or start another RUN.

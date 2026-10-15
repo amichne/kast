@@ -4,8 +4,8 @@ title: "Kast packaging"
 description: "Owns installer adapters, offline lifecycle helpers, contract generation, and assembled-product acceptance scripts."
 resource: "repo://packaging"
 tags: [kast, navigation]
-timestamp: "2026-10-14T23:25:10Z"
-source_revision: e014a489bfd7e69cbf2c4b61140ee771d857a03e
+timestamp: "2026-10-15T01:07:09Z"
+source_revision: 5a82727f790d365936682699502ee32a792b3634
 code_sources:
   - path: packaging/generate-public-query.py
   - path: packaging/host-installation.py
@@ -20,7 +20,7 @@ code_sources:
 ---
 
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-10-14 | hash: 149e6bd6d993 -->
+<!-- generated: 2026-10-15 | hash: 76d6f8654970 -->
 
 # packaging
 
