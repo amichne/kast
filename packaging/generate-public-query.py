@@ -592,7 +592,13 @@ def render_tools(authority: dict) -> dict[Path, str]:
         ) + '\n'
         outputs[RESOURCES / (tool['name'] + '.examples.json')] = examples
         if tool['name'] == 'query_symbols':
-            outputs[ROOT / 'agent-tools/skills/kast/references/query-examples.json'] = examples
+            reference = ROOT / 'agent-tools/references'
+            outputs[reference / 'query-schema.json'] = json.dumps(full, separators=(',', ':')) + '\n'
+            outputs[reference / 'query-examples.json'] = json.dumps([
+                {'name': name, 'summary': example['summary'], 'arguments': example['value']}
+                for name, example in tool.get('examples', {}).items()
+            ], indent=2) + '\n'
+            outputs[reference / 'onboarding.md'] = render_onboarding(authority)
         registrations.append(dict(type='function', name=tool['name'], description=tool['description'], inputSchema=full, deferLoading=tool['deferLoading']))
         responses.append(dict(type='function', name='kast_' + tool['name'], description=tool['description'], parameters=strict, strict=True))
     outputs[RESOURCES / 'tools.app-server.json'] = json.dumps(
@@ -601,6 +607,29 @@ def render_tools(authority: dict) -> dict[Path, str]:
     ) + '\n'
     outputs[RESOURCES / 'tools.responses.json'] = json.dumps(responses, indent=2) + '\n'
     return outputs
+
+
+def render_onboarding(authority: dict) -> str:
+    definitions = authority['$defs']
+    def choices(owner: str, field: str, array: bool = False) -> str:
+        node = definitions[owner]['properties'][field]
+        values = (node['items'] if array else node)['enum']
+        return '|'.join(value for value in values if value is not None)
+    substitutions = {
+        'CONTRACT_VERSION': str(authority['contractVersion']),
+        'INTERFACE_QUERY': json.dumps(next(tool for tool in authority['tools'] if tool['name'] == 'query_symbols')
+                                      ['examples']['scopedInterfaceDeclaration']['value'], separators=(',', ':')),
+        'NAME_MATCH': choices('SearchSource', 'nameMatch'),
+        'DECLARATION_KINDS': choices('SearchSource', 'declarationKinds', True),
+        'SYMBOL_FIELDS': choices('SymbolsOutput', 'fields', True),
+        'RELATIONS': choices('ExpandRelation', 'relation'),
+    }
+    brief = (ROOT / 'agent-tools/onboarding.template.md').read_text()
+    for name, value in substitutions.items():
+        brief = brief.replace('{{' + name + '}}', value)
+    if '{{' in brief or len(brief.encode()) > 6000:
+        raise ValueError('onboarding substitutions or size rejected')
+    return brief
 
 
 def main() -> None:

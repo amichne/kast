@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:6e2011d20fdc219678f72acdae1a07276187aa7c9f35b8a9e6675274d51049b8",
+  "pageVersion": "sha256:76d104afc62c18661b12ec2893a83dd1f42e1aec3bf73204f1f628e4ec8bb0c3",
   "claims": [
     {
       "id": "claim_d5f49799d6a64a78a95f34b3ba0fa09a",
       "statement": "The authored tools.schema.json generates Kotlin DTOs, per-tool admission and strict Responses schemas, examples and App Server registrations; check mode rejects any stale generated artifact.",
       "evidence": [
         {
-          "resource": "repo://packaging/generate-public-query.py#L583-L621",
-          "version": "repo-lines-v1:sha256:94373d8b7b4e73d1639969c94e24a12d62e722e0a8f9a0f572aa9df8cc095e6c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExMDFhMmQ5YjhlZmRkODg2MTQ1Zjk4ZTg0Nzg0Mzc0OWY5ZWEyN2U5Mzg0NmIwNDg2Mjk5MDUzYmQ4YmIxNGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmNDRkZTQ0ZDdiMzUzYzFmZDRkMjljMTRhMDQwMmUwMDJlYTgzNTNlZGM1ZjdhZjM0NzUxZDY3NTJjNDE4ZDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJlZjEzMjY1NjFlMjFiNDdjZDdmYWFiNzc3MzJlMDU2NjljYzJjY2YxNDlkYzNmZjI0YjUzZDhiYTM2YTVlMjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIxMzVjYzI2Zjk3ZGMxY2RkNmM3NGVlZThhZjI0NTI3YzVhODYzMzVlZmU1Y2RiODA4N2Y0NDQyNzBhNzBkMmYifQ"
+          "resource": "repo://packaging/generate-public-query.py",
+          "version": "repo-file-v1:sha256:db7ec3585323fabf7f70bf8aab10b2e12588172637faae2b8f03e5f0998a9429"
         }
       ]
     },
@@ -387,6 +387,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T01:04:37.434Z"
+    "at": "2026-10-15T19:07:35.337Z"
   }
 }

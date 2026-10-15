@@ -4,8 +4,8 @@ title: "Kast repository engineering guide"
 description: "Defines repository rules, source owners, development entry points, and the contract for scoped OKF guides."
 resource: "repo://kast"
 tags: [kast, navigation]
-timestamp: "2026-10-15T13:45:06Z"
-source_revision: 52b5599de559d9b82f990bbd16b882762dbdf402
+timestamp: "2026-10-15T19:04:53Z"
+source_revision: 0b95306caef9f314f4419bd73ed0171bc67da230
 code_sources:
   - path: build.gradle.kts
   - path: .vale.ini
@@ -55,9 +55,10 @@ This guide owns repository rules and routes source investigation.
 - [`indexer/`](indexer/AGENTS.md) - retirement record for the former isolated semantic sidecar.
 - [`app-server/`](app-server/AGENTS.md) - persistent coordinator, host adapters, workspace lanes, and Codex protocol integration.
 - [`cli/`](cli/AGENTS.md) - private JVM entry points, direct tools, installation workflows, and typed output projections.
-- [`copilot/`](copilot/extension.mjs) and [`pi/`](pi/extension.ts) - thin agent extensions over the shared tool RPC.
+- [`copilot/`](copilot/extension.mjs) - optional agent extension over the shared tool RPC.
+- [`pi/`](pi/mcp-extension.ts) - shared context and native MCP registration for Pi.
 - [`distribution/`](distribution/AGENTS.md) and [`packaging/`](packaging/AGENTS.md) - installation contracts, managed artifacts, release assembly, and acceptance harnesses.
-- [`agent-tools/`](agent-tools/README.md) - independently installable query skill, MCP plugin, and marketplace source.
+- [`agent-tools/`](agent-tools/AGENTS.md) - shared context, generated query references, MCP plugins, and marketplace source.
 - [`build-logic/`](build-logic/AGENTS.md) - Gradle conventions and architecture enforcement.
 - [`docs/`](docs/AGENTS.md) - public Mintlify documentation and visual evidence helpers.
 

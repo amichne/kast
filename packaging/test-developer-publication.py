@@ -130,7 +130,6 @@ def asset_names() -> tuple[str, ...]:
     return (
         f"kast-control-v{VERSION}-macos-aarch64.tar.gz",
         f"kast-ide-hosted-v{VERSION}-idea-262.zip",
-        f"kast-skill-v{VERSION}.zip",
         f"kast-plugin-v{VERSION}.zip",
         f"kast-marketplace-v{VERSION}.zip",
         f"kast-host-release-v{VERSION}.json",
@@ -255,7 +254,7 @@ class DeveloperPublicationTest(unittest.TestCase):
         invocations = [GhInvocation(**json.loads(line)) for line in self.calls.read_text().splitlines()]
         actual = invocations[len(self.admission_calls()) + 1].arguments
         self.assertEqual(self.uploads, actual[3:actual.index("--repo", 3)])
-        self.assertEqual(22, len(self.uploads))
+        self.assertEqual(20, len(self.uploads))
         self.assertEqual("release-candidate: admitted", result.stdout.splitlines()[0])
         self.assertIn(f"https://raw.githubusercontent.com/{REPOSITORY}/developer-latest/latest.txt", result.stdout)
 

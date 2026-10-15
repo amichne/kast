@@ -99,12 +99,12 @@ val controlProductDirectory = layout.buildDirectory.dir("control-product")
 val agentToolsDirectory = layout.buildDirectory.dir("generated/agent-tools")
 val generateKastAgentTools = tasks.register<GenerateAgentToolsTask>("generateKastAgentTools") {
     group = "distribution"
-    description = "Validates and versions the canonical skill, MCP plugin, and marketplace."
+    description = "Validates and versions session context, MCP plugins, and the marketplace."
     dependsOn(":app-server:verifyPublicQueryGeneration")
     sourceDirectory.set(layout.projectDirectory.dir("agent-tools"))
     marketplaceFile.set(layout.projectDirectory.file(".agents/plugins/marketplace.json"))
     canonicalQueryExamplesFile.set(layout.projectDirectory.file(
-        "app-server/src/main/resources/io/github/amichne/kast/appserver/query/query_symbols.examples.json",
+        "agent-tools/references/query-examples.json",
     ))
     productVersion.set(controlVersion)
     outputDirectory.set(agentToolsDirectory)
@@ -185,14 +185,13 @@ val releaseSourceRevision = providers.gradleProperty("kastSourceRevision").orEls
     workingDir(rootDir)
 }.standardOutput.asText.map(String::trim))
 tasks.register<GenerateComponentReleaseTask>("generateControlReleaseRecord") {
-    dependsOn(assembleKastControlDist, "assembleKastSkill", "assembleKastAgentPlugin", "assembleKastMarketplace", ":protocol:wire:generateHostedContract")
+    dependsOn(assembleKastControlDist, "assembleKastAgentPlugin", "assembleKastMarketplace", ":protocol:wire:generateHostedContract")
     component.set(ReleaseComponent.CONTROL)
     releaseVersion.set(controlVersion)
     sourceRevision.set(releaseSourceRevision)
     archive.set(assembleKastControlDist.flatMap(Tar::getArchiveFile))
     hostedContractFile.set(contractFile)
     companionArtifacts.from(
-        tasks.named<Zip>("assembleKastSkill").flatMap(Zip::getArchiveFile),
         tasks.named<Zip>("assembleKastAgentPlugin").flatMap(Zip::getArchiveFile),
         tasks.named<Zip>("assembleKastMarketplace").flatMap(Zip::getArchiveFile),
     )

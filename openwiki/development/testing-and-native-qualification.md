@@ -15,9 +15,6 @@ code_sources:
 - path: packaging/run-portable-tests-container.sh
 - path: .github/workflows/ci.yml
 - path: experiments/host-observation/ACCEPTANCE.md
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-70991026f1538e8215a8789e
     resource: repo://docs/development.md
@@ -30,6 +27,9 @@ sources:
   - id: openwiki-source-af72e3368d1f0c22109e4ecf
     resource: repo://runtime/hosted/native/README.md
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-15T19:07:35.337Z
 ---
 
 # Tests and native qualification

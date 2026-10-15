@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b41d9233caa65a47ccaa936356c438b7a40aad56a342cb9a254b70f113eafe85",
+  "pageVersion": "sha256:e95f2b56c031479efe6818ce0d7c19bab0326a6a8bd8971ea26781f9e44a6a6c",
   "claims": [
     {
       "id": "claim_91a8a70849534ef1b2462828f3d9c9fb",
@@ -66,7 +66,7 @@
         },
         {
           "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt",
-          "version": "repo-file-v1:sha256:4b8a3f91562ce68b78d400b292d2c9ed78f945e508267afa3547bce17332345d"
+          "version": "repo-file-v1:sha256:5ef6b07e78984b299646bcfc98f6d423bd06580f909c1ffa35805bb906c90f9c"
         }
       ]
     },
@@ -119,7 +119,7 @@
       "statement": "The local adapter delegates Java selection to the public installer's admitted IntelliJ home. The unused KAST_LOCAL_JAVA_EXECUTABLE and KAST_LOCAL_JAVA_HOME inputs are absent from installLocal and the catalogue; every configuration source rejects them as UNKNOWN_KEY. The assembled-product acceptance runner retains KAST_ACCEPTANCE_JAVA_EXECUTABLE.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L255-L295",
+          "resource": "repo://build.gradle.kts#L254-L294",
           "version": "repo-lines-v1:sha256:499fb1769181925802016dccbf5c762d8dca34b3cebf9a04cbc8c3937a7bb446:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlZGM3OWM2ZjgxZDZlZDM2NTEzN2JlNGMyNzM4MGEyNGE4ZmI0YzUyNjk1ZDMzYjFkMzRlNzg1MzIzOGVjOTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg5NDkyYzhhODE3ZWQ1MGU1NjYwNzhiZDQ4MmUxMjUzYTdmNDBiYzc5YTI5MWFiZjgzMjkzYWJhYjdhMzQxMWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU2ZTg4YzRmNGYyY2JlNTU5MDUyYjExMjdkMDVjZDlmZThkM2VjMDFiZTBmMWY0MDgyNjMxNmFkZjM2YjlhMmYifQ"
         },
         {
@@ -153,6 +153,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T03:36:06.201Z"
+    "at": "2026-10-15T19:07:35.337Z"
   }
 }

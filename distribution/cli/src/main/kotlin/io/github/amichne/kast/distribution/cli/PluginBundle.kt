@@ -27,7 +27,14 @@ private val requiredPluginFiles =
         ".agents/plugins/marketplace.json",
         "plugins/kast/.codex-plugin/plugin.json",
         "plugins/kast/.mcp.json",
-        "plugins/kast/skills/kast/SKILL.md",
+        "plugins/kast/references/onboarding.md",
+        "plugins/kast/.github/plugin/plugin.json",
+        "plugins/kast/hooks/hooks.json",
+        "plugins/kast/hooks/copilot.json",
+        "plugins/kast/hooks/session_start.py",
+        "plugins/kast/hooks/session_start.py.lock",
+        "plugins/kast/references/query-schema.json",
+        "plugins/kast/references/query-examples.json",
     )
 
 internal class AdmittedPluginBundle

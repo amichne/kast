@@ -17,7 +17,7 @@ import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 
-/** Projects the single skill source into a versioned, self-contained marketplace. */
+/** Projects shared session context and MCP configuration into a versioned marketplace. */
 @CacheableTask
 abstract class GenerateAgentToolsTask : DefaultTask() {
     @get:InputDirectory
@@ -46,8 +46,12 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
         )
         val mcp = agentToolsJson.decodeFromString<AgentMcpDocument>(source.resolve(".mcp.json").readText())
         val marketplace = agentToolsJson.decodeFromString<AgentMarketplace>(marketplaceFile.get().asFile.readText())
-        check(manifest.name == "kast" && manifest.skills == "./skills/" && manifest.mcpServers == "./.mcp.json") {
-            "Kast plugin must compose the canonical skill and MCP entry"
+        check(manifest.name == "kast" && manifest.hooks == "./hooks/hooks.json" && manifest.mcpServers == "./.mcp.json") {
+            "Kast plugin must compose the session hook and MCP entry"
+        }
+        val copilot = agentToolsJson.decodeFromString<CopilotPluginManifest>(source.resolve(".github/plugin/plugin.json").readText())
+        check(copilot.name == "kast" && copilot.hooks == "./hooks/copilot.json" && copilot.mcpServers == "./.mcp.json") {
+            "Copilot must compose the shared context and MCP entry"
         }
         check(mcp.mcpServers.kast.command == "/bin/bash" && mcp.mcpServers.kast.args == listOf(
             "-c", "exec \"\${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-mcp-complete\"",
@@ -64,11 +68,12 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
             "agent plugin source must be bounded and regular"
         }
         check(paths.filter(Files::isRegularFile).sumOf(Files::size) <= 1_048_576) { "agent plugin source exceeds one MiB" }
-        val required = listOf("skills/kast/SKILL.md", "skills/kast/references/query-examples.json",
-            "skills/kast/references/connection.md", "skills/kast/references/query-patterns.md")
-        check(required.all { source.resolve(it).isFile }) { "canonical skill and generated examples are required" }
-        check(source.resolve("skills/kast/references/query-examples.json").readBytes()
-            .contentEquals(canonicalQueryExamplesFile.get().asFile.readBytes())) { "skill examples must match the canonical query projection" }
+        val required = listOf("hooks/hooks.json", "hooks/copilot.json", "hooks/session_start.py", "hooks/session_start.py.lock",
+            "references/onboarding.md", "references/query-schema.json", "references/query-examples.json")
+        check(required.all { source.resolve(it).isFile }) { "shared session context and generated references are required" }
+        check(!source.resolve("skills").exists()) { "Kast onboarding must not publish a discoverable skill" }
+        check(source.resolve("references/query-examples.json").readBytes()
+            .contentEquals(canonicalQueryExamplesFile.get().asFile.readBytes())) { "examples must match the canonical query projection" }
 
         val output = outputDirectory.get().asFile
         output.deleteRecursively()
@@ -76,6 +81,9 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
         source.copyRecursively(plugin, overwrite = false)
         plugin.resolve(".codex-plugin/plugin.json").writeText(
             agentToolsJson.encodeToString(AgentPluginManifest.serializer(), manifest.copy(version = version)) + "\n",
+        )
+        plugin.resolve(".github/plugin/plugin.json").writeText(
+            agentToolsJson.encodeToString(CopilotPluginManifest.serializer(), copilot.copy(version = version)) + "\n",
         )
         val destination = output.resolve(".agents/plugins/marketplace.json")
         destination.parentFile.mkdirs()
@@ -98,9 +106,18 @@ internal data class AgentPluginManifest(
     val homepage: String,
     val repository: String,
     val license: String,
-    val skills: String,
+    val hooks: String,
     val mcpServers: String,
     @SerialName("interface") val display: AgentPluginDisplay,
+)
+
+@Serializable
+internal data class CopilotPluginManifest(
+    val name: String,
+    val version: String,
+    val description: String,
+    val hooks: String,
+    val mcpServers: String,
 )
 
 @Serializable

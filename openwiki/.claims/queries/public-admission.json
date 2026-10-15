@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:70c470ab2818288f10bbcbc7172bf8b083084f46bd1f7ee139bbedc94c8207a8",
+  "pageVersion": "sha256:abf34b6df01fe3dce46af45491f702cf6e3d1396489db7814e40d843487ea184",
   "claims": [
     {
       "id": "claim_f582456c7d50479bb6b1a848a1c7e9a9",
@@ -26,7 +26,7 @@
         },
         {
           "resource": "repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "version": "repo-file-v1:sha256:416a82b23ae286c49113a86d5033291191af96f6b5f096764ecdfca519152f29"
+          "version": "repo-file-v1:sha256:7776b0ad3e52506c680940c07b7d321698508d08173843ca439146bd532fab52"
         }
       ]
     },
@@ -47,6 +47,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T01:04:37.434Z"
+    "at": "2026-10-15T19:07:35.337Z"
   }
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:eae3b2863bcfe2b19770866f9125344547d334b1f85a9afc3c131bce825cfc97",
+  "pageVersion": "sha256:e753f6a93ccf3347bf03c23131f3b5e893a80e13d09a296c8161e8a9b84abdf7",
   "claims": [
     {
       "id": "claim_b360f4c00a974d9fa3febbb40e81500c",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://docs/development.md",
-          "version": "repo-file-v1:sha256:0e120403a5dfebe55238fc122a7390636463b7292ee8ff54c7774c4c4819651e"
+          "version": "repo-file-v1:sha256:fbd1899f99d87f4c25c3c94f2d41089be3d921ca0b626a4ef5e405a8d9b38ffd"
         }
       ]
     },
@@ -43,6 +43,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T00:33:05.932Z"
+    "at": "2026-10-15T19:07:35.337Z"
   }
 }

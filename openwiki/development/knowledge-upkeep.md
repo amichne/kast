@@ -12,9 +12,6 @@ code_sources:
 - path: .github/workflows/openwiki-update.yml
 - path: build.gradle.kts
 - path: openwiki/architecture/functional-packages.md
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-6c3c32c8e0fc1de5046d2785
     resource: repo://.github/scripts/code_kb.py
@@ -25,6 +22,9 @@ sources:
   - id: openwiki-source-2a9daaac1604f238ef4c63fb
     resource: repo://build.gradle.kts
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-15T19:07:35.337Z
 ---
 
 # Knowledge upkeep and coverage assessment

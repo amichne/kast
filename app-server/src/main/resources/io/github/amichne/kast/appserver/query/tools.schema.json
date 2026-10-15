@@ -134,7 +134,7 @@
           },
           "minItems": 1,
           "maxItems": 4,
-          "description": "null includes all four supported declaration families. Supply a non-empty, non-duplicate list to restrict them. The class family means Kast's supported class-like declarations. Constructors are not included.",
+          "description": "null includes all families. Use a non-empty, unique subset. CLASS includes interfaces, classes, objects, enums, and annotation classes. INTERFACE is invalid. Constructors and enum entries are excluded.",
           "uniqueItems": true
         },
         "scope": {
@@ -3933,6 +3933,40 @@
               }
             }
           }
+        },
+        "scopedInterfaceDeclaration": {
+          "summary": "Find an interface by its simple name and Kotlin package. Interfaces use the CLASS declaration family.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SEARCH_DECLARATIONS",
+                "declarationName": "OrderRepository",
+                "declarationKinds": [
+                  "CLASS"
+                ],
+                "scope": {
+                  "type": "PACKAGE",
+                  "packageName": "com.example.orders",
+                  "includeSubpackages": false,
+                  "sourceSetNames": [
+                    "main"
+                  ]
+                }
+              },
+              "output": {
+                "type": "SYMBOLS",
+                "fields": [
+                  "NAME",
+                  "LOCATION",
+                  "SIGNATURE"
+                ]
+              },
+              "executionBudget": {
+                "maxResults": 20
+              }
+            }
+          }
         }
       },
       "invalidExamples": {
@@ -4243,6 +4277,40 @@
                   "maximumDepth": 100
                 }
               ]
+            }
+          }
+        },
+        "interfaceIsNotAKind": {
+          "summary": "Reject INTERFACE as a declaration kind. Interfaces belong to CLASS.",
+          "value": {
+            "request": {
+              "type": "RUN",
+              "source": {
+                "type": "SEARCH_DECLARATIONS",
+                "declarationName": "OrderRepository",
+                "declarationKinds": [
+                  "INTERFACE"
+                ],
+                "scope": {
+                  "type": "PACKAGE",
+                  "packageName": "com.example.orders",
+                  "includeSubpackages": false,
+                  "sourceSetNames": [
+                    "main"
+                  ]
+                }
+              },
+              "output": {
+                "type": "SYMBOLS",
+                "fields": [
+                  "NAME",
+                  "LOCATION",
+                  "SIGNATURE"
+                ]
+              },
+              "executionBudget": {
+                "maxResults": 20
+              }
             }
           }
         }

@@ -21,6 +21,29 @@ class PublicQueryGenerationTest(unittest.TestCase):
     def setUp(self):
         self.authority = json.loads(SCHEMA.read_text())
 
+    def test_onboarding_reference_preserves_schema_and_interface_query(self):
+        generated = generator.render_tools(self.authority)
+        root = ROOT / "agent-tools/references"
+        self.assertTrue(root / "query-schema.json" in generated, "missing generated onboarding schema")
+        self.assertEqual(
+            json.loads(generated[generator.RESOURCES / "query_symbols.parameters.json"]),
+            json.loads(generated[root / "query-schema.json"]),
+        )
+        examples = json.loads(generated[root / "query-examples.json"])
+        interface = next(example for example in examples if example["name"] == "scopedInterfaceDeclaration")
+        source = interface["arguments"]["request"]["source"]
+        self.assertEqual(["CLASS"], source["declarationKinds"])
+        self.assertEqual("OrderRepository", source["declarationName"])
+        self.assertEqual("PACKAGE", source["scope"]["type"])
+        self.assertIn("INTERFACE", self.authority["tools"][0]["invalidExamples"]["interfaceIsNotAKind"]["value"]["request"]["source"]["declarationKinds"])
+
+    def test_onboarding_enum_values_follow_the_authority(self):
+        self.authority["$defs"]["SearchSource"]["properties"]["nameMatch"]["enum"] = ["EXACT", "NEW_MATCH", None]
+        generated = generator.render_tools(self.authority)
+        brief = generated[ROOT / "agent-tools/references/onboarding.md"]
+        self.assertIn("EXACT|NEW_MATCH", brief)
+        self.assertNotIn("EXACT|FUZZY", brief)
+
     def test_adapter_versions_follow_the_same_authority(self):
         self.authority["contractVersion"] = 37
         generated = generator.render_tools(self.authority)
@@ -55,8 +78,8 @@ class PublicQueryGenerationTest(unittest.TestCase):
     def test_shared_refs_preserve_the_expanded_query_contract(self):
         # Expanded schemas pin constraints, defaults, budget guidance, and required fields.
         expected = {
-            "query_symbols.parameters.json": "ed0346c44efa85bae3459b6733bd1872ec9540f2a3aae018a098a81517a7375c",
-            "query_symbols.openai-parameters.json": "ea334e65ef24b6f2631143a57299483dac056f2e49606e06b605a997ce387ce4",
+            "query_symbols.parameters.json": "a8609cefc6fcf78aae5e7c80fb7d255c3bb392f3e5329b32e3739a1b59d0d420",
+            "query_symbols.openai-parameters.json": "890f7f7c411572e4e313b9a24fec6d8b4f431d80e9c818a2e98de14484ac7703",
         }
         generated = generator.render_tools(self.authority)
         for name, digest in expected.items():
