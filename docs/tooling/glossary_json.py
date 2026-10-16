@@ -374,21 +374,86 @@ def in_scope(glossary: Glossary, path: Path, scope_root: Path) -> bool:
 @dataclass(frozen=True, slots=True)
 class _Fence:
     marker: str
+    container_indent: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class _MarkdownLine:
+    containers: tuple[int, ...]
+    content: str
+    prefix_columns: int = 0
+
+    @property
+    def container_indent(self) -> int:
+        return self.containers[-1] if self.containers else 0
+
+
+_LIST_MARKER = re.compile(r"(?P<marker>[*+-]|[0-9]{1,9}[.)])(?P<padding> +|$)")
+_BLOCK_START = re.compile(r"(?:#{1,6}(?: +|$)|>|`{3,}|~{3,}|<|(?:[-*_] *){3,}$)")
+_THEMATIC_BREAK = re.compile(r"(?:\*(?: *\*){2,}|-(?: *-){2,}|_(?: *_){2,}) *")
+
+
+def _markdown_line(
+    line: str, containers: tuple[int, ...], paragraph: Literal["OPEN", "CLOSED"]
+) -> _MarkdownLine:
+    expanded = line.expandtabs(4)
+    if not expanded.strip():
+        return _MarkdownLine(containers, "")
+    indent = len(expanded) - len(expanded.lstrip(" "))
+    tail = expanded[indent:]
+    marker = _LIST_MARKER.match(tail)
+    if (
+        paragraph == "OPEN"
+        and not containers
+        and marker
+        and marker["marker"][0].isdigit()
+        and marker["marker"] not in {"1.", "1)"}
+    ):
+        return _MarkdownLine(containers, expanded)
+    levels = list(containers)
+    if paragraph == "CLOSED" or _LIST_MARKER.match(tail) or _BLOCK_START.match(tail):
+        while levels and indent < levels[-1]:
+            _ = levels.pop()
+    container = levels[-1] if levels else 0
+    if indent < container:
+        return _MarkdownLine(tuple(levels), expanded)
+    if _THEMATIC_BREAK.fullmatch(tail):
+        return _MarkdownLine(tuple(levels), expanded[container:], container)
+    cursor = indent
+    while cursor - container < 4:
+        marker = _LIST_MARKER.match(expanded, cursor)
+        if marker is None:
+            break
+        padding = len(marker["padding"])
+        container = marker.end() - padding + (padding if 1 <= padding <= 4 else 1)
+        levels.append(container)
+        cursor = container
+        while cursor < len(expanded) and expanded[cursor] == " ":
+            cursor += 1
+    return _MarkdownLine(tuple(levels), expanded[container:], container)
 
 
 type _BlockState = Literal["PROSE", "COMMENT", "FRONTMATTER"] | _Fence
 type _InlineState = Literal["PROSE", "COMMENT"]
 
 
-def _mask_inline(line: str, state: _InlineState) -> tuple[str, _InlineState]:
+@dataclass(frozen=True, slots=True)
+class _InlineMask:
+    text: str
+    state: _InlineState
+    code_spans: tuple[range, ...]
+
+
+def _mask_inline(line: str, state: _InlineState) -> _InlineMask:
     parts: list[str] = []
+    code_spans: list[range] = []
     cursor = 0
     while cursor < len(line):
         if state == "COMMENT":
             end = line.find("-->", cursor)
             if end == -1:
                 parts.append(" " * (len(line) - cursor))
-                return "".join(parts), state
+                return _InlineMask("".join(parts), state, tuple(code_spans))
             parts.append(" " * (end + 3 - cursor))
             cursor = end + 3
             state = "PROSE"
@@ -400,6 +465,11 @@ def _mask_inline(line: str, state: _InlineState) -> tuple[str, _InlineState]:
         start = cursor + token.start()
         end = cursor + token.end()
         parts.append(line[cursor:start])
+        prefix = line[:start]
+        if (len(prefix) - len(prefix.rstrip("\\"))) % 2:
+            parts.append(line[start : start + 1])
+            cursor = start + 1
+            continue
         if token[0] == "<!--":
             parts.append(" " * len(token[0]))
             cursor = end
@@ -412,13 +482,16 @@ def _mask_inline(line: str, state: _InlineState) -> tuple[str, _InlineState]:
         else:
             cursor = end + closing.end()
             parts.append(" " * (cursor - start))
-    return "".join(parts), state
+            code_spans.append(range(start, cursor))
+    return _InlineMask("".join(parts), state, tuple(code_spans))
 
 
 def prose_lines(text: str, markup: Literal["markdown", "mdx"]) -> tuple[str, ...]:
     """Conservative lexical view. Vale remains the native markup parser."""
     lines: list[str] = []
     state: _BlockState = "PROSE"
+    containers: tuple[int, ...] = ()
+    paragraph: Literal["OPEN", "CLOSED"] = "CLOSED"
     for index, line in enumerate(text.splitlines()):
         if index == 0 and line.strip() == "---":
             state = "FRONTMATTER"
@@ -430,23 +503,61 @@ def prose_lines(text: str, markup: Literal["markdown", "mdx"]) -> tuple[str, ...
             lines.append("")
             continue
         if isinstance(state, _Fence):
-            marker = re.match(r"^\s*(`{3,}|~{3,})", line)
-            if marker and marker[1][0] == state.marker[0] and len(marker[1]) >= len(state.marker):
+            expanded = line.expandtabs(4)
+            indent = len(expanded) - len(expanded.lstrip(" "))
+            if line.strip() and indent < state.container_indent:
                 state = "PROSE"
-            lines.append("")
-            continue
+                paragraph = "CLOSED"
+            else:
+                content = expanded[state.container_indent :]
+                marker = re.fullmatch(
+                    r" {0,3}(`{3,}|~{3,}) *" if markup == "markdown" else r"\s*(`{3,}|~{3,})\s*",
+                    content,
+                )
+                if (
+                    marker
+                    and marker[1][0] == state.marker[0]
+                    and len(marker[1]) >= len(state.marker)
+                ):
+                    state = "PROSE"
+                lines.append("")
+                continue
+        paragraph_break = False
+        prefix_columns = 0
         if state == "PROSE":
-            marker = re.match(r"^\s*(`{3,}|~{3,})", line)
+            container_indent = 0
+            content = line
+            if markup == "markdown":
+                layout = _markdown_line(line, containers, paragraph)
+                containers = layout.containers
+                container_indent = layout.container_indent
+                content = layout.content
+                prefix_columns = layout.prefix_columns
+                if paragraph == "CLOSED" and content.startswith("    "):
+                    lines.append("")
+                    continue
+                paragraph_break = (
+                    re.match(r" {0,3}(?:#{1,6}(?: +|$)|(?:[-*_] *){3,}$)", content) is not None
+                )
+            marker = re.match(
+                r"^ {0,3}(`{3,}|~{3,})" if markup == "markdown" else r"^\s*(`{3,}|~{3,})",
+                content,
+            )
             if marker:
-                state = _Fence(marker[1])
+                state = _Fence(marker[1], container_indent)
+                paragraph = "CLOSED"
                 lines.append("")
                 continue
-            if markup == "markdown" and line.startswith(("    ", "\t")):
-                lines.append("")
-                continue
-        line, state = _mask_inline(line, state)
+        mask = _mask_inline(line, state)
+        line, state = mask.text, mask.state
         line = re.sub(r"\]\([^\n]*?\)", lambda m: "]" + " " * (len(m[0]) - 1), line)
         line = re.sub(r"https?://\S+", lambda m: " " * len(m[0]), line)
+        visible_content = line.expandtabs(4)[prefix_columns:]
+        paragraph = (
+            "OPEN"
+            if (visible_content.strip() or mask.code_spans) and not paragraph_break
+            else "CLOSED"
+        )
         lines.append(line)
     return tuple(lines)
 

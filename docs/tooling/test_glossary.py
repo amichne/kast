@@ -206,6 +206,123 @@ def test_markdown_still_excludes_indented_code() -> None:
     assert [(hit.line, hit.start, hit.end) for hit in hits] == [(6, 3, 14)]
 
 
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("1. Item\n\n    A saved result.\n", ((3, 7, 18),)),
+        ("- Item\n\n    A saved result.\n", ((3, 7, 18),)),
+        ("10. Item\n\n    A saved result.\n", ((3, 7, 18),)),
+        ("- Outer\n  - Inner\n\n      A saved result.\n", ((4, 9, 20),)),
+        ("1. Outer\n   1. Inner\n\n      A saved result.\n", ((4, 9, 20),)),
+        ("1. Item\n\n       saved result\n\n    A saved result.\n", ((5, 7, 18),)),
+        ("- Item\n\n      saved result\n\n    A saved result.\n", ((5, 7, 18),)),
+        (
+            "- Outer\n  - Inner\n\n        saved result\n\n      A saved result.\n",
+            ((6, 9, 20),),
+        ),
+        ("1. ```text\n   saved result\n   ```\n\n    A saved result.\n", ((5, 7, 18),)),
+        (
+            "- Item\n\n  ```text\n  saved result\n  ```\n\n    A saved result.\n",
+            ((7, 7, 18),),
+        ),
+        ("- ```text\n  saved result\nA saved result.\n", ((3, 3, 14),)),
+        (
+            "- Item\n\nOutside paragraph.\n\n    saved result\n\nA saved result.\n",
+            ((7, 3, 14),),
+        ),
+        ("- Item\n# Heading\n\n    saved result\n\nA saved result.\n", ((6, 3, 14),)),
+        (
+            "- Outer\n  - Inner\n\n  Parent paragraph.\n\n      saved result\n\n    A saved result.\n",
+            ((8, 7, 18),),
+        ),
+        ("1. Item\nlazy paragraph.\n\n    A saved result.\n", ((4, 7, 18),)),
+        ("A paragraph.\n    A saved result.\n", ((2, 7, 18),)),
+        ("    ```text\n    saved result\n\nA saved result.\n", ((4, 3, 14),)),
+        ("-     saved result\n\nA saved result.\n", ((3, 3, 14),)),
+        ("1. - saved result\n", ((1, 6, 17),)),
+        ("-\n      saved result\n", ()),
+        ("- <!-- comment -->\n      saved result\n", ()),
+        ("A paragraph.\n2. Item\n\n    saved result\n", ()),
+        ("- Item\n- - -\n\n    saved result\n", ()),
+        ("- `code`\n      A saved result.\n", ((2, 9, 20),)),
+    ],
+    ids=[
+        "ordered-list-paragraph",
+        "unordered-list-paragraph",
+        "wide-ordered-marker",
+        "nested-unordered-paragraph",
+        "nested-ordered-paragraph",
+        "ordered-list-relative-code",
+        "unordered-list-relative-code",
+        "nested-list-relative-code",
+        "fence-after-list-marker",
+        "fence-in-list-paragraph",
+        "list-fence-ends-at-outdent",
+        "list-context-ends-after-blank",
+        "heading-ends-list-context",
+        "outdent-to-parent-list",
+        "lazy-list-paragraph",
+        "indent-cannot-interrupt-paragraph",
+        "indented-fence-is-code",
+        "code-after-list-marker",
+        "same-line-nested-list",
+        "empty-list-item-before-code",
+        "comment-only-list-item-before-code",
+        "noninitial-order-cannot-interrupt-paragraph",
+        "thematic-break-ends-list-context",
+        "inline-code-keeps-list-paragraph-open",
+    ],
+)
+def test_markdown_list_indentation_keeps_prose_and_real_code_distinct(
+    text: str, expected: tuple[tuple[int, int, int], ...]
+) -> None:
+    glossary = load_glossary(ROOT / "docs/glossary.json")
+    assert not isinstance(glossary, Rejected)
+    hits = occurrences(glossary, text, Path("guide.md"))
+    assert tuple((hit.line, hit.start, hit.end) for hit in hits) == expected
+
+
+@pytest.mark.parametrize("suffix", [".md", ".mdx"])
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        (r"Use \`saved result\` here.", ((1, 7, 18),)),
+        (r"Use \\`saved result\\` here.", ()),
+        (r"Use \\\`saved result\\\` here.", ((1, 9, 20),)),
+        (r"Use \\\\`saved result\\\\` here.", ()),
+        (r"Use \`saved result` here.", ((1, 7, 18),)),
+        (r"Use `saved result\` A saved result.", ((1, 23, 34),)),
+        (r"Use `saved result\\` A saved result.", ((1, 24, 35),)),
+        (r"Use \``saved result`` here.", ((1, 8, 19),)),
+        (r"Use \``saved result` here.", ()),
+        (r"Use \\``saved result`` here.", ()),
+        (r"Use \<!-- A saved result.", ((1, 13, 24),)),
+        (r"Use \\<!-- saved result --> A saved result.", ((1, 31, 42),)),
+    ],
+    ids=[
+        "odd-escaped-opener",
+        "even-backslashes-before-opener",
+        "three-backslashes-before-opener",
+        "four-backslashes-before-opener",
+        "escaped-opener-with-literal-closer",
+        "odd-backslashes-inside-code-do-not-escape-closer",
+        "even-backslashes-inside-code-do-not-escape-closer",
+        "escaped-first-tick-of-double-run",
+        "remaining-tick-can-open-code",
+        "even-backslashes-before-double-run",
+        "escaped-comment-opener-remains-prose",
+        "even-backslashes-before-comment-opener",
+    ],
+)
+def test_markdown_escapes_preserve_visible_backticks_and_real_code_spans(
+    suffix: str, text: str, expected: tuple[tuple[int, int, int], ...]
+) -> None:
+    glossary = load_glossary(ROOT / "docs/glossary.json")
+    assert not isinstance(glossary, Rejected)
+    hits = occurrences(glossary, text, Path("guide" + suffix))
+    assert tuple((hit.line, hit.start, hit.end) for hit in hits) == expected
+
+
 @pytest.mark.parametrize("suffix", [".md", ".mdx"])
 @pytest.mark.parametrize(
     ("text", "expected"),
