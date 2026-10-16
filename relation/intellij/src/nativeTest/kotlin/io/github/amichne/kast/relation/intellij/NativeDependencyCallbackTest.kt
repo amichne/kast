@@ -74,7 +74,7 @@ class NativeDependencyCallbackTest : NativeReferenceFixtureTest() {
     fun testBuildRuntimeStdlibKeepsADeferredSupply() {
         val jar =
             System.getProperty("java.class.path").split(java.io.File.pathSeparator).map(Path::of).single {
-                it.fileName.toString() == "kotlin-stdlib-2.4.20.jar"
+                it.fileName.toString() == "kotlin-stdlib-2.4.21.jar"
             }
         assertDeferred(
             expression = "kotlin.lazy { proof.target() }",
