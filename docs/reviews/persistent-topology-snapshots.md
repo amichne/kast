@@ -606,3 +606,128 @@ An earlier gate failed only on unformatted lines in the new test files. The fina
 Vale 3.24.0 assessed this report with the repository glossary. Its `ASSESSED` result includes a grade advisory.
 The report remains `build/reports/persistent-topology/review-text-assessment.json`.
 The PR records the final SHA and the pre-push result after the integration commit.
+
+## Native input consistency gate, October 15, 2026
+
+An explicit project capture followed by an offline source-usage answer remains incomplete.
+The current investigation used `3e843eb6eb7c45ff402ba4b1103821afee059408` from `origin/main`.
+The production adapter still rejects `EXTERNAL_INPUT_STABILITY_UNPROVEN`.
+No production capture behavior changed.
+
+Two platform mechanisms now have executable characterization cases in the existing headless native lane.
+The lane uses IntelliJ Platform `262.9437.185` and its Kotlin plugin.
+It owns its configuration and system directories and does not open the user's IDE.
+
+- [NativeHistoricalArchiveInputTest](../../runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativeHistoricalArchiveInputTest.kt) reads A, B, and A through the actual `ZipHandler` inside one read action.
+  Atomic file replacement supplies each version without a VFS refresh or an IDE write.
+  The starting and final archive bytes and SHA-256 digests match exactly.
+  The unchanged-archive control returns A on every read.
+- [NativeHistoricalBinaryCacheTest](../../runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativeHistoricalBinaryCacheTest.kt) calls the actual `KotlinBinaryClassCache` service with valid Java class bytes.
+  Equal file identity and modification stamp return the original cached result despite different supplied bytes.
+  A fresh file identity with equal path and stamp consumes the replacement bytes.
+
+These cases show that endpoint hashes and supplied file bytes do not prove input consistency.
+They do not show that a source occurrence resolved against the wrong dependency.
+They do not prove that every compiler read bypasses VFS content storage.
+Complete capture still needs proof for both compiler reads and prior cached facts.
+
+The four native cases **passed**, with zero failures, errors, or skips:
+
+```sh
+mise exec -- ./gradlew :runtime:hosted:nativeFixtureTest \
+  --tests '*NativeHistoricalArchiveInputTest' \
+  --tests '*NativeHistoricalBinaryCacheTest' --console=plain
+```
+
+The task also passed `detektNativeTest`.
+Reports reside in `runtime/hosted/build/test-results/nativeFixtureTest`.
+An initial JVM fixture failed because the archive API needed an IntelliJ Application.
+The native fixture then needed a JUnit import correction and a named constant for Detekt.
+Those fixture failures did not establish a product defect.
+
+The historical baseline **passed** with 96 selected cases: 26 contract, 12 coordinator, and 58 SQLite cases.
+The contract task used cached results. The coordinator and SQLite tasks ran in this checkout.
+The legacy graph characterization was **not run** in this investigation.
+
+```sh
+mise exec -- ./gradlew :topology:contract:test --tests '*Historical*' \
+  :topology:build:test --tests '*historical*' \
+  :evidence:topology-sqlite:test --tests '*Historical*' --console=plain
+```
+
+Formatting, file-length, JSON, architecture, and knowledge guards **passed**:
+
+```sh
+mise exec -- ./gradlew :runtime:hosted:spotlessCheck \
+  :runtime:hosted:checkTestKotlinFileLength verifyJsonContracts \
+  verifyKastArchitecture knowledgeImpact verifyKnowledgeBase --console=plain
+```
+
+The impact report named zero affected concepts across the three changed files.
+The prose report path is `build/reports/persistent-topology/native-input-text-assessment.json`.
+
+### Deferred compiler capture
+
+The consumer selects an imported module domain and receives one revision-pinned SQLite artifact.
+The artifact must preserve empty source sets, rootless projects, exact declarations, occurrence ownership, and coverage.
+An offline usage request must distinguish two overloads and exclude references from an unselected source module.
+The acceptance fixture must answer from a copied artifact after removal of its original source directory.
+An external JAR change during capture must preserve the admitted input version or reject before publication.
+A rejection must preserve the previous artifact bytes.
+
+The existing-IDE route still lacks an admitted capability that binds compiler reads and cached facts to fixed inputs.
+An alternative is an explicit isolated capture with a fresh compiler session over frozen inputs.
+That alternative changes compiler ownership and exceeds the immediate scope of this change.
+Its input domain must include source, generated files, libraries, SDK files, compiler settings, and ordered resolution roots.
+Copying files or changing permissions alone does not prove that the compiler uses immutable inputs.
+Native capture, imported-project acceptance, and extraction resumption remain **not run**.
+
+### Immediate module-impact report
+
+The opt-in [topology impact command](../topology-impact.md) answers which Kast modules depend on a selected module.
+It reuses the architecture convention's existing declared production dependencies.
+The report includes a complete copy of that graph and a shortest dependency path for each consumer.
+Its content digest identifies the graph without a source-revision claim.
+
+The task does not enter historical SQLite publication or the hosted runtime.
+It does not grant compiler authority or infer source usage from a declared dependency.
+The explicit `kastTopologyEnabled=false` switch replaces the report with `DISABLED`.
+Ordinary tasks do not schedule the report.
+
+The command acceptance case first failed because the task did not exist.
+After implementation, 23 focused cases **passed**, with zero failures, errors, or skips:
+
+```sh
+mise exec -- ./gradlew :build-logic:test \
+  --tests '*ModuleImpactTest' --tests '*TopologyImpactTaskTest' \
+  --tests '*GradleToolingArchitectureCoverageTest' \
+  --tests '*ModuleKnowledgeProjectionTest' --console=plain
+```
+
+Eleven cases cover graph admission and paths. Five cover the real Gradle collector and command.
+Seven existing cases protect class ownership and knowledge projection.
+The command cases cover test-only exclusion, configuration-cache reuse, unknown-module rejection, disable behavior, and an independent digest assertion.
+An ordinary `help` invocation does not schedule the report.
+
+The documented repository command also **passed**:
+
+```sh
+mise exec -- ./gradlew topologyImpact \
+  -PkastTopologyModules=:topology:contract,:evidence:topology-sqlite --console=plain
+```
+
+It reported 43 modules, 183 declared edges, and four consumers for the two selected modules.
+The consumers were `:runtime:hosted`, `:topology:build`, `:topology:intellij`, and `:topology:service`.
+The graph digest was `sha256:40c5a74329313e3ec30edde7b44eb03d77e622840752ebbdd007d617f8f0a91a`.
+The report resides at `build/reports/topology/topology-impact.json`.
+
+The JSON, architecture, knowledge, runtime-formatting, and runtime file-length guards **passed** again after the command change.
+Their full log resides at `build/reports/topology/validation.log`.
+Knowledge impact named four existing pages. Their claims about architecture admission, installed knowledge, and test scope remain unchanged.
+No generated OpenWiki page needed an edit.
+
+The pinned Vale procedure returned **ASSESSED** with advisories, not a clean result.
+The report resides at `build/reports/topology/prose-assessment.json`.
+Grade advisories remain because the documents preserve precise technical terms and evidence limits.
+Other diction and sentence-length findings concern unchanged text in `docs/development.md`.
+The supplied glossary excludes these documents from its scope. Reader comprehension remains **NOT_ASSESSED**.
