@@ -4,7 +4,7 @@ The live inventory gate passes for 164 declared FIR identities. The separate str
 
 The adapter uses the Kotlin plugin from `ideaIC:262.9437.185`. Its Analysis API and FIR classes reside in `kotlin-plugin.jar`. Its compiler resource reports `2.4.20-ij262-34`.
 
-The separate bundled command-line compiler reports `2.3.20-release-208`. The Gradle Kotlin version is `2.4.20`. These identities describe different compiler consumers.
+The separate bundled command-line compiler reports `2.3.20-release-208`. The Gradle Kotlin version is `2.4.21`. These identities describe different compiler consumers.
 
 The upstream pin names `build-2.4.20-ij262-35` at `7342188118e8c24e12b5447f4430730ccc9c1989`.
 JetBrains publishes the binary and source archives for `kotlin-compiler-fir-for-ide:2.4.20-ij262-34`.
