@@ -10,6 +10,8 @@ import unittest
 from unittest.mock import call, patch
 
 import build_candidate as candidate
+from validation_outcome import DocumentationValidated, Outcome, ProductValidated, ValidationRecord
+from validation_scope import Scope
 
 REPOSITORY = "amichne/kast"
 BUILD = "a" * 40
@@ -57,6 +59,11 @@ class Sbom:
 def record(assets=()):
     return candidate.Candidate(1, REPOSITORY, BUILD, TREE, VERSION, 123, 123, 1, "pull_request",
                                "macos-aarch64", candidate.Toolchain("25.0.2", "Oracle Corporation", "d" * 64), assets)
+
+
+def validation_record(scope=Scope.FULL):
+    return ValidationRecord(1, Outcome.DOCS_VALIDATED if scope is Scope.DOCUMENTATION else Outcome.PRODUCT_VALIDATED,
+                            scope, REPOSITORY, MERGED, TREE, BUILD, 456, 123, 1, "push")
 
 
 class SourceAdmissionTest(unittest.TestCase):
@@ -161,6 +168,7 @@ class PayloadAdmissionTest(unittest.TestCase):
         main = replace(Run(), id=456, event="push", head_sha=MERGED, head_branch="main")
         original_hashes = {asset.name: asset.sha256 for asset in self.value.assets}
         with patch.object(candidate, "observe", side_effect=[asdict(main), asdict(Run())]) as observe, \
+                patch.object(candidate, "admit_validation", return_value=ProductValidated(validation_record())), \
                 patch.object(candidate, "download", return_value=self.value) as download, \
                 patch.object(candidate, "tree", side_effect=[TREE, TREE]) as tree, \
                 patch.object(candidate.legacy, "digest", return_value="f" * 64):
@@ -186,6 +194,56 @@ class PayloadAdmissionTest(unittest.TestCase):
         observe.assert_not_called()
         self.assertEqual(candidate.Failure.INVALID_RECORD, rejection.exception.failure)
 
+    def test_docs_validation_cannot_authorize_a_forged_product_promotion(self):
+        promotion = Path(self.temporary.name) / "promotion.json"
+        value = candidate.Promotion(1, REPOSITORY, BUILD, MERGED, TREE, VERSION, 123, 1, 456, 1,
+                                    candidate.legacy.digest(self.bundle / "candidate.json"))
+        promotion.write_text(json.dumps(asdict(value)))
+        main = replace(Run(), id=456, event="push", head_sha=MERGED, head_branch="main")
+        with patch.object(candidate, "observe", return_value=asdict(main)), \
+                patch.object(candidate, "tree", return_value=TREE), \
+                patch.object(candidate, "admit_validation", return_value=DocumentationValidated(validation_record(Scope.DOCUMENTATION))), \
+                self.assertRaises(candidate.Rejected) as rejection:
+            candidate.verify_publication(REPOSITORY, BUILD, VERSION, self.bundle, promotion)
+        self.assertEqual(candidate.Failure.INVALID_RECORD, rejection.exception.failure)
+
+    def test_successful_main_without_validation_outcome_never_promotes(self):
+        main = replace(Run(), id=456, event="push", head_sha=MERGED, head_branch="main")
+        destination = Path(self.temporary.name) / "download"
+        promotion = Path(self.temporary.name) / "promotion.json"
+        with patch.object(candidate, "observe", side_effect=[asdict(main),
+                asdict(Run()) | {"total_count": 0, "artifacts": []}, asdict(Run())]), \
+                patch.object(candidate, "download", return_value=self.value), \
+                patch.object(candidate, "tree", return_value=TREE), \
+                patch.object(candidate.legacy, "digest", return_value="f" * 64), \
+                self.assertRaises(candidate.Rejected):
+            candidate.promote(REPOSITORY, MERGED, 456, destination, promotion)
+        self.assertFalse(promotion.exists())
+
+    def test_docs_main_has_no_candidate_download_promotion_record_or_binary_identity(self):
+        main = replace(Run(), id=456, event="push", head_sha=MERGED, head_branch="main")
+        destination = Path(self.temporary.name) / "download"
+        promotion = Path(self.temporary.name) / "promotion.json"
+        docs = DocumentationValidated(validation_record(Scope.DOCUMENTATION))
+        with patch.object(candidate, "observe", return_value=asdict(main)), \
+                patch.object(candidate, "tree", return_value=TREE), \
+                patch.object(candidate, "admit_validation", return_value=docs), \
+                patch.object(candidate, "download") as download:
+            self.assertEqual(docs, candidate.promote(REPOSITORY, MERGED, 456, destination, promotion))
+        download.assert_not_called()
+        self.assertFalse(destination.exists())
+        self.assertFalse(promotion.exists())
+
+    def test_cli_docs_result_emits_only_explicit_no_publication(self):
+        output = Path(self.temporary.name) / "github-output"
+        arguments = ["build_candidate.py", "promote", "--repository", REPOSITORY, "--revision", MERGED,
+                     "--run-id", "456", "--bundle", str(self.bundle), "--promotion-record", "unused",
+                     "--github-output", str(output)]
+        with patch.object(sys, "argv", arguments), patch.object(candidate, "promote", return_value=
+                DocumentationValidated(validation_record(Scope.DOCUMENTATION))):
+            candidate.main()
+        self.assertEqual("publication=DOCS_VALIDATED\n", output.read_text())
+
     def test_failed_main_never_downloads_or_writes_a_promotion(self):
         with patch.object(candidate, "observe", return_value=asdict(replace(Run(), conclusion="failure"))), \
                 patch.object(candidate, "download") as download, self.assertRaises(candidate.Rejected):
@@ -196,6 +254,35 @@ class PayloadAdmissionTest(unittest.TestCase):
 
 
 class EffectBoundaryTest(unittest.TestCase):
+    def test_retained_outcome_is_bound_to_exact_main_artifact_and_attempt(self):
+        main = asdict(replace(Run(), id=456, event="push", head_sha=MERGED, head_branch="main"))
+        expected_name = f"ci-validation-outcome-{MERGED}-1"
+        def download(command, *arguments, **keywords):
+            self.assertEqual(["gh", "run", "download", "456", "--repo", REPOSITORY,
+                              "--name", expected_name, "--dir"], command[:-1])
+            (Path(command[-1]) / "validation.json").write_text(json.dumps(asdict(validation_record(Scope.DOCUMENTATION))))
+        with patch.object(candidate, "observe", return_value={"total_count": 1, "artifacts": [
+                {"name": expected_name, "expired": False}]}), patch.object(candidate, "execute", side_effect=download):
+            self.assertEqual(DocumentationValidated(validation_record(Scope.DOCUMENTATION)),
+                             candidate.admit_validation(REPOSITORY, MERGED, main, TREE))
+
+    def test_missing_wrong_attempt_expired_duplicate_and_docs_with_candidate_reject(self):
+        main = asdict(replace(Run(), id=456, event="push", head_sha=MERGED, head_branch="main"))
+        artifact = {"name": f"ci-validation-outcome-{MERGED}-1", "expired": False}
+        cases = ([], [artifact | {"name": f"ci-validation-outcome-{MERGED}-2"}],
+                 [artifact | {"expired": True}], [artifact, artifact],
+                 [artifact, {"name": f"ci-build-candidate-{MERGED}-1", "expired": False}])
+        for artifacts in cases:
+            with self.subTest(artifacts=artifacts), patch.object(candidate, "observe", return_value={
+                    "total_count": len(artifacts), "artifacts": artifacts}), \
+                    patch.object(candidate, "execute") as execute, \
+                    patch.object(candidate.validation, "read", return_value=validation_record(Scope.DOCUMENTATION)), \
+                    patch.object(candidate.Path, "iterdir", return_value=iter([Path("validation.json")])), \
+                    self.assertRaises(candidate.Rejected):
+                candidate.admit_validation(REPOSITORY, MERGED, main, TREE)
+            if len(artifacts) != 2 or artifacts[0] == artifacts[1]:
+                execute.assert_not_called()
+
     def test_absent_or_foreign_pr_requires_fresh_build_without_download(self):
         for pulls in ([], [{"merged_at": "now", "merge_commit_sha": MERGED,
                            "head": {"sha": BUILD, "repo": {"full_name": "foreign/kast"}}}]):

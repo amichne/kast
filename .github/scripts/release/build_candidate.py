@@ -13,6 +13,8 @@ import platform
 import re
 import shutil
 import subprocess
+import sys
+import tempfile
 from urllib.parse import urlencode
 
 SPEC = importlib.util.spec_from_file_location("ci_candidate", Path(__file__).with_name("ci-candidate.py"))
@@ -23,11 +25,18 @@ DIGEST = re.compile(r"[0-9a-f]{64}\Z")
 REPOSITORY = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\Z")
 WORKFLOW = ".github/workflows/ci.yml"
 ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / ".github/scripts/ci"))
+import validation_outcome as validation
 
 
 class CandidateState(str, Enum):
     REUSED = "REUSED"
     MISSING = "MISSING"
+
+
+class PublicationState(str, Enum):
+    PUBLISH = "PUBLISH"
+    DOCS_VALIDATED = "DOCS_VALIDATED"
 
 
 class MainState(str, Enum):
@@ -47,6 +56,9 @@ class Failure(str, Enum):
     OBSERVATION_FAILED = "OBSERVATION_FAILED"
     DOWNLOAD_FAILED = "DOWNLOAD_FAILED"
     UNSUPPORTED_PLATFORM = "UNSUPPORTED_PLATFORM"
+    GATE_NOT_COMPLETE = "GATE_NOT_COMPLETE"
+    SELECTION_MISMATCH = "SELECTION_MISMATCH"
+    CHECKOUT_MISMATCH = "CHECKOUT_MISMATCH"
 
 
 class Rejected(Exception):
@@ -311,16 +323,49 @@ def seal(repository: str, revision: str, run_id: int, number: int, attempt: int,
     return candidate
 
 
-def promote(repository: str, revision: str, main_run_id: int, bundle: Path, record: Path) -> Candidate:
+def admit_validation(repository: str, revision: str, run: dict, expected_tree: str):
+    name = f"ci-validation-outcome-{revision}-{run['run_attempt']}"
+    artifacts = listing(observe(f"repos/{repository}/actions/runs/{run['id']}/artifacts?per_page=100"), "artifacts")
+    matches = tuple(artifact for artifact in artifacts if artifact.get("name") == name and artifact.get("expired") is False)
+    if len(matches) != 1:
+        raise Rejected(Failure.INVALID_RECORD)
+    with tempfile.TemporaryDirectory(prefix="kast-validation-") as temporary:
+        destination = Path(temporary)
+        execute(["gh", "run", "download", str(run["id"]), "--repo", repository, "--name", name,
+                 "--dir", str(destination)], Failure.DOWNLOAD_FAILED)
+        if {path.name for path in destination.iterdir()} != {"validation.json"}:
+            raise Rejected(Failure.INVALID_RECORD)
+        outcome = validation.read(destination / "validation.json")
+    if isinstance(outcome, validation.Failure):
+        raise Rejected(Failure(outcome.value))
+    admitted = validation.admit(outcome, run, repository, revision, expected_tree)
+    if isinstance(admitted, validation.Failure):
+        raise Rejected(Failure(admitted.value))
+    if isinstance(admitted, validation.DocumentationValidated) and any(
+        artifact.get("expired") is False and str(artifact.get("name", "")).startswith("ci-build-candidate-")
+        for artifact in artifacts
+    ):
+        raise Rejected(Failure.INVALID_RECORD)
+    return admitted
+
+
+def promote(repository: str, revision: str, main_run_id: int, bundle: Path, record: Path) -> Candidate | validation.DocumentationValidated:
     identity(repository, revision)
     if not positive(main_run_id):
         raise Rejected(Failure.INVALID_IDENTITY)
     run = observe(f"repos/{repository}/actions/runs/{main_run_id}")
     if not reusable_run(run, repository, revision) or run.get("event") != "push" or run.get("head_branch") != "main":
         raise Rejected(Failure.PRODUCER_NOT_SUCCESSFUL)
+    expected_tree = tree(repository, revision)
+    outcome = admit_validation(repository, revision, run, expected_tree)
+    if isinstance(outcome, validation.DocumentationValidated):
+        empty(bundle)
+        if record.exists() or record.is_symlink():
+            raise Rejected(Failure.DESTINATION_NOT_EMPTY)
+        return outcome
     candidate = download(repository, run, revision, bundle)
     producer = observe(f"repos/{repository}/actions/runs/{candidate.runId}")
-    admitted = refine(candidate, producer, repository, tree(repository, revision))
+    admitted = refine(candidate, producer, repository, expected_tree)
     if isinstance(admitted, Failure):
         raise Rejected(admitted)
     if tree(repository, candidate.sourceRevision) != candidate.sourceTree:
@@ -358,8 +403,11 @@ def verify_publication(repository: str, revision: str, version: str, bundle: Pat
             or main_run.get("event") != "push" or main_run.get("head_branch") != "main"
             or main_run.get("run_attempt") != promotion.mainRunAttempt):
         raise Rejected(Failure.PRODUCER_NOT_SUCCESSFUL)
+    expected_tree = tree(repository, promotion.mergedRevision)
+    if not isinstance(admit_validation(repository, promotion.mergedRevision, main_run, expected_tree), validation.ProductValidated):
+        raise Rejected(Failure.INVALID_RECORD)
     producer = observe(f"repos/{repository}/actions/runs/{candidate.runId}")
-    admitted = refine(candidate, producer, repository, tree(repository, promotion.mergedRevision))
+    admitted = refine(candidate, producer, repository, expected_tree)
     if isinstance(admitted, Failure):
         raise Rejected(admitted)
     if tree(repository, candidate.sourceRevision) != candidate.sourceTree:
@@ -420,8 +468,13 @@ def main() -> None:
                 if args.promotion_record is None:
                     raise Rejected(Failure.INVALID_IDENTITY)
                 candidate = promote(args.repository, args.revision, args.run_id, args.bundle, args.promotion_record)
-            output(args.github_output, version=candidate.version, source_revision=candidate.sourceRevision)
-            print("build-candidate: ADMITTED")
+            if isinstance(candidate, validation.DocumentationValidated):
+                output(args.github_output, publication=PublicationState.DOCS_VALIDATED.value)
+                print("build-candidate: DOCS_VALIDATED; no product publication")
+            else:
+                output(args.github_output, publication=PublicationState.PUBLISH.value,
+                       version=candidate.version, source_revision=candidate.sourceRevision)
+                print("build-candidate: ADMITTED")
     except Rejected as rejection:
         raise SystemExit(f"build-candidate: {rejection.failure.value}") from None
     except (OSError, KeyError, TypeError, ValueError, AttributeError, legacy.CandidateError):

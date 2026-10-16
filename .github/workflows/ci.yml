@@ -29,6 +29,7 @@ jobs:
       portable: ${{ steps.scope.outputs.portable }}
       documentation: ${{ steps.scope.outputs.documentation }}
       gate_graph: ${{ steps.scope.outputs.gate_graph }}
+      scope: ${{ steps.scope.outputs.scope }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -39,6 +40,8 @@ jobs:
         run: |
           python3 .github/scripts/ci/test_validation_scope.py
           python3 .github/scripts/ci/test_required_checks.py
+          python3 .github/scripts/ci/test_validation_outcome.py
+          python3 .github/scripts/ci/test_verify_documentation.py
           python3 .github/scripts/ci/test_verify_checks.py
           python3 .github/scripts/release/test_build_candidate.py
 
@@ -127,8 +130,10 @@ jobs:
         with:
           validate-wrappers: true
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          # Dependency-update caches evict the shared main cache. Keep those PRs read-only, including maintainer reruns.
-          cache-read-only: ${{ !((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login != 'dependabot[bot]') || github.ref == 'refs/heads/main') }}
+          # Main entries are visible to other PRs; PR-scoped writes cannot warm them.
+          # A main workflow_dispatch performs a full build to seed/refresh these entries.
+          cache-read-only: ${{ !(github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')) }}
+          cache-cleanup: on-success
           # caches includes caches/build-cache-1, Gradle's local task-output cache.
           # Cacheable IDEA extraction tasks restore their outputs from that cache. Cache the non-cacheable topology Sync separately.
           gradle-home-cache-includes: |
@@ -191,9 +196,25 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Require selected checks
         env:
           CI_NEEDS: ${{ toJSON(needs) }}
         run: python3 .github/scripts/ci/required_checks.py
+
+      - name: Seal successful validation outcome
+        env:
+          CI_NEEDS: ${{ toJSON(needs) }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          CHECKOUT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python3 .github/scripts/ci/validation_outcome.py --record build/validation/validation.json
+
+      - name: Retain exact validation outcome
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: ci-validation-outcome-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: build/validation/validation.json
+          if-no-files-found: error
+          retention-days: 30

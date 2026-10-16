@@ -28,6 +28,16 @@ jobs:
         with:
           node-version: "24.21.0"
 
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: .python-version
+
+      - name: Install locked documentation runner
+        run: python3 -m pip install --disable-pip-version-check uv==0.12.9
+
+      - name: Verify parser and glossary contracts
+        run: python3 .github/scripts/ci/verify_documentation.py
+
       - name: Install locked Mintlify CLI
         env:
           NPM_CONFIG_USERCONFIG: ${{ runner.temp }}/kast-mint-user.npmrc
