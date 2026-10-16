@@ -127,10 +127,9 @@ internal class IntellijRelationLocators(
         subject: IntellijRelationSubjectLookup.Found,
     ): Refinement<CalleeProviderItem, RelationLimitation> {
         val source = subject.evidence
+        if (!subject.declaration.isValid || locator.file != source.file) return unavailable()
         if (
-            !subject.declaration.isValid ||
-                locator.file != source.file ||
-                locator.range.startInclusive < source.range.startInclusive ||
+            locator.range.startInclusive < source.range.startInclusive ||
                 locator.range.endExclusive > source.range.endExclusive
         )
             return unavailable()

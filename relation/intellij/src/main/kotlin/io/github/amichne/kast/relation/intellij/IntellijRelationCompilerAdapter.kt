@@ -4,9 +4,12 @@ import com.intellij.openapi.application.readAction
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationCompilation
 import io.github.amichne.kast.relation.contract.RelationCompilerRejection
 import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
+import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadActionKind
@@ -170,30 +173,9 @@ internal class IntellijRelationCompilerQuery(
         modelCompilation: WorkspaceSearchScopeModelCompilation,
         allowance: IntellijRelationAllowance,
     ): io.github.amichne.kast.kernel.Refinement<AdmittedRelationRead, RelationCompilerRejection> {
+        val compiler = scopeAdmission(project, request, modelCompilation)
         val scopes =
-            when (
-                val admitted =
-                    AdmittedRelationScopes.compile(request, observation) { selected, constraints ->
-                        when (
-                            val compilation =
-                                scopeCompiler.compile(
-                                    project,
-                                    request,
-                                    modelCompilation,
-                                    selected,
-                                    constraints,
-                                    observation,
-                                )
-                        ) {
-                            is IntellijRelationScopeCompilation.Compiled ->
-                                io.github.amichne.kast.kernel.Refinement.Refined(compilation.scope)
-                            is IntellijRelationScopeCompilation.Rejected ->
-                                io.github.amichne.kast.kernel.Refinement.Rejected(
-                                    RelationCompilerRejection.SCOPE_REJECTED
-                                )
-                        }
-                    }
-            ) {
+            when (val admitted = AdmittedRelationScopes.compile(request, observation, compiler)) {
                 is io.github.amichne.kast.kernel.Refinement.Refined -> admitted.value
                 is io.github.amichne.kast.kernel.Refinement.Rejected -> return admitted
             }
@@ -216,29 +198,7 @@ internal class IntellijRelationCompilerQuery(
             }
 
         val callbacks =
-            when (
-                val admitted =
-                    CallbackEvidenceAccess.compile(scopes.search) { selected, constraints ->
-                        when (
-                            val compiled =
-                                scopeCompiler.compile(
-                                    project,
-                                    request,
-                                    modelCompilation,
-                                    selected,
-                                    constraints,
-                                    observation,
-                                )
-                        ) {
-                            is IntellijRelationScopeCompilation.Compiled ->
-                                io.github.amichne.kast.kernel.Refinement.Refined(compiled.scope)
-                            is IntellijRelationScopeCompilation.Rejected ->
-                                io.github.amichne.kast.kernel.Refinement.Rejected(
-                                    RelationCompilerRejection.SCOPE_REJECTED
-                                )
-                        }
-                    }
-            ) {
+            when (val admitted = CallbackEvidenceAccess.compile(scopes.search, compiler)) {
                 is io.github.amichne.kast.kernel.Refinement.Refined -> admitted.value
                 is io.github.amichne.kast.kernel.Refinement.Rejected -> return admitted
             }
@@ -246,6 +206,22 @@ internal class IntellijRelationCompilerQuery(
             admittedRead(request, scopes.search, projection, subject, callbacks, allowance)
         )
     }
+
+    private fun scopeAdmission(
+        project: Project,
+        request: RelationRequest,
+        modelCompilation: WorkspaceSearchScopeModelCompilation,
+    ): (SymbolSearchScope, SymbolDiscoveryConstraints) -> Refinement<CompiledRelationScope, RelationCompilerRejection> =
+        { selected, constraints ->
+            when (
+                val compiled =
+                    scopeCompiler.compile(project, request, modelCompilation, selected, constraints, observation)
+            ) {
+                is IntellijRelationScopeCompilation.Compiled -> Refinement.Refined(compiled.scope)
+                is IntellijRelationScopeCompilation.Rejected ->
+                    Refinement.Rejected(RelationCompilerRejection.SCOPE_REJECTED)
+            }
+        }
 
     private fun admittedRead(
         request: RelationRequest,
