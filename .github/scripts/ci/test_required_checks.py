@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """A skipped dependency is not evidence that a selected check succeeded."""
-from contextlib import redirect_stdout
-from copy import deepcopy
+
 import io
 import json
 import os
 import unittest
+from contextlib import redirect_stdout
+from copy import deepcopy
 from unittest.mock import patch
 
 from required_checks import Verdict, inspect, main
@@ -13,11 +14,18 @@ from required_checks import Verdict, inspect, main
 
 def docs_only_results():
     return {
-        "scope": {"result": "success", "outputs": {
-            "product": "run", "portable": "run", "documentation": "run", "gate_graph": "skip",
-        }},
-        "kotlin": {"result": "success"},
-        "portable": {"result": "success"},
+        "scope": {
+            "result": "success",
+            "outputs": {
+                "product": "skip",
+                "portable": "skip",
+                "documentation": "run",
+                "gate_graph": "skip",
+                "scope": "DOCUMENTATION",
+            },
+        },
+        "kotlin": {"result": "skipped"},
+        "portable": {"result": "skipped"},
         "documentation": {"result": "success"},
     }
 
@@ -34,6 +42,7 @@ class RequiredChecksTest(unittest.TestCase):
     def test_full_plan_requires_all_jobs_to_succeed(self):
         needs = docs_only_results()
         needs["scope"]["outputs"] = dict.fromkeys(("product", "portable", "documentation", "gate_graph"), "run")
+        needs["scope"]["outputs"]["scope"] = "FULL"
         needs["kotlin"]["result"] = "skipped"
         self.assertEqual(Verdict.CHECK_FAILED, inspect(needs))
         needs["kotlin"]["result"] = needs["portable"]["result"] = "success"
@@ -57,11 +66,34 @@ class RequiredChecksTest(unittest.TestCase):
         self.assertEqual(Verdict.INVALID_SELECTION, inspect(needs))
 
     def test_incomplete_or_contradictory_plans_reject(self):
-        for changes in ({"gate_graph": None}, {"product": "skip"}, {"portable": "skip"}):
+        for changes in (
+            {"gate_graph": None},
+            {"product": "run"},
+            {"portable": "run"},
+            {"scope": "FULL"},
+            {"scope": "unknown"},
+            {"scope": None},
+            {"documentation": "skip"},
+            {"gate_graph": "run"},
+        ):
             needs = docs_only_results()
             needs["scope"]["outputs"].update(changes)
             with self.subTest(changes=changes):
                 self.assertEqual(Verdict.INVALID_SELECTION, inspect(needs))
+
+    def test_product_plan_retains_the_original_product_proofs(self):
+        needs = docs_only_results()
+        needs["scope"]["outputs"].update(product="run", portable="run", documentation="skip", scope="PRODUCT")
+        needs["kotlin"]["result"] = needs["portable"]["result"] = "success"
+        needs["documentation"]["result"] = "skipped"
+        self.assertEqual(Verdict.COMPLETE, inspect(needs))
+
+    def test_unselected_jobs_must_really_be_skipped(self):
+        for result in ("success", "failure", "cancelled", ""):
+            needs = docs_only_results()
+            needs["kotlin"]["result"] = result
+            with self.subTest(result=result):
+                self.assertEqual(Verdict.CHECK_FAILED, inspect(needs))
 
     def test_missing_job_result_fails(self):
         needs = docs_only_results()
@@ -71,10 +103,19 @@ class RequiredChecksTest(unittest.TestCase):
     def test_cli_reports_and_fails_malformed_or_unsuccessful_results(self):
         failed = deepcopy(docs_only_results())
         failed["documentation"]["result"] = "failure"
-        for payload, code in ((json.dumps(docs_only_results()), 0), (json.dumps(failed), 1),
-                              ("{", 1), ("null", 1), ('{"scope":null}', 1)):
-            with self.subTest(payload=payload), patch.dict(os.environ, {"CI_NEEDS": payload}), \
-                    redirect_stdout(io.StringIO()), self.assertRaises(SystemExit) as failure:
+        for payload, code in (
+            (json.dumps(docs_only_results()), 0),
+            (json.dumps(failed), 1),
+            ("{", 1),
+            ("null", 1),
+            ('{"scope":null}', 1),
+        ):
+            with (
+                self.subTest(payload=payload),
+                patch.dict(os.environ, {"CI_NEEDS": payload}),
+                redirect_stdout(io.StringIO()),
+                self.assertRaises(SystemExit) as failure,
+            ):
                 main()
             self.assertEqual(code, failure.exception.code)
 

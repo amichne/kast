@@ -200,6 +200,8 @@ code_sources:
   - path: .github/scripts/ci/routine_gate.py
   - path: .github/scripts/ci/validation_scope.py
   - path: .github/scripts/ci/required_checks.py
+  - path: .github/scripts/ci/validation_outcome.py
+  - path: .github/scripts/ci/test_validation_outcome.py
   - path: .github/scripts/ci/verify-checks.py
   - path: .githooks/pre-push
   - path: distribution/release/plugin-release.gradle.kts
@@ -364,13 +366,42 @@ Default failure presentation reads a bounded tail of each child stream and gives
 It displays at most 12 details and one truncation notice.
 The child exit status remains authoritative, and `--verbose` preserves the complete child streams.
 
-CI selects documentation and graph checks on Linux before allocating product runners. Every PR runs product and portable validation, including documentation-only changes. The completion job requires every selected job to succeed. One product invocation tests and assembles the complete Control/Host pair at `0.0.<CI run number>`. Pre-push retains its published stable-version admission independently.
+CI classifies the exact changed-path window on Linux before allocating product runners.
+An audited edit to authored docs runs Mintlify, the Markdown parser, glossary tests, and glossary projection checks.
+Known regular main/test Kotlin sources in the listed product modules run product and portable validation.
+Installer examples, generated schemas, scripts, build configuration, protected paths, and unknown or mixed inputs keep full validation.
+The completion job requires every selected job to succeed and every excluded job to be skipped.
+It then seals a validation record with the exact source revision, source tree, comparison base, event, and producer run identities.
+One product invocation tests and assembles the complete Control/Host pair at `0.0.<CI run number>`.
+Pre-push keeps its published stable-version admission independently.
 
 The candidate's typed identity record retains the exact build commit, Git tree, producer run and attempt, platform, toolchain, and payload digests. Main CI reuses a successful same-repository PR candidate only when the PR head tree equals the merged main tree. Missing or expired records, fork producers, and changed trees require a fresh main candidate. Malformed records, damaged bytes, and incomplete observations reject reuse. Candidate retention is 30 days.
 
-Successful main CI triggers developer publication. Its trusted publication job downloads retained bytes without running Gradle or native-image. A separate promotion record binds the unchanged candidate to the successful main run and merged commit. The publisher rechecks producer success, complete asset inventory, checksums, source identity, and remote file digests. Existing releases must match exactly for retries. A delayed publisher can retain its immutable release but cannot update latest after main advances. The public `developer-latest` branch contains a pointer to the exact prerelease and original build revision. The installer accepts `--developer-latest`; stable version resolution ignores developer tags. Manual publication retries supply the successful current-main CI run ID.
+Successful main push CI requests developer promotion.
+The publisher first admits the validation outcome from that exact successful source, run, and attempt.
+Missing, malformed, contradictory, or mismatched outcome evidence rejects promotion.
+`DOCS_VALIDATED` completes without a candidate, promotion record, product release, or developer pointer update.
+`PRODUCT_VALIDATED` keeps the tested-candidate publication path.
+Its trusted publication job downloads retained bytes without running Gradle or native-image.
+A separate promotion record binds the unchanged candidate to the successful main run and merged commit.
+The publisher rechecks producer success, complete asset inventory, checksums, source identity, and remote file digests.
+Existing releases must match exactly for retries.
+A delayed publisher can keep its immutable release but cannot update latest after main advances.
+The public `developer-latest` branch contains a pointer to the exact prerelease and original build revision.
+The installer accepts `--developer-latest`; stable version resolution ignores developer tags.
+Manual publication retries supply the successful current-main push CI run ID.
 
-The product job restores Gradle task outputs and native reachability metadata. Main and same-repository PRs save cache entries; forks only restore trusted entries. A repository secret enables encrypted configuration-cache storage and is unavailable to fork PRs. CI pins GraalVM 25.0.2 and retains native analysis/resource metrics, finite build outcome records, and Gradle profile reports for matched comparisons. Native optimization remains unchanged. Stable full and component releases retain explicit versions that affect compiled bytes, so a different version requires another build. The existing stable release path rejects active producers before falling back to exact-version construction.
+When setup runs, the product job configures cache transport for eligible Gradle User Home state, task outputs, and native build tools.
+Only main push and main workflow-dispatch runs save cache entries.
+Pull requests, forks, merge groups, and other refs are read-only.
+A repository secret enables encrypted configuration-cache storage and is unavailable to fork PRs.
+Successful main candidate reuse skips Gradle setup.
+An authorized full CI dispatch on accepted main can seed the shared cache without automatic developer publication.
+Configured transport does not establish an observed task cache hit or lower build time.
+CI pins GraalVM 25.0.2 and keeps native analysis/resource metrics, finite build outcome records, and Gradle profile reports for matched comparisons.
+Native optimization remains unchanged.
+Stable full and component releases keep explicit versions that affect compiled bytes, so a different version requires another build.
+The existing stable release path rejects active producers before falling back to exact-version construction.
 
 The public installer reports the selected IDEA version and build before it fetches release-line-specific plugin bytes.
 An absent matching plugin rejects before installation effects.

@@ -60,6 +60,7 @@ jobs:
           --promotion-record build/promotion.json --github-output "$GITHUB_OUTPUT"
 
       - name: Publish retained candidate and latest pointer
+        if: steps.candidate.outputs.publication == 'PUBLISH'
         env:
           BUILD_SOURCE_SHA: ${{ steps.candidate.outputs.source_revision }}
           CANDIDATE_VERSION: ${{ steps.candidate.outputs.version }}
@@ -68,3 +69,7 @@ jobs:
           --version "$CANDIDATE_VERSION" --commit "$BUILD_SOURCE_SHA"
           --assets-directory build/candidate/payload
           --promotion-record build/promotion.json
+
+      - name: Record documentation validation without publication
+        if: steps.candidate.outputs.publication == 'DOCS_VALIDATED'
+        run: echo 'DOCS_VALIDATED — exact source validated; developer product pointer unchanged.' >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,7 @@
+{
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "strict",
+  "include": ["required_checks.py", "validation_scope.py", "validation_outcome.py", "verify_documentation.py"],
+  "reportMatchNotExhaustive": "error",
+  "reportUnnecessaryTypeIgnoreComment": "error"
+}
