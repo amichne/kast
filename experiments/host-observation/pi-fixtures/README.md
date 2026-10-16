@@ -7,17 +7,19 @@ owner with `QueryQuestionDocument.serializer()` and
 `CanonicalQueryCliDocuments.qualificationSerializer`. The result schema reuses
 `installedSemanticResultSchema(QUERY_RUN)`, which composes the actual complete,
 qualified and rejected serializers with existing local output definitions.
-The 2026-10-16 export uses source `31e70bec24ddff443aabebeec2a843f729ebe028`.
+The 2026-10-16 export uses source `0701112c6de3b2f06bc918420aaa19ad63a3b135`.
 `result_projection` keeps the exact callback result site, relationship direction, semantic basis, and selected result domain.
+`result_projection.subject` carries the enclosing exact reference.
+Relation and WALK admission reject a reference for another question or frontier.
 The exporter uses the CLI classpath from this task checkout and the compiled `query/contract` classes.
 Only `query-result.schema.json` changed. It includes the typed `ADMITTED` and `UNPROVEN` projection variants.
 The export does no semantic work and supplies no native qualification.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| `query-result.schema.json` | `c898511be108e9868914c679cf5f3ffd1d94106b08421be9f80d1e147bc242df` |
+| `query-result.schema.json` | `56133e94db66c49a2de745b18db1ce092d2d7c10abc42a43f2499a6e5f2b28c4` |
 | `protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt` | `7fad3ba487381dab19a441ff9e31e5871df954bcebbb5e66dd689fb08dff226c` |
-| `protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackResultProjectionDocument.kt` | `c070cbdde504f3a72b5bb0075a53fa63a63100c56500988b33346d549e923c0e` |
+| `protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackResultProjectionDocument.kt` | `220ca4f0759badc7bf77b6667947d2a8e37aee696fc9ec1e4ca07a04d658c904` |
 | `query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt` | `af0a890aa4e5e3019876aeeaaa439d13d0f32fc22acb80565f175b28957606e2` |
 
 `PiQuestionSchemaParityTest` compares all three committed schemas with the current owners.
