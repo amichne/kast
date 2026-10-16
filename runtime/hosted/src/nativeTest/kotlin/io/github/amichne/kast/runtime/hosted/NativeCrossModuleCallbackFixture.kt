@@ -36,76 +36,88 @@ internal class NativeCrossModuleCallbackFixture(
             val sdk =
                 JavaSdk.getInstance().createJdk("cross-module-callback-jdk", System.getProperty("java.home"), false)
             registerSdk(sdk)
-            val units =
-                WriteCommandAction.writeCommandAction(project).compute<List<UnitRoot>, RuntimeException> {
-                    val manager = ModuleManager.getInstance(project)
-                    CrossModuleCallbackUnit.entries.map { unit ->
-                        val directory = base.createChildDirectory(this, unit.directory)
-                        val native =
-                            when (unit) {
-                                CrossModuleCallbackUnit.CLIENT -> clientModule
-                                CrossModuleCallbackUnit.RELAY,
-                                CrossModuleCallbackUnit.SIGNAL ->
-                                    manager.newModule(
-                                        base.toNioPath().resolve("${unit.directory}.iml"),
-                                        JavaModuleType.getModuleType().id,
-                                    )
-                            }
-                        configure(native, directory, sdk)
-                        UnitRoot(unit, native, directory)
-                    }
-                }
-            val client = units.single { it.unit == CrossModuleCallbackUnit.CLIENT }.module
-            units
-                .filter { it.unit != CrossModuleCallbackUnit.CLIENT }
-                .forEach {
-                    ModuleRootModificationUtil.addDependency(client, it.module)
-                }
-            val relay = units.single { it.unit == CrossModuleCallbackUnit.RELAY }.module
-            val signal = units.single { it.unit == CrossModuleCallbackUnit.SIGNAL }.module
-            check(units.map { it.module }.distinct().size == 3) { "The fixture needs three distinct native modules" }
-            check(ModuleRootManager.getInstance(client).dependencies.toSet().containsAll(listOf(relay, signal))) {
-                "The client must depend on both callback endpoints"
-            }
-            check(signal !in ModuleRootManager.getInstance(relay).dependencies) {
-                "The callback receiver must not depend on the supplied target"
-            }
-            val files =
-                WriteCommandAction.writeCommandAction(project).compute<List<VirtualFile>, RuntimeException> {
-                    units.map { unit ->
-                        unit.directory.createChildData(this, unit.unit.fileName).also { file ->
-                            file.setBinaryContent(unit.unit.source(supply).toByteArray())
-                        }
-                    }
-                }
+            val units = createUnits(sdk)
+            connectUnits(units)
+            val files = sourceFiles(units, supply)
             PsiDocumentManager.getInstance(project).commitAllDocuments()
             IndexingTestUtil.waitUntilIndexesAreReady(project)
             val root = CanonicalWorkspaceRoot.fromCanonicalPath(base.toNioPath()).traceRefined()
-            val compilation =
-                WorkspaceSearchScopeModel.compile(
-                    root,
-                    ImportedWorkspaceModelState.COMPLETE,
-                    units.map {
-                        WorkspaceSourceRootBoundary(
-                            ideaModuleName = it.module.name,
-                            linkedBuildRoot = base.toNioPath(),
-                            gradleProjectPath = ":${it.unit.directory}",
-                            sourceSetName = "main",
-                            sourceRoot = it.directory.toNioPath(),
-                            sourceKind = WorkspaceSourceRootKind.PRODUCTION,
-                            provenance = WorkspaceSourceRootProvenance.AUTHORED,
-                        )
-                    },
-                )
-            val model =
-                when (compilation) {
-                    is WorkspaceSearchScopeModelCompilation.Compiled -> compilation.model
-                    is WorkspaceSearchScopeModelCompilation.Rejected ->
-                        error("Invalid authored module model: $compilation")
-                }
-            fixture = NativeScopedTraceFixture(project, root, model, files)
+            fixture =
+                NativeScopedTraceFixture(project = project, root = root, model = model(root, units), files = files)
         }
         return fixture
+    }
+
+    private fun createUnits(sdk: Sdk): List<UnitRoot> =
+        WriteCommandAction.writeCommandAction(project).compute<List<UnitRoot>, RuntimeException> {
+            val manager = ModuleManager.getInstance(project)
+            CrossModuleCallbackUnit.entries.map { unit ->
+                val directory = base.createChildDirectory(this, unit.directory)
+                val native =
+                    when (unit) {
+                        CrossModuleCallbackUnit.CLIENT -> clientModule
+                        CrossModuleCallbackUnit.RELAY,
+                        CrossModuleCallbackUnit.SIGNAL ->
+                            manager.newModule(
+                                base.toNioPath().resolve("${unit.directory}.iml"),
+                                JavaModuleType.getModuleType().id,
+                            )
+                    }
+                configure(native, directory, sdk)
+                UnitRoot(unit, native, directory)
+            }
+        }
+
+    private fun connectUnits(units: List<UnitRoot>) {
+        val client = units.single { it.unit == CrossModuleCallbackUnit.CLIENT }.module
+        units
+            .filter { it.unit != CrossModuleCallbackUnit.CLIENT }
+            .forEach { unit ->
+                ModuleRootModificationUtil.addDependency(client, unit.module)
+            }
+        val relay = units.single { it.unit == CrossModuleCallbackUnit.RELAY }.module
+        val signal = units.single { it.unit == CrossModuleCallbackUnit.SIGNAL }.module
+        check(units.map { it.module }.distinct().size == CrossModuleCallbackUnit.entries.size) {
+            "The fixture needs distinct native modules"
+        }
+        check(ModuleRootManager.getInstance(client).dependencies.toSet().containsAll(listOf(relay, signal))) {
+            "The client must depend on both callback endpoints"
+        }
+        check(signal !in ModuleRootManager.getInstance(relay).dependencies) {
+            "The callback receiver must not depend on the supplied target"
+        }
+    }
+
+    private fun sourceFiles(units: List<UnitRoot>, supply: CrossModuleCallbackSupply): List<VirtualFile> =
+        WriteCommandAction.writeCommandAction(project).compute<List<VirtualFile>, RuntimeException> {
+            units.map { unit ->
+                unit.directory.createChildData(this, unit.unit.fileName).also { file ->
+                    file.setBinaryContent(unit.unit.source(supply).toByteArray())
+                }
+            }
+        }
+
+    private fun model(root: CanonicalWorkspaceRoot, units: List<UnitRoot>): WorkspaceSearchScopeModel {
+        val compilation =
+            WorkspaceSearchScopeModel.compile(
+                root,
+                ImportedWorkspaceModelState.COMPLETE,
+                units.map { unit ->
+                    WorkspaceSourceRootBoundary(
+                        ideaModuleName = unit.module.name,
+                        linkedBuildRoot = base.toNioPath(),
+                        gradleProjectPath = ":${unit.unit.directory}",
+                        sourceSetName = "main",
+                        sourceRoot = unit.directory.toNioPath(),
+                        sourceKind = WorkspaceSourceRootKind.PRODUCTION,
+                        provenance = WorkspaceSourceRootProvenance.AUTHORED,
+                    )
+                },
+            )
+        return when (compilation) {
+            is WorkspaceSearchScopeModelCompilation.Compiled -> compilation.model
+            is WorkspaceSearchScopeModelCompilation.Rejected -> error("Invalid authored module model: $compilation")
+        }
     }
 
     private fun configure(module: Module, directory: VirtualFile, sdk: Sdk) {

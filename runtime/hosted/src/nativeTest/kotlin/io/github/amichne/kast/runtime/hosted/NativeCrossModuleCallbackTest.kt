@@ -18,11 +18,11 @@ class NativeCrossModuleCallbackTest : NativeSmartModeFixtureTest() {
     fun testDirectCallerControl() = runBlocking {
         val result =
             related(
-                CrossModuleCallbackSupply.DIRECT,
-                CrossModuleCallbackUnit.SIGNAL,
-                "pulse",
-                RelationKindDocument.CALLERS,
-                CrossModuleCallbackUnit.CLIENT,
+                supply = CrossModuleCallbackSupply.DIRECT,
+                root = CrossModuleCallbackUnit.SIGNAL,
+                name = "pulse",
+                relation = RelationKindDocument.CALLERS,
+                destination = CrossModuleCallbackUnit.CLIENT,
             )
         val callers =
             result.items.values.map { identity(checkNotNull((it as QueryResultItemDocument.ExactSymbol).signature)) }
@@ -32,11 +32,11 @@ class NativeCrossModuleCallbackTest : NativeSmartModeFixtureTest() {
     fun testScopedCallersKeepTheOutsideReceiverAndForwarding() = runBlocking {
         val result =
             related(
-                CrossModuleCallbackSupply.ANONYMOUS,
-                CrossModuleCallbackUnit.SIGNAL,
-                "pulse",
-                RelationKindDocument.CALLERS,
-                CrossModuleCallbackUnit.CLIENT,
+                supply = CrossModuleCallbackSupply.ANONYMOUS,
+                root = CrossModuleCallbackUnit.SIGNAL,
+                name = "pulse",
+                relation = RelationKindDocument.CALLERS,
+                destination = CrossModuleCallbackUnit.CLIENT,
             )
         assertTrue("A non-inline callback must not fabricate a named caller", result.items.values.isEmpty())
         val callback = result.relationObservations.values.flatMap { it.callbackObservations.values }.single()
@@ -63,10 +63,10 @@ class NativeCrossModuleCallbackTest : NativeSmartModeFixtureTest() {
         val protocol = fixture.protocol()
         val discovered =
             protocol.execute(
-                CrossModuleCallbackRequests.discover(root, name, supply),
-                fixture.lease,
-                CrossModuleCallbackRequests.budget,
-                CrossModuleCallbackRequests.policy,
+                request = CrossModuleCallbackRequests.discover(root, name, supply),
+                lease = fixture.lease,
+                budget = CrossModuleCallbackRequests.budget,
+                policy = CrossModuleCallbackRequests.policy,
             )
         assertTrue(
             "The real module fixture must resolve its exact root: $discovered",
@@ -77,11 +77,13 @@ class NativeCrossModuleCallbackTest : NativeSmartModeFixtureTest() {
                 as QueryResultItemDocument.ExactSymbol
         val outcome =
             protocol.execute(
-                CrossModuleCallbackRequests.related(selected.ref, relation, destination),
-                fixture.lease,
-                CrossModuleCallbackRequests.budget,
-                CrossModuleCallbackRequests.policy,
+                request = CrossModuleCallbackRequests.related(selected.ref, relation, destination),
+                lease = fixture.lease,
+                budget = CrossModuleCallbackRequests.budget,
+                policy = CrossModuleCallbackRequests.policy,
             )
+        println("Cross-module $relation terminations=${fixture.observation.terminations}")
+        println("Cross-module discovery and relation counters=${fixture.observation.snapshot()}")
         assertTrue(
             "Expected complete $relation with outside callback evidence: $outcome",
             outcome is OperationOutcome.Complete,
