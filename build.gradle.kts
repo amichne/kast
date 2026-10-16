@@ -379,22 +379,47 @@ val agentSessionSetupTest = tasks.register<Exec>("agentSessionSetupTest") {
 
 tasks.named("check") { dependsOn(agentSessionSetupTest) }
 
+val documentationMarkdownDependencies = tasks.register<Exec>("documentationMarkdownDependencies") {
+    group = "verification"
+    description = "Installs the locked CommonMark parser without package scripts."
+    inputs.files("docs/tooling/markdown/package.json", "docs/tooling/markdown/package-lock.json", "mise.toml")
+    outputs.dir("docs/tooling/markdown/node_modules")
+    val emptyConfig = layout.buildDirectory.file("documentation/npm-global-empty")
+    environment("NPM_CONFIG_USERCONFIG", "/dev/null")
+    environment("NPM_CONFIG_GLOBALCONFIG", emptyConfig.get().asFile.absolutePath)
+    environment("NPM_CONFIG_REGISTRY", "https://registry.npmjs.org")
+    environment("NPM_CONFIG_CACHE", layout.buildDirectory.dir("documentation/npm-cache").get().asFile.absolutePath)
+    doFirst {
+        emptyConfig.get().asFile.apply { parentFile.mkdirs(); writeText("") }
+    }
+    commandLine("npm", "ci", "--ignore-scripts", "--engine-strict", "--prefix", "docs/tooling/markdown")
+}
+
+val verifyDocumentationMarkdown = tasks.register<Exec>("verifyDocumentationMarkdown") {
+    group = "verification"
+    description = "Examines the typed CommonMark adapter."
+    dependsOn(documentationMarkdownDependencies)
+    inputs.files("docs/tooling/markdown/parse.ts", "docs/tooling/markdown/tsconfig.json", "docs/tooling/markdown/package-lock.json")
+    commandLine("npm", "run", "check", "--prefix", "docs/tooling/markdown")
+}
+
 val documentationToolingTest = tasks.register<Exec>("documentationToolingTest") {
     group = "verification"
     description = "Exercises local glossary grammar, scope and projection rejection."
-    inputs.files(fileTree("docs/tooling") { exclude(".venv/**", "__pycache__/**", ".pytest_cache/**") })
+    dependsOn(verifyDocumentationMarkdown)
+    inputs.files(fileTree("docs/tooling") { exclude(".venv/**", "__pycache__/**", ".pytest_cache/**", "markdown/node_modules/**") })
     inputs.files("docs/glossary.json", "docs/GLOSSARY.md")
     inputs.dir("config/vale/styles/Kast")
-    commandLine("uv", "run", "--locked", "--project", "docs/tooling", "pytest", "docs/tooling/test_glossary.py")
+    commandLine("uv", "run", "--locked", "--project", "docs/tooling", "pytest", "docs/tooling")
 }
 
 val verifyDocumentationGlossary = tasks.register<Exec>("verifyDocumentationGlossary") {
     group = "verification"
     description = "Rejects glossary projection drift and rejected forms in current prose."
     dependsOn(documentationToolingTest)
-    inputs.files(fileTree("docs/tooling") { exclude(".venv/**", "__pycache__/**", ".pytest_cache/**") })
+    inputs.files(fileTree("docs/tooling") { exclude(".venv/**", "__pycache__/**", ".pytest_cache/**", "markdown/node_modules/**") })
     inputs.files("docs/glossary.json", "docs/GLOSSARY.md", "README.md", "AGENTS.md")
-    inputs.files(fileTree("docs") { include("**/*.md", "**/*.mdx", "**/*.txt"); exclude("**/.venv/**", "**/build/**") })
+    inputs.files(fileTree("docs") { include("**/*.md", "**/*.mdx", "**/*.txt"); exclude("**/.venv/**", "**/build/**", "**/node_modules/**") })
     inputs.dir("config/vale/styles/Kast")
     val scopedGuides = fileTree(rootDir) { include("**/AGENTS.md"); exclude("**/build/**", "**/.gradle/**", "**/.venv/**", "**/node_modules/**") }
     inputs.files(scopedGuides)
@@ -449,7 +474,7 @@ val verifyConfigurationIngress = tasks.register<Exec>("verifyConfigurationIngres
     inputs.files(fileTree(layout.projectDirectory) {
         include("**/src/main/**/*.kt", "**/src/main/**/*.kts", "**/src/gradleTooling/**/*.kt",
             "**/src/main/scripts/**", "*.kts", "install.sh", "packaging/*.sh", "packaging/*.py")
-        exclude("**/build/**", "**/.gradle/**")
+        exclude("**/build/**", "**/.gradle/**", "**/node_modules/**")
     })
     commandLine("python3", layout.projectDirectory.file("packaging/configuration_ingress.py"),
         "--root", layout.projectDirectory, "--schema", generatedConfigurationCatalogue.get().asFile,

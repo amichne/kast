@@ -20,14 +20,14 @@ default = true
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
-include = ["glossary_json.py", "check_glossary.py", "test_glossary.py"]
+include = ["glossary_json.py", "check_glossary.py", "markdown_parser.py", "test_glossary.py", "test_markdown_parser.py"]
 reportMatchNotExhaustive = "error"
 reportUnnecessaryTypeIgnoreComment = "error"
 
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-include = ["glossary_json.py", "check_glossary.py", "test_glossary.py"]
+include = ["glossary_json.py", "check_glossary.py", "markdown_parser.py", "test_glossary.py", "test_markdown_parser.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "S"]

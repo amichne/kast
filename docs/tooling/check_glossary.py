@@ -15,6 +15,7 @@
 import argparse
 import hashlib
 import json
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -32,6 +33,13 @@ from glossary_json import (
     render_markdown,
     vale_rules,
 )
+from markdown_parser import (
+    ParserCode,
+    ParserFailure,
+    ProseDocument,
+    SourceDocument,
+    prepare_sources,
+)
 
 GENERATED_DIRECTORIES = frozenset(
     {".git", ".gradle", ".venv", "__pycache__", "build", "node_modules"}
@@ -48,7 +56,7 @@ class Failure(StrEnum):
 
 @dataclass(frozen=True)
 class RejectionReport:
-    code: Failure | FailureCode
+    code: Failure | FailureCode | ParserCode
     detail: str
     type: Literal["REJECTED"] = "REJECTED"
 
@@ -90,6 +98,21 @@ class Request:
     check_vale: Path | None
 
 
+@dataclass(frozen=True)
+class _ScopedInput:
+    source: SourceDocument
+    sha256: str
+
+
+@dataclass(frozen=True)
+class _ExcludedInput:
+    path: Path
+    sha256: str
+
+
+type BatchParser = Callable[[tuple[SourceDocument, ...]], tuple[ProseDocument, ...] | ParserFailure]
+
+
 def finding(item: Occurrence) -> Finding | Canonical:
     if isinstance(item.form, Canonical):
         return item.form
@@ -103,7 +126,9 @@ def finding(item: Occurrence) -> Finding | Canonical:
     )
 
 
-def evaluate(request: Request) -> GlossaryReport | RejectionReport:
+def evaluate(
+    request: Request, parser: BatchParser = prepare_sources
+) -> GlossaryReport | RejectionReport:
     glossary = load_glossary(request.source)
     if isinstance(glossary, Rejected):
         return RejectionReport(glossary.code, glossary.detail)
@@ -125,6 +150,7 @@ def evaluate(request: Request) -> GlossaryReport | RejectionReport:
                             paths[path] = None
             else:
                 paths[document] = None
+        inputs: list[_ScopedInput | _ExcludedInput] = []
         for path in paths:
             if not path.is_file() or path.suffix not in PROSE_SUFFIXES:
                 return RejectionReport(
@@ -132,15 +158,32 @@ def evaluate(request: Request) -> GlossaryReport | RejectionReport:
                 )
             scoped = in_scope(glossary, path.resolve(), scope_root)
             source = path.read_bytes()
-            hits = occurrences(glossary, source.decode("utf-8"), path) if scoped else ()
+            digest = hashlib.sha256(source).hexdigest()
+            inputs.append(
+                _ScopedInput(SourceDocument(path, source.decode("utf-8")), digest)
+                if scoped
+                else _ExcludedInput(path, digest)
+            )
+        parsed = parser(tuple(item.source for item in inputs if isinstance(item, _ScopedInput)))
+        if isinstance(parsed, ParserFailure):
+            return RejectionReport(parsed.code, parsed.detail)
+        admitted = iter(parsed)
+        for item in inputs:
+            match item:
+                case _ScopedInput():
+                    path = item.source.path
+                    hits = occurrences(glossary, next(admitted))
+                    scope: Literal["IN_SCOPE", "OUT_OF_SCOPE"] = "IN_SCOPE"
+                case _ExcludedInput():
+                    path, hits, scope = item.path, (), "OUT_OF_SCOPE"
             findings = tuple(
                 result for item in hits if not isinstance(result := finding(item), Canonical)
             )
             documents.append(
                 DocumentReport(
                     str(path),
-                    "IN_SCOPE" if scoped else "OUT_OF_SCOPE",
-                    hashlib.sha256(source).hexdigest(),
+                    scope,
+                    item.sha256,
                     findings,
                 )
             )

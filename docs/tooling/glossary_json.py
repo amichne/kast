@@ -14,6 +14,8 @@ from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import SchemaError
 from jsonschema.protocols import Validator
 
+from markdown_parser import LexicalProse, MarkdownProse, ProseDocument
+
 SCHEMA = Path(__file__).with_name("glossary.schema.json")
 
 
@@ -564,6 +566,7 @@ class _InlineMask:
     text: str
     state: _InlineState
     code_spans: tuple[range, ...]
+    comment_spans: tuple[range, ...]
 
 
 def _mask_inline(
@@ -577,10 +580,11 @@ def _mask_inline(
     line = source[index]
     parts: list[str] = []
     code_spans: list[range] = []
+    comment_spans: list[range] = []
     cursor = 0
     if isinstance(state, _CodeEnd):
         if index < state.line:
-            return _InlineMask(" " * len(line), state, (range(len(line)),))
+            return _InlineMask(" " * len(line), state, (range(len(line)),), ())
         cursor = state.column
         parts.append(" " * cursor)
         code_spans.append(range(cursor))
@@ -590,8 +594,10 @@ def _mask_inline(
             end = line.find("-->", cursor)
             if end == -1:
                 parts.append(" " * (len(line) - cursor))
-                return _InlineMask("".join(parts), state, tuple(code_spans))
+                comment_spans.append(range(cursor, len(line)))
+                return _InlineMask("".join(parts), state, tuple(code_spans), tuple(comment_spans))
             parts.append(" " * (end + 3 - cursor))
+            comment_spans.append(range(cursor, end + 3))
             cursor = end + 3
             state = "PROSE"
             continue
@@ -611,6 +617,7 @@ def _mask_inline(
             continue
         if token[0] == "<!--":
             parts.append(" " * len(token[0]))
+            comment_spans.append(range(start, end))
             cursor = end
             state = "COMMENT"
             continue
@@ -621,12 +628,12 @@ def _mask_inline(
         elif closing.line > index:
             parts.append(" " * (len(line) - start))
             code_spans.append(range(start, len(line)))
-            return _InlineMask("".join(parts), closing, tuple(code_spans))
+            return _InlineMask("".join(parts), closing, tuple(code_spans), tuple(comment_spans))
         else:
             cursor = closing.column
             parts.append(" " * (cursor - start))
             code_spans.append(range(start, cursor))
-    return _InlineMask("".join(parts), state, tuple(code_spans))
+    return _InlineMask("".join(parts), state, tuple(code_spans), tuple(comment_spans))
 
 
 def _frontmatter_lines(source: tuple[str, ...]) -> range:
@@ -725,13 +732,28 @@ def _mask_link_destinations(line: str, source: str) -> str:
     return "".join(parts)
 
 
-def prose_lines(text: str, markup: Literal["markdown", "mdx"]) -> tuple[str, ...]:
-    """Conservative lexical view. Vale remains the native markup parser."""
+@dataclass(frozen=True, slots=True)
+class _LexicalView:
+    lines: tuple[str, ...]
+    comments: tuple[range, ...]
+
+
+def _mask_urls(line: str) -> str:
+    return re.sub(r"https?://\S+", lambda match: " " * len(match[0]), line)
+
+
+def _lexical_view(text: str, markup: Literal["markdown", "mdx"]) -> _LexicalView:
     lines: list[str] = []
     state: _BlockState = "PROSE"
     containers: tuple[int, ...] = ()
     paragraph: Literal["OPEN", "CLOSED"] = "CLOSED"
     source = tuple(text.splitlines())
+    offsets: list[int] = []
+    position = 0
+    for raw in text.splitlines(keepends=True):
+        offsets.append(position)
+        position += len(raw)
+    comments: list[range] = []
     frontmatter = _frontmatter_lines(source)
     for index, line in enumerate(source):
         if index in frontmatter:
@@ -789,9 +811,13 @@ def prose_lines(text: str, markup: Literal["markdown", "mdx"]) -> tuple[str, ...
             if fence != "NOT_FENCE":
                 assert_never(fence)
         mask = _mask_inline(source, index, state, markup, containers, inline_scope)
+        comments.extend(
+            range(offsets[index] + span.start, offsets[index] + span.stop)
+            for span in mask.comment_spans
+        )
         line, state = mask.text, mask.state
         line = _mask_link_destinations(line, source[index])
-        line = re.sub(r"https?://\S+", lambda m: " " * len(m[0]), line)
+        line = _mask_urls(line)
         visible_content = line.expandtabs(4)[prefix_columns:]
         paragraph = (
             "OPEN"
@@ -799,16 +825,58 @@ def prose_lines(text: str, markup: Literal["markdown", "mdx"]) -> tuple[str, ...
             else "CLOSED"
         )
         lines.append(line)
-    return tuple(lines)
+    return _LexicalView(tuple(lines), tuple(comments))
 
 
-def occurrences(glossary: Glossary, text: str, path: Path) -> tuple[Occurrence, ...]:
+def prose_lines(text: str, markup: Literal["markdown", "mdx"]) -> tuple[str, ...]:
+    return _lexical_view(text, markup).lines
+
+
+def _markdown_lines(prose: MarkdownProse) -> tuple[str, ...]:
+    text = prose.source.text
+    visible = [char if char in "\r\n" else " " for char in text]
+    comment_source = list(text)
+    for span in prose.ranges:
+        if span.kind == "CODE":
+            comment_source[span.start : span.end] = [
+                char if char in "\r\n" else " " for char in text[span.start : span.end]
+            ]
+    comments = _lexical_view("".join(comment_source), "markdown").comments
+    legacy = ""
+    if any(span.kind == "LEGACY_OPAQUE" for span in prose.ranges):
+        # Opaque markup keeps the established lexical policy, including comment suffixes.
+        masked = prose_lines(text, "markdown")
+        parts: list[str] = []
+        for raw, line in zip(text.splitlines(keepends=True), masked, strict=True):
+            content = raw.rstrip("\r\n")
+            parts.append(line.ljust(len(content)) + raw[len(content) :])
+        legacy = "".join(parts)
+    for span in prose.ranges:
+        if span.kind == "CODE":
+            continue
+        source = text if span.kind == "TEXT" else legacy
+        visible[span.start : span.end] = source[span.start : span.end]
+    for span in comments:
+        visible[span.start : span.stop] = [
+            char if char in "\r\n" else " " for char in text[span.start : span.stop]
+        ]
+    return tuple(_mask_urls(line) for line in "".join(visible).splitlines())
+
+
+def occurrences(glossary: Glossary, prose: ProseDocument) -> tuple[Occurrence, ...]:
     found: list[Occurrence] = []
-    lines = (
-        tuple(text.splitlines())
-        if path.suffix.lower() == ".txt"
-        else prose_lines(text, "mdx" if path.suffix.lower() == ".mdx" else "markdown")
-    )
+    path, text = prose.source.path, prose.source.text
+    match prose:
+        case MarkdownProse():
+            lines = _markdown_lines(prose)
+        case LexicalProse():
+            lines = (
+                tuple(text.splitlines())
+                if path.suffix.lower() == ".txt"
+                else prose_lines(text, "mdx")
+            )
+        case _:
+            assert_never(prose)
     for line_number, line in enumerate(lines, 1):
         for entry in glossary.entries:
             for form in (Canonical(entry.term), *entry.rejected_forms):

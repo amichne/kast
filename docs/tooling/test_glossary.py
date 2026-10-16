@@ -11,15 +11,25 @@ import pytest
 
 from glossary_json import (
     FailureCode,
+    Glossary,
     Rejected,
     load_glossary,
-    occurrences,
     render_markdown,
     vale_rules,
 )
+from glossary_json import (
+    occurrences as admitted_occurrences,
+)
+from markdown_parser import ParserFailure, SourceDocument, prepare_sources
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = Path(__file__).with_name("check_glossary.py")
+
+
+def occurrences(glossary: Glossary, text: str, path: Path):
+    prepared = prepare_sources((SourceDocument(path, text),))
+    assert not isinstance(prepared, ParserFailure), prepared
+    return admitted_occurrences(glossary, prepared[0])
 
 
 def run(*args: str) -> subprocess.CompletedProcess[str]:
@@ -896,4 +906,85 @@ def test_link_admission_keeps_malformed_input_visible(
     glossary = load_glossary(ROOT / "docs/glossary.json")
     assert not isinstance(glossary, Rejected)
     hits = occurrences(glossary, text, Path("guide" + suffix))
+    assert tuple((hit.line, hit.start, hit.end) for hit in hits) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("> ```\n> saved result\n> ```", ()),
+        ("> A saved result.\n", ((1, 5, 16),)),
+        ("> ```\n> saved result\n", ()),
+        ("> ```\n> saved result\nA saved result.", ((3, 3, 14),)),
+        ("> ```\n> saved result\n\nA saved result.", ((4, 3, 14),)),
+        ("> > ```\n> > saved result\n> > ```\nA saved result.", ((4, 3, 14),)),
+        ("> > ```\n> saved result\n> > ```\n> saved result", ((2, 3, 14), (4, 3, 14))),
+        ("> ```\n>> saved result\n> ```\nA saved result.", ((4, 3, 14),)),
+        (">     saved result\nA saved result.", ((2, 3, 14),)),
+        ("> A paragraph.\n>     saved result\n", ((2, 7, 18),)),
+        ("> A paragraph.\n>\n>     saved result\nA saved result.", ((4, 3, 14),)),
+        ("> A paragraph.\n\n>     saved result\nA saved result.", ((4, 3, 14),)),
+        (">     saved result\n    A saved result.", ()),
+        ("> Use `code\n> saved result\n> ` here.", ()),
+        ("> Use `code\nsaved result\n> ` here.", ()),
+        ("> Use `code\n> saved result\n` here.", ()),
+        ("> Use `code\n>\nsaved result\n` here.", ((3, 1, 12),)),
+        ("> Use `code\n\nsaved result\n` here.", ((3, 1, 12),)),
+        ("> Use `code\n>> saved result\n> ` here.", ((2, 4, 15),)),
+        ("> > A paragraph.\n> A saved result.", ((2, 5, 16),)),
+        ("> A paragraph.\n    A saved result.", ((2, 7, 18),)),
+        ("> Use `code\n# saved result\n` here.", ((2, 3, 14),)),
+        ("> Use `code\n- saved result\n` here.", ((2, 3, 14),)),
+        ("> Use `code\n2. saved result\n` here.", ((2, 4, 15),)),
+        ("> - ```\n>   saved result\n>   ```\nA saved result.", ((4, 3, 14),)),
+        ("> - Item\n>\n>   A saved result.", ((3, 7, 18),)),
+        ("> - Item\n>\n>       saved result\nA saved result.", ((4, 3, 14),)),
+        ("\\> A saved result.", ((1, 6, 17),)),
+        ("`> saved result`\nA saved result.", ((2, 3, 14),)),
+        ("> ```code```\n> A saved result.", ((2, 5, 16),)),
+        (
+            "> A saved result.\n> ```\n> saved result\n> ```\n> A saved result.",
+            ((1, 5, 16), (5, 5, 16)),
+        ),
+    ],
+    ids=[
+        "reported-fence",
+        "quoted-prose",
+        "unclosed-fence",
+        "fence-ends-at-root",
+        "fence-ends-at-blank",
+        "nested-fence",
+        "fence-ends-at-parent",
+        "extra-quote-marker-is-code",
+        "indented-code",
+        "indent-does-not-interrupt",
+        "code-after-quoted-blank",
+        "code-after-root-blank",
+        "code-does-not-gain-laziness",
+        "explicit-inline-code",
+        "lazy-inline-body",
+        "lazy-inline-close",
+        "quoted-blank-ends-inline",
+        "root-blank-ends-inline",
+        "nested-quote-ends-inline",
+        "nested-lazy-prose",
+        "lazy-indented-prose",
+        "heading-ends-quote",
+        "list-ends-quote",
+        "noninitial-list-is-lazy",
+        "quoted-list-fence",
+        "quoted-list-prose",
+        "quoted-list-code",
+        "escaped-marker",
+        "prefix-in-code",
+        "invalid-fence-info",
+        "prefix-prose-suffix",
+    ],
+)
+def test_commonmark_quote_container_owns_code_and_visible_prose(
+    text: str, expected: tuple[tuple[int, int, int], ...]
+) -> None:
+    glossary = load_glossary(ROOT / "docs/glossary.json")
+    assert not isinstance(glossary, Rejected)
+    hits = occurrences(glossary, text, Path("guide.md"))
     assert tuple((hit.line, hit.start, hit.end) for hit in hits) == expected

@@ -20,20 +20,59 @@ Exit `1` means that scoped prose contains a replacement target or review target.
 Exit `2` means that an input, grammar, local effect, or projection failed.
 The JSON report keeps the glossary digest, document digests, findings, and source locations.
 
-The lexical procedure excludes frontmatter, code spans, fenced examples, comments, and link destinations.
-It applies the declared include and exclude patterns, with the longest label at overlapping locations.
+CommonMark documents use `mdast-util-from-markdown` 2.0.2 with explicit YAML frontmatter extensions.
+The fences start on the first line with `---` and end with `---` or `...`.
+Each delimiter starts in column one and permits trailing spaces or tabs.
+An incomplete delimiter pair remains Markdown. The adapter does not parse YAML values.
+The adapter excludes code, frontmatter, and link destinations through native source ranges.
+It matches raw glossary literals, with exact source positions for repeated text, escapes, and Unicode.
+It does not match a term that needs entity decoding.
+Opaque HTML keeps the earlier lexical policy, including visible text, attribute text, and prose after a comment terminator.
+Image alternatives and reference definitions keep that same conservative policy.
+Native code ranges protect literal comment markers before the lexical comment policy applies.
+This opaque-markup policy does not claim rendering semantics.
+
+MDX keeps the earlier lexical procedure. Plain text keeps literal scanning.
+Neither path invokes the CommonMark parser.
+CommonMark and MDX keep the earlier URL mask.
+All paths apply the declared include and exclude patterns, with the longest label at overlapping locations.
 Directory scans omit Git metadata, Gradle state, virtual environments, Python caches, build outputs, and Node dependencies before file selection.
-Vale supplies a separate native markup parser. Neither procedure proves semantic equivalence, current source truth, or reader comprehension.
+Vale supplies a separate native markup parser.
+These procedures do not prove semantic equivalence, current source truth, or reader comprehension.
+
+The CLI sends all scoped CommonMark documents through one parser process.
+The adapter admits source identities and immutable ranges before the glossary matcher reads them.
+It converts UTF-16 offsets to Python source positions and rejects offsets inside surrogate pairs.
+The process has a 30-second limit, an 8-MiB request limit, and a 32-MiB response limit.
+A batch admits at most 4,096 CommonMark documents. Each document admits at most 262,144 ranges.
+Parser failures stop the scan with a finite `MARKDOWN_*` code. No lexical fallback replaces a failed parser.
+`MARKDOWN_START` means that Node cannot start. `MARKDOWN_RUNTIME` means that its version differs from the declared runtime.
+`MARKDOWN_INPUT` rejects the request contract. `MARKDOWN_LIMIT` rejects a size or count limit.
+`MARKDOWN_PARSE` reports a parser failure. `MARKDOWN_NODE` rejects an unknown node type.
+`MARKDOWN_RESPONSE` rejects the response contract or source identity.
+`MARKDOWN_EXIT` reports a child exit without a response. `MARKDOWN_TIMEOUT` reports the process time limit.
 
 ## Development
+
+Node 24.21.0 is a direct runtime dependency in the root `mise.toml`.
+The parser uses the local `npm` lock. It does not import a global Mintlify installation or the Node dependency of Pyright.
+The Gradle tasks install locked `npm` dependencies with package scripts off and isolated `npm` configuration.
+CI pins the same Node version.
+
+From the repository root, install the locked parser dependencies:
+
+```shell
+mise exec -- ./gradlew documentationMarkdownDependencies
+```
 
 From this directory, run:
 
 ```shell
-uv run --locked pytest
-uv run --locked pyright
-uv run --locked ruff format --check .
-uv run --locked ruff check .
+mise exec -- npm run check --prefix markdown
+mise exec -- uv run --locked pytest
+mise exec -- uv run --locked pyright
+mise exec -- uv run --locked ruff format --check .
+mise exec -- uv run --locked ruff check .
 ```
 
 The root `verifyDocumentationGlossary` task runs the focused suite and examines the repository projections and current prose.
