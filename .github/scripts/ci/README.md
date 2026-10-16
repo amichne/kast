@@ -18,6 +18,9 @@ Regular file edits, additions and deletions keep both endpoints of the diff.
 Renames are read as deletion plus addition, so an excluded endpoint keeps full validation.
 Symlinks, executable modes, type changes and malformed observations select full validation.
 Missing history, invalid revisions and unknown events also keep every check.
+The product plan accepts only main/test Kotlin sources in the included module inventory.
+A source-inventory test checks that each listed root remains included in `settings.gradle.kts`.
+New modules, fixtures and unknown roots keep full validation until their scope is reviewed.
 
 `required_checks.py` admits only an exact plan whose selected jobs succeeded and whose excluded jobs were skipped.
 After that aggregate passes, `validation_outcome.py` repeats source selection and seals `validation.json`.

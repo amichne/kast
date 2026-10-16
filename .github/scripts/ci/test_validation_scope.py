@@ -2,6 +2,7 @@
 """Exact diffs select checks monotonically; uncertainty cannot omit verification."""
 
 import io
+import re
 import subprocess
 import sys
 import tempfile
@@ -13,6 +14,7 @@ from unittest.mock import patch
 
 from validation_scope import (
     ALL_CHECKS,
+    PRODUCT_MODULES,
     Check,
     Reason,
     Selection,
@@ -29,6 +31,28 @@ SOURCE = "cli/src/main/kotlin/Management.kt"
 
 
 class ValidationScopeTest(unittest.TestCase):
+    def test_kotlin_shaped_paths_cannot_bypass_protected_or_unknown_roots(self):
+        for prefix in (
+            ".github/tools",
+            ".github/scripts",
+            ".agents/tooling",
+            "build-logic",
+            "packaging/helper",
+            "docs/tooling",
+            "gradle/plugins",
+            "config",
+            "build-policy",
+            "distribution/release",
+            "experiments",
+            "fixtures",
+            "new-module",
+            "cli/nested",
+        ):
+            for source_set in ("main", "test"):
+                path = f"{prefix}/src/{source_set}/kotlin/Probe.kt"
+                with self.subTest(path=path):
+                    self.assertEqual(ALL_CHECKS, classify_paths((path,)))
+
     def test_raw_diff_admits_only_complete_regular_file_observations(self):
         for modes, hashes, status in (
             ("100644 100644", "a" * 40 + " " + "b" * 40, "M"),
@@ -241,6 +265,22 @@ class ExactDiffTest(unittest.TestCase):
         ):
             with self.subTest(reason=reason):
                 self.assertEqual(Selection(ALL_CHECKS, reason), select("push", base, candidate, self.root))
+
+
+class SourceInventoryTest(unittest.TestCase):
+    def test_product_source_roots_are_bound_to_the_explicit_gradle_module_inventory(self):
+        settings = (Path(__file__).resolve().parents[3] / "settings.gradle.kts").read_text()
+        # Bind this repository's explicit literal declaration, not arbitrary Gradle syntax.
+        declaration = re.search(
+            r'val cleanSlateProjects = listOf\(\s*((?:"(?::[a-z0-9-]+)+"\s*,\s*)+)\)\s*'
+            r"include\(\*cleanSlateProjects\.toTypedArray\(\)\)",
+            settings,
+        )
+        self.assertIsNotNone(declaration, "unsupported module inventory declaration; review the scope boundary")
+        declared = frozenset(
+            path[1:].replace(":", "/") for path in re.findall(r'"(:[a-z0-9:-]+)"', declaration.group(1))
+        )
+        self.assertLessEqual(PRODUCT_MODULES, declared)
 
 
 if __name__ == "__main__":

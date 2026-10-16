@@ -64,6 +64,59 @@ DOCUMENTATION_PATHS = frozenset(
     }
 )
 
+# Bound to settings.gradle.kts by the source-inventory regression. Unknown modules
+# and fixtures must not inherit a narrow plan from a source-set-shaped filename.
+PRODUCT_MODULES = frozenset(
+    {
+        "kernel",
+        "distribution/contract",
+        "distribution/cli",
+        "distribution/managed",
+        "protocol/contract",
+        "protocol/registry",
+        "protocol/wire",
+        "workspace/contract",
+        "workspace/intellij-read",
+        "symbol/contract",
+        "symbol/service",
+        "symbol/intellij",
+        "source/contract",
+        "source/service",
+        "source/intellij",
+        "relation/contract",
+        "relation/service",
+        "relation/intellij",
+        "traversal/contract",
+        "traversal/service",
+        "query/contract",
+        "query/service",
+        "query/protocol",
+        "topology/contract",
+        "topology/build",
+        "topology/service",
+        "topology/intellij",
+        "diagnostic/contract",
+        "diagnostic/service",
+        "diagnostic/intellij",
+        "change/contract",
+        "change/plan",
+        "change/protocol",
+        "change/apply",
+        "change/verify",
+        "change/recovery",
+        "change/intellij",
+        "evidence/contract",
+        "evidence/sqlite",
+        "evidence/topology-sqlite",
+        "runtime/hosted",
+        "app-server",
+        "cli",
+    }
+)
+PRODUCT_SOURCE_PREFIXES = tuple(
+    f"{module}/src/{source_set}/kotlin/" for module in PRODUCT_MODULES for source_set in ("main", "test")
+)
+
 
 class Check(str, Enum):
     PRODUCT = "product"
@@ -110,13 +163,11 @@ def path_checks(path: str) -> frozenset[Check]:
     # paths, included-build logic, and unusual filenames keep the full gate.
     if not re.fullmatch(r"[A-Za-z0-9_./-]+", path) or any(part in ("", ".", "..") for part in path.split("/")):
         return ALL_CHECKS
+    if path.startswith((".", "build-logic/")):
+        return ALL_CHECKS
     if path in DOCUMENTATION_PATHS:
         return DOCUMENTATION_CHECKS
-    if (
-        path.endswith(".kt")
-        and any(source_set in path for source_set in ("/src/main/kotlin/", "/src/test/kotlin/"))
-        and not path.startswith("build-logic/")
-    ):
+    if path.endswith(".kt") and path.startswith(PRODUCT_SOURCE_PREFIXES):
         return PRODUCT_CHECKS
     return ALL_CHECKS
 
