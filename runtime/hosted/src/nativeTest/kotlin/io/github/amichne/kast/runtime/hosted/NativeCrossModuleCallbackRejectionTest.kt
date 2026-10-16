@@ -16,6 +16,18 @@ class NativeCrossModuleCallbackRejectionTest : NativeSmartModeFixtureTest() {
     override fun getModuleType() = JavaModuleType.getModuleType()
 
     fun testEscapedCallbackCannotCompleteWorkspaceCallers() = runBlocking {
+        escaped(QueryExpansionScopeDocument.Workspace)
+    }
+
+    fun testEscapedCallbackCannotCompleteScopedCallers() = runBlocking {
+        escaped(CrossModuleCallbackRequests.domain(CrossModuleCallbackUnit.CLIENT))
+    }
+
+    fun testEscapedOutsideSupplyCannotBecomeACompleteEmptyResult() = runBlocking {
+        escaped(CrossModuleCallbackRequests.domain(CrossModuleCallbackUnit.RELAY))
+    }
+
+    private suspend fun escaped(destination: QueryExpansionScopeDocument) {
         val fixture =
             NativeCrossModuleCallbackFixture(project, getOrCreateProjectBaseDir(), module)
                 .prepare(CrossModuleCallbackSupply.ESCAPED, ::registerTestProjectJdk)
@@ -42,7 +54,7 @@ class NativeCrossModuleCallbackRejectionTest : NativeSmartModeFixtureTest() {
                     CrossModuleCallbackRequests.related(
                         selected.ref,
                         RelationKindDocument.CALLERS,
-                        QueryExpansionScopeDocument.Workspace,
+                        destination,
                     ),
                 lease = fixture.lease,
                 budget = CrossModuleCallbackRequests.budget,

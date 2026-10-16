@@ -31,28 +31,51 @@ internal sealed interface IntellijReferenceInventoryReuse {
 
     fun remember(request: RelationRequest, state: RelationProviderState): ReferenceInventoryRetention
 
+    fun callbackEvidence(domain: RelationScopeFingerprint): IntellijReferenceInventoryReuse
+
     data object Disabled : IntellijReferenceInventoryReuse {
         override fun find(request: RelationRequest, collector: IntellijRelationCollector) =
             ReferenceInventoryLookup.Miss
 
         override fun remember(request: RelationRequest, state: RelationProviderState) =
             ReferenceInventoryRetention.DISABLED
+
+        override fun callbackEvidence(domain: RelationScopeFingerprint) = this
     }
 
     class Recent(private val limits: ReadLimits) : IntellijReferenceInventoryReuse {
         private var slot: Slot = Slot.Empty
 
+        override fun find(request: RelationRequest, collector: IntellijRelationCollector): ReferenceInventoryLookup =
+            find(request, collector, InventoryPurpose.SelectedDomain)
+
+        override fun callbackEvidence(domain: RelationScopeFingerprint): IntellijReferenceInventoryReuse =
+            EvidenceView(this, InventoryPurpose.CallbackEvidence(domain))
+
         @Synchronized
-        override fun find(request: RelationRequest, collector: IntellijRelationCollector): ReferenceInventoryLookup {
+        private fun find(
+            request: RelationRequest,
+            collector: IntellijRelationCollector,
+            purpose: InventoryPurpose,
+        ): ReferenceInventoryLookup {
             val selected = slot
-            if (selected !is Slot.Prepared || selected.key != Key.from(request)) return ReferenceInventoryLookup.Miss
+            if (selected !is Slot.Prepared || selected.key != Key.from(request, purpose))
+                return ReferenceInventoryLookup.Miss
             return if (collector.retainProviderState(selected.state, preparedPartition = true))
                 ReferenceInventoryLookup.Found(selected.state)
             else ReferenceInventoryLookup.Unavailable
         }
 
-        @Synchronized
         override fun remember(request: RelationRequest, state: RelationProviderState): ReferenceInventoryRetention {
+            return remember(request, state, InventoryPurpose.SelectedDomain)
+        }
+
+        @Synchronized
+        private fun remember(
+            request: RelationRequest,
+            state: RelationProviderState,
+            purpose: InventoryPurpose,
+        ): ReferenceInventoryRetention {
             val outcome =
                 when {
                     state.provider != RelationProviderKind.INTELLIJ_REFERENCES_V2 ->
@@ -64,9 +87,30 @@ internal sealed interface IntellijReferenceInventoryReuse {
                     else -> ReferenceInventoryRetention.RETAINED
                 }
             slot =
-                if (outcome == ReferenceInventoryRetention.RETAINED) Slot.Prepared(Key.from(request), state)
+                if (outcome == ReferenceInventoryRetention.RETAINED) Slot.Prepared(Key.from(request, purpose), state)
                 else Slot.Empty
             return outcome
+        }
+
+        private class EvidenceView(
+            private val owner: Recent,
+            private val purpose: InventoryPurpose.CallbackEvidence,
+        ) : IntellijReferenceInventoryReuse {
+            override fun find(
+                request: RelationRequest,
+                collector: IntellijRelationCollector,
+            ): ReferenceInventoryLookup =
+                if (request.meaning == io.github.amichne.kast.relation.contract.RelationMeaning.Callers)
+                    owner.find(request, collector, purpose)
+                else ReferenceInventoryLookup.Miss
+
+            override fun remember(request: RelationRequest, state: RelationProviderState): ReferenceInventoryRetention =
+                if (request.meaning == io.github.amichne.kast.relation.contract.RelationMeaning.Callers)
+                    owner.remember(request, state, purpose)
+                else ReferenceInventoryRetention.PROVIDER_INELIGIBLE
+
+            override fun callbackEvidence(domain: RelationScopeFingerprint): IntellijReferenceInventoryReuse =
+                owner.callbackEvidence(domain)
         }
     }
 }
@@ -75,11 +119,18 @@ private data class Key(
     val authority: SemanticReadAuthority,
     val subject: RelationEndpointFingerprint,
     val scope: RelationScopeFingerprint,
+    val purpose: InventoryPurpose,
 ) {
     companion object {
-        fun from(request: RelationRequest) =
-            Key(request.subject.lease, request.subject.fingerprint, request.scopeFingerprint)
+        fun from(request: RelationRequest, purpose: InventoryPurpose) =
+            Key(request.subject.lease, request.subject.fingerprint, request.scopeFingerprint, purpose)
     }
+}
+
+private sealed interface InventoryPurpose {
+    data object SelectedDomain : InventoryPurpose
+
+    data class CallbackEvidence(val domain: RelationScopeFingerprint) : InventoryPurpose
 }
 
 private sealed interface Slot {

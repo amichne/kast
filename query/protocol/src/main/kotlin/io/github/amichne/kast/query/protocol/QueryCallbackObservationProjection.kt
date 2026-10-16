@@ -78,6 +78,7 @@ private fun RelationCallbackObservation.projectCallbackObservation(
             requestedDomain.requestedDomainDocument(),
             relationDomainDocument(scope, constraints) ?: return null,
             QueryRelationDomainFingerprint.parse(effectiveDomain.value).callbackValue() ?: return null,
+            resultProjection.projectResultProjection(projection) ?: return null,
         )
         .callbackValue()
 }
@@ -327,14 +328,18 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
                 )
             is CallbackBindingEvidence.DeferredDependency -> deferredDependency(value.binding)
             is CallbackBindingEvidence.DependencyContract -> dependencyContract(value.binding)
-            is CallbackBindingEvidence.Direct ->
-                QueryCallbackBindingDocument.Direct(
-                    value.binding.basis.impactDocument().callbackValue() ?: return null,
-                    occurrence(value.binding.occurrence) ?: return null,
-                    body(value.binding.owner) ?: return null,
-                )
+            is CallbackBindingEvidence.Direct -> direct(value.binding)
         }
     }
+
+    fun direct(
+        value: io.github.amichne.kast.relation.contract.CallbackDirectInvocationBinding
+    ): QueryCallbackBindingDocument.Direct? =
+        QueryCallbackBindingDocument.Direct(
+            value.basis.impactDocument().callbackValue() ?: return null,
+            occurrence(value.occurrence) ?: return null,
+            body(value.owner) ?: return null,
+        )
 
     private fun dependencyContract(
         value: io.github.amichne.kast.relation.contract.CallbackDependencyContract

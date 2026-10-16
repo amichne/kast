@@ -105,7 +105,13 @@ internal class CompleteOnlyNamedReferenceTest : CompleteOnlyCallbackQueryCase() 
                     occurrence(1, 4),
                     owner,
                     RelationCallableBody.Named.fromCompiler(owner).refined(),
-                    RelationCallableTarget.NamedReference(reference),
+                    RelationCallableTarget.NamedReference(
+                        reference,
+                        scriptedCallbackProjection(
+                            relation,
+                            io.github.amichne.kast.relation.contract.CallbackResultSite.Target(target.evidence),
+                        ),
+                    ),
                 )
                 .refined()
         val batch =

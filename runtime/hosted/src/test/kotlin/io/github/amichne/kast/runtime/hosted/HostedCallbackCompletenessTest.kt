@@ -8,6 +8,7 @@ import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowRead
 import io.github.amichne.kast.relation.contract.CallbackInvocationScan
 import io.github.amichne.kast.relation.contract.CallbackNamedCallPolicy
+import io.github.amichne.kast.relation.contract.CallbackResultProjection
 import io.github.amichne.kast.relation.contract.CallbackSummaryCacheLookup
 import io.github.amichne.kast.relation.contract.CompleteStaticCallbackGraph
 import io.github.amichne.kast.relation.contract.RelationCallableBody
@@ -124,6 +125,7 @@ class HostedCallbackCompletenessTest : HostedSemanticFactFixture() {
                 callbackBody = range,
                 policy = CallbackNamedCallPolicy.AdmittedInline,
                 flow = CallbackInvocationFlowRead.Observed(flow),
+                resultProjection = CallbackResultProjection.Unproven(CallbackInvocationFlowCause.OUTSIDE_DOMAIN),
             )
             .value()
     }

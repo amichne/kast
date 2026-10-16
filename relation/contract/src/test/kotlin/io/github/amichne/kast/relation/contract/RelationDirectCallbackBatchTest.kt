@@ -64,6 +64,10 @@ class RelationDirectCallbackBatchTest {
                     occurrence(body.range.startInclusive, body.range.endExclusive),
                     CallbackNamedCallPolicy.AdmittedDirect,
                     CallbackInvocationFlowRead.Observed(flow),
+                    resultProjection =
+                        io.github.amichne.kast.relation.contract.CallbackResultProjection.Unproven(
+                            io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause.OUTSIDE_DOMAIN
+                        ),
                 )
                 .value()
         }

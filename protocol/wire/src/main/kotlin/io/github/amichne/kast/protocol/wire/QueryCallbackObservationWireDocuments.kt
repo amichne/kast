@@ -120,6 +120,7 @@ internal data class QueryCallbackObservationWireDocument(
     @SerialName("requested_domain") val requestedDomain: QueryRelationRequestedDomainDocument,
     @SerialName("effective_domain") val effectiveDomain: QueryRelationDomainDocument,
     @SerialName("domain_fingerprint") val domainFingerprint: QueryRelationDomainFingerprint,
+    @SerialName("result_projection") val resultProjection: QueryCallbackResultProjectionWireDocument,
 )
 
 @Serializable
@@ -197,6 +198,7 @@ internal fun QueryCallbackObservationDocument.toWireDocument() =
         requestedDomain,
         effectiveDomain,
         domainFingerprint,
+        resultProjection.resultProjectionWire(),
     )
 
 internal fun QueryWalkCallbackObservationDocument.toWireDocument() =
@@ -297,7 +299,10 @@ internal fun QueryCallbackObservationWireDocument.toContract():
                                     QueryCallbackNamedPolicyDocument.Excluded(policy.reason, it)
                                 }
                         }
-                    combineConverted(policy, flow.toContract()) { policy, flow ->
+                    combineConverted(policy, flow.toContract(), resultProjection.toContract()) {
+                            policy,
+                            flow,
+                            resultProjection ->
                             QueryCallbackObservationDocument.create(
                                     occurrence,
                                     target,
@@ -309,6 +314,7 @@ internal fun QueryCallbackObservationWireDocument.toContract():
                                     requestedDomain,
                                     effectiveDomain,
                                     domainFingerprint,
+                                    resultProjection,
                                 )
                                 .toWireDocumentConversion()
                         }

@@ -3,6 +3,8 @@ package io.github.amichne.kast.protocol.contract
 import io.github.amichne.kast.kernel.Refinement
 
 internal fun QueryCallbackObservationDocument.admit(): Refinement<Unit, QueryCallbackDocumentFailure> {
+    if (!resultProjection.admitsCallback(relation, domainFingerprint, occurrence, target, flow))
+        return rejected(QueryCallbackDocumentFailure.RESULT_PROJECTION_MISMATCH)
     if (relation != RelationKindDocument.CALLERS && relation != RelationKindDocument.CALLEES)
         return rejected(QueryCallbackDocumentFailure.MEANING_MISMATCH)
     if (!target.validDeclaration() || !lexicalOwner.validDeclaration())

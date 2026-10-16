@@ -184,7 +184,7 @@ private fun QueryRelationObservationWireDocument.admitsCallableObservations(
                     (it.target is QueryCallableTargetDocument.NamedReference ||
                         it.target is QueryCallableTargetDocument.UnavailableReference)
                 }) -> false
-        values.any { !it.admitsDomain(effectiveDomain, domainFingerprint) } -> false
+        values.any { !it.admitsQuestion(relation, effectiveDomain, domainFingerprint) } -> false
         coverage == QueryRelationCoverageDocument.Exhausted && values.any { it.requiresLibrarySource() } -> false
         else -> true
     }

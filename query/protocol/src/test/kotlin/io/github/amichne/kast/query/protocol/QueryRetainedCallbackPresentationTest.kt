@@ -265,6 +265,10 @@ class QueryRetainedCallbackPresentationTest {
                             io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
                                 .UNRESOLVED_ARGUMENT_MAPPING
                         ),
+                        scriptedCallbackProjection(
+                            request,
+                            io.github.amichne.kast.relation.contract.CallbackResultSite.Target(evidence),
+                        ),
                     )
                     .refined()
             }

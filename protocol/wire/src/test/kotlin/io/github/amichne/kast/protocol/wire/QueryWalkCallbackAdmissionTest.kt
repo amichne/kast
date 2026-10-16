@@ -65,12 +65,31 @@ class QueryWalkCallbackAdmissionTest {
             for (domain in QueryRelationRequestedDomainDocument.entries) {
                 val wire = original().copy(relation = relation.toWireDocument(), requestedDomain = domain)
                 val entry = wire.callbackObservations.single()
+                val projection =
+                    entry.observation.resultProjection as QueryCallbackResultProjectionWireDocument.Admitted
                 val admitted =
                     wire.copy(
                         callbackObservations =
                             listOf(
                                 entry.copy(
-                                    observation = entry.observation.copy(relation = relation, requestedDomain = domain)
+                                    observation =
+                                        entry.observation.copy(
+                                            relation = relation,
+                                            requestedDomain = domain,
+                                            resultProjection =
+                                                projection.copy(
+                                                    relation = relation,
+                                                    site =
+                                                        if (relation == RelationKindDocument.CALLERS)
+                                                            QueryCallbackResultSiteWireDocument.Occurrence(
+                                                                entry.observation.occurrence
+                                                            )
+                                                        else
+                                                            QueryCallbackResultSiteWireDocument.Target(
+                                                                entry.observation.target
+                                                            ),
+                                                ),
+                                        )
                                 )
                             )
                     )
@@ -180,7 +199,13 @@ class QueryWalkCallbackAdmissionTest {
             entry.copy(
                 subject = QueryReferenceWireDocument.ExactSymbol("exact:frontier"),
                 depth = 1,
-                observation = entry.observation.copy(domainFingerprint = fingerprint),
+                observation =
+                    entry.observation.copy(
+                        domainFingerprint = fingerprint,
+                        resultProjection =
+                            (entry.observation.resultProjection as QueryCallbackResultProjectionWireDocument.Admitted)
+                                .copy(domain = fingerprint),
+                    ),
             )
         val decoded =
             decode(

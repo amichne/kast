@@ -11,6 +11,7 @@ import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.query.contract.QueryResult
 import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
+import io.github.amichne.kast.relation.contract.CallbackResultProjection
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -22,6 +23,39 @@ import org.junit.jupiter.api.Test
 
 /** Compiler-fact admission oracle; no native resolution or runtime activation is fabricated. */
 internal class CompleteOnlyCallbackQueryTest : CompleteOnlyCallbackQueryCase() {
+    @Test
+    fun `complete callback graph without result membership cannot become a complete empty answer`() = runTest {
+        val script =
+            Script(
+                listOf(emptyList()),
+                resultForPage = { rows, _ ->
+                    QueryResult(
+                        QueryRows.Symbols.of(rows),
+                        emptyList(),
+                        relationObservations =
+                            listOf(
+                                observation(
+                                    true,
+                                    resultProjection = {
+                                        CallbackResultProjection.Unproven(CallbackInvocationFlowCause.OUTSIDE_DOMAIN)
+                                    },
+                                )
+                            ),
+                    )
+                },
+            )
+        val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
+        val rejected = completionRejection(protocol.execute(strict, fixture.authority, budget, policy()))
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.QueryCallbackGraphCauseDocument.Unavailable(
+                io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument.OUTSIDE_DOMAIN
+            ),
+            rejected.callbackGraphFailure?.cause,
+        )
+        assertEquals(1, script.calls)
+        script.assertDrained()
+    }
+
     @Test
     fun `failed callback identifies exact source subject while proven rows remain evidence only`() = runTest {
         val script =

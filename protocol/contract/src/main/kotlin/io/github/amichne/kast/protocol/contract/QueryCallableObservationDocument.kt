@@ -101,12 +101,16 @@ sealed interface QueryCallableTargetDocument {
 
     data class UnavailableReference(val cause: QueryCallbackFlowCauseDocument) : QueryCallableTargetDocument
 
-    data class NamedReference(val reference: QueryNamedCallbackReferenceDocument) : QueryCallableTargetDocument
+    data class NamedReference(
+        val reference: QueryNamedCallbackReferenceDocument,
+        val resultProjection: QueryCallbackResultProjectionDocument,
+    ) : QueryCallableTargetDocument
 
     data class ParameterInvocation(
         val parameter: QueryCallbackParameterIdentityDocument,
         val suppliers: QueryCallbackSupplierInventoryDocument,
         val invocation: QueryCallbackInvocationDocument,
+        val resultProjection: QueryCallbackResultProjectionDocument,
     ) : QueryCallableTargetDocument
 
     data class SourceLess(
@@ -123,19 +127,33 @@ private constructor(
     val body: QueryCallbackBodyDocument,
     val target: QueryCallableTargetDocument,
 ) {
+    fun admitsQuestion(
+        relation: RelationKindDocument,
+        domain: QueryRelationDomainDocument,
+        fingerprint: QueryRelationDomainFingerprint,
+    ): Boolean =
+        admitsDomain(domain, fingerprint) &&
+            when (val value = target) {
+                is QueryCallableTargetDocument.NamedReference -> value.resultProjection.admitsRelation(relation)
+                is QueryCallableTargetDocument.ParameterInvocation -> value.resultProjection.admitsRelation(relation)
+                is QueryCallableTargetDocument.DirectInvocations,
+                is QueryCallableTargetDocument.CallbackSupplies,
+                is QueryCallableTargetDocument.UnavailableSupply,
+                is QueryCallableTargetDocument.UnavailableReference,
+                is QueryCallableTargetDocument.SourceLess -> true
+            }
+
     fun admitsDomain(domain: QueryRelationDomainDocument, fingerprint: QueryRelationDomainFingerprint): Boolean =
         target.admitsFactoryPolicy(domain) &&
             when (val value = target) {
                 is QueryCallableTargetDocument.DirectInvocations,
                 is QueryCallableTargetDocument.UnavailableSupply,
                 is QueryCallableTargetDocument.CallbackSupplies,
-                is QueryCallableTargetDocument.UnavailableReference,
-                is QueryCallableTargetDocument.NamedReference -> true
+                is QueryCallableTargetDocument.UnavailableReference -> true
+                is QueryCallableTargetDocument.NamedReference ->
+                    value.resultProjection.admitsReference(fingerprint, occurrence, value.reference)
                 is QueryCallableTargetDocument.ParameterInvocation ->
-                    when (val suppliers = value.suppliers) {
-                        is QueryCallbackSupplierInventoryDocument.Unavailable -> true
-                        is QueryCallbackSupplierInventoryDocument.Exhaustive -> suppliers.domain == fingerprint
-                    }
+                    value.resultProjection.admitsSuppliers(fingerprint, value.suppliers)
                 is QueryCallableTargetDocument.SourceLess ->
                     when (value.disposition) {
                         QuerySourceLessCallableDispositionDocument.BUILTIN_BOUNDARY ->

@@ -38,6 +38,9 @@ import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowRead
 import io.github.amichne.kast.relation.contract.CallbackNamedCallPolicy
 import io.github.amichne.kast.relation.contract.CallbackParameterInvocation
+import io.github.amichne.kast.relation.contract.CallbackResultMembership
+import io.github.amichne.kast.relation.contract.CallbackResultProjection
+import io.github.amichne.kast.relation.contract.CallbackResultSite
 import io.github.amichne.kast.relation.contract.RelationBatch
 import io.github.amichne.kast.relation.contract.RelationByteCount
 import io.github.amichne.kast.relation.contract.RelationCallableBody
@@ -225,6 +228,13 @@ private class CallbackByteFixture {
                 occurrence(20, 80),
                 CallbackNamedCallPolicy.Excluded(CallbackExclusionReason.NON_INLINE_ARGUMENT, occurrence(20, 80)),
                 CallbackInvocationFlowRead.Observed(flow()),
+                CallbackResultProjection.Admitted(
+                    CallbackResultMembership.fromNativeScope(
+                            request,
+                            CallbackResultSite.Occurrence(occurrence(30, 42)),
+                        )
+                        .callbackValue()
+                ),
             )
             .callbackValue()
     }

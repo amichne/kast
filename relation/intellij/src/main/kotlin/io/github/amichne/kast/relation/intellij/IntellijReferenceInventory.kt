@@ -16,6 +16,7 @@ internal class IntellijReferenceInventory(
     private val cancellationCheck: () -> Unit,
     private val limits: ReadLimits,
     private val observation: IntellijReadObservation,
+    private val admitsReference: (com.intellij.psi.PsiReference) -> Boolean = { true },
 ) {
     fun prepare(subject: PsiNamedElement): RelationInventoryPreparation {
         observation.phase(referenceInventoryPhase(scope.request.meaning))
@@ -30,8 +31,15 @@ internal class IntellijReferenceInventory(
                     return@forEachReference false
                 when (scope.admitProviderSite(reference.element.containingFile?.virtualFile)) {
                     RelationProviderScopeAdmission.ADMITTED ->
-                        collector.admitProviderCandidate() == IntellijRelationProviderEnumerationAdmission.READY &&
-                            inventory.append(locators.reference(reference))
+                        if (admitsReference(reference))
+                            collector.admitProviderCandidate() == IntellijRelationProviderEnumerationAdmission.READY &&
+                                inventory.append(locators.reference(reference))
+                        else {
+                            observation.count(
+                                io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter.SCOPE_FILTERED
+                            )
+                            true
+                        }
                     RelationProviderScopeAdmission.SOURCE_DOMAIN_EXCLUDED,
                     RelationProviderScopeAdmission.LIBRARY_POLICY_EXCLUDED -> {
                         observation.count(

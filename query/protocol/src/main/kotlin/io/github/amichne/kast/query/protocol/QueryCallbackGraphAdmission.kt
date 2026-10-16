@@ -86,6 +86,11 @@ private fun callbackGroupProof(
                         )
                 }
         }
+        when (val admitted = observation.resultProjection.projectionProof()) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected ->
+                return callbackRejected(admitted.failure, origin, group, position, observation.graphSubject())
+        }
     }
     return Refinement.Refined(Unit)
 }
@@ -210,6 +215,22 @@ private fun io.github.amichne.kast.relation.contract.RelationCallableObservation
         is Refinement.Rejected -> return complete
         is Refinement.Refined -> Unit
     }
+    val projection =
+        when (val target = target) {
+            is io.github.amichne.kast.relation.contract.RelationCallableTarget.NamedReference ->
+                target.resultProjection.projectionProof()
+            is io.github.amichne.kast.relation.contract.RelationCallableTarget.ParameterInvocation ->
+                target.resultProjection.projectionProof()
+            is io.github.amichne.kast.relation.contract.RelationCallableTarget.DirectInvocations,
+            is io.github.amichne.kast.relation.contract.RelationCallableTarget.CallbackSupplies,
+            is io.github.amichne.kast.relation.contract.RelationCallableTarget.UnavailableSupply,
+            is io.github.amichne.kast.relation.contract.RelationCallableTarget.UnavailableReference,
+            is io.github.amichne.kast.relation.contract.RelationCallableTarget.SourceLess -> Refinement.Refined(Unit)
+        }
+    when (projection) {
+        is Refinement.Refined -> Unit
+        is Refinement.Rejected -> return projection
+    }
     return when (val admitted = admitCallbackWorkspace()) {
         is Refinement.Refined -> admitted
         is Refinement.Rejected ->
@@ -220,3 +241,11 @@ private fun io.github.amichne.kast.relation.contract.RelationCallableObservation
             }
     }
 }
+
+private fun io.github.amichne.kast.relation.contract.CallbackResultProjection.projectionProof():
+    Refinement<Unit, QueryCallbackGraphCauseDocument> =
+    when (this) {
+        is io.github.amichne.kast.relation.contract.CallbackResultProjection.Admitted -> Refinement.Refined(Unit)
+        is io.github.amichne.kast.relation.contract.CallbackResultProjection.Unproven ->
+            Refinement.Rejected(QueryCallbackGraphCauseDocument.Unavailable(cause.protocolCallbackDocument()))
+    }

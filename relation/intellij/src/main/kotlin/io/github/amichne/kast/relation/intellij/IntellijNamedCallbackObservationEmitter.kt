@@ -14,6 +14,7 @@ internal class IntellijNamedCallbackObservationEmitter(
     private val collector: IntellijRelationCollector,
     private val incomplete: (CalleeProviderItem, RelationLimitation) -> Boolean,
     summaries: CallbackParameterSummaries,
+    private val resultProjection: IntellijCallbackResultProjection,
 ) {
     private val request = context.scope.request
     private val observation = summaries.observation
@@ -45,6 +46,15 @@ internal class IntellijNamedCallbackObservationEmitter(
                     return unavailable(candidate, expression, owner, read.failure)
                 }
             }
+        return retainReference(candidate, expression, owner, reference)
+    }
+
+    private fun retainReference(
+        candidate: CalleeProviderItem.Reference,
+        expression: KtCallableReferenceExpression,
+        owner: CompilerGroundedSymbolEvidence,
+        reference: io.github.amichne.kast.relation.contract.NamedCallbackReference,
+    ): Boolean {
         if (
             request.meaning == io.github.amichne.kast.relation.contract.RelationMeaning.Callers &&
                 io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint.validate(
@@ -54,6 +64,21 @@ internal class IntellijNamedCallbackObservationEmitter(
         )
             return collector.dismissProviderItem()
         val body = context.owner(expression) ?: return incomplete(candidate, RelationLimitation.UNSUPPORTED_ITEM)
+        val target =
+            when (
+                val selected =
+                    resultProjection.callable(
+                        RelationCallableTarget.NamedReference(
+                            reference,
+                            io.github.amichne.kast.relation.contract.CallbackResultProjection.Unproven(
+                                CallbackInvocationFlowCause.OUTSIDE_DOMAIN
+                            ),
+                        )
+                    )
+            ) {
+                is CallbackCallableProjectionRead.Kept -> selected.target
+                CallbackCallableProjectionRead.Excluded -> return collector.dismissProviderItem()
+            }
         return when (
             val admitted =
                 RelationCallableObservation.fromNativeBoundary(
@@ -61,7 +86,7 @@ internal class IntellijNamedCallbackObservationEmitter(
                     reference.occurrence,
                     owner,
                     body,
-                    RelationCallableTarget.NamedReference(reference),
+                    target,
                 )
         ) {
             is Refinement.Refined -> collector.acceptCallableObservation(admitted.value)

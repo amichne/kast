@@ -3,6 +3,8 @@ package io.github.amichne.kast.relation.intellij
 import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.PsiReference
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
+import io.github.amichne.kast.relation.contract.CallbackResultProjection
 import io.github.amichne.kast.relation.contract.RelationCallbackObservation
 import io.github.amichne.kast.relation.contract.RelationLimitation
 import io.github.amichne.kast.relation.contract.RelationOmissionSample
@@ -22,14 +24,10 @@ internal fun detachCallbackObservation(
     summaries: CallbackParameterSummaries,
     callbackExpiry: () -> CallbackExpiryAdmission,
 ): Refinement<RelationCallbackObservation, RelationLimitation> {
-    val lexical =
-        (ContainingDeclaration.Deferred(immediate).enclosingDeclaration() as? ContainingDeclaration.Found)
-            ?: return Refinement.Rejected(RelationLimitation.UNSUPPORTED_ITEM)
     val ownerEvidence =
-        when (val owner = projection.project(lexical.declaration)) {
-            is IntellijRelationDeclarationProjection.Projected -> owner.evidence
-            IntellijRelationDeclarationProjection.Unsupported ->
-                return Refinement.Rejected(RelationLimitation.UNSUPPORTED_ITEM)
+        when (val owner = detachCallbackOwner(immediate, projection)) {
+            is Refinement.Refined -> owner.value
+            is Refinement.Rejected -> return owner
         }
     val targetEvidence =
         when (val projected = projection.project(target)) {
@@ -42,9 +40,11 @@ internal fun detachCallbackObservation(
             is RelationOmissionSample.Located -> located.occurrence
             RelationOmissionSample.Unavailable -> return Refinement.Rejected(RelationLimitation.UNSUPPORTED_ITEM)
         }
-    val body = immediate
     val callback =
-        when (val located = projection.omissionSample(body, body.textRange.shiftLeft(body.textRange.startOffset))) {
+        when (
+            val located =
+                projection.omissionSample(immediate, immediate.textRange.shiftLeft(immediate.textRange.startOffset))
+        ) {
             is RelationOmissionSample.Located -> located.occurrence
             RelationOmissionSample.Unavailable -> return Refinement.Rejected(RelationLimitation.UNSUPPORTED_ITEM)
         }
@@ -65,10 +65,24 @@ internal fun detachCallbackObservation(
                 callback,
                 namedPolicy,
                 flow,
+                CallbackResultProjection.Unproven(CallbackInvocationFlowCause.OUTSIDE_DOMAIN),
             )
     ) {
         is Refinement.Refined -> result
         is Refinement.Rejected -> Refinement.Rejected(RelationLimitation.PROVIDER_INCOMPLETE)
+    }
+}
+
+private fun detachCallbackOwner(
+    immediate: org.jetbrains.kotlin.psi.KtFunction,
+    projection: IntellijK2RelationProjection,
+): Refinement<io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence, RelationLimitation> {
+    val lexical =
+        (ContainingDeclaration.Deferred(immediate).enclosingDeclaration() as? ContainingDeclaration.Found)
+            ?: return Refinement.Rejected(RelationLimitation.UNSUPPORTED_ITEM)
+    return when (val owner = projection.project(lexical.declaration)) {
+        is IntellijRelationDeclarationProjection.Projected -> Refinement.Refined(owner.evidence)
+        IntellijRelationDeclarationProjection.Unsupported -> Refinement.Rejected(RelationLimitation.UNSUPPORTED_ITEM)
     }
 }
 
@@ -129,6 +143,8 @@ internal sealed interface NativeCallbackPolicy {
 internal sealed interface NativeCallbackObservation {
     data object None : NativeCallbackObservation
 
+    data object Excluded : NativeCallbackObservation
+
     data class Observed(val value: io.github.amichne.kast.relation.contract.RelationCallbackObservation) :
         NativeCallbackObservation
 }
@@ -141,6 +157,7 @@ internal class IntellijCallbackObservationEmitter(
     observation: IntellijReadObservation,
     cache: io.github.amichne.kast.relation.contract.CallbackSummaryCachePort =
         io.github.amichne.kast.relation.contract.CallbackSummaryCachePort.Disabled,
+    private val resultProjection: IntellijCallbackResultProjection,
     private val omit: (RelationLimitation, com.intellij.psi.PsiElement, com.intellij.openapi.util.TextRange) -> Boolean,
 ) {
     private val summaries =
@@ -178,8 +195,23 @@ internal class IntellijCallbackObservationEmitter(
                     collector::callbackExpiry,
                 )
         ) {
-            is Refinement.Refined -> Refinement.Refined(NativeCallbackObservation.Observed(detached.value))
+            is Refinement.Refined -> project(detached.value)
             is Refinement.Rejected -> detached
+        }
+    }
+
+    private fun project(value: RelationCallbackObservation): Refinement<NativeCallbackObservation, RelationLimitation> {
+        val selected =
+            when (val read = resultProjection.callback(value)) {
+                CallbackResultProjectionRead.Excluded -> return Refinement.Refined(NativeCallbackObservation.Excluded)
+                is CallbackResultProjectionRead.Admitted ->
+                    io.github.amichne.kast.relation.contract.CallbackResultProjection.Admitted(read.membership)
+                is CallbackResultProjectionRead.Unproven ->
+                    io.github.amichne.kast.relation.contract.CallbackResultProjection.Unproven(read.cause)
+            }
+        return when (val projected = value.projectResult(request, selected)) {
+            is Refinement.Refined -> Refinement.Refined(NativeCallbackObservation.Observed(projected.value))
+            is Refinement.Rejected -> Refinement.Rejected(RelationLimitation.PROVIDER_INCOMPLETE)
         }
     }
 
@@ -188,6 +220,7 @@ internal class IntellijCallbackObservationEmitter(
         return when (val observed = observe(reference, target, policy)) {
             is Refinement.Refined ->
                 when (val evidence = observed.value) {
+                    NativeCallbackObservation.Excluded -> collector.dismissProviderItem()
                     NativeCallbackObservation.None ->
                         omit(
                             unavailable ?: RelationLimitation.PROVIDER_INCOMPLETE,

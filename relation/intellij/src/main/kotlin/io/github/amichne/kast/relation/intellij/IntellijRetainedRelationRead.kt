@@ -31,6 +31,7 @@ internal class IntellijRetainedRelationRead(
     private val observation: IntellijReadObservation,
     private val cancellationCheck: () -> Unit,
     private val inventories: IntellijReferenceInventoryReuse = IntellijReferenceInventoryReuse.Disabled,
+    private val admitsReference: (PsiReference) -> Boolean = { true },
 ) {
     private val locators = IntellijRelationLocators(project, scope, projection, cancellationCheck, observation)
 
@@ -46,7 +47,15 @@ internal class IntellijRetainedRelationRead(
                 request,
                 collector,
                 {
-                    IntellijReferenceInventory(scope, locators, collector, cancellationCheck, limits, observation)
+                    IntellijReferenceInventory(
+                            scope,
+                            locators,
+                            collector,
+                            cancellationCheck,
+                            limits,
+                            observation,
+                            admitsReference,
+                        )
                         .prepare(subject)
                 },
                 { state, locator ->

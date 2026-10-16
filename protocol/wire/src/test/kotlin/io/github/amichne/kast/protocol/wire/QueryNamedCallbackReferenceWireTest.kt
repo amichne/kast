@@ -75,7 +75,7 @@ class QueryNamedCallbackReferenceWireTest {
                 observation.callbackBody,
                 observation.lexicalOwner,
                 QueryCallbackBodyDocument.Named(observation.lexicalOwner),
-                QueryCallableTargetDocument.NamedReference(reference),
+                QueryCallableTargetDocument.NamedReference(reference, observation.resultProjection),
             ) as Refinement.Refined)
             .value
     }
@@ -103,7 +103,7 @@ class QueryNamedCallbackReferenceWireTest {
                     observation.callbackBody,
                     observation.lexicalOwner,
                     QueryCallbackBodyDocument.Named(observation.lexicalOwner),
-                    QueryCallableTargetDocument.NamedReference(reference),
+                    QueryCallableTargetDocument.NamedReference(reference, observation.resultProjection),
                 ) as Refinement.Refined)
                 .value
         val raw = value.toWireDocument()

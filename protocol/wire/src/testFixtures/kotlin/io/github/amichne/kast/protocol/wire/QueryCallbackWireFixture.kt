@@ -120,6 +120,14 @@ class QueryCallbackWireFixture {
                     bounded(emptyList()),
                 ),
                 QueryRelationDomainFingerprint.parse("1".repeat(64)).refined(),
+                io.github.amichne.kast.protocol.contract.QueryCallbackResultProjectionDocument.Admitted(
+                    io.github.amichne.kast.protocol.contract.QueryRelationSubjectFingerprint.parse("2".repeat(64))
+                        .refined(),
+                    flow.basis,
+                    QueryRelationDomainFingerprint.parse("1".repeat(64)).refined(),
+                    RelationKindDocument.CALLEES,
+                    io.github.amichne.kast.protocol.contract.QueryCallbackResultSiteDocument.Target(target),
+                ),
             )
             .refined()
     }

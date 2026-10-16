@@ -51,7 +51,12 @@ private fun RelationCallableTarget.projectCallableTarget(projection: CallbackPro
         is RelationCallableTarget.UnavailableReference ->
             QueryCallableTargetDocument.UnavailableReference(cause.protocolCallbackDocument())
         is RelationCallableTarget.NamedReference ->
-            reference.projectNamedReference(projection)?.let { QueryCallableTargetDocument.NamedReference(it) }
+            reference.projectNamedReference(projection)?.let {
+                QueryCallableTargetDocument.NamedReference(
+                    it,
+                    resultProjection.projectResultProjection(projection) ?: return null,
+                )
+            }
         is RelationCallableTarget.ParameterInvocation -> projectParameterInvocation(projection)
         is RelationCallableTarget.SourceLess ->
             callable.protocolDocument()?.let {
@@ -186,5 +191,10 @@ private fun RelationCallableTarget.ParameterInvocation.projectParameterInvocatio
     val formal = projection.parameter(parameter) ?: return null
     val inventory = suppliers.projectSupplierInventory(projection) ?: return null
     val proof = projection.invocation(invocation) ?: return null
-    return QueryCallableTargetDocument.ParameterInvocation(formal, inventory, proof)
+    return QueryCallableTargetDocument.ParameterInvocation(
+        formal,
+        inventory,
+        proof,
+        resultProjection.projectResultProjection(projection) ?: return null,
+    )
 }
