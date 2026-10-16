@@ -24,13 +24,24 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24.21.0"
 
-      - name: Install Mintlify CLI
-        run: npm install --global mint@4.2.841
+      - name: Install locked Mintlify CLI
+        env:
+          NPM_CONFIG_USERCONFIG: ${{ runner.temp }}/kast-mint-user.npmrc
+          NPM_CONFIG_GLOBALCONFIG: ${{ runner.temp }}/kast-mint-global.npmrc
+          NPM_CONFIG_CACHE: ${{ runner.temp }}/kast-mint-npm-cache
+          NPM_CONFIG_UPDATE_NOTIFIER: "false"
+        run: |
+          : > "$NPM_CONFIG_USERCONFIG"
+          : > "$NPM_CONFIG_GLOBALCONFIG"
+          npm ci --prefix .github/tools/mintlify --ignore-scripts --no-audit --no-fund
+
+      - name: Verify validator network handling
+        run: node --test .github/tools/mintlify/test-runtime.mjs
 
       - name: Validate Mintlify build
         working-directory: docs/public
-        run: mint validate
+        run: '"${{ github.workspace }}/.github/tools/mintlify/node_modules/.bin/mint" validate'
