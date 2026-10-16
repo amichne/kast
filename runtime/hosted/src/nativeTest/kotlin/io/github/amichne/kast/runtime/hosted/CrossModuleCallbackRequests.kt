@@ -58,17 +58,17 @@ internal object CrossModuleCallbackRequests {
     fun related(
         reference: QueryReferenceDocument.ExactSymbol,
         relation: RelationKindDocument,
-        destination: CrossModuleCallbackUnit,
+        destination: QueryExpansionScopeDocument,
     ) =
         QueryRunRequest.Run(
             from = QueryFromDocument.References(bounded(listOf(reference))),
-            steps = bounded(listOf(QueryStepDocument.Related(relation, domain(destination)))),
+            steps = bounded(listOf(QueryStepDocument.Related(relation, destination))),
             output = output,
             execution = execution,
             executionBudget = executionBudget,
         )
 
-    private fun domain(unit: CrossModuleCallbackUnit) =
+    fun domain(unit: CrossModuleCallbackUnit) =
         QueryExpansionScopeDocument.Sources(
             sourceSets = bounded(listOf(text("main"))),
             directory = QueryDirectoryScopeDocument(text(unit.directory), QueryContainmentDocument.DESCENDANTS),

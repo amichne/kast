@@ -138,7 +138,12 @@ internal class NativeCrossModuleCallbackFixture(
 internal enum class CrossModuleCallbackSupply(val source: String) {
     DIRECT("package client\nfun direct() { signal.pulse() }\n"),
     ANONYMOUS("package client\nfun supply() { relay.forward { signal.pulse() } }\n"),
-    NAMED("package client\nimport signal.pulse\nfun supply() { relay.forward(::pulse) }\n"),
+    NAMED(
+        "package client\nimport signal.pulse\nimport signal.other\n" +
+            "fun supply() { relay.forward(::pulse) }\n" +
+            "fun decoy() { relay.forward(\"decoy\", ::other) }\n"
+    ),
+    ESCAPED("package client\nfun supply() { relay.remember { signal.pulse() } }\n"),
 }
 
 internal enum class CrossModuleCallbackUnit(val directory: String, val fileName: String) {
@@ -151,7 +156,16 @@ internal enum class CrossModuleCallbackUnit(val directory: String, val fileName:
             CLIENT -> supply.source
             RELAY ->
                 "package relay\nfun deliver(action: () -> Unit) { action() }\n" +
-                    "fun forward(action: () -> Unit) { deliver(action) }\n"
-            SIGNAL -> "package signal\nfun pulse() {}\n"
+                    "fun forward(action: () -> Unit) { deliver(action) }\n" +
+                    "fun forward(label: String, action: () -> Unit) { action() }\n" +
+                    when (supply) {
+                        CrossModuleCallbackSupply.DIRECT,
+                        CrossModuleCallbackSupply.ANONYMOUS,
+                        CrossModuleCallbackSupply.NAMED -> ""
+                        CrossModuleCallbackSupply.ESCAPED ->
+                            "private var saved: (() -> Unit)? = null\n" +
+                                "fun remember(action: () -> Unit) { saved = action }\n"
+                    }
+            SIGNAL -> "package signal\nfun pulse() {}\nfun other() {}\n"
         }
 }
