@@ -206,6 +206,85 @@ def test_markdown_still_excludes_indented_code() -> None:
     assert [(hit.line, hit.start, hit.end) for hit in hits] == [(6, 3, 14)]
 
 
+@pytest.mark.parametrize("suffix", [".md", ".mdx"])
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("<!-- hidden saved result\n--> A saved result.\n", ((2, 7, 18),)),
+        ("A saved result <!-- hidden\nsaved result\n--> End.\n", ((1, 3, 14),)),
+        (
+            "saved result<!-- saved result -->saved result<!-- saved result -->saved result",
+            ((1, 1, 12), (1, 34, 45), (1, 67, 78)),
+        ),
+        (
+            "<!-- saved result --> A saved result <!-- hidden\nsaved result\n--> A saved result.\n",
+            ((1, 25, 36), (3, 7, 18)),
+        ),
+        (
+            "<!-- hidden\n--> A saved result <!-- saved result --> A saved result.\n",
+            ((2, 7, 18), (2, 44, 55)),
+        ),
+        ("`<!--` A saved result.\nA saved result.\n", ((1, 10, 21), (2, 3, 14))),
+        ("`<!-- saved result -->` A saved result.\n", ((1, 27, 38),)),
+        ("`` `<!--` `` A saved result.\nA saved result.\n", ((1, 16, 27), (2, 3, 14))),
+        ("<!-- hidden\n`-->` A saved result.\n", ((2, 9, 20),)),
+        (
+            "<!-- hidden\n```text\nsaved result\n--> A saved result.\nA saved result.\n",
+            ((4, 7, 18), (5, 3, 14)),
+        ),
+        (
+            "<!-- hidden\n~~~text\nsaved result\n--> A saved result.\nA saved result.\n",
+            ((4, 7, 18), (5, 3, 14)),
+        ),
+        ("```text\n<!--\nsaved result\n```\nA saved result.\n", ((5, 3, 14),)),
+        ("A saved result <!-- hidden\nsaved result\n", ((1, 3, 14),)),
+    ],
+    ids=[
+        "suffix-after-multiline-comment",
+        "prefix-before-multiline-comment",
+        "multiple-inline-comments",
+        "inline-comment-then-multiline-comment",
+        "multiline-close-then-inline-comment",
+        "comment-opener-in-inline-code",
+        "complete-comment-in-inline-code",
+        "comment-opener-in-double-backtick-code",
+        "backticks-inside-comment-do-not-protect-terminator",
+        "backtick-fence-inside-comment",
+        "tilde-fence-inside-comment",
+        "comment-opener-inside-code-fence",
+        "unterminated-comment-keeps-visible-prefix",
+    ],
+)
+def test_comment_masks_preserve_visible_prose_and_positions(
+    suffix: str, text: str, expected: tuple[tuple[int, int, int], ...]
+) -> None:
+    glossary = load_glossary(ROOT / "docs/glossary.json")
+    assert not isinstance(glossary, Rejected)
+    hits = occurrences(glossary, text, Path("guide" + suffix))
+    assert tuple((hit.line, hit.start, hit.end) for hit in hits) == expected
+
+
+def test_cli_rejects_prose_after_a_multiline_comment(tmp_path: Path) -> None:
+    source = tmp_path / "glossary.json"
+    data = json.loads((ROOT / "docs/glossary.json").read_text())
+    data["scope"] = {"root": ".", "include": ["*.mdx"], "exclude": []}
+    source.write_text(json.dumps(data))
+    document = tmp_path / "guide.mdx"
+    document.write_text("<!-- hidden saved result\n--> A saved result.\n")
+    result = run(str(source), str(document))
+    assert result.returncode == 1, result.stderr
+    assert json.loads(result.stdout)["documents"][0]["findings"] == [
+        {
+            "type": "REPLACE",
+            "conceptId": "retained-result",
+            "canonical": "retained result",
+            "form": "saved result",
+            "line": 2,
+            "span": [7, 18],
+        }
+    ]
+
+
 def test_stale_view_and_source_overwrite_fail_without_mutation(tmp_path: Path) -> None:
     source = tmp_path / "glossary.json"
     source.write_bytes((ROOT / "docs/glossary.json").read_bytes())

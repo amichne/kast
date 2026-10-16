@@ -371,43 +371,80 @@ def in_scope(glossary: Glossary, path: Path, scope_root: Path) -> bool:
     )
 
 
+@dataclass(frozen=True, slots=True)
+class _Fence:
+    marker: str
+
+
+type _BlockState = Literal["PROSE", "COMMENT", "FRONTMATTER"] | _Fence
+type _InlineState = Literal["PROSE", "COMMENT"]
+
+
+def _mask_inline(line: str, state: _InlineState) -> tuple[str, _InlineState]:
+    parts: list[str] = []
+    cursor = 0
+    while cursor < len(line):
+        if state == "COMMENT":
+            end = line.find("-->", cursor)
+            if end == -1:
+                parts.append(" " * (len(line) - cursor))
+                return "".join(parts), state
+            parts.append(" " * (end + 3 - cursor))
+            cursor = end + 3
+            state = "PROSE"
+            continue
+        token = re.search(r"<!--|`+", line[cursor:])
+        if token is None:
+            parts.append(line[cursor:])
+            break
+        start = cursor + token.start()
+        end = cursor + token.end()
+        parts.append(line[cursor:start])
+        if token[0] == "<!--":
+            parts.append(" " * len(token[0]))
+            cursor = end
+            state = "COMMENT"
+            continue
+        closing = re.search(rf"(?<!`){re.escape(token[0])}(?!`)", line[end:])
+        if closing is None:
+            parts.append(token[0])
+            cursor = end
+        else:
+            cursor = end + closing.end()
+            parts.append(" " * (cursor - start))
+    return "".join(parts), state
+
+
 def prose_lines(text: str, markup: Literal["markdown", "mdx"]) -> tuple[str, ...]:
     """Conservative lexical view. Vale remains the native markup parser."""
     lines: list[str] = []
-    fence = ""
-    frontmatter = False
-    comment = False
+    state: _BlockState = "PROSE"
     for index, line in enumerate(text.splitlines()):
         if index == 0 and line.strip() == "---":
-            frontmatter = True
+            state = "FRONTMATTER"
             lines.append("")
             continue
-        if frontmatter:
+        if state == "FRONTMATTER":
             if line.strip() in {"---", "..."}:
-                frontmatter = False
+                state = "PROSE"
             lines.append("")
             continue
-        marker = re.match(r"^\s*(`{3,}|~{3,})", line)
-        if marker:
-            if not fence:
-                fence = marker[1]
-            elif marker[1][0] == fence[0] and len(marker[1]) >= len(fence):
-                fence = ""
+        if isinstance(state, _Fence):
+            marker = re.match(r"^\s*(`{3,}|~{3,})", line)
+            if marker and marker[1][0] == state.marker[0] and len(marker[1]) >= len(state.marker):
+                state = "PROSE"
             lines.append("")
             continue
-        if fence or (markup == "markdown" and line.startswith(("    ", "\t"))):
-            lines.append("")
-            continue
-        if comment:
-            if "-->" in line:
-                comment = False
-            lines.append("")
-            continue
-        if "<!--" in line:
-            if "-->" not in line:
-                comment = True
-            line = re.sub(r"<!--.*?(?:-->|$)", lambda m: " " * len(m[0]), line)
-        line = re.sub(r"(`+).*?\1", lambda m: " " * len(m[0]), line)
+        if state == "PROSE":
+            marker = re.match(r"^\s*(`{3,}|~{3,})", line)
+            if marker:
+                state = _Fence(marker[1])
+                lines.append("")
+                continue
+            if markup == "markdown" and line.startswith(("    ", "\t")):
+                lines.append("")
+                continue
+        line, state = _mask_inline(line, state)
         line = re.sub(r"\]\([^\n]*?\)", lambda m: "]" + " " * (len(m[0]) - 1), line)
         line = re.sub(r"https?://\S+", lambda m: " " * len(m[0]), line)
         lines.append(line)
