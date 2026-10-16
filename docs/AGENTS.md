@@ -4,8 +4,8 @@ title: "Kast docs"
 description: "Contains the Mintlify site, contributor procedures, glossary policy, and revision-bound acceptance reports."
 resource: "repo://docs"
 tags: [kast, navigation]
-timestamp: "2026-10-16T01:03:10Z"
-source_revision: 24db9ee78771aba370fce84ab60d14a55c61ea82
+timestamp: "2026-10-16T04:31:29Z"
+source_revision: 4b879c5c5a78975e400ddcd95f64f3ff0b3e9cc8
 code_sources:
   - path: docs/development.md
   - path: docs/documentation-structure.md
@@ -21,7 +21,7 @@ code_sources:
 ---
 
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-10-15 | hash: 3528c54cac46 -->
+<!-- generated: 2026-10-16 | hash: c10553a2a6e2 -->
 
 # docs
 
