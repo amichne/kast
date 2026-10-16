@@ -372,7 +372,12 @@ def test_changed_live_artifact_rejects_before_javap(tmp_path: Path) -> None:
 
 def test_compiler_upgrade_rejects_even_with_unchanged_inventory(tmp_path: Path) -> None:
     changed = tmp_path / "catalogue.toml"
-    _ = changed.write_text(CATALOGUE.read_text().replace('kotlin = "2.4.20"', 'kotlin = "2.4.21"'))
+    pin = subject.read_pin(ROOT)
+    assert isinstance(pin, subject.Accepted)
+    original = CATALOGUE.read_text()
+    current = f'kotlin = "{pin.value.kotlin_gradle_version}"'
+    assert original.count(current) == 1
+    _ = changed.write_text(original.replace(current, 'kotlin = "999.0.0"'))
     report = subject.audit(ROOT, changed, evidence=recorded_evidence())
     assert report.status == "FAIL"
     assert code_set(report.issues) == {subject.Code.COMPILER_PIN_DRIFT}

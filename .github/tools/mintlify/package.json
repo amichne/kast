@@ -1,0 +1,27 @@
+{
+  "name": "kast-documentation-validator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Locked Mintlify validation with Node 24 compatible connectivity dependencies.",
+  "engines": {
+    "node": "24.21.0"
+  },
+  "scripts": {
+    "test": "node --test test-runtime.mjs"
+  },
+  "dependencies": {
+    "mint": "4.2.841"
+  },
+  "devDependencies": {
+    "dns-packet": "5.6.1"
+  },
+  "overrides": {
+    "@mintlify/previewing@4.0.1340": {
+      "is-online": {
+        ".": "12.0.2",
+        "public-ip": "8.0.0"
+      }
+    }
+  }
+}
