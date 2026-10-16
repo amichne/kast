@@ -124,10 +124,14 @@ internal fun nativeArgumentBinding(
         val declaration =
             callable.psi as? PsiNamedElement
                 ?: return@observedAnalyze Refinement.Rejected(NativeArgumentBindingFailure.EXTERNAL_CALL)
-        Refinement.Refined(NativeArgument(declaration, position))
+        Refinement.Refined(NativeArgument(declaration, position, callable.origin))
     }
 
-internal data class NativeArgument(val declaration: PsiNamedElement, val position: ValueArgumentPosition)
+internal data class NativeArgument(
+    val declaration: PsiNamedElement,
+    val position: ValueArgumentPosition,
+    val origin: org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin,
+)
 
 internal enum class NativeArgumentBindingFailure {
     UNRESOLVED_REFERENCE,

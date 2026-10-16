@@ -114,9 +114,7 @@ private class NativeCallbackEndpointReadmissions(
         previous: CompilerGroundedSymbolEvidence
     ): CallbackReadmission<CompilerGroundedSymbolEvidence> = withWork {
         val identity = ValueDeclarationIdentity.fromCompiler(previous)
-        when (
-            val endpoint = RelationEndpoint.resolve(authority, request.searchScope, previous, request.searchConstraints)
-        ) {
+        when (val endpoint = RelationEndpoint.resolve(authority, scope.selectedScope, previous, scope.constraints)) {
             is Refinement.Rejected -> Refinement.Rejected(CallbackSummaryReadmissionFailure.EndpointChanged(identity))
             is Refinement.Refined ->
                 when (val restored = projection.subject(scope, endpoint.value)) {

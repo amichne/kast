@@ -27,6 +27,8 @@ internal class IntellijK2RelationSearch(
     private val project: Project,
     private val scope: CompiledRelationScope,
     private val projection: IntellijK2RelationProjection,
+    private val subjectSource: IntellijRelationSubjectLookup.Found,
+    private val callbackEvidence: CallbackEvidenceAccess,
     private val cancellationCheck: () -> Unit = ProgressManager::checkCanceled,
     private val observation: IntellijReadObservation = IntellijReadObservation.None,
     private val limits: ReadLimits = ReadLimits.Default,
@@ -76,10 +78,14 @@ internal class IntellijK2RelationSearch(
             )
 
         private val callbackEmitter =
-            IntellijCallbackObservationEmitter(request, projection, scope, collector, observation, summaries) {
-                limitation,
-                element,
-                range ->
+            IntellijCallbackObservationEmitter(
+                request,
+                projection,
+                callbackEvidence.sources,
+                collector,
+                observation,
+                summaries,
+            ) { limitation, element, range ->
                 incompleteItem(limitation, element, range)
             }
 
@@ -236,7 +242,7 @@ internal class IntellijK2RelationSearch(
         }
 
         fun callees(): IntellijRelationTermination =
-            retainedReader().callees(request, subject, collector, ::processCallee, ::termination)
+            retainedReader().callees(request, subjectSource, collector, ::processCallee, ::termination)
 
         private fun processCallee(candidate: CalleeProviderItem): Boolean =
             when (candidate) {
@@ -294,7 +300,7 @@ internal class IntellijK2RelationSearch(
                 request,
                 subject,
                 projection,
-                scope,
+                callbackEvidence.sources,
                 collector,
                 ::incompleteCallee,
                 observation,

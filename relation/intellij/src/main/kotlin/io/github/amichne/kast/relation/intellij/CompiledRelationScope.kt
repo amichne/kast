@@ -20,7 +20,19 @@ internal constructor(
     private val libraries: SymbolLibraryPolicy,
     private val observation: IntellijReadObservation,
     private val fileEnumerationPlan: RelationFileEnumerationPlan,
+    val selectedScope: io.github.amichne.kast.symbol.contract.SymbolSearchScope = request.searchScope,
+    val constraints: io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints = request.searchConstraints,
 ) {
+    val fingerprint: io.github.amichne.kast.relation.contract.RelationScopeFingerprint =
+        io.github.amichne.kast.relation.contract.RelationScopeFingerprint.from(
+            request.subject,
+            io.github.amichne.kast.relation.contract.RelationSearchBoundary.Explicit(
+                selectedScope,
+                constraints.directory,
+                constraints.sourceSets,
+            ),
+        )
+
     fun prepareFileEnumeration(
         allowance: IntellijRelationAllowance,
         limits: io.github.amichne.kast.kernel.ReadLimits,
@@ -62,6 +74,8 @@ internal constructor(
                     libraries,
                     observation,
                     fileEnumerationPlan,
+                    selectedScope,
+                    constraints,
                 )
         }
     }

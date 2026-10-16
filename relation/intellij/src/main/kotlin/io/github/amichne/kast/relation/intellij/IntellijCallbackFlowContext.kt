@@ -104,9 +104,9 @@ internal class IntellijCallbackFlowContext(
             val result =
                 RelationEndpoint.resolve(
                     lease = scope.request.subject.lease,
-                    scope = scope.request.searchScope,
+                    scope = scope.selectedScope,
                     evidence = evidence,
-                    constraints = scope.request.searchConstraints,
+                    constraints = scope.constraints,
                 )
         ) {
             is Refinement.Refined -> result.value
@@ -120,7 +120,7 @@ internal class IntellijCallbackFlowContext(
         }
 
     fun target(function: KtNamedFunction): Refinement<RelationEndpoint.Resolved, CallbackInvocationFlowCause> {
-        when (scope.request.searchConstraints.packageName.admitPackage { function.relationPackageEvidence() }) {
+        when (scope.constraints.packageName.admitPackage { function.relationPackageEvidence() }) {
             IntellijRelationPackageAdmission.ADMITTED -> Unit
             IntellijRelationPackageAdmission.OUTSIDE_SCOPE ->
                 return Refinement.Rejected(CallbackInvocationFlowCause.OUTSIDE_DOMAIN)
@@ -130,7 +130,7 @@ internal class IntellijCallbackFlowContext(
         return bindingTarget(function)
     }
 
-    /** Evidence-only mapping target; callers must retain scope qualification and cannot enumerate its body. */
+    /** Compiler-mapped target inside the separately admitted callback source universe. */
     fun bindingTarget(function: KtNamedFunction): Refinement<RelationEndpoint.Resolved, CallbackInvocationFlowCause> {
         val evidence =
             when (val result = projection.project(function)) {
@@ -142,9 +142,9 @@ internal class IntellijCallbackFlowContext(
             val result =
                 RelationEndpoint.resolve(
                     lease = scope.request.subject.lease,
-                    scope = scope.request.searchScope,
+                    scope = scope.selectedScope,
                     evidence = evidence,
-                    constraints = scope.request.searchConstraints,
+                    constraints = scope.constraints,
                 )
         ) {
             is Refinement.Refined -> result

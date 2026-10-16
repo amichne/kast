@@ -122,7 +122,25 @@ internal class IntellijRelationLocators(
                 }
             }
 
-    fun restoreCallee(locator: RelationProviderLocator.Callee): Refinement<CalleeProviderItem, RelationLimitation> =
+    fun restoreCallee(
+        locator: RelationProviderLocator.Callee,
+        subject: IntellijRelationSubjectLookup.Found,
+    ): Refinement<CalleeProviderItem, RelationLimitation> {
+        val source = subject.evidence
+        if (
+            !subject.declaration.isValid ||
+                locator.file != source.file ||
+                locator.range.startInclusive < source.range.startInclusive ||
+                locator.range.endExclusive > source.range.endExclusive
+        )
+            return unavailable()
+        return IntellijRelationLocators(project, subject.sourceScope, projection, cancellationCheck, observation)
+            .restoreSubjectCallee(locator)
+    }
+
+    private fun restoreSubjectCallee(
+        locator: RelationProviderLocator.Callee
+    ): Refinement<CalleeProviderItem, RelationLimitation> =
         when (locator) {
             is RelationProviderLocator.Callee.Reference -> restoreCalleeReference(locator)
             is RelationProviderLocator.Callee.CallbackSupplies -> restoreCallbackSupplies(locator)

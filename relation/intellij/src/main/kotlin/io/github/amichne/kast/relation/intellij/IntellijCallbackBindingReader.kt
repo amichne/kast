@@ -125,8 +125,7 @@ internal class IntellijCallbackBindingReader(
                 is Refinement.Refined -> result.value
                 is Refinement.Rejected -> return unavailable(result.failure.flowCause())
             }
-        val mappedFile = mapped.declaration.containingFile?.virtualFile
-        if (mappedFile != null && !context.scope.nativeScope.contains(mappedFile))
+        if (mapped.origin == org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin.LIBRARY)
             return readCallbackDependencyContract(context, call, argument.expression)
         val target =
             when (val result = target(mapped)) {

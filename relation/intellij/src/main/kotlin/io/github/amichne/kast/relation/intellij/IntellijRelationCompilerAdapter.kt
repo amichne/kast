@@ -161,6 +161,7 @@ internal class IntellijRelationCompilerQuery(
         val scope: CompiledRelationScope,
         val projection: IntellijK2RelationProjection,
         val subject: IntellijRelationSubjectLookup.Found,
+        val callbacks: CallbackEvidenceAccess,
     )
 
     private fun admitRead(
@@ -214,8 +215,35 @@ internal class IntellijRelationCompilerQuery(
                     return io.github.amichne.kast.kernel.Refinement.Rejected(lookup.reason.compilerRejection())
             }
 
+        val callbacks =
+            when (
+                val admitted =
+                    CallbackEvidenceAccess.compile(scopes.search) { selected, constraints ->
+                        when (
+                            val compiled =
+                                scopeCompiler.compile(
+                                    project,
+                                    request,
+                                    modelCompilation,
+                                    selected,
+                                    constraints,
+                                    observation,
+                                )
+                        ) {
+                            is IntellijRelationScopeCompilation.Compiled ->
+                                io.github.amichne.kast.kernel.Refinement.Refined(compiled.scope)
+                            is IntellijRelationScopeCompilation.Rejected ->
+                                io.github.amichne.kast.kernel.Refinement.Rejected(
+                                    RelationCompilerRejection.SCOPE_REJECTED
+                                )
+                        }
+                    }
+            ) {
+                is io.github.amichne.kast.kernel.Refinement.Refined -> admitted.value
+                is io.github.amichne.kast.kernel.Refinement.Rejected -> return admitted
+            }
         return io.github.amichne.kast.kernel.Refinement.Refined(
-            admittedRead(request, scopes.search, projection, subject, allowance)
+            admittedRead(request, scopes.search, projection, subject, callbacks, allowance)
         )
     }
 
@@ -224,6 +252,7 @@ internal class IntellijRelationCompilerQuery(
         scope: CompiledRelationScope,
         projection: IntellijK2RelationProjection,
         subject: IntellijRelationSubjectLookup.Found,
+        callbacks: CallbackEvidenceAccess,
         allowance: IntellijRelationAllowance,
     ): AdmittedRelationRead =
         AdmittedRelationRead(
@@ -231,6 +260,7 @@ internal class IntellijRelationCompilerQuery(
             else scope.prepareFileEnumeration(allowance, limits),
             projection,
             subject,
+            callbacks,
         )
 
     private fun evaluateRead(
@@ -260,6 +290,8 @@ internal class IntellijRelationCompilerQuery(
                     project,
                     scope,
                     projection,
+                    subjectSource = subject,
+                    callbackEvidence = admitted.callbacks,
                     observation = observation,
                     limits = limits,
                     summaries = preparedSummaries,

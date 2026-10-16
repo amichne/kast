@@ -101,7 +101,7 @@ internal class IntellijK2RelationProjection(
                     return rejected(IntellijRelationSubjectFailure.COMPILER_IDENTITY_UNAVAILABLE)
             }
         return when (RevalidatedRelationEndpoint.validate(subject, evidence)) {
-            is Refinement.Refined -> IntellijRelationSubjectLookup.Found(declaration, evidence)
+            is Refinement.Refined -> IntellijRelationSubjectLookup.Found(declaration, evidence, scope)
             is Refinement.Rejected -> rejected(IntellijRelationSubjectFailure.STALE_SELECTOR)
         }
     }

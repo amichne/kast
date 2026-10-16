@@ -66,7 +66,7 @@ internal class IntellijCallbackSupplierCalls(
 
     private fun select(reference: PsiReference): Refinement<NativeSupplierReference, CallbackInvocationFlowCause> {
         when (
-            context.scope.request.searchConstraints.packageName.admitPackage {
+            context.scope.constraints.packageName.admitPackage {
                 reference.element.relationPackageEvidence()
             }
         ) {

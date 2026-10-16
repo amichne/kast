@@ -16,6 +16,7 @@ internal sealed interface IntellijRelationSubjectLookup {
     data class Found(
         val declaration: PsiNamedElement,
         val evidence: CompilerGroundedSymbolEvidence,
+        val sourceScope: CompiledRelationScope,
     ) : IntellijRelationSubjectLookup
 
     data class Rejected(val reason: IntellijRelationSubjectFailure) : IntellijRelationSubjectLookup

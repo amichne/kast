@@ -95,7 +95,7 @@ internal class IntellijRetainedRelationRead(
 
     fun callees(
         request: RelationRequest,
-        subject: PsiNamedElement,
+        subject: IntellijRelationSubjectLookup.Found,
         collector: IntellijRelationCollector,
         process: (CalleeProviderItem) -> Boolean,
         termination: (ProviderTermination) -> IntellijRelationTermination,
@@ -106,13 +106,20 @@ internal class IntellijRetainedRelationRead(
                 collector,
                 {
                     IntellijCalleeInventory(locators, collector, cancellationCheck, limits, observation)
-                        .prepare(subject)
+                        .prepare(subject.declaration)
                 },
                 { state, locator ->
                     observation.phase(IntellijReadPhase.CALLEE_CONFIRMATION)
                     when (locator) {
                         is RelationProviderLocator.Callee ->
-                            confirm(request, state, locators.restoreCallee(locator), locator, collector, process)
+                            confirm(
+                                request,
+                                state,
+                                locators.restoreCallee(locator, subject),
+                                locator,
+                                collector,
+                                process,
+                            )
                         else -> collector.blockPartition(RelationLimitation.PROVIDER_INCOMPLETE)
                     }
                 },

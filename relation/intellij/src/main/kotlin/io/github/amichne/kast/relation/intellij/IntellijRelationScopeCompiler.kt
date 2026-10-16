@@ -221,6 +221,8 @@ internal class IntellijRelationScopeCompiler(private val fileAdmission: (Path) -
                             matchesDirectory(path, model.workspaceRoot.value, constraints)
                     },
                 ),
+                selectedScope,
+                constraints,
             )
         )
     }
