@@ -90,36 +90,33 @@ Codex also prepares Kotlin Gradle projects through a background hook. That hook 
 Queries [prepare IntelliJ automatically](/reference/internals/background-startup). You do not need a separate workspace-open step.
 
 <a id="check-that-the-tools-work" />
-
 <a id="run-the-first-query" />
 
 ## 2. Establish tool and workspace admission
 
-Ask your agent:
+Ask the agent for one Kotlin declaration with signature, location, coverage, and the reported readiness or proof blocker.
 
-> Use Kast to find one Kotlin declaration in this repository. Show its name, kind, signature, source location, and coverage. Report the readiness or proof blocker.
-
-A declaration with its location and coverage shows that the agent called Kast. Use `kast status` to inspect the recorded registration.
-
-To investigate a function, substitute its name and directory in this prompt:
+For a named function, narrow discovery before relation work.
 
 ```text wrap
 Use Kast to find submitOrder in the production Kotlin sources under checkout. Show matching signatures, locations, and coverage. Stop so I can choose the exact function.
 ```
 
-After you select a function, ask:
+After you select the declaration, request its callers through the issued exact reference.
 
 ```text wrap
 Use the exact reference for the function I selected to find its callers. Show the call sites and searched scope, and report any unfinished work.
 ```
 
-[Find and trace code](/reference/search) explains the results. For missing tools or readiness blockers, use [Troubleshooting](/reference/troubleshooting).
+Queries prepare IDEA automatically. Readiness still needs admission for the exact worktree and loaded Host.
+
+[Find and trace code](/reference/search) supplies investigation steps. [Lifecycles](/reference/lifecycles) distinguishes registration, session, preparation, and semantic execution.
 
 <a id="choose-a-connection-destination" />
 
 ## 3. Set a custom destination when needed
 
-Pass an absolute directory when connecting:
+Supply an absolute destination for the selected integration.
 
 ```shell
 kast connect pi --destination "$HOME/.config/pi/agent"
@@ -135,41 +132,45 @@ kast connect codex app-server --destination "$HOME/bin"
 | Codex MCP | Codex's `config.toml`. The registered executable stays in the Kast installation. |
 | Codex App Server | The `kast-codex` launcher |
 
-Kast saves these directories in `~/.config/kast/config.json`. Reconnect, upgrade, and disconnect reuse them. An explicit `--destination` overrides the saved preference.
+Kast saves preferences in `~/.config/kast/config.json`. An explicit destination overrides the recorded preference.
 
-Without a saved destination, Kast reads `PI_CODING_AGENT_DIR`, `COPILOT_HOME`, or `CODEX_HOME` for the selected agent. If that variable is absent, Kast uses the agent's default directory. App Server defaults to `~/.local/bin`.
+Without a preference, Kast reads the selected agent's `PI_CODING_AGENT_DIR`, `COPILOT_HOME`, or `CODEX_HOME`. Otherwise, it uses that agent's default home.
 
-For a custom directory, run the agent with the same harness home. For example, `PI_CODING_AGENT_DIR="$HOME/.config/pi/agent" pi` loads the adapter from that directory. Kast's saved destination does not change the agent's settings.
+App Server defaults to `~/.local/bin`. A saved destination does not change the agent's own home selection.
 
-When you change `--destination`, Kast examines the new connection and removes its previous owned slot in the same transaction. Other harness settings remain in place.
+If you use a custom home, start the agent with the same home. For Pi, use `PI_CODING_AGENT_DIR="$HOME/.config/pi/agent" pi`.
+
+Destination changes admit the new connection and remove the previous owned slot in one transaction. Other harness settings stay under their existing owner.
 
 <a id="recover-an-existing-connection" />
 
 ## 4. Recover a conflicting connection
 
-Matching registrations stay in place. By default, `kast connect` recovers a conflicting Kast slot with the verified release payload. Kast keeps the displaced bytes in a private backup and prints its location. Other extensions and registration names remain in place.
+Matching registrations stay in place. Default recovery replaces a conflicting Kast slot with the verified release payload and keeps displaced bytes in a private backup.
 
-If the connection fails, Kast restores the previous connection, preferences, checkpoint, and ownership receipt. If a concurrent change or filesystem refusal prevents restoration, Kast keeps the recovery copy and reports the necessary action. Unverified release payloads and symbolic-link slots reject before replacement.
+A failed transaction restores connection, preferences, checkpoint, and receipt. Concurrent changes or filesystem refusal can leave a recovery copy with a necessary action.
 
-Kast keeps a verified configuration checkpoint in `~/.config/kast/config.last-good.json`. Reconnect restores a damaged or missing configuration from that checkpoint.
+Unverified payloads and symbolic-link slots reject before replacement. `--no-recover` rejects conflicts without replacement, while `--force` requests explicit slot replacement.
 
-If both copies are invalid, Kast reconstructs preferences from recorded connection directories and keeps the rejected copies. If an older receipt lacks that routing proof, supply `--destination` to reconstruct preferences. Kast keeps the rejected configuration.
+`config.last-good.json` supplies a configuration checkpoint. If both configurations fail, recorded routing receipts can reconstruct preferences and preserve rejected copies.
 
-Use `--no-recover` to reject conflicts without replacing them. `--force` remains available for explicit replacement of the selected Kast slot.
+If an older receipt lacks routing proof, supply `--destination`. Keep the reported backup until recovery succeeds.
 
 <a id="disconnect-or-upgrade" />
 
 ## 5. Reload clients after a lifecycle change
 
-For a registration made with `kast connect`:
+Disconnect an owned registration with its selected agent name.
 
 ```shell
 kast disconnect copilot
 ```
 
-`kast disconnect codex` removes its recorded App Server launcher and MCP registration. Remove the Codex-owned bundled plugin with `codex plugin remove kast@kast`. Restart the affected agent.
+`kast disconnect codex` removes recorded App Server and MCP integration. Remove the Codex-owned plugin with `codex plugin remove kast@kast`.
 
-After `kast upgrade`, restart IDEA and connected agents. For the bundled Codex plugin, repeat `kast plugin codex`.
+Restart the affected client to unload its adapter. After an upgrade, restart IDEA and connected clients.
+
+For the bundled Codex plugin, repeat `kast plugin codex`. Disconnection does not itself retire IDEA or the shared daemon.
 
 ## Plugin archives and custom clients
 

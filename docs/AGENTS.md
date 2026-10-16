@@ -4,8 +4,8 @@ title: "Kast docs"
 description: "Contains the Mintlify site, contributor procedures, glossary policy, and revision-bound acceptance reports."
 resource: "repo://docs"
 tags: [kast, navigation]
-timestamp: "2026-10-15T13:45:06Z"
-source_revision: 52b5599de559d9b82f990bbd16b882762dbdf402
+timestamp: "2026-10-16T04:31:29Z"
+source_revision: 4b879c5c5a78975e400ddcd95f64f3ff0b3e9cc8
 code_sources:
   - path: docs/development.md
   - path: docs/documentation-structure.md
@@ -16,10 +16,12 @@ code_sources:
   - path: docs/public/reference/source-map.mdx
   - path: docs/tool-rpc.md
   - path: docs/topology-impact.md
+  - path: docs/tooling/check_glossary.py
+  - path: docs/tooling/glossary_json.py
 ---
 
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-10-15 | hash: 3528c54cac46 -->
+<!-- generated: 2026-10-16 | hash: c10553a2a6e2 -->
 
 # docs
 
@@ -48,11 +50,13 @@ Contains the Mintlify site, contributor procedures, glossary policy, and revisio
 - [public/reference/](public/reference/AGENTS.md) - contracts, models, and authored generation rules.
 - [public/explanation/](public/explanation/) - mechanisms and design rationale.
 - [reviews/](reviews/) - historical reports with exact evidence scope.
+- [tooling/](tooling/README.md) - local glossary grammar, reader projection, and Vale rule generation.
 
 ## Entry Points
 
 - From `docs/public`, run `mint validate` and `mint broken-links`.
 - Use the pinned Vale command and checked-in rules from the root guide.
+- Run `./gradlew verifyDocumentationGlossary` for current terminology and generated projection parity.
 - Read the nested public reference guide before changing generated callable contracts.
 
 ## Navigation Hints

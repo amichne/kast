@@ -1,49 +1,56 @@
 ---
 title: "Kast technical reference"
 sidebarTitle: "Reference overview"
-description: "Find query syntax, semantic result contracts, client protocols, generated schemas, and their source owners."
+description: "Understand program tracing, staleness, request lifecycles, and the contracts that carry Kast evidence."
 icon: "code"
 ---
 
 <a id="understand-the-evidence" />
 <a id="work-on-kast" />
 
-This track describes Kast's inputs, outputs, defaults, and rejection rules. The installed catalog governs the release that your client uses.
+Kast turns compiler-resolved Kotlin facts into evidence that an agent can inspect and reuse. Its contracts preserve declaration identity, source state, scope, and proof limits.
 
-The schemas on `main` can describe a newer release. [Compatibility](/reference/compatibility) identifies the catalog for each client.
+## Understand the mechanisms
+
+| Mechanism | What Kast establishes |
+| --- | --- |
+| [Program tracing](/reference/program-tracing) | Calls, callback routes, and transfers inside functions, with evidence for each supported hop. |
+| [Staleness](/reference/staleness) | The state a read needs, fresh authority for exact references, and rejection of obsolete retained evidence. |
+| [Lifecycles](/reference/lifecycles) | The owners of requests, connections, workspace preparation, and daemon startup or retirement. |
+
+The compiler-static model does not establish runtime execution or path feasibility. Missing proof returns a finite rejection with available evidence.
 
 ## Queries and semantic evidence
 
-| Contract | Contents |
+| Contract | Lookup |
 | --- | --- |
-| [Query forms](/reference/api) | Actions, sources, ordered steps, outputs, scope, and defaults. |
-| [Results](/reference/responses) | Completion, previews, retained rows, evidence pages, and finite failures. |
+| [Query forms](/reference/api) | Actions, sources, ordered steps, outputs, scope defaults, and value-impact inputs. |
+| [Results](/reference/responses) | Semantic completion, output previews, retained rows, evidence cursors, and recovery. |
 | [Symbol identity](/reference/symbols) | Exact references, signatures, source ranges, and local declarations. |
+| [Callback observations](/reference/callback-observations) | Supply, binding, invocation, ownership, declared effects, and unresolved obligations. |
 | [Composition](/reference/composition) | Set operations, joins, row kinds, and absence rules. |
-| [Limits and failures](/reference/limits) | Resource grants, failure categories, and state needed for recovery. |
+| [Limits and failures](/reference/limits) | Execution grants, storage limits, and finite rejection causes. |
 
 ## Client contracts
 
-| Client | Contract |
+MCP, Tool RPC, and hosted App Server carry canonical operation documents through distinct client lifecycles.
+
+| Client | Contract authority |
 | --- | --- |
-| Direct MCP | [Tool discovery, calls, and structured results](/reference/mcp-catalog). |
-| Tool RPC | [Process invocation and the reply union](/reference/rpc-catalog). |
-| Hosted App Server | [Client compatibility](/reference/compatibility) and the conversation's provider catalog. |
+| [Direct MCP](/reference/mcp-catalog) | Installed `tools/list` entries and input and output schemas. |
+| [Tool RPC](/reference/rpc-catalog) | Installed `catalog`, process commands, and reply variants. |
+| [Hosted App Server](/reference/compatibility) | The conversation's provider catalog and admitted client protocol. |
 
-Direct MCP and Tool RPC expose `health_check`. Hosted App Server supplies `workspace_lifecycle` instead.
+The shared tools are `query_symbols`, `check_diagnostics`, `add_declaration`, and `replace_body`.
 
-The four shared tools are `query_symbols`, `check_diagnostics`, `add_declaration`, and `replace_body`.
+Direct MCP and Tool RPC expose `health_check`. Hosted App Server exposes `workspace_lifecycle` for separate project actions.
 
 ## Schemas and source owners
 
-[Schemas and samples](/reference/schemas) links generated inputs, outputs, and examples. The model pages describe individual result variants.
+[Schemas and samples](/reference/schemas) connects inputs and outputs to generated contracts. Model pages describe individual variants.
 
-[Recorded query evidence](/reference/walkthrough) preserves a historical run. Its counts and handles do not describe a current workspace.
+[Recorded query evidence](/reference/walkthrough) preserves a historical run. Its handles and counts do not describe your current workspace.
 
-[Source map](/reference/source-map) connects contracts to current source, focused tests, and OpenWiki concepts.
+[The source map](/reference/source-map) links inspected owners and counterexample tests. The installed catalog governs your release when `main` describes newer behavior.
 
-The [provisional glossary](https://github.com/amichne/kast/blob/main/docs/GLOSSARY.md) defines identity, scope, completion, and retained-evidence terms.
-
-For a guided exercise, use [Tutorials](/tutorials). For commands and recovery procedures, use [How-to guides](/how-to).
-
-[Explanation](/explanation) describes why identity, coverage, and runtime activation remain separate facts.
+[Tutorials](/tutorials) supplies a controlled exercise. [How-to guides](/how-to) supplies commands and recovery procedures. [Explanation](/explanation) develops the evidence model.

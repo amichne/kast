@@ -6,95 +6,79 @@ icon: "file-pen-line"
 
 <a id="exact-inputs-for-tool-authors" />
 
-Use this guide after you authorize one source change. Kast can add a declaration to an existing file or replace a supported block body. Before a change, [find the target and read its source](/reference/search). Pass the exact reference from that result unchanged.
+Use this procedure after authorization for one source change. Kast supports declaration insertion into an existing file and replacement of a supported function body.
+
+1. [Select the target and scope.](#1-select-the-target-and-scope)
+2. [Establish the source effect.](#2-establish-the-source-effect)
+3. [Use the supported input form.](#3-use-the-supported-input-form)
 
 <a id="check-the-target-and-scope" />
-
 <a id="select-the-target-and-scope" />
-
-
-1. [Select the exact target and supported change.](#1-select-the-target-and-scope)
-2. [Establish the source effect from the receipt.](#2-establish-the-source-effect)
-3. [Review the diff and run project tests.](#read-the-receipt)
 
 ## 1. Select the target and scope
 
-To select the target, substitute your function and directory in this prompt:
+Find the exact target before the write. Read its source. If several declarations match, select its owner and signature.
 
 ```text wrap
 Use Kast to find retryLimit under checkout. Show matching signatures and locations. If several functions match, stop so I can choose. Read the selected function's source and check whether it has a supported block body before changing it.
 ```
 
-After you select the target, request the change:
+Request the body replacement with an explicit preservation rule.
 
 ```text wrap
 Use Kast to replace the chosen function's body with { return 3 }. Keep its signature and the source outside the body unchanged. Report verification and the change receipt; if the outcome is uncertain, preserve recovery evidence and stop before retrying the write.
 ```
 
-Body replacement accepts a non-inline named function with a block body and no contract. Change tools reject file creation, arbitrary range edits, symbol renames, and multi-file refactors.
+Replacement supports a non-inline named Kotlin function with a block body and no contract. Expression bodies and unsupported ownership reject admission.
+
+The tools do not create files, rename symbols, replace arbitrary ranges, or do multi-file refactors.
 
 <a id="read-the-receipt" />
 
 ## 2. Establish the source effect
 
-One call plans, applies, and verifies the edit. Examine the receipt. Review the diff before you accept the result.
+One public call owns planning, exact internal authorization, preimage admission, source effect, post-write examination, and receipt delivery.
 
-```mermaid
-flowchart TB
-  accTitle: A write requires verification or recovery before another write
-  accDescr: An exact target enters the change workflow. Verified edits proceed to review. Failed verification or a lost response requires source inspection and recovery before any retry.
-  A["Exact target and requested edit"] --> B["Plan, apply, verify"]
-  B --> C{"Verification outcome"}
-  C -->|Verified| D["Review diff and run project tests"]
-  C -->|Failed or uncertain| E["Keep plan and phase evidence"]
-  E --> F["Read source and follow recovery"]
-  class A,B authority;
-  class D evidence;
-  class E,F limited;
-  classDef authority fill:#3154C7,color:#FFFFFF,stroke:#8FA7FF,stroke-width:2px;
-  classDef evidence fill:#166534,color:#FFFFFF,stroke:#86EFAC,stroke-width:1.5px;
-  classDef limited fill:#92400E,color:#FFFFFF,stroke:#FCD34D,stroke-width:1.5px;
-  classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
-```
+The planned preimage must remain current before the write. Recovery evidence preserves the planned and resulting source effect when a later stage fails.
 
-<Note>
-  A rejection, timeout, or lost response leaves the write outcome uncertain until source and recovery evidence establish the effect.
-</Note>
+Examine the receipt's plan identity, phase, state, qualification, source location, and fresh reference. Review the resulting diff.
 
-If the outcome is uncertain, examine the source and recovery evidence before another write.
+Known pre-write rejection can establish no write within its reported phase. A missing response or uncertain settlement after dispatch cannot establish that fact.
 
-IDEA diagnostics and edit verification cover the scope in the receipt. After a verified change, run your project's build and tests.
+If the effect is uncertain, preserve the receipt. Read current source before another write. Complete the reported recovery before another write.
+
+IDEA diagnostics and post-write examination cover only the receipt's scope. Run the project's build and tests after a verified source effect.
 
 ## 3. Use the supported input form
 
-These examples use placeholders. Replace each placeholder with a current reference from Kast.
+These examples use placeholders for current exact references. Pass issued handles unchanged.
 
-<AccordionGroup>
-  <Accordion title="Add a declaration">
-    ```json
-    {
-      "exactTarget": "<exact-ref-returned-by-Kast>",
-      "declaration": "fun retryLimit(): Int = 3"
-    }
-    ```
+### Add a declaration
 
-    Select the existing file. Examine the insertion location before the change. Use the [Add declaration schema](/reference/callables/add-declaration) for exact inputs.
-  </Accordion>
+```json
+{
+  "exactTarget": "<exact-ref-returned-by-Kast>",
+  "declaration": "fun retryLimit(): Int = 3"
+}
+```
 
-  <Accordion title="Replace a function body">
-    ```json
-    {
-      "exactTarget": "<exact-function-ref-returned-by-Kast>",
-      "body": "{ return 3 }"
-    }
-    ```
+Select the existing file. Examine the insertion location. [The generated schema](/reference/callables/add-declaration) defines the full input.
 
-    Supply the complete block with its braces. Use the [Replace body schema](/reference/callables/replace-body) for exact inputs.
-  </Accordion>
+### Replace a function body
 
-  <Accordion title="Carry exact identity across a change">
-    Kast treats `exact:v5:…` and `exact:v3:…` as opaque handles. Keep each prefix and the rest of its handle unchanged.
+```json
+{
+  "exactTarget": "<exact-function-ref-returned-by-Kast>",
+  "body": "{ return 3 }"
+}
+```
 
-    After verified replacement, pass the returned `freshRef` to a later `add_declaration`. Kast must still examine the authority of pre-write references.
-  </Accordion>
-</AccordionGroup>
+Supply the full block with braces. [The generated schema](/reference/callables/replace-body) defines target and replacement admission.
+
+### Carry exact identity across a change
+
+Use the returned `freshRef` for later operations after a verified change. Earlier references still need current compiler identity admission.
+
+The token prefix remains part of the opaque handle. Do not substitute one reference version for another.
+
+[Staleness](/reference/staleness) protects read and preimage authority. [Lifecycles](/reference/lifecycles) describes uncertain mutation settlement and workspace recovery.

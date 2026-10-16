@@ -5,8 +5,10 @@ openapi-schema: "reference/callables.openapi.json ToolRpcReply"
 mode: "wide"
 ---
 
-The reply's `type` selects the catalog, canonical document, or finite process failure. Each tool document keeps its own semantic status.
+The reply discriminator selects the installed catalog, operation document, or finite process failure. Each selected tool document keeps its own semantic status.
 
-`complete`, `qualified`, and `rejected_document` carry `document`. `rejected` carries `failure`. `catalog` carries installed tool schemas.
+`complete`, `qualified`, and `rejected_document` carry `document`. `rejected` carries `failure`, and `catalog` carries installed schemas and capabilities.
 
-Unknown variants represent an incompatible contract. [Tool RPC contract](/reference/rpc-catalog#decode) defines the union and process invocation.
+Unknown variants identify an incompatible contract. A client must preserve the distinction between process failure and semantic rejection.
+
+[Tool RPC](/reference/rpc-catalog#decode) defines commands and session transitions. [Lifecycles](/reference/lifecycles) describes the operation's owners.
