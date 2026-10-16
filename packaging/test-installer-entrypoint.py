@@ -6,6 +6,7 @@ from pathlib import Path
 import hashlib
 import errno
 import io
+import importlib.util
 import json
 import os
 import shlex
@@ -289,7 +290,7 @@ else:
         return {"PATH": str(binary.parent) + os.pathsep + TOOL_PATH}
 
     def upgrade_fixture(self, directory, *, cold_staging=False, version='1.2.4', completion_capability=True,
-                        service_failure_report: str | None = None):
+                        service_failure_report: str | None = None, retained_replacement=False):
         idea, assets, environment = self.installer_fixture(
             directory, version=version, completion_capability=b'1\n' if completion_capability else None,
         )
@@ -329,6 +330,13 @@ elif [ "$1" = connect ] || [ "$1" = plugin ]; then
   shift
   for argument in "$@"; do printf ':%s' "$argument" >> "$TEST_LOG"; done
   printf '\\n' >> "$TEST_LOG"
+  if [ -d "$KAST_INSTALL_ROOT/recovery/replacement" ]; then
+    printf 'codex-unsealed\\n' >> "$TEST_LOG"
+  fi
+  if [ "${FAIL_CODEX_PLUGIN:-0}" != 0 ]; then
+    printf 'Codex plugin setup rejected\\n' >&2
+    exit "$FAIL_CODEX_PLUGIN"
+  fi
 else
   exit 92
 fi
@@ -391,6 +399,28 @@ assert sys.argv[1] in ('check', 'check-reset', 'install')
 with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.argv[1] + '\\n')
 ''',
         }
+        if retained_replacement:
+            recovery_script = ROOT / 'packaging/installation-recovery.py'
+            scripts['share/kast/installation-recovery.py'] = recovery_script.read_bytes()
+            spec = importlib.util.spec_from_file_location('installer_recovery_fixture', recovery_script)
+            if spec is None or spec.loader is None:
+                raise AssertionError('recovery fixture module is unavailable')
+            recovery = importlib.util.module_from_spec(spec)
+            sys.modules[spec.name] = recovery
+            spec.loader.exec_module(recovery)
+            command_directory = Path(environment['KAST_BIN_DIR'])
+            command_directory.mkdir(parents=True)
+            recovery.prepare(prior, command_directory)
+            transaction = install / 'recovery/replacement'
+            payload = transaction / 'payload'
+            payload.mkdir(parents=True)
+            (payload / 'prior-payload').write_text('retained prior installation')
+            previous_recovery = transaction / 'recovery'
+            previous_recovery.mkdir()
+            previous = recovery.PhysicalPrevious('PHYSICAL', str(prior), recovery.Identity.observe(payload),
+                                                  str(payload), str(previous_recovery))
+            recovery.save(transaction / 'receipt.json', recovery.Replacement(1, recovery.ReplacementStage.COMMITTED,
+                          str(prior), recovery.Identity.observe(prior), previous))
         scripts['share/kast/libexec/kast-management'] = scripts['share/kast/libexec/kast-management'].replace(
             b'__COMPLETION_REJECTED__', json.dumps(asdict(CompletionRejectedFixture())).encode(),
         )
@@ -553,6 +583,46 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             self.assertEqual('', result.stdout)
             self.assertNotIn('{', result.stderr)
             self.assertIn('1 prior Kast entries retained', result.stderr)
+
+    def test_codex_setup_starts_after_recovery_finalization_and_preserves_its_exit_code(self):
+        for plugin_exit in (0, 17):
+            with self.subTest(plugin_exit=plugin_exit), tempfile.TemporaryDirectory(prefix='kast-codex-finalization-') as directory:
+                idea, environment, installation, log = self.upgrade_fixture(directory, retained_replacement=True)
+                codex = Path(directory) / 'bin/codex'
+                codex.write_text('#!/bin/sh\nexit 92\n')
+                codex.chmod(0o755)
+                environment['FAIL_CODEX_PLUGIN'] = str(plugin_exit)
+                receipt = installation.parent / 'recovery/installation/receipt.json'
+                transaction = installation.parent / 'recovery/replacement'
+                self.assertEqual('Prepared', json.loads(receipt.read_text())['stage'])
+                self.assertTrue((transaction / 'payload/prior-payload').is_file())
+                result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea)],
+                    cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10)
+                self.assertEqual(plugin_exit, result.returncode, result.stderr)
+                self.assertEqual('Active', json.loads(receipt.read_text())['stage'])
+                self.assertFalse(transaction.exists())
+                self.assertEqual(['service', 'plugin', 'review', 'plugin:codex'], log.read_text().splitlines())
+                self.assertTrue((installation / 'bin/kast-mcp-complete').is_file())
+                self.assertTrue((Path(environment['KAST_BIN_DIR']) / 'kast').is_file())
+                if plugin_exit:
+                    self.assertIn('Codex plugin setup rejected', result.stderr)
+                    self.assertNotIn('installed Kast Control', result.stderr)
+
+    def test_failed_finalization_stops_before_optional_codex_setup(self):
+        for failure, calls in (('FAIL_SEAL', ['service', 'plugin', 'seal']),
+                               ('FAIL_REVIEW', ['service', 'plugin', 'seal', 'review'])):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory(prefix='kast-codex-finalization-rejected-') as directory:
+                idea, environment, installation, log = self.upgrade_fixture(directory)
+                codex = Path(directory) / 'bin/codex'
+                codex.write_text('#!/bin/sh\nexit 92\n')
+                codex.chmod(0o755)
+                environment[failure] = '18'
+                result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea)],
+                    cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10)
+                self.assertNotEqual(0, result.returncode)
+                self.assertEqual(calls, log.read_text().splitlines())
+                self.assertTrue(installation.is_dir())
+                self.assertNotIn('installed Kast Control', result.stderr)
 
     def test_completion_rejection_preserves_native_path_and_reports_finite_activation_failure(self):
         with tempfile.TemporaryDirectory(prefix='kast-completion-rejected-') as directory:
