@@ -8,6 +8,8 @@ plugins {
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
+private val unitTestCoroutinesVersion =
+    objects.property<String>().convention(catalog.findVersion("coroutines").get().requiredVersion)
 
 java {
     toolchain {
@@ -23,6 +25,18 @@ kotlin {
         freeCompilerArgs.add("-Xconsistent-data-class-copy-visibility")
     }
 }
+
+// IDE unit tests keep the provided fork and use its compatible test library.
+listOf("kast.role.intellij-read", "kast.role.intellij-write", "kast.role.ide-read-only", "kast.role.ide-host")
+    .forEach { role ->
+        plugins.withId(role) {
+            unitTestCoroutinesVersion.set(catalog.findVersion("ide-coroutines-test").get().requiredVersion)
+            configurations.testImplementation {
+                exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core")
+                exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core-jvm")
+            }
+        }
+    }
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform {
@@ -51,7 +65,9 @@ tasks.withType<Test>().configureEach {
 
 dependencies {
     testImplementation(catalog.findLibrary("junit-jupiter-api").get())
-    testImplementation(catalog.findLibrary("coroutines-test").get())
+    testImplementation(
+        unitTestCoroutinesVersion.map { version -> "org.jetbrains.kotlinx:kotlinx-coroutines-test:$version" }
+    )
     testRuntimeOnly(catalog.findLibrary("junit-jupiter-engine").get())
     testRuntimeOnly(catalog.findLibrary("junit-platform-launcher").get())
 }

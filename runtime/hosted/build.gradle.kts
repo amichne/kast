@@ -172,7 +172,13 @@ tasks.named("test") {
 // Platform status and wait cleanup have a separate effect-boundary lane.
 val nativeTest = sourceSets.create("nativeTest")
 
-configurations[nativeTest.implementationConfigurationName].extendsFrom(configurations.implementation.get())
+configurations[nativeTest.implementationConfigurationName].apply {
+    extendsFrom(configurations.implementation.get())
+    // The pinned fixture distribution supplies coroutine core classes.
+    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core")
+    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core-jvm")
+    exclude(group = "org.jetbrains.intellij.deps.kotlinx", module = "kotlinx-coroutines-core-jvm")
+}
 
 configurations[nativeTest.runtimeOnlyConfigurationName].extendsFrom(configurations.testRuntimeOnly.get())
 
@@ -183,6 +189,7 @@ nativeTest.runtimeClasspath += sourceSets.main.get().output
 kotlin.target.compilations.getByName("nativeTest").associateWith(kotlin.target.compilations.getByName("main"))
 
 val nativePlatformBuild = catalog.findVersion("idea-platform-build").get().requiredVersion
+val nativeCoroutinesTestVersion = catalog.findVersion("ide-coroutines-test").get().requiredVersion
 val nativeFixtureIdeaHome = providers.gradleProperty("nativeFixtureIdeaHome")
 val nativeIdeaHome =
     objects.directoryProperty().apply {
@@ -213,7 +220,10 @@ val nativeIdeaLibraries =
 
 dependencies {
     add(nativeTest.implementationConfigurationName, nativeIdeaLibraries)
-    add(nativeTest.implementationConfigurationName, catalog.findLibrary("coroutines-test").get())
+    add(
+        nativeTest.implementationConfigurationName,
+        "org.jetbrains.kotlinx:kotlinx-coroutines-test:$nativeCoroutinesTestVersion",
+    )
     add(nativeTest.implementationConfigurationName, "junit:junit:4.13.2")
     add(
         nativeTest.implementationConfigurationName,
