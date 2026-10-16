@@ -17,9 +17,6 @@ code_sources:
 - path: relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/KotlinCallbackSupplyTest.kt
 - path: relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/DeclaredCallbackInvocationKindTest.kt
 - path: relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/RequiredCallbackInvocationProofTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-cf837289cfde2b7e2a175958
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackArgumentBinding.kt
@@ -30,6 +27,9 @@ sources:
   - id: openwiki-source-7a39aa76a4978e328131bbf1
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackInvocationFlow.kt
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-16T21:29:39.165Z
 ---
 
 # Callback supply and invocation bindings

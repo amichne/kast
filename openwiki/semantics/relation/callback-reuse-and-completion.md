@@ -21,18 +21,34 @@ code_sources:
 sources:
   - id: openwiki-source-b40db0ab2fa6f0ddc8926bd4
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt
+  - id: openwiki-source-e37bf683e8f23013392fd8db
+    resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CompleteOnlyCallbackQueryTest.kt
+  - id: openwiki-source-794a059b04ef16349744ba54
+    resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackEvidenceDomain.kt
+  - id: openwiki-source-92931cce7bbdc5df09bed1ca
+    resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackResultProjection.kt
   - id: openwiki-source-0c3775ff1ab9aa2c15a185c6
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraph.kt
   - id: openwiki-source-ba2ee282aef46ccb6d28cca8
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/CallbackSummaryReuse.kt
+  - id: openwiki-source-d34348d555f34ade3bb02006
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackResultProjection.kt
   - id: openwiki-source-2cbba9b711c0d9c4a193731f
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackSummaryReadmission.kt
+  - id: openwiki-source-c998a3454d4c6728581ff50e
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2RelationSearch.kt
+  - id: openwiki-source-7fb52b2012eb836868d8299c
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijReferenceInventoryReuse.kt
+  - id: openwiki-source-94eada9d19d5e6c2255cf42d
+    resource: repo://relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/CallbackEvidenceAccessTest.kt
+  - id: openwiki-source-832a991b5b9fb99d8fffe3f2
+    resource: repo://relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/ReferenceInventoryReuseTest.kt
   - id: openwiki-source-3be5d9cf3fcc7a7b479b3444
     resource: repo://topology/contract/src/main/kotlin/io/github/amichne/kast/topology/contract/SemanticDependencySnapshot.kt
-generated: { by: "codex", at: "2026-10-15T01:04:37.434Z" }
+generated: { by: "codex", at: "2026-10-16T21:29:39.165Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-15T01:04:37.434Z
+    at: 2026-10-16T21:29:39.165Z
 ---
 
 # Callback reuse and graph completion
@@ -62,8 +78,28 @@ A retention rejection records its own bounded outcome.
 It does not erase a valid current flow or manufacture a cache hit.
 
 Supplier inventories have a separate completeness proof.
-The selected scope, declaration dependencies, and compiler endpoints must agree before reuse.
+The evidence domain, declaration dependencies, and compiler endpoints must agree before reuse.
 Incomplete supply coverage cannot become evidence that no other callback exists.
+
+## Source access and result eligibility
+
+Subject restoration uses the exact scope that admitted the subject.
+`CallbackEvidenceDomain` selects owned production, test, and generated sources across the imported workspace.
+This source access excludes library bodies and keeps the original read authority and work and time limits.
+
+Result eligibility still uses the caller's selected scope and filters.
+`CallbackResultMembership` binds an admitted result site to the subject, authority, result domain, and relationship direction.
+CALLERS uses a source occurrence or an actual callback invocation.
+CALLEES uses the named target or anonymous body of an exhaustive supplier inventory.
+
+Callback evidence outside that result scope can prove an invocation inside it.
+An exhaustive graph with no eligible result site permits exclusion.
+An incomplete graph or missing membership remains a finite rejection.
+Query completion examines graph proof before membership, so an existing callback failure keeps its cause.
+
+The adapter charges source reads and membership reads to the same collector.
+Reference reuse keeps callback evidence separate from ordinary REFERENCES and from other evidence domains.
+Neither broader evidence access nor lexical ownership creates a named caller edge.
 
 ## Complete graph proof
 

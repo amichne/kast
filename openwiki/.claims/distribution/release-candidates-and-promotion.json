@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:418a123059218cdea64f171482d24d149cd702e5184f1292a6ffdfc56936b955",
+  "pageVersion": "sha256:a2988134f2828e6e7933e89eceaf5d3de89da3361841c8164a91fe187a15083e",
   "claims": [
     {
       "id": "claim_0fe7af4106b045dd82c65489eb808ff3",
@@ -8,11 +8,11 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:f94c7770b7f32aa78eec9e4ecc745ec0c05adba1a7bdb6e9dff233ab6fb78af1"
+          "version": "repo-file-v1:sha256:6ee4c67802fcb80c26257ef63bcbb3b1020ede08905f7bbc2802e4b069a6d01e"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:b3c3975177f42b34626a4dfa0e8d2fb3f767f6e07469965a46a6fd093bf3c7d3"
+          "version": "repo-file-v1:sha256:ee55daa96e934ea126a402a3522adc4a3ecc8d3b992b04057ac215fcc5015efa"
         }
       ]
     },
@@ -22,7 +22,7 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:f94c7770b7f32aa78eec9e4ecc745ec0c05adba1a7bdb6e9dff233ab6fb78af1"
+          "version": "repo-file-v1:sha256:6ee4c67802fcb80c26257ef63bcbb3b1020ede08905f7bbc2802e4b069a6d01e"
         }
       ]
     },
@@ -43,6 +43,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-16T06:54:44.448Z"
+    "at": "2026-10-16T21:29:39.165Z"
   }
 }

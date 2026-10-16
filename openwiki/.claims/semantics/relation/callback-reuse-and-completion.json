@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:8d33271ea6d058aca60c628ff99b5722b22f18248faee546442632584be93cd6",
+  "pageVersion": "sha256:011ad239f296e658224a5dc1a17f16e1e7ca85712d40eea86f29b59369e2cc65",
   "claims": [
     {
       "id": "claim_7fda699bacbb4390ab5eb06aef3b31b3",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackSummaryReadmission.kt",
-          "version": "repo-file-v1:sha256:693fc1782aa3ce939313d00ba5ee92a3a92f3906f2921e5d344a316872b3a4df"
+          "version": "repo-file-v1:sha256:cf76e5336f4f64e7cc856a3b91da0d74eef46c0ae074d2096a2698026b7c20c0"
         },
         {
           "resource": "repo://topology/contract/src/main/kotlin/io/github/amichne/kast/topology/contract/SemanticDependencySnapshot.kt",
@@ -32,17 +32,71 @@
       "evidence": [
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt",
-          "version": "repo-file-v1:sha256:2df97bd07c0f07872a5e95d8da74dabf67c98b5bac2c833f34c8bf6d2171a34f"
+          "version": "repo-file-v1:sha256:af0a890aa4e5e3019876aeeaaa439d13d0f32fc22acb80565f175b28957606e2"
         },
         {
           "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraph.kt",
           "version": "repo-file-v1:sha256:b6d88070d4d4e0084bd57ea8f723b1b6a89186944e97297a28d72049b3d37580"
         }
       ]
+    },
+    {
+      "id": "claim_b93136febc7c413dbd55c462e3a64943",
+      "statement": "Subject restoration keeps the scope that admitted the exact subject. Callback evidence uses owned production, test, and generated workspace sources, excludes library bodies, and keeps the original read authority and shared work and time limits.",
+      "evidence": [
+        {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackEvidenceDomain.kt#L10-L37",
+          "version": "repo-lines-v1:sha256:7bc8b843581f19af7c02826233b2f453e5b7150b71eb2b65aadeb614ce3d6493:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc0MWE3MDYwMTZmNDA4OTQ5NmJkZjM0MDQyZTRmNTNlYzAyNzkzNThmMjlmMjliYjNmYWNlY2U2MWVkNjBiYmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRiOTE3YzVkYmUzZDlhMjEzMmQ4NGE2YTVhYzBhNTI2ZjhmMDIxYzNlMGVkMWY1NWE2MTJkMmQxOGViNmZhODAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2RelationSearch.kt",
+          "version": "repo-file-v1:sha256:a8143184d701e960f05ca9bd2eef8735860f2c6902b5f5af3be99d8606916fb1"
+        },
+        {
+          "resource": "repo://relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/CallbackEvidenceAccessTest.kt",
+          "version": "repo-file-v1:sha256:bb0c30115e64ce9d3f0289cfa7ba96f54f05b8c53f4183f3608e2fcdfaadb061"
+        }
+      ]
+    },
+    {
+      "id": "claim_44c39bf99ef1406faef53910d9a5f170",
+      "statement": "Callback result membership keeps the subject, authority, selected result domain, relationship direction, and exact graph site. A complete callback graph without this membership cannot produce a complete answer. Existing graph failures keep their original cause.",
+      "evidence": [
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt#L53-L96",
+          "version": "repo-lines-v1:sha256:830da1a3234edadfedbf1e681cad5d988ce49d0bcf206e73b69b937a0c5b51e4:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEyOWMwYzY0MDk2N2EyZGQzZTgwN2Y2MTY2ODQ5MWYwODcxMDNkODUyYTMyYTRiMDFlOTQzZmIyNzQ3MGM1ZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkwMmEyNTg2MmQwNzJjNzliYmI5ODdhZmU4NDM1OTE4MWVmMjI5YzAxZTYwN2IwYzhlYjQxYjc2NjVmNDVhOTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU1YWRjNWIzOWU1OTI3OGViZDQ4MmVkMzRjYjlhOTA2Y2FiYmRjYWYyOTRkZmI3YjEyZmViZjZiMTIwMGI1YTAifQ"
+        },
+        {
+          "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CompleteOnlyCallbackQueryTest.kt#L25-L60",
+          "version": "repo-lines-v1:sha256:705dfd298d08f7447a5a9dbba192c29cd943ffb85927fe5216ed15dac3d23f96:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzYTlkYjcwZjE1OTgyMzNjYTUyMDg3ZjRiM2FiMDJhNGRkOTUzYzdkYzZhYzU4YzMyZGFhOTZhNWU2MzBmMDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4MTQ3ZmM3NWY5MWVmZjVhZDFlOTMzNDkwMzI0ZDhhYmQ0ZjhkOWVkYTIwNDU5MGExMjc4ODI1ZTc5NDgwNDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc4YmM4MzNmNzdlNDA3OTI0MWM2MzFlMTExOTlmY2M3ZGZjMWNhY2E0ZGU1ZmIwMjQ4OGQyMzRhOTY3NmQzNzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMxYjZhMzMxM2Y4NjQ0N2U4Y2JlMWVkODJkNWIwMmM1NzJjMjViOTM4ODFkMmIyOTA4NDQ1MDM2N2QxNzkxNjkifQ"
+        },
+        {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackResultProjection.kt",
+          "version": "repo-file-v1:sha256:b790da9efb578a7d6a0c69bcf9a65af803303943e3d7123915f7199ce6d9e3a0"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackResultProjection.kt",
+          "version": "repo-file-v1:sha256:20732e371f18d117cedbb55f02ebead71e37990953c2aa39038a283196a2b2fe"
+        }
+      ]
+    },
+    {
+      "id": "claim_436d90cff7ba4d1eabf50dc0f1a54150",
+      "statement": "Callback evidence inventory reuse shares the original retention slot and separates its purpose and evidence domain from ordinary REFERENCES and other callback evidence domains.",
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijReferenceInventoryReuse.kt#L28-L115",
+          "version": "repo-lines-v1:sha256:0ce9a138a57879352938c59a8e4d8bc974eedd66bf3516fefb78057ff9a1c693:eyJzZWxlY3RlZExpbmVDb3VudCI6ODgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlNzI1Yzc1NDJiZjI4Mzk1MmQyN2RkOTk3MGE5Y2NlZWVmMjQxNzI4MzI4MWM0NzFkYzIxZmU5YmYwYzc1OGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjViMjQwYWMzZThlYjM0YjhkMjBmMDk1MzMzYTQyMzI3YzljNWIwOTBkMmQ2ODVlNzk4NmVmODY0NjdmNmRiODMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjljNzQxOTVkNTg4Nzk0NDU5YzQwNjY4NGRhZjM3OWUwZWM4NWFlZTYzOWFhOWMwNTg1NTc4YjM2ZDVjMGM1ZmUifQ"
+        },
+        {
+          "resource": "repo://relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/ReferenceInventoryReuseTest.kt",
+          "version": "repo-file-v1:sha256:4bd5b87158681811b29225ac71b81c09718992361d04fab73f5298969fdf15cf"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T01:04:37.434Z"
+    "at": "2026-10-16T21:29:39.165Z"
   }
 }

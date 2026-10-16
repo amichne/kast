@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:98e35f8dd98a4aed0b541a685c5b0a53074201bde7553a36d86b084a1d0ce731",
+  "pageVersion": "sha256:c13dbb52adb65216a41fd34a635947161c97cc4a548896e615ec0731e59a808b",
   "claims": [
     {
       "id": "claim_b9727187adfc4e2c9be8e3a620b37051",
@@ -294,7 +294,7 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackObservationProjection.kt",
-          "version": "repo-file-v1:sha256:ca0fafc99ec86c326827ecc19c9c879bd3c58f0b89c7d1a2bb5bbd312b90ecb2"
+          "version": "repo-file-v1:sha256:ea8b1791087a76f043364bb4935df0fc2ab1d905314b93d7d58b621ace120d0d"
         },
         {
           "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackBindingCanonical.kt",
@@ -373,6 +373,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-14T20:46:05.929Z"
+    "at": "2026-10-16T21:29:39.165Z"
   }
 }

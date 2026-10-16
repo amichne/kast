@@ -48,9 +48,6 @@ code_sources:
   - path: build.gradle.kts
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/bootstrap/ModelInputFailure.kt
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/gradle/GradleImportEnvironment.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-16T06:54:44.448Z
 sources:
   - id: openwiki-source-b49f63bec354bf14b4c28692
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt
@@ -83,6 +80,9 @@ sources:
   - id: openwiki-source-37ffb827b915bda4bcca9865
     resource: repo://packaging/install-local.sh
 generated: { by: "codex", at: "2026-10-16T06:54:44.448Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-16T21:29:39.165Z
 ---
 
 # Installation configuration
