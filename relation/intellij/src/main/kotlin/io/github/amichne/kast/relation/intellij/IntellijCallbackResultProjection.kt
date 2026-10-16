@@ -3,6 +3,7 @@ package io.github.amichne.kast.relation.intellij
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiManager
 import io.github.amichne.kast.kernel.Refinement
@@ -46,6 +47,7 @@ internal class IntellijCallbackResultProjection(
     private val collector: IntellijRelationCollector,
     private val observation: IntellijReadObservation,
     private val cancellationCheck: () -> Unit = ProgressManager::checkCanceled,
+    private val fileLookup: (SymbolDiscoveryFileIdentity) -> VirtualFile? = ::callbackProjectionFile,
 ) {
     fun callable(target: RelationCallableTarget): CallbackCallableProjectionRead =
         when (target) {
@@ -141,9 +143,16 @@ internal class IntellijCallbackResultProjection(
     private fun select(sites: List<CallbackResultSite>): CallbackResultProjectionRead {
         var outcome: CallbackResultProjectionRead = CallbackResultProjectionRead.Excluded
         for (site in sites) {
-            when (val allowed = permit()) {
-                is Refinement.Refined -> Unit
-                is Refinement.Rejected -> return CallbackResultProjectionRead.Unproven(allowed.failure)
+            when (permit(site)) {
+                CallbackResultSiteAdmission.READY -> Unit
+                CallbackResultSiteAdmission.EXCLUDED -> {
+                    observation.count(IntellijReadCounter.CALLBACK_RESULT_SITES_EXAMINED)
+                    continue
+                }
+                CallbackResultSiteAdmission.WORK_LIMIT_REACHED ->
+                    return CallbackResultProjectionRead.Unproven(CallbackInvocationFlowCause.WORK_LIMIT_REACHED)
+                CallbackResultSiteAdmission.TIME_LIMIT_REACHED ->
+                    return CallbackResultProjectionRead.Unproven(CallbackInvocationFlowCause.TIME_LIMIT_REACHED)
             }
             observation.count(IntellijReadCounter.CALLBACK_RESULT_SITES_EXAMINED)
             when (val membership = membership(site)) {
@@ -165,12 +174,7 @@ internal class IntellijCallbackResultProjection(
     private fun membership(site: CallbackResultSite): CallbackResultProjectionRead {
         val file =
             observation.call(IntellijReadCall.VFS_FIND_FILE) {
-                when (val identity = site.occurrence.file) {
-                    is SymbolDiscoveryFileIdentity.Workspace ->
-                        LocalFileSystem.getInstance().findFileByNioFile(Path.of(identity.path.value))
-                    is SymbolDiscoveryFileIdentity.External ->
-                        VirtualFileManager.getInstance().findFileByUrl(identity.url.value)
-                }
+                fileLookup(site.occurrence.file)
             } ?: return CallbackResultProjectionRead.Unproven(CallbackInvocationFlowCause.OUTSIDE_DOMAIN)
         when (selected.admitProviderSite(file)) {
             RelationProviderScopeAdmission.ADMITTED -> Unit
@@ -196,14 +200,32 @@ internal class IntellijCallbackResultProjection(
         }
     }
 
-    private fun permit(): Refinement<Unit, CallbackInvocationFlowCause> {
+    private fun permit(site: CallbackResultSite): CallbackResultSiteAdmission {
         cancellationCheck()
+        if (selected.excludesKnownSource(site.occurrence.file)) {
+            return when (collector.callbackExpiry()) {
+                CallbackExpiryAdmission.CURRENT -> CallbackResultSiteAdmission.EXCLUDED
+                CallbackExpiryAdmission.EXPIRED -> CallbackResultSiteAdmission.TIME_LIMIT_REACHED
+            }
+        }
         return when (collector.admitCallbackWork()) {
-            CallbackWorkAdmission.READY -> Refinement.Refined(Unit)
-            CallbackWorkAdmission.WORK_LIMIT_REACHED ->
-                Refinement.Rejected(CallbackInvocationFlowCause.WORK_LIMIT_REACHED)
-            CallbackWorkAdmission.TIME_LIMIT_REACHED ->
-                Refinement.Rejected(CallbackInvocationFlowCause.TIME_LIMIT_REACHED)
+            CallbackWorkAdmission.READY -> CallbackResultSiteAdmission.READY
+            CallbackWorkAdmission.WORK_LIMIT_REACHED -> CallbackResultSiteAdmission.WORK_LIMIT_REACHED
+            CallbackWorkAdmission.TIME_LIMIT_REACHED -> CallbackResultSiteAdmission.TIME_LIMIT_REACHED
         }
     }
+
+    private enum class CallbackResultSiteAdmission {
+        READY,
+        EXCLUDED,
+        WORK_LIMIT_REACHED,
+        TIME_LIMIT_REACHED,
+    }
 }
+
+private fun callbackProjectionFile(identity: SymbolDiscoveryFileIdentity): VirtualFile? =
+    when (identity) {
+        is SymbolDiscoveryFileIdentity.Workspace ->
+            LocalFileSystem.getInstance().findFileByNioFile(Path.of(identity.path.value))
+        is SymbolDiscoveryFileIdentity.External -> VirtualFileManager.getInstance().findFileByUrl(identity.url.value)
+    }
