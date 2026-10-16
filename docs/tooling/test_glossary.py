@@ -175,6 +175,7 @@ def test_cli_distinguishes_real_nested_mdx_prose_from_code(
             original = "    kast plugin codex"
             replacement = "    saved result"
     assert text.count(original) == 1
+    expected_line = text[: text.index(original)].count("\n") + 1
     text = text.replace(original, replacement)
     document = tmp_path / "docs/public/reference/integrations.mdx"
     document.parent.mkdir(parents=True)
@@ -189,7 +190,7 @@ def test_cli_distinguishes_real_nested_mdx_prose_from_code(
                 "conceptId": "retained-result",
                 "canonical": "retained result",
                 "form": "saved result",
-                "line": 23,
+                "line": expected_line,
                 "span": [7, 18],
             }
         ]
