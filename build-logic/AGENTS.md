@@ -4,14 +4,16 @@ title: "Kast build-logic"
 description: "Defines Gradle conventions, effect ownership, architecture gates, generated contracts, and installed knowledge projections."
 resource: "repo://build-logic"
 tags: [kast, navigation]
-timestamp: "2026-10-14T23:25:10Z"
-source_revision: e014a489bfd7e69cbf2c4b61140ee771d857a03e
+timestamp: "2026-10-15T06:18:36Z"
+source_revision: 3e843eb6eb7c45ff402ba4b1103821afee059408
 code_sources:
   - path: build-logic/build.gradle.kts
   - path: build-logic/src/main/kotlin/conventions/GenerateKnowledgeDocsTask.kt
   - path: build-logic/src/main/kotlin/conventions/VerifyJsonContractsTask.kt
   - path: build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeSymbolsMain.kt
   - path: build-logic/src/main/kotlin/kast.architecture.gradle.kts
+  - path: build-logic/src/main/kotlin/support/architecture/ModuleImpact.kt
+  - path: build-logic/src/main/kotlin/support/architecture/gradle/TopologyImpactTask.kt
   - path: build-logic/src/main/kotlin/kast.kotlin-quality.gradle.kts
   - path: build-logic/src/main/kotlin/kast.public-query-contract.gradle.kts
   - path: build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt
@@ -31,6 +33,8 @@ Defines Gradle conventions, effect ownership, architecture gates, generated cont
 ## Key Files
 
 - [kast.architecture.gradle.kts](src/main/kotlin/kast.architecture.gradle.kts) - module architecture and installed guide wiring.
+- [ModuleImpact.kt](src/main/kotlin/support/architecture/ModuleImpact.kt) - selection and shortest dependency paths over the declared production graph.
+- [TopologyImpactTask.kt](src/main/kotlin/support/architecture/gradle/TopologyImpactTask.kt) - opt-in report without source compilation or compiler authority.
 - [KastCleanSlateModules.kt](src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt) - the admitted module topology.
 - [kast.kotlin-quality.gradle.kts](src/main/kotlin/kast.kotlin-quality.gradle.kts) - format, Detekt, and file-length gates.
 - [kast.public-query-contract.gradle.kts](src/main/kotlin/kast.public-query-contract.gradle.kts) - public schema generation parity and its regression gate.
@@ -52,6 +56,8 @@ Defines Gradle conventions, effect ownership, architecture gates, generated cont
 
 - Root `settings.gradle.kts` includes this separate Gradle build.
 - Run `./gradlew verifyJsonContracts` from the repository root for the JSON syntax gate.
+- Run `./gradlew topologyImpact -PkastTopologyModules=:topology:contract` for declared downstream module impact.
+- Set `kastTopologyEnabled=false` to disable that report. Read [the command guide](../docs/topology-impact.md) for evidence limits.
 - `generateInstalledKnowledgeBundle` projects tracked `AGENTS.md` files into the installed knowledge bundle.
 - `verifyKnowledgeBase` examines OpenWiki. It does not examine the scoped guide format.
 - [InstalledKnowledgeProjectionTest.kt](src/test/kotlin/support/knowledge/InstalledKnowledgeProjectionTest.kt) - scoped guide and declaration projection cases.
