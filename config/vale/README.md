@@ -33,7 +33,7 @@ The import uses selected Google rules. It does not select the complete Google st
 
 `styles/config/vocabularies/Kast/accept.txt` records reviewed spellings. A spelling exception does not define a domain concept.
 
-`docs/glossary.json` owns canonical terms and rejected forms. Its exporter generates `styles/Kast/Terminology.yml`.
+`docs/glossary.json` owns canonical terms and rejected forms. The Kast exporter under `docs/tooling` generates `styles/Kast/Terminology.yml`.
 Edit the glossary first, then export and compare the rules through the documentation policy.
 
 The root configuration selects terminology only for current authored documentation and agent instructions.
@@ -44,7 +44,8 @@ No style package, CMS account, MCP connection, or global configuration is necess
 
 ## Evidence limits
 
-The shared assessment reports readability, sentence length, diction, claims, and glossary findings.
+The current shared assessment reports readability, sentence length, diction, claims, contractions, and modal verbs.
+Report v2 omits glossary fields. The repository-owned glossary procedure supplies separate terminology evidence and rejects stale reader views or Vale rules.
 Root Vale also examines spelling, modal verbs, contractions, and page structure.
 Neither procedure proves factual accuracy, full controlled-English conformance, or reader comprehension.
 

@@ -379,6 +379,33 @@ val agentSessionSetupTest = tasks.register<Exec>("agentSessionSetupTest") {
 
 tasks.named("check") { dependsOn(agentSessionSetupTest) }
 
+val documentationToolingTest = tasks.register<Exec>("documentationToolingTest") {
+    group = "verification"
+    description = "Exercises local glossary grammar, scope and projection rejection."
+    inputs.files(fileTree("docs/tooling") { exclude(".venv/**", "__pycache__/**", ".pytest_cache/**") })
+    inputs.files("docs/glossary.json", "docs/GLOSSARY.md")
+    inputs.dir("config/vale/styles/Kast")
+    commandLine("uv", "run", "--locked", "--project", "docs/tooling", "pytest", "docs/tooling/test_glossary.py")
+}
+
+val verifyDocumentationGlossary = tasks.register<Exec>("verifyDocumentationGlossary") {
+    group = "verification"
+    description = "Rejects glossary projection drift and rejected forms in current prose."
+    dependsOn(documentationToolingTest)
+    inputs.files(fileTree("docs/tooling") { exclude(".venv/**", "__pycache__/**", ".pytest_cache/**") })
+    inputs.files("docs/glossary.json", "docs/GLOSSARY.md", "README.md", "AGENTS.md")
+    inputs.files(fileTree("docs") { include("**/*.md", "**/*.mdx", "**/*.txt"); exclude("**/.venv/**", "**/build/**") })
+    inputs.dir("config/vale/styles/Kast")
+    val scopedGuides = fileTree(rootDir) { include("**/AGENTS.md"); exclude("**/build/**", "**/.gradle/**", "**/.venv/**", "**/node_modules/**") }
+    inputs.files(scopedGuides)
+    commandLine("uv", "run", "--locked", "--project", "docs/tooling", "python", "docs/tooling/check_glossary.py",
+        "docs/glossary.json", "README.md", "docs")
+    args(scopedGuides.files.map { it.relativeTo(rootDir).path }.sorted())
+    args("--check-render", "docs/GLOSSARY.md", "--check-vale", "config/vale/styles/Kast")
+}
+
+tasks.named("check") { dependsOn(verifyDocumentationGlossary) }
+
 val productBuildGate = tasks.register("productBuildGate") {
     group = "verification"
     description = "Builds every module and verifies deterministic contracts, architecture and packaging without runtime qualification."

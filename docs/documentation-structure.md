@@ -84,27 +84,33 @@ Canonical use is repository policy. `PROVISIONAL` records the absent independent
 
 An accepted spelling does not establish a definition. A related concept does not establish a synonym. Add a rejected form only with evidence of the same referent.
 
-Repository Knowledge `3.1.0` owns the existing JSON parser and renderer. Set `KAST_WRITING_SKILL` to its installed `skills/controlled-technical-writing` directory.
+Kast owns the JSON parser, renderer, and schema under `docs/tooling`. The retired shared glossary tool no longer supplies these operations.
 
 From the repository root, regenerate the reader view:
 
 ```shell
-uv run --locked --script "$KAST_WRITING_SKILL/scripts/check_glossary.py" docs/glossary.json --render docs/GLOSSARY.md
+uv run --locked --project docs/tooling python docs/tooling/check_glossary.py docs/glossary.json --render docs/GLOSSARY.md
 ```
 
 Export terminology rules into a new temporary directory:
 
 ```shell
-uv run --locked --script "$KAST_WRITING_SKILL/scripts/check_glossary.py" docs/glossary.json --vale-dir /tmp/kast-glossary-rules
+uv run --locked --project docs/tooling python docs/tooling/check_glossary.py docs/glossary.json --vale-dir /tmp/kast-glossary-rules
 ```
 
 Copy the generated rules into `config/vale/styles/Kast/`. Remove a generated rule only when the glossary no longer produces it.
 
-Before acceptance, compare the exported rules with the checked-in rules. Then examine the reader view and current prose:
+Before acceptance, examine the reader view, rule bytes, and current prose:
 
 ```shell
-uv run --locked --script "$KAST_WRITING_SKILL/scripts/check_glossary.py" docs/glossary.json README.md AGENTS.md docs/public --check-render docs/GLOSSARY.md
+uv run --locked --project docs/tooling python docs/tooling/check_glossary.py \
+  docs/glossary.json README.md AGENTS.md docs \
+  --check-render docs/GLOSSARY.md --check-vale config/vale/styles/Kast
 ```
+
+`verifyDocumentationGlossary` runs this procedure through `check` and `productBuildGate`. It rejects stale views, changed rules, extra rules, and rejected forms.
+
+The parser rejects unknown variants, label collisions, missing evidence, and invalid concept references. It preserves `REVIEW` forms without an automatic replacement.
 
 The root `.vale.ini` applies these rules to the same authored document scope. The glossary reader view describes rejected forms as literals.
 
@@ -134,16 +140,19 @@ mise exec -- vale --no-global --config=.vale.ini --path=COMMIT_EDITMSG < /path/t
 
 Ordinary Vale output reports lexical and structural findings. Exit zero does not mean that warnings or suggestions are absent.
 
-For the shared prose assessment, use the pinned Repository Knowledge procedure:
+For the shared prose assessment, set `KAST_WRITING_SKILL` to the installed `skills/controlled-technical-writing` directory. Use its locked procedure:
 
 ```shell
 uv run --locked --script "$KAST_WRITING_SKILL/scripts/assess_text.py" \
   --vale-bin "$(mise which vale)" \
-  --glossary docs/glossary.json \
   README.md AGENTS.md docs/documentation-structure.md
 ```
 
-Supply each changed prose file explicitly. Save JSON reports under `build/reports/documentation/`. Keep engine, policy, glossary, and document digests with located findings.
+Supply each changed prose file explicitly. Save JSON reports under `build/reports/documentation/`. Keep engine, policy, and document digests with located findings.
+
+Assessment report v2 omits glossary data. Keep its prose findings separate from the Kast glossary report and its source digest.
+
+Historical reports keep their recorded schema and glossary fields. Do not rewrite them as current assessment evidence.
 
 `ASSESSED` means that the procedure ran. It does not mean that findings are absent. Record each unresolved rule, location, and reason.
 
