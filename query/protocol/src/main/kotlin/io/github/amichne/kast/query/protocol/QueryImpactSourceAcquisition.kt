@@ -347,9 +347,8 @@ private fun restoreImpactDeclaration(
         is CanonicalSelectorDecoding.Rejected ->
             Refinement.Rejected(
                 QueryRunRejection.ImpactSourceRejected(
-                    QueryImpactSourceFailureDocument.Reference(
-                        restored.failure.queryRejection(token),
-                        queryPosition(position),
+                    QueryImpactSourceFailureDocument.Reference.fromReference(
+                        restored.queryReferenceRejection(position, token)
                     )
                 )
             )

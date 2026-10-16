@@ -8,7 +8,17 @@ okf_version: "0.2"
 
 # Directories
 
+- [architecture](architecture/)
+- [changes](changes/)
 - [contracts](contracts/)
+- [development](development/)
+- [distribution](distribution/)
 - [flows](flows/)
 - [glossary](glossary/)
+- [knowledge](knowledge/)
 - [modules](modules/)
+- [queries](queries/)
+- [runtime](runtime/)
+- [semantics](semantics/)
+- [topology](topology/)
+- [transport](transport/)

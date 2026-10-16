@@ -582,16 +582,23 @@ class BrokerSessionHubTest {
     }
 
     @Test
-    fun `unenrolled start and resume reject missing workspace ownership`(@TempDir root: Path) = runBlocking {
+    fun `unenrolled start rejects while an unbound resume stays upstream owned`(@TempDir root: Path) = runBlocking {
         val fixture = HubTestFixture(root, WorkspaceEnrollment.Unenrolled)
         try {
             val a = fixture.connect()
             for (request in
                 listOf(
-                    " { \"id\":1, \"method\":\"thread/start\", \"params\":{\"cwd\":\"$root\"} } ",
-                    " { \"id\":2, \"method\":\"thread/resume\", \"params\":{\"threadId\":\"external\",\"path\":\"external.jsonl\"} } ",
+                    Json.encodeToString(UnboundThreadRequest(1, "thread/start", UnboundStartParams(root.toString()))),
+                    Json.encodeToString(
+                        UnboundThreadRequest(2, "thread/resume", UnboundResumeParams("external", "external.jsonl"))
+                    ),
                 )) {
                 a.session.accept(request)
+                if (Json.parseToJsonElement(request).jsonObject["method"] == JsonPrimitive("thread/resume")) {
+                    assertEquals(request, withTimeout(1_000) { a.upstream.sent.receive() })
+                    assertTrue(a.session.output.tryReceive().isFailure)
+                    continue
+                }
                 val response = Json.parseToJsonElement(withTimeout(1_000) { a.session.output.receive() }).jsonObject
                 assertTrue(response.containsKey("error"))
                 assertEquals(Json.parseToJsonElement(request).jsonObject["id"], response["id"])
@@ -696,6 +703,13 @@ class BrokerSessionHubTest {
     @kotlinx.serialization.Serializable private data class LegacyPhaseArgs(val planIdentity: String)
 
     @kotlinx.serialization.Serializable private data class QueueBarrier(val method: String)
+
+    @kotlinx.serialization.Serializable
+    private data class UnboundThreadRequest<T>(val id: Int, val method: String, val params: T)
+
+    @kotlinx.serialization.Serializable private data class UnboundStartParams(val cwd: String)
+
+    @kotlinx.serialization.Serializable private data class UnboundResumeParams(val threadId: String, val path: String)
 
     @kotlinx.serialization.Serializable private data class QueueTurn(val threadId: String, val turnId: String)
 

@@ -4,6 +4,7 @@ package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.HostedServiceStatus
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
+import io.github.amichne.kast.kernel.Refinement
 import java.io.DataInputStream
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
@@ -30,7 +31,6 @@ import kotlinx.serialization.json.JsonIgnoreUnknownKeys
 private const val EXCHANGE_DEADLINE_MILLIS = 1500L
 private const val MAXIMUM_FRAME_BYTES = 16384
 private const val MAXIMUM_HEADER_BYTES = 8192
-private const val SOCKET_PATH_LIMIT_BYTES = 104
 private const val WEBSOCKET_ACCEPT_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 private val observationJson = Json { encodeDefaults = true }
 
@@ -104,6 +104,8 @@ internal enum class RuntimeObservationFailure {
     MANIFEST_REJECTED,
     READINESS_UNAVAILABLE,
     READINESS_REJECTED,
+    CONFIGURATION_UNAVAILABLE,
+    CONFIGURATION_REJECTED,
     SOCKET_UNAVAILABLE,
     EXCHANGE_UNAVAILABLE,
     RESPONSE_REJECTED,
@@ -200,8 +202,10 @@ internal fun observeRuntime(
                 return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.READINESS_REJECTED)
         }
     val socket =
-        runtimeSocket(installation)
-            ?: return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.SOCKET_UNAVAILABLE)
+        when (val selected = runtimeSocket(installation, manifest.codexHome)) {
+            is Refinement.Refined -> selected.value
+            is Refinement.Rejected -> return PassiveRuntimeObservation.Rejected(selected.failure)
+        }
     val response =
         exchange(socket, runtimeStatusRequestDocument())
             ?: return PassiveRuntimeObservation.Rejected(RuntimeObservationFailure.EXCHANGE_UNAVAILABLE)
@@ -283,23 +287,6 @@ private fun validHostIdentity(host: String, pid: Long): Boolean =
         } catch (_: IllegalArgumentException) {
             false
         }
-
-private fun runtimeSocket(installation: Path): Path? {
-    val physical = installation.resolve("state/run/c.sock")
-    if (physical.toString().toByteArray().size < SOCKET_PATH_LIMIT_BYTES) return physical
-    val directory = physical.parent
-    val hash =
-        MessageDigest.getInstance("SHA-256")
-            .digest(directory.toString().toByteArray())
-            .joinToString("") { "%02x".format(it) }
-            .take(32)
-    val alias = Path.of("/tmp/kast-uds-$hash")
-    return try {
-        if (Files.isSymbolicLink(alias) && Files.readSymbolicLink(alias) == directory) alias.resolve("c.sock") else null
-    } catch (_: Exception) {
-        null
-    }
-}
 
 internal fun boundedExchange(socket: Path, request: String): String? {
     val channel = AtomicReference<SocketChannel?>()

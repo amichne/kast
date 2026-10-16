@@ -4,42 +4,75 @@ title: Kast repository guide
 description: Find Kast architecture, semantic contracts, runtime flows, installation and focused verification through source-bound OpenWiki concepts.
 tags: [kast, navigation, architecture, verification]
 sources:
+  - id: openwiki-source-7fa48d17b46dccf82f4b3238
+    resource: repo://runtime/hosted/build.gradle.kts
   - id: openwiki-source-e620d7484b72a53c7fa812cd
     resource: repo://settings.gradle.kts
   - id: openwiki-source-096cb7b190932815f87b4a1d
     resource: repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt
-generated: { by: "codex", at: "2026-10-02T02:00:02.467Z" }
+generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-08T01:13:49.481Z
+    at: 2026-10-15T00:33:05.932Z
 ---
 
 # Kast repository guide
 
-Kast gives coding agents compiler-grounded reads and controlled changes through an existing IDEA project. The active Gradle graph contains domain contracts, services, native adapters, the hosted runtime, App Server, CLI and distribution modules. Retained topology modules remain a separate buildable system; the former isolated importer and indexer are outside the active graph.
+Kast gives coding agents compiler-grounded reads and controlled changes through an existing IDEA project.
+The active graph separates contracts, services, native adapters, hosted composition, transport, and distribution.
+Live topology dependencies support callback fact reuse inside the hosted runtime.
+Historical capture, SQLite storage, and graph queries have separate owners and evidence limits.
+The former isolated importer and indexer remain outside the active graph.
 
-Read the governing `AGENTS.md` for engineering rules. Use OpenWiki when a concrete architecture or dependency question needs context. Search by the task, then read the relevant returned page section. Stop when the question is grounded and verify consequential details against the cited source, tests and schemas.
+Read `AGENTS.md` for repository rules.
+Use this wiki when a concrete architecture, dependency, or workflow question needs context.
+Search for the task and read the matching complete section.
+Examine consequential claims against cited source, contracts, schemas, and focused tests.
 
-## Choose the question
+## Find an owner or mechanism
 
-| Work | Start with | Follow when needed |
+The [functional package map](architecture/functional-packages.md) assigns every active production package an explanation.
+Its inventory includes the Gradle modules and included build logic.
+The map also routes non-Kotlin adapters, installation helpers, release automation, and test harnesses.
+Package coverage does not prove every branch or native effect.
+
+| Question | Start with | Continue with |
 | --- | --- | --- |
-| Module ownership and effects | [Architecture](modules/architecture.md) | [Kernel](modules/kernel.md), [workspace](modules/workspace.md) |
-| Agent request and output contract | [Public tools](contracts/public-tools.md) | [Protocol](modules/protocol.md), [registry](contracts/operation-registry.md) |
-| Existing IDEA read and freshness | [Hosted query](flows/hosted-query.md) | [Request dispatch](flows/request-dispatch.md), [runtime hosts](modules/runtime-hosts.md) |
-| Query composition and continuation | [Semantic query](flows/semantic-query.md) | [Query protocol](modules/query-protocol.md), [semantic read domains](modules/semantic-reads.md) |
-| Source selection or rejection | [Source identity](contracts/source-identity.md) | [Source failures](contracts/source-failures.md), [compiler identity](glossary/compiler-identity.md) |
-| Source mutation or recovery | [Change lifecycle](flows/change-lifecycle.md) | [Semantic change](modules/change.md), [durable evidence](modules/topology-evidence.md) |
-| Install, connection or release | [Distribution](modules/distribution.md) | [Configuration](contracts/configuration.md), [installed knowledge](contracts/installed-knowledge.md) |
-| Proof and failure vocabulary | [Evidence authority](glossary/evidence-authority.md) | [Outcomes](contracts/operation-outcomes.md), [refinement](glossary/refinement.md) |
-| Historical publication contracts | [Workspace publication](flows/workspace-publication.md) | [Evidence generation](glossary/evidence-generation.md) |
+| Which module owns an effect? | [Architecture](modules/architecture.md) | [Build roles](development/build-and-architecture.md), [kernel](modules/kernel.md) |
+| How does a public request enter? | [Public admission](queries/public-admission.md) | [Public tools](contracts/public-tools.md), [contract generation](development/contracts-and-generation.md) |
+| How does composition execute? | [Query execution](queries/execution-and-composition.md) | [TRACE and completion](queries/trace-and-completion.md), [impact proof](queries/impact-and-peer-proof.md) |
+| How does output continue? | [Retained output](queries/retention-and-presentation.md) | [Agent delivery](transport/harness-delivery.md), [tool RPC](transport/direct-mcp-and-tool-rpc.md) |
+| Which workspace facts permit a read? | [Read authority](semantics/workspace/read-authority.md) | [Model and freshness](semantics/workspace/model-and-freshness.md), [hosted publication](runtime/hosted-composition-and-publication.md) |
+| How does IDEA refresh occur? | [Lifecycle and refresh](runtime/idea-lifecycle-and-refresh.md) | [Coordinator preparation](transport/coordinator-and-workspace-preparation.md), [hosted query flow](flows/hosted-query.md) |
+| How does discovery preserve identity? | [Symbol discovery](semantics/symbol/discovery-and-identity.md) | [Source anchors](semantics/source/anchors-and-paging.md), [source failures](contracts/source-failures.md) |
+| Which relation facts come from the compiler? | [Named relations](semantics/relation/named-relations.md) | [Value flow](semantics/relation/value-flow-and-models.md), [callback supply](semantics/relation/callback-supply-and-binding.md) |
+| What proves callback completion? | [Callback reuse and completion](semantics/relation/callback-reuse-and-completion.md) | [Live dependency proofs](topology/live-dependencies-and-reuse.md) |
+| How do traversal and diagnostics stop? | [Traversal frontiers](semantics/traversal/frontiers-and-continuations.md) | [Diagnostic scans](semantics/diagnostics/scans-and-progress.md) |
+| What permits a source change? | [Planning and write admission](changes/planning-and-write-admission.md) | [Receipts and recovery](changes/receipts-and-recovery.md), [change flow](flows/change-lifecycle.md) |
+| What does historical storage prove? | [Capture and storage](topology/historical-capture-and-storage.md) | [Graph queries](topology/graph-queries.md), [publication contracts](flows/workspace-publication.md) |
+| How do Codex clients connect? | [Hosts and framing](transport/codex-hosts-and-framing.md) | [Durable records](transport/invocations-and-durable-records.md), [configuration](contracts/configuration.md) |
+| How does installation preserve ownership? | [Managed files](distribution/installation-and-managed-files.md) | [Management and connections](distribution/management-and-connections.md), [upgrades and reset](distribution/upgrades-shutdown-and-reset.md) |
+| How do tested bytes reach a release? | [Candidates and promotion](distribution/release-candidates-and-promotion.md) | [Distribution overview](modules/distribution.md) |
+| What does installed documentation prove? | [Knowledge projection](knowledge/installed-projection-and-retrieval.md) | [Installed knowledge contract](contracts/installed-knowledge.md) |
+| Which evidence supports a change? | [Testing and native qualification](development/testing-and-native-qualification.md) | [Evidence authority](glossary/evidence-authority.md), [operation outcomes](contracts/operation-outcomes.md) |
 
 ## Evidence and upkeep
 
-OpenWiki owns page Claims, source versions, indexes and provenance through its resumable page lifecycle. A source version records what was checked; Markdown and Claims do not establish compiler resolution or native runtime behavior. Preserve qualifications and historical evidence. The production `SemanticReadAuthority` explicitly distinguishes published leases from original-owner live IDE admission; a decoded live reference does not grant execution authority.
+OpenWiki owns page Claims, source versions, directory indexes, and provenance through its resumable page lifecycle.
+A recorded source version identifies the examined input.
+Markdown and Claims do not establish compiler resolution or native runtime behavior.
+Preserve qualifications and historical evidence.
 
-The migrated concepts preserve the repository's `code_sources` extension. Exact Kotlin declaration checks use PSI syntax; Python declaration checks use the AST. Declaration presence, compiler identity and observed native behavior are distinct evidence levels.
+`SemanticReadAuthority` distinguishes published leases from original-owner live admission.
+A decoded live reference does not grant execution authority.
+The retained `code_sources` extension supplies exact declaration citations for repository checks.
+Kotlin PSI syntax and Python AST checks establish declaration presence without compiler or real-host proof.
 
-Use `./gradlew knowledgeImpact` after cited source changes and `./gradlew verifyKnowledgeBase` after page or source changes. Refresh affected pages through the OpenWiki skill: begin, plan, consume one assigned page at a time, submit sparse Claim decisions, then finish. Do not edit managed Claims, run metadata, indexes or provenance directly.
+After cited source changes, run `./gradlew knowledgeImpact`.
+After source or page changes, run `./gradlew verifyKnowledgeBase`.
+Use the OpenWiki lifecycle to reconcile affected Claims and finish each page refresh.
+Keep managed Claim files, run state, indexes, and provenance under that owner.
+The [knowledge upkeep guide](development/knowledge-upkeep.md) explains refresh triggers and limitations.
 
-The [complete index](index.md) provides category navigation. The [development guide](../docs/development.md) explains focused behavior testing and the required repository gates.
+The [complete index](index.md) provides category navigation.
+The [development guide](../docs/development.md) explains focused behavior tests and repository gates.

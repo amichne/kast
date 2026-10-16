@@ -10,15 +10,20 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.protocol.contract.SourceReadFailureDetail
+import io.github.amichne.kast.protocol.contract.SourceReferenceFailure
+import io.github.amichne.kast.protocol.contract.SourceReferenceRole
 import io.github.amichne.kast.protocol.registry.AgentToolName
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
+import io.github.amichne.kast.protocol.wire.presentation.canonicalReadRejectedDocument
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -29,6 +34,29 @@ class KastToolRpcQuerySessionProcessTest {
 
     @Test
     fun `one real child reuses bridge composition and emits canonical replies without catalog projection`() {
+        val examples = PublicToolContract.examples(PublicToolIdentity.QUERY_SYMBOLS).examples
+        val reference =
+            (QueryResultReference.parse("result:v1:00000000-0000-0000-0000-000000000001") as Refinement.Refined).value
+        val cursor = (QueryResultCursor.parse(43) as Refinement.Refined).value
+        val read = Json.encodeToString(QuerySessionTestReadQuery(QuerySessionTestRead(reference, cursor)))
+        val run = examples.getValue("runByName").value.toString()
+        val actual = runChild(listOf(run, read), QuerySessionFixtureScenario.QUERY)
+        val expected = Json.decodeFromString<Map<String, ToolRpcReply>>(QueryDeliveryFixtures.serialized())
+        assertEquals(listOf(expected.getValue("prefix"), expected.getValue("tail")), actual)
+    }
+
+    @Test
+    fun `initial source read reaches real child bridge and preserves canonical stale authority`() {
+        val request =
+            PublicToolContract.examples(PublicToolIdentity.QUERY_SYMBOLS)
+                .examples
+                .getValue("readCallbackSource")
+                .value
+                .toString()
+        assertEquals(listOf(sourceSessionFailure()), runChild(listOf(request), QuerySessionFixtureScenario.SOURCE_READ))
+    }
+
+    private fun runChild(records: List<String>, scenario: QuerySessionFixtureScenario): List<ToolRpcReply> {
         Files.writeString(temporary.resolve("settings.gradle.kts"), "rootProject.name = \"query-session-fixture\"")
         val stdout = temporary.resolve("stdout.jsonl")
         val stderr = temporary.resolve("stderr.txt")
@@ -40,6 +68,7 @@ class KastToolRpcQuerySessionProcessTest {
                 System.getProperty("java.class.path"),
                 QuerySessionSubprocessFixture::class.java.name,
                 temporary.toString(),
+                scenario.name,
             )
         val process =
             ProcessBuilder(command)
@@ -48,19 +77,10 @@ class KastToolRpcQuerySessionProcessTest {
                 .apply { environment().clear() }
                 .start()
         try {
-            val examples = PublicToolContract.examples(PublicToolIdentity.QUERY_SYMBOLS).examples
-            val reference =
-                (QueryResultReference.parse("result:v1:00000000-0000-0000-0000-000000000001") as Refinement.Refined)
-                    .value
-            val cursor = (QueryResultCursor.parse(43) as Refinement.Refined).value
-            val read = Json.encodeToString(QuerySessionTestReadQuery(QuerySessionTestRead(reference, cursor)))
-            val run = examples.getValue("runByName").value.toString()
-            process.outputStream.use { it.write((run + "\n" + read + "\n").toByteArray()) }
+            process.outputStream.use { it.write(records.joinToString("\n", postfix = "\n").toByteArray()) }
             assertTrue(process.waitFor(20, TimeUnit.SECONDS), "Bounded fixture child did not finish")
             assertEquals(0, process.exitValue(), Files.readString(stderr))
-            val actual = Files.readAllLines(stdout).map { Json.decodeFromString<ToolRpcReply>(it) }
-            val expected = Json.decodeFromString<Map<String, ToolRpcReply>>(QueryDeliveryFixtures.serialized())
-            assertEquals(listOf(expected.getValue("prefix"), expected.getValue("tail")), actual)
+            return Files.readAllLines(stdout).map { Json.decodeFromString<ToolRpcReply>(it) }
         } finally {
             if (process.isAlive) process.destroyForcibly().waitFor(5, TimeUnit.SECONDS)
         }
@@ -71,9 +91,14 @@ class KastToolRpcQuerySessionProcessTest {
 internal object QuerySessionSubprocessFixture {
     @JvmStatic
     fun main(args: Array<String>) {
-        val root = Path.of(args.single())
+        val root = Path.of(args[0])
+        val scenario = QuerySessionFixtureScenario.valueOf(args[1])
         val cases = Json.decodeFromString<Map<String, ToolRpcReply>>(QueryDeliveryFixtures.serialized())
-        val replies = listOf(cases.getValue("prefix"), cases.getValue("tail"))
+        val replies =
+            when (scenario) {
+                QuerySessionFixtureScenario.QUERY -> listOf(cases.getValue("prefix"), cases.getValue("tail"))
+                QuerySessionFixtureScenario.SOURCE_READ -> listOf(sourceSessionFailure())
+            }
         var invoked = 0
         val name = (AgentToolName.parse(PublicToolIdentity.QUERY_SYMBOLS.toolName) as Refinement.Refined).value
         val session =
@@ -82,10 +107,27 @@ internal object QuerySessionSubprocessFixture {
                 root = { FilesystemCanonicalRootDiscovery.discover(root) },
                 start = { Refinement.Refined(Unit) },
                 invokePublic = { admitted ->
-                    val query = (admitted.canonical as PublicToolCanonical.Query).request
-                    check(if (invoked == 0) query is QueryRunRequest.Run else query is QueryRunRequest.ReadResult)
-                    val reply = replies.getOrElse(invoked++) { error("Excess invocation") } as ToolRpcReply.Complete
-                    CliExit.Complete(CanonicalJsonDocument.generated(JsonObject.serializer()).create(reply.document))
+                    when (scenario) {
+                        QuerySessionFixtureScenario.QUERY -> {
+                            val query = (admitted.canonical as PublicToolCanonical.Query).request
+                            check(
+                                if (invoked == 0) query is QueryRunRequest.Run else query is QueryRunRequest.ReadResult
+                            )
+                        }
+                        QuerySessionFixtureScenario.SOURCE_READ ->
+                            check(admitted.canonical is PublicToolCanonical.Source)
+                    }
+                    when (val reply = replies.getOrElse(invoked++) { error("Excess invocation") }) {
+                        is ToolRpcReply.Complete ->
+                            CliExit.Complete(
+                                CanonicalJsonDocument.generated(JsonObject.serializer()).create(reply.document)
+                            )
+                        is ToolRpcReply.RejectedDocument ->
+                            CliExit.OperationRejected(
+                                CanonicalJsonDocument.generated(JsonObject.serializer()).create(reply.document)
+                            )
+                        else -> error("Unsupported fixture outcome")
+                    }
                 },
             )
         val bridge = KastToolRpcBridge(session)
@@ -96,4 +138,17 @@ internal object QuerySessionSubprocessFixture {
         }
         check(invoked == replies.size) { "Unconsumed fixture replies" }
     }
+}
+
+private enum class QuerySessionFixtureScenario {
+    QUERY,
+    SOURCE_READ,
+}
+
+private fun sourceSessionFailure(): ToolRpcReply.RejectedDocument {
+    val reason =
+        SourceReadFailureDetail.ReferenceRejected(SourceReferenceRole.CANDIDATE, SourceReferenceFailure.STALE_AUTHORITY)
+    return ToolRpcReply.RejectedDocument(
+        Json.parseToJsonElement(canonicalReadRejectedDocument(reason).value).jsonObject
+    )
 }

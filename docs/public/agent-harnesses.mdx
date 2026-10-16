@@ -17,14 +17,15 @@ icon: "plug"
 
 <Tabs>
   <Tab title="Codex">
-    Replace an existing Kast connection with the bundled plugin:
+    The installer offers a Codex MCP connection by default. If you accepted it, restart Codex and select your Kotlin repository or worktree.
+
+    If you skipped registration, run:
 
     ```shell
-    kast disconnect codex
-    kast plugin codex
+    kast connect codex mcp
     ```
 
-    Restart Codex to load the plugin. Select your Kotlin repository or worktree.
+    Restart Codex after a connection change. For the optional bundled plugin and other transports, use [integration options](/reference/integrations).
   </Tab>
   <Tab title="Copilot">
     ```shell

@@ -1,13 +1,40 @@
-# kast
+---
+type: Engineering Guide
+title: "Kast repository engineering guide"
+description: "Defines repository rules, source owners, development entry points, and the contract for scoped OKF guides."
+resource: "repo://kast"
+tags: [kast, navigation]
+timestamp: "2026-10-15T19:04:53Z"
+source_revision: 0b95306caef9f314f4419bd73ed0171bc67da230
+code_sources:
+  - path: build.gradle.kts
+  - path: .vale.ini
+  - path: docs/glossary.json
+  - path: config/vale/styles/Kast/Terminology.yml
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
+  - path: install.sh
+  - path: mise.toml
+  - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt
+  - path: runtime/hosted/build.gradle.kts
+  - path: settings.gradle.kts
+---
+
+# Kast
 
 ## Purpose
 
-Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search, semantic relationships, diagnostics, and controlled source changes for one exact repository. This file routes investigation; `AGENTS.md`, source, schemas, and tests remain authoritative.
+Kast gives coding agents compiler-grounded Kotlin queries, diagnostics, and controlled source changes for one exact repository.
+This guide owns repository rules and routes source investigation.
 
 ## Key Files
 
 - `AGENTS.md` - durable engineering rules for every change.
-- `README.md` - product purpose, installation, connection, development, and failure semantics.
+- `README.md` - product value, one installation path, and links to task guides.
+- [Glossary](docs/GLOSSARY.md) - canonical terms for documentation and agent instructions, with source evidence in `docs/glossary.json`.
+- `.vale.ini` - repository Vale configuration with checked-in rules in `config/vale/`.
 - `settings.gradle.kts` - authoritative included-build and module inventory.
 - `build.gradle.kts` - root build configuration and shared task wiring.
 - `gradle/libs.versions.toml` - dependency and plugin versions.
@@ -20,16 +47,18 @@ Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search
 - [`protocol/`](protocol/AGENTS.md) - canonical operations, registry definitions, and wire projections.
 - [`workspace/`](workspace/AGENTS.md) - live workspace admission, existing imported-model capture, and read epochs.
 - [`symbol/`](symbol/AGENTS.md), [`source/`](source/AGENTS.md), [`relation/`](relation/AGENTS.md), [`traversal/`](traversal/AGENTS.md), [`query/`](query/AGENTS.md) - semantic read domains.
-- [`evidence/`](evidence/AGENTS.md) - durable live change plans, receipts and mutation recovery; [`topology/`](topology/AGENTS.md) retains the buildable graph implementation for upcoming work.
+- [`evidence/`](evidence/AGENTS.md) - durable live change plans, receipts, and mutation recovery.
+- [`topology/`](topology/AGENTS.md) - live dependency proofs, callback fact reuse, and separate historical graph operations.
 - [Persistent snapshot evidence](docs/reviews/persistent-topology-snapshots.md) - historical contracts, offline SQLite reports, and explicit native capture limits.
 - [`diagnostic/`](diagnostic/AGENTS.md) and [`change/`](change/AGENTS.md) - compiler diagnostics and proof-carrying mutation workflows.
 - [`runtime/`](runtime/AGENTS.md) - existing-IDE plugin composition, operation dispatch, and bounded diagnostics.
 - [`indexer/`](indexer/AGENTS.md) - retirement record for the former isolated semantic sidecar.
 - [`app-server/`](app-server/AGENTS.md) - persistent coordinator, host adapters, workspace lanes, and Codex protocol integration.
-- [`cli/`](cli/AGENTS.md) - command graph, configuration, projections, and executable bootstrap.
-- [`copilot/`](copilot/extension.mjs) and [`pi/`](pi/extension.ts) - thin agent extensions over the shared tool RPC.
+- [`cli/`](cli/AGENTS.md) - private JVM entry points, direct tools, installation workflows, and typed output projections.
+- [`copilot/`](copilot/extension.mjs) - optional agent extension over the shared tool RPC.
+- [`pi/`](pi/mcp-extension.ts) - shared context and native MCP registration for Pi.
 - [`distribution/`](distribution/AGENTS.md) and [`packaging/`](packaging/AGENTS.md) - installation contracts, managed artifacts, release assembly, and acceptance harnesses.
-- [`agent-tools/`](agent-tools/README.md) - independently installable query skill, MCP plugin, and marketplace source.
+- [`agent-tools/`](agent-tools/AGENTS.md) - shared context, generated query references, MCP plugins, and marketplace source.
 - [`build-logic/`](build-logic/AGENTS.md) - Gradle conventions and architecture enforcement.
 - [`docs/`](docs/AGENTS.md) - public Mintlify documentation and visual evidence helpers.
 
@@ -38,7 +67,8 @@ Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search
 - Build and tests: `./gradlew build`.
 - Release assembly: `./gradlew assembleRelease`.
 - Local installation: `./packaging/install-checkout.sh persistent --idea-home "/Applications/IntelliJ IDEA.app"`.
-- CLI main: `cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt`.
+- Public native command: `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt`.
+- Private installer version entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt`.
 - Semantic host: `runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt`.
 - Codex/App Server main: `app-server/src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt`.
 - Codex MCP main: `cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt`.
@@ -53,22 +83,35 @@ Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search
 
 ## Navigation Hints
 
-- For architecture or dependency questions, use OpenWiki search/read for relevant sections. When retrieval is unavailable, use `openwiki/quickstart.md` and follow the selected concept's source citations.
+- For architecture uncertainty, use optional OpenWiki retrieval. If retrieval tools are unavailable, read `openwiki/quickstart.md` and its source citations.
 - For domain behavior, start in the matching `*/contract`, then read `*/service`, and open `*/intellij` only for platform effects.
-- For an external request, trace `protocol/registry` -> `protocol/wire` -> `runtime/hosted` -> the owning domain service.
-- For startup or connectivity, start with `README.md`, then `cli`, `app-server`, `runtime/hosted`, and `workspace/intellij-read` in that order.
+- For public syntax, start with the authored schema and admission in the [public query guide](app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/AGENTS.md).
+- For semantic execution, trace direct MCP or tool RPC through the existing-IDE client into `runtime/hosted` and the domain protocol owner.
+- For wire contracts, trace `protocol/contract` -> `protocol/registry` -> `protocol/wire`.
+- For startup or connectivity, start with `docs/public/start.mdx` and `docs/public/reference/installation.mdx`, then examine `cli`, `app-server`, and `runtime/hosted`.
 - For installation failures, start with `install.sh`, `distribution`, and `packaging`; use `app-server/docs/compatibility.md` for known Codex integration gates.
 - For architecture violations, start with `build-logic/src/main/kotlin/kast.architecture.gradle.kts` and `build-logic/src/main/kotlin/support/architecture`.
-- For implementation details, do not stop at this map: open the cited source and its focused tests.
+- For implementation details, read the cited source and its focused tests.
+- Public queries use `COMPLETE_ONLY` under `COMPILER_RESOLVED_STATIC_V1`. Presentation pages do not prove semantic completion.
 
 ## Generation Contract
 
-- Checked-in policy: root and nested `AGENTS.md` files belong in Git, including generated navigation maps. Only `OUTDATED.local.md` and runtime caches stay local. Never add agent-file exclusions.
-- Preserve authored instructions and the Engineering Dictum. Refresh generated maps only when they carry the explicit generated-navigation marker.
-- Hash input: sorted immediate child names plus regular-file sizes, excluding directory sizes and mtimes. A matching shallow hash is a routing hint, not proof that nested source or semantics are unchanged.
-- Exclusions: VCS metadata, dependency caches, build outputs, IDE metadata, generated navigation files, staleness markers, and binary caches.
-- Staleness: the advisory post-commit hook appends the nearest existing guide directory for changed source, including the repository root, to `OUTDATED.local.md`. Review every listed map against current source and truncate only after every requested refresh succeeds. Navigation-only commits do not queue another refresh.
-- Tooling: see [.agents/marketplaces.md](.agents/marketplaces.md) for marketplace ownership, expected plugins, and setup checks.
+- Keep root and nested `AGENTS.md` files in Git. Keep only `OUTDATED.local.md` and runtime caches local.
+- Never add agent-file exclusions.
+- Use [Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md) metadata at the start of each guide.
+- Include `type`, `title`, `description`, `resource`, `tags`, and `timestamp`. Keep repository-relative source paths in `code_sources`.
+- `source_revision` records the examined source revision. A timestamp records a reviewed update, without a claim of automatic freshness.
+- Preserve authored rules and the Engineering Dictum. Generated maps carry the explicit generated-navigation marker after their metadata.
+- Refresh generated maps only when they carry that marker.
+- Keep generated maps focused on purpose, key files, subdirectories, entry points, and task-specific source routes.
+- Hash input uses sorted immediate child names and regular-file sizes. Exclude directory sizes, mtimes, caches, and guide files.
+- Exclude VCS metadata, build outputs, virtual environments, IDE metadata, staleness markers, and binary caches.
+- Keep source modules named `build` when they contain `build.gradle.kts`. A matching shallow hash does not prove unchanged nested content.
+- Examine each queued directory against current source. Truncate `OUTDATED.local.md` only after every queued review succeeds.
+- The advisory post-commit hook queues the nearest existing guide for each changed source path, including the repository root.
+- Navigation-only commits do not queue another refresh. Hook delivery and a matching hash do not prove semantic accuracy.
+- During refresh, preserve OKF metadata and authored rules. Do not replace reviewed maps with filename-only summaries.
+- Read [.agents/marketplaces.md](.agents/marketplaces.md) for marketplace setup context. Examine current source paths before reuse of its setup commands.
 
 
 # Engineering Dictum
@@ -120,6 +163,19 @@ Kast is a Kotlin/Gradle system that gives coding agents compiler-grounded search
 - Verify actual encoded output against an independent expected shape or authoritative schema. Cover each closed outcome variant, required defaults/discriminators, and rejection of unknown values. A round trip through the same serializer alone is not contract proof.
 - When changing an existing manual JSON boundary, migrate the affected shape and its callers in the same change. Do not extend manual construction or erase a typed failure to make a test pass.
 - Run `./gradlew verifyJsonContracts`; `check` and `productBuildGate` require it. Its [syntax guard and exact baseline](config/json-contracts/README.md) reject new, changed, duplicated, and stale manual JSON expressions. Do not expand legacy allowances to pass a check. This guard supplements the encoded-shape and schema tests above; it does not replace them.
+
+## Documentation and terminology
+
+- Use the [glossary](docs/GLOSSARY.md) as the canonical vocabulary for repository prose. `docs/glossary.json` owns definitions, distinctions, source evidence, and rejected forms.
+- Use each term for its defined concept. Add a source-backed definition before a new domain term becomes shared vocabulary.
+- Preserve code identifiers, commands, UI labels, generated contracts, and attributed quotations. Do not rename a distinct concept because its wording resembles another term.
+- Keep historical reports tied to their recorded revision. Apply terminology changes to current prose within the glossary's declared scope.
+- Edit the JSON source. Regenerate its reader view and Vale terminology rules through [the documentation policy](docs/documentation-structure.md#glossary-ownership).
+- Keep the README focused on reader value and one default installation path. Put options, lifecycle behavior, and runtime detail in reference documentation.
+- Use Vale `3.24.0` from `mise.toml` with `.vale.ini`. Rules and licenses reside in `config/vale/` and need no runtime package download.
+- Run `mise exec -- vale --no-global --config=.vale.ini --output=JSON` with each changed prose path. Keep the report.
+- Run the pinned Repository Knowledge assessment for changed prose. Keep unresolved findings with their rule, location, and reason.
+- Report `ASSESSED` separately from a clean report. Prose metrics and lexical rules do not prove source truth or reader comprehension.
 
 ## Repository Knowledge
 

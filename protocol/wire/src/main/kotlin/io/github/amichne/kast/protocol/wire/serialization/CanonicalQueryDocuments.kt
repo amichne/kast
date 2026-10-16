@@ -30,6 +30,7 @@ import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.QuerySourceFailureDocument
 import io.github.amichne.kast.protocol.contract.QuerySourceRejectionReason
 import io.github.amichne.kast.protocol.contract.QueryWalkObservationDocument
+import io.github.amichne.kast.protocol.contract.ReferenceAuthorityMismatch
 import io.github.amichne.kast.protocol.contract.reason
 import io.github.amichne.kast.protocol.contract.validateImpactAccounting
 import kotlinx.serialization.SerialName
@@ -152,6 +153,9 @@ internal sealed interface QueryRunRejectionWireDocument {
     data class ReferenceRejected(
         val position: Int,
         val reason: QueryReferenceRejectionReasonWireDocument,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("authority_mismatch")
+        val authorityMismatch: ReferenceAuthorityMismatch? = null,
     ) : QueryRunRejectionWireDocument
 
     @Serializable
@@ -160,6 +164,9 @@ internal sealed interface QueryRunRejectionWireDocument {
         val stepPosition: Int,
         val referencePosition: Int,
         val reason: QueryReferenceRejectionReasonWireDocument,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        @SerialName("authority_mismatch")
+        val authorityMismatch: ReferenceAuthorityMismatch? = null,
     ) : QueryRunRejectionWireDocument
 
     @Serializable
@@ -426,12 +433,14 @@ private fun QueryRunRejection.toQueryWireDocument(): QueryRunRejectionWireDocume
             QueryRunRejectionWireDocument.ReferenceRejected(
                 position.value,
                 reason.toWire(),
+                authorityMismatch,
             )
         is QueryRunRejection.StepReferenceRejected ->
             QueryRunRejectionWireDocument.StepReferenceRejected(
                 stepPosition.value,
                 referencePosition.value,
                 reason.toWire(),
+                authorityMismatch,
             )
         is QueryRunRejection.SourceRejected ->
             QueryRunRejectionWireDocument.SourceRejected(
@@ -455,13 +464,16 @@ private fun QueryRunRejectionWireDocument.toContract(): WireDocumentConversion<Q
         QueryRunRejectionWireDocument.WorkspaceNotReady ->
             WireDocumentConversion.Converted(QueryRunRejection.WorkspaceNotReady)
         is QueryRunRejectionWireDocument.ReferenceRejected ->
-            position.protocolOffset().mapConverted {
-                QueryRunRejection.ReferenceRejected(it, reason.toContract())
+            position.protocolOffset().flatMapConverted {
+                QueryRunRejection.ReferenceRejected.admit(it, reason.toContract(), authorityMismatch)
+                    .toWireDocumentConversion()
             }
         is QueryRunRejectionWireDocument.StepReferenceRejected ->
             stepPosition.protocolOffset().flatMapConverted { step ->
-                referencePosition.protocolOffset().mapConverted { reference ->
-                    QueryRunRejection.StepReferenceRejected(step, reference, reason.toContract())
+                referencePosition.protocolOffset().flatMapConverted { reference ->
+                    QueryRunRejection.ReferenceRejected.admit(reference, reason.toContract(), authorityMismatch)
+                        .toWireDocumentConversion()
+                        .mapConverted { QueryRunRejection.StepReferenceRejected.fromReference(step, it) }
                 }
             }
         is QueryRunRejectionWireDocument.SourceRejected ->

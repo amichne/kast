@@ -39,6 +39,10 @@ You need an Apple silicon Mac and a Kotlin Gradle repository. IntelliJ IDEA must
 
 The installer adds the IDEA plugin, Kast services, and native `kast` command. It selects stable Control and Host releases independently and examines their contracts. Compatible components can use different version numbers.
 
+The installer offers a user-level Codex MCP connection. Accept the default to use Codex after you restart IDEA and Codex.
+
+For registration without a prompt, append `-- --register-codex-mcp`. To preserve an existing Codex MCP configuration, append `-- --skip-codex-mcp`.
+
 For structured diagnostics, append `-- --verbose` to the installation command.
 
 ## 2. Load the plugin and inspect state
@@ -88,6 +92,16 @@ Examine the version and installation path. Use the [first query](/reference/inte
     ```
 
     `--version` selects Control. `--host-version` selects Host. Restart IDEA and your agent.
+  </Accordion>
+
+  <Accordion title="Choose a coordinator endpoint">
+    Routine installation preserves admitted saved settings, including the App Server endpoint, unless you select another.
+
+    Fresh installation and force reinstall default to `codex-control`. An occupied or unreadable standard socket does not select a private endpoint.
+
+    Startup rejects an unowned socket with `PUBLIC_SOCKET_OWNED`. Activation stays pending. Explicit private mode, direct MCP, and `kast-codex` remain available.
+
+    Read [App Server compatibility](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md) for endpoint admission and migration details.
   </Accordion>
 </AccordionGroup>
 

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:8f0ee65a5e6541e71298c398d915e22c4c400bd19a2cf442accf6bb102e6a91f",
+  "claims": [
+    {
+      "id": "claim_4418145e0e48413589ccb805f87f8741",
+      "statement": "Daemon upgrade preparation distinguishes absence, blockers, sealed and committed exact permits, and finite rejection before retirement.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonUpgrade.kt",
+          "version": "repo-file-v1:sha256:33c611618851d3fc5cbf718be7cddf414aaadae9a684ba681d18cbb9c77a6183"
+        }
+      ]
+    },
+    {
+      "id": "claim_1620e746f39a4a639c57470e10369d40",
+      "statement": "Force-reset scope rejects filesystem roots, HOME and its ancestors, and physical aliases before deletion while keeping deletion scope separate from old receipt ownership.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt",
+          "version": "repo-file-v1:sha256:caa616d53ffd0a991536c37d180369ee54ceeb8e49472fce95ac338193f8fb72"
+        }
+      ]
+    },
+    {
+      "id": "claim_a5413e705f3448bcb66d09670eb8f0d6",
+      "statement": "Reset readiness needs a version-matched payload and admitted service generation while the tool fence remains present.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ReadyReset.kt",
+          "version": "repo-file-v1:sha256:be182720a2c9095ca5bcf603a0d3cd5105e7081b6a9f278c29e314d03296d9ff"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}

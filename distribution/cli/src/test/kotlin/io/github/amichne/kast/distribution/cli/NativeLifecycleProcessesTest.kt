@@ -95,7 +95,27 @@ class NativeLifecycleProcessesTest {
                         ResetProcessStage.REVALIDATE,
                         ResetProcessResult.IDENTITY_VERIFIED,
                     ),
+                    ResetProcessObservation(
+                        child.pid(),
+                        ResetProcessStage.SOCKET_CAPTURE,
+                        ResetProcessResult.IDENTITY_VERIFIED,
+                    ),
+                    ResetProcessObservation(
+                        child.pid(),
+                        ResetProcessStage.REVALIDATE,
+                        ResetProcessResult.IDENTITY_VERIFIED,
+                    ),
+                    ResetProcessObservation(
+                        child.pid(),
+                        ResetProcessStage.REVALIDATE,
+                        ResetProcessResult.IDENTITY_VERIFIED,
+                    ),
                     ResetProcessObservation(child.pid(), ResetProcessStage.VERIFY, ResetProcessResult.RETIRED),
+                    ResetProcessObservation(
+                        child.pid(),
+                        ResetProcessStage.SOCKET_RETIREMENT,
+                        ResetProcessResult.RETIRED,
+                    ),
                 ),
                 observations,
             )

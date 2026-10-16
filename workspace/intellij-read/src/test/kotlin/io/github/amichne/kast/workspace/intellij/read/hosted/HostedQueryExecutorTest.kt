@@ -2,6 +2,8 @@
 
 package io.github.amichne.kast.workspace.intellij.read.hosted
 
+import io.github.amichne.kast.kernel.ReadLimits
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetPresence
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import kotlinx.coroutines.CompletableDeferred
@@ -73,8 +75,8 @@ class HostedQueryExecutorTest {
     fun `equal configured deadlines shrink semantic time after capture and retain qualified publication`() = runTest {
         lateinit var admittedReport: ExecutionBudgetReport
         val limits =
-            (io.github.amichne.kast.kernel.ReadLimits.resolve(mapOf("KAST_READ_HOST_QUERY_MILLIS" to "2000"))
-                    as io.github.amichne.kast.kernel.Refinement.Refined)
+            (ReadLimits.resolve(mapOf("KAST_READ_SEMANTIC_MILLIS" to "2000", "KAST_READ_HOST_QUERY_MILLIS" to "2000"))
+                    as Refinement.Refined)
                 .value
         val receipts = mutableListOf<HostedReadDiagnosticReceipt>()
         val executor =

@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:b7819f300ca42eebc8718f5456c4e809bdb33b643a52a09542c83f5bc05bf687",
+  "claims": [
+    {
+      "id": "claim_2c9e43d8ffac41339c5ff59e614427da",
+      "statement": "Control installation and Host plugin installation have independent effect owners, receipts, and compatibility evidence.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
+          "version": "repo-file-v1:sha256:e227b44fca152f313889a870fd65a096fd512091cb8bfdb35d7d9ced10971144"
+        },
+        {
+          "resource": "repo://packaging/host-installation.py",
+          "version": "repo-file-v1:sha256:68a21012b64b75f8faa4e97d46cd701db894cfd576fcf8473b8f55b00569fb98"
+        }
+      ]
+    },
+    {
+      "id": "claim_7a3df1d6acce4a28ab3756a890afffc5",
+      "statement": "Host active-receipt admission qualifies device changes with stable root inode and owner evidence and distinguishes exact reinstall inventory from protected removal of remaining entries.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/host-installation.py",
+          "version": "repo-file-v1:sha256:68a21012b64b75f8faa4e97d46cd701db894cfd576fcf8473b8f55b00569fb98"
+        }
+      ]
+    },
+    {
+      "id": "claim_1d06d658c78b456b960fba22b9053804",
+      "statement": "Managed destructive-recovery trees need exact physical installation scope before deletion.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt",
+          "version": "repo-file-v1:sha256:595fc2611a1f5d63e30d3522e583a946d6252680e36013de6cb39c6156c81589"
+        }
+      ]
+    },
+    {
+      "id": "claim_ebf354104beb4909bb0ebaebdfe55831",
+      "statement": "Host preflight examines the existing target. Host installation and removal preserve exact legacy Control history names without traversing them, while pending Host transactions and unknown recovery entries still reject.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/host-installation.py#L428-L462",
+          "version": "repo-lines-v1:sha256:5a42224a50633efbbf6b38bc27e4d4192c1c14da72ef21da75df3744d800b1a5:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM2NzQ4M2FhODZhNjM2MTkwMzBmOTNhNjNkNzBjYTVhNTg5MTdmZTAxYWY0N2IwMjk2N2UzNDc0ZjhjNDQ0MTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkMjAzMmM4YTkxMzliMjllZWIxZGUxMmZkOWFhYWQ1NTYyZTM0MmUzNGYzOGE5ZDZhNzlhMWFjYjEzNzg0MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBhOWM5NmM1MjhjYjRhZTkzYjNmZjI2MTM5NjA5OGIyYzVlMzIwMTE3Y2RmOWFjN2M0NTY2NzFjN2E3Y2RjMjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhhNThjZjM4ZGUyYzhjMmRlMTI0NWJhNzkyMmRiMzIxZmQ5NWM0MjUxZWUzZjU3MDJkMzgxZTg2M2ZiODE1NDkifQ"
+        },
+        {
+          "resource": "repo://packaging/host-installation.py#L516-L536",
+          "version": "repo-lines-v1:sha256:f2b45bb2a2d38c6fca8b08cef23cd079002f47be4bfe1818be92348210e32d33:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1NDUzMTkxOWIxMDA5N2RkOWQxNWY4NzQxN2VkNjBlZWJmZmJkZWZiNmM0YzhiMDBjYTBiM2U0MDllZDdlZDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhlNTk1NmViZTJkZWM1ZTUxMWU0MmFiZjRkMzA3ZDlmYTkzMWJkOWM3OGI5ZWE3Mjc2NDlkM2U2ODM3MmVlMTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRlOTY2Nzc4ODg2ZGZkNWIxZmRiOWYyOTNjNWYyNjlhZmUzZjg5MmM4ZGVhYTkxZTdhN2IyYjRiMTdjZjQzODkifQ"
+        },
+        {
+          "resource": "repo://packaging/host-installation.py#L645-L667",
+          "version": "repo-lines-v1:sha256:ea8f2ab0c43cd5f0e7ec340249d799fd894f83e2acb98488595a75ced698d719:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMzNzU3MDg2ZjRiMDQ1NTljMzJlMWFhMTU1MmM5NDJkYmZjNThiYWM2YmFkYWEzYWQzOGQ1NGJmYzVkOGJhY2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJhZTBmOTI4OGU0ZDMxNWZhZDViYzQ3M2EyYjgwZjkwYjUwYjc2YzA1YjFkMzVhMDk2OGVjMmI3NDcwOTVhM2MiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ5ZDg4NjlkYzllMTBlYzEzN2NiMWM5MTViZDExZTQ3M2EyYTIxZmJiMTliMDZmNGY4ZTYzODAzOGZhZTk0ZjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc5ZWRlZjY4ZDg2NGZkMjExNTRlMmYxMzE1OTE0MWViM2MzOTM0NGI3ZjRkNDE3ZjYxZDNiY2YxNDQzMjkxMTAifQ"
+        },
+        {
+          "resource": "repo://packaging/test-host-installation.py#L316-L395",
+          "version": "repo-lines-v1:sha256:3c3db83f3b5c2a8c6b502983225b89e7d54035d3cb8297056efbf8aeb3735c2c:eyJzZWxlY3RlZExpbmVDb3VudCI6ODAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjMmMzYTc3Y2ViYWZiODc0OTRkM2ZlZDU5YmViY2Y2NGY3MjAyNzg4NjAxNWU3ZmRhZGE1ODJkNTdhYWVlYTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlkNTgwODFiZDNjM2U4Y2EzZWY0MjU3MWI2NDkyZjU3N2I0MDkwNGVhNjQwMDk2ZTQzZDY2ZmQ1Njc3ZmI0MmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIzNjEwZmFmYWMxNzFiNzhjYmEzMDE0ZDMzNTUwYTE2Y2VlZjEyN2RiZWI1Mjg1ZmUxYTQxNjQ1Njc1Y2E3N2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZkYmNlZjhlNzgyYWEyMThmNjliZGZlMjliZTI4Y2FmNjA0ODNmMjE3Njk3ODVlYzFlOTM2YWEyOTUzNjMyYWMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_91597cb535664fb6a1629440e64f0722",
+      "statement": "A stopped installation without a workspace registry can pass retirement admission when its current broker stores have exact integer layout versions, empty record directories, empty locks, and private ownership. Records, unknown artifacts, live evidence, and unsafe paths still reject.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/installation-lifecycle.py#L702-L809",
+          "version": "repo-lines-v1:sha256:3d02398a8acc48c75f1aebbcb1dba33527d7faff9d14d8d1721cf26040fe8f87:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA4LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIwNGU4YzU2NjdjYmYyZDY1NDQxMzI3YTczZmYzYWIyOGExODczYzNiYzBjZmUzNmY4ZWQyY2UyZDRiNzBmYWRmIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI1NzBkYTAzMmZiZmRiZDFiNDI0ZTgxNGMyMTJhZTU4NDg0ZTc2ZjU3ZGM1NmRiZmQxM2JmODAzNzM2ZDMyNGIyIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI0MTBmMTYzOTIyNWIzMjBmYjdiY2YxNmI1MzlhMTEzNmNmYjM3MzcyMjRmOGVmM2I3MGQ2OThiOWFlOWJmMjQwIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIyYjVkYmI0OTEyNjliYmY1NWNkNDI2YTA3NzdkNTRmNmNmZmYyZmFhNTY2Zjc1ZDZlMjBjMzdiY2EzY2I2YzI5In0"
+        },
+        {
+          "resource": "repo://packaging/test-installation-lifecycle.py#L26-L158",
+          "version": "repo-lines-v1:sha256:6498bdc3619969c3c717b12eadd9395cf537a9a457cb0270b4b04d15d4e79b8a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMzLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI2NjIzNzFkNTk0NGNhODM5ZmEzMmJhYWQ0YTUyZWI1YTQ3Y2NhNzkyZDM3ZGM4ZTI4NDhkNWRmMWE3NTNhMzRiIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJkNzY0ZGQ3NjYyNmU1MjkyMDQyODcxN2VmNzMyZGYwOTUxNDRmYmNlOTQzMjUwOWZhYjAyN2NmNjBjZDllMmZjIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIxZmY4MTI4NTU2ZDlkZmZhYjBjOGNlMzVkZjMxNDA1OGYxN2JmMzY5NDRjNGU4YTkyMjBkNGIzOGM0MmQxNmUzIn0"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T03:39:16.872Z"
+  }
+}

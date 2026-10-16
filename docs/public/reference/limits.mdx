@@ -10,16 +10,56 @@ Execution allowances constrain resource use. They do not change the requested so
 
 `executionBudget` accepts these optional dimensions. Omission or `null` selects configured defaults. Positive requests remain subject to operator and transport ceilings.
 
-| Field | Unit | Meaning |
-| --- | --- | --- |
-| `maxElapsedMs` | Milliseconds | Elapsed allowance for the admitted operation. |
-| `maxWorkUnits` | Work units | Allowance for accounted semantic work. |
-| `maxResults` | Rows | Result allowance. A row limit alone does not prove completed semantic work. |
-| `maxReturnedBytes` | Bytes | Allowance for returned data. Callback-proof storage uses separate accounting. |
+| Field | Query default | Meaning |
+| --- | ---: | --- |
+| `maxElapsedMs` | 15,000 milliseconds | Elapsed allowance for semantic execution. This ceiling does not impose a wait. |
+| `maxWorkUnits` | 2,000,000 work units | Allowance for accounted semantic work, independent of response size. |
+| `maxResults` | 128 rows | Result allowance. A row limit alone does not prove completed semantic work. |
+| `maxReturnedBytes` | 49,152 bytes | Encoded response allowance, equal to 48 KiB. Evidence storage has separate quotas. |
+
+More time does not raise the work allowance. More work does not enlarge the response allowance.
+
+Source reads keep their separate default of 10,000 work units and 128 entities. They share the 15,000-millisecond elapsed default.
 
 The response reports the admitted grant. A requested value does not establish that Kast admitted the full value.
 
 An internal continuation shares the original operation's grant. Public output continuations and retained result cursors grant presentation only.
+
+## Operator controls
+
+The Host selects defaults from its admitted configuration. These settings also have IDE JVM properties, such as `kast.read.semantic.work`.
+
+| Per-call field | Default setting | Operator ceiling |
+| --- | --- | --- |
+| `maxElapsedMs` | `KAST_READ_SEMANTIC_MILLIS` | `KAST_READ_EXECUTION_MAX_MILLIS` |
+| `maxWorkUnits` | `KAST_READ_SEMANTIC_WORK` | `KAST_READ_EXECUTION_MAX_WORK` |
+| `maxResults` | `KAST_READ_SEMANTIC_RESULTS` | `KAST_READ_EXECUTION_MAX_RESULTS` |
+| `maxReturnedBytes` | `KAST_READ_SEMANTIC_RETURNED_BYTES` | `KAST_READ_EXECUTION_MAX_RETURNED_BYTES` |
+
+Each operator ceiling defaults to 2,147,483,646. A lower ceiling clamps both default and requested allowances.
+Transport capacity and remaining host time can reduce the effective allowance further.
+
+The installed `share/kast/configuration-schema.json` describes each setting, range, accepted source, and default.
+The public CLI does not expose a `config` command.
+The response's admitted grant establishes the limits for one call.
+
+The default host deadline is 30,000 milliseconds. Model capture and completion work also consume this deadline.
+If a configured host deadline is less than 15,000 milliseconds, `KAST_READ_SEMANTIC_MILLIS` must fit that deadline.
+An inconsistent configuration rejects before semantic execution.
+
+The [configuration guide](https://github.com/amichne/kast/blob/main/docs/hosted-read-configuration.md) explains saved settings, IDE properties, and service lifetimes.
+
+## Retention controls
+
+| Setting | Default | Limit |
+| --- | ---: | --- |
+| `KAST_READ_QUERY_CHECKPOINT_BYTES` | 33,554,432 bytes | Charged bytes per query checkpoint. |
+| `KAST_READ_QUERY_CONTINUATION_BYTES` | 134,217,728 bytes | Charged bytes per query continuation store. |
+| `KAST_READ_QUERY_CONTINUATION_ENTRIES` | 64 | Entries per query continuation store. |
+| `KAST_READ_QUERY_CONTINUATION_TTL_MILLIS` | 600,000 milliseconds | Continuation lifetime. |
+
+The checkpoint limit cannot exceed the store limit. Charged bytes are conservative accounting, not a heap measurement.
+Larger response pages do not increase these quotas. Public `RESUME` presents existing output and cannot continue unfinished semantic execution.
 
 ## Completion failures
 
@@ -39,6 +79,8 @@ Exact references need current compiler identity admission. Retained results and 
 
 Expiry, eviction, owner retirement, incompatible identity, or stale state can prevent reuse. A larger resource grant cannot restore missing state.
 
+`compiler-identity-unavailable` needs an identity or refinement investigation. Clean file diagnostics do not establish identity for every declaration.
+
 `READ_SOURCE` accepts an issued `candidateSelector` as `candidateRef`. An exact symbol reference does not belong to that action's token family.
 
 ## Write failures
@@ -57,8 +99,17 @@ The [change procedure](/reference/change#read-the-receipt) establishes the effec
 
 ## Budget example
 
-These requested values illustrate units. They are not default values or promised admitted grants.
+This per-call profile selects the execution defaults explicitly. It leaves response allowances at their configured values.
 
 ```json
-{"maxElapsedMs":15000,"maxWorkUnits":1000,"maxResults":20,"maxReturnedBytes":65536}
+{
+  "executionBudget": {
+    "maxElapsedMs": 15000,
+    "maxWorkUnits": 2000000
+  }
+}
 ```
+
+For `query_symbols`, this object belongs inside `request`. A requested value remains subject to admission.
+
+[Complete a targeted engineering task](/how-to/complete-engineering-task) combines discovery, relationship evidence, an exact change, and project tests.

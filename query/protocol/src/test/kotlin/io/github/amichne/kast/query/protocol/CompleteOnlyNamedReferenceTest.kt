@@ -29,6 +29,7 @@ import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -74,6 +75,14 @@ internal class CompleteOnlyNamedReferenceTest : CompleteOnlyCallbackQueryCase() 
             ),
             rejected.callbackGraphFailure?.cause,
         )
+        val subject =
+            assertInstanceOf(
+                io.github.amichne.kast.protocol.contract.QueryCallbackGraphSubjectDocument.Callable::class.java,
+                rejected.callbackGraphFailure?.subject,
+            )
+        assertEquals(fixture.selector.file.stableValue, subject.occurrence.file.value)
+        assertEquals(1, subject.occurrence.range.startInclusive.value)
+        assertEquals(4, subject.occurrence.range.endExclusive.value)
         script.assertDrained()
     }
 

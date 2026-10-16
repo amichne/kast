@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:77f1704b48c80359239aa9a92039afc8158429e6bf21a2b8626adc66be8772cc",
+  "claims": [
+    {
+      "id": "claim_a5aabd0ac08b46be89a2eef490220d68",
+      "statement": "The optional Copilot and Pi RPC adapters admit the shared tool RPC catalog and preserve generated contract and delivery owners.",
+      "evidence": [
+        {
+          "resource": "repo://copilot/extension.mjs",
+          "version": "repo-file-v1:sha256:aaddeb3869dffbdd8bce5e673b2c4c3138389dc251de15cc8783af3ae70f96cd"
+        },
+        {
+          "resource": "repo://pi/extension.ts",
+          "version": "repo-file-v1:sha256:f026a5a35f8071a4315cfcb604daa6239f9d80f3315ed3014d440651073394a4"
+        }
+      ]
+    },
+    {
+      "id": "claim_beaf777103fa404bbc0ecd3138f871de",
+      "statement": "Portable query delivery invokes once, uses issued presentation authority, and preserves canonical outcomes under aggregate output limits.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/js/query-delivery-contract.mjs",
+          "version": "repo-file-v1:sha256:b2c31f3784b6fa39c71ba6f527dfaad63135c1d774baf204a6c3d0f9b7df2ae1"
+        },
+        {
+          "resource": "repo://cli/src/main/js/query-delivery.mjs",
+          "version": "repo-file-v1:sha256:1bdf2403520ca33c916a6675c1024fd77dfd171ba71e6fbea13cb45e383838c1"
+        }
+      ]
+    },
+    {
+      "id": "claim_78a64609716545669cc9c59323266ccd",
+      "statement": "The outer delivery schema distinguishes client output delivery from canonical semantic completion.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/resources/query-delivery.schema.json",
+          "version": "repo-file-v1:sha256:e2f5cd0ecb8959e452a63ddccecaa1992d01fb5dc10ff5f07317fe8771de32e6"
+        }
+      ]
+    },
+    {
+      "id": "claim_75e753fdf35a4d0484644740c3c9541c",
+      "statement": "Query presentation counts only received evidence and keeps refinement locations as NOT_ISSUED source-read authority without automatic semantic retries.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/js/query-presentation.mjs",
+          "version": "repo-file-v1:sha256:026909c60f1ea12306152153fa5f962cb06f18afd9d166117d9302362a329672"
+        }
+      ]
+    },
+    {
+      "id": "claim_62e9689fb94d439cb56fc70a8129fcb6",
+      "statement": "Codex and Copilot plugin hooks use one passive script to emit the shared brief, exact workspace, and absolute schema and example paths, with finite rejection before partial context.",
+      "evidence": [
+        {
+          "resource": "repo://agent-tools/hooks/copilot.json",
+          "version": "repo-file-v1:sha256:ce27934f02d2e28698e3e2da24406abedddc610297ce9a4a51f20963b61c266d"
+        },
+        {
+          "resource": "repo://agent-tools/hooks/hooks.json",
+          "version": "repo-file-v1:sha256:84d8a79a3cfc6a5b858d3a2331a03a473cc1a5d2eea836ade635d8531b7645d3"
+        },
+        {
+          "resource": "repo://agent-tools/hooks/session_start.py",
+          "version": "repo-file-v1:sha256:a81bfe5ffabb1a367454edd004b948f8ecea19ec41452bdb8dcf10dd07d2acf1"
+        }
+      ]
+    },
+    {
+      "id": "claim_5564e7cf80574a1b8c498fe560f82e2c",
+      "statement": "The CLI distribution selects the Pi native MCP extension, which registers Kast through registerMcpServer and adds the shared session context before model requests.",
+      "evidence": [
+        {
+          "resource": "repo://cli/build.gradle.kts",
+          "version": "repo-file-v1:sha256:ee38548cc514ac551052343c504cd93e75163d1c0952e1e88c90000c714f28c5"
+        },
+        {
+          "resource": "repo://pi/mcp-extension.ts",
+          "version": "repo-file-v1:sha256:2254e6622f14343dcf4e756240dbe0379934fededc152dbcfe5383ddf188f71e"
+        }
+      ]
+    },
+    {
+      "id": "claim_15cf525b6b144e00aead91770f1b3e50",
+      "statement": "The public-query generator derives onboarding enum lists, query schema, and the named example array from the authored public contract and shared prose template.",
+      "evidence": [
+        {
+          "resource": "repo://agent-tools/onboarding.template.md",
+          "version": "repo-file-v1:sha256:d5ade8982cf231a4001832fa60a4b7888c29fc261bdc3dbe1325a444734871cb"
+        },
+        {
+          "resource": "repo://packaging/generate-public-query.py",
+          "version": "repo-file-v1:sha256:db7ec3585323fabf7f70bf8aab10b2e12588172637faae2b8f03e5f0998a9429"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T19:07:35.337Z"
+  }
+}

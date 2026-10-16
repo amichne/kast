@@ -1,5 +1,7 @@
 package io.github.amichne.kast.appserver
 
+import io.github.amichne.kast.distribution.contract.configuration.BrokerPublicEndpointMode
+import io.github.amichne.kast.distribution.contract.configuration.BrokerPublicEndpointModeFailure
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationOwner
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationRejection
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
@@ -19,7 +21,13 @@ private constructor(
             val endpointMode =
                 when (val admission = BrokerPublicEndpointMode.admit(inputs["KAST_APP_SERVER_PUBLIC_ENDPOINT"])) {
                     is Refinement.Refined -> admission.value
-                    is Refinement.Rejected -> return admission
+                    is Refinement.Rejected ->
+                        return Refinement.Rejected(
+                            when (admission.failure) {
+                                BrokerPublicEndpointModeFailure.INVALID_PUBLIC_ENDPOINT ->
+                                    AppServerConfigurationFailure.INVALID_PUBLIC_ENDPOINT
+                            }
+                        )
                 }
             return Refinement.Refined(AdmittedAppServerConfiguration(configuration, endpointMode))
         }

@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:d3871b20c5bcb570b9fa1fca3ef979111e2ae1346fb9f68695e8c141599ea703",
+  "claims": [
+    {
+      "id": "claim_38dafc6c84934c4686aef201b1729568",
+      "statement": "Codex protocol qualification binds compatibility evidence to schemas collected from the admitted upstream executable.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolQualifier.kt",
+          "version": "repo-file-v1:sha256:be51b0ef97e86e94d24576628c82f8a525a58194b4466cfda43233bf7bbe1e53"
+        }
+      ]
+    },
+    {
+      "id": "claim_ec3a39c7eb8148779d6d2801858be5ef",
+      "statement": "DesktopStdioHost owns bounded UTF-8 JSONL framing, both transport pumps, and integration cleanup.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/host/DesktopStdioHost.kt",
+          "version": "repo-file-v1:sha256:98401fc16588712ded5bc5f90404e2974090e240a1372aa5fe48bba5c4af9c60"
+        }
+      ]
+    },
+    {
+      "id": "claim_9efe0add23434b0cb33a5346f161ca05",
+      "statement": "The CLI remote host starts the admitted Codex client through the shared broker endpoint while the protocol adapter preserves thread and tool admission.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/host/CliRemoteClientHost.kt",
+          "version": "repo-file-v1:sha256:318e8304a33e8125f7d4fbe6dd04afed9456c7e8b262d0a74c8f0773d7393293"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt",
+          "version": "repo-file-v1:sha256:d2dca295ac03839db9de00d5a990e72275b96c266d626681273608a4ea814ebc"
+        }
+      ]
+    },
+    {
+      "id": "claim_6d7e1beb5f554e81af20f91c6ee1c7c7",
+      "statement": "Implicit Codex starts with no settings marker and unbound resume or fork requests pass upstream unchanged without a Kast binding. Explicit Kast roots and stored bindings remain strict, and unbound Kast tool calls reject before provider dispatch.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt#L504-L634",
+          "version": "repo-lines-v1:sha256:b96063e17468d0ed0f2769009b82eb20cb31fb8097ee8744cdac3e71f87cf68b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIzYWEyNWRkODhkN2Q4MDgxNzM4NTZmZDE4MmIxYzY4OWQ0ZDg2Y2YyZjg4OWE1MzhkODlkNzJmMzZmZjVkZGY2IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJjYjU3NzBiOTlmYjcyY2E0ODQ2ZjE2ZWU5NzcwYjNhYzkzNzk2NjAyNmVhMTdhNTA0ZTU2ODE2ZjM2NTc2OTM0IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxNDliNTUyN2I2ZGVkZWU0YThhNTk3YzlmYmE3NzRiYWFhZWJhMjJlYThlZjZkM2Y3Y2IzMTI2ZThlYTlhMWM2IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIzMjA5OTliNmE0NmFlMTkxNDUzMmNlMTBlY2Y0MGM4MDBhYzYwMzFhMjIzMzk2NzAwMzFkZTg3OTdlNzFjODE3In0"
+        },
+        {
+          "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexWorkspaceBindingTest.kt#L41-L162",
+          "version": "repo-lines-v1:sha256:eb4043880df0e40aabe96bbece7dc1f0904974ba446f1773d7b819d18fbcfcc8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIyLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIyNDNkNGM5MGE1ZWY1ODQwYTkyY2EzN2Q2ZTQ0NDE5YWQwNDcwNWNlOGY2OGVkYTgzMjRmZTVhMTI0ZjQ4N2Y5IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJkOTBkMzE2MTI0YmY4MjBiZDI0MTQwOWJkMGVhNDNhYWI4M2E1MTY2MDc0MTU4YjI5MDdiNmUxMjk5MDIwYzM5IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIwNTYxNjM5MDI2YjQxNWRlOTM4ZDdkMTlkMDUwODI5MWEzMDAxZDBkMWU4NThhZjJiYzkzZmYzZTBhOGFkOTdhIn0"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T04:27:04.727Z"
+  }
+}

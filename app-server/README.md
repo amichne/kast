@@ -13,16 +13,20 @@ schema qualification retain their existing owners.
 
 ## Enable and attach
 
-Persistent installation enables the service at the standard Codex control socket,
-`<CODEX_HOME>/app-server-control/app-server-control.sock`, by default. After native
+Persistent installation uses an installation-private socket by default.
+The Kast MCP plugin connects independently of Codex's control socket.
+Its `SessionStart` hook prepares `settings.gradle.kts` projects through the direct tool RPC.
+Codex needs your trust decision before it runs the hook.
+
+An explicit `KAST_APP_SERVER_PUBLIC_ENDPOINT=codex-control` selects
+`<CODEX_HOME>/app-server-control/app-server-control.sock`. After native
 protocol readiness succeeds, the existing macOS service publishes
 `CODEX_APP_SERVER_USE_LOCAL_DAEMON=1` into its user launchd environment. The existing
 login job republishes it after login. New ordinary managed Codex CLI invocations
 can discover this socket; compatible desktop builds can select it on normal
 launch. ChatGPT's bundle, signature, executable and launch command remain unchanged.
-Set `KAST_APP_SERVER_PUBLIC_ENDPOINT=private` explicitly to retain an
-installation-private endpoint without publishing desktop discovery. Register each repository or worktree explicitly
-before attaching a compatible client:
+Private mode does not publish desktop discovery. For an explicit broker
+connection, register each repository or worktree before you attach a compatible client:
 
 ```sh
 "${XDG_DATA_HOME:-$HOME/.local/share}/kast/installation/share/kast/libexec/kast-service" register /absolute/path/to/repository
@@ -32,12 +36,12 @@ Registration is handled by the daemon management RPC. The private entry point
 also accepts `enable`, `disable`, `stop`, and `repair --destructive`.
 A rejected registration retains its finite daemon reason.
 
-Fresh installation and force reinstall keep `codex-control` selected even when
-another process owns the standard socket. Service startup rejects that conflict
-with `PUBLIC_SOCKET_OWNED`. The installer does not select private mode as a fallback.
+Fresh installation and force reinstall select `private` unless you request another mode.
+An explicit `codex-control` selection rejects an occupied standard socket
+with `PUBLIC_SOCKET_OWNED`.
 The canonical public socket remains installation-owned and is never taken over
-from an unproven incumbent. Explicit private mode instead uses `state/run/c.sock`
-(with an owned short-path transport when needed). The CLI connection command is
+from an unproven incumbent. Private mode uses `state/run/c.sock`
+with an owned short-path transport when needed. The CLI connection command is
 documented in [Install and connect](../docs/public/start.mdx). The real Codex upstream remains
 installation-private at `state/run/u.sock`. An occupied canonical endpoint never
 grants Kast authority to replace an unknown incumbent. Client closure does not
@@ -66,10 +70,10 @@ published launch command before stopping; disablement keeps that admitted
 identity through discovery cleanup and login-agent removal even if settings
 have since changed.
 
-Already running desktop processes retain their launch environment. Quit and
-reopen the app after installation to obtain the flag. An already existing
-installation's saved `private` selection remains explicit and is preserved;
-the new default applies when no selection is saved. Client overrides can bypass
+Desktop processes keep their launch environment until their next launch.
+An existing installation keeps its saved endpoint selection during an ordinary upgrade.
+The private default applies when no selection is saved or force reinstall resets settings.
+Client overrides can bypass
 the daemon, and CLI discovery may fall back to its embedded server.
 
 Desktop UI behavior is outside module-test evidence; see the

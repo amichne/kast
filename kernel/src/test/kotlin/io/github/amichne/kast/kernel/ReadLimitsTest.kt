@@ -5,6 +5,46 @@ import org.junit.jupiter.api.Test
 
 class ReadLimitsTest {
     @Test
+    fun `execution defaults provide headroom without larger responses or retention stores`() {
+        val limits = (ReadLimits.resolve() as Refinement.Refined).value
+        val expected =
+            mapOf(
+                ReadLimitParameter.SEMANTIC_MILLIS to 15_000,
+                ReadLimitParameter.SEMANTIC_WORK to 2_000_000,
+                ReadLimitParameter.SEMANTIC_RESULTS to 128,
+                ReadLimitParameter.SEMANTIC_RETURNED_BYTES to 49_152,
+                ReadLimitParameter.SOURCE_ENTITY_WORK to 10_000,
+                ReadLimitParameter.SOURCE_ENTITIES to 128,
+                ReadLimitParameter.SOURCE_RETURNED_BYTES to 49_152,
+                ReadLimitParameter.QUERY_CHECKPOINT_BYTES to 33_554_432,
+                ReadLimitParameter.QUERY_CONTINUATION_BYTES to 134_217_728,
+            )
+        for ((parameter, value) in expected) {
+            assertEquals(value, limits[parameter].value, parameter.name)
+            assertEquals(ReadLimitSource.DEFAULT, limits[parameter].source, parameter.name)
+        }
+    }
+
+    @Test
+    fun `shorter host deadlines need an explicit compatible semantic default`() {
+        assertEquals(
+            Refinement.Rejected(
+                ReadLimitFailure.InconsistentBounds(
+                    ReadLimitParameter.SEMANTIC_MILLIS,
+                    ReadLimitParameter.HOST_QUERY_MILLIS,
+                )
+            ),
+            ReadLimits.resolve(mapOf("KAST_READ_HOST_QUERY_MILLIS" to "4000")),
+        )
+        val limits =
+            (ReadLimits.resolve(mapOf("KAST_READ_HOST_QUERY_MILLIS" to "4000", "KAST_READ_SEMANTIC_MILLIS" to "4000"))
+                    as Refinement.Refined)
+                .value
+        assertEquals(4000, limits[ReadLimitParameter.SEMANTIC_MILLIS].value)
+        assertEquals(ReadLimitSource.ENVIRONMENT, limits[ReadLimitParameter.SEMANTIC_MILLIS].source)
+    }
+
+    @Test
     fun `larger semantic byte defaults need no transport overrides`() {
         val bytes = 128 * 1_024 * 1_024
         val limits =
@@ -29,7 +69,7 @@ class ReadLimitsTest {
         assertEquals(ReadLimitParameter.MODEL_MODULES, modules.parameter)
         assertEquals(1024, modules.value)
         assertEquals(ReadLimitSource.JVM_PROPERTY, modules.source)
-        assertEquals(100_000, limits.value[ReadLimitParameter.SEMANTIC_WORK].value)
+        assertEquals(2_000_000, limits.value[ReadLimitParameter.SEMANTIC_WORK].value)
     }
 
     @Test

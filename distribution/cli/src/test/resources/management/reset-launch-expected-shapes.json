@@ -1,0 +1,44 @@
+[
+  {
+    "stage": "INSPECT",
+    "variant": "CURRENT",
+    "outcome": {
+      "type": "EXITED",
+      "code": 113
+    },
+    "type": "LAUNCH_RETIREMENT"
+  },
+  {
+    "stage": "BOOTOUT",
+    "variant": "LEGACY_LOGIN",
+    "outcome": {
+      "type": "EXITED",
+      "code": 5
+    },
+    "type": "LAUNCH_RETIREMENT"
+  },
+  {
+    "stage": "BOOTOUT",
+    "variant": "CURRENT",
+    "outcome": {
+      "type": "UNAVAILABLE"
+    },
+    "type": "LAUNCH_RETIREMENT"
+  },
+  {
+    "stage": "WAIT",
+    "variant": "CURRENT",
+    "outcome": {
+      "type": "DEADLINE_EXCEEDED"
+    },
+    "type": "LAUNCH_RETIREMENT"
+  },
+  {
+    "stage": "WAIT",
+    "variant": "CURRENT",
+    "outcome": {
+      "type": "INTERRUPTED"
+    },
+    "type": "LAUNCH_RETIREMENT"
+  }
+]

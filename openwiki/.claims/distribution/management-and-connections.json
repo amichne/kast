@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:fc12e665e13413b3842b7812694cdc69daff30b6c9ce93a7b5bb3c056238c14b",
+  "claims": [
+    {
+      "id": "claim_d60c4b147f224d3ea584e14dde77d04e",
+      "statement": "The native management command uses a closed command model and keeps private JVM command families outside the public semantic surface.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
+          "version": "repo-file-v1:sha256:f50877db46d653285b260d4a80933dce8519c5af8e1258d61402772619c66079"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt",
+          "version": "repo-file-v1:sha256:928e0c77420469a2a31481421f08c3a6fa5e51477aedee5bbc9324ad210b5ee4"
+        }
+      ]
+    },
+    {
+      "id": "claim_8e567605e3b24c51bfe414977b3c2dab",
+      "statement": "Connection directories receive syntactic canonical-path admission before separate physical ownership admission for registration effects.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt",
+          "version": "repo-file-v1:sha256:950734de5e098f5401005f710ebbb54520a56eb75d86e59a8bf72c24a1e56b96"
+        }
+      ]
+    },
+    {
+      "id": "claim_4c1df02651fe4663b0201e017c830aba",
+      "statement": "Codex plugin installation admits bundled payloads and exact host identities before requesting installation while Codex retains configuration and cache ownership.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt",
+          "version": "repo-file-v1:sha256:226250971516de7a8ddd81da4e60a5ecdcac96440decfe189c9eb8490a0c4f24"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T00:33:05.932Z"
+  }
+}

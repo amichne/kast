@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:57ec6b5f2e29e7a599144600d8f73ec79c6ad8de85faad6ecc377bbda8347b8e",
+  "pageVersion": "sha256:98e35f8dd98a4aed0b541a685c5b0a53074201bde7553a36d86b084a1d0ce731",
   "claims": [
     {
       "id": "claim_b9727187adfc4e2c9be8e3a620b37051",
@@ -196,7 +196,7 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceAcquisition.kt",
-          "version": "repo-file-v1:sha256:72a8fab68b18d3226cf7266650c797e266ff0e33cea8e6a07b14e8ada6b8ef9e"
+          "version": "repo-file-v1:sha256:0f243f603b664f141480db7667a25dab4daf531daceadb80f84256008ad62ec8"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceAdmission.kt",
@@ -373,6 +373,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-14T01:57:02.037Z"
+    "at": "2026-10-14T20:46:05.929Z"
   }
 }

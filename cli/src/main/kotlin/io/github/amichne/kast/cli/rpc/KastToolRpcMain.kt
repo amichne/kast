@@ -31,36 +31,46 @@ object KastToolRpcMain {
     @JvmStatic
     fun main(args: Array<String>) =
         observeDirectToolStage(DirectToolStage.MAIN) {
-            val directory = Path.of("").toAbsolutePath()
-            val home = Path.of(System.getProperty("user.home"))
-            val session =
-                observeDirectToolStage(DirectToolStage.SESSION_COMPOSITION) {
-                    KastDirectToolSession.installed(directory, home, System.getenv())
-                }
-            val bridge =
-                observeDirectToolStage(DirectToolStage.BRIDGE_COMPOSITION) {
-                    session?.let(::KastToolRpcBridge)
-                }
-            if (args.contentEquals(arrayOf("query-session"))) {
-                runQuerySession(session, bridge)
-                return@observeDirectToolStage
+            if (args.contentEquals(arrayOf("plan-query"))) {
+                val bytes = System.`in`.readNBytes(MAXIMUM_PROTOCOL_TEXT_LENGTH + 1)
+                println(toolRpcJson.encodeToString<QueryCostPlanReply>(planToolQuery(bytes)))
+                System.out.flush()
+            } else {
+                runInstalled(args)
             }
-            val response =
-                when {
-                    session == null || bridge == null -> ToolRpcReply.Rejected(ToolRpcFailure.CATALOG_UNAVAILABLE)
-                    args.contentEquals(arrayOf("catalog")) -> bridge.catalog()
-                    args.size == 2 && args[0] == "call" -> {
-                        val bytes = System.`in`.readNBytes(MAXIMUM_PROTOCOL_TEXT_LENGTH + 1)
-                        if (bytes.size > MAXIMUM_PROTOCOL_TEXT_LENGTH)
-                            ToolRpcReply.Rejected(ToolRpcFailure.REQUEST_TOO_LARGE)
-                        else if (session.admission() != InstalledToolAdmission.AVAILABLE)
-                            ToolRpcReply.Rejected(ToolRpcFailure.INSTALLATION_STOPPED)
-                        else invokeObserved(bridge, args[1], bytes)
-                    }
-                    else -> ToolRpcReply.Rejected(ToolRpcFailure.INVALID_COMMAND)
-                }
-            printReply(response)
         }
+
+    private fun runInstalled(args: Array<String>) {
+        val directory = Path.of("").toAbsolutePath()
+        val home = Path.of(System.getProperty("user.home"))
+        val session =
+            observeDirectToolStage(DirectToolStage.SESSION_COMPOSITION) {
+                KastDirectToolSession.installed(directory, home, System.getenv())
+            }
+        val bridge =
+            observeDirectToolStage(DirectToolStage.BRIDGE_COMPOSITION) {
+                session?.let(::KastToolRpcBridge)
+            }
+        if (args.contentEquals(arrayOf("query-session"))) {
+            runQuerySession(session, bridge)
+            return
+        }
+        val response =
+            when {
+                session == null || bridge == null -> ToolRpcReply.Rejected(ToolRpcFailure.CATALOG_UNAVAILABLE)
+                args.contentEquals(arrayOf("catalog")) -> bridge.catalog()
+                args.size == 2 && args[0] == "call" -> {
+                    val bytes = System.`in`.readNBytes(MAXIMUM_PROTOCOL_TEXT_LENGTH + 1)
+                    if (bytes.size > MAXIMUM_PROTOCOL_TEXT_LENGTH)
+                        ToolRpcReply.Rejected(ToolRpcFailure.REQUEST_TOO_LARGE)
+                    else if (session.admission() != InstalledToolAdmission.AVAILABLE)
+                        ToolRpcReply.Rejected(ToolRpcFailure.INSTALLATION_STOPPED)
+                    else invokeObserved(bridge, args[1], bytes)
+                }
+                else -> ToolRpcReply.Rejected(ToolRpcFailure.INVALID_COMMAND)
+            }
+        printReply(response)
+    }
 
     private fun runQuerySession(session: KastDirectToolSession?, bridge: KastToolRpcBridge?) {
         when {
@@ -207,7 +217,31 @@ internal sealed interface ToolRpcReply {
 
     @Serializable @SerialName("rejected_document") data class RejectedDocument(val document: JsonObject) : ToolRpcReply
 
-    @Serializable @SerialName("rejected") data class Rejected(val failure: ToolRpcFailure) : ToolRpcReply
+    @Serializable
+    @SerialName("rejected")
+    data class Rejected
+    private constructor(
+        val failure: ToolRpcFailure,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        val detail: QuerySessionRejectionDetail? = null,
+    ) : ToolRpcReply {
+        constructor(failure: ToolRpcFailure) : this(failure, null)
+
+        companion object {
+            fun querySession(detail: QuerySessionRejectionDetail): Rejected =
+                Rejected(
+                    when (detail) {
+                        is QuerySessionRejectionDetail.SourceAnchor -> ToolRpcFailure.INVALID_ARGUMENTS
+                        is QuerySessionRejectionDetail.NewRun,
+                        is QuerySessionRejectionDetail.SourceRead,
+                        is QuerySessionRejectionDetail.ResultNotIssued,
+                        is QuerySessionRejectionDetail.ContinuationNotIssued ->
+                            ToolRpcFailure.QUERY_SESSION_TRANSITION_REJECTED
+                    },
+                    detail,
+                )
+        }
+    }
 }
 
 @Serializable

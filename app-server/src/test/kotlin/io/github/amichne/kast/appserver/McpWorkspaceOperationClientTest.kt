@@ -15,12 +15,83 @@ import io.github.amichne.kast.protocol.contract.IdeLifecycleStage
 import io.github.amichne.kast.protocol.contract.IdeProjectTarget
 import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
 import java.nio.file.Path
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
 
 class McpWorkspaceOperationClientTest {
+    @Test
+    fun `health preparation waits for the single native operation and preserves a blocked reason`() = runTest {
+        val root = CanonicalRoot(Path.of("/workspace"))
+        val response = CompletableDeferred<IdeLifecycleResult>()
+        var opens = 0
+        val preparations =
+            WorkspacePreparations(
+                this,
+                { request ->
+                    assertEquals(root.path.toString(), (request as WorkspaceLifecycleRequest.Open).root)
+                    opens++
+                    response.await()
+                },
+            )
+        val session =
+            McpWorkspaceOperationClient(
+                DaemonOperationClient { _, _ -> error("health preparation cannot send a semantic operation") },
+                preparations,
+            )
+        assertEquals(Refinement.Refined(Unit), session.start(root))
+        val waiting = async { session.awaitPreparation(root) }
+        runCurrent()
+        assertEquals(1, opens)
+        assertFalse(waiting.isCompleted)
+        response.complete(
+            IdeLifecycleResult.Blocked(io.github.amichne.kast.protocol.contract.IdeLifecycleFailure.PLUGIN_UNAVAILABLE)
+        )
+        val failure = (waiting.await() as Refinement.Rejected).failure as DaemonOperationFailure.Workspace
+        assertEquals(
+            io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause.Lifecycle(
+                io.github.amichne.kast.protocol.contract.IdeLifecycleFailure.PLUGIN_UNAVAILABLE
+            ),
+            failure.cause,
+        )
+        assertEquals(1, opens)
+        preparations.close()
+    }
+
+    @Test
+    fun `health preparation accepts only the completed exact workspace`() = runTest {
+        val root = CanonicalRoot(Path.of("/workspace"))
+        val response = CompletableDeferred<IdeLifecycleResult>()
+        val preparations = WorkspacePreparations(this, { response.await() })
+        val session =
+            McpWorkspaceOperationClient(
+                DaemonOperationClient { _, _ -> error("no semantic operation expected") },
+                preparations,
+            )
+        val waiting = async { session.awaitPreparation(root) }
+        runCurrent()
+        assertFalse(waiting.isCompleted)
+        response.complete(
+            IdeLifecycleResult.Opened(
+                IdeProjectTarget(
+                    "00000000-0000-0000-0000-000000000002",
+                    "00000000-0000-0000-0000-000000000003",
+                    root.path.toString(),
+                )
+            )
+        )
+        assertEquals(Refinement.Refined(Unit), waiting.await())
+        preparations.close()
+        assertEquals(
+            Refinement.Rejected(DaemonOperationFailure.Preparation(WorkspacePreparationFailure.CLOSED)),
+            session.awaitPreparation(root),
+        )
+    }
+
     @Test
     fun `inspection uses the session lifecycle client without semantic read`() {
         val request = WorkspaceLifecycleRequest.Inspect

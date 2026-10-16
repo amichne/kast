@@ -49,6 +49,8 @@ internal object KastCleanSlateModules {
                 JvmClassName("io/github/amichne/kast/distribution/cli/ForceResetFence"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/ForceResetFence\$Companion"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/ResetLoginEntries"),
+                // The captured descriptor and inode scope shared socket retirement after process exit.
+                JvmClassName("io/github/amichne/kast/distribution/cli/ResetOwnedSharedSocket"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/ResetDeletingVisitor"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/ForceReinstallationKt"),
             )),

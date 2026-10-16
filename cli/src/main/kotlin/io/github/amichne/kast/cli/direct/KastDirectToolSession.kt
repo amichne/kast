@@ -21,6 +21,7 @@ import io.github.amichne.kast.protocol.registry.CanonicalAgentToolDefinitions
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.registry.SupportToolIdentity
 import java.nio.file.Path
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 
 /** Shared native tool composition. The client protocol is chosen by the caller. */
@@ -131,6 +132,7 @@ internal class KastDirectToolSession(
                         }
                         .map { it.operation.operation.id.value.uppercase().replace('.', '_') }
                         .toSet(),
+                    prepare = { root -> runBlocking { read.awaitPreparation(root) } },
                 )
             return KastDirectToolSession(
                 registration =

@@ -9,6 +9,7 @@ internal fun shortHostLimits(): ReadLimits =
         val admitted =
             ReadLimits.resolve(
                 mapOf(
+                    "KAST_READ_SEMANTIC_MILLIS" to "2000",
                     "KAST_READ_HOST_QUERY_MILLIS" to "4000",
                     "KAST_READ_HOST_CONNECTION_MILLIS" to "5000",
                     "KAST_READ_CLIENT_EXCHANGE_MILLIS" to "6000",

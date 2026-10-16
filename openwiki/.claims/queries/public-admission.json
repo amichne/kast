@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:abf34b6df01fe3dce46af45491f702cf6e3d1396489db7814e40d843487ea184",
+  "claims": [
+    {
+      "id": "claim_f582456c7d50479bb6b1a848a1c7e9a9",
+      "statement": "Public tool admission keeps schema identity, tool identity, and the canonical operation in privately constructed typed syntax after defaults normalize.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt",
+          "version": "repo-file-v1:sha256:69c5689219b01e20fe1167b164f79768ec3247a072bbe8d54e8c55dd97d9fa8c"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolRefinement.kt",
+          "version": "repo-file-v1:sha256:e554cf2b18e6440e82588d1e6885bdace07d0b7ca8e8e9d105a3a74d05924ec3"
+        }
+      ]
+    },
+    {
+      "id": "claim_8a19ad3da17c41a5863b5993e4ce5336",
+      "statement": "The public query interface distinguishes RUN, output-only RESUME, retained-result READ_RESULT, and candidate-anchor READ_SOURCE capabilities.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt",
+          "version": "repo-file-v1:sha256:cea9833965310229b055eae4303785c21cfac914c8b78d87a045aaa3807813df"
+        },
+        {
+          "resource": "repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
+          "version": "repo-file-v1:sha256:7776b0ad3e52506c680940c07b7d321698508d08173843ca439146bd532fab52"
+        }
+      ]
+    },
+    {
+      "id": "claim_c79b8d1a6faa4fbdafb8ddda57e7dd1f",
+      "statement": "Public runs use the fixed COMPLETE_ONLY compiler-static model and retain strict production admission despite weaker provider generation schemas.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt",
+          "version": "repo-file-v1:sha256:69c5689219b01e20fe1167b164f79768ec3247a072bbe8d54e8c55dd97d9fa8c"
+        },
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt",
+          "version": "repo-file-v1:sha256:7fad3ba487381dab19a441ff9e31e5871df954bcebbb5e66dd689fb08dff226c"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-10-15T19:07:35.337Z"
+  }
+}

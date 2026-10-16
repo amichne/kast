@@ -76,7 +76,6 @@ class CiCandidateTest(unittest.TestCase):
             names = (
                 control,
                 plugin,
-                f"kast-skill-v{VERSION}.zip",
                 f"kast-plugin-v{VERSION}.zip",
                 f"kast-marketplace-v{VERSION}.zip",
                 f"kast-host-release-v{VERSION}.json",
@@ -229,7 +228,7 @@ class PendingCandidateTest(unittest.TestCase):
                 self.assertEqual(["gh", "run", "download", "20", "--repo", REPOSITORY,
                                   "-n", artifact["name"], "-D", str(directory)], command)
                 archives = (f"kast-control-v{VERSION}-macos-aarch64.tar.gz", f"kast-ide-hosted-v{VERSION}-idea-262.zip",
-                            f"kast-skill-v{VERSION}.zip", f"kast-plugin-v{VERSION}.zip", f"kast-marketplace-v{VERSION}.zip")
+                            f"kast-plugin-v{VERSION}.zip", f"kast-marketplace-v{VERSION}.zip")
                 for name in (*archives, f"kast-host-release-v{VERSION}.json", "host-installation.py", f"kast-hosted-catalog-v{VERSION}.json", f"kast-module-knowledge-v{VERSION}.json"):
                     (directory / name).write_bytes(name.encode())
                 sbom = {"bomFormat": "CycloneDX", "metadata": {"properties": [

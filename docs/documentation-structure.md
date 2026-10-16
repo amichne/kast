@@ -73,67 +73,80 @@ Regenerate only when its authoritative inputs change. Preserve model bindings an
 
 ## Glossary ownership
 
-`docs/glossary.json` owns the provisional definitions and document scope. `docs/GLOSSARY.md` is its generated reader view.
+[The glossary](GLOSSARY.md) defines the canonical vocabulary for current documentation and agent instructions. `docs/glossary.json` owns its definitions and document scope.
 
-The structured glossary preserves the earlier source-backed concepts with ordinary prose spellings. It does not rename runtime identifiers or generated fields.
+Each entry records a definition, example, distinction, and source evidence. Use the established term for that concept. Preserve identifiers, commands, and attributed quotations.
 
-The scoped replacement targets cover established names for retained query results. Ambiguous concepts need review rather than a guessed synonym.
+The glossary governs terminology within its declared scope. Historical review reports keep their recorded terms. Independent reader review remains absent.
 
-Independent reader review remains absent. Provisional definitions do not establish general agreement on terminology.
+Canonical use is repository policy. `PROVISIONAL` records the absent independent reader review.
+
+An accepted spelling does not establish a definition. A related concept does not establish a synonym. Add a rejected form only with evidence of the same referent.
+
+Repository Knowledge `3.1.0` owns the existing JSON parser and renderer. Set `KAST_WRITING_SKILL` to its installed `skills/controlled-technical-writing` directory.
+
+From the repository root, regenerate the reader view:
+
+```shell
+uv run --locked --script "$KAST_WRITING_SKILL/scripts/check_glossary.py" docs/glossary.json --render docs/GLOSSARY.md
+```
+
+Export terminology rules into a new temporary directory:
+
+```shell
+uv run --locked --script "$KAST_WRITING_SKILL/scripts/check_glossary.py" docs/glossary.json --vale-dir /tmp/kast-glossary-rules
+```
+
+Copy the generated rules into `config/vale/styles/Kast/`. Remove a generated rule only when the glossary no longer produces it.
+
+Before acceptance, compare the exported rules with the checked-in rules. Then examine the reader view and current prose:
+
+```shell
+uv run --locked --script "$KAST_WRITING_SKILL/scripts/check_glossary.py" docs/glossary.json README.md AGENTS.md docs/public --check-render docs/GLOSSARY.md
+```
+
+The root `.vale.ini` applies these rules to the same authored document scope. The glossary reader view describes rejected forms as literals.
 
 ## Local Vale integration
 
-Use Repository Knowledge `3.1.0`, its locked scripts, and Vale `3.24.0`. Keep prose and assessment local.
+Vale `3.24.0` runs locally with checked-in rules and licenses. The repository needs no style download, hosted service, or plugin installation for ordinary lint.
 
-Set `KAST_WRITING_SKILL` to the installed plugin's `skills/controlled-technical-writing` directory. Use the versioned bundle that owns the assessment policy.
-
-Install the local consumer from that skill directory. The destination must not exist:
+From the repository root, install the pinned executable:
 
 ```shell
-uv run --locked --script scripts/install_vale.py --destination /absolute/path/to/kast/.vale-local
+mise install vale
 ```
 
-The installer examines the archive digest and bundled resource digests. It supplies a local executable, rules, and licenses without global configuration changes.
-
-The repository's `.vale.ini` points to `.vale-local/styles`. It assigns Diátaxis rules to new directories and established routes by reader purpose.
-
-Copy the reviewed Kast vocabulary into the local consumer from the repository root:
+Examine changed prose with the root configuration:
 
 ```shell
-mkdir -p .vale-local/styles/config/vocabularies/Kast
-cp docs/vale-vocabulary/accept.txt .vale-local/styles/config/vocabularies/Kast/accept.txt
+mise exec -- vale --no-global --config=.vale.ini --output=JSON README.md AGENTS.md docs/documentation-structure.md
 ```
 
-The vocabulary preserves product names and source terms. It supplies spelling evidence, not domain definitions or rule exemptions.
-
-From the repository root, run the structural assessment:
+`.vale.ini` assigns rules by reader purpose. It also supports Conventional Commits through Vale's Commit view:
 
 ```shell
-mkdir -p build/reports/documentation
-.vale-local/bin/vale --no-global --config=.vale.ini --output=JSON --glob='*.mdx' docs/public > build/reports/documentation/diataxis-vale.json
+mise exec -- vale --no-global --config=.vale.ini --path=COMMIT_EDITMSG < /path/to/message.txt
 ```
 
-The structural assessment examines lexical and page-form rules. It does not establish full Diátaxis conformance or reader comprehension.
+`config/vale/styles/config/vocabularies/Kast/accept.txt` owns reviewed spellings. `docs/glossary.json` owns domain meaning. [Vale provenance](../config/vale/README.md) records imported rules and licenses.
 
-For changed prose, use the shared measurement procedure from the skill directory:
+Ordinary Vale output reports lexical and structural findings. Exit zero does not mean that warnings or suggestions are absent.
+
+For the shared prose assessment, use the pinned Repository Knowledge procedure:
 
 ```shell
-uv run --locked --script scripts/check_glossary.py /absolute/path/to/kast/docs/glossary.json --check-render /absolute/path/to/kast/docs/GLOSSARY.md
-uv run --locked --script scripts/assess_text.py \
-  --vale-bin /absolute/path/to/kast/.vale-local/bin/vale \
-  --glossary /absolute/path/to/kast/docs/glossary.json \
-  /absolute/path/to/kast/docs/public/reference/api.mdx
+uv run --locked --script "$KAST_WRITING_SKILL/scripts/assess_text.py" \
+  --vale-bin "$(mise which vale)" \
+  --glossary docs/glossary.json \
+  README.md AGENTS.md docs/documentation-structure.md
 ```
 
-Supply every changed prose file explicitly. Keep the JSON report with engine version, policy digest, glossary digest, document digests, and located findings.
+Supply each changed prose file explicitly. Save JSON reports under `build/reports/documentation/`. Keep engine, policy, glossary, and document digests with located findings.
 
-To regenerate the reader view, use:
+`ASSESSED` means that the procedure ran. It does not mean that findings are absent. Record each unresolved rule, location, and reason.
 
-```shell
-uv run --locked --script scripts/check_glossary.py /absolute/path/to/kast/docs/glossary.json --render /absolute/path/to/kast/docs/GLOSSARY.md
-```
-
-`ASSESSED` means that the procedure ran. It does not mean that findings are absent. Record each unresolved rule, location, and technical reason.
+The shared procedure uses a fixed measurement policy. Root Vale also examines spelling, modal verbs, contractions, and page structure. Keep these evidence levels separate.
 
 Review grade-8 and 25-word advisories without removal of necessary precision. Examine the 20-word procedural limit and controlled-English rules separately.
 

@@ -1,55 +1,71 @@
+---
+type: Module Guide
+title: "Kast build-logic"
+description: "Defines Gradle conventions, effect ownership, architecture gates, generated contracts, and installed knowledge projections."
+resource: "repo://build-logic"
+tags: [kast, navigation]
+timestamp: "2026-10-15T06:18:36Z"
+source_revision: 3e843eb6eb7c45ff402ba4b1103821afee059408
+code_sources:
+  - path: build-logic/build.gradle.kts
+  - path: build-logic/src/main/kotlin/conventions/GenerateKnowledgeDocsTask.kt
+  - path: build-logic/src/main/kotlin/conventions/VerifyJsonContractsTask.kt
+  - path: build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeSymbolsMain.kt
+  - path: build-logic/src/main/kotlin/kast.architecture.gradle.kts
+  - path: build-logic/src/main/kotlin/support/architecture/ModuleImpact.kt
+  - path: build-logic/src/main/kotlin/support/architecture/gradle/TopologyImpactTask.kt
+  - path: build-logic/src/main/kotlin/kast.kotlin-quality.gradle.kts
+  - path: build-logic/src/main/kotlin/kast.public-query-contract.gradle.kts
+  - path: build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt
+  - path: build-logic/src/main/kotlin/support/knowledge/GenerateInstalledKnowledgeTask.kt
+  - path: build-logic/src/test/kotlin/support/knowledge/InstalledKnowledgeProjectionTest.kt
+---
+
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-09-28 | hash: bd814345dab3 -->
+<!-- generated: 2026-10-14 | hash: bd814345dab3 -->
 
 # build-logic
 
 ## Purpose
 
-Defines reusable Gradle conventions, module roles, release assembly, generated contracts, and mechanical architecture policy.
+Defines Gradle conventions, effect ownership, architecture gates, generated contracts, and installed knowledge projections.
 
 ## Key Files
 
-- [KnowledgeSymbolsMain.kt](src/main/kotlin/conventions/jsoncontracts/KnowledgeSymbolsMain.kt) - isolated Kotlin PSI declaration inventory for every OKF citation; Python AST checks and bundle validation live in `.github/scripts/code_kb.py`.
-
-- [settings.gradle.kts](settings.gradle.kts) - included-build plugin management.
-- [src/main/kotlin/kast.architecture.gradle.kts](src/main/kotlin/kast.architecture.gradle.kts) - architecture verification plugin.
-- [src/main/kotlin/kast.kotlin-library.gradle.kts](src/main/kotlin/kast.kotlin-library.gradle.kts) - common Kotlin library convention.
-- [src/main/kotlin/kast.runtime-app.gradle.kts](src/main/kotlin/kast.runtime-app.gradle.kts) - runtime application convention.
-- [src/main/kotlin/support/architecture/ArchitectureModel.kt](src/main/kotlin/support/architecture/ArchitectureModel.kt) - architecture model.
-- [src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt](src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt) - admitted module topology.
-- [src/main/kotlin/support/architecture/policy/HostedWorkspaceRefreshAuthority.kt](src/main/kotlin/support/architecture/policy/HostedWorkspaceRefreshAuthority.kt) - exact native effect targets for the explicit workspace refresh adapter.
-
-- [src/main/kotlin/kast.kotlin-quality.gradle.kts](src/main/kotlin/kast.kotlin-quality.gradle.kts) - shared formatting, Detekt, and structural gates.
-- [src/main/kotlin/conventions/KotlinFileLengthTask.kt](src/main/kotlin/conventions/KotlinFileLengthTask.kt) - production/test file-length enforcement.
-- [src/main/kotlin/conventions/KotlinFileLengthBaseline.kt](src/main/kotlin/conventions/KotlinFileLengthBaseline.kt) - validated per-file ceilings for existing oversized sources.
-- [src/main/kotlin/conventions/JsonContractVerification.kt](src/main/kotlin/conventions/JsonContractVerification.kt) - JSON syntax guard registration and root verification-gate dependencies.
-- [src/main/kotlin/conventions/VerifyJsonContractsTask.kt](src/main/kotlin/conventions/VerifyJsonContractsTask.kt) - typed scan request and isolated parser process boundary.
-- [src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt](src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt) - control-product inventory and private executable verification.
-- [src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt](src/main/kotlin/support/tasks/control/GenerateControlMetadataTask.kt) - Control metadata and its required hosted contract, without a Host archive input.
-- [src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt](src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt) - separately owned Control and Host release records and checksums.
-
-- [src/main/kotlin/conventions/GenerateKnowledgeDocsTask.kt](src/main/kotlin/conventions/GenerateKnowledgeDocsTask.kt) - isolated Kotlin PSI documentation extraction.
-- [src/main/kotlin/support/knowledge/GenerateInstalledKnowledgeTask.kt](src/main/kotlin/support/knowledge/GenerateInstalledKnowledgeTask.kt) - bounded installed knowledge generation from verified module ownership and scoped guides.
+- [kast.architecture.gradle.kts](src/main/kotlin/kast.architecture.gradle.kts) - module architecture and installed guide wiring.
+- [ModuleImpact.kt](src/main/kotlin/support/architecture/ModuleImpact.kt) - selection and shortest dependency paths over the declared production graph.
+- [TopologyImpactTask.kt](src/main/kotlin/support/architecture/gradle/TopologyImpactTask.kt) - opt-in report without source compilation or compiler authority.
+- [KastCleanSlateModules.kt](src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt) - the admitted module topology.
+- [kast.kotlin-quality.gradle.kts](src/main/kotlin/kast.kotlin-quality.gradle.kts) - format, Detekt, and file-length gates.
+- [kast.public-query-contract.gradle.kts](src/main/kotlin/kast.public-query-contract.gradle.kts) - public schema generation parity and its regression gate.
+- [VerifyJsonContractsTask.kt](src/main/kotlin/conventions/VerifyJsonContractsTask.kt) - typed requests for the isolated JSON syntax scanner.
+- [KnowledgeSymbolsMain.kt](src/main/kotlin/conventions/jsoncontracts/KnowledgeSymbolsMain.kt) - Kotlin declaration evidence for OpenWiki citations.
+- [GenerateKnowledgeDocsTask.kt](src/main/kotlin/conventions/GenerateKnowledgeDocsTask.kt) - isolated Kotlin documentation extraction.
+- [GenerateInstalledKnowledgeTask.kt](src/main/kotlin/support/knowledge/GenerateInstalledKnowledgeTask.kt) - installed module, declaration, and scoped-guide projection.
 
 ## Subdirectories
 
-- `src/main/kotlin/conventions` - serialization, publication, and verification conventions.
-- `src/main/kotlin/conventions/jsoncontracts` - JSON syntax scanner, typed findings, and exact baseline admission.
-- `src/main/kotlin/kast/role` - role-specific dependency/effect policy plugins.
-- `src/main/kotlin/support/architecture` - scanners, policy, validation, and projections.
-- `src/main/kotlin/support/tasks` - generated control and documentation tasks.
-- `src/test` - policy and plugin evidence.
+- [src/main/kotlin/conventions/](src/main/kotlin/conventions/) - shared JVM conventions and verification tasks.
+- [src/main/kotlin/conventions/jsoncontracts/](src/main/kotlin/conventions/jsoncontracts/) - isolated Kotlin syntax parsers.
+- [src/main/kotlin/kast/role/](src/main/kotlin/kast/role/) - module roles and permitted effects.
+- [src/main/kotlin/support/architecture/](src/main/kotlin/support/architecture/) - architecture facts, policy, and projections.
+- [src/main/kotlin/support/knowledge/](src/main/kotlin/support/knowledge/) - installed knowledge projection and admission.
+- [src/test/](src/test/) - policy and projection tests.
 
 ## Entry Points
 
-- Included from root `settings.gradle.kts` with `includeBuild("build-logic")`.
-- Run `./gradlew verifyJsonContracts` from the repository root; `check` and `productBuildGate` require it. See the [JSON guard contract](../config/json-contracts/README.md) for its syntax-evidence limits and baseline policy.
+- Root `settings.gradle.kts` includes this separate Gradle build.
+- Run `./gradlew verifyJsonContracts` from the repository root for the JSON syntax gate.
+- Run `./gradlew topologyImpact -PkastTopologyModules=:topology:contract` for declared downstream module impact.
+- Set `kastTopologyEnabled=false` to disable that report. Read [the command guide](../docs/topology-impact.md) for evidence limits.
+- `generateInstalledKnowledgeBundle` projects tracked `AGENTS.md` files into the installed knowledge bundle.
+- `verifyKnowledgeBase` examines OpenWiki. It does not examine the scoped guide format.
+- [InstalledKnowledgeProjectionTest.kt](src/test/kotlin/support/knowledge/InstalledKnowledgeProjectionTest.kt) - scoped guide and declaration projection cases.
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../openwiki/modules/architecture.md) and follow its `code_sources` for source evidence. Root engineering rules remain authoritative; this map adds navigation only.
-
-- For formatting or lint failures, start with `kast.kotlin-quality.gradle.kts`, then the reported rule or file-length task. Schema-generated Kotlin remains owned by its generator.
-- For existing structural debt, see [baseline policy](../config/README.md). Checks reject new findings and growth beyond recorded file ceilings; they never regenerate allowances.
-- For a dependency-direction failure, start with the applied `kast/role` convention, then the policy validator.
-- For generated artifacts, start in `src/main/kotlin/support/tasks`; GitHub release assembly is owned by `distribution/release` and `.github/scripts/release`.
+- For dependency failures, start with the module role and the reported architecture policy.
+- For installed guide scope, read architecture projections and `support/knowledge`.
+- For existing structural debt, read `config/README.md` from the repository root. Do not enlarge allowances to pass a gate.
+- Release assembly belongs to `distribution/release` and `.github/scripts/release`.
+- Read the [root guide](../AGENTS.md) for engineering rules and optional OpenWiki retrieval.

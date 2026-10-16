@@ -1,10 +1,12 @@
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 import json
 from pathlib import Path
 import hashlib
 import importlib.util
 import io
+from contextlib import redirect_stderr, redirect_stdout
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -119,6 +121,288 @@ class HostInstallationTest(unittest.TestCase):
 
     def assert_control_unchanged(self):
         self.assertEqual(self.control_identity, (self.control.stat().st_ino, (self.control / 'version').read_bytes()))
+
+    def record_prior_device(self):
+        path = self.plugins.parent / '.kast-plugin-recovery/host-install.json'
+        receipt = host.read_active_receipt(path)
+        device = self.plugins.stat().st_dev + 1
+        receipt = replace(receipt,
+            pluginRootIdentity=replace(receipt.pluginRootIdentity, device=device),
+            destinationIdentity=replace(receipt.destinationIdentity, device=device),
+            inventory=tuple(replace(item, identity=replace(item.identity, device=device)) for item in receipt.inventory))
+        path.write_text(host.encode(receipt))
+        return receipt
+
+    def test_device_change_reinstallation_requires_exact_remaining_inventory(self):
+        host.install(host.HostInstallRequest(self.make_payload('1.0.0'), self.plugins))
+        self.record_prior_device()
+        result = host.install(host.HostInstallRequest(self.payload, self.plugins))
+        self.assertEqual('ACTIVATED', result.type)
+        path = self.plugins.parent / '.kast-plugin-recovery/host-install.json'
+        receipt = json.loads(path.read_text())
+        self.assertEqual('2.0.0', receipt['version'])
+        self.assertEqual(self.plugins.stat().st_dev, receipt['pluginRootIdentity']['device'])
+        with zipfile.ZipFile(self.payload.archive) as archive:
+            self.assertEqual(archive.read('kast-ide-hosted/lib/host.jar'),
+                             (self.plugins / 'kast-ide-hosted/lib/host.jar').read_bytes())
+        self.assert_control_unchanged()
+
+    def test_device_change_owned_removal_keeps_other_plugins(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        self.record_prior_device()
+        foreign = self.plugins / 'foreign-plugin'
+        foreign.mkdir()
+        sentinel = foreign / 'retain'
+        sentinel.write_bytes(b'foreign')
+        self.assertEqual('REMOVED', host.remove_host(self.plugins).type)
+        self.assertFalse((self.plugins / 'kast-ide-hosted').exists())
+        self.assertFalse((self.plugins.parent / '.kast-plugin-recovery').exists())
+        self.assertEqual(b'foreign', sentinel.read_bytes())
+        self.assert_control_unchanged()
+
+    def test_absent_host_with_active_receipt_can_reinstall(self):
+        host.install(host.HostInstallRequest(self.make_payload('1.0.0'), self.plugins))
+        shutil.rmtree(self.plugins / 'kast-ide-hosted')
+        result = host.install(host.HostInstallRequest(self.payload, self.plugins))
+        self.assertEqual('ACTIVATED', result.type)
+        self.assertEqual('2.0.0', host.read_active_receipt(
+            self.plugins.parent / '.kast-plugin-recovery/host-install.json').version)
+        self.assertTrue((self.plugins / 'kast-ide-hosted/lib/host.jar').is_file())
+        self.assert_control_unchanged()
+
+    def test_install_cli_reports_inventory_rejection_stage_and_preserves_files(self):
+        self.plugins = self.root / 'IDEA profile;$literal/plugins'
+        record = self.root / 'release.json'
+        record.write_text(json.dumps(asdict(HostReleaseFixture(self.payload.version,
+            ArtifactFixture(self.payload.archive.name, 'sha256:' + self.payload.sha256, self.payload.archive.stat().st_size)))))
+        arguments = ['host-installation.py', '--archive', str(self.payload.archive), '--sha256', self.payload.sha256,
+                     '--version', self.payload.version, '--idea-build', self.payload.idea_build,
+                     '--plugin-root', str(self.plugins), '--release-record', str(record)]
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with patch.object(sys, 'argv', arguments), redirect_stdout(stdout), redirect_stderr(stderr):
+            result = host.main()
+        self.assertEqual(0, result)
+        self.assertEqual('', stderr.getvalue())
+        self.assertEqual({'type': 'ACTIVATED', 'hostedPluginVersion': '2.0.0',
+                         'plugin': str(self.plugins / 'kast-ide-hosted'), 'restartRequired': True},
+                         json.loads(stdout.getvalue()))
+        self.record_prior_device()
+        jar = self.plugins / 'kast-ide-hosted/lib/host.jar'
+        jar.write_bytes(b'changed')
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with patch.object(sys, 'argv', arguments), redirect_stdout(stdout), redirect_stderr(stderr):
+            result = host.main()
+        self.assertEqual(1, result)
+        self.assertEqual('', stdout.getvalue())
+        self.assertEqual({'type': 'REJECTED', 'failure': 'OWNERSHIP_UNPROVEN', 'stage': 'ACTIVE_INVENTORY'},
+                         json.loads(stderr.getvalue()))
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with patch.object(sys, 'argv', ['host-installation.py', '--remove', '--plugin-root', str(self.plugins)]), \
+                redirect_stdout(stdout), redirect_stderr(stderr):
+            result = host.main()
+        self.assertEqual(1, result)
+        self.assertEqual('', stderr.getvalue())
+        self.assertEqual({'type': 'REJECTED', 'failure': 'OWNERSHIP_UNPROVEN'}, json.loads(stdout.getvalue()))
+        self.assertEqual(b'changed', jar.read_bytes())
+        self.assert_control_unchanged()
+
+    def test_device_change_partial_removal_resumes_from_remaining_inventory(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        self.record_prior_device()
+        (self.plugins / 'kast-ide-hosted/lib/host.jar').unlink()
+        self.assertEqual('REMOVED', host.remove_host(self.plugins).type)
+        self.assertFalse((self.plugins / 'kast-ide-hosted').exists())
+        self.assertFalse((self.plugins.parent / '.kast-plugin-recovery').exists())
+        self.assert_control_unchanged()
+
+    def test_device_change_does_not_admit_symlink(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        self.record_prior_device()
+        path = self.plugins.parent / '.kast-plugin-recovery/host-install.json'
+        before = path.read_bytes()
+        jar = self.plugins / 'kast-ide-hosted/lib/host.jar'
+        jar.unlink()
+        jar.symlink_to(self.control / 'version')
+        for operation in (lambda: host.install(host.HostInstallRequest(self.payload, self.plugins)),
+                          lambda: host.remove_host(self.plugins)):
+            with self.assertRaises(host.Rejected) as rejected:
+                operation()
+            self.assertEqual(host.Failure.OWNERSHIP_UNPROVEN, rejected.exception.failure)
+            self.assertEqual(before, path.read_bytes())
+            self.assertTrue(jar.is_symlink())
+        self.assert_control_unchanged()
+
+    def test_device_change_replacement_failure_restores_original_receipt(self):
+        host.install(host.HostInstallRequest(self.make_payload('1.0.0'), self.plugins))
+        self.record_prior_device()
+        destination = self.plugins / 'kast-ide-hosted'
+        path = self.plugins.parent / '.kast-plugin-recovery/host-install.json'
+        before = path.read_bytes()
+        jar = destination / 'lib/host.jar'
+        jar_before = jar.read_bytes()
+        original = Path.rename
+        def fail_candidate(source, target):
+            if source.name.startswith('host-candidate-') and target == destination:
+                raise OSError('controlled replacement failure')
+            return original(source, target)
+        with patch.object(Path, 'rename', fail_candidate):
+            with self.assertRaises(host.Rejected) as rejected:
+                host.install(host.HostInstallRequest(self.payload, self.plugins))
+        self.assertEqual(host.Failure.FILESYSTEM_REJECTED, rejected.exception.failure)
+        self.assertEqual(before, path.read_bytes())
+        self.assertEqual(jar_before, jar.read_bytes())
+        self.assertEqual(['host-install.json', 'host-install.lock'], sorted(item.name for item in path.parent.iterdir()))
+        self.assert_control_unchanged()
+
+    def test_absent_host_replacement_failure_restores_original_receipt(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        self.record_prior_device()
+        destination = self.plugins / 'kast-ide-hosted'
+        shutil.rmtree(destination)
+        path = self.plugins.parent / '.kast-plugin-recovery/host-install.json'
+        before = path.read_bytes()
+        with patch.object(Path, 'rename', side_effect=OSError('controlled replacement failure')):
+            with self.assertRaises(host.Rejected) as rejected:
+                host.install(host.HostInstallRequest(self.payload, self.plugins))
+        self.assertEqual(host.Failure.FILESYSTEM_REJECTED, rejected.exception.failure)
+        self.assertEqual(before, path.read_bytes())
+        self.assertFalse(destination.exists())
+        self.assertEqual(['host-install.json', 'host-install.lock'], sorted(item.name for item in path.parent.iterdir()))
+        self.assertEqual('ACTIVATED', host.install(host.HostInstallRequest(self.payload, self.plugins)).type)
+        self.assert_control_unchanged()
+
+    def test_device_change_does_not_admit_changed_content(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        self.record_prior_device()
+        path = self.plugins.parent / '.kast-plugin-recovery/host-install.json'
+        before = path.read_bytes()
+        jar = self.plugins / 'kast-ide-hosted/lib/host.jar'
+        jar.write_bytes(b'changed')
+        for operation in (lambda: host.install(host.HostInstallRequest(self.payload, self.plugins)),
+                          lambda: host.remove_host(self.plugins)):
+            with self.assertRaises(host.Rejected) as rejected:
+                operation()
+            self.assertEqual(host.Failure.OWNERSHIP_UNPROVEN, rejected.exception.failure)
+            self.assertEqual(before, path.read_bytes())
+            self.assertEqual(b'changed', jar.read_bytes())
+        self.assert_control_unchanged()
+
+    def test_device_change_does_not_admit_changed_identity_or_inconsistent_device(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        receipt = self.record_prior_device()
+        path = self.plugins.parent / '.kast-plugin-recovery/host-install.json'
+        jar = self.plugins / 'kast-ide-hosted/lib/host.jar'
+        before = jar.read_bytes()
+        changed = (
+            replace(receipt, pluginRootIdentity=replace(receipt.pluginRootIdentity, inode=receipt.pluginRootIdentity.inode + 1)),
+            replace(receipt, pluginRootIdentity=replace(receipt.pluginRootIdentity, owner=receipt.pluginRootIdentity.owner + 1)),
+            replace(receipt, destinationIdentity=replace(receipt.destinationIdentity, inode=receipt.destinationIdentity.inode + 1)),
+            replace(receipt, inventory=(receipt.inventory[0], replace(receipt.inventory[1],
+                identity=replace(receipt.inventory[1].identity, inode=receipt.inventory[1].identity.inode + 1)))),
+            replace(receipt, inventory=(receipt.inventory[0], replace(receipt.inventory[1],
+                identity=replace(receipt.inventory[1].identity, device=receipt.inventory[1].identity.device + 1)))),
+        )
+        for index, invalid in enumerate(changed):
+            with self.subTest(case=index):
+                path.write_text(host.encode(invalid))
+                receipt_before = path.read_bytes()
+                with self.assertRaises(host.Rejected) as rejected:
+                    host.install(host.HostInstallRequest(self.payload, self.plugins))
+                self.assertEqual(host.Failure.OWNERSHIP_UNPROVEN, rejected.exception.failure)
+                self.assertEqual(receipt_before, path.read_bytes())
+                self.assertEqual(before, jar.read_bytes())
+        self.assert_control_unchanged()
+
+    def test_reinstallation_rejects_pending_recovery_artifacts_with_absent_host(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        shutil.rmtree(self.plugins / 'kast-ide-hosted')
+        retained = self.plugins.parent / '.kast-plugin-recovery'
+        path = retained / 'host-install.json'
+        before = path.read_bytes()
+        for name in ('host-prior-unproven', 'host-candidate-unproven', 'foreign',
+                     '.kast-ide-hosted.baseline-not-owned', '.kast-ide-hosted.install-' + 'a' * 32):
+            with self.subTest(name=name):
+                foreign = retained / name
+                foreign.write_bytes(b'protected recovery')
+                with self.assertRaises(host.Rejected) as rejected:
+                    host.install(host.HostInstallRequest(self.payload, self.plugins))
+                self.assertEqual(host.Failure.RECOVERY_REQUIRED, rejected.exception.failure)
+                self.assertEqual(before, path.read_bytes())
+                self.assertEqual(b'protected recovery', foreign.read_bytes())
+                self.assertFalse((self.plugins / 'kast-ide-hosted').exists())
+                foreign.unlink()
+        self.assert_control_unchanged()
+
+    def test_legacy_control_history_links_are_never_traversed_or_removed(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        retained = self.plugins.parent / '.kast-plugin-recovery'
+        foreign = self.root / 'foreign-history'
+        foreign.mkdir()
+        sentinel = foreign / 'preserved'
+        sentinel.write_bytes(b'foreign recovery evidence')
+        link = retained / ('.replaced-kast-ide-hosted-' + 'a' * 32)
+        link.symlink_to(foreign, target_is_directory=True)
+        before = link.lstat().st_ino
+        host.install(host.HostInstallRequest(self.payload, self.plugins, host.HostInstallMode.PLAN))
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        host.remove_host(self.plugins)
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(before, link.lstat().st_ino)
+        self.assertEqual(b'foreign recovery evidence', sentinel.read_bytes())
+        self.assert_control_unchanged()
+
+    def test_legacy_control_backups_do_not_block_host_reinstallation_or_removal(self):
+        host.install(host.HostInstallRequest(self.make_payload('1.0.0'), self.plugins))
+        retained = self.plugins.parent / '.kast-plugin-recovery'
+        protected = []
+        for index, prefix in enumerate(('.kast-ide-hosted.baseline-', '.kast-ide-hosted.detached-',
+                                        '.replaced-kast-ide-hosted-')):
+            backup = retained / (prefix + str(index) * 32)
+            backup.mkdir()
+            sentinel = backup / 'preserved'
+            sentinel.write_bytes(b'legacy Control recovery evidence')
+            protected.append((backup, host.Identity.observe(backup), sentinel.read_bytes()))
+        result = host.install(host.HostInstallRequest(self.payload, self.plugins))
+        self.assertEqual('ACTIVATED', result.type)
+        self.assertEqual(self.payload.version, result.hostedPluginVersion)
+        self.assertEqual(self.payload.version, host.read_active_receipt(retained / 'host-install.json').version)
+        for _ in range(2):
+            self.assertEqual('REMOVED', host.remove_host(self.plugins).type)
+            self.assertFalse((self.plugins / 'kast-ide-hosted').exists())
+            self.assertEqual({path.name for path, _, _ in protected}, {path.name for path in retained.iterdir()})
+            for path, identity, content in protected:
+                self.assertEqual(identity, host.Identity.observe(path))
+                self.assertEqual(content, (path / 'preserved').read_bytes())
+        self.assert_control_unchanged()
+
+    def test_preflight_rejects_pending_host_recovery_without_filesystem_changes(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        retained = self.plugins.parent / '.kast-plugin-recovery'
+        pending = retained / 'host-prior-unproven'
+        pending.write_bytes(b'pending Host transaction')
+        receipt_before = (retained / 'host-install.json').read_bytes()
+        destination_before = host.Identity.observe(self.plugins / 'kast-ide-hosted')
+        with self.assertRaises(host.Rejected) as rejected:
+            host.install(host.HostInstallRequest(self.payload, self.plugins, host.HostInstallMode.PLAN))
+        self.assertEqual(host.Failure.RECOVERY_REQUIRED, rejected.exception.failure)
+        self.assertEqual(host.HostInstallationStage.RETAINED_RECOVERY, rejected.exception.stage)
+        self.assertEqual(receipt_before, (retained / 'host-install.json').read_bytes())
+        self.assertEqual(destination_before, host.Identity.observe(self.plugins / 'kast-ide-hosted'))
+        self.assertEqual(b'pending Host transaction', pending.read_bytes())
+        self.assert_control_unchanged()
+
+    def test_reinstallation_rejects_partial_existing_inventory(self):
+        host.install(host.HostInstallRequest(self.payload, self.plugins))
+        self.record_prior_device()
+        path = self.plugins.parent / '.kast-plugin-recovery/host-install.json'
+        before = path.read_bytes()
+        (self.plugins / 'kast-ide-hosted/lib/host.jar').unlink()
+        with self.assertRaises(host.Rejected) as rejected:
+            host.install(host.HostInstallRequest(self.payload, self.plugins))
+        self.assertEqual(host.Failure.OWNERSHIP_UNPROVEN, rejected.exception.failure)
+        self.assertEqual(before, path.read_bytes())
+        self.assertTrue((self.plugins / 'kast-ide-hosted/lib').is_dir())
+        self.assert_control_unchanged()
 
     def test_install_independent_host_preserves_control(self):
         result = host.install(host.HostInstallRequest(self.payload, self.plugins))

@@ -108,7 +108,7 @@ enum class ConfigurationParameter(
         ConfigurationSyntax.OWNER_INPUT,
         ConfigurationScope.HOST_PROFILE,
         ":app-server",
-        "codex-control",
+        "private",
         children = setOf(ConfigurationChild.BROKER),
     ),
     REAL_CODEX_EXECUTABLE(
@@ -456,8 +456,7 @@ enum class ConfigurationParameter(
         val base = baseDeclaration()
         val limit = readLimit ?: return base
         return base.copy(
-            description =
-                "${limit.name.lowercase().replace('_', ' ')}; also available to the IDE as ${limit.propertyKey}.",
+            description = readLimitDescription(limit),
             defaultAuthority = "ReadLimitParameter.${limit.name}",
             unit = ConfigurationUnit.valueOf(limit.unit.name),
             admittedRange =

@@ -40,76 +40,70 @@ class ForceDaemonLifecycleTest {
     }
 
     @Test
-    fun `launch job that survives bootout prevents deletion and preserves prior payload`() {
-        val home = home()
+    fun `reset selects an orphaned shared Codex listener by its exact installation transport`() {
+        val root = Path.of("/fixture/kast")
+        val listener =
+            snapshot(root)
+                .copy(
+                    command = "/fixture/bin/codex",
+                    arguments =
+                        listOf(
+                            "-c",
+                            "features.code_mode_host=true",
+                            "app-server",
+                            "--analytics-default-enabled",
+                            "--listen",
+                            "unix:///fixture/kast/installation/state/run/u.sock",
+                        ),
+                )
+        val selected = ResetScopedProcess.select(listener, root) as ResetProcessSelection.Selected
+        assertEquals(listener, selected.process.snapshot)
+        val excluded =
+            listOf(
+                listener.copy(
+                    arguments =
+                        listener.arguments.dropLast(1) + "unix:///fixture/kast-other/installation/state/run/u.sock"
+                ),
+                listener.copy(arguments = listener.arguments.dropLast(1) + "unix:///fixture/kast/../foreign/u.sock"),
+                listener.copy(
+                    arguments = listener.arguments.dropLast(1) + "unix:///fixture/kast/installation/state/run/c.sock"
+                ),
+                listener.copy(arguments = listOf("app-server", "daemon", "pid-update-loop")),
+                listener.copy(arguments = listOf("-c", "app-server", "exec", "--listen", listener.arguments.last())),
+                listener.copy(
+                    arguments =
+                        listOf("app-server", "--listen", listener.arguments.last(), "--listen", "unix:///foreign.sock")
+                ),
+                listener.copy(command = "/fixture/bin/unrelated"),
+            )
+        excluded.forEach { assertEquals(ResetProcessSelection.Unrelated, ResetScopedProcess.select(it, root)) }
+        assertEquals(
+            ResetProcessSelection.Rejected,
+            ResetScopedProcess.select(listener.copy(startEpochMillis = 0), root),
+        )
+    }
+
+    @Test
+    fun `reset retires a Codex listener after its launch job and parent disappear`() {
         val root = root()
-        Files.createDirectories(root)
-        Files.writeString(root.resolve("sentinel"), "prior payload")
+        val listener =
+            snapshot(root)
+                .copy(
+                    command = "/fixture/bin/codex",
+                    arguments =
+                        listOf("app-server", "--listen", "unix://${root.resolve("installation/state/run/u.sock")}"),
+                )
         val runtime =
             ResetRuntimeScript(
                 root,
                 listOf(
-                    ResetScriptStep.Job(true, true, ResetCommandObservation.Exited(0)),
-                    ResetScriptStep.Job(true, false, ResetCommandObservation.Exited(5)),
-                    ResetScriptStep.Job(true, true, ResetCommandObservation.Exited(0)),
-                ),
-            )
-        val observations = mutableListOf<ResetObservation>()
-        val result =
-            forceResetInstallation(
-                root,
-                home,
-                emptyMap(),
-                ForceResetOperation.UNINSTALL,
-                ForceResetExecution(runtime, forbiddenInstaller(), observations::add),
-            )
-                as ForceResetOutcome.Retained
-        runtime.assertConsumed()
-        assertEquals(ForceResetOperation.UNINSTALL, result.operation)
-        assertEquals(ForceResetStage.DAEMONS, result.stage)
-        assertEquals(ForceResetFailure.LAUNCH_JOB_REJECTED, result.failure)
-        assertEquals("prior payload", Files.readString(Path.of(result.recoveryPath).resolve("payload/sentinel")))
-        assertFalse(Files.exists(root))
-        assertTrue(Files.exists(installationResetFence(root)))
-        assertEquals(refusedDaemonObservations(), observations)
-    }
-
-    @Test
-    fun `observing the same process incarnation after force termination refuses quiescence`() {
-        val root = root()
-        val prior = snapshot(root)
-        val runtime =
-            ResetRuntimeScript(
-                root,
-                absentJobs() +
+                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(listener))),
+                    ResetScriptStep.Capture(listener, ResetScriptCaptureResult.NO_SHARED_DESCRIPTORS),
+                ) +
+                    absentJobs() +
                     listOf(
-                        ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
-                        ResetScriptStep.Signal(prior, LifecycleProcessObservation.Present(prior)),
-                    ),
-            )
-        val result = ForceDaemonRetirement(runtime).retire(root, home())
-        assertEquals(ResetEffect.Rejected(ForceResetFailure.PROCESS_RETIREMENT_REJECTED), result)
-        runtime.assertConsumed()
-    }
-
-    @Test
-    fun `a reused PID may be retained when the replacement incarnation is unrelated`() {
-        val root = root()
-        val prior = snapshot(root)
-        val replacement =
-            prior.copy(
-                startEpochMillis = prior.startEpochMillis + 1,
-                command = "/usr/bin/unrelated",
-                arguments = emptyList(),
-            )
-        val runtime =
-            ResetRuntimeScript(
-                root,
-                absentJobs() +
-                    listOf(
-                        ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
-                        ResetScriptStep.Signal(prior, LifecycleProcessObservation.Present(replacement)),
-                        ResetScriptStep.Table(ResetProcessTable.Observed(listOf(replacement))),
+                        ResetScriptStep.Signal(listener, LifecycleProcessObservation.Absent),
+                        ResetScriptStep.Table(ResetProcessTable.Observed(emptyList())),
                     ),
             )
         assertEquals(ResetEffect.Completed, ForceDaemonRetirement(runtime).retire(root, home()))
@@ -117,19 +111,18 @@ class ForceDaemonLifecycleTest {
     }
 
     @Test
-    fun `observation of a different PID cannot establish retirement of the selected PID`() {
+    fun `capture rejection prevents launch job retirement`() {
         val root = root()
         val prior = snapshot(root)
-        val other = prior.copy(pid = prior.pid + 1, startEpochMillis = prior.startEpochMillis + 1)
         val runtime =
             ResetRuntimeScript(
                 root,
-                absentJobs() +
-                    listOf(
-                        ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
-                        ResetScriptStep.Signal(prior, LifecycleProcessObservation.Present(other)),
-                    ),
+                listOf(
+                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
+                    ResetScriptStep.Capture(prior, ResetScriptCaptureResult.REJECTED),
+                ),
             )
+
         assertEquals(
             ResetEffect.Rejected(ForceResetFailure.PROCESS_RETIREMENT_REJECTED),
             ForceDaemonRetirement(runtime).retire(root, home()),
@@ -138,42 +131,62 @@ class ForceDaemonLifecycleTest {
     }
 
     @Test
-    fun `a scoped process returning during final observation prevents quiescence`() {
+    fun `captured ownership survives launch job disappearance before process retirement`() {
         val root = root()
         val prior = snapshot(root)
         val runtime =
             ResetRuntimeScript(
                 root,
-                absentJobs() +
-                    listOf(
-                        ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
-                        ResetScriptStep.Signal(prior, LifecycleProcessObservation.Absent),
-                        ResetScriptStep.Table(
-                            ResetProcessTable.Observed(listOf(prior.copy(pid = 92, startEpochMillis = 300)))
-                        ),
-                    ),
+                listOf(
+                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
+                    ResetScriptStep.Capture(prior, ResetScriptCaptureResult.NO_SHARED_DESCRIPTORS),
+                    ResetScriptStep.Job(true, true, ResetCommandObservation.Exited(0)),
+                    ResetScriptStep.Job(true, false, ResetCommandObservation.Exited(0)),
+                    ResetScriptStep.Job(true, true, ResetCommandObservation.Exited(113)),
+                    ResetScriptStep.Job(false, true, ResetCommandObservation.Exited(113)),
+                    ResetScriptStep.Signal(prior, LifecycleProcessObservation.Absent),
+                    ResetScriptStep.Table(ResetProcessTable.Observed(emptyList())),
+                ),
             )
-        assertEquals(
-            ResetEffect.Rejected(ForceResetFailure.PROCESS_RETIREMENT_REJECTED),
-            ForceDaemonRetirement(runtime).retire(root, home()),
-        )
+
+        assertEquals(ResetEffect.Completed, ForceDaemonRetirement(runtime).retire(root, home()))
         runtime.assertConsumed()
     }
 
-    private fun refusedDaemonObservations(): List<ResetObservation> =
-        listOf(
-            ResetObservation.Started(ForceResetOperation.UNINSTALL, ForceResetStage.FENCE),
-            ResetObservation.Completed(ForceResetOperation.UNINSTALL, ForceResetStage.FENCE),
-            ResetObservation.Started(ForceResetOperation.UNINSTALL, ForceResetStage.DAEMONS),
-            ResetObservation.Rejected(
-                ForceResetOperation.UNINSTALL,
-                ForceResetStage.DAEMONS,
-                ForceResetFailure.LAUNCH_JOB_REJECTED,
-            ),
+    @Test
+    fun `captured ownership survives delayed launch job disappearance`() {
+        val root = root()
+        val prior = snapshot(root)
+        val runtime =
+            ResetRuntimeScript(
+                root,
+                listOf(
+                    ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
+                    ResetScriptStep.Capture(prior, ResetScriptCaptureResult.NO_SHARED_DESCRIPTORS),
+                    ResetScriptStep.Job(true, true, ResetCommandObservation.Exited(0)),
+                    ResetScriptStep.Job(true, false, ResetCommandObservation.Exited(0)),
+                    ResetScriptStep.Job(true, true, ResetCommandObservation.Exited(0)),
+                    ResetScriptStep.Job(true, true, ResetCommandObservation.Exited(113)),
+                    ResetScriptStep.Job(false, true, ResetCommandObservation.Exited(113)),
+                    ResetScriptStep.Signal(prior, LifecycleProcessObservation.Absent),
+                    ResetScriptStep.Table(ResetProcessTable.Observed(emptyList())),
+                ),
+            )
+        assertEquals(
+            ResetEffect.Completed,
+            ForceDaemonRetirement(
+                    runtime,
+                    ResetRetirementTiming(
+                        clock = { 0 },
+                        pause = {
+                            assertEquals(java.time.Duration.ofMillis(100), it)
+                            ResetRetirementPause.CONTINUE
+                        },
+                    ),
+                )
+                .retire(root, home()),
         )
-
-    private fun forbiddenInstaller(): ForceReinstaller = ForceReinstaller { _, _, _ ->
-        error("installer cannot run before quiescence")
+        runtime.assertConsumed()
     }
 
     private fun home(): Path = Files.createDirectories(temporary.resolve("home"))
@@ -291,6 +304,7 @@ class ForceDaemonActivationTest {
                 closedRetirementSteps() +
                     listOf(
                         ResetScriptStep.Activate(LifecycleChildObservation.DeadlineExceeded),
+                        ResetScriptStep.Table(ResetProcessTable.Observed(emptyList())),
                         ResetScriptStep.Job(true, true, ResetCommandObservation.Unavailable),
                     ),
             )

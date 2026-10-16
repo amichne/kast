@@ -247,5 +247,97 @@
       }
     ],
     "followUpBaseRevision": "059d7cdc57d45a5404c3a31d8d6dcaa7e3f00dde"
+  },
+  "summaryFollowUp": {
+    "baseRevision": "e014a489bfd7e69cbf2c4b61140ee771d857a03e",
+    "command": "node --experimental-vm-modules --test cli/src/test/js/query-presentation.test.mjs",
+    "scope": "Pure replay of pinned canonical replies. Counts and signature omission change text only. No compiler, IDEA, model, provider or native calls.",
+    "cases": {
+      "complete": {
+        "modelVisibleBytes": 5450,
+        "serialization": {
+          "calls": 51,
+          "bytes": 6388
+        },
+        "textSha256": "385fa2ea1d5c709bd4e168e132713d36faf7cdafd95a81a4d08a64cded5701f2"
+      },
+      "qualified": {
+        "modelVisibleBytes": 5809,
+        "serialization": {
+          "calls": 48,
+          "bytes": 6173
+        },
+        "textSha256": "5b5461c7539d64b7691e0acb882d5e27030b363a3436d70382f7595097b2c9a0"
+      },
+      "rejectedProof": {
+        "modelVisibleBytes": 6779,
+        "serialization": {
+          "calls": 96,
+          "bytes": 15369
+        },
+        "textSha256": "d7a069b81695f60b36b8d59d0fc1f36a9c4050d8ff46b0729316c56bcc3c5263"
+      },
+      "expired": {
+        "modelVisibleBytes": 1670,
+        "serialization": {
+          "calls": 7,
+          "bytes": 1610
+        },
+        "textSha256": "6ca1de26c55d163bc4a6a7556df565852205ee49206ceb8fe25c504ec87dc521"
+      },
+      "unavailable": {
+        "modelVisibleBytes": 2458,
+        "serialization": {
+          "calls": 7,
+          "bytes": 2775
+        },
+        "textSha256": "5737c8a3343757ee5f6b465f3ce21459e159ea290f1413da98939a90cf45defd"
+      },
+      "budgetIncrease": {
+        "modelVisibleBytes": 2550,
+        "serialization": {
+          "calls": 7,
+          "bytes": 2863
+        },
+        "textSha256": "4632ee4a1c8488836641bb5cbfe71e1a096dba905529482acaa9a403a1acca3e"
+      },
+      "readBudgetIncrease": {
+        "modelVisibleBytes": 6231,
+        "serialization": {
+          "calls": 50,
+          "bytes": 6183
+        },
+        "textSha256": "8c481ab2f3fc5f77088bb67fdd2937f3c5ac510207772f23d7ba83cf4c8af90b"
+      },
+      "empty": {
+        "modelVisibleBytes": 2721,
+        "serialization": {
+          "calls": 5,
+          "bytes": 3765
+        },
+        "textSha256": "85419013a3ca648d4e6497c2e11977fd44eaa51587ba9955469f14f044284524"
+      },
+      "occurrencesPrefix": {
+        "modelVisibleBytes": 23911,
+        "serialization": {
+          "calls": 29,
+          "bytes": 24761
+        },
+        "textSha256": "171c4ef21e3df98839fcfd35a131434b962094b474131cb30ec3f00c7eff76d0"
+      },
+      "retainedEvidencePrefix": {
+        "modelVisibleBytes": 15295,
+        "serialization": {
+          "calls": 26,
+          "bytes": 16148
+        },
+        "textSha256": "5bfebfc0b2e6b391b88f7c1725bd2e3496c5d6ea1d23708a3baf4780e05552f8"
+      }
+    },
+    "synthetic185": {
+      "visibleBytes": 90319,
+      "canonicalBytes": 239645,
+      "physicalRpcs": 7
+    }
   }
 }

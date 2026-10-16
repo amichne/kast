@@ -1,59 +1,64 @@
+---
+type: Module Guide
+title: "Kast docs"
+description: "Contains the Mintlify site, contributor procedures, glossary policy, and revision-bound acceptance reports."
+resource: "repo://docs"
+tags: [kast, navigation]
+timestamp: "2026-10-15T13:45:06Z"
+source_revision: 52b5599de559d9b82f990bbd16b882762dbdf402
+code_sources:
+  - path: docs/development.md
+  - path: docs/documentation-structure.md
+  - path: docs/glossary.json
+  - path: docs/hosted-read-configuration.md
+  - path: docs/installation-recovery.md
+  - path: docs/public/docs.json
+  - path: docs/public/reference/source-map.mdx
+  - path: docs/tool-rpc.md
+  - path: docs/topology-impact.md
+---
+
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-10-14 | hash: d3b12ef1de9c -->
+<!-- generated: 2026-10-15 | hash: 3528c54cac46 -->
 
 # docs
 
 ## Purpose
 
-Contains the Mintlify site with tutorials, how-to guides, reference, and explanation. It also contains local prose policy and historical acceptance evidence.
+Contains the Mintlify site, contributor procedures, glossary policy, and revision-bound acceptance reports.
 
 ## Key Files
 
-- [public/docs.json](public/docs.json) - public documentation navigation and site configuration.
-- [public/index.mdx](public/index.mdx) - product landing documentation.
-- [public/reference.mdx](public/reference.mdx) - entry point for technical reference material.
-- [documentation-structure.md](documentation-structure.md) - reader tracks, source ownership, route preservation, and local Vale procedure.
-- [glossary.json](glossary.json) - provisional terminology source with explicit document scope.
-- [GLOSSARY.md](GLOSSARY.md) - generated glossary reader view.
-- [public/tutorials/first-query.mdx](public/tutorials/first-query.mdx) - controlled query exercise with expected caller and absence evidence.
-- [public/reference/source-map.mdx](public/reference/source-map.mdx) - contract owners, focused tests, and OpenWiki concepts.
-- [public/start.mdx](public/start.mdx) - installation and connection guide.
-- [public/search.mdx](public/search.mdx) - search workflow.
-- [public/reference/change.mdx](public/reference/change.mdx) - one-call source change, verification, and recovery workflow.
-- [public/troubleshooting.mdx](public/troubleshooting.mdx) - support guidance.
-- [render_kast_observer_snapshots.py](render_kast_observer_snapshots.py) - observer snapshot renderer.
-
-- [development.md](development.md) - build, local installation, docs preview, and behavior-sized testing.
-- [installation-recovery.md](installation-recovery.md) - offline recovery of damaged installations.
-- [tool-rpc.md](tool-rpc.md) - bounded tool RPC, compact query delivery and Copilot/Pi extension setup.
-
-- [hosted-read-configuration.md](hosted-read-configuration.md) - hosted read grants, retention configuration, and reported limitations.
-- [reviews/representation-impact-proof.md](reviews/representation-impact-proof.md) - exact installed representation-impact qualification, retained evidence, and proof limits.
-- [reviews/persistent-topology-snapshots.md](reviews/persistent-topology-snapshots.md) - historical contracts, SQLite and offline oracles, work counts, and native capture limits.
-- [reviews/direct-tool-startup-2026-10-05.md](reviews/direct-tool-startup-2026-10-05.md) - paired synthetic and final-byte startup measurements, avoided discovery work, and timing limits.
-- [reviews/selected-jbr-startup-2026-10-05.md](reviews/selected-jbr-startup-2026-10-05.md) - selected IDEA JBR admission, regression coverage, and completed Claim refresh.
-- [public/reference/schemas.mdx](public/reference/schemas.mdx) - generated schema and authored sample entry points.
-- [public/reference/models/query-item.mdx](public/reference/models/query-item.mdx) - query item documentation backed by generated canonical schema.
+- [docs.json](public/docs.json) - site navigation and reader tracks.
+- [documentation-structure.md](documentation-structure.md) - Diátaxis, source ownership, routes, and the local Vale procedure.
+- [glossary.json](glossary.json) - canonical vocabulary, source evidence, and explicit document scope.
+- [GLOSSARY.md](GLOSSARY.md) - generated reader view of the canonical vocabulary.
+- [development.md](development.md) - development commands and focused test selection.
+- [topology-impact.md](topology-impact.md) - opt-in declared dependency impact, report fields, and the disable switch.
+- [tool-rpc.md](tool-rpc.md) - tool RPC and harness extension behavior.
+- [source-map.mdx](public/reference/source-map.mdx) - source owners and their focused tests.
+- [installation-recovery.md](installation-recovery.md) - offline installation recovery.
+- [hosted-read-configuration.md](hosted-read-configuration.md) - read grants, retention, and limits.
 
 ## Subdirectories
 
-- `public/tutorials` - exercises with expected evidence.
-- `public/how-to` - diagnostic and retained-evidence procedures.
-- `public/explanation` - query lifecycle explanation.
-- `public/reference/internals` - runtime implementation details.
-- `public/reference` - generated and hand-authored reference pages.
-- `public/images` - checked documentation assets.
-- `reviews` - source and runtime acceptance review evidence.
-- `vale-vocabulary` - reviewed spellings for the local Vale consumer.
+- [public/](public/) - authored Mintlify source and generated reference assets.
+- [public/tutorials/](public/tutorials/) - controlled exercises with expected evidence.
+- [public/how-to/](public/how-to/) - procedures for specific tasks.
+- [public/reference/](public/reference/AGENTS.md) - contracts, models, and authored generation rules.
+- [public/explanation/](public/explanation/) - mechanisms and design rationale.
+- [reviews/](reviews/) - historical reports with exact evidence scope.
 
 ## Entry Points
 
 - From `docs/public`, run `mint validate` and `mint broken-links`.
-- Use the root `.vale.ini` with the pinned local consumer described in [documentation-structure.md](documentation-structure.md).
+- Use the pinned Vale command and checked-in rules from the root guide.
+- Read the nested public reference guide before changing generated callable contracts.
 
 ## Navigation Hints
 
-- Start with the [repository knowledge](../openwiki/quickstart.md) and read its `code_sources` for source evidence. Root engineering rules remain authoritative. This map adds navigation only.
-
-- For user-visible behavior, start with the selected public page. Examine its claims against protocol and source contracts.
-- Treat `site/` as rendered output; edit `docs/public` instead.
+- For a public claim, trace the page into its current protocol or source owner.
+- Edit `docs/public` source. Keep rendered output separate.
+- The glossary controls current documentation and agent instructions within its declared scope. Historical reports keep their recorded terms.
+- Historical review reports describe their recorded revisions and evidence limits.
+- Read the [root guide](../AGENTS.md) for engineering rules and optional OpenWiki retrieval.

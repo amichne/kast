@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:f9544a3bd1693f3bb2c39921025d17d4811c171b749b5e2358dd5995daf87d5d",
+  "pageVersion": "sha256:9b77f52b9c13e734d44619cf95b846060f5bdc2ccc6dcc1f31cc71df08f67712",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -86,11 +86,11 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:5683109104e81537aeb7cae517ba6e312240633724e63ad6141d3907b625fd39"
+          "version": "repo-file-v1:sha256:20f66494a7f382ba9fcb9fb0e7100a5c739c588da34de139c8685f995f1732b5"
         },
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:6183aa4fdddcd307842d016f27a5dbc0d833b0c38ab91782d92d032fef7934df"
+          "version": "repo-file-v1:sha256:68a21012b64b75f8faa4e97d46cd701db894cfd576fcf8473b8f55b00569fb98"
         }
       ]
     },
@@ -122,7 +122,7 @@
         },
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:0cbd08f040ca1756f7b35bd51cbccfe57604ccc6fc87f99ec7d773f176af5062"
+          "version": "repo-file-v1:sha256:c31224a0f02de12664464ff2918b22be23eb3812524b9a03d238d3aa6790842b"
         }
       ]
     },
@@ -135,7 +135,7 @@
           "version": "repo-file-v1:sha256:25a0bddfbcc6fcde44e799fdd58fdf1b5e080f33172a043694dfb8c9ede86282"
         },
         {
-          "resource": "repo://install.sh#L580-L604",
+          "resource": "repo://install.sh#L600-L624",
           "version": "repo-lines-v1:sha256:61b79c53302dbd050f51a56b9467d1271544d67aad22237e5c8febf726ae7526:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVmYTE4NWY2MGNlZWUwNGJmOTI0OTI0YWQ1NzRjYzZiM2M5MGRhNDI0ZGI2YjBjOGNjMDZiNGJhNjI2YmE2NmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM1ZmM5MGZmOGE0NDE0YzU0NDFkMGY2NzdjNWNiZmRhMzhiNDc0ZTUxYmZkNTU5YTU1NTlkZTBmODc3MDU1MjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ1ZjYzMTQ1NzAyOWY2ZjgxNzc0M2VkMTQ2MmJlMjg1YTFmYmNjMjM2ZWVlMTQwMmQ4NjQ4NjkwODJkOTk2N2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhkYzRiNDU2M2QwODdmM2Y1ZjI2ZWEwOWI0YTBkMDkxZDc5ZTkzMjg3NTc5ZDY2MDFiZTMyMDdjMTJkMmI2MmQifQ"
         },
         {
@@ -167,7 +167,7 @@
       "statement": "Assembled-product acceptance stages production Control in an owned HOME, verifies canonical cold staging and publication, then stages the receipted Host, creates an empty canonical mutation database and invokes the real published native uninstall, requiring owned Host, Control, public executable and user-state removal while preserving an unrelated sentinel; it does not establish live IDE or Codex behavior.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L271-L293",
+          "resource": "repo://build.gradle.kts#L270-L292",
           "version": "repo-lines-v1:sha256:c63ebb273fccf68e2a3c0f1cbab575687a341afc2488c43a61044c28d63cfb1d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlYTVmNjVjMTE2ZTQzZGMzODJmNzkzYzE2MGI4NmE1ZTBjZDMwMjc4Nzg5ZTkxM2M0NDdhMGJlYjkyMzc3NGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdjMmM1MTE5MzI3MjZkMjc5MTVmMDlhZGUxNTlmMThlZjE3NjkzYzY2ODk3NGZjZjg0MDQ0YmE3YzRmMTU5N2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ2ZDE3ZjYwNzhkNzM1YTY5MmM1OWM5MTAwOWE2NDYwZmYzZTQxZjZjZDU5MzBjOGFiYmU3ZDFmMmU1NTI0MTgifQ"
         },
         {
@@ -258,11 +258,11 @@
       "evidence": [
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:0cbd08f040ca1756f7b35bd51cbccfe57604ccc6fc87f99ec7d773f176af5062"
+          "version": "repo-file-v1:sha256:c31224a0f02de12664464ff2918b22be23eb3812524b9a03d238d3aa6790842b"
         },
         {
           "resource": "repo://packaging/test-installer-entrypoint.py",
-          "version": "repo-file-v1:sha256:a34ab690e33be19092a386ac3ea43b1c8be304037099be8f7351809edde4fc3e"
+          "version": "repo-file-v1:sha256:fca63bf11a7c3ff7f7b5257191784696d88a4bcee36527e71c4b8686fb8137a3"
         }
       ]
     },
@@ -316,7 +316,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:f57f16469672f26932cd5b781561f3619d67cf4b2d9e44d127d8a33d0fd44d04"
+          "version": "repo-file-v1:sha256:ed5a3ae6abadf4c94be4300c76c04f152820e1d5aba17b793400c305e7b3135a"
         }
       ]
     },
@@ -330,7 +330,7 @@
         },
         {
           "resource": "repo://.github/scripts/release/publish-developer.sh",
-          "version": "repo-file-v1:sha256:6359f1013310332479b79685805c57d3eb86cc5e144c05e2c26be148f8cb0499"
+          "version": "repo-file-v1:sha256:e19984dcb008a19be5cba9f34ee40127ed0eb5b2f884eedaa02d4c9f8be35530"
         },
         {
           "resource": "repo://.github/workflows/developer-release.yml",
@@ -348,7 +348,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml#L104-L149",
-          "version": "repo-lines-v1:sha256:086d7db241f5324bec78cf4c33a9dc9571e48bf12f940347902ef31ad0c00fe9:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1OTRjZmRjNjRjMzAyZDQ0MDE1NDE5ZjdiMDJiYmJkYjMxNDk2OTJlNWY1OTBjN2Q3MDU3ZjYzYWMyZjdkOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OGJmMzg0ZmQyMGNkZjkwZGQ5OTVhZWZkZjI2NWRjNDNjZWViY2Q0NjdjYzU5NTlkZDdkMjMxNTkxMTE3NDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRlNGNiZGE4MTE5YjBiNmVmMTI3ZGVhZjlkNjEyODJlODQ0MjEwZTk1MzY1OThjZDc0Y2IwOGJjNTcyNGZmYmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIyZmUzYjc4Y2ZlOWMwYmUzMjFhODNmNzc2MjUwMDdjODJjOTgyNDRhOThkZDNhZGJlYzhlZGE3NTU0ZmM2OTkifQ"
+          "version": "repo-lines-v1:sha256:f608a2b2088d686f0d141de98e9626da38504b289e1ae6e8db8158e823317a44:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1OTRjZmRjNjRjMzAyZDQ0MDE1NDE5ZjdiMDJiYmJkYjMxNDk2OTJlNWY1OTBjN2Q3MDU3ZjYzYWMyZjdkOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OGJmMzg0ZmQyMGNkZjkwZGQ5OTVhZWZkZjI2NWRjNDNjZWViY2Q0NjdjYzU5NTlkZDdkMjMxNTkxMTE3NDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRlNGNiZGE4MTE5YjBiNmVmMTI3ZGVhZjlkNjEyODJlODQ0MjEwZTk1MzY1OThjZDc0Y2IwOGJjNTcyNGZmYmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIyZmUzYjc4Y2ZlOWMwYmUzMjFhODNmNzc2MjUwMDdjODJjOTgyNDRhOThkZDNhZGJlYzhlZGE3NTU0ZmM2OTkifQ"
         },
         {
           "resource": "repo://distribution/cli/build.gradle.kts#L60-L69",
@@ -373,10 +373,34 @@
           "version": "repo-lines-v1:sha256:6db2f6dba5c14a620f16d2fe377c5320fa4a99bfd31938f55f8f4d17e3efda21:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNlNGMyMzRlZTg1YTM5NzhlODMyNzRhZjZjNzIzYmI3NmU1YzkyMTlkYmRlMGQ5YTNjNWUxMzYzNWMyZjliZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEzYTI3ZWVjZTU3ZGI5M2VjMDhiNWY0YzE2OTVjMzFjMjZkZTkzZjg4YjcwYWMyZWNiZDAyNjQ3NTBiYjU0MGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE3NzI2ZjQxMTdhMmM0Mzg3NzkwNGQyYjdkZTFlYmQ2MTk3OTc5MjhmM2MwZDgzZjMxZTVlNTNjNWYxNGEwNGUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_db3d83383ac64f35b420656aef43d715",
+      "statement": "Host receipt admission qualifies device changes through stable root inode and owner evidence and permits missing recorded entries only for protected removal, while exact reinstall inventory remains necessary.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/host-installation.py",
+          "version": "repo-file-v1:sha256:68a21012b64b75f8faa4e97d46cd701db894cfd576fcf8473b8f55b00569fb98"
+        }
+      ]
+    },
+    {
+      "id": "claim_c0d802cfaf904b648f45d929cc29ab7e",
+      "statement": "Default installer failure presentation reads bounded stream tails and prioritizes rejection and recovery details over routine telemetry. It keeps the child exit status and limits display to 12 details plus one truncation notice. Verbose output keeps complete child streams.",
+      "evidence": [
+        {
+          "resource": "repo://install.sh#L75-L195",
+          "version": "repo-lines-v1:sha256:a2abdcf6f95bfacb4d7bdec3087b6747dd0c1629a376c46de164697829aa9513:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjNTg1ZjgxMzFkNTg5MGJiMGUzMTNmZDM0YzhlMzViNmU0OWJkMDYzYWNlNmFhMjE5ZGMwYjliM2QzZjI5MmVjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI1MjJjYjVkYjA2NTY4OWFkOGJlNmVlYWY4ZDVjYmY0MjRiN2VlZGMzODY1YTUyYTIwMDVlYTg4YWM4MmViZDFkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJmMjQ4MDUxODRmODZkNGVlZDExOWVkZjNiMTBlZDc0YTNhOGRhMWVhOTg4MzUwMzUwNGFhODk0Zjk2M2I4Y2RhIn0"
+        },
+        {
+          "resource": "repo://packaging/test-installer-entrypoint.py#L605-L662",
+          "version": "repo-lines-v1:sha256:72ed803b67a7c29c67caad1d8974e873e2c70a76e549ffb5072c33f616d412a9:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxOWUzNzA5ZTg1MTg4MTE5MDBkODEzNWI4MTY1ZjI1MmU4NDUwMGQ2ZmQyYTcxZDRhNGI2ODU4ZGQ3ZDA3OTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhZjM2YzVhNTg1ZGM4YWUwNTlmM2JmNDlkM2JlY2YxNzliYmI4MTU0MDI5ZjQwNWNiMGZiM2FhZDkzYjEzZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZhMWI3NGViNzI0ZjA2YzlhNDRjMTFkZTJiYmUzODYyMzdiMzIxZWJjYmNlMjFlMGJiOGYyMDZhMzk1MDEzZjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjMjgwNDc1ODQzYTA3MTc2NDlkNDdhMzVlNDM1Yzk0OTFiNDI5YzE0ZGQ0N2ExMTQ1ODE1MWNlOTVlMWQ2MTUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-14T01:57:02.037Z"
+    "at": "2026-10-15T19:07:35.337Z"
   }
 }

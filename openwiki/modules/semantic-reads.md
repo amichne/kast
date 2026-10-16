@@ -253,10 +253,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-8d15fa1e67cdc054e05e2796
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedValueFlowDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-14T02:15:18.461Z" }
+generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-14T02:15:18.461Z
+    at: 2026-10-15T00:33:05.932Z
 ---
 
 # Semantic read domains
@@ -764,3 +764,16 @@ The native caller fixture exercises real K2 ports and the public canonical runne
 It expects an empty ordinary caller set and one exact property-linked callback occurrence.
 An altered implementation class rejects the model with a finite cause and a rejection counter.
 Source attachments do not supply binary authority.
+
+## Focused semantic explanations
+
+- [Workspace authority](../semantics/workspace/read-authority.md) explains exact roots and original-owner admission.
+- [Model and freshness](../semantics/workspace/model-and-freshness.md) traces imported ownership, read transactions, and final publication.
+- [Discovery and identity](../semantics/symbol/discovery-and-identity.md) explains constraints, compiler projection, and exact lookup.
+- [Source anchors and pages](../semantics/source/anchors-and-paging.md) explains snapshots, coordinates, and structural progress.
+- [Named relationships](../semantics/relation/named-relations.md) explains callers, destinations, occurrences, and omissions.
+- [Callback supply and binding](../semantics/relation/callback-supply-and-binding.md) traces actual values to invoked formals.
+- [Callback reuse and completion](../semantics/relation/callback-reuse-and-completion.md) explains continuity and graph proof.
+- [Value flow and models](../semantics/relation/value-flow-and-models.md) explains native sites and reviewed transformations.
+- [Traversal frontiers](../semantics/traversal/frontiers-and-continuations.md) explains bounded graph progress.
+- [Diagnostic scans](../semantics/diagnostics/scans-and-progress.md) explains enumeration, compiler evidence, and complete-file output.

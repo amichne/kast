@@ -75,7 +75,7 @@ def admit(directory: Path, component: Component, version: str, revision: str) ->
     archive_name = record["artifact"]["fileName"]
     if component is Component.CONTROL:
         expected_archive = f"kast-control-v{version}-macos-aarch64.tar.gz"
-        companion_names = {f"kast-{name}-v{version}.zip" for name in ("skill", "plugin", "marketplace")}
+        companion_names = {f"kast-{name}-v{version}.zip" for name in ("plugin", "marketplace")}
     else:
         expected_archive = f"kast-ide-hosted-v{version}-idea-{record['supportedIntellijReleaseLine']}.zip"
         companion_names = {"host-installation.py"}

@@ -1,0 +1,7 @@
+extends: substitution
+level: error
+ignorecase: true
+action:
+  name: replace
+message: "Use '%s' instead of the recorded incorrect form '%s'. Examine its scope."
+swap: {"saved\\ result": "retained result", "saved\\ query\\ result": "retained result", "saved\\-result\\ reference": "retained result reference"}

@@ -73,7 +73,13 @@ class PublicInstallationResetTest {
         Files.createDirectories(command.parent)
         Files.writeString(command, "keep")
         val runtime =
-            ResetRuntimeScript(root, listOf(ResetScriptStep.Job(true, true, ResetCommandObservation.Unavailable)))
+            ResetRuntimeScript(
+                root,
+                listOf(
+                    ResetScriptStep.Table(ResetProcessTable.Observed(emptyList())),
+                    ResetScriptStep.Job(true, true, ResetCommandObservation.Unavailable),
+                ),
+            )
         val result = resetPublicInstallation(admitted(root, home), execution(runtime))
         assertTrue(result is ForceResetOutcome.Retained)
         assertEquals("keep", Files.readString(command))
@@ -135,7 +141,10 @@ private class PublicRetirementScript(roots: List<Path>) : ForceDaemonRuntime {
 
     override fun processes() = next { it.processes() }
 
-    override fun retire(process: ResetScopedProcess, allowance: Duration) = error("unexpected process signal")
+    override fun capture(process: ResetScopedProcess) = error("unexpected socket capture")
+
+    override fun retire(capture: ResetSharedSocketCapture.Captured, allowance: Duration) =
+        error("unexpected process signal")
 
     override fun activate(installation: Path, home: Path, environment: Map<String, String>) =
         error("unexpected activation")

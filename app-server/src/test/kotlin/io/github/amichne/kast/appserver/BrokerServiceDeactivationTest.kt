@@ -119,7 +119,9 @@ class BrokerServiceDeactivationTest {
             (BrokerServiceLaunchCommand.resolveCoordinator(
                     kast,
                     home,
-                    mapOf("PATH" to tools.toString()) + selectedBrokerJbr(temporary) + overrides,
+                    mapOf("PATH" to tools.toString(), "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "codex-control") +
+                        selectedBrokerJbr(temporary) +
+                        overrides,
                 ) as BrokerServiceLaunchCommandResolution.Resolved)
                 .command
         val initial = command()

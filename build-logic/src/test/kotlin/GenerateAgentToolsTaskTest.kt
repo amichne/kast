@@ -17,25 +17,31 @@ class GenerateAgentToolsTaskTest {
     @TempDir lateinit var directory: Path
 
     @Test
-    fun `marketplace binds the versioned plugin and preserves the independent skill bytes`() {
+    fun `marketplace binds versioned hooks and preserves shared context bytes`() {
         val task = task()
         task.generate()
         val output = task.outputDirectory.get().asFile.toPath()
         val plugin = output.resolve("plugins/kast")
         val manifest = Json.parseToJsonElement(Files.readString(plugin.resolve(".codex-plugin/plugin.json"))).jsonObject
         assertEquals("1.2.3", manifest.getValue("version").jsonPrimitive.content)
-        assertEquals("./skills/", manifest.getValue("skills").jsonPrimitive.content)
+        assertEquals("./hooks/hooks.json", manifest.getValue("hooks").jsonPrimitive.content)
+        assertTrue(!manifest.containsKey("skills"))
+        assertTrue(Files.notExists(plugin.resolve("skills")))
         assertEquals("./.mcp.json", manifest.getValue("mcpServers").jsonPrimitive.content)
         val marketplace = Json.parseToJsonElement(Files.readString(output.resolve(".agents/plugins/marketplace.json"))).jsonObject
         val entry = marketplace.getValue("plugins").jsonArray.single().jsonObject
         assertEquals("kast", marketplace.getValue("name").jsonPrimitive.content)
         assertEquals("./plugins/kast", entry.getValue("source").jsonObject.getValue("path").jsonPrimitive.content)
-        for (name in listOf("SKILL.md", "references/query-examples.json", "references/query-patterns.md")) {
-            assertArrayEquals(Files.readAllBytes(task.sourceDirectory.get().asFile.toPath().resolve("skills/kast/$name")),
-                Files.readAllBytes(plugin.resolve("skills/kast/$name")))
+        for (name in listOf("hooks/hooks.json", "hooks/copilot.json", "hooks/session_start.py", "references/query-examples.json", "references/onboarding.md")) {
+            assertArrayEquals(Files.readAllBytes(task.sourceDirectory.get().asFile.toPath().resolve(name)),
+                Files.readAllBytes(plugin.resolve(name)))
         }
         assertArrayEquals(Files.readAllBytes(task.sourceDirectory.get().asFile.toPath().resolve(".mcp.json")),
             Files.readAllBytes(plugin.resolve(".mcp.json")))
+        for (name in listOf("hooks.json", "session_start.py", "session_start.py.lock", "prepare_workspace.py", "prepare_workspace.py.lock")) {
+            assertArrayEquals(Files.readAllBytes(task.sourceDirectory.get().asFile.toPath().resolve("hooks/$name")),
+                Files.readAllBytes(plugin.resolve("hooks/$name")))
+        }
         val mcp = Json.parseToJsonElement(Files.readString(plugin.resolve(".mcp.json"))).jsonObject
         assertEquals(listOf("-c", "exec \"\${HOME:?HOME is required}/.local/share/kast/installation/bin/kast-mcp-complete\""),
             mcp.getValue("mcpServers").jsonObject.getValue("kast").jsonObject.getValue("args").jsonArray.map {
@@ -44,10 +50,10 @@ class GenerateAgentToolsTaskTest {
     }
 
     @Test
-    fun `an escaping skill source rejects before replacing existing output`() {
+    fun `an escaping hook source rejects before replacing existing output`() {
         val task = task()
         val manifest = task.sourceDirectory.get().asFile.resolve(".codex-plugin/plugin.json")
-        manifest.writeText(manifest.readText().replace("./skills/", "../skills/"))
+        manifest.writeText(manifest.readText().replace("./hooks/hooks.json", "../hooks/hooks.json"))
         val protected = task.outputDirectory.get().asFile.resolve("protected")
         protected.parentFile.mkdirs()
         protected.writeText("existing-output")
@@ -59,20 +65,31 @@ class GenerateAgentToolsTaskTest {
     fun `missing linked guidance rejects before replacing admitted output`() {
         val task = task()
         task.generate()
-        val output = task.outputDirectory.get().asFile.resolve("plugins/kast/skills/kast/references/connection.md")
+        val output = task.outputDirectory.get().asFile.resolve("plugins/kast/hooks/session_start.py")
         val original = output.readBytes()
-        task.sourceDirectory.get().asFile.resolve("skills/kast/references/connection.md").delete()
+        task.sourceDirectory.get().asFile.resolve("hooks/session_start.py").delete()
         assertThrows(IllegalStateException::class.java) { task.generate() }
         assertArrayEquals(original, output.readBytes())
     }
 
     @Test
-    fun `stale skill examples reject before replacing admitted output`() {
+    fun `stale examples reject before replacing admitted output`() {
         val task = task()
         task.generate()
-        val output = task.outputDirectory.get().asFile.resolve("plugins/kast/skills/kast/references/query-examples.json")
+        val output = task.outputDirectory.get().asFile.resolve("plugins/kast/references/query-examples.json")
         val original = output.readBytes()
-        task.sourceDirectory.get().asFile.resolve("skills/kast/references/query-examples.json").writeText("not-json")
+        task.sourceDirectory.get().asFile.resolve("references/query-examples.json").writeText("not-json")
+        assertThrows(IllegalStateException::class.java) { task.generate() }
+        assertArrayEquals(original, output.readBytes())
+    }
+
+    @Test
+    fun `missing setup script rejects before replacing admitted output`() {
+        val task = task()
+        task.generate()
+        val output = task.outputDirectory.get().asFile.resolve("plugins/kast/hooks/prepare_workspace.py")
+        val original = output.readBytes()
+        task.sourceDirectory.get().asFile.resolve("hooks/prepare_workspace.py").delete()
         assertThrows(IllegalStateException::class.java) { task.generate() }
         assertArrayEquals(original, output.readBytes())
     }
@@ -96,9 +113,7 @@ class GenerateAgentToolsTaskTest {
         return project.tasks.register("agentTools", GenerateAgentToolsTask::class.java).get().apply {
             sourceDirectory.set(source)
             marketplaceFile.set(marketplace.toFile())
-            canonicalQueryExamplesFile.set(repository.resolve(
-                "app-server/src/main/resources/io/github/amichne/kast/appserver/query/query_symbols.examples.json",
-            ).toFile())
+            canonicalQueryExamplesFile.set(repository.resolve("agent-tools/references/query-examples.json").toFile())
             productVersion.set("1.2.3")
             outputDirectory.set(directory.resolve("output").toFile())
         }
