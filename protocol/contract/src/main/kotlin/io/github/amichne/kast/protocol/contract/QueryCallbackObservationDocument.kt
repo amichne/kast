@@ -21,6 +21,7 @@ enum class QueryCallbackDocumentFailure {
     INVALID_SCAN_PROOF,
     INVALID_FORWARDING_PATH,
     RESULT_PROJECTION_MISMATCH,
+    BASIS_MISMATCH,
 }
 
 @Serializable
@@ -73,6 +74,7 @@ private constructor(
     val effectiveDomain: QueryRelationDomainDocument,
     val domainFingerprint: QueryRelationDomainFingerprint,
     val resultProjection: QueryCallbackResultProjectionDocument,
+    val basis: ImpactSemanticBasisDocument,
 ) {
     companion object {
         fun create(
@@ -87,6 +89,7 @@ private constructor(
             effectiveDomain: QueryRelationDomainDocument,
             domainFingerprint: QueryRelationDomainFingerprint,
             resultProjection: QueryCallbackResultProjectionDocument,
+            basis: ImpactSemanticBasisDocument,
         ): Refinement<QueryCallbackObservationDocument, QueryCallbackDocumentFailure> {
             val value =
                 QueryCallbackObservationDocument(
@@ -101,6 +104,7 @@ private constructor(
                     effectiveDomain,
                     domainFingerprint,
                     resultProjection,
+                    basis,
                 )
             return when (val admitted = value.admit()) {
                 is Refinement.Refined -> Refinement.Refined(value)

@@ -34,6 +34,31 @@ class QueryNamedCallbackReferenceWireTest {
     private val fixture = QueryCallbackWireFixture()
 
     @Test
+    fun `unproven membership still binds the available named flow basis`() {
+        val wire = suppliedReference().toWireDocument()
+        val target = wire.target as QueryCallableTargetWireDocument.NamedReference
+        val unproven =
+            wire.copy(
+                target =
+                    target.copy(
+                        resultProjection =
+                            QueryCallbackResultProjectionWireDocument.Unproven(
+                                io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument.OUTSIDE_DOMAIN
+                            )
+                    )
+            )
+        assertTrue(unproven.toContract() is WireDocumentConversion.Converted)
+        val foreign =
+            io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument.Published(
+                fixture.text("/workspace"),
+                (io.github.amichne.kast.protocol.contract.ImpactEvidenceRevisionDocument.parse(2L)
+                        as Refinement.Refined)
+                    .value,
+            )
+        assertEquals(WireDocumentConversion.Rejected, unproven.copy(basis = foreign).toContract())
+    }
+
+    @Test
     fun `named projection rejects a substituted walk subject`() {
         val wire = namedReferenceWalk()
         assertTrue(decodeWalk(wire) is WireDocumentConversion.Converted)
@@ -194,6 +219,7 @@ class QueryNamedCallbackReferenceWireTest {
                 observation.lexicalOwner,
                 QueryCallbackBodyDocument.Named(observation.lexicalOwner),
                 QueryCallableTargetDocument.NamedReference(reference, observation.resultProjection),
+                observation.basis,
             ) as Refinement.Refined)
             .value
     }
@@ -222,6 +248,7 @@ class QueryNamedCallbackReferenceWireTest {
                     observation.lexicalOwner,
                     QueryCallbackBodyDocument.Named(observation.lexicalOwner),
                     QueryCallableTargetDocument.NamedReference(reference, observation.resultProjection),
+                    observation.basis,
                 ) as Refinement.Refined)
                 .value
         val raw = value.toWireDocument()

@@ -64,26 +64,29 @@ private fun RelationCallbackObservation.projectCallbackObservation(
             projection.callable(target) ?: return null,
             projection.callable(lexicalOwner) ?: return null,
             projection.occurrence(callbackBody) ?: return null,
-            when (val policy = policy) {
-                is CallbackNamedCallPolicy.Unavailable ->
-                    QueryCallbackNamedPolicyDocument.Unavailable(policy.cause.protocolCallbackDocument())
-                CallbackNamedCallPolicy.AdmittedInline -> QueryCallbackNamedPolicyDocument.AdmittedInline
-                CallbackNamedCallPolicy.AdmittedDirect -> QueryCallbackNamedPolicyDocument.AdmittedDirect
-                is CallbackNamedCallPolicy.Excluded ->
-                    QueryCallbackNamedPolicyDocument.Excluded(
-                        policy.reason.protocolCallbackDocument(),
-                        projection.occurrence(policy.boundary) ?: return null,
-                    )
-            },
+            policy.projectPolicy(projection) ?: return null,
             projection.flow(flow) ?: return null,
             meaning.protocolDocument(),
             requestedDomain.requestedDomainDocument(),
             relationDomainDocument(scope, constraints) ?: return null,
             QueryRelationDomainFingerprint.parse(effectiveDomain.value).callbackValue() ?: return null,
             resultProjection.projectResultProjection(projection, resultSubject) ?: return null,
+            basis.identity.impactDocument().callbackValue() ?: return null,
         )
         .callbackValue()
 }
+
+private fun CallbackNamedCallPolicy.projectPolicy(projection: CallbackProjection): QueryCallbackNamedPolicyDocument? =
+    when (this) {
+        is CallbackNamedCallPolicy.Unavailable ->
+            QueryCallbackNamedPolicyDocument.Unavailable(cause.protocolCallbackDocument())
+        CallbackNamedCallPolicy.AdmittedInline -> QueryCallbackNamedPolicyDocument.AdmittedInline
+        CallbackNamedCallPolicy.AdmittedDirect -> QueryCallbackNamedPolicyDocument.AdmittedDirect
+        is CallbackNamedCallPolicy.Excluded ->
+            projection.occurrence(boundary)?.let {
+                QueryCallbackNamedPolicyDocument.Excluded(reason.protocolCallbackDocument(), it)
+            }
+    }
 
 internal fun TraversalCallbackObservation.projectCallbackObservation(
     authority: QueryReferenceAuthority

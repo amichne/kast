@@ -130,6 +130,7 @@ class QueryCallbackWireFixture {
                     RelationKindDocument.CALLEES,
                     io.github.amichne.kast.protocol.contract.QueryCallbackResultSiteDocument.Target(target),
                 ),
+                flow.basis,
             )
             .refined()
     }

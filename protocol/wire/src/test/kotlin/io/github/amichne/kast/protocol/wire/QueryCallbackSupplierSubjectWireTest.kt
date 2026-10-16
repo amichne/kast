@@ -26,6 +26,31 @@ class QueryCallbackSupplierSubjectWireTest {
     private val fixture = QueryCallbackWireFixture()
 
     @Test
+    fun `unproven membership still binds the exhaustive supplier basis`() {
+        val wire = parameterObservation().toWireDocument()
+        val target = wire.target as QueryCallableTargetWireDocument.ParameterInvocation
+        val unproven =
+            wire.copy(
+                target =
+                    target.copy(
+                        resultProjection =
+                            QueryCallbackResultProjectionWireDocument.Unproven(
+                                io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument.OUTSIDE_DOMAIN
+                            )
+                    )
+            )
+        assertTrue(unproven.toContract() is WireDocumentConversion.Converted)
+        val foreign =
+            io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument.Published(
+                fixture.text("/workspace"),
+                (io.github.amichne.kast.protocol.contract.ImpactEvidenceRevisionDocument.parse(2L)
+                        as Refinement.Refined)
+                    .value,
+            )
+        assertEquals(WireDocumentConversion.Rejected, unproven.copy(basis = foreign).toContract())
+    }
+
+    @Test
     fun `supplier projection rejects another exact subject in its relation envelope`() {
         val callback = fixture.callbackDocument()
         val wire =
@@ -101,6 +126,7 @@ class QueryCallbackSupplierSubjectWireTest {
                     invocation,
                     projection(flow, callback.domainFingerprint),
                 ),
+                flow.basis,
             )
             .value()
     }

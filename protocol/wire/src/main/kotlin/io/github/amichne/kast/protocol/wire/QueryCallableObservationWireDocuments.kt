@@ -2,6 +2,7 @@
 
 package io.github.amichne.kast.protocol.wire
 
+import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
 import io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint
 import io.github.amichne.kast.protocol.contract.ProtocolStringConstraint
 import io.github.amichne.kast.protocol.contract.ProtocolText
@@ -95,6 +96,7 @@ internal data class QueryCallableObservationWireDocument(
     @SerialName("lexical_owner") val lexicalOwner: QueryCallbackCallableWireDocument,
     val body: QueryCallbackBodyWireDocument,
     val target: QueryCallableTargetWireDocument,
+    val basis: ImpactSemanticBasisDocument,
 )
 
 internal fun QueryCallableObservationDocument.toWireDocument() =
@@ -139,6 +141,7 @@ internal fun QueryCallableObservationDocument.toWireDocument() =
                 )
             is QueryCallableTargetDocument.SourceLess -> value.sourceLessWire()
         },
+        basis,
     )
 
 internal fun QueryCallableObservationWireDocument.toContract():
@@ -148,7 +151,8 @@ internal fun QueryCallableObservationWireDocument.toContract():
             lexicalOwner,
             body,
             target ->
-            QueryCallableObservationDocument.create(occurrence, lexicalOwner, body, target).toWireDocumentConversion()
+            QueryCallableObservationDocument.create(occurrence, lexicalOwner, body, target, basis)
+                .toWireDocumentConversion()
         }
         .flattenConverted()
 

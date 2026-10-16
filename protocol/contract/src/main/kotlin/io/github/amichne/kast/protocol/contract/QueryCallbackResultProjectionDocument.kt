@@ -14,6 +14,12 @@ sealed interface QueryCallbackResultSiteDocument {
 
 /** The proof universe and the exact site admitted into the selected result domain remain separate. */
 sealed interface QueryCallbackResultProjectionDocument {
+    fun admitsBasis(basis: ImpactSemanticBasisDocument): Boolean =
+        when (this) {
+            is Admitted -> this.basis == basis
+            is Unproven -> true
+        }
+
     fun admitsSubject(subject: QueryReferenceDocument.ExactSymbol): Boolean =
         when (this) {
             is Admitted -> this.subject == subject
@@ -160,7 +166,7 @@ private fun resultInvocations(flow: QueryImmutableCallbackFlowDocument): List<Qu
         }
     }
 
-private fun QueryCallbackFlowDocument.admitsBasis(basis: ImpactSemanticBasisDocument): Boolean =
+internal fun QueryCallbackFlowDocument.admitsBasis(basis: ImpactSemanticBasisDocument): Boolean =
     when (this) {
         is QueryCallbackFlowDocument.Observed -> this.basis == basis
         is QueryCallbackFlowDocument.Immutable -> flow.sourceValue.source.enclosing.basis == basis
@@ -168,7 +174,7 @@ private fun QueryCallbackFlowDocument.admitsBasis(basis: ImpactSemanticBasisDocu
         is QueryCallbackFlowDocument.ContractRejected -> true
     }
 
-private fun QueryNamedCallbackReferenceFlowDocument.admitsBasis(basis: ImpactSemanticBasisDocument): Boolean =
+internal fun QueryNamedCallbackReferenceFlowDocument.admitsBasis(basis: ImpactSemanticBasisDocument): Boolean =
     when (this) {
         is QueryNamedCallbackReferenceFlowDocument.Supplied -> binding.invocation.callable.basis == basis
         is QueryNamedCallbackReferenceFlowDocument.Direct -> binding.basis == basis

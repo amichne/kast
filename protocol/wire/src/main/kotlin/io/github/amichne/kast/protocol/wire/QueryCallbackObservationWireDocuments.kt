@@ -121,6 +121,7 @@ internal data class QueryCallbackObservationWireDocument(
     @SerialName("effective_domain") val effectiveDomain: QueryRelationDomainDocument,
     @SerialName("domain_fingerprint") val domainFingerprint: QueryRelationDomainFingerprint,
     @SerialName("result_projection") val resultProjection: QueryCallbackResultProjectionWireDocument,
+    val basis: ImpactSemanticBasisDocument,
 )
 
 @Serializable
@@ -199,6 +200,7 @@ internal fun QueryCallbackObservationDocument.toWireDocument() =
         effectiveDomain,
         domainFingerprint,
         resultProjection.resultProjectionWire(),
+        basis,
     )
 
 internal fun QueryWalkCallbackObservationDocument.toWireDocument() =
@@ -315,6 +317,7 @@ internal fun QueryCallbackObservationWireDocument.toContract():
                                     effectiveDomain,
                                     domainFingerprint,
                                     resultProjection,
+                                    basis,
                                 )
                                 .toWireDocumentConversion()
                         }

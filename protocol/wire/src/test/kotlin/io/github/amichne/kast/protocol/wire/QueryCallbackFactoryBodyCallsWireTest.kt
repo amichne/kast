@@ -215,6 +215,7 @@ class QueryCallbackFactoryBodyCallsWireTest {
                 callback.effectiveDomain.copy(libraries = libraries),
                 callback.domainFingerprint,
                 callback.resultProjection,
+                callback.basis,
             )
         assertInstanceOf(
             Refinement.Refined::class.java,

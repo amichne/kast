@@ -31,6 +31,7 @@ internal fun RelationCallableObservation.projectCallableObservation(
             projection.callable(lexicalOwner) ?: return null,
             projection.body(body) ?: return null,
             projectedTarget,
+            basis.identity.impactDocument().callableValue() ?: return null,
         )
         .callableValue()
 }

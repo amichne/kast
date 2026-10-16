@@ -42,6 +42,7 @@ enum class QueryCallableObservationDocumentFailure {
     INVALID_PARAMETER,
     INVALID_BOUNDARY,
     INVALID_MODULE_NAME,
+    BASIS_MISMATCH,
 }
 
 /** A compiler-resolved source-less target retains its exact signature, origin and module classification. */
@@ -89,6 +90,26 @@ private constructor(
 }
 
 sealed interface QueryCallableTargetDocument {
+    fun admitsBasis(basis: ImpactSemanticBasisDocument): Boolean =
+        when (this) {
+            is DirectInvocations ->
+                invocations.values.all { it.binding.basis == basis && it.value.source.enclosing.basis == basis }
+            is CallbackSupplies ->
+                supplies.values.all {
+                    it.supplier.binding.invocation.callable.basis == basis && it.value.source.enclosing.basis == basis
+                }
+            is NamedReference -> resultProjection.admitsBasis(basis) && reference.flow.admitsBasis(basis)
+            is ParameterInvocation ->
+                resultProjection.admitsBasis(basis) &&
+                    when (val inventory = suppliers) {
+                        is QueryCallbackSupplierInventoryDocument.Exhaustive -> inventory.basis == basis
+                        is QueryCallbackSupplierInventoryDocument.Unavailable -> true
+                    }
+            is UnavailableSupply,
+            is UnavailableReference,
+            is SourceLess -> true
+        }
+
     data class DirectInvocations(val invocations: BoundedProtocolList<QueryImmutableCallbackUseDocument.Direct>) :
         QueryCallableTargetDocument
 
@@ -126,6 +147,7 @@ private constructor(
     val lexicalOwner: QueryCallbackCallableDocument,
     val body: QueryCallbackBodyDocument,
     val target: QueryCallableTargetDocument,
+    val basis: ImpactSemanticBasisDocument,
 ) {
     fun admitsQuestion(
         subject: QueryReferenceDocument.ExactSymbol,
@@ -176,7 +198,10 @@ private constructor(
             lexicalOwner: QueryCallbackCallableDocument,
             body: QueryCallbackBodyDocument,
             target: QueryCallableTargetDocument,
+            basis: ImpactSemanticBasisDocument,
         ): Refinement<QueryCallableObservationDocument, QueryCallableObservationDocumentFailure> {
+            if (!target.admitsBasis(basis))
+                return Refinement.Rejected(QueryCallableObservationDocumentFailure.BASIS_MISMATCH)
             val owner =
                 when (val admitted = body.admitOwner()) {
                     is Refinement.Refined -> admitted.value
@@ -205,7 +230,7 @@ private constructor(
                     !target.admitsParameter(owner, occurrence, body)
             )
                 return Refinement.Rejected(QueryCallableObservationDocumentFailure.INVALID_PARAMETER)
-            return Refinement.Refined(QueryCallableObservationDocument(occurrence, lexicalOwner, body, target))
+            return Refinement.Refined(QueryCallableObservationDocument(occurrence, lexicalOwner, body, target, basis))
         }
     }
 }

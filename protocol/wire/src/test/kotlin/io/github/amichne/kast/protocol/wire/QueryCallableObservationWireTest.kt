@@ -36,7 +36,7 @@ class QueryCallableObservationWireTest {
         val value = parameterObservation()
         val wire = value.toWireDocument()
         val encoded = wireJson.encodeToJsonElement(QueryCallableObservationWireDocument.serializer(), wire).jsonObject
-        assertEquals(setOf("occurrence", "lexical_owner", "body", "target"), encoded.keys)
+        assertEquals(setOf("occurrence", "lexical_owner", "body", "target", "basis"), encoded.keys)
         assertEquals(JsonPrimitive("ANONYMOUS"), encoded.getValue("body").jsonObject.getValue("type"))
         val target = encoded.getValue("target").jsonObject
         assertEquals(setOf("type", "parameter", "suppliers", "invocation", "result_projection"), target.keys)
@@ -220,6 +220,7 @@ class QueryCallableObservationWireTest {
                         io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument.PARAMETER_ESCAPES
                     ),
                 ),
+                fixture.callbackDocument().basis,
             )
             .refined()
     }
@@ -243,6 +244,7 @@ class QueryCallableObservationWireTest {
                     callable,
                     QuerySourceLessCallableDispositionDocument.LIBRARY_POLICY_EXCLUDED,
                 ),
+                fixture.callbackDocument().basis,
             )
             .refined()
     }
