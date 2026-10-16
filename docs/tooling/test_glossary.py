@@ -323,6 +323,119 @@ def test_markdown_escapes_preserve_visible_backticks_and_real_code_spans(
     assert tuple((hit.line, hit.start, hit.end) for hit in hits) == expected
 
 
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("```code```\nA saved result.\n", ((2, 3, 14),)),
+        ("```saved result```\nA saved result.\n", ((2, 3, 14),)),
+        ("```saved result``\nA saved result.\n", ((1, 4, 15), (2, 3, 14))),
+        ("```lang\\`code\nsaved result\n", ((2, 1, 12),)),
+        ("```text\nsaved result\n", ()),
+        ("~~~lang`code\nsaved result\n~~~\nA saved result.\n", ((4, 3, 14),)),
+        ("````text\nsaved result\n`````\nA saved result.\n", ((4, 3, 14),)),
+        ("````text\n```\nsaved result\n````\nA saved result.\n", ((5, 3, 14),)),
+        ("```text\n~~~\nsaved result\n```\nA saved result.\n", ((5, 3, 14),)),
+        ("```text\n``` info\nsaved result\n```\nA saved result.\n", ((5, 3, 14),)),
+        ("```text\n\\```\nsaved result\n```\nA saved result.\n", ((5, 3, 14),)),
+        ("Use ```saved result``` here.\nA saved result.\n", ((2, 3, 14),)),
+        ("Use `code\nsaved result\n` A saved result.\n", ((3, 5, 16),)),
+        ("Use ``code\n`saved result\n`` A saved result.\n", ((3, 6, 17),)),
+        ("Use ``code\nsaved result\n` here.\n", ((2, 1, 12),)),
+        ("Use `code\nsaved result\n", ((2, 1, 12),)),
+        ("Use `code\n\nsaved result\n` here.\n", ((3, 1, 12),)),
+        ("Use `code\n# A saved result.\n` here.\n", ((2, 5, 16),)),
+        ("Use `code\n----\nsaved result\n` here.\n", ((3, 1, 12),)),
+        ("- Use `code\n  saved result\n  ` A saved result.\n", ((3, 7, 18),)),
+        ("- Use `code\n- saved result\n  ` here.\n", ((2, 3, 14),)),
+        ("Use `code\n    saved result\n` here.\n", ()),
+        ("Use `code\n```text\nsaved result\n```\n` A saved result.\n", ((5, 5, 16),)),
+        ("Use `code <!-- hidden\nsaved result\n` A saved result.\n", ((3, 5, 16),)),
+        ("Use `code\n<!-- hidden -->\nsaved result\n` here.\n", ((3, 1, 12),)),
+        ("Use `code\ninside <!-- saved result -->\n` A saved result.\n", ((3, 5, 16),)),
+        ("Use `code\r\nsaved result\r\n` A saved result.\r\n", ((3, 5, 16),)),
+        ("```code```\r\nA saved result.\r\n", ((2, 3, 14),)),
+    ],
+    ids=[
+        "same-line-triple-code-span",
+        "same-line-triple-span-with-term",
+        "invalid-info-unmatched",
+        "escaped-backtick-still-invalid-in-info",
+        "valid-unclosed-fence",
+        "tilde-info-allows-backtick",
+        "longer-closing-fence",
+        "shorter-fence-does-not-close",
+        "different-marker-does-not-close",
+        "closing-fence-info-is-data",
+        "escaped-fence-closer-is-data",
+        "prefixed-triple-span",
+        "multiline-single-span",
+        "multiline-double-span-with-shorter-run",
+        "unmatched-double-opener",
+        "unmatched-opener-at-eof",
+        "blank-line-ends-inline-paragraph",
+        "heading-ends-inline-paragraph",
+        "setext-ends-inline-paragraph",
+        "multiline-span-in-list",
+        "sibling-list-item-ends-paragraph",
+        "indented-paragraph-continuation-in-span",
+        "valid-fence-ends-inline-paragraph",
+        "inline-comment-marker-is-code",
+        "block-comment-ends-inline-paragraph",
+        "inline-comment-within-multiline-code",
+        "crlf-multiline-span",
+        "crlf-invalid-fence-info",
+    ],
+)
+def test_delimiter_family_preserves_prose_and_code_positions(
+    text: str, expected: tuple[tuple[int, int, int], ...]
+) -> None:
+    glossary = load_glossary(ROOT / "docs/glossary.json")
+    assert not isinstance(glossary, Rejected)
+    hits = occurrences(glossary, text, Path("guide.md"))
+    assert tuple((hit.line, hit.start, hit.end) for hit in hits) == expected
+
+
+def test_new_nested_list_item_starts_its_own_code_context() -> None:
+    glossary = load_glossary(ROOT / "docs/glossary.json")
+    assert not isinstance(glossary, Rejected)
+    text = "1. Outer\n   -     ```text\n         saved result\n         ```\n     A saved result.\n"
+    hits = occurrences(glossary, text, Path("guide.md"))
+    assert tuple((hit.line, hit.start, hit.end) for hit in hits) == ((5, 8, 19),)
+
+
+def test_mdx_component_heading_ends_a_code_span_paragraph() -> None:
+    glossary = load_glossary(ROOT / "docs/glossary.json")
+    assert not isinstance(glossary, Rejected)
+    text = (
+        '<Tabs>\n  <Tab title="Example">\n    Use `code\n    # saved result\n'
+        "    ` here.\n  </Tab>\n</Tabs>\n"
+    )
+    hits = occurrences(glossary, text, Path("guide.mdx"))
+    assert tuple((hit.line, hit.start, hit.end) for hit in hits) == ((4, 7, 18),)
+
+
+@pytest.mark.parametrize(
+    ("text", "suffix", "expected"),
+    [
+        ("# Use `code\nsaved result\n` here.\n", ".md", ((2, 1, 12),)),
+        ("- # Use `code\n  saved result\n  ` here.\n", ".md", ((2, 3, 14),)),
+        (
+            '<Tabs>\n  <Tab title="Example">\n    # Use `code\n    saved result\n'
+            "    ` here.\n  </Tab>\n</Tabs>\n",
+            ".mdx",
+            ((4, 5, 16),),
+        ),
+    ],
+)
+def test_code_span_opener_in_a_heading_cannot_reach_another_block(
+    text: str, suffix: str, expected: tuple[tuple[int, int, int], ...]
+) -> None:
+    glossary = load_glossary(ROOT / "docs/glossary.json")
+    assert not isinstance(glossary, Rejected)
+    hits = occurrences(glossary, text, Path("guide" + suffix))
+    assert tuple((hit.line, hit.start, hit.end) for hit in hits) == expected
+
+
 @pytest.mark.parametrize("suffix", [".md", ".mdx"])
 @pytest.mark.parametrize(
     ("text", "expected"),

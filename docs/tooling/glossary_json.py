@@ -382,6 +382,7 @@ class _MarkdownLine:
     containers: tuple[int, ...]
     content: str
     prefix_columns: int = 0
+    item: Literal["NEW", "CONTINUED"] = "CONTINUED"
 
     @property
     def container_indent(self) -> int:
@@ -420,6 +421,7 @@ def _markdown_line(
     if _THEMATIC_BREAK.fullmatch(tail):
         return _MarkdownLine(tuple(levels), expanded[container:], container)
     cursor = indent
+    item: Literal["NEW", "CONTINUED"] = "CONTINUED"
     while cursor - container < 4:
         marker = _LIST_MARKER.match(expanded, cursor)
         if marker is None:
@@ -427,14 +429,84 @@ def _markdown_line(
         padding = len(marker["padding"])
         container = marker.end() - padding + (padding if 1 <= padding <= 4 else 1)
         levels.append(container)
+        item = "NEW"
         cursor = container
         while cursor < len(expanded) and expanded[cursor] == " ":
             cursor += 1
-    return _MarkdownLine(tuple(levels), expanded[container:], container)
+    return _MarkdownLine(tuple(levels), expanded[container:], container, item)
 
 
-type _BlockState = Literal["PROSE", "COMMENT", "FRONTMATTER"] | _Fence
-type _InlineState = Literal["PROSE", "COMMENT"]
+def _fence_opener(
+    content: str, markup: Literal["markdown", "mdx"], container_indent: int
+) -> _Fence | Literal["NOT_FENCE"]:
+    match = re.fullmatch(
+        r" {0,3}(`{3,}|~{3,})(.*)" if markup == "markdown" else r"\s*(`{3,}|~{3,})(.*)",
+        content,
+    )
+    if match is None or (match[1][0] == "`" and "`" in match[2]):
+        return "NOT_FENCE"
+    return _Fence(match[1], container_indent)
+
+
+@dataclass(frozen=True, slots=True)
+class _CodeEnd:
+    line: int
+    column: int
+
+
+def _code_end(
+    source: tuple[str, ...],
+    index: int,
+    column: int,
+    delimiter: str,
+    markup: Literal["markdown", "mdx"],
+    containers: tuple[int, ...],
+    scope: Literal["LINE", "PARAGRAPH"],
+) -> _CodeEnd | Literal["UNMATCHED"]:
+    closing = re.compile(rf"(?<!`){re.escape(delimiter)}(?!`)")
+    match = closing.search(source[index], column)
+    if match is not None:
+        return _CodeEnd(index, match.end())
+    if scope == "LINE":
+        return "UNMATCHED"
+    for following in range(index + 1, len(source)):
+        line = source[following]
+        if not line.strip():
+            break
+        layout = _markdown_line(line, containers, "OPEN")
+        if markup == "markdown" and layout.containers != containers:
+            break
+        content = layout.content if markup == "markdown" else line.expandtabs(4)
+        fence = _fence_opener(content, markup, layout.container_indent)
+        if isinstance(fence, _Fence):
+            break
+        if fence != "NOT_FENCE":
+            assert_never(fence)
+        block_indent = r" {0,3}" if markup == "markdown" else r"\s*"
+        if re.match(block_indent + r"(?:#{1,6}(?: +|$)|>|<!--|(?:=+|-+) *$)", content):
+            break
+        if markup == "mdx" and re.match(r"\s*</?[A-Za-z][\w.-]*(?:\s|>)", content):
+            break
+        if _THEMATIC_BREAK.fullmatch(content.lstrip(" ")) and not content.startswith("    "):
+            break
+        expanded = line.expandtabs(4)
+        indent = len(expanded) - len(expanded.lstrip(" "))
+        marker = _LIST_MARKER.match(expanded, indent)
+        container = containers[-1] if containers else 0
+        if (
+            marker
+            and indent - container < 4
+            and (containers or marker["marker"] in {"*", "+", "-", "1.", "1)"})
+        ):
+            break
+        match = closing.search(line)
+        if match is not None:
+            return _CodeEnd(following, match.end())
+    return "UNMATCHED"
+
+
+type _BlockState = Literal["PROSE", "COMMENT", "FRONTMATTER"] | _Fence | _CodeEnd
+type _InlineState = Literal["PROSE", "COMMENT"] | _CodeEnd
 
 
 @dataclass(frozen=True, slots=True)
@@ -444,10 +516,25 @@ class _InlineMask:
     code_spans: tuple[range, ...]
 
 
-def _mask_inline(line: str, state: _InlineState) -> _InlineMask:
+def _mask_inline(
+    source: tuple[str, ...],
+    index: int,
+    state: _InlineState,
+    markup: Literal["markdown", "mdx"],
+    containers: tuple[int, ...],
+    scope: Literal["LINE", "PARAGRAPH"],
+) -> _InlineMask:
+    line = source[index]
     parts: list[str] = []
     code_spans: list[range] = []
     cursor = 0
+    if isinstance(state, _CodeEnd):
+        if index < state.line:
+            return _InlineMask(" " * len(line), state, (range(len(line)),))
+        cursor = state.column
+        parts.append(" " * cursor)
+        code_spans.append(range(cursor))
+        state = "PROSE"
     while cursor < len(line):
         if state == "COMMENT":
             end = line.find("-->", cursor)
@@ -458,6 +545,8 @@ def _mask_inline(line: str, state: _InlineState) -> _InlineMask:
             cursor = end + 3
             state = "PROSE"
             continue
+        if state != "PROSE":
+            assert_never(state)
         token = re.search(r"<!--|`+", line[cursor:])
         if token is None:
             parts.append(line[cursor:])
@@ -475,12 +564,16 @@ def _mask_inline(line: str, state: _InlineState) -> _InlineMask:
             cursor = end
             state = "COMMENT"
             continue
-        closing = re.search(rf"(?<!`){re.escape(token[0])}(?!`)", line[end:])
-        if closing is None:
+        closing = _code_end(source, index, end, token[0], markup, containers, scope)
+        if closing == "UNMATCHED":
             parts.append(token[0])
             cursor = end
+        elif closing.line > index:
+            parts.append(" " * (len(line) - start))
+            code_spans.append(range(start, len(line)))
+            return _InlineMask("".join(parts), closing, tuple(code_spans))
         else:
-            cursor = end + closing.end()
+            cursor = closing.column
             parts.append(" " * (cursor - start))
             code_spans.append(range(start, cursor))
     return _InlineMask("".join(parts), state, tuple(code_spans))
@@ -492,7 +585,8 @@ def prose_lines(text: str, markup: Literal["markdown", "mdx"]) -> tuple[str, ...
     state: _BlockState = "PROSE"
     containers: tuple[int, ...] = ()
     paragraph: Literal["OPEN", "CLOSED"] = "CLOSED"
-    for index, line in enumerate(text.splitlines()):
+    source = tuple(text.splitlines())
+    for index, line in enumerate(source):
         if index == 0 and line.strip() == "---":
             state = "FRONTMATTER"
             lines.append("")
@@ -524,6 +618,7 @@ def prose_lines(text: str, markup: Literal["markdown", "mdx"]) -> tuple[str, ...
                 continue
         paragraph_break = False
         prefix_columns = 0
+        inline_scope: Literal["LINE", "PARAGRAPH"] = "PARAGRAPH"
         if state == "PROSE":
             container_indent = 0
             content = line
@@ -533,22 +628,27 @@ def prose_lines(text: str, markup: Literal["markdown", "mdx"]) -> tuple[str, ...
                 container_indent = layout.container_indent
                 content = layout.content
                 prefix_columns = layout.prefix_columns
+                if layout.item == "NEW":
+                    paragraph = "CLOSED"
                 if paragraph == "CLOSED" and content.startswith("    "):
                     lines.append("")
                     continue
                 paragraph_break = (
                     re.match(r" {0,3}(?:#{1,6}(?: +|$)|(?:[-*_] *){3,}$)", content) is not None
                 )
-            marker = re.match(
-                r"^ {0,3}(`{3,}|~{3,})" if markup == "markdown" else r"^\s*(`{3,}|~{3,})",
-                content,
-            )
-            if marker:
-                state = _Fence(marker[1], container_indent)
+                if paragraph_break:
+                    inline_scope = "LINE"
+            elif re.match(r"\s*#{1,6}(?: +|$)", content):
+                inline_scope = "LINE"
+            fence = _fence_opener(content, markup, container_indent)
+            if isinstance(fence, _Fence):
+                state = fence
                 paragraph = "CLOSED"
                 lines.append("")
                 continue
-        mask = _mask_inline(line, state)
+            if fence != "NOT_FENCE":
+                assert_never(fence)
+        mask = _mask_inline(source, index, state, markup, containers, inline_scope)
         line, state = mask.text, mask.state
         line = re.sub(r"\]\([^\n]*?\)", lambda m: "]" + " " * (len(m[0]) - 1), line)
         line = re.sub(r"https?://\S+", lambda m: " " * len(m[0]), line)
