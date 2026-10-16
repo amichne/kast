@@ -1,0 +1,614 @@
+{
+  "documents": [
+    {
+      "findings": [],
+      "path": "README.md",
+      "sha256": "ecfcef7cbb1dfbd9baaba5175cbe32512a2d96e22fb81addcdec0edd813d76e9",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "AGENTS.md",
+      "sha256": "e6c490d707cc364aad74f245a88dbe457606f65abdf53a9c2a1eebbec2af4a04",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/AGENTS.md",
+      "sha256": "6b187e800de5cf06ddf1f8b91f03518261dcc20276d1d6a30c7701244ce4df29",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/GLOSSARY.md",
+      "sha256": "0e10a5ae6f931a283950bf92378f1a4d6485771d9025c8c44f9a9d5c887542df",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/development.md",
+      "sha256": "b3b6769ab89658fbfec352fa629d6c1827064a278c7d417a82dec4680e329c77",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/documentation-structure.md",
+      "sha256": "ace64a3abb850fa3d03a4aa1a9db7caadd4a1f7767227106624e99b37ccb51c5",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/hosted-read-configuration.md",
+      "sha256": "e3f435611c6efa7f2baff7075f6e5acc1b89bdef5c12a1c5de45f2c4df3ad3e8",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/installation-recovery.md",
+      "sha256": "ab94b23f7cb8ccc12e9a2c3a0bdf1ee420e1544709c5d7134102e0e33a29a997",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/recovery-plan.md",
+      "sha256": "1c1085d90566b1815e3dd20feae751cf121b71cfc6a40bc864efa45bfb7250e0",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/static-query-execution.md",
+      "sha256": "d1d330571f01c0155d4de01c8327068f24d26fdba5eac4ddf859af016fd09307",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/tool-rpc.md",
+      "sha256": "639b9e9ba49567e1ab8c22ead97c42f0a069864bb94b2da53858f3b61f40170d",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/topology-impact.md",
+      "sha256": "82e02e29b65bb291c212f8d0861d7f55076c6a49e45c3dd2fd14204634cf7f40",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/agent-harnesses.mdx",
+      "sha256": "6df816e06ee35bf5bf52df3ce493dd8e54fcdfae6ff1d06d8b13b850ca7e6ae0",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/explanation.mdx",
+      "sha256": "447ca59a060f52720fc2cd00a3abe8941a728405eefd1102533307cfe981f38f",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/how-to.mdx",
+      "sha256": "edb29627835eb8e3b90dbabff9ccbfcb4b422800a6daa0f83651d66309abaa23",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/index.mdx",
+      "sha256": "5b65882fef7ff6f1580a1998b41c2e3ab8d9d6c0ce5aaf10721a52efe60c862a",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference.mdx",
+      "sha256": "db7a5be8e080b01d18d264f828e370df0688fa4aefcc90916d84256783526cd5",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/search.mdx",
+      "sha256": "e7763642f7e32340a2b735bd36236e9ccbf800c6b7f20350b6a50fe019e44926",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/start.mdx",
+      "sha256": "6af6922c0e2f4e30e17e04717269715ad73e071e932fc573cc1ef685594bafcf",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/troubleshooting.mdx",
+      "sha256": "9b1ec30662391f72c861ac0cc4f5660b3c23125001837f1d4fc682a8f13a71d5",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/tutorials.mdx",
+      "sha256": "b936dfb889dc11200b96cb07b7d8a25f4a9e353491cc0176ad1ede7aee807b64",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/.mintlify/product-brief.md",
+      "sha256": "0e61c191e8e43342224f0b205cfc0e0d8752e3976ebe67e32e241a80c895d0fa",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/explanation/query-lifecycle.mdx",
+      "sha256": "22f5b9010924e148411eeceb2920af6f6cc048b20956f3fe1488e4eac7370456",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/how-to/complete-engineering-task.mdx",
+      "sha256": "8aeee1d68f3e1a91cdfb2e90353f9f69fca9a5d853111169f20ad694026caf7d",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/how-to/inspect-diagnostics.mdx",
+      "sha256": "c8570edd8ba5169f10181e3ddb8971a0aff9da272fcedae9df3c8523788cf550",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/how-to/read-retained-evidence.mdx",
+      "sha256": "7f7b5d495c1eae5af9bb8106d92c22b1b881885131f11d1c150e4b3987169cf7",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/AGENTS.md",
+      "sha256": "52d02d5cf5f0ec5acf69eb9d6bc5ce5a9e9c26fb886407751d97481e0e61a5ba",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/api.mdx",
+      "sha256": "31074c50ff8cbbb4268c5732a2d4bf206b19b78eaf6b8b756aece740d5949c09",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/callback-observations.mdx",
+      "sha256": "645ea8a3d5381d6203858d763b407a440012259e25031759c9be681b5fedfd13",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/callbacks.mdx",
+      "sha256": "ae54867ed46ddf887d9b0d12e00a1c12ae59836bd71c23af6a3ad415eba042d0",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/change.mdx",
+      "sha256": "fbbf2182e38e7ad7e2187f10244ef5fb407337fee55e949032585f600fb0d349",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/compatibility.mdx",
+      "sha256": "df7d5e2d85d4be6b47fe6ed0a66d095a9a499d74869ab9dc06e8b42266881059",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/composition.mdx",
+      "sha256": "ab34640171318f43aa49aec77a3d24dcdf08cb83a2bb08a2d349b5c3732c840b",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/evidence-boundaries.mdx",
+      "sha256": "17ccea770ef01fe891c15eb1518f244066e50388a04403c5e01730053ed0fea8",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/installation.mdx",
+      "sha256": "7e0f884b9c5f81550362c8a50ce6b0b2f501181318f552580fe3d1133e1b1da5",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/integrations.mdx",
+      "sha256": "14fb13a96dd9873eb33c6fec0e92309eabc821f3941da707012f426fb8ec5ede",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/lifecycles.mdx",
+      "sha256": "1717b309f16fb682b37c709e4a828a946172b0e4c526d1877bd5cf18c71b5e3b",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/limits.mdx",
+      "sha256": "00134df593bb2808bb081afedfe58545133ddc72d53415446ada3725019fc677",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/management.mdx",
+      "sha256": "5e45afaa8416f68d877514066d98bc9452c893f9b19d9bbf2ddfa823ccd5ca36",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/mcp-catalog.mdx",
+      "sha256": "4cb7122e87aab821b8ccb4ecf08b6740a1f66076b30f7450cfd598a0ea18e0ea",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/program-tracing.mdx",
+      "sha256": "efd2365703e26769b1c0db00153708c1309d63c75f6cfc584b68004605f29d92",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/query-pipelines.mdx",
+      "sha256": "38fe576da25a43dab6706d852f35fb80e114fa49da43646dfb6e0dee6bfa67a7",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/responses.mdx",
+      "sha256": "8a39da3f465e9d3bd7b16b8d303c99f4aed2a6d08b91e7ac7a71c1159dee35c0",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/rpc-catalog.mdx",
+      "sha256": "41c4b07bbe8550e63def1683b00b8fb69aeca6c37ce66c228f75c57919f3f9d7",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/schemas.mdx",
+      "sha256": "385748c8002be3399e30777eeabf24610f7695b6d7ba97a60f8d62a6e8f6f3c1",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/search.mdx",
+      "sha256": "03de43b9a0a12313209bedf29cc561e21036c9b905ae577f18d53f2a7c310ecc",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/source-map.mdx",
+      "sha256": "ba2e81ce8bf10b28edb0aae3f11a37862933713366921435d8e292688112736c",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/staleness.mdx",
+      "sha256": "8eff48b935db6e252847002c180d9a7dd190109d934f6eaacc2d4dd8a874987f",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/symbols.mdx",
+      "sha256": "8c4bd20f16af11912646c8b89aede5241e47e9fe4eaf4a9a39f0497262423dac",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/troubleshooting.mdx",
+      "sha256": "a2149b0d700efc41e36b162f9a77421c5efbcaa7be04c16b53b5ac8f5fb4f531",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/walkthrough.mdx",
+      "sha256": "2dca8f959aab0ac78579984fd5f44f8403e4aa77f3d0ce45bdc3a3a67c43ec13",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/internals/architecture.mdx",
+      "sha256": "37096eff8c2eafe606dc70ba7965ab4f58a76a4433c23d91e6b4e1fb65bb332b",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/internals/background-startup.mdx",
+      "sha256": "aa0b5429fa754a077a48a2062dd8f3498b2f03699e5f6f55275e6880626a5d97",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/models/diagnostic.mdx",
+      "sha256": "44440d2bb35030c903f12788d22840cafad67944b56a7a905da15fcc597b82b0",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/models/live-evidence.mdx",
+      "sha256": "162284bd8c517d6e8ffb94856900a908c0d09058c007aecca079f224a1bf2a0b",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/models/mcp-change-result.mdx",
+      "sha256": "f25e9e60a5b27c66f81bc1722cf65af5fc5a9f319154ca9b5eb6da1ef1966361",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/models/mcp-investigation-result.mdx",
+      "sha256": "dac99f9e6afdb58d890faadbc977f51c06a02091b82925e20386fe5c71fdc520",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/models/mcp-read-result.mdx",
+      "sha256": "ec5a860650799b7db91f45d9ece6a020425d4cb1f3bfde3bf47990fc7044fa03",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/models/mcp-tool-call-result.mdx",
+      "sha256": "0e20f0fc3082d3f4a4b86f51de694d0a5ec8ee026aef87fd290a0a3e8782fbf2",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/models/query-item.mdx",
+      "sha256": "0a2e1b5e391d7c7433b0e7833a2be66c1248e49e98a17564c6bd3697e0ed19d0",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/models/relation-fact.mdx",
+      "sha256": "d06bb421e332b4598b828788ce3850977939b65d808cedcaf8fb7cef67a6b1c1",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/reference/models/tool-rpc-reply.mdx",
+      "sha256": "c7138197b12b8f7c35bdef1175b7019c1e074ef9400d8a25221421168530d02b",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/public/tutorials/first-query.mdx",
+      "sha256": "644c13e50c63dab07653a1dc5dd617c2030efb81bbbbf389bf632f6f2e899162",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/6322cde6f-stress-findings.md",
+      "sha256": "f67103388103c9d0d128220036988376eacc1d5663403f7741fa6bf42218187f",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/automatic-private-retention.md",
+      "sha256": "e5cb6d86cfa72cc8055996a4e18445b8cf9ba3d225b1c689408b9a8957fee937",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/behavior-sized-testing.md",
+      "sha256": "3ebbf621cf978e3d817fc61ba640829925773a81e135c8ec88301a0bee66a533",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/callback-tracing-proof.md",
+      "sha256": "fd1a42aa026536d3229ea884223c8a4fd5942d16a544171cce555b9fdf446a0a",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/classlike-ast-k2-parser-qualification.md",
+      "sha256": "45bb3368d7edb7c296e5e5510e223673041d47d3e47ee88809438bbec916ef4e",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/classlike-ast-runtime-qualification.md",
+      "sha256": "aa02b8cc99e565f269a0a0c1a070180a9645b9b84f8984bfa7c2ee5b2ea11428",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/concurrent-semantic-reads.md",
+      "sha256": "3131de39048e2e384145249405baa6d3f1276de48a148322fabd3996e3ecc02f",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/direct-tool-startup-2026-10-05.md",
+      "sha256": "26da34df23972247265b5d97155af9b3cc3e22da876955590b44af46a4c28eab",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/documentation-diataxis-audit.md",
+      "sha256": "511695a98f08d5c0969732cfc3691b29c1aa0d25cd8823889333e2449f97eacf",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/documentation-vale-adoption.md",
+      "sha256": "a128745d705761e3717bbc913e5099b1f822d09e5dbe06bfcec7cfc539d05fe2",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/hosted-model-work-reduction.md",
+      "sha256": "87e76bb3e63f788d7b9644ded7b0a94caf19f4ea6fb01c88a831a1b3bfc625c6",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/hosted-semantic-reproduction.md",
+      "sha256": "c4949b078e2b178c84abba0fea3a067455252828b0010a16842e3c9b5bcf620d",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/knowledge-migration-history.md",
+      "sha256": "92938efbf3ce794197acb7ecfeeff434ab99eb1fa4c03ec0b7174cd53c056c66",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/lazy-callback-proof.md",
+      "sha256": "7e925de27d2e9aec8d9ff38665ed36e8d12aea24c5dd5c8b7de7d00be67caa23",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/live-semantic-read-acceptance.md",
+      "sha256": "f7f87be813b3c24b9dff949d74cc3d95adf2d01a9e914cfc5ccce5dfabc9eb53",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/native-call-work-accounting.md",
+      "sha256": "e9a78ae8da396e08a4121ece0ad9aed719f5a6dee870595a3970e0131dd53bba",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/packaging-python-removal-ledger.md",
+      "sha256": "07a05d9a5cf1945ed1a1a42e099529d13d61c0d001bddd20d1ba07c6dfed15e3",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/persistent-topology-snapshots.md",
+      "sha256": "41c6b145c4c92f71183403968faf09876a5d39e5228528b602e0662488eedcd8",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/plugin-native-change-acceptance.md",
+      "sha256": "aa0194d4e9a2bb48466eb419ef3f449a59881f218f0dc73de7abdf897db32b5d",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/pre-v1-configuration-audit.md",
+      "sha256": "ea61150b1a74236ba13148d1f2f320e0552bc0c67c40c06c84e059462fdb83a7",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/qualified-inline-unrelated.md",
+      "sha256": "f8fc493d89dfc11085ddde2cc508a55ad9203b6c7d871b6b47fb03818f82bf23",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/query-feedback-tasks.md",
+      "sha256": "f67dcc8455c977e525f45f5e1fca3c2246ce3c3b6bc2239037aacc48dd60ed89",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/query-trace-golden-path.md",
+      "sha256": "6022b2e75e918fb527724bc6bc999f9bc4b854590ff6d9d8099a76b0fecd0969",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/query-trace-work-reduction.md",
+      "sha256": "2dee73c93aca8dcb657f08a70367874c88a2e71a6bbe60fb662717a43af7e3a9",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/representation-impact-proof.md",
+      "sha256": "59e63d5de0b90eb42754c2c19e56c6f8e23a58347e91aee5675a7713b7e16752",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/resumable-local-binding-proof.md",
+      "sha256": "aca1d6cf1bb78f8304c9393f9b046ae7d813e83e3d249d56cc34c0168623ed84",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/selected-jbr-startup-2026-10-05.md",
+      "sha256": "ecf08639b707758172ea446af4dd74c0d8a61b376920ec810b8d5d8cdabe04f0",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/semantic-query-progress-acceptance.md",
+      "sha256": "d6e51fe675438e4d03956a9ca7c36443bfc9f21206b499487fae67ed5cf6df56",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/semantic-read-throughput.md",
+      "sha256": "a984628afba2897edca07fdee9252ffa7f2f2be5668e662fd2a81c878941c2dd",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/semantic-replay-comparison.md",
+      "sha256": "4d9a868b73cb5d6b752b307701480871f9583c98ab241c397f5e77cbdf0f946f",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/v042-scoped-workstreams.md",
+      "sha256": "935af13ba89c58c334357c1a1874818251df01822aa5447a304e1c9cfdcddb1f",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/workspace-readiness-recovery-989.md",
+      "sha256": "b1c4668d11347837c9cb74ca03b39b552a4f2f9df840a704aedc5564d7110a6f",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/agent-interface-mvp/report.md",
+      "sha256": "723b81a3cc994fd2c19cc3b4e94f451ea98d3ec79b03ec741a7e31d7cea8e0f0",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/agent-interface-mvp/requests/freeze.md",
+      "sha256": "849e79d0cc6c5dabadd1cbbb685b3c99b82a85227c065f4bdd0c5130ca31ca52",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/reference-rewrite/README.md",
+      "sha256": "651548539dd732ffcb478aabfde7eed5fa676698bba3aa40f3a690e502d500a8",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/reviews/reference-rewrite/consumer-compatibility/README.md",
+      "sha256": "e1ef71e4e18cc3976b8512a42ac688d82e637ed60638ba7b52a84acb80dda491",
+      "type": "OUT_OF_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/tooling/README.md",
+      "sha256": "66945f2019990bf3fa7ac85b81803c3358fcc055506acea93c2130450c4e1707",
+      "type": "IN_SCOPE"
+    },
+    {
+      "findings": [],
+      "path": "docs/tooling/.pytest_cache/README.md",
+      "sha256": "73fd6fccdd802c419a6b2d983d6c3173b7da97558ac4b589edec2dfe443db9ad",
+      "type": "IN_SCOPE"
+    }
+  ],
+  "entries": 23,
+  "schemaVersion": 1,
+  "sourceSha256": "a29dee1d5707d920c0ee93584f0765f4a1c5e80a3050e4d0a6fbde6ed5a71490",
+  "type": "GLOSSARY_REPORT"
+}

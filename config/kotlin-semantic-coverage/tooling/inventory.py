@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run --locked --script
 # /// script
 # requires-python = ">=3.12,<3.14"
-# dependencies = ["pydantic==2.12.3", "pytest==8.4.2", "defusedxml==0.7.1"]
+# dependencies = ["pydantic==2.12.3", "pytest==9.0.3", "defusedxml==0.7.1"]
 # [tool.uv]
 # no-build = true
 # required-version = ">=0.12.9"

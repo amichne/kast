@@ -7,8 +7,10 @@ description: "Read the workspace and source state that support a semantic result
 openapi-schema: "reference/callables.openapi.json query_symbolsResponse_liveReadEvidence"
 ---
 
-Live read evidence identifies the workspace and source state that support a semantic result. Its lifetime and identity apply to that read.
+Live read evidence names the workspace and source state that support the operation. Its identity and lifetime apply to that read.
 
-Retained results and continuations need their original read state. An exact symbol can undergo fresh compiler revalidation.
+The read epoch records admitted state signals. It does not replace committed-content admission or compiler identity revalidation.
 
-[Results](/reference/responses#saved-state-and-identity) defines reuse rules. [Query execution and evidence delivery](/explanation/query-lifecycle) explains their different purposes.
+Exact references can get fresh authority under their identity policy. Retained results and continuations need their original read state.
+
+[Staleness](/reference/staleness) defines those policies. [Lifecycles](/reference/lifecycles) identifies the Host and request owners.

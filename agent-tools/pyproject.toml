@@ -5,7 +5,7 @@ requires-python = ">=3.12,<3.14"
 dependencies = ["pydantic==2.12.3"]
 
 [dependency-groups]
-dev = ["pyright==1.1.407", "pytest==8.4.2", "ruff==0.14.0"]
+dev = ["pyright==1.1.407", "pytest==9.0.3", "ruff==0.14.0"]
 
 [tool.uv]
 no-build = true
