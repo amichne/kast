@@ -1,15 +1,10 @@
 ---
-title: "Get started"
+title: "Install Kast"
 description: "Install Kast with one command and ask your first Kotlin question in Codex."
 icon: "download"
 ---
 
 Use this guide to install Kast and ask your first question in Codex. The installer offers the Codex connection by default.
-
-
-1. [Install the supported payload.](#1-install-kast)
-2. [Restart IDEA and inspect the installation.](#2-restart-intellij-idea)
-3. [Ask your agent a Kotlin question.](#3-connect-your-agent)
 
 ## Before you install
 
@@ -19,44 +14,46 @@ You need:
 - A Kotlin Gradle project.
 - IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
 
-## 1. Install Kast
+<span id="1-install-kast" />
 
-Run this command in a terminal:
+<Steps>
+  <Step title="Install Kast">
+    Run this command in a terminal:
 
-```shell wrap
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
-```
+    ```shell wrap
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
+    ```
 
-The installer adds Kast and its IntelliJ plugin. Accept the default Codex connection when the installer asks.
+    The installer adds Kast and its IntelliJ plugin. Accept the default Codex connection when the installer asks.
+  </Step>
+  <Step title="Load the IDEA plugin">
+    <span id="2-restart-intellij-idea" />
 
-## 2. Restart IntelliJ IDEA
+    Restart IDEA to load the plugin. Then examine the installation:
 
-Restart IDEA to load the plugin. Then examine the installation:
+    ```shell
+    kast status
+    ```
 
-```shell
-kast status
-```
+    If your terminal cannot find `kast`, use the command path that the installer prints.
 
-If your terminal cannot find `kast`, use the command path that the installer prints.
+    <span id="3-connect-your-agent" />
+  </Step>
+  <Step title="Connect your agent">
+    <span id="3-ask-your-agent" />
 
-<a id="3-connect-your-agent" />
+    The installer offers the Codex connection by default. Continue with [Connect your agent](/agent-harnesses) to load it and select the exact worktree.
 
-## 3. Ask your agent
-
-Restart Codex. Select your Kotlin repository or worktree. Ask:
-
-> Use Kast to find a Kotlin declaration in this workspace. Show its signature and source location.
-
-The first query prepares the IDEA project. Kast reports trust, import, or indexing blockers if preparation cannot finish.
-
-<Card title="Choose your agent" icon="plug" href="/agent-harnesses">
-  Use Copilot or Pi, or change an existing Codex connection.
-</Card>
+    Use the same page for Copilot or Pi. [Installation reference](/reference/installation) covers release channels and installer options.
+  </Step>
+</Steps>
 
 ## 4. Establish readiness
 
 Complete [the first-query exercise](/tutorials/first-query) in the selected project. Compare the returned declaration and caller with the exercise source.
 
-`kast status` reports installation state. A fresh semantic query establishes that the selected project admits the requested read.
+<Warning>
+  `kast status` reports installation state. A tool catalog proves availability. A fresh semantic query establishes that the selected project admits the requested read.
+</Warning>
 
 If setup stops, use [Troubleshoot Kast](/troubleshooting).

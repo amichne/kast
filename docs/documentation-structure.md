@@ -1,10 +1,12 @@
 # Documentation reader tracks
 
-Kast uses one Mintlify site with four reader tracks. `docs/public/docs.json` owns navigation. Existing URLs keep their established routes.
+Kast uses one Mintlify site with three navigation tracks: Guides, Architecture, and Reference. `docs/public/docs.json` owns navigation. Existing URLs keep their established routes.
 
 The [Diátaxis framework](https://diataxis.fr/) distinguishes tutorials, how-to guides, reference, and explanation by the reader's need.
 
 This policy applies to the authored public site. Contributor guides and historical review reports keep their separate purpose and evidence revisions.
+
+Guides contain tutorials, task procedures, and recovery. Architecture contains explanations. Reference contains exact interface contracts. These navigation tracks preserve the four Diátaxis page purposes below.
 
 ## Choose the page's purpose
 
@@ -39,6 +41,8 @@ The [reference guidance](https://diataxis.fr/reference/) favors neutral descript
 | Source ownership | `/reference/source-map`. |
 
 Several established `/reference/...` URLs contain procedures or explanations. Their navigation group and Vale section use their reader purpose.
+
+The Architecture track has five main topics: authority boundaries, query lifecycle, retention and invalidation, topology and ownership, and change lifecycle. `/explanation` remains its overview route; `/architecture` redirects there. New pages use `/architecture/topology` and `/architecture/change-lifecycle`.
 
 Do not move a page solely to match a directory name. Preserve inbound routes and heading anchors when their meaning stays unchanged.
 

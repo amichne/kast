@@ -11,7 +11,7 @@ keywords:
 mode: "wide"
 ---
 
-<a id="bounded-execution-preserves-progress" />
+<span id="bounded-execution-preserves-progress" />
 
 Kast obtains semantic facts from the IDEA project for one exact repository. Transport adapters carry those facts to the agent with their source state and proof limits.
 
@@ -21,16 +21,23 @@ IDEA supplies the imported Gradle model, bundled Kotlin compiler analysis, and i
 
 The owning domain admits exact declarations and relationships. The query protocol coordinates those reads and preserves their qualifications.
 
-```mermaid
-flowchart LR
-  A["Agent question"] --> T["MCP, Tool RPC, or hosted App Server"]
-  T --> P["Exact workspace preparation"]
-  P --> H["IDEA Host and current read authority"]
-  H --> D["Symbol, relation, source, and traversal domains"]
-  D --> Q["Canonical query and completion proof"]
-  Q --> O["Bounded facts and retained evidence"]
-  O --> A
-```
+<img
+  className="block dark:hidden"
+  alt="An agent question passes through transport and exact-workspace admission to compiler facts, completion proof, and scoped evidence."
+  src="/images/architecture/authority.light.svg"
+/>
+<img
+  className="hidden dark:block"
+  alt="An agent question passes through transport and exact-workspace admission to compiler facts, completion proof, and scoped evidence."
+  src="/images/architecture/authority.dark.svg"
+/>
+
+[Open full-size diagram](/images/architecture/authority.light.svg) · [Mermaid source](/images/architecture/authority.mmd)
+
+1. The agent chooses the question; the transport carries it.
+2. IDEA admits the exact workspace and current read state.
+3. Domain services establish compiler facts. The query keeps completion and limits with the evidence.
+4. The agent interprets that scoped evidence and chooses its next action.
 
 Control owns installed adapters and coordination. Host owns IDEA integration and project admission. Compatibility connects those components before a semantic operation.
 

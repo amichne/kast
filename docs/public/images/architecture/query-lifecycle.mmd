@@ -1,0 +1,10 @@
+flowchart TD
+  Q["Fixed question and scope"] --> A["Admit workspace and read state"]
+  A --> R["RUN resolves symbols and relations"]
+  A -->|Rejected| F["Typed rejection"]
+  R --> C{"Completion proof"}
+  C -->|Established| P["Complete answer and bounded preview"]
+  C -->|Unproven| F
+  P --> S["Retained evidence"]
+  F -->|When available| S
+  S --> D["READ_RESULT presents stored rows"]

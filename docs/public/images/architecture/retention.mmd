@@ -1,0 +1,8 @@
+flowchart TD
+  E["Earlier exact reference"] --> A["Admit current workspace and owner"]
+  A --> C["Compiler revalidates declaration"]
+  C --> S["Reexamine current source state"]
+  S --> R["Issue fresh exact reference"]
+  A -->|Mismatch| X["Reject reacquisition"]
+  C -->|Changed identity| X
+  S -->|State moved| X

@@ -25,17 +25,34 @@ A completed investigation can produce more evidence than one reply can carry. Th
 
 Its row count does not describe unfinished semantic work. Conversely, a small result does not prove enough work or storage capacity.
 
-```mermaid
-flowchart TD
-  Q["Source question and admitted grant"] --> R["RUN: semantic execution"]
-  R --> C{"Completion proof"}
-  C -->|Established| P["Complete answer and bounded preview"]
-  C -->|Unproven| F["Typed rejection and available evidence"]
-  P --> S["Retained rows and evidence"]
-  F --> S
-  S --> D["READ_RESULT: presentation only"]
-  P --> O["RESUME: produced output only"]
-```
+<div role="region" aria-label="Architecture diagram; scroll horizontally on narrow screens" tabIndex={0} className="overflow-x-auto">
+  <div style={{minWidth: "440px"}}>
+<img
+  className="block dark:hidden"
+  alt="Workspace admission precedes symbol and relation resolution. Completion proof yields an answer or typed rejection; retained evidence supports presentation only."
+  src="/images/architecture/query-lifecycle.light.svg"
+/>
+<img
+  className="hidden dark:block"
+  alt="Workspace admission precedes symbol and relation resolution. Completion proof yields an answer or typed rejection; retained evidence supports presentation only."
+  src="/images/architecture/query-lifecycle.dark.svg"
+/>
+  </div>
+</div>
+
+On a narrow screen, scroll the diagram horizontally or use the numbered explanation below.
+
+
+[Open full-size diagram](/images/architecture/query-lifecycle.light.svg) · [Mermaid source](/images/architecture/query-lifecycle.mmd)
+
+1. Admit the question, workspace, and current read state before semantic work.
+2. Resolve the supported symbols and relationships within one execution grant.
+3. Establish completion or preserve the rejection and available evidence.
+4. Present retained rows without replaying the semantic query.
+
+<Warning>
+  A rejected or incomplete query does not establish that a caller is absent.
+</Warning>
 
 ## Retention preserves the original answer
 

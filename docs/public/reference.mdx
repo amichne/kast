@@ -1,16 +1,19 @@
 ---
 title: "Kast technical reference"
 sidebarTitle: "Reference overview"
-description: "Understand program tracing, staleness, request lifecycles, and the contracts that carry Kast evidence."
+description: "Look up exact query inputs, result fields, client contracts, limits, and generated schemas."
 icon: "code"
 ---
 
-<a id="understand-the-evidence" />
-<a id="work-on-kast" />
+<span id="understand-the-evidence" />
+
+<span id="work-on-kast" />
 
 Kast turns compiler-resolved Kotlin facts into evidence that an agent can inspect and reuse. Its contracts preserve declaration identity, source state, scope, and proof limits.
 
-## Understand the mechanisms
+<span id="understand-the-mechanisms" />
+
+## Related architecture
 
 | Mechanism | What Kast establishes |
 | --- | --- |
@@ -53,4 +56,4 @@ Direct MCP and Tool RPC expose `health_check`. Hosted App Server exposes `worksp
 
 [The source map](/reference/source-map) links inspected owners and counterexample tests. The installed catalog governs your release when `main` describes newer behavior.
 
-[Tutorials](/tutorials) supplies a controlled exercise. [How-to guides](/how-to) supplies commands and recovery procedures. [Explanation](/explanation) develops the evidence model.
+[Tutorials](/tutorials) supplies a controlled exercise. [Guides](/how-to) supplies commands and recovery procedures. [Architecture](/explanation) develops the evidence model.
