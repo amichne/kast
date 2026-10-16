@@ -826,27 +826,28 @@ plugin_name="kast-ide-hosted-v${host_version:-unused}-idea-${idea_build%%.*}.zip
 temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-install.XXXXXX")"
 temporary_root="$(CDPATH='' cd -- "$temporary_root" && pwd -P)"
 installation_complete=0
+finalize_installation() {
+  local selected
+  if ! selected="$(CDPATH='' cd -- "$install_root/installation" && pwd -P)"; then
+    ui_line error 31 'kast-install: upgraded installation is unavailable; replacement recovery was retained'
+    return 1
+  elif ! run_installer_step "Upgrade recovery finalization" "" python3 "$control_root/share/kast/installation-recovery.py" seal-upgrade \
+    --installation "$selected"; then
+    ui_line error 31 'kast-install: upgrade recovery could not be finalized; replacement recovery was retained'
+    if [[ "$control_only" == 1 ]]; then
+      run_installer_step "Control recovery after finalization failure" "" "$control_root/share/kast/libexec/kast-service" recover-control finalization || true
+    fi
+    return 1
+  elif [[ "$component" != control ]] && ! run_installer_step "Prior installation review" "" python3 "$control_root/share/kast/prune-prior-installations.py" \
+    --installation "$selected"; then
+    ui_line error 31 'kast-install: prior installation review could not be completed'
+    return 1
+  fi
+  installation_complete=1
+}
 cleanup() {
   local status=$?
-  local selected
   trap - EXIT
-  if [[ "$status" == 0 && "$installation_complete" == 1 ]]; then
-    if ! selected="$(CDPATH='' cd -- "$install_root/installation" && pwd -P)"; then
-      ui_line error 31 'kast-install: upgraded installation is unavailable; replacement recovery was retained'
-      status=1
-    elif ! run_installer_step "Upgrade recovery finalization" "" python3 "$control_root/share/kast/installation-recovery.py" seal-upgrade \
-      --installation "$selected"; then
-      ui_line error 31 'kast-install: upgrade recovery could not be finalized; replacement recovery was retained'
-      status=1
-      if [[ "$control_only" == 1 ]]; then
-        run_installer_step "Control recovery after finalization failure" "" "$control_root/share/kast/libexec/kast-service" recover-control finalization || true
-      fi
-    elif [[ "$component" != control ]] && ! run_installer_step "Prior installation review" "" python3 "$control_root/share/kast/prune-prior-installations.py" \
-      --installation "$selected"; then
-      ui_line error 31 'kast-install: prior installation review could not be completed'
-      status=1
-    fi
-  fi
   if ! rm -rf -- "$temporary_root"; then status=1; fi
   if [[ "$status" == 0 && "$installation_complete" == 1 ]]; then
     if [[ "$stage_only" == 1 ]]; then
@@ -1022,6 +1023,7 @@ else
   installed_management="$(cat "$completion_report")"
   [[ "$installed_management" == "$management_destination" ]] ||
     fail "native executable destination changed during installation"
+  finalize_installation
   if [[ "$management_preflight" == preflight-reset && "$reset_management" != "$management_executable" ]]; then
     run_installer_step "Recorded connection recovery" "" "$management_executable" --internal-install restore-connections
   fi
@@ -1029,5 +1031,4 @@ else
     [[ -x "$install_root/installation/bin/kast-mcp-complete" ]] || fail "installed Kast MCP launcher is unavailable"
     "$management_executable" plugin codex
   fi
-  installation_complete=1
 fi
