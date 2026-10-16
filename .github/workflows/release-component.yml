@@ -60,7 +60,7 @@ jobs:
         with:
           distribution: graalvm
           java-version: 25.0.2
-      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
         with:
           validate-wrappers: true
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
@@ -99,7 +99,7 @@ jobs:
           --version "$RELEASE_VERSION" --source-revision "$GITHUB_SHA"
           --directory "build/release/${RELEASE_COMPONENT}-v${RELEASE_VERSION}"
       - name: Retain selected component candidate
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: ${{ inputs.component }}-release-candidate-v${{ steps.release_version.outputs.version }}-${{ github.sha }}
           path: build/release/${{ inputs.component }}-v${{ steps.release_version.outputs.version }}/
@@ -115,7 +115,7 @@ jobs:
           --assets-directory "build/release/${RELEASE_COMPONENT}-v${RELEASE_VERSION}"
       - name: Retain build reports
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: component-reports-${{ inputs.component }}-${{ github.sha }}-${{ github.run_attempt }}
           path: build/reports/
