@@ -164,7 +164,7 @@ class HostedCallbackByteAdmissionTest {
 }
 
 private class CallbackByteFixture {
-    val symbols = RelationPagingFixture(RelationPagingFixture.published().authority, "readPrepared")
+    val symbols = RelationPagingFixture(RelationPagingFixture.live().authority, "readPrepared")
     val budget = QueryBudget(symbols.budget.resources, QueryByteLimit.parse(65536).callbackValue())
     var relationCalls = 0
     var projectedBytes = 0L
