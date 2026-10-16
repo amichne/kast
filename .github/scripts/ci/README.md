@@ -10,9 +10,13 @@ Pull requests use the merge base; pushes use the entire before/head range.
 | `PRODUCT` | Product gate, immutable candidate and portable packaging | Admitted tested candidate |
 | `FULL` | Every check above and gate membership inspection | Admitted tested candidate |
 
-Only the authored pages in `DOCUMENTATION_PATHS` and the listed site navigation file can use the documentation plan.
+Only the authored pages in `DOCUMENTATION_PATHS` can use the documentation plan.
 Before adding a path, inspect its consumers in Gradle, packaging, generators and tests.
 Installer examples in README, start, installation and compatibility keep full validation.
+OpenWiki source inputs and linked pages also keep full validation for edits, deletions and anchor changes.
+This includes site navigation, which an OpenWiki concept cites.
+A source-inventory test checks the current literal source paths and inline links.
+New references to listed pages and unsupported reference forms require review before CI can pass.
 Generated schemas, scripts, build configuration, new paths and mixed documentation/product changes also select full validation.
 Regular file edits, additions and deletions keep both endpoints of the diff.
 Renames are read as deletion plus addition, so an excluded endpoint keeps full validation.

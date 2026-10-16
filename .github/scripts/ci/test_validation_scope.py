@@ -11,9 +11,11 @@ from contextlib import redirect_stdout
 from itertools import combinations
 from pathlib import Path
 from unittest.mock import patch
+from urllib.parse import unquote
 
 from validation_scope import (
     ALL_CHECKS,
+    DOCUMENTATION_PATHS,
     PRODUCT_MODULES,
     Check,
     Reason,
@@ -74,10 +76,19 @@ class ValidationScopeTest(unittest.TestCase):
         ):
             self.assertEqual(ALL_CHECKS, classify_diff(raw))
 
-    def test_audited_pages_and_navigation_select_only_documentation(self):
-        self.assertEqual(
-            DOCS, classify_paths((PAGE, "docs/public/explanation/query-lifecycle.mdx", "docs/public/docs.json"))
-        )
+    def test_audited_independent_pages_select_only_documentation(self):
+        self.assertEqual(DOCS, classify_paths((PAGE, "docs/public/explanation/query-lifecycle.mdx")))
+
+    def test_openwiki_inputs_retain_knowledge_base_validation(self):
+        for path in (
+            "docs/public/docs.json",
+            "docs/public/reference/change.mdx",
+            "docs/public/reference/responses.mdx",
+            "docs/public/reference/symbols.mdx",
+            "docs/public/search.mdx",
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(ALL_CHECKS, classify_paths((path,)))
 
     def test_product_linked_docs_keep_product_and_portable_checks(self):
         for path in (
@@ -255,6 +266,16 @@ class ExactDiffTest(unittest.TestCase):
         head = self.commit("change page to symlink")
         self.assertEqual(ALL_CHECKS, select("push", self.base, head, self.root).checks)
 
+    def test_deleting_an_openwiki_target_and_its_navigation_keeps_every_check(self):
+        page = "docs/public/reference/change.mdx"
+        self.write(page, "# Declaration change\n")
+        self.write("docs/public/docs.json", '{"pages": ["reference/change"]}\n')
+        base = self.commit("linked page and navigation")
+        (self.root / page).unlink()
+        self.write("docs/public/docs.json", '{"pages": []}\n')
+        head = self.commit("delete linked page and its navigation")
+        self.assertEqual(ALL_CHECKS, select("pull_request", base, head, self.root).checks)
+
     def test_checkout_mismatch_missing_base_and_empty_diff_do_not_skip_checks(self):
         self.write(PAGE, "# Updated\n")
         head = self.commit("edit")
@@ -268,6 +289,65 @@ class ExactDiffTest(unittest.TestCase):
 
 
 class SourceInventoryTest(unittest.TestCase):
+    def test_documentation_allowlist_excludes_every_openwiki_referenced_path(self):
+        root = Path(__file__).resolve().parents[3]
+        self.assert_openwiki_dependencies_excluded(root)
+
+    def test_new_openwiki_dependencies_and_unsupported_forms_cannot_pass_the_scope_gate(self):
+        for reference in (
+            "[guide](../../docs/public/reference/api.mdx#anchor)",
+            "[guide](../../docs/public/%72eference/api.mdx)",
+            '<a href="../../docs/public/reference/api.mdx">guide</a>',
+            "[guide][api]\n[api]: ../../docs/public/reference/api.mdx",
+            "resource: repo://docs/public/reference/api.mdx",
+        ):
+            with self.subTest(reference=reference), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                concept = root / "openwiki/flows/test.md"
+                concept.parent.mkdir(parents=True)
+                concept.write_text(reference)
+                page = root / PAGE
+                page.parent.mkdir(parents=True)
+                page.write_text("# API\n")
+                with self.assertRaises(AssertionError):
+                    self.assert_openwiki_dependencies_excluded(root)
+
+    def assert_openwiki_dependencies_excluded(self, root):
+        for concept in (root / "openwiki").rglob("*.md"):
+            for number, line in enumerate(unquote(concept.read_text()).splitlines(), 1):
+                if "docs/public" not in line and ".mdx" not in line:
+                    continue
+                location = f"{concept.relative_to(root)}:{number}"
+                # Audit the current literal source-path and inline-link convention.
+                # Unsupported reference forms require review, rather than silently
+                # expanding the docs-only closure through a permissive parser.
+                declaration = re.fullmatch(r"\s*- path: (docs/public/[A-Za-z0-9_./-]+)\s*", line)
+                if declaration:
+                    targets = [(root / declaration.group(1)).resolve()]
+                    remainder = ""
+                else:
+                    links = list(
+                        re.finditer(r"\[[^]]+\]\(((?:\.\./)+docs/public/[A-Za-z0-9_./-]+)(?:#[A-Za-z0-9_-]+)?\)", line)
+                    )
+                    targets = [(concept.parent / link.group(1)).resolve() for link in links]
+                    remainder = line
+                    for link in reversed(links):
+                        remainder = remainder[: link.start()] + remainder[link.end() :]
+                self.assertTrue(
+                    targets, f"{location}: unsupported public-doc reference form; review the scope boundary"
+                )
+                self.assertNotRegex(
+                    remainder, r"docs/public|\.mdx", f"{location}: unsupported public-doc reference form"
+                )
+                for target in targets:
+                    self.assertTrue(target.is_file(), f"{location}: OpenWiki dependency no longer exists")
+                    path = target.relative_to(root).as_posix()
+                    self.assertNotIn(
+                        path,
+                        DOCUMENTATION_PATHS,
+                        f"{location}: OpenWiki dependencies require the full knowledge-base gate",
+                    )
+
     def test_product_source_roots_are_bound_to_the_explicit_gradle_module_inventory(self):
         settings = (Path(__file__).resolve().parents[3] / "settings.gradle.kts").read_text()
         # Bind this repository's explicit literal declaration, not arbitrary Gradle syntax.

@@ -11,11 +11,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 # Audited authored site inputs. Adding a page requires reviewing its product consumers.
-# Installer examples and generated schemas deliberately remain outside this set.
+# Installer examples, generated schemas, and OpenWiki dependencies stay outside.
+# The source-inventory regression rejects new references to these narrow inputs.
 DOCUMENTATION_PATHS = frozenset(
     {
         "docs/public/agent-harnesses.mdx",
-        "docs/public/docs.json",
         "docs/public/explanation.mdx",
         "docs/public/explanation/query-lifecycle.mdx",
         "docs/public/how-to.mdx",
@@ -27,7 +27,6 @@ DOCUMENTATION_PATHS = frozenset(
         "docs/public/reference/api.mdx",
         "docs/public/reference/callback-observations.mdx",
         "docs/public/reference/callbacks.mdx",
-        "docs/public/reference/change.mdx",
         "docs/public/reference/composition.mdx",
         "docs/public/reference/evidence-boundaries.mdx",
         "docs/public/reference/integrations.mdx",
@@ -48,16 +47,13 @@ DOCUMENTATION_PATHS = frozenset(
         "docs/public/reference/models/tool-rpc-reply.mdx",
         "docs/public/reference/program-tracing.mdx",
         "docs/public/reference/query-pipelines.mdx",
-        "docs/public/reference/responses.mdx",
         "docs/public/reference/rpc-catalog.mdx",
         "docs/public/reference/schemas.mdx",
         "docs/public/reference/search.mdx",
         "docs/public/reference/source-map.mdx",
         "docs/public/reference/staleness.mdx",
-        "docs/public/reference/symbols.mdx",
         "docs/public/reference/troubleshooting.mdx",
         "docs/public/reference/walkthrough.mdx",
-        "docs/public/search.mdx",
         "docs/public/troubleshooting.mdx",
         "docs/public/tutorials.mdx",
         "docs/public/tutorials/first-query.mdx",
