@@ -12,7 +12,11 @@ Developers using a coding agent in a Kotlin Gradle repository or worktree. A fir
 
 ## Documentation journey
 
-Keep a single sidebar without a top-level Documentation selector. Lead with Overview, followed by the existing collapsed Get started group containing installation, agent connection, and troubleshooting. Keep Using Kast focused on practical tasks and background preparation. Keep conceptual explanations, query forms, results, and integration contracts together under Reference, with detailed schemas collapsed.
+The approved structure of 16 October 2026 uses three navigation tabs: Guides, Architecture, and Reference. This replaces the earlier single-sidebar direction.
+
+Guides lead from Overview through Install, Connect your agent, and the controlled first-result exercise. Task and recovery guides follow. Architecture explains authority, query lifecycle, retention and invalidation, topology and ownership, and change lifecycle. Reference owns exact interface facts and generated schemas. Keep normal navigation to two levels; detailed generated schemas remain collapsed.
+
+Keep useful routes even when their directory names reflect an earlier structure. Give each fact one canonical home and cross-link the other tracks. Keep prerequisites, warnings and recovery visible.
 
 ## Jobs to be done
 

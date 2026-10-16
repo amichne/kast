@@ -1,22 +1,24 @@
 ---
-title: "Understand Kast's evidence"
-sidebarTitle: "Explanation overview"
+title: "Where an answer comes from"
+sidebarTitle: "Architecture overview"
 description: "Understand compiler authority, completion, callback ownership, query execution, and IDEA preparation."
 icon: "workflow"
 ---
 
 Kast separates declaration identity, search completeness, output delivery, and runtime behavior. Each fact answers a different question.
 
-| Question | Explanation |
+| Question | Architecture topic |
 | --- | --- |
-| What does a result establish? | [What an answer proves](/reference/evidence-boundaries). |
-| Why does a saved page do no more semantic work? | [Query execution and evidence delivery](/explanation/query-lifecycle). |
-| Who owns compiler facts? | [How Kast works](/reference/internals/architecture). |
-| Why does a lambda keep its own owner? | [Callback evidence](/reference/callbacks). |
-| Why does a first query wait for IDEA? | [IDEA preparation](/reference/internals/background-startup). |
+| Who establishes a program fact? | [Authority boundaries](/reference/internals/architecture). |
+| How does a question become an answer? | [Query lifecycle](/explanation/query-lifecycle). |
+| When can evidence be reused? | [Retention and invalidation](/reference/staleness). |
+| Where do the components run? | [Topology and ownership](/architecture/topology). |
+| What happens during a source change? | [Change lifecycle](/architecture/change-lifecycle). |
+
+For a first result, follow [Install Kast](/start) and [the controlled exercise](/tutorials/first-query).
 
 For an operation to complete, its source scope and proof obligations must satisfy the fixed compiler-static model.
 
 A retained result preserves the original answer. More output pages cannot strengthen an incomplete answer.
 
-[Reference](/reference) defines fields and variants. [How-to guides](/how-to) give procedures that use this evidence.
+[Reference](/reference) defines fields and variants. [Guides](/how-to) give procedures that use this evidence.

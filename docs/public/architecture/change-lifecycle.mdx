@@ -1,0 +1,51 @@
+---
+title: "Change lifecycle"
+description: "Follow an exact change from planning and preimage admission to verification or recovery."
+icon: "file-pen-line"
+---
+
+A source change needs both an exact target and authority for the planned source state. A successful read alone does not authorize a write.
+
+## From intent to source effect
+
+```mermaid
+flowchart TD
+  I["Authorized intent and exact target"] --> P["Plan supported change"]
+  P --> A{"Admit stored plan and current preimage"}
+  A -->|Rejected| N["Reject before source effect"]
+  A -->|Admitted| W["Apply with recovery record"]
+  W --> V["Examine resulting source"]
+  V --> R["Verification outcome and receipt"]
+  W -->|Uncertain effect| U["Preserve evidence and recover"]
+  V -->|Recovery required| U
+```
+
+1. Planning binds a supported intent to an exact source target and preimage.
+2. Application loads the stored plan identity and reexamines the source before mutation admission.
+3. The write uses admitted authority and records recovery state.
+4. Post-write examination produces a verification outcome. A later failure can require recovery after a source effect.
+
+The diagram summarizes the ordered phases. It does not enumerate every encoded result variant.
+
+<Warning>
+  A missing response does not prove that no write occurred. Preserve the receipt and inspect current source before another write.
+</Warning>
+
+## What verification establishes
+
+The receipt describes the plan, phase, resulting state, and available evidence. Its verification applies to the reported scope.
+
+The public tools support declaration insertion and supported block-body replacement. They do not provide arbitrary refactoring or prove a successful project build.
+
+[Make a targeted change](/reference/change) gives the procedure and recovery steps. [Generated callable schemas](/reference/schemas) define exact inputs and result variants.
+
+## Source evidence
+
+Reviewed at `3ffe57068`:
+
+- [HostedChangeProtocol](https://github.com/amichne/kast/blob/3ffe570686a886cda71e8a0d6194b62592cbb90f/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeProtocol.kt): planning read and durable plan issuance.
+- [HostedChangeCoordinator](https://github.com/amichne/kast/blob/3ffe570686a886cda71e8a0d6194b62592cbb90f/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeCoordinator.kt): exact-plan lookup and serialized effects.
+- [HostedChangeApply](https://github.com/amichne/kast/blob/3ffe570686a886cda71e8a0d6194b62592cbb90f/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt): fresh admission, recovery preparation, write, and post-write completion.
+- [MutationAdmission](https://github.com/amichne/kast/blob/3ffe570686a886cda71e8a0d6194b62592cbb90f/change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/MutationAdmission.kt): finite preimage, scope, and mutation failures.
+
+Continue with [retention and invalidation](/reference/staleness), or return to [Architecture](/explanation).
