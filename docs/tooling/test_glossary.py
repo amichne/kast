@@ -9,7 +9,14 @@ from typing import Literal
 
 import pytest
 
-from glossary_json import FailureCode, Rejected, load_glossary, render_markdown, vale_rules
+from glossary_json import (
+    FailureCode,
+    Rejected,
+    load_glossary,
+    occurrences,
+    render_markdown,
+    vale_rules,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = Path(__file__).with_name("check_glossary.py")
@@ -138,6 +145,65 @@ def test_cli_proves_scope_markup_and_longest_label(tmp_path: Path) -> None:
         for item in document["findings"]
     ] == [("saved-result reference", "retained result reference", 1)]
     assert report["sourceSha256"]
+
+
+@pytest.mark.parametrize("placement", ["prose", "fence"])
+def test_cli_distinguishes_real_nested_mdx_prose_from_code(
+    tmp_path: Path, placement: Literal["prose", "fence"]
+) -> None:
+    source = tmp_path / "glossary.json"
+    data = json.loads((ROOT / "docs/glossary.json").read_text())
+    data["scope"] = {"root": ".", "include": ["docs/public/**/*.mdx"], "exclude": []}
+    source.write_text(json.dumps(data))
+    text = (ROOT / "docs/public/reference/integrations.mdx").read_text()
+    match placement:
+        case "prose":
+            original = "    The bundled plugin supplies MCP tools"
+            replacement = "    A saved result supplies MCP tools"
+        case "fence":
+            original = "    kast plugin codex"
+            replacement = "    saved result"
+    assert text.count(original) == 1
+    text = text.replace(original, replacement)
+    document = tmp_path / "docs/public/reference/integrations.mdx"
+    document.parent.mkdir(parents=True)
+    document.write_text(text)
+    result = run(str(source), str(document))
+    assert result.returncode == (1 if placement == "prose" else 0), result.stderr
+    findings = json.loads(result.stdout)["documents"][0]["findings"]
+    if placement == "prose":
+        assert findings == [
+            {
+                "type": "REPLACE",
+                "conceptId": "retained-result",
+                "canonical": "retained result",
+                "form": "saved result",
+                "line": 23,
+                "span": [7, 18],
+            }
+        ]
+    else:
+        assert findings == []
+
+
+def test_nested_mdx_keeps_deeper_prose_and_excludes_inline_code() -> None:
+    glossary = load_glossary(ROOT / "docs/glossary.json")
+    assert not isinstance(glossary, Rejected)
+    text = (
+        '<Tabs>\n  <Tab title="Codex">\n    A saved result.\n'
+        '    `saved result`\n    <Accordion title="Nested">\n'
+        "      A saved query result.\n    </Accordion>\n  </Tab>\n</Tabs>\n"
+    )
+    hits = occurrences(glossary, text, Path("guide.mdx"))
+    assert [(hit.line, hit.start, hit.end) for hit in hits] == [(3, 7, 18), (6, 9, 26)]
+
+
+def test_markdown_still_excludes_indented_code() -> None:
+    glossary = load_glossary(ROOT / "docs/glossary.json")
+    assert not isinstance(glossary, Rejected)
+    text = "A paragraph.\n\n    saved result\n\tsaved query result\n\nA saved result.\n"
+    hits = occurrences(glossary, text, Path("guide.md"))
+    assert [(hit.line, hit.start, hit.end) for hit in hits] == [(6, 3, 14)]
 
 
 def test_stale_view_and_source_overwrite_fail_without_mutation(tmp_path: Path) -> None:

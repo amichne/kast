@@ -371,7 +371,7 @@ def in_scope(glossary: Glossary, path: Path, scope_root: Path) -> bool:
     )
 
 
-def prose_lines(text: str) -> tuple[str, ...]:
+def prose_lines(text: str, markup: Literal["markdown", "mdx"]) -> tuple[str, ...]:
     """Conservative lexical view. Vale remains the native markup parser."""
     lines: list[str] = []
     fence = ""
@@ -395,7 +395,7 @@ def prose_lines(text: str) -> tuple[str, ...]:
                 fence = ""
             lines.append("")
             continue
-        if fence or line.startswith(("    ", "\t")):
+        if fence or (markup == "markdown" and line.startswith(("    ", "\t"))):
             lines.append("")
             continue
         if comment:
@@ -416,7 +416,11 @@ def prose_lines(text: str) -> tuple[str, ...]:
 
 def occurrences(glossary: Glossary, text: str, path: Path) -> tuple[Occurrence, ...]:
     found: list[Occurrence] = []
-    lines = tuple(text.splitlines()) if path.suffix.lower() == ".txt" else prose_lines(text)
+    lines = (
+        tuple(text.splitlines())
+        if path.suffix.lower() == ".txt"
+        else prose_lines(text, "mdx" if path.suffix.lower() == ".mdx" else "markdown")
+    )
     for line_number, line in enumerate(lines, 1):
         for entry in glossary.entries:
             for form in (Canonical(entry.term), *entry.rejected_forms):
