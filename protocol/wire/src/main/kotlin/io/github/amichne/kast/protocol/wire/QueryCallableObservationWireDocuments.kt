@@ -16,6 +16,7 @@ import io.github.amichne.kast.protocol.contract.QuerySourceLessCallableDocument
 import io.github.amichne.kast.protocol.contract.QuerySourceLessCallableModuleKindDocument
 import io.github.amichne.kast.protocol.contract.QuerySourceLessCallableOriginDocument
 import io.github.amichne.kast.protocol.contract.QueryWalkCallableObservationDocument
+import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -256,7 +257,7 @@ internal fun QueryWalkCallableObservationWireDocument.toContract():
             )
         }
         .flatMapConverted { value ->
-            if (value.observation.admitsDomain(effectiveDomain, domainFingerprint))
+            if (value.observation.admitsQuestion(RelationKindDocument.CALLEES, effectiveDomain, domainFingerprint))
                 WireDocumentConversion.Converted(value)
             else WireDocumentConversion.Rejected
         }
