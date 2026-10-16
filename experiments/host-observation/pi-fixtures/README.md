@@ -7,23 +7,25 @@ owner with `QueryQuestionDocument.serializer()` and
 `CanonicalQueryCliDocuments.qualificationSerializer`. The result schema reuses
 `installedSemanticResultSchema(QUERY_RUN)`, which composes the actual complete,
 qualified and rejected serializers with existing local output definitions.
-The 2026-10-14 export uses base `9268d6ba79ce5870f0fafa668e3269b41a294167` plus the local change to `QueryCallbackGraphFailureDocument`.
-That document carries the exact callback or callable occurrence. A callback subject also carries its body range.
+The 2026-10-16 export uses source `31e70bec24ddff443aabebeec2a843f729ebe028`.
+`result_projection` keeps the exact callback result site, relationship direction, semantic basis, and selected result domain.
 The exporter uses the CLI classpath from this task checkout and the compiled `query/contract` classes.
-Only `query-result.schema.json` changed. It includes typed `authority_mismatch` evidence.
+Only `query-result.schema.json` changed. It includes the typed `ADMITTED` and `UNPROVEN` projection variants.
 The export does no semantic work and supplies no native qualification.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| `query-result.schema.json` | `a88d359cbb870164dbfef5b0b0b3bd3121288f07efd921363aaeb3f55a682e74` |
+| `query-result.schema.json` | `c898511be108e9868914c679cf5f3ffd1d94106b08421be9f80d1e147bc242df` |
 | `protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt` | `7fad3ba487381dab19a441ff9e31e5871df954bcebbb5e66dd689fb08dff226c` |
-| `query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt` | `2df97bd07c0f07872a5e95d8da74dabf67c98b5bac2c833f34c8bf6d2171a34f` |
+| `protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackResultProjectionDocument.kt` | `c070cbdde504f3a72b5bb0075a53fa63a63100c56500988b33346d549e923c0e` |
+| `query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt` | `af0a890aa4e5e3019876aeeaaa439d13d0f32fc22acb80565f175b28957606e2` |
 
 `PiQuestionSchemaParityTest` compares all three committed schemas with the current owners.
 Gradle tracks these schemas as inputs.
 
 ```sh
-java -cp "$KAST_RELEASE/lib/*" experiments/host-observation/PiQuestionSchema.java \
+java -cp "cli/build/install/kast/lib/*:query/contract/build/classes/kotlin/main" \
+  experiments/host-observation/PiQuestionSchema.java \
   /tmp/query-question.schema.json /tmp/query-qualification.schema.json \
   /tmp/query-result.schema.json
 ```
