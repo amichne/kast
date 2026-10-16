@@ -6,6 +6,7 @@ import org.gradle.api.tasks.Sync
 import support.architecture.ArchitectureObservationParser
 import support.architecture.ModuleRoleConvention
 import support.architecture.gradle.GenerateKastModuleKnowledgeTask
+import support.architecture.gradle.TopologyImpactTask
 import support.architecture.gradle.VerifyKastArchitectureTask
 import support.knowledge.GenerateInstalledKnowledgeTask
 
@@ -13,11 +14,28 @@ plugins {
     base
 }
 
+val declaredProjectPaths = objects.listProperty<String>().convention(emptyList())
+val declaredProjectDependencies = objects.listProperty<String>().convention(emptyList())
+
 val verifyKastArchitecture = tasks.register<VerifyKastArchitectureTask>("verifyKastArchitecture") {
     group = "verification"
     description = "Verifies module dependencies, exports, roles, and permitted effect owners."
     rootDirectory.set(layout.projectDirectory)
     reportFile.set(layout.buildDirectory.file("reports/kast-architecture/verifyKastArchitecture.json"))
+    observedProjectPaths.set(declaredProjectPaths)
+    observedProjectDependencies.set(declaredProjectDependencies)
+}
+
+tasks.register<TopologyImpactTask>("topologyImpact") {
+    group = "help"
+    description = "Reports consumers of selected Kast modules through declared production project dependencies."
+    observedProjectPaths.set(declaredProjectPaths)
+    observedProjectDependencies.set(declaredProjectDependencies)
+    selectedModules.set(providers.gradleProperty("kastTopologyModules").map { raw ->
+        if (raw.isBlank()) emptyList() else raw.split(',').map(String::trim)
+    }.orElse(emptyList()))
+    enabledSetting.set(providers.gradleProperty("kastTopologyEnabled").orElse("true"))
+    reportFile.set(layout.buildDirectory.file("reports/topology/topology-impact.json"))
 }
 
 val trackedAgentGuidePaths = providers.exec {
@@ -117,9 +135,7 @@ tasks.withType<Sync>().matching { it.name == "stageKastControlProduct" }.configu
 subprojects {
     val modulePath = path
     pluginManager.withPlugin("java") {
-        verifyKastArchitecture.configure {
-            observedProjectPaths.add(modulePath)
-        }
+        declaredProjectPaths.add(modulePath)
         // The separate Gradle-daemon payload remains production code owned by its adapter module.
         extensions.getByType<SourceSetContainer>()
             .matching { it.name == "main" || it.name == "gradleTooling" }
@@ -175,8 +191,8 @@ subprojects {
             .map { convention ->
                 "$path${ArchitectureObservationParser.ROLE_SEPARATOR}${convention.pluginId}"
             }
+        declaredProjectDependencies.addAll(dependencies)
         verifyKastArchitecture.configure {
-            observedProjectDependencies.addAll(dependencies)
             observedExportedProjectDependencies.addAll(exportedDependencies)
             observedModuleRoleConventions.addAll(roleConventions)
         }
