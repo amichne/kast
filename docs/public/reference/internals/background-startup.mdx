@@ -7,48 +7,54 @@ icon: "monitor-cog"
 
 <a id="control-when-an-agent-uses-kast" />
 
-A semantic request needs a compatible, imported, indexed IDEA project for the exact Gradle root. Kast prepares that project when authorized demand needs it.
-The plugin's MCP session starts preparation on initialization or its first admitted modern request.
-The passive context hook does not prepare projects. It needs no uv environment or third-party Python package.
+A semantic request needs the IDEA project for the exact Gradle root. The project has to be compatible, imported, and indexed. Kast prepares it when authorized demand needs it. The plugin's MCP session starts preparation as it starts up or on its first admitted modern request. The passive context hook does not prepare projects. It needs no `uv` environment or third-party Python package.
 
 ## What happens on the first question
 
-The coordinator selects the canonical root and requests project preparation. The Host reuses or starts the selected IDEA instance and admits the project.
+The coordinator selects the canonical root and asks the Host to prepare the project. Control reuses or starts the selected IDEA instance. The Host then admits the project.
 
-```mermaid
-flowchart TD
-  R["Canonical Gradle root"] --> O["Reuse or start selected IDEA"]
-  O --> I["Open project and examine import"]
-  I --> X["Wait for indexing and current read state"]
-  X --> A["Admit semantic request"]
-  I -->|Blocked| B["Trust, save, import, or plugin cause"]
-  X -->|Blocked| B
-```
+<div role="region" aria-label="Architecture diagram; scroll horizontally on narrow screens" tabIndex={0} className="overflow-x-auto">
+  <div style={{minWidth: "440px"}}>
+    <img className="block dark:hidden" alt="Kast selects the exact Gradle root, reuses or starts IDEA, checks import and waits for indexing. Trust, save, import or plugin blockers stop readiness." src="/images/architecture/background-preparation.light.svg" />
 
-`WorkspacePreparations` owns one sequence for each root. It opens once and observes the issued operation until readiness or a terminal cause.
+    <img className="hidden dark:block" alt="Kast selects the exact Gradle root, reuses or starts IDEA, checks import and waits for indexing. Trust, save, import or plugin blockers stop readiness." src="/images/architecture/background-preparation.dark.svg" />
+  </div>
+</div>
 
-Multiple demands can share pending preparation. Later demand can reexamine the Host after a blocked or rejected preparation.
+On a narrow screen, scroll the diagram or read the steps below.
 
-This retry gets current native facts. It does not rewrite historical outcomes or replay earlier semantic operations.
+[Open full-size diagram](/images/architecture/background-preparation.light.svg) · [Mermaid source](/images/architecture/background-preparation.mmd)
+
+1. Kast selects the exact Gradle root.
+2. Control reuses or starts the selected IDEA instance.
+3. The Host opens the project and checks import.
+4. Kast waits for indexing and the current read state before it admits a semantic request.
+5. Trust, save, import and plugin blockers keep their own causes.
+
+`WorkspacePreparations` owns one sequence for each root. It opens once. It then reads the issued operation until the project is ready or a final cause is reported.
+
+Multiple demands can share setup that is still pending. After setup blocks or rejects, a later demand can check the Host again.
+
+This retry gets current native facts. It does not change past outcomes or replay earlier semantic calls.
 
 ## Readiness and blockers
 
-Import and indexing can make the first call slower. Background presentation is not assured because IDEA can need user attention.
+Import and indexing can make the first call slower. IDEA can need your attention, so it cannot always stay in the background.
 
-Trust prompts, unsaved documents, incompatible plugins, and failed import keep explicit causes. They cannot become an empty successful query.
+Trust prompts, unsaved documents, plugins that do not match, and failed import keep explicit causes. They cannot become a successful query with no rows.
 
 Readiness belongs to the exact worktree. A ready project in another worktree cannot supply the requested authority.
 
 ## Connection state and project readiness differ
 
-Registration supplies a client adapter. Catalog admission supplies available tool schemas. Neither fact establishes a ready IDEA project.
+Registration supplies a client adapter. Catalog admission supplies the tool schemas. Neither fact proves that the IDEA project is ready.
 
-Each semantic request still needs current read admission. A completed preparation is reusable only while its native authority remains valid.
+Each semantic request still needs current read admission. Completed setup can be reused only while its native authority stays valid.
 
-Disconnection removes recorded integration rather than IDEA state. An already loaded client adapter needs a restart to unload.
+Disconnect removes the recorded integration. It does not remove IDEA state. A loaded client adapter needs a restart to unload.
 
-Automatic preparation remains part of semantic demand. Kast has no management switch that disables preparation while semantic tools remain enabled.
+Semantic demand still prepares the project. Kast has no switch to turn off preparation while leaving semantic tools enabled.
 
-Hosted `workspace_lifecycle` supplies separate project actions. [Manage Kast](/reference/management#explicit-workspace-control-in-the-hosted-app-server) describes their use.
+Hosted `workspace_lifecycle` supplies distinct project actions. [Manage Kast](/reference/management#explicit-workspace-control-in-the-hosted-app-server) describes their use.
 
-[Lifecycles](/reference/lifecycles#workspace-preparation-lifecycle) defines preparation ownership and finite lookup history. [The source map](/reference/source-map) identifies its implementation.
+[Lifecycles](/reference/lifecycles#workspace-preparation-lifecycle) names the setup owner and its bounded lookup history. [The source map](/reference/source-map) links its source.

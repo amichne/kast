@@ -53,7 +53,7 @@
     {
       "id": "diagnostic",
       "term": "diagnostic",
-      "definition": "A compiler finding with a severity, message, source location, and admitted read identity.",
+      "definition": "A compiler finding. It gives a severity, message, source location, and the identity of the admitted read.",
       "scope": "Current Kast documentation and agent instructions.",
       "example": "A diagnostic can report an unresolved Kotlin reference.",
       "distinction": "A diagnostic describes a source issue. It does not establish that a project build passed.",
@@ -78,7 +78,7 @@
     {
       "id": "control",
       "term": "Control",
-      "definition": "The Kast component that supplies the native command, coordinator, and agent adapters.",
+      "definition": "The part of Kast that provides the native command, coordinator, and agent adapters.",
       "scope": "Current Kast documentation and agent instructions.",
       "example": "`kast upgrade --control-only` replaces Control while a compatible Host stays in place.",
       "distinction": "Host supplies the IDEA plugin and semantic runtime. Control and Host versions can differ.",
@@ -105,7 +105,7 @@
     {
       "id": "host",
       "term": "Host",
-      "definition": "The Kast component that supplies the IntelliJ IDEA plugin and semantic runtime.",
+      "definition": "The part of Kast that provides the IntelliJ IDEA plugin and semantic runtime.",
       "scope": "Current Kast documentation and agent instructions.",
       "example": "Restart IDEA after a Host update to load the new plugin.",
       "distinction": "Control supplies the command and agent adapters. Host runs inside IDEA.",
@@ -132,7 +132,7 @@
     {
       "id": "workspace-root",
       "term": "workspace root",
-      "definition": "The canonical root of the exact repository or worktree admitted for an operation.",
+      "definition": "The canonical root of the exact repository or worktree that Kast admits for a call.",
       "scope": "Current Kast documentation and agent instructions. Historical records and literal identifiers keep their original terms.",
       "example": "A query belongs to one repository or worktree root.",
       "distinction": "A second worktree has a different root, even when both contain the same commit.",
@@ -157,7 +157,7 @@
     {
       "id": "exact-reference",
       "term": "exact reference",
-      "definition": "An opaque handle issued by Kast for an exact declaration. Reuse needs current identity admission.",
+      "definition": "An opaque handle that Kast issues for one exact declaration. Reuse needs a check of the current identity.",
       "scope": "Current Kast documentation and agent instructions. Historical records and literal identifiers keep their original terms.",
       "example": "A discovered function supplies a `ref` for a later `SYMBOL_REFS` query.",
       "distinction": "A retained result reference identifies a stored result rather than one declaration.",
@@ -182,7 +182,7 @@
     {
       "id": "canonical-identity",
       "term": "canonical identity",
-      "definition": "The established declaration identity used to compare symbols. Display names and opaque reference strings alone do not establish equality.",
+      "definition": "The identity that Kast has proved for a declaration. Display names or opaque reference strings alone cannot prove that two symbols are the same.",
       "scope": "Current Kast documentation and agent instructions. Historical records and literal identifiers keep their original terms.",
       "example": "Two joined rows can identify the same declaration through different opaque references.",
       "distinction": "Two functions with the same display name can have different owners and identities.",
@@ -207,7 +207,7 @@
     {
       "id": "semantic-basis",
       "term": "semantic basis",
-      "definition": "The provenance of an operation's evidence, expressed as published workspace state or live IDEA read state. A provenance record alone grants no execution authority.",
+      "definition": "Where a call's evidence came from: published workspace state or live IDEA read state. This record grants no right to run a call.",
       "scope": "Current Kast documentation and agent instructions. Historical records and literal identifiers keep their original terms.",
       "example": "Live evidence records the IDEA host, epoch, and content view for a read.",
       "distinction": "A provenance record does not itself grant permission to run a query.",
@@ -232,7 +232,7 @@
     {
       "id": "read-epoch",
       "term": "read epoch",
-      "definition": "An opaque version of an IDEA project's admitted read state. Equality alone does not replace source or compiler revalidation.",
+      "definition": "An opaque version of an IDEA project's admitted read state. Equal values do not replace current source or compiler checks.",
       "scope": "Current Kast documentation and agent instructions. Historical records and literal identifiers keep their original terms.",
       "example": "A retained query result uses the state admitted for its original read.",
       "distinction": "The same epoch does not replace a source-content or compiler identity examination.",
@@ -257,7 +257,7 @@
     {
       "id": "discovery-scope",
       "term": "discovery scope",
-      "definition": "The source restrictions used to find seed declarations. They do not restrict later relationship destinations.",
+      "definition": "The source filters used to find seed declarations. They do not restrict later relationship destinations.",
       "scope": "Current Kast documentation and agent instructions. Historical records and literal identifiers keep their original terms.",
       "example": "A declaration lookup searches `main` sources beneath `query/contract`.",
       "distinction": "A workspace relationship search can reach declarations outside that seed scope.",
@@ -282,7 +282,7 @@
     {
       "id": "expansion-scope",
       "term": "expansion scope",
-      "definition": "The domain selected for native relationship search before enumeration. A later row filter does not reduce that search work.",
+      "definition": "The domain that Kast searches for native relationships. Kast selects it before the scan. A later row filter cannot reduce that search work.",
       "scope": "Current Kast documentation and agent instructions. Historical records and literal identifiers keep their original terms.",
       "example": "`SOURCE_DOMAIN` restricts native relation destinations before enumeration.",
       "distinction": "A later `WHERE` removes rows after native enumeration.",
@@ -307,7 +307,7 @@
     {
       "id": "complete-coverage",
       "term": "complete coverage",
-      "definition": "Finished enumeration within the declared, supported scope and requested traversal extent. It does not alone establish semantic completion.",
+      "definition": "A finished scan of the declared supported scope and requested traversal extent. This fact alone does not prove semantic completion.",
       "scope": "Current Kast documentation and agent instructions. Historical records and literal identifiers keep their original terms.",
       "example": "An exhaustive caller read covers the declared source domain.",
       "distinction": "A complete enumeration does not alone discharge callback activation obligations.",
@@ -332,7 +332,7 @@
     {
       "id": "qualified-coverage",
       "term": "qualified coverage",
-      "definition": "Evidence of a proven minimum with stated limitations or unfinished work. An empty result with this status does not prove absence.",
+      "definition": "Evidence of a proved minimum, with stated limits or work still to do. An empty result with this status does not prove absence.",
       "scope": "Current Kast documentation and agent instructions. Historical records and literal identifiers keep their original terms.",
       "example": "A stopped search reports its known rows and the unfinished work.",
       "distinction": "An empty completed search can establish absence in its declared scope.",
@@ -357,7 +357,7 @@
     {
       "id": "known-minimum",
       "term": "known minimum",
-      "definition": "The established count of logical final output, including delivered rows. It does not count remaining pages or unfiltered provider candidates.",
+      "definition": "The proved count of logical final output. It includes rows already sent. It does not count pages left or provider candidates before filters.",
       "scope": "Current Kast documentation and agent instructions. Historical records and literal identifiers keep their original terms.",
       "example": "A preview of two rows can belong to a result with five established final rows.",
       "distinction": "An unfiltered discovery candidate count is a different measure.",
@@ -382,7 +382,7 @@
     {
       "id": "compiler-static-model",
       "term": "compiler-static model",
-      "definition": "The fixed `COMPILER_RESOLVED_STATIC_V1` model for compiler-resolved source relationships. It does not establish runtime activation or path feasibility.",
+      "definition": "The fixed `COMPILER_RESOLVED_STATIC_V1` model of source relationships resolved by the compiler. It does not prove that code ran or that a path can run.",
       "scope": "Current Kast documentation and agent instructions. Historical records and literal identifiers keep their original terms.",
       "example": "A call site supports a compiler-resolved source relationship.",
       "distinction": "A source relationship does not prove that a runtime path executed.",
@@ -407,7 +407,7 @@
     {
       "id": "semantic-completion",
       "term": "semantic completion",
-      "definition": "Exhausted execution under the compiler-static model with no item failures or omitted evidence. Callback graphs and original investigation ledgers must also satisfy proof obligations.",
+      "definition": "Execution has exhausted its work under the compiler-static model. No item has failed, and no evidence is omitted. Callback graphs and original investigation ledgers also meet their proof rules.",
       "scope": "Current Kast documentation and agent instructions. Historical records and literal identifiers keep their original terms.",
       "example": "A completed run exhausts execution and discharges its original proof obligations.",
       "distinction": "A final output page establishes presentation progress rather than stronger semantic proof.",
@@ -432,7 +432,7 @@
     {
       "id": "retained-result",
       "term": "retained result",
-      "definition": "Immutable query rows and evidence kept under their original read authority. They preserve row kind, limitations, and producer progress.",
+      "definition": "Immutable query rows and evidence kept under the read authority that produced them. They keep each row's kind, stated limits, and producer progress.",
       "scope": "Current Kast documentation and agent instructions. Historical records and literal identifiers keep their original terms.",
       "example": "`READ_RESULT` presents rows from the result that a prior query kept.",
       "distinction": "A new `RUN` establishes a separate semantic answer.",
@@ -480,7 +480,7 @@
     {
       "id": "retained-result-reference",
       "term": "retained result reference",
-      "definition": "An issued handle for one retained result. It differs from an exact reference and an output continuation.",
+      "definition": "A handle that Kast issues for one retained result. It differs from an exact reference and an output continuation.",
       "scope": "Current Kast documentation and agent instructions. Historical records and literal identifiers keep their original terms.",
       "example": "`result:v1:...` identifies one stored query result.",
       "distinction": "An exact declaration reference belongs to a different token family.",
@@ -517,7 +517,7 @@
     {
       "id": "row-id",
       "term": "row id",
-      "definition": "An issued identifier for one row in one retained result. Its owning result must match when Kast restores it.",
+      "definition": "An issued ID for one row in one retained result. The owning result must match when Kast restores it.",
       "scope": "Current Kast documentation and agent instructions. Historical records and literal identifiers keep their original terms.",
       "example": "A result row identifier selects a row from its owning result.",
       "distinction": "A result cursor gives a presentation position rather than row identity.",
@@ -542,7 +542,7 @@
     {
       "id": "output-continuation",
       "term": "output continuation",
-      "definition": "An issued token that permits `RESUME` to present remaining produced output. It does not authorize semantic execution or renew expiry.",
+      "definition": "An issued token that lets `RESUME` present the produced output that is left. It grants no right to run semantic work or extend expiry.",
       "scope": "Current Kast documentation and agent instructions. Historical records and literal identifiers keep their original terms.",
       "example": "`RESUME` presents a produced suffix through its issued token.",
       "distinction": "A historical execution checkpoint does not authorize public semantic continuation.",
@@ -567,7 +567,7 @@
     {
       "id": "result-cursor",
       "term": "result cursor",
-      "definition": "A presentation position within the rows of a separately identified retained result. It does not authorize semantic execution.",
+      "definition": "A position in the saved rows of a result identified on its own. It grants no right to run semantic work.",
       "scope": "Current Kast documentation and agent instructions. Historical records and literal identifiers keep their original terms.",
       "example": "`READ_RESULT.cursor` selects a position in stored rows.",
       "distinction": "The evidence cursor selects a separate position in saved observations.",
@@ -592,7 +592,7 @@
     {
       "id": "evidence-cursor",
       "term": "evidence cursor",
-      "definition": "A presentation position within saved failures, omissions, and observations. It advances independently of the result cursor.",
+      "definition": "A position in saved failures, omissions, and observations. It moves on its own, apart from the result cursor.",
       "scope": "Current Kast documentation and agent instructions. Historical records and literal identifiers keep their original terms.",
       "example": "`evidence_window.end` identifies the next evidence position.",
       "distinction": "An evidence-only page can advance without a new row.",
@@ -617,7 +617,7 @@
     {
       "id": "result-preview",
       "term": "result preview",
-      "definition": "A bounded presentation of produced rows. It describes output presentation rather than search completeness.",
+      "definition": "A view of produced rows with a fixed size limit. It describes the output shown. It does not describe search completeness.",
       "scope": "Current Kast documentation and agent instructions. Historical records and literal identifiers keep their original terms.",
       "example": "A `PREFIX` preview presents an ordered portion of accumulated rows.",
       "distinction": "Preview truncation does not change the producing query's coverage.",

@@ -15,6 +15,7 @@ from glossary_json import (
     Rejected,
     load_glossary,
     render_markdown,
+    render_public_mdx,
     vale_rules,
 )
 from glossary_json import (
@@ -174,6 +175,7 @@ def test_cli_distinguishes_real_nested_mdx_prose_from_code(
             original = "    kast plugin codex"
             replacement = "    saved result"
     assert text.count(original) == 1
+    expected_line = text[: text.index(original)].count("\n") + 1
     text = text.replace(original, replacement)
     document = tmp_path / "docs/public/reference/integrations.mdx"
     document.parent.mkdir(parents=True)
@@ -188,7 +190,7 @@ def test_cli_distinguishes_real_nested_mdx_prose_from_code(
                 "conceptId": "retained-result",
                 "canonical": "retained result",
                 "form": "saved result",
-                "line": 23,
+                "line": expected_line,
                 "span": [7, 18],
             }
         ]
@@ -988,3 +990,36 @@ def test_commonmark_quote_container_owns_code_and_visible_prose(
     assert not isinstance(glossary, Rejected)
     hits = occurrences(glossary, text, Path("guide.md"))
     assert tuple((hit.line, hit.start, hit.end) for hit in hits) == expected
+
+
+def test_public_glossary_keeps_canonical_definitions_and_sources() -> None:
+    glossary = load_glossary(ROOT / "docs/glossary.json")
+    assert not isinstance(glossary, Rejected)
+    public = render_public_mdx(glossary)
+    assert public == (ROOT / "docs/public/glossary.mdx").read_text()
+    for entry in glossary.entries:
+        assert f"## {entry.term}\n\n{entry.definition}\n" in public
+        assert entry.usage[0].url in public
+
+
+def test_public_projection_rejects_drift_without_changing_the_page(tmp_path: Path) -> None:
+    view = tmp_path / "public glossary ; literal.mdx"
+    source = str(ROOT / "docs/glossary.json")
+    assert run(source, "--public-render", str(view)).returncode == 0
+    assert run(source, "--check-public-render", str(view)).returncode == 0
+    stale = view.read_text().replace("An opaque handle", "A guessed name", 1)
+    assert stale != view.read_text()
+    view.write_text(stale)
+    result = run(source, "--check-public-render", str(view))
+    assert result.returncode == 2
+    assert json.loads(result.stdout)["code"] == "STALE_VIEW"
+    assert view.read_text() == stale
+
+
+def test_public_projection_cannot_overwrite_its_source() -> None:
+    source = ROOT / "docs/glossary.json"
+    original = source.read_bytes()
+    result = run(str(source), "--public-render", str(source))
+    assert result.returncode == 2
+    assert json.loads(result.stdout)["code"] == "INPUT"
+    assert source.read_bytes() == original

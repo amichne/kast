@@ -1,5 +1,5 @@
 ---
-mode: wide
+mode: "wide"
 icon: "fingerprint"
 sidebarTitle: "Live evidence"
 title: "Live read evidence"
@@ -7,10 +7,10 @@ description: "Read the workspace and source state that support a semantic result
 openapi-schema: "reference/callables.openapi.json query_symbolsResponse_liveReadEvidence"
 ---
 
-Live read evidence names the workspace and source state that support the operation. Its identity and lifetime apply to that read.
+Live read evidence names the workspace and source state used for a call. Its identity and lifetime belong to that read.
 
-The read epoch records admitted state signals. It does not replace committed-content admission or compiler identity revalidation.
+A read epoch records state signals that Kast has checked. Its value alone does not prove that saved content or compiler identity is current.
 
-Exact references can get fresh authority under their identity policy. Retained results and continuations need their original read state.
+An exact reference can gain fresh authority after Kast checks its identity under the reference's policy. Retained results and their next output pages still need the read state that produced them.
 
-[Staleness](/reference/staleness) defines those policies. [Lifecycles](/reference/lifecycles) identifies the Host and request owners.
+[Staleness](/reference/staleness) defines these rules. [Lifecycles](/reference/lifecycles) names the Host and request owners.

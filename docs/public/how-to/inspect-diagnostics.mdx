@@ -1,13 +1,12 @@
 ---
 title: "Inspect IDEA diagnostics"
-description: "Inspect problems for one workspace-relative file or directory and preserve the reported coverage."
+description: "Inspect problems for one workspace-relative file or directory and keep the reported coverage."
 icon: "stethoscope"
 ---
 
 Use this guide to inspect the problems that IDEA reports for a selected source path.
 
-You need a connected client and a saved, indexed IDEA project for the exact repository. The installed catalog must expose `check_diagnostics`.
-
+You need a connected client and a saved, indexed IDEA project for the exact repository. Check that the installed catalog exposes `check_diagnostics`.
 
 1. [Select one existing path.](#1-select-the-path)
 2. [Request its diagnostics.](#2-request-the-diagnostics)
@@ -21,34 +20,36 @@ Start with the smallest path that covers your question. The request for a file u
 
 ```json
 {
-  "relativePath": "src/main/kotlin/kasttutorial/KastTutorial.kt"
+  "relativePath": "src/main/kotlin/tutorial/KastTutorial.kt"
 }
 ```
 
-Replace the example path with an existing path. These arguments illustrate the contract and do not record a native diagnostic result.
+Replace the example path with an existing path. This is an input example. It does not record a native result.
 
 ## 2. Request the diagnostics
 
 Ask your agent:
 
 ```text wrap
-Use Kast check_diagnostics for src/main/kotlin/kasttutorial/KastTutorial.kt. Show each problem's location and the response's reported scope and coverage. Do not change source.
+Use Kast check_diagnostics for src/main/kotlin/tutorial/KastTutorial.kt. Show each problem's location and the response's reported scope and coverage. Do not change source.
 ```
 
-For a directory, the operation covers supported files recursively beneath that directory.
+For a directory, the call covers its supported files. It includes files in subdirectories.
 
 ## 3. Read the result
 
 Read the reported scope and coverage before the diagnostic list. Keep each diagnostic's location and severity with its message.
 
-If coverage is incomplete, an empty list does not establish that the requested scope contains no problems.
+If coverage is incomplete, an empty list does not prove that the requested scope contains no problems.
 
 If IDEA reports a trust, import, save, or indexing blocker, resolve it in the selected project.
 
-## 4. Establish the result of a change
+<span id="4-establish-the-result-of-a-change" />
+
+## 4. Prove the result of a change
 
 After you change source, repeat the scoped diagnostic request. Run your project's build and tests for the behavior that changed.
 
-IDEA diagnostics do not establish a successful project build. [Diagnostic entry](/reference/models/diagnostic) defines the result fields.
+IDEA diagnostics do not prove a successful project build. [Diagnostic entry](/reference/models/diagnostic) defines the result fields.
 
 [Troubleshooting](/reference/troubleshooting) covers setup and state failures.

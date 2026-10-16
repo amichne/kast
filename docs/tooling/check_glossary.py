@@ -31,6 +31,7 @@ from glossary_json import (
     occurrences,
     rejected_form_kind,
     render_markdown,
+    render_public_mdx,
     vale_rules,
 )
 from markdown_parser import (
@@ -96,6 +97,8 @@ class Request:
     check_render: Path | None
     vale_dir: Path | None
     check_vale: Path | None
+    public_render: Path | None = None
+    check_public_render: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -135,6 +138,11 @@ def evaluate(
     try:
         if request.render is not None and request.render.resolve() == request.source.resolve():
             return RejectionReport(Failure.INPUT, "The reader view cannot replace the JSON source")
+        if (
+            request.public_render is not None
+            and request.public_render.resolve() == request.source.resolve()
+        ):
+            return RejectionReport(Failure.INPUT, "The public view cannot replace the JSON source")
         if request.vale_dir is not None and request.vale_dir.exists():
             return RejectionReport(Failure.INPUT, "Export Vale rules into a new directory")
         scope_root = (request.source.parent / glossary.scope.root).resolve()
@@ -188,6 +196,14 @@ def evaluate(
                 )
             )
         markdown = render_markdown(glossary)
+        public_mdx = render_public_mdx(glossary)
+        if (
+            request.check_public_render is not None
+            and request.check_public_render.read_text(encoding="utf-8") != public_mdx
+        ):
+            return RejectionReport(
+                Failure.STALE_VIEW, "Regenerate the public glossary from docs/glossary.json"
+            )
         if (
             request.check_render is not None
             and request.check_render.read_text(encoding="utf-8") != markdown
@@ -207,6 +223,8 @@ def evaluate(
                 )
         if request.render is not None:
             _ = request.render.write_text(markdown, encoding="utf-8")
+        if request.public_render is not None:
+            _ = request.public_render.write_text(public_mdx, encoding="utf-8")
         if request.vale_dir is not None:
             request.vale_dir.mkdir(parents=True)
             for name, content in vale_rules(glossary):
@@ -222,6 +240,8 @@ def main() -> int:
     parser.add_argument("documents", type=Path, nargs="*")
     parser.add_argument("--render", type=Path)
     parser.add_argument("--check-render", type=Path)
+    parser.add_argument("--public-render", type=Path)
+    parser.add_argument("--check-public-render", type=Path)
     parser.add_argument("--vale-dir", type=Path)
     parser.add_argument("--check-vale", type=Path)
     args = parser.parse_args()
@@ -233,6 +253,8 @@ def main() -> int:
             args.check_render,
             args.vale_dir,
             args.check_vale,
+            args.public_render,
+            args.check_public_render,
         )
     )
     print(json.dumps(asdict(result), indent=2, sort_keys=True))

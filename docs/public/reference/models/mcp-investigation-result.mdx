@@ -5,8 +5,8 @@ openapi-schema: "reference/callables.openapi.json health_checkSemanticResult"
 mode: "wide"
 ---
 
-The direct `health_check` result reports workspace binding and readiness. A complete variant carries observations in `data`, while rejection carries its finite error.
+The direct `health_check` result reports the workspace binding and whether it is ready. A complete reply keeps its findings in `data`. A rejected reply gives a specific error.
 
-Readiness belongs to the call's workspace state. It does not establish a later declaration identity, relationship, or completed query.
+Readiness applies to the call's workspace state. It does not prove a later symbol identity, a link between symbols, or a complete query.
 
-[MCP](/reference/mcp-catalog) defines its session and wrapper. [Lifecycles](/reference/lifecycles#workspace-preparation-lifecycle) describes preparation before semantic admission.
+[MCP](/reference/mcp-catalog) defines the session and result wrapper. [Workspace preparation](/reference/lifecycles#workspace-preparation-lifecycle) describes what happens before a query can run.

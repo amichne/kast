@@ -1,26 +1,26 @@
 ---
 title: "Composition contracts"
-description: "Compare canonical identities, preserve row kinds and qualifications, and reject unproven absence."
+description: "Compare canonical identities, keep row kinds and qualifications, and reject unproven absence."
 icon: "git-merge"
 ---
 
 <a id="input-example" />
 
-Composition compares canonical identities from admitted references or retained rows. Display names and opaque reference strings do not establish declaration equality.
+Composition compares canonical identities from admitted references or retained rows. A display name or opaque reference string alone cannot prove that two declarations are the same.
 
 ## Set operations
 
 | Step | Input field | Output rule | Evidence rule |
 | --- | --- | --- | --- |
 | `CONCAT` | `input` | Appends rows in order with duplicates. | Keeps evidence from each input. |
-| `UNION` | `right` | Combines symbols by canonical identity. | Keeps input qualifications. |
+| `UNION` | `right` | Combines symbols by canonical identity. | Keeps the stated limits of each input. |
 | `INTERSECT` | `right` | Keeps symbols present in both inputs. | Combines evidence for the shared identity. |
-| `DIFFERENCE` | `right` | Keeps left symbols absent from the right input. | Needs complete right coverage without failures or producer progress. |
-| `DISTINCT_SYMBOLS` | None | Keeps the first row per canonical identity. | Applies at its exact pipeline position. |
+| `DIFFERENCE` | `right` | Keeps left symbols absent from the right input. | The right scan has to be complete. It has no failures or producer work left. |
+| `DISTINCT_SYMBOLS` | None | Keeps the first row per canonical identity. | Takes effect at that point in the pipeline. |
 
-The pipeline position controls scope of effect. A filter after composition acts on the combined stream.
+A step takes effect where you place it in the pipeline. A filter after composition acts on the combined stream.
 
-`DISTINCT_SYMBOLS` keeps the first row for each identity at its supplied position. It does not erase the result's qualifications.
+`DISTINCT_SYMBOLS` keeps the first row for each identity at that point. It keeps the result's stated limits.
 
 ## Joins and row kinds
 
@@ -30,17 +30,17 @@ The pipeline position controls scope of effect. A filter after composition acts 
 | `SEMI` | Matching left symbol rows. | A matching right identity. |
 | `ANTI` | Left symbol rows without a match. | Complete right coverage for absence. |
 
-An inner join preserves both cells and their evidence. `PROJECT_BINDING` selects one named cell before a later symbol operation.
+An inner join keeps both cells and their evidence. Before a later symbol step, use `PROJECT_BINDING` to select one named cell.
 
-`BINDING_ROWS` presents inner-join output. Arbitrary-field joins and a general-purpose `MAP` have no supported contract.
+`BINDING_ROWS` presents inner-join output. Kast does not support arbitrary-field joins or a general-purpose `MAP`.
 
 ## Absence and rejection
 
-`DIFFERENCE` and `ANTI` need a complete right input without failures or unfinished producer progress. Missing matches in a prefix do not prove absence.
+`DIFFERENCE` and `ANTI` need a complete right input. It has no failures or producer work left. Missing matches in a prefix do not prove absence.
 
-Both operations reject incomplete right coverage. A final presentation page cannot repair that producer limitation.
+Both steps reject incomplete right coverage. The final output page cannot repair that producer limit.
 
-All composed rows keep their original state. A changed epoch or lost retained input prevents reuse before composition starts.
+All composed rows keep their original state. Kast rejects reuse before composition if the epoch changed or a retained input was lost.
 
 ## Examples and source evidence
 

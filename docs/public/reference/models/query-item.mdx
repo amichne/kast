@@ -1,18 +1,18 @@
 ---
-mode: wide
+mode: "wide"
 icon: "shapes"
 sidebarTitle: "Query item"
 title: "Query item"
-description: "Decode a query row and preserve its exact identity and evidence."
+description: "Decode a query row and keep its exact identity and evidence."
 openapi-schema: "reference/callables.openapi.json query_symbolsResponse_queryResultItem"
 ---
 
-The output form selects the row kind. A row can describe a symbol, occurrence, traversal record, binding, value path, or impact witness.
+The output form selects the kind of row. A row can hold a symbol, source occurrence, traversal record, binding, value path, or impact witness.
 
-Each row keeps its established identities and evidence. Equal display names do not establish declaration equality.
+Each row keeps its proved identities and evidence. Two symbols with the same display name need not be the same declaration.
 
-Occurrence and traversal rows keep source-site or hop facts. A binding row keeps named cells, while a value path keeps transfer provenance.
+An occurrence row keeps facts about a source site. A traversal row keeps facts about a hop. A binding row keeps named cells. A value path keeps the origin of each transfer.
 
-The producing result owns coverage and qualifications. Row selection cannot prove coverage of excluded rows.
+The result that produced the rows owns their coverage and stated limits. A selected row cannot prove coverage of rows left out.
 
-[Query outputs](/reference/api#choose-the-result-you-need) defines legal forms. [Composition](/reference/composition) defines row transitions and identity comparison.
+[Query outputs](/reference/api#choose-the-result-you-need) defines valid forms. [Composition](/reference/composition) defines row changes and identity checks.

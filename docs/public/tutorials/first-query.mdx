@@ -4,7 +4,7 @@ description: "Learn exact identity and caller evidence with a small Kotlin file 
 icon: "graduation-cap"
 ---
 
-You will find one function, read its source, and identify a named caller. You will compare the answer with source you control.
+In this exercise, we will find one function, read its source, and identify a named caller. You will compare the answer with source you control.
 
 ## Before you start
 
@@ -14,75 +14,89 @@ Select that exact repository or worktree in the agent. Keep IDEA open with the p
 
 This exercise specifies expected behavior. It does not report a recorded native run.
 
-1. Add the exercise file.
-2. Find its target function.
-3. Compare the caller evidence with the source.
-4. Inspect an absent name.
-5. Remove your exercise file.
+<span id="1-add-the-exercise-source" />
 
-## 1. Add the exercise source
+1. [Add the source.](#1-add-the-exercise-source)
+2. [Find the target.](#2-find-the-target)
+3. [Find its caller.](#3-find-the-caller)
+4. [Check an absent name.](#4-inspect-an-absent-name)
+5. [Remove the exercise file.](#5-finish-the-exercise)
 
-Create `src/main/kotlin/kasttutorial/KastTutorial.kt` in the selected JVM module:
+<Steps>
+  <Step title="Add the exercise source">
+    Create `src/main/kotlin/tutorial/KastTutorial.kt` in the selected JVM module:
 
-If that exercise file already exists, stop before an edit.
+    <Warning>
+      If that exercise file already exists, stop before an edit.
+    </Warning>
 
-```kotlin
-package kasttutorial
+    ```kotlin
+    package tutorial
 
-fun kastTutorialMessage(): String {
-    return "Ready"
-}
+    fun kastTutorialMessage(): String {
+        return "Ready"
+    }
 
-fun kastTutorialCaller(): String {
-    return kastTutorialMessage()
-}
-```
+    fun kastTutorialCaller(): String {
+        return kastTutorialMessage()
+    }
+    ```
 
-Save the file. Wait for IDEA to finish import and indexing.
+    Save the file. Wait for IDEA to finish import and indexing.
 
-The file defines a target and one explicit caller. Neither function contains a callback or an overloaded call.
+    The file defines a target and one explicit caller. Neither function contains a callback or an overloaded call.
+  </Step>
+  <Step title="Find the target">
+    <span id="2-find-the-target" />
 
-## 2. Find the target
+    Ask your agent:
 
-Ask your agent:
+    <Prompt description="Use Kast to find `kastTutorialMessage` in package `tutorial`, in `main` only. Show its signature, location, source, and completion status. Do not change the source." actions={["copy"]}>
+    Use Kast to find kastTutorialMessage in package tutorial, in main only. Show its signature, location, source, and completion status. Do not change the source.
+    </Prompt>
 
-```text wrap
-Use Kast to find kastTutorialMessage in package kasttutorial, in main only. Show its signature, location, source, and completion status. Do not change the source.
-```
+    You will see `tutorial.kastTutorialMessage` in your exercise file when the query completes. Its source must contain `return "Ready"`.
 
-You will see `kasttutorial.kastTutorialMessage` in your exercise file when the query completes. Its source must contain `return "Ready"`.
+    Keep the issued `ref`. A display name alone does not identify the target for the next query.
 
-Keep the issued `ref`. A display name alone does not identify the target for the next query.
+    If Kast reports a setup blocker, resolve that blocker before the next step.
+  </Step>
+  <Step title="Find the caller">
+    <span id="3-find-the-caller" />
 
-If Kast reports a setup blocker, resolve that blocker before the next step.
+    Ask your agent:
 
-## 3. Find the caller
+    <Prompt description="Use the exact ref from the previous Kast result. Find `CALLERS` in the workspace and return occurrences. Show the caller, call location, declared scope, and completion status." actions={["copy"]}>
+    Use the exact ref from the previous Kast result. Find CALLERS in the workspace and return occurrences. Show the caller, call location, declared scope, and completion status.
+    </Prompt>
 
-Ask your agent:
+    The expected evidence includes `tutorial.kastTutorialCaller` and the call to `kastTutorialMessage()` in the exercise file.
 
-```text wrap
-Use the exact ref from the previous Kast result. Find CALLERS in the workspace and return occurrences. Show the caller, call location, declared scope, and completion status.
-```
+    Compare the occurrence with the source. If the answer rejects completion, keep its cause and evidence instead of a caller-absence claim.
 
-The expected evidence includes `kasttutorial.kastTutorialCaller` and the call to `kastTutorialMessage()` in the exercise file.
+    The evidence identifies a compiler-resolved call. It does not prove that either function ran.
+  </Step>
+  <Step title="Inspect an absent name">
+    <span id="4-inspect-an-absent-name" />
 
-Compare the occurrence with the source. If the answer rejects completion, keep its cause and evidence instead of a caller-absence claim.
+    Ask your agent:
 
-The evidence identifies a compiler-resolved call. It does not prove that either function ran.
+    <Prompt description="Use Kast to search for `kastTutorialMissing` in package `tutorial`, in `main` only. Report completion and the declared scope. Do not infer absence from a rejected answer." actions={["copy"]}>
+    Use Kast to search for kastTutorialMissing in package tutorial, in main only. Report completion and the declared scope. Do not infer absence from a rejected answer.
+    </Prompt>
 
-## 4. Inspect an absent name
+    <Warning>
+      An empty completed search supports absence within that scope. A rejected search does not prove absence.
+    </Warning>
+  </Step>
+  <Step title="Finish the exercise">
+    <span id="5-finish-the-exercise" />
 
-Ask your agent:
+    Remove only the exercise file that you created. Discard its references after the source change.
+  </Step>
+</Steps>
 
-```text wrap
-Use Kast to search for kastTutorialMissing in package kasttutorial, in main only. Report completion and the declared scope. Do not infer absence from a rejected answer.
-```
-
-An empty completed search supports absence within that scope. A rejected search does not establish absence.
-
-## 5. Finish the exercise
-
-Remove only the exercise file that you created. Discard its references after the source change.
+If a query stops, keep its cause and use [query recovery](/reference/troubleshooting).
 
 You now know how to select an exact target and compare relationship evidence with source.
 

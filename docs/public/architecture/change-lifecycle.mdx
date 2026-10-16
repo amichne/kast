@@ -1,0 +1,53 @@
+---
+title: "Change lifecycle"
+description: "Follow an exact change from planning and preimage admission to verification or recovery."
+icon: "file-pen-line"
+---
+
+A source change needs an exact target. It also needs authority for the source state in the plan. A successful read alone does not authorize a write.
+
+## From intent to source effect
+
+<div role="region" aria-label="Architecture diagram; scroll horizontally on narrow screens" tabIndex={0} className="overflow-x-auto">
+  <div style={{minWidth: "500px"}}>
+    <img className="block dark:hidden" alt="An authorized intent becomes a stored plan. Current-preimage admission precedes application, checks, and receipt; uncertain effects require recovery." src="/images/architecture/change-lifecycle.light.svg" />
+
+    <img className="hidden dark:block" alt="An authorized intent becomes a stored plan. Current-preimage admission precedes application, checks, and receipt; uncertain effects require recovery." src="/images/architecture/change-lifecycle.dark.svg" />
+  </div>
+</div>
+
+On a narrow screen, scroll the diagram horizontally or use the numbered explanation below.
+
+[Open full-size diagram](/images/architecture/change-lifecycle.light.svg) · [Mermaid source](/images/architecture/change-lifecycle.mmd)
+
+1. Planning binds a supported intent to an exact target and preimage: the source state before the write.
+2. Applying a plan starts with its stored identity. Kast checks the source again before it admits the write.
+3. The write uses admitted authority and records recovery state.
+4. Checks after the write produce a result. If a later phase fails, a source effect can still need recovery.
+
+The diagram shows the phases in order. It does not list every encoded result kind.
+
+<Warning>
+  A missing response does not prove that no write occurred. Keep the receipt and inspect current source before another write.
+</Warning>
+
+<span id="what-verification-establishes" />
+
+## What verification proves
+
+The receipt names the plan, phase, new state, and evidence. Its checks apply to the reported scope.
+
+The public tools can add a declaration or replace a supported block body. They do not refactor arbitrary code. They do not prove that the project builds.
+
+[Make a targeted change](/reference/change) gives the procedure and recovery steps. [Generated callable schemas](/reference/schemas) define exact inputs and result variants.
+
+## Source evidence
+
+Reviewed at `a6faea2de`:
+
+- [`HostedChangeProtocol`](https://github.com/amichne/kast/blob/a6faea2de1e9f1043b121cdd7fef691a4320a37a/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeProtocol.kt): reads for planning and stores the issued plan.
+- [`HostedChangeCoordinator`](https://github.com/amichne/kast/blob/a6faea2de1e9f1043b121cdd7fef691a4320a37a/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeCoordinator.kt): loads the exact plan and applies effects one at a time.
+- [`HostedChangeApply`](https://github.com/amichne/kast/blob/a6faea2de1e9f1043b121cdd7fef691a4320a37a/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt): checks current authority, prepares recovery, writes, and completes the checks.
+- [`MutationAdmission`](https://github.com/amichne/kast/blob/a6faea2de1e9f1043b121cdd7fef691a4320a37a/change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/MutationAdmission.kt): names failures in the preimage, scope, or write.
+
+Continue with [retention and invalidation](/reference/staleness), or return to [Architecture](/explanation).

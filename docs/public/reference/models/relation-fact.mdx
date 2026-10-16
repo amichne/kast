@@ -1,16 +1,16 @@
 ---
-mode: wide
+mode: "wide"
 icon: "git-branch"
 sidebarTitle: "Relation fact"
 title: "Relation fact"
-description: "Decode a compiler-established relationship without expanding its claim."
+description: "Decode a compiler-proved relationship without expanding its claim."
 openapi-schema: "reference/callables.openapi.json query_symbolsResponse_relationFact"
 ---
 
-A relation fact records a compiler-established source relationship within the admitted domain. Its producing query separately reports occurrence inventory and coverage.
+A relation fact records a link in source that the compiler has proved within the admitted domain. The query also reports the source sites and the scope it scanned.
 
-Reference, caller, implementation, and type-use facts describe different relationships. Their counts do not share one invocation meaning.
+A reference, caller, implementation, and type use are distinct facts. Their counts do not all count calls.
 
-Anonymous ownership stays separate from lexical containment. A static callback route does not prove runtime execution.
+An anonymous body's owner is distinct from the named body that contains it. A static callback path does not prove that code ran.
 
-[Program tracing](/reference/program-tracing) explains path evidence. [Callback observations](/reference/callback-observations) defines named-edge qualifications.
+[Program tracing](/reference/program-tracing) explains path evidence. [Callback fields](/reference/callback-observations) defines when a named edge can be claimed and which limits apply.

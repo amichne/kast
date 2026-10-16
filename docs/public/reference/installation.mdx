@@ -3,15 +3,18 @@ title: "Install Kast"
 sidebarTitle: "Release channels and installation"
 description: "Install the matched IDEA plugin and native Kast command, then connect your agent."
 icon: "download"
-keywords: ["install", "IntelliJ IDEA", "Kotlin"]
+keywords:
+  - "install"
+  - "IntelliJ IDEA"
+  - "Kotlin"
 ---
 
-Use this procedure to select a release channel and IDEA installation. The installer places Control, Host, service configuration, and the public command in their owned locations.
+Use these steps to select a release channel and IDEA installation. The installer puts Control, Host, service settings, and the public command in their owned locations.
 
-1. [Examine platform prerequisites.](#before-you-install)
+1. [Check platform prerequisites.](#before-you-install)
 2. [Install the selected release.](#1-install-the-selected-release)
 3. [Load Host and inspect state.](#2-load-the-plugin-and-inspect-state)
-4. [Establish a semantic connection.](#3-establish-a-semantic-connection)
+4. [Prove a semantic connection.](#3-establish-a-semantic-connection)
 
 ## Before you install
 
@@ -37,52 +40,51 @@ Run the public installer from a terminal.
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
-The default selects stable Control and Host independently. The installer examines component contracts before it reports installation success.
+By default, the installer selects stable Control and Host releases on their own. It checks their contracts before it reports success.
 
-The installer offers the Codex plugin. Accept the default to use Codex after you restart IDEA and Codex.
+The installer offers the Codex plugin. Accept the default. Restart IDEA and Codex to use it.
 
-For installation without a prompt, append `-- --install-codex-plugin`. To omit Codex plugin installation, append `-- --skip-codex-plugin`.
-The former `--register-codex-mcp` and `--skip-codex-mcp` options remain aliases for these plugin choices.
+For installation without a prompt, append `-- --install-codex-plugin`. To omit Codex plugin installation, append `-- --skip-codex-plugin`. The former `--register-codex-mcp` and `--skip-codex-mcp` options remain aliases for these plugin choices.
 
-For structured diagnostics, append `-- --verbose`. Preserve the `--` separator before installer options.
+For structured error details, append `-- --verbose`. Keep the `--` separator before installer options.
 
 <Accordion title="Latest developer build">
-Developer builds use the published prerelease channel.
+  Developer builds use the published prerelease channel.
 
-```shell wrap
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest
-```
+  ```shell wrap
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest
+  ```
 
-The installer prints the selected version and source revision. Local checkout state and the installed version do not select that published candidate.
+  The installer prints the selected version and source revision. Your local checkout and installed version do not select that published candidate.
 
-Terminal downloads show progress. Ctrl-C stops installation. `kast upgrade` keeps the developer channel.
+  Terminal downloads show progress. Ctrl-C stops installation. `kast upgrade` keeps the developer channel.
 
-Developer installation resets stale Kast state before replacement. Stable installation requests the same cleanup with `--force`.
+  A developer installation resets stale Kast state before replacement. For a stable installation, `--force` asks for the same cleanup.
 
-If you need a preview without file or registration changes, use `--dry-run`. To omit Codex plugin installation, use `--skip-codex-plugin`.
+  To preview the plan without changing files or registrations, use `--dry-run`. To omit Codex plugin installation, use `--skip-codex-plugin`.
 </Accordion>
 
 <Accordion title="Another IDEA installation">
-Select the application path explicitly.
+  Select the application path explicitly.
 
-```shell wrap
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --idea-home "/Applications/IntelliJ IDEA.app"
-```
+  ```shell wrap
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --idea-home "/Applications/IntelliJ IDEA.app"
+  ```
 </Accordion>
 
 <Accordion title="Recorded component pair">
-This command selects the [historical pair](/reference/compatibility#recorded-release-pair), rather than the latest channel release.
+  This command selects the [historical pair](/reference/compatibility#recorded-release-pair), rather than the latest channel release.
 
-```shell wrap
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --version 0.3.1 --host-version 0.4.0
-```
+  ```shell wrap
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --version 0.3.1 --host-version 0.4.0
+  ```
 
-`--version` selects Control. `--host-version` selects Host.
+  `--version` selects Control. `--host-version` selects Host.
 </Accordion>
 
 ## 2. Load the plugin and inspect state
 
-Restart IDEA to load Host. Inspect the installed version, command location, and recorded connections.
+Restart IDEA to load Host. Check the installed version and command path. Check the recorded connections too.
 
 ```shell
 kast status
@@ -96,17 +98,18 @@ The installer reports a missing `PATH` entry. It does not change shell profiles.
 
 ### Coordinator endpoint
 
-Fresh and replacement installations use a private endpoint. Replacement migrates an admitted saved `codex-control` selection to `private`.
+Fresh and replacement installations use a private endpoint. If a saved `codex-control` selection is admitted, replacement changes it to `private`.
 
-The installer rejects an explicit `codex-control` selection. It does not start a broker or publish desktop discovery.
-The plugin's MCP session owns IntelliJ preparation. Codex owns its App Server and control socket.
+The installer rejects an explicit `codex-control` selection. It does not start a broker or publish desktop discovery. The plugin's MCP session prepares IntelliJ. Codex owns its App Server and control socket.
 
 Read [App Server compatibility](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md) for endpoint admission and migration details.
 
-## 3. Establish a semantic connection
+<span id="3-establish-a-semantic-connection" />
+
+## 3. Prove a semantic connection
 
 [Connect your agent](/reference/integrations). Complete [the first-query exercise](/tutorials/first-query) in the intended worktree.
 
-Installation success does not establish loaded Host identity or workspace readiness. [Lifecycles](/reference/lifecycles) separates those facts.
+Installation success alone does not prove which Host is loaded. It does not prove that the workspace is ready. [Lifecycles](/reference/lifecycles) separates those facts.
 
-For recovery or removal, use [Manage Kast](/reference/management). Preserve failure stage and recovery location before another installation try.
+For recovery or removal, use [Manage Kast](/reference/management). Before another installation try, keep the failed stage and recovery path.

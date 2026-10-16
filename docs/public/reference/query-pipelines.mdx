@@ -17,13 +17,14 @@ Set `retention: "RETAIN"` on the producing queries. Keep the issued retained res
 
 ## Complete static answers
 
-Every public run needs complete execution within `COMPILER_RESOLVED_STATIC_V1`. Composition preserves input identity and qualifications.
+Every public run needs complete execution within `COMPILER_RESOLVED_STATIC_V1`. Combining inputs keeps their identities and stated limits.
 
-A finished output page cannot strengthen incomplete producer proof. Rejection evidence stays `POLICY_REJECTED_EVIDENCE` during later presentation.
+A finished output page cannot supply producer proof that is missing. During later output reads, rejection evidence stays `POLICY_REJECTED_EVIDENCE`.
 
 The examples use the [historical recording](/reference/schemas#recorded-walkthrough) at `56df091`. Its counts describe that recording alone.
 
 <a id="retain-a-second-query-result" />
+
 <a id="save-a-second-query-result" />
 
 ## 1. Keep a second query result
@@ -84,7 +85,7 @@ Use `UNION` to combine symbol identities. Apply a later `WHERE` to the combined 
 
 Recorded call `04-union-filter` returned both declarations with exhaustive coverage. The filter acted after the union.
 
-`CONCAT` uses `input` and preserves order and duplicates. It does not use union's identity reduction.
+`CONCAT` uses `input` and keeps order and duplicates. It does not use union's identity reduction.
 
 <a id="keep-only-symbols-present-in-both" />
 
@@ -111,7 +112,7 @@ Recorded call `05-intersection` returned `QueryStepSyntax.Concat`. The shared id
 
 ## 4. Project a joined cell before another symbol step
 
-Use an `INNER` join to preserve two named cells. Select one cell before a later symbol step.
+Use an `INNER` join to keep two named cells. Select one cell before a later symbol step.
 
 ```json
 {
@@ -161,7 +162,7 @@ Arbitrary-field joins and a general-purpose `MAP` have no supported contract. [C
 
 `EXPAND_RELATION` defaults to workspace expansion. An unbounded `WALK` also defaults to workspace expansion.
 
-An explicit walk depth defaults to the retained seed's scope. An explicit `expansionScope` overrides either default before enumeration.
+With an explicit walk depth, the default is the retained seed's scope. An explicit `expansionScope` overrides either default before the scan.
 
 ```json
 {
@@ -178,7 +179,7 @@ An explicit walk depth defaults to the retained seed's scope. An explicit `expan
 }
 ```
 
-This current source-domain example does not change the recorded counts. A later `WHERE` cannot reduce native enumeration work.
+This current source-domain example does not change the recorded counts. A later `WHERE` cannot reduce work in the native scan.
 
 ## Read produced output or retained rows
 
@@ -202,7 +203,7 @@ Recorded calls `08-read-a` and `09-read-c` returned ten symbols and one pair. Bo
 
 ### Reject an unproven absence claim
 
-`DIFFERENCE` and `ANTI` need complete right coverage without unfinished producer progress. A missing match in a prefix cannot establish absence.
+`DIFFERENCE` and `ANTI` need complete right coverage. The right producer has to finish its work. A missing match in a prefix cannot prove absence.
 
 Recorded call `10-incomplete-right` supplied incomplete right coverage. Both absence operations returned this historical rejection.
 
@@ -217,6 +218,6 @@ Recorded call `10-incomplete-right` supplied incomplete right coverage. Both abs
 }
 ```
 
-Current complete-only execution can reject before it produces a reusable incomplete answer. Resource exhaustion still cannot establish absence.
+Current complete-only execution can reject before an incomplete answer becomes reusable. If resources run out, that still does not prove absence.
 
 If the epoch changes, start fresh producing queries. [Staleness](/reference/staleness) defines reuse, and [Results](/reference/responses) defines independent row and evidence positions.

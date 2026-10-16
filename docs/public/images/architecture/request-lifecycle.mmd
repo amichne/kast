@@ -1,0 +1,10 @@
+flowchart TD
+  I["Decode and admit tool arguments"] --> R["Discover exact Gradle root"]
+  R --> P["Prepare selected IDEA project"]
+  P --> H["Admit Host contract and current read state"]
+  H --> Q["Evaluate canonical operation"]
+  Q --> C{"Completion proof"}
+  C -->|Established| O["Operation document and bounded output"]
+  C -->|Unproven| E["Typed rejection and available evidence"]
+  O --> T["Admit result schema and encode transport reply"]
+  E --> T

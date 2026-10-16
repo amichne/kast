@@ -2,34 +2,42 @@
 
 ## Purpose
 
-Kast is the deterministic structure around a probabilistic system. It reduces the parts of a coding task that an agent must guess by obtaining program facts from the strongest available authority and carrying their identity, scope, coverage, and validity into subsequent work.
+An agent can guess. Kast gets program facts from the strongest available source. Each fact keeps its identity and scope. It keeps its coverage and validity too.
 
-The agent supplies judgment. Kast establishes supported program facts through the admitted IntelliJ IDEA project and preserves explicit limitations. Do not describe this as making the model itself deterministic or guaranteeing every conclusion it draws.
+The agent supplies judgment. Kast proves supported facts through the admitted IntelliJ IDEA project. It keeps explicit limits. Do not claim that this makes the model deterministic or proves every conclusion it draws.
 
 ## Primary audience
 
-Developers using a coding agent in a Kotlin Gradle repository or worktree. A first visit should explain what Kast is, why it matters, and what it currently supports before presenting installation details. Integrators can follow the generated contracts when exact request and result shapes matter.
+Developers use Kast with a coding agent in a Kotlin Gradle repository or worktree. A first visit explains what Kast is, why it matters, and what it supports. Then show how to install it. An integrator can use the generated contracts. These give exact request and result shapes.
 
-## Documentation journey
+## Docs journey
 
-Keep a single sidebar without a top-level Documentation selector. Lead with Overview, followed by the existing collapsed Get started group containing installation, agent connection, and troubleshooting. Keep Using Kast focused on practical tasks and background preparation. Keep conceptual explanations, query forms, results, and integration contracts together under Reference, with detailed schemas collapsed.
+The approved structure of 16 October 2026 uses three tabs: Guides, Architecture, and Reference. It replaces the earlier single sidebar.
 
-## Jobs to be done
+Guides lead from Overview through Install, Connect your agent, and the first-result exercise. Task and recovery guides follow. Architecture has five topics: authority, query lifecycle, retention and invalidation, topology and ownership, and change lifecycle. Reference owns exact interface facts and generated schemas. Keep normal navigation to two levels. Keep detailed generated schemas collapsed.
 
-Find exact declarations; follow compiler-confirmed relationships and individual uses; combine retained evidence by semantic identity; resume supported unfinished work; interpret coverage and validity; and make supported exact-target declaration insertions or block-body replacements with an explicit verification outcome.
+Keep useful routes when directory names reflect an earlier structure. Give each fact one canonical home. Link the other tracks to that home. Keep prerequisites, warnings, and recovery visible.
 
-Installation and connection should lead into a real semantic query. Listing a tool catalog is not proof of workspace readiness. Preserve the distinction between management commands, query operations, and supported source changes.
+## Reader tasks
+
+Help readers find exact declarations. Show their uses and links proved by the compiler. Show how to combine saved evidence by semantic identity. Explain how to resume supported unfinished work and read coverage and validity. Show how to insert a declaration at an exact target. Show how to replace a block body. Keep the explicit result of each verification.
+
+Install, connect, and then run a real semantic query. A tool catalog does not prove workspace readiness. Keep management commands, queries, and source changes distinct.
 
 ## Boundaries
 
-The overarching ambition is to carry dependable evidence from a question toward a justified action. Describe that ambition separately from shipped functionality. Do not imply arbitrary refactoring, universal language or library coverage, permanent snapshots, unlimited work, or whole-project build and business correctness from a bounded result.
+The broader aim is to carry sound proof from a question toward a justified action. State that aim apart from shipped features. Do not imply that Kast can refactor any code. Do not claim support for all languages and libraries. Do not imply permanent snapshots or unlimited work. A bounded result does not prove a whole-project build. It does not prove business rules.
 
-Exact positive facts can remain useful with qualified coverage. Empty qualified output does not establish absence. Execution continuations, retained-result references, presentation cursors, and exact-symbol references are different capabilities. A usable continuation and a terminal limitation require different next steps.
+Exact facts can stay useful when coverage has limits. Empty qualified output does not prove absence. Keep execution continuations distinct from retained-result references. Presentation cursors and exact-symbol references also have their own roles. A usable continuation and a terminal limit need different next steps.
 
 ## Source and evidence
 
-Check the current release and main source before updating behavior. Use source-bound knowledge guides for orientation, then authoritative types, schemas, and tests for precise claims. Generated schemas remain the contract source of truth; do not hand-edit them to match prose. Historical walkthrough counts, offsets, tokens, and failures remain evidence for their pinned revision, never a substitute for a new runtime validation.
+Check the current release and main source before changing a behavior claim. Use source-bound guides for context. Then read the types, schemas, and tests that own each fact. Generated schemas own the contract. Do not edit them by hand to match prose.
+
+Historical counts, offsets, tokens, and failures describe their pinned revision. They do not replace a new native check.
 
 ## Diagrams
 
-Use portable Mermaid diagrams with concise labels, accessible titles and descriptions, and consistent rounded nodes and spacing. Use the site blue for authority, green for established evidence, amber for limits, and red for rejection. Explain every distinction in text as well as color, preserve native light and dark rendering, and avoid dense implementation diagrams on the overview.
+Keep authored Mermaid source. Use the pinned Beautiful Mermaid renderer to make light and dark SVG. Use short labels and rounded nodes. Keep spacing consistent. Each diagram has alternative text and a numbered text guide. Links open the full-size asset and source.
+
+Use the site blue for authority, green for proven evidence, amber for limits, and red for rejection where supported. Text explains each distinction without relying on color. Keep dense source details off the overview.

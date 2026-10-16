@@ -4,30 +4,30 @@ description: "Look up execution dimensions, presentation limits, completion fail
 icon: "gauge"
 ---
 
-Execution allowances constrain resource use. They do not change the requested source scope, traversal extent, or output shape.
+Execution allowances limit resource use. They do not change the requested source scope, traversal extent, or output shape.
 
 ## Execution budget
 
-`executionBudget` accepts these optional dimensions. Omission or `null` selects configured defaults. Positive requests remain subject to operator and transport ceilings.
+`executionBudget` accepts these optional fields. If a field is omitted or `null`, it uses the default setting. Positive requests cannot exceed operator or transport limits.
 
 | Field | Query default | Meaning |
-| --- | ---: | --- |
-| `maxElapsedMs` | 15,000 milliseconds | Elapsed allowance for semantic execution. This ceiling does not impose a wait. |
-| `maxWorkUnits` | 2,000,000 work units | Allowance for accounted semantic work, independent of response size. |
+| --- | --: | --- |
+| `maxElapsedMs` | 15,000 ms | Time allowed for semantic work. This limit does not impose a wait. |
+| `maxWorkUnits` | 2,000,000 work units | Limit on charged semantic work. Response size has its own limit. |
 | `maxResults` | 128 rows | Result allowance. A row limit alone does not prove completed semantic work. |
-| `maxReturnedBytes` | 49,152 bytes | Encoded response allowance, equal to 48 KiB. Evidence storage has separate quotas. |
+| `maxReturnedBytes` | 49,152 bytes | Limit on the encoded response, equal to 48 KiB. Evidence storage has its own quotas. |
 
-More time does not raise the work allowance. More work does not enlarge the response allowance.
+More time does not raise the work allowance. More work does not raise the output limit.
 
-Source reads keep their separate default of 10,000 work units and 128 entities. They share the 15,000-millisecond elapsed default.
+Source reads have their own default: 10,000 work units and 128 entities. Their elapsed default is also 15,000 ms.
 
-The response reports the admitted grant. A requested value does not establish that Kast admitted the full value.
+The response reports the admitted grant. A requested value does not prove that Kast admitted the full value.
 
-An internal continuation shares the original operation's grant. Public output continuations and retained result cursors grant presentation only.
+An internal continuation shares the original call's grant. Public output continuations and retained result cursors only grant output reads.
 
 ## Operator controls
 
-The Host selects defaults from its admitted configuration. These settings also have IDE JVM properties, such as `kast.read.semantic.work`.
+The Host selects defaults from its admitted settings. These settings also have IDE JVM properties, such as `kast.read.semantic.work`.
 
 | Per-call field | Default setting | Operator ceiling |
 | --- | --- | --- |
@@ -36,58 +36,52 @@ The Host selects defaults from its admitted configuration. These settings also h
 | `maxResults` | `KAST_READ_SEMANTIC_RESULTS` | `KAST_READ_EXECUTION_MAX_RESULTS` |
 | `maxReturnedBytes` | `KAST_READ_SEMANTIC_RETURNED_BYTES` | `KAST_READ_EXECUTION_MAX_RETURNED_BYTES` |
 
-Each operator ceiling defaults to 2,147,483,646. A lower ceiling clamps both default and requested allowances.
-Transport capacity and remaining host time can reduce the effective allowance further.
+Each operator ceiling defaults to 2,147,483,646. A lower ceiling clamps both default and requested allowances. Transport capacity and host time left can lower the allowance further.
 
-The installed `share/kast/configuration-schema.json` describes each setting, range, accepted source, and default.
-The public CLI does not expose a `config` command.
-The response's admitted grant establishes the limits for one call.
+The installed `share/kast/configuration-schema.json` lists each setting. It gives the range, accepted source, and default. The public CLI does not expose a `config` command. Read the admitted grant in the response to find the limits for this call.
 
-The default host deadline is 30,000 milliseconds. Model capture and completion work also consume this deadline.
-If a configured host deadline is less than 15,000 milliseconds, `KAST_READ_SEMANTIC_MILLIS` must fit that deadline.
-An inconsistent configuration rejects before semantic execution.
+The default host deadline is 30,000 ms. Capturing the model and proving completion also count toward this deadline. If the host deadline is less than 15,000 ms, `KAST_READ_SEMANTIC_MILLIS` has to fit that deadline. If settings conflict, Kast rejects before semantic work starts.
 
-The [configuration guide](https://github.com/amichne/kast/blob/main/docs/hosted-read-configuration.md) explains saved settings, IDE properties, and service lifetimes.
+The [settings guide](https://github.com/amichne/kast/blob/main/docs/hosted-read-configuration.md) explains saved settings, IDE properties, and service lifetimes.
 
 ## Retention controls
 
 | Setting | Default | Limit |
-| --- | ---: | --- |
+| --- | --: | --- |
 | `KAST_READ_QUERY_CHECKPOINT_BYTES` | 33,554,432 bytes | Charged bytes per query checkpoint. |
 | `KAST_READ_QUERY_CONTINUATION_BYTES` | 134,217,728 bytes | Charged bytes per query continuation store. |
 | `KAST_READ_QUERY_CONTINUATION_ENTRIES` | 64 | Entries per query continuation store. |
-| `KAST_READ_QUERY_CONTINUATION_TTL_MILLIS` | 600,000 milliseconds | Continuation lifetime. |
+| `KAST_READ_QUERY_CONTINUATION_TTL_MILLIS` | 600,000 ms | Continuation lifetime. |
 
-The checkpoint limit cannot exceed the store limit. Charged bytes are conservative accounting, not a heap measurement.
-Larger response pages do not increase these quotas. Public `RESUME` presents existing output and cannot continue unfinished semantic execution.
+The checkpoint limit cannot exceed the store limit. Charged bytes use a conservative count. They do not measure the heap. Larger response pages do not raise these quotas. Public `RESUME` shows existing output. It cannot continue semantic work that has not finished.
 
 ## Completion failures
 
-| Code | Failed fact | Preserved evidence |
+| Code | Failed fact | Kept evidence |
 | --- | --- | --- |
 | `COMPLETION_UNSUPPORTED` | The output or question has no supported completion proof. | The finite cause. |
-| `COMPLETION_UNPROVEN` | Execution or callback proof does not establish the requested complete answer. | Original coverage and available retained evidence. |
-| `INVESTIGATION_UNPROVEN` | An impact investigation lacks original evidence, complete path selection, or discharged obligations. | The investigation's original accounting. |
+| `COMPLETION_UNPROVEN` | Execution or callback proof does not prove the requested complete answer. | Original coverage and available retained evidence. |
+| `INVESTIGATION_UNPROVEN` | An impact investigation lacks original evidence or full path selection, or still has proof rules to meet. | The investigation's original accounting. |
 | `RETENTION_UNAVAILABLE` | Necessary evidence storage failed. | Original enumeration coverage and the storage cause. |
 | `RESULT_FIELD_UNAVAILABLE` | The retained result lacks the requested field or finalized witness section. | The result's original qualifications. |
 
-This table groups common failures. The generated result schemas define the complete closed variants and case-specific details.
+This table groups common failures. The generated result schemas define every closed result kind and its details.
 
 ## Identity and state failures
 
-Exact references need current compiler identity admission. Retained results and output continuations need their original workspace, owner, read state, and lifetime.
+Exact references need current compiler identity checks. Retained results and output continuations need their original state. That includes workspace, owner, read state, and lifetime.
 
-Expiry, eviction, owner retirement, incompatible identity, or stale state can prevent reuse. A larger resource grant cannot restore missing state. [Staleness](/reference/staleness) explains these failures.
+Expiry, eviction, owner retirement, an identity mismatch, or stale state can block reuse. A larger resource grant cannot restore missing state. [Staleness](/reference/staleness) explains these failures.
 
-`compiler-identity-unavailable` needs an identity or refinement investigation. Clean file diagnostics do not establish identity for every declaration.
+For `compiler-identity-unavailable`, investigate identity or refinement. Clean file diagnostics do not prove identity for every declaration.
 
 `READ_SOURCE` accepts an issued `candidateSelector` as `candidateRef`. An exact symbol reference does not belong to that action's token family.
 
 ## Write failures
 
-A missing response, timeout, or cancellation does not establish that no source effect occurred. A change result keeps its plan and phase evidence.
+A missing response does not prove that no source effect occurred. Neither does a timeout or cancellation. A change result keeps its plan and phase evidence.
 
-The [change procedure](/reference/change#read-the-receipt) establishes the effect before another write. The project's tests establish behavior beyond the receipt's scope.
+The [change procedure](/reference/change#read-the-receipt) proves the effect before another write. The project's tests prove behavior beyond the receipt's scope.
 
 ## Recovery procedures and source evidence
 
@@ -99,7 +93,7 @@ The [change procedure](/reference/change#read-the-receipt) establishes the effec
 
 ## Budget example
 
-This per-call profile selects the execution defaults explicitly. It leaves response allowances at their configured values.
+This profile sets the execution defaults for one call. It leaves response allowances at their default settings.
 
 ```json
 {
@@ -112,4 +106,4 @@ This per-call profile selects the execution defaults explicitly. It leaves respo
 
 For `query_symbols`, this object belongs inside `request`. A requested value remains subject to admission.
 
-[Complete a targeted engineering task](/how-to/complete-engineering-task) combines discovery, relationship evidence, an exact change, and project tests.
+[Complete a targeted engineering task](/how-to/complete-engineering-task) shows the full task. It combines discovery, relationship proof, an exact change, and project tests.

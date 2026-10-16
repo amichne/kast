@@ -5,30 +5,37 @@ description: "Find exact Kotlin declarations, trace their connections, and choos
 icon: "scan-search"
 ---
 
-<a id="what-kast-adds" />
-<a id="use-the-agent-you-already-use" />
-<a id="is-kast-for-you" />
+<span id="what-kast-adds" />
 
-Kast connects your coding agent to IntelliJ IDEA. Your agent uses compiler evidence to identify Kotlin declarations and their connections.
+<span id="use-the-agent-you-already-use" />
 
-Text search finds matching words. Kast distinguishes overloads, reports source relationships, and states the limits of each answer.
+<span id="is-kast-for-you" />
 
-## Choose your reader track
+Kast connects your coding agent to IntelliJ IDEA. Your agent uses compiler evidence to find Kotlin declarations and the links between them.
 
-<CardGroup cols={2}>
-  <Card title="Tutorials: learn Kast" icon="graduation-cap" href="/tutorials">
-    Install Kast, connect your agent, and complete a guided query with a known caller.
+Text search finds matching words. Kast tells overloads apart. It reports links in source and states the limits of each answer.
+
+<Card title="Get your first result" icon="arrow-right" href="/start">
+  Install Kast, connect Codex, and find a function and its caller in source you control.
+</Card>
+
+<span id="choose-your-reader-track" />
+
+## Find the right documentation
+
+<Columns cols={3}>
+  <Card title="Guides" icon="list-checks" href="/how-to">
+    Complete a task and recover when it stops.
   </Card>
-  <Card title="How-to guides: complete a task" icon="list-checks" href="/how-to">
-    Find callers, inspect diagnostics, read retained evidence, or make a targeted change.
+
+  <Card title="Architecture" icon="workflow" href="/explanation">
+    Follow an answer to its source and understand when it remains valid.
   </Card>
-  <Card title="Reference: find a contract" icon="braces" href="/reference">
-    Look up query forms, result fields, client protocols, and generated schemas.
+
+  <Card title="Reference" icon="braces" href="/reference">
+    Look up exact inputs, results, limits, and client contracts.
   </Card>
-  <Card title="Explanation: understand the evidence" icon="workflow" href="/explanation">
-    Understand compiler authority, search scope, callback ownership, and the lifetime of saved evidence.
-  </Card>
-</CardGroup>
+</Columns>
 
 ## What your agent can do
 
@@ -38,14 +45,16 @@ Text search finds matching words. Kast distinguishes overloads, reports source r
 - Inspect IDEA diagnostics for a file or directory.
 - Add a declaration or replace a supported function body.
 
-[Example questions](/search) show these tasks in an agent conversation. Codex, Copilot, and Pi use the same semantic owners through different adapters.
+[Example questions](/search) show these tasks in an agent conversation. Codex, Copilot, and Pi use distinct adapters to reach the same semantic owners.
 
 ## Before your first query
 
-Kast supports Kotlin Gradle repositories on Apple silicon macOS with IntelliJ IDEA `262.*`, its bundled Kotlin plugin, and Java 25 JBR.
+Use an Apple silicon Mac and a Kotlin Gradle repository. Kast needs IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
 
-[Install Kast](/start), then [connect your agent](/agent-harnesses). A query prepares the exact IDEA project and reports trust, import, or indexing blockers.
+[Install Kast](/start), then [connect your agent](/agent-harnesses). The plugin's MCP session starts IDEA setup for projects with `settings.gradle.kts`. If trust, import, or indexing blocks a query, Kast reports the cause.
 
-A completed answer applies to its declared source scope and compiler-static model. It does not prove runtime execution or a successful project build.
+A complete answer applies to its declared source scope and compiler-static model. It does not prove that code ran or that the project builds.
 
-[What an answer proves](/reference/evidence-boundaries) explains these limits. Your project's build and tests establish behavior after a change.
+[What an answer proves](/reference/evidence-boundaries) explains these limits. Your project's build and tests prove behavior after a change.
+
+[Glossary](/glossary) defines the terms used in Kast answers.

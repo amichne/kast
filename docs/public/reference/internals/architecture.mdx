@@ -1,5 +1,6 @@
 ---
 title: "How Kast works"
+sidebarTitle: "Authority boundaries"
 description: "See how Kast answers queries through IDEA and decides whether retained results remain usable."
 icon: "workflow"
 keywords:
@@ -10,61 +11,78 @@ keywords:
 mode: "wide"
 ---
 
-<a id="bounded-execution-preserves-progress" />
+<span id="bounded-execution-keeps-progress" />
 
-Kast obtains semantic facts from the IDEA project for one exact repository. Transport adapters carry those facts to the agent with their source state and proof limits.
+Kast gets facts about source from the IDEA project for one exact repository. Adapters carry them to the agent. They keep the source state and proof limits with the facts.
 
-## Authority stays with the program
+<span id="authority-stays-with-the-program" />
 
-IDEA supplies the imported Gradle model, bundled Kotlin compiler analysis, and indexes. Indexes find candidates, and compiler evidence establishes their meaning.
+## Who proves each fact
 
-The owning domain admits exact declarations and relationships. The query protocol coordinates those reads and preserves their qualifications.
+IDEA supplies the imported Gradle model. It also supplies the bundled Kotlin compiler analysis and indexes. Indexes find candidates. Compiler evidence proves their meaning.
 
-```mermaid
-flowchart LR
-  A["Agent question"] --> T["MCP, Tool RPC, or hosted App Server"]
-  T --> P["Exact workspace preparation"]
-  P --> H["IDEA Host and current read authority"]
-  H --> D["Symbol, relation, source, and traversal domains"]
-  D --> Q["Canonical query and completion proof"]
-  Q --> O["Bounded facts and retained evidence"]
-  O --> A
-```
+Each domain owns exact checks for declarations and relationships. The query protocol runs those reads. It keeps their stated limits.
 
-Control owns installed adapters and coordination. Host owns IDEA integration and project admission. Compatibility connects those components before a semantic operation.
+<img
+  className="block dark:hidden"
+  alt="Kast checks the exact project and uses compiler facts. It returns an answer with proof and stated limits."
+  src="/images/architecture/authority.light.svg"
+/>
+<img
+  className="hidden dark:block"
+  alt="Kast checks the exact project and uses compiler facts. It returns an answer with proof and stated limits."
+  src="/images/architecture/authority.dark.svg"
+/>
 
-## Execution and presentation have separate limits
+[Open full-size diagram](/images/architecture/authority.light.svg) · [Mermaid source](/images/architecture/authority.mmd)
 
-`CanonicalQueryProtocol` owns public action dispatch and internal semantic continuation. It keeps one question and one execution grant throughout a run.
+1. The agent chooses the question; the transport carries it.
+2. IDEA admits the exact workspace and current read state.
+3. Domain services prove compiler facts. The query keeps completion and limits with the evidence.
+4. The agent interprets that scoped evidence and chooses its next action.
 
-Discovery preserves unvisited files and active source positions. A filtered empty page can advance execution without a new result row.
+Control owns the installed adapters and coordinates their work. Host owns the IDEA plugin and project admission. The components pass contract checks before a semantic call.
 
-`QueryStateStore` owns retained rows and output state. Presentation uses issued authority from that owner and preserves original coverage.
+<span id="execution-and-presentation-have-separate-limits" />
 
-Public `RESUME` and `READ_RESULT` do no semantic replay. A retained preview cannot strengthen completion proof.
+## Limits on work and output
 
-## Read state constrains reuse
+`CanonicalQueryProtocol` dispatches public actions. It also owns internal semantic continuation. It keeps one question and one execution grant throughout a run.
 
-Workspace admission records the exact root, Host, read epoch, and committed source state. Content and compiler revalidation establish request-specific facts.
+Discovery tracks files left to visit and its active source positions. A filtered page with no rows can still advance the run.
 
-Exact references can get fresh authority under their identity policy. Retained evidence needs its original state and lifetime.
+`QueryStateStore` owns retained rows and output state. Output reads use the authority it issues. They keep the original coverage.
 
-Detached records keep source identities and derivations rather than live PSI or compiler objects. Their stored form cannot replace current native authority.
+Public `RESUME` and `READ_RESULT` do not replay semantic work. A retained preview cannot strengthen completion proof.
 
-## Tracing within and between functions
+<span id="read-state-constrains-reuse" />
 
-Relationship domains establish compiler-resolved references and calls. Callback flow preserves anonymous ownership, supply, formal mapping, aliases, forwarding, and invocation sites.
+## State needed for reuse
 
-Value impact tracks supported transfers from exact producers and preserves supplied representation models. It keeps original investigation accounting through presentation.
+Workspace admission records the exact root, Host, read epoch, and committed source state. Kast checks content and compiler identity again. These checks prove the facts needed for each request.
 
-Unsupported or incomplete proof remains a finite cause. [Program tracing](/reference/program-tracing) describes the supported claims.
+An exact reference can get fresh authority under its identity policy. Retained evidence needs its original state and lifetime.
 
-## Runtime ownership
+Saved records keep source identities and how facts were derived. They hold no live PSI or compiler objects. Their stored form cannot replace current native authority.
 
-Workspace preparation coordinates IDEA opening and status. Hosted workspace lanes coordinate semantic requests and uncertain mutation settlement.
+<span id="tracing-within-and-between-functions" />
 
-Service startup and retirement use installation ownership, readiness identity, and lifecycle fences. A client registration does not establish those facts.
+## Tracing code
+
+Relationship domains prove references and calls through the compiler. Callback flow keeps each anonymous owner. It also keeps supply, formal mapping, aliases, forwarding, and call sites.
+
+Value impact tracks supported transfers from exact producers. It keeps the supplied representation models. Reading more output keeps the original investigation ledger.
+
+If proof is incomplete or not supported, Kast reports a specific cause. [Program tracing](/reference/program-tracing) describes the supported claims.
+
+<span id="runtime-ownership" />
+
+## Who owns runtime state
+
+Workspace preparation opens IDEA and reads its status. Hosted App Server workspace lanes coordinate semantic requests. They also settle uncertain writes.
+
+When a service starts or stops, it checks installation ownership and readiness identity. Lifecycle fences guard those transitions. A client registration does not prove those facts.
 
 [Lifecycles](/reference/lifecycles) connects these owners. [Staleness](/reference/staleness) describes the state each read needs.
 
-[The source map](/reference/source-map) links current owners and focused tests. OpenWiki supplies source-bound context rather than a substitute for these contracts.
+[The source map](/reference/source-map) links current owners and focused tests. OpenWiki gives source-bound context. It does not replace these contracts.
