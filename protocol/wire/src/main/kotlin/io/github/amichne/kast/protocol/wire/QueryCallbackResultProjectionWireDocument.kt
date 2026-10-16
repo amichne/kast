@@ -3,12 +3,13 @@
 package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
+import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryCallbackBindingDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackResultProjectionDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackResultSiteDocument
+import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint
-import io.github.amichne.kast.protocol.contract.QueryRelationSubjectFingerprint
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -45,7 +46,7 @@ internal sealed interface QueryCallbackResultProjectionWireDocument {
     @Serializable
     @SerialName("ADMITTED")
     data class Admitted(
-        val subject: QueryRelationSubjectFingerprint,
+        val subject: QueryReferenceWireDocument.ExactSymbol,
         val basis: ImpactSemanticBasisDocument,
         val domain: QueryRelationDomainFingerprint,
         val relation: RelationKindDocument,
@@ -60,7 +61,13 @@ internal sealed interface QueryCallbackResultProjectionWireDocument {
 internal fun QueryCallbackResultProjectionDocument.resultProjectionWire(): QueryCallbackResultProjectionWireDocument =
     when (this) {
         is QueryCallbackResultProjectionDocument.Admitted ->
-            QueryCallbackResultProjectionWireDocument.Admitted(subject, basis, domain, relation, site.resultSiteWire())
+            QueryCallbackResultProjectionWireDocument.Admitted(
+                QueryReferenceWireDocument.ExactSymbol(subject.token.value),
+                basis,
+                domain,
+                relation,
+                site.resultSiteWire(),
+            )
         is QueryCallbackResultProjectionDocument.Unproven -> QueryCallbackResultProjectionWireDocument.Unproven(cause)
     }
 
@@ -89,8 +96,16 @@ internal fun QueryCallbackResultProjectionWireDocument.toContract():
         is QueryCallbackResultProjectionWireDocument.Unproven ->
             WireDocumentConversion.Converted(QueryCallbackResultProjectionDocument.Unproven(cause))
         is QueryCallbackResultProjectionWireDocument.Admitted ->
-            site.toContract().mapConverted {
-                QueryCallbackResultProjectionDocument.Admitted(subject, basis, domain, relation, it)
+            combineConverted(ProtocolText.parse(subject.token).toWireDocumentConversion(), site.toContract()) {
+                token,
+                site ->
+                QueryCallbackResultProjectionDocument.Admitted(
+                    QueryReferenceDocument.ExactSymbol(token),
+                    basis,
+                    domain,
+                    relation,
+                    site,
+                )
             }
     }
 

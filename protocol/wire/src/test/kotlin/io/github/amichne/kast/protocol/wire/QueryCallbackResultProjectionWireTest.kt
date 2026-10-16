@@ -50,7 +50,8 @@ class QueryCallbackResultProjectionWireTest {
         val projection = encoded.getValue("result_projection").jsonObject
         assertEquals(setOf("type", "subject", "basis", "domain", "relation", "site"), projection.keys)
         assertEquals(JsonPrimitive("ADMITTED"), projection.getValue("type"))
-        assertEquals(JsonPrimitive("2".repeat(64)), projection.getValue("subject"))
+        assertEquals(setOf("token"), projection.getValue("subject").jsonObject.keys)
+        assertEquals(JsonPrimitive("exact:seed"), projection.getValue("subject").jsonObject.getValue("token"))
         assertEquals(JsonPrimitive("1".repeat(64)), projection.getValue("domain"))
         assertEquals(JsonPrimitive("callees"), projection.getValue("relation"))
         assertEquals(encoded.getValue("target"), projection.getValue("site").jsonObject.getValue("target"))
@@ -111,9 +112,10 @@ class QueryCallbackResultProjectionWireTest {
                 encoded.substringBefore(",\"result_projection\"") + "}",
                 encoded.replace("\"ADMITTED\"", "\"UNKNOWN\""),
                 encoded.replace("\"TARGET\"", "\"UNKNOWN\""),
-                encoded.replace("\"subject\":\"${"2".repeat(64)}\",", ""),
+                encoded.replace("\"subject\":{\"token\":\"exact:seed\"},", ""),
+                encoded.replace("\"subject\":{\"token\":\"exact:seed\"}", "\"subject\":\"${"2".repeat(64)}\""),
                 encoded.replace("\"domain\":\"${"1".repeat(64)}\",", ""),
-                encoded.replace("\"subject\":\"${"2".repeat(64)}\"", "\"subject\":\"invalid\""),
+                encoded.replace("\"token\":\"exact:seed\"", "\"token\":null"),
             )
         for (input in malformed) {
             assertThrows(SerializationException::class.java) {

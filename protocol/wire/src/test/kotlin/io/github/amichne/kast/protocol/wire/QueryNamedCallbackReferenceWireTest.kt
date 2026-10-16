@@ -34,6 +34,31 @@ class QueryNamedCallbackReferenceWireTest {
     private val fixture = QueryCallbackWireFixture()
 
     @Test
+    fun `named projection rejects a substituted walk subject`() {
+        val wire = namedReferenceWalk()
+        assertTrue(decodeWalk(wire) is WireDocumentConversion.Converted)
+        val other = QueryReferenceWireDocument.ExactSymbol("exact:other")
+        assertEquals(
+            WireDocumentConversion.Rejected,
+            decodeWalk(
+                wire.copy(
+                    subject = other,
+                    callableObservations = listOf(wire.callableObservations.single().copy(subject = other)),
+                )
+            ),
+        )
+        val entry = wire.callableObservations.single()
+        val target = entry.observation.target as QueryCallableTargetWireDocument.NamedReference
+        val projection = target.resultProjection as QueryCallbackResultProjectionWireDocument.Admitted
+        val foreign =
+            entry.copy(
+                observation =
+                    entry.observation.copy(target = target.copy(resultProjection = projection.copy(subject = other)))
+            )
+        assertEquals(WireDocumentConversion.Rejected, decodeWalk(wire.copy(callableObservations = listOf(foreign))))
+    }
+
+    @Test
     fun `callee walk rejects a valid caller occurrence projection`() {
         rejectCallerProjection(invocationSite = false)
     }
@@ -63,6 +88,7 @@ class QueryNamedCallbackReferenceWireTest {
         val admittedCaller = (caller.toContract() as WireDocumentConversion.Converted).value
         assertTrue(
             admittedCaller.admitsQuestion(
+                QueryReferenceDocument.ExactSymbol(fixture.text("exact:seed")),
                 RelationKindDocument.CALLERS,
                 entry.effectiveDomain,
                 entry.domainFingerprint,

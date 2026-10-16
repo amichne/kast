@@ -60,6 +60,22 @@ class QueryWalkCallbackAdmissionTest {
     }
 
     @Test
+    fun `callback projection rejects a substituted walk subject`() {
+        val wire = original()
+        assertTrue(decode(wire) is WireDocumentConversion.Converted)
+        val other = QueryReferenceWireDocument.ExactSymbol("exact:other")
+        assertEquals(
+            WireDocumentConversion.Rejected,
+            decode(
+                wire.copy(
+                    subject = other,
+                    callbackObservations = listOf(wire.callbackObservations.single().copy(subject = other)),
+                )
+            ),
+        )
+    }
+
+    @Test
     fun `callback walks preserve evidence in both directions and every expansion policy`() {
         for (relation in listOf(RelationKindDocument.CALLERS, RelationKindDocument.CALLEES)) {
             for (domain in QueryRelationRequestedDomainDocument.entries) {
@@ -192,19 +208,35 @@ class QueryWalkCallbackAdmissionTest {
 
     @Test
     fun `deeper callback keeps its frontier subject and independent selector fingerprint`() {
+        val fingerprint = QueryRelationDomainFingerprint.parse("2".repeat(64)).value()
+        val retained = deeperCallback(fingerprint)
+        assertEquals("exact:frontier", retained.subject.token.value)
+        assertEquals(1, retained.depth.value)
+        assertEquals(fingerprint, retained.observation.domainFingerprint)
+        assertEquals(callback.flow, retained.observation.flow)
+    }
+
+    @Test
+    fun `deeper frontier may share the seed selector scope fingerprint`() {
+        val retained = deeperCallback(callback.domainFingerprint)
+        assertEquals("exact:frontier", retained.subject.token.value)
+        assertEquals(callback.domainFingerprint, retained.observation.domainFingerprint)
+    }
+
+    private fun deeperCallback(fingerprint: QueryRelationDomainFingerprint): QueryWalkCallbackObservationDocument {
         val wire = original()
         val entry = wire.callbackObservations.single()
-        val fingerprint = QueryRelationDomainFingerprint.parse("2".repeat(64)).value()
+        val frontier = QueryReferenceWireDocument.ExactSymbol("exact:frontier")
         val deeper =
             entry.copy(
-                subject = QueryReferenceWireDocument.ExactSymbol("exact:frontier"),
+                subject = frontier,
                 depth = 1,
                 observation =
                     entry.observation.copy(
                         domainFingerprint = fingerprint,
                         resultProjection =
                             (entry.observation.resultProjection as QueryCallbackResultProjectionWireDocument.Admitted)
-                                .copy(domain = fingerprint),
+                                .copy(subject = frontier, domain = fingerprint),
                     ),
             )
         val decoded =
@@ -218,32 +250,7 @@ class QueryWalkCallbackAdmissionTest {
                     )
                 )
                 .value()
-        val retained = decoded.callbackObservations.values.single()
-        assertEquals("exact:frontier", retained.subject.token.value)
-        assertEquals(1, retained.depth.value)
-        assertEquals(fingerprint, retained.observation.domainFingerprint)
-        assertEquals(callback.flow, retained.observation.flow)
-    }
-
-    @Test
-    fun `deeper frontier may share the seed selector scope fingerprint`() {
-        val wire = original()
-        val entry = wire.callbackObservations.single()
-        val deeper = entry.copy(subject = QueryReferenceWireDocument.ExactSymbol("exact:frontier"), depth = 1)
-        val decoded =
-            decode(
-                    wire.copy(
-                        extent =
-                            io.github.amichne.kast.protocol.contract.TraversalExtentDocument.ThroughDepth(
-                                ProtocolCount.parse(2).value()
-                            ),
-                        callbackObservations = listOf(deeper),
-                    )
-                )
-                .value()
-        val retained = decoded.callbackObservations.values.single()
-        assertEquals("exact:frontier", retained.subject.token.value)
-        assertEquals(callback.domainFingerprint, retained.observation.domainFingerprint)
+        return decoded.callbackObservations.values.single()
     }
 
     @Test

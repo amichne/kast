@@ -1,38 +1,5 @@
 package io.github.amichne.kast.protocol.contract
 
-import io.github.amichne.kast.kernel.Refinement
-import kotlinx.serialization.Serializable
-
-private const val SUBJECT_FINGERPRINT_LENGTH = 64
-
-enum class QueryRelationSubjectFingerprintFailure {
-    INVALID_FINGERPRINT
-}
-
-@JvmInline
-@Serializable(with = QueryRelationSubjectFingerprintSerializer::class)
-value class QueryRelationSubjectFingerprint private constructor(val value: String) {
-    companion object {
-        fun parse(raw: String): Refinement<QueryRelationSubjectFingerprint, QueryRelationSubjectFingerprintFailure> =
-            if (raw.length == SUBJECT_FINGERPRINT_LENGTH && raw.all { it in "0123456789abcdef" })
-                Refinement.Refined(QueryRelationSubjectFingerprint(raw))
-            else Refinement.Rejected(QueryRelationSubjectFingerprintFailure.INVALID_FINGERPRINT)
-    }
-}
-
-internal object QueryRelationSubjectFingerprintSerializer :
-    RefiningStringSerializer<QueryRelationSubjectFingerprint>(
-        "QueryRelationSubjectFingerprint",
-        SUBJECT_FINGERPRINT_LENGTH,
-        SUBJECT_FINGERPRINT_LENGTH,
-        "^[0-9a-f]{64}$",
-    ) {
-    override fun raw(value: QueryRelationSubjectFingerprint): String = value.value
-
-    override fun refine(raw: String): Refinement<QueryRelationSubjectFingerprint, *> =
-        QueryRelationSubjectFingerprint.parse(raw)
-}
-
 sealed interface QueryCallbackResultSiteDocument {
     data class Occurrence(val occurrence: RelationOccurrenceDocument) : QueryCallbackResultSiteDocument
 
@@ -47,6 +14,12 @@ sealed interface QueryCallbackResultSiteDocument {
 
 /** The proof universe and the exact site admitted into the selected result domain remain separate. */
 sealed interface QueryCallbackResultProjectionDocument {
+    fun admitsSubject(subject: QueryReferenceDocument.ExactSymbol): Boolean =
+        when (this) {
+            is Admitted -> this.subject == subject
+            is Unproven -> true
+        }
+
     fun admitsRelation(relation: RelationKindDocument): Boolean =
         when (this) {
             is Admitted -> this.relation == relation
@@ -54,7 +27,7 @@ sealed interface QueryCallbackResultProjectionDocument {
         }
 
     data class Admitted(
-        val subject: QueryRelationSubjectFingerprint,
+        val subject: QueryReferenceDocument.ExactSymbol,
         val basis: ImpactSemanticBasisDocument,
         val domain: QueryRelationDomainFingerprint,
         val relation: RelationKindDocument,

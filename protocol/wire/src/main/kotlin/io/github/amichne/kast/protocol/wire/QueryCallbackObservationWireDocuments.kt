@@ -327,12 +327,16 @@ internal fun QueryCallbackObservationWireDocument.toContract():
 internal fun QueryWalkCallbackObservationWireDocument.toContract():
     WireDocumentConversion<QueryWalkCallbackObservationDocument> =
     combineConverted(
-        ProtocolText.parse(subject.token).toWireDocumentConversion(),
-        TraversalDepthDocument.parse(depth).toWireDocumentConversion(),
-        observation.toContract(),
-    ) { token, depth, observation ->
-        QueryWalkCallbackObservationDocument(QueryReferenceDocument.ExactSymbol(token), depth, observation)
-    }
+            ProtocolText.parse(subject.token).toWireDocumentConversion(),
+            TraversalDepthDocument.parse(depth).toWireDocumentConversion(),
+            observation.toContract(),
+        ) { token, depth, observation ->
+            QueryWalkCallbackObservationDocument(QueryReferenceDocument.ExactSymbol(token), depth, observation)
+        }
+        .flatMapConverted { value ->
+            if (value.observation.resultProjection.admitsSubject(value.subject)) WireDocumentConversion.Converted(value)
+            else WireDocumentConversion.Rejected
+        }
 
 internal fun QueryCallbackInvocationWireDocument.toContract(): WireDocumentConversion<QueryCallbackInvocationDocument> =
     combineConverted(occurrence.toContract(), owner.toContract()) { occurrence, owner ->

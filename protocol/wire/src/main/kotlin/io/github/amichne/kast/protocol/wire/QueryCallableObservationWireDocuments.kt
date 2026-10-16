@@ -257,7 +257,14 @@ internal fun QueryWalkCallableObservationWireDocument.toContract():
             )
         }
         .flatMapConverted { value ->
-            if (value.observation.admitsQuestion(RelationKindDocument.CALLEES, effectiveDomain, domainFingerprint))
+            if (
+                value.observation.admitsQuestion(
+                    value.subject,
+                    RelationKindDocument.CALLEES,
+                    effectiveDomain,
+                    domainFingerprint,
+                )
+            )
                 WireDocumentConversion.Converted(value)
             else WireDocumentConversion.Rejected
         }

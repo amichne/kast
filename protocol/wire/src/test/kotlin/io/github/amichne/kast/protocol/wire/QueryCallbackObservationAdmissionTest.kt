@@ -3,6 +3,7 @@ package io.github.amichne.kast.protocol.wire
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.QueryCallbackCallableDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
+import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint
 import io.github.amichne.kast.protocol.contract.QueryRelationRequestedDomainDocument
@@ -130,7 +131,8 @@ class QueryCallbackObservationAdmissionTest {
 
     @Test
     fun `relation observation rejects callback proof for another question domain or meaning`() {
-        val callback = fixture.callbackDocument().toWireDocument()
+        val callback =
+            fixture.callbackDocument(QueryReferenceDocument.ExactSymbol(fixture.text("symbol:read"))).toWireDocument()
         val original =
             QueryRelationObservationWireDocument(
                 QueryReferenceWireDocument.ExactSymbol("symbol:read"),
@@ -147,6 +149,17 @@ class QueryCallbackObservationAdmissionTest {
         assertTrue(original.toContract() is WireDocumentConversion.Converted)
         for (forged in
             listOf(
+                original.copy(subject = QueryReferenceWireDocument.ExactSymbol("symbol:other")),
+                original.copy(
+                    callbackObservations =
+                        listOf(
+                            callback.copy(
+                                resultProjection =
+                                    (callback.resultProjection as QueryCallbackResultProjectionWireDocument.Admitted)
+                                        .copy(subject = QueryReferenceWireDocument.ExactSymbol("symbol:other"))
+                            )
+                        )
+                ),
                 original.copy(relation = RelationKindDocument.CALLERS),
                 original.copy(requestedDomain = QueryRelationRequestedDomainDocument.RETAINED_SEED),
                 original.copy(

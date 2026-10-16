@@ -128,14 +128,17 @@ private constructor(
     val target: QueryCallableTargetDocument,
 ) {
     fun admitsQuestion(
+        subject: QueryReferenceDocument.ExactSymbol,
         relation: RelationKindDocument,
         domain: QueryRelationDomainDocument,
         fingerprint: QueryRelationDomainFingerprint,
     ): Boolean =
         admitsDomain(domain, fingerprint) &&
             when (val value = target) {
-                is QueryCallableTargetDocument.NamedReference -> value.resultProjection.admitsRelation(relation)
-                is QueryCallableTargetDocument.ParameterInvocation -> value.resultProjection.admitsRelation(relation)
+                is QueryCallableTargetDocument.NamedReference ->
+                    value.resultProjection.admitsSubject(subject) && value.resultProjection.admitsRelation(relation)
+                is QueryCallableTargetDocument.ParameterInvocation ->
+                    value.resultProjection.admitsSubject(subject) && value.resultProjection.admitsRelation(relation)
                 is QueryCallableTargetDocument.DirectInvocations,
                 is QueryCallableTargetDocument.CallbackSupplies,
                 is QueryCallableTargetDocument.UnavailableSupply,
