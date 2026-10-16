@@ -15,6 +15,7 @@ code_sources:
   - path: docs/public/docs.json
   - path: docs/public/reference/source-map.mdx
   - path: docs/tool-rpc.md
+  - path: docs/topology-impact.md
 ---
 
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
@@ -33,6 +34,7 @@ Contains the Mintlify site, contributor procedures, glossary policy, and revisio
 - [glossary.json](glossary.json) - canonical vocabulary, source evidence, and explicit document scope.
 - [GLOSSARY.md](GLOSSARY.md) - generated reader view of the canonical vocabulary.
 - [development.md](development.md) - development commands and focused test selection.
+- [topology-impact.md](topology-impact.md) - opt-in declared dependency impact, report fields, and the disable switch.
 - [tool-rpc.md](tool-rpc.md) - tool RPC and harness extension behavior.
 - [source-map.mdx](public/reference/source-map.mdx) - source owners and their focused tests.
 - [installation-recovery.md](installation-recovery.md) - offline installation recovery.
