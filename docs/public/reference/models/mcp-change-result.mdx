@@ -5,8 +5,10 @@ openapi-schema: "reference/callables.openapi.json add_declarationSemanticResult"
 mode: "wide"
 ---
 
-MCP places the canonical `add_declaration` operation document in `result.structuredContent`. It preserves plan identity, the reported source effect, and recovery evidence.
+Direct MCP places the canonical `add_declaration` document in `result.structuredContent`. It keeps plan identity, source-effect phase, and recovery evidence.
 
-`replace_body` uses the separate `replace_bodySemanticResult` schema. A missing reply does not establish that no write occurred.
+`replace_body` has its own `replace_bodySemanticResult` schema. Its result must keep the same distinction between known rejection and uncertain source effect.
 
-[Schemas and samples](/reference/schemas) defines tool-specific shapes. The [change procedure](/reference/change#read-the-receipt) establishes the effect before another write.
+A lost reply does not prove absence of a write. [Change recovery](/reference/change#read-the-receipt) establishes the effect before another write.
+
+[Schemas](/reference/schemas) defines tool-specific documents. [Lifecycles](/reference/lifecycles#hosted-workspace-settlement) describes uncertain mutation settlement.

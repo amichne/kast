@@ -4,88 +4,67 @@ description: "Interpret anonymous callable ownership, static bindings, and the l
 icon: "route"
 ---
 
-Kast identifies anonymous callables separately from their enclosing named functions. The ownership evidence qualifies callers and callees separately from lexical containment. Static callback paths do not prove runtime execution.
+Kast preserves the anonymous body that owns a call. It also records how that body receives a value and reaches a supported invocation.
+
+Kast keeps those owners separate because callback supply does not establish execution. The agent can trace the body without a guessed named caller.
 
 ## Named callers and lexical ownership
 
-`REFERENCES` records lexical containment. `CALLERS` and `CALLEES` include `callback_observations`. Each observation keeps the exact occurrence, lexical owner, anonymous body, and named-call policy.
+`REFERENCES` can establish lexical containment. `CALLERS` and `CALLEES` add callback observations with a separate named-edge policy.
 
-[The named-edge policy reference](/reference/callback-observations#named-edge-policy) defines the closed variants.
+Direct or supported inline invocation can admit a named edge while it keeps anonymous ownership. Non-inline, `noinline`, and `crossinline` exclusions keep their reasons.
 
+Containment supplies location context. It does not establish that a named function directly invokes the call inside a deferred body.
 
 ## Static bindings and unfinished proof
 
-Compiler argument mapping connects a supplied callback to a formal parameter. The receiving body's evidence establishes supported static invocations or records unresolved activation obligations.
+Compiler argument mapping establishes the supplied value's receiving formal. Formal-body evidence then enumerates supported invocation and forwarding sites.
 
-```mermaid
-flowchart TB
-  accTitle: Static callback binding does not establish activation
-  accDescr: Compiler-confirmed supply and formal binding support static invocation evidence. Missing mapping, external bodies, or nested activation retain obligations. Neither path proves that the callback ran.
-  A["Exact supplied lambda"] --> B["Compiler argument-to-parameter binding"]
-  B --> C{"Receiving-body evidence"}
-  C -->|Supported invocation| D["Static parameter invocation"]
-  C -->|Unavailable or nested| E["Retain activation obligations"]
-  class A,B authority;
-  class D evidence;
-  class E limited;
-  classDef authority fill:#3154C7,color:#FFFFFF,stroke:#8FA7FF,stroke-width:2px;
-  classDef evidence fill:#166534,color:#FFFFFF,stroke:#86EFAC,stroke-width:1.5px;
-  classDef limited fill:#92400E,color:#FFFFFF,stroke:#FCD34D,stroke-width:1.5px;
-  classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
-```
+An immutable alias keeps the value-transfer derivation. Each forwarding hop keeps source formal, exact expression, and destination binding.
 
-`binding.type` identifies how the callable receives its value:
+A default keeps its defining formal and expression. An explicit supplied argument replaces that default for the selected call.
 
-[The binding forms reference](/reference/callback-observations#binding-forms) defines the closed variants.
+An unused formal can have an exhaustive scan with no invocations. That fact does not create a call to the default body.
 
+A nested anonymous or local named owner needs its own activation proof. An exhaustive formal scan cannot discharge that obligation by itself.
 
-Direct admission needs the compiler's builtin function invocation. Labels and parentheses preserve the compiler's argument mapping. A default records its defining formal and default expression. A supplied argument replaces the default, so the default does not create caller edges for every call.
+`owner_bindings` preserves anonymous supply and mapping when available. Unresolved mapping, escaped storage, returns, cycles, or exhausted grants keep finite causes.
 
-Each parameter invocation keeps `forwardings` for every hop. These records identify the source formal, exact supplied expression, and destination argument binding. Immutable local aliases keep their existing value-transfer proof. Forwarding through an alias, mutable storage, returns, and cycles can leave unresolved obligations.
-
-`scan` reports the extent of static formal-invocation enumeration:
-
-[The invocation scan reference](/reference/callback-observations#invocation-scan) defines the closed variants.
-
-
-An exhaustive scan can still carry `NESTED_CALLBACK_EXECUTION`. Enumeration identifies sites without proof that a nested callable owner executes. That limit includes local named functions.
-
-`owner_bindings` keeps an anonymous owner's supply and mapping when available. Read the obligations to identify unresolved proof:
-
-[The unresolved obligations reference](/reference/callback-observations#unresolved-obligations) defines the closed variants.
-
-
-Unresolved mappings, external callback bodies, escaped parameters, and exhausted resource allowances keep their qualifications. The resource limits cover work, time, results, and bytes. Inline policy excludes `noinline` and `crossinline` bodies from named edges and records the reason.
-
-<a id="symbolic-callees-and-known-boundaries" />
+[Observation fields](/reference/callback-observations) defines policies, bindings, scan states, forwarding, and obligations.
 
 ## Reviewed dependency models
 
-A supported calls-in-place dependency contract keeps the compiler-mapped parameter and dependency class digest. It does not invent dependency body invocations.
+Kast admits supported calls-in-place effects from the compiler-selected formal and dependency class digest. The record keeps the exact declared invocation kind.
 
-For `kotlin.lazy`, `KOTLIN_LAZY_JVM_V1` admits reviewed digests for the facade, factory, three initializer implementations, and mode dispatch.
+Missing effects cannot become a guessed `UNKNOWN`. Explicit `UNKNOWN` is a supported declared effect with its own limited meaning.
 
-`DEFERRED_DEPENDENCY` records the named callable or property that supplies the initializer. It records no invocation site or invocation count.
+The contract does not supply invented dependency-body invocation sites. Unsupported or contradictory effect evidence rejects the model.
 
-The initializer remains a deferred body. Its lexical container does not gain a direct named caller edge merely because it supplies that body.
+`KOTLIN_LAZY_JVM_V1` admits reviewed digests for the facade, factory, initializer implementations, and mode dispatch.
 
-Unavailable or unreviewed binaries preserve a finite dependency-model rejection. The model does not establish access to the lazy value or initializer execution.
+Its `DEFERRED_DEPENDENCY` records the callable or property that supplies the initializer. It contains no invocation site or count.
 
-[Source map](/reference/source-map#callback-and-deferred-ownership) identifies the contract and wire rejection tests.
+The supplying container does not gain a direct named caller edge for the deferred body. Property access and initializer execution remain unproved.
+
+Unavailable or changed binaries keep finite dependency-model failures. [The source map](/reference/source-map#callback-and-deferred-ownership) links those rejection cases.
+
+<a id="symbolic-callees-and-known-boundaries" />
 
 ## Symbolic callees and source exclusions
 
-`CALLEES` also includes `callable_observations`. For `block()` or `block.invoke()`, a `PARAMETER_INVOCATION` target records the named defining callable, formal position, parameter occurrence, and actual invocation owner. The target describes a symbolic callee. It does not select a runtime function value. Formals owned by anonymous functions remain unsupported.
+For `block()` or `block.invoke()`, `PARAMETER_INVOCATION` records the defining named callable, formal position, exact occurrence, and actual owner.
 
-A `SOURCE_LESS` target keeps the resolved compiler callable identity and compiler module even without source PSI. Builtins and libraries excluded by the requested policy permit complete enumeration as known exclusions.
+That symbolic target does not select a runtime function value. Formals owned by anonymous functions remain unsupported.
 
-If requested library sources are unavailable, the observation keeps `LIBRARY_SOURCE_UNAVAILABLE`. Coverage remains qualified. Missing PSI alone does not establish an external source exclusion.
+`SOURCE_LESS` preserves resolved compiler callable identity and compiler module. Proven builtin or excluded-library facts can support complete enumeration as known exclusions.
+
+Requested but unavailable library source keeps `LIBRARY_SOURCE_UNAVAILABLE` and qualified coverage. Missing PSI alone cannot establish a source exclusion.
 
 <a id="read-the-exact-anonymous-source" />
 
 ## Anonymous source selectors
 
-`READ_SOURCE` accepts the anonymous body's issued `candidateSelector` as `candidateRef`:
+This action reads the anonymous body's anchored source through its issued selector.
 
 ```json
 {
@@ -96,12 +75,16 @@ If requested library sources are unavailable, the observation keeps `LIBRARY_SOU
 }
 ```
 
-An epoch change needs a fresh selector. The anonymous body remains the target. Its enclosing named function is a separate identity.
+An epoch change needs new source authority. The enclosing named function remains a separate declaration identity.
 
 <a id="continue-output-delivery" />
 
 ## Output delivery
 
-`page_progress` counts page rows and evidence. A zero-row page can advance callback or callable output. Issued tokens and `next_action` describe available delivery. [Read retained evidence](/how-to/read-retained-evidence) gives the procedure. Traversal coverage can be complete before delivery finishes. See [Results](/reference/responses#follow-progress-not-row-count) for output progress.
+Callback and callable evidence can advance on a zero-row page. `page_progress` and the issued `next_action` describe that presentation.
 
-Consumers must use the current advertised schema. Relation and walk schemas need `callable_observations`, including empty arrays. Observed callback flows need `scan`. Parameter invocation entries need `forwardings`, including empty arrays. Payloads without these fields reject admission.
+Relation and walk documents need `callable_observations`, including empty arrays. Observed flows need `scan`, and parameter invocations need `forwardings`.
+
+Missing fields reject schema admission. Complete traversal coverage can precede the final output page.
+
+[Program tracing](/reference/program-tracing) connects callback routes to value impact. [Staleness](/reference/staleness) explains source-state reuse.

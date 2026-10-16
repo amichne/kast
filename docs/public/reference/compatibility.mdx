@@ -4,9 +4,11 @@ description: "Compare platform requirements, release contracts, and the installe
 icon: "shield-check"
 ---
 
-Kast supports Apple silicon macOS and an on-disk Kotlin Gradle repository. IDEA must use build `262.*`, its bundled Kotlin plugin, and Java 25 JBR. Other IDEA release lines reject admission.
+Kast admits an on-disk Kotlin Gradle repository on Apple silicon macOS. The selected IDEA must use build `262.*`, bundled Kotlin, and Java 25 JBR.
 
-The installed client catalog is the contract authority for that release:
+Other IDEA release lines reject admission. A separate project JDK does not replace the selected IDEA runtime.
+
+## Installed contract authority
 
 | Client | Installed contract authority |
 | --- | --- |
@@ -14,39 +16,41 @@ The installed client catalog is the contract authority for that release:
 | Tool RPC | `catalog` |
 | Codex App Server | Conversation's provider catalog |
 
-Upgrades can change the catalog. Stale references need fresh identity admission. The [connection guide](/reference/integrations) describes client reload.
+Component admission compares runtime protocol, operation registry, wire schema, capabilities, and IDEA/Kotlin support. Equal component version numbers cannot establish compatibility.
+
+Registration, live service readiness, loaded Host identity, and exact workspace admission supply separate facts. [Lifecycles](/reference/lifecycles) describes those owners.
 
 <a id="current-release-pair" />
 
 ## Recorded release pair
 
-This recorded release pair dates from October 5, 2026. This pair is historical evidence, not the latest-release recommendation. The installer can select newer stable releases.
+This pair records October 5, 2026 evidence. It does not name the latest published release.
 
 | Component | Release | Source | Installed part |
 | --- | --- | --- | --- |
 | Control | [0.3.1](https://github.com/amichne/kast/releases/tag/control-v0.3.1) | [`c2582dbf0`](https://github.com/amichne/kast/commit/c2582dbf0c3bbee83acc7db4f426d5836ece0710) | Command and adapters |
 | Host | [0.4.0](https://github.com/amichne/kast/releases/tag/host-v0.4.0) | [`d1305fe51`](https://github.com/amichne/kast/commit/d1305fe51e35855e65a1024ce88d094a90e8a341) | IDEA plugin for `262` |
 
-Compatibility depends on the runtime protocol, operation registry, wire schema, capabilities, and IDEA/Kotlin admission. Equal version numbers do not establish those contracts.
-
-The [installer](/reference/installation) selects stable components independently. To pin this pair with a downloaded public installer, use:
+The installer selects stable Control and Host components independently. A downloaded installer can select this historical pair with explicit options.
 
 ```shell
 bash install.sh --version 0.3.1 --host-version 0.4.0
 ```
 
-`--version` selects Control. `--host-version` selects Host. The earlier Host 0.3.0 and Control 0.2.0 pair uses a different wire contract. Both components need upgrades. After installation, restart IDEA and affected agents.
+`--version` selects Control, and `--host-version` selects Host. Older pairs can use different wire contracts and need coordinated component changes.
 
-Control-only installation reuses a live Host with a matching contract. To install only Host and keep Control in place, use:
+Host-only mode interprets `--version` as the Host version.
 
 ```shell
 bash install.sh --host-only --version 0.4.0
 ```
 
-In Host-only mode, `--version` selects Host. Restart IDEA to load the plugin. Control must still match the Host contract.
+Control-only mode needs a compatible live Host. Host-only mode keeps Control, whose contract must still match the loaded Host.
 
 ## Recorded examples and client limits
 
-The recorded walkthrough counts and offsets describe the recorded revision. For new inputs, use current [query forms](/reference/api) and [schemas](/reference/schemas). If a reference fails, get a fresh reference. Do not change its prefix.
+Historical offsets, counts, and handles belong to their captured revision. Current input examples need your installed catalog and newly issued references.
 
-Codex App Server remains a preview. Examine the [recorded client compatibility](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md) before client integration.
+After an upgrade, IDEA and clients must load the new components. Retained output cannot cross retired live authority.
+
+Hosted Codex App Server remains a preview. [Recorded client compatibility](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md) defines its tested protocol and desktop limits.
