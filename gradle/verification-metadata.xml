@@ -7318,6 +7318,9 @@
          <artifact name="kotlin-test-2.4.21.module">
             <sha256 value="9073c451baeadb4e4ee813788a69f37f61778278d9b4583d4292eedeaf3d6ba0" origin="Verified detached signature from https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-test/2.4.21/kotlin-test-2.4.21.module (Kotlin primary 2FBA29D08D2E25EE84C132C30729A0AFF8999A87)"/>
          </artifact>
+         <artifact name="kotlin-test-2.4.21.jar">
+            <sha256 value="4b43f419bf41a9ede07094652db97b5034984a8cdc642f3c5b2bfd4767f6e365" origin="Verified detached signature from https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-test/2.4.21/kotlin-test-2.4.21.jar (Kotlin primary 2FBA29D08D2E25EE84C132C30729A0AFF8999A87)"/>
+         </artifact>
       </component>
       <component group="org.jetbrains.kotlin" name="kotlin-test-junit5" version="2.4.10">
          <artifact name="kotlin-test-junit5-2.4.10.jar">
@@ -7338,6 +7341,9 @@
       <component group="org.jetbrains.kotlin" name="kotlin-test-junit5" version="2.4.21">
          <artifact name="kotlin-test-junit5-2.4.21.module">
             <sha256 value="1f3caf5ab21223801b4b9570f5d20789387ba3848dd75d8ad8ccd5214cbb2d15" origin="Verified detached signature from https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-test-junit5/2.4.21/kotlin-test-junit5-2.4.21.module (Kotlin primary 2FBA29D08D2E25EE84C132C30729A0AFF8999A87)"/>
+         </artifact>
+         <artifact name="kotlin-test-junit5-2.4.21.jar">
+            <sha256 value="488e12c6e5ce2ed9dacdebc5ab2582b938781e753eec6867b0e65f4e9d7d200d" origin="Verified detached signature from https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-test-junit5/2.4.21/kotlin-test-junit5-2.4.21.jar (Kotlin primary 2FBA29D08D2E25EE84C132C30729A0AFF8999A87)"/>
          </artifact>
       </component>
       <component group="org.jetbrains.kotlin" name="kotlin-tooling-core" version="2.3.0">
