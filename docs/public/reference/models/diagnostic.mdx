@@ -7,8 +7,10 @@ description: "Read an IDEA diagnostic with its source location and reported scop
 openapi-schema: "reference/callables.openapi.json check_diagnosticsResponse_diagnostic"
 ---
 
-`check_diagnostics` returns a diagnostic with its severity, message, and source location. The response records the requested scope and its coverage.
+A diagnostic records IDEA's severity, message, and source location. Its producing response states the requested scope and coverage.
 
-An empty list with incomplete coverage does not establish a problem-free scope. IDEA diagnostics do not establish a successful project build.
+Complete empty coverage can establish no reported diagnostics within that admitted scope. Incomplete empty coverage cannot establish that conclusion.
 
-[Inspect diagnostics](/how-to/inspect-diagnostics) gives the procedure. [Change receipts](/reference/change#read-the-receipt) describe the separate source-effect evidence.
+IDEA diagnostics do not establish project build success. A change receipt describes a separate source effect and its examination scope.
+
+[Inspect diagnostics](/how-to/inspect-diagnostics) supplies the procedure. [Evidence limits](/reference/evidence-boundaries) defines the supported conclusion.
