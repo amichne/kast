@@ -1,7 +1,6 @@
 [
-  {"event":"kast_installation_public_endpoint","endpoint":"CODEX_CONTROL","reason":"FRESH_DEFAULT"},
+  {"event":"kast_installation_public_endpoint","endpoint":"PRIVATE","reason":"FRESH_DEFAULT"},
   {"event":"kast_installation_public_endpoint","endpoint":"PRIVATE","reason":"SAVED_CONFIGURATION"},
-  {"event":"kast_installation_public_endpoint","endpoint":"CODEX_CONTROL","reason":"SAVED_CONFIGURATION"},
   {"event":"kast_installation_public_endpoint","endpoint":"PRIVATE","reason":"EXPLICIT"},
-  {"event":"kast_installation_public_endpoint","endpoint":"CODEX_CONTROL","reason":"EXPLICIT"}
+  {"event":"kast_installation_public_endpoint","endpoint":"PRIVATE","reason":"LEGACY_SHARED_ENDPOINT_MIGRATED"}
 ]

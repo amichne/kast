@@ -66,7 +66,7 @@ internal object InstallationWorkflow {
             return InstallationOutcome.Complete(plan.report(InstallationActivation.Planned))
         }
         return try {
-            apply(plan, upgrades, activationPolicy)
+            apply(plan, upgrades)
         } catch (_: InterruptedException) {
             Thread.interrupted()
             try {
@@ -139,7 +139,6 @@ internal object InstallationWorkflow {
     private fun apply(
         plan: VerifiedInstallationPlan,
         upgrades: PriorDaemonUpgradeGateway,
-        activationPolicy: InstallationActivationPolicy,
     ): InstallationOutcome {
         if (!prepareOwnedDirectory(plan.request.installRoot.value))
             return InstallationOutcome.Rejected(InstallationFailure.INSTALLATION_ROOT_REJECTED)
@@ -333,21 +332,8 @@ internal object InstallationWorkflow {
                 }
             }
         }
-        val activation =
-            if (activationPolicy == InstallationActivationPolicy.ACTIVATE)
-                InstallationActivation.fromChild(enableAppServer(plan))
-            else InstallationActivation.NotRequested
+        val activation = InstallationActivation.NotRequested
         if (plan.request.controlOnly == InstallationSwitch.ENABLED) {
-            when (activation) {
-                InstallationActivation.Ready -> Unit
-                InstallationActivation.Planned,
-                InstallationActivation.NotRequested,
-                is InstallationActivation.Pending ->
-                    return ControlInstallationRecovery.rollbackActivatedControl(
-                        plan,
-                        InstallationFailure.CONTROL_START_REJECTED,
-                    )
-            }
             when (ControlInstallationRecovery.installedHostAdmission(plan, InstallationChildStage.HOST_RECONNECT)) {
                 InstallationChildOutcome.COMPLETED -> Unit
                 InstallationChildOutcome.EXIT_REJECTED,
@@ -361,7 +347,6 @@ internal object InstallationWorkflow {
             }
         }
         val report = plan.report(activation)
-        if (activation is InstallationActivation.Pending) return InstallationOutcome.Complete(report)
         return when (val cleanup = retireInstallationApprovalArtifacts(plan.request.home.value)) {
             io.github.amichne.kast.cli.ide.RetiredApprovalOutcome.Absent,
             io.github.amichne.kast.cli.ide.RetiredApprovalOutcome.Removed -> InstallationOutcome.Complete(report)
@@ -448,8 +433,10 @@ internal object InstallationWorkflow {
                 plan.request.controlOnly == InstallationSwitch.ENABLED &&
                 plan.request.publicEndpoint == InstallationPublicEndpointSelection.Unspecified
         ) {
-            Files.copy(configuration.root.resolve("config/environment"), stagedConfiguration)
-            return
+            if (configuration.preservesEndpoint()) {
+                Files.copy(configuration.root.resolve("config/environment"), stagedConfiguration)
+                return
+            }
         }
         Files.writeString(
             stagedConfiguration,
@@ -818,13 +805,6 @@ internal object InstallationWorkflow {
         )
             moveInstallationPayload(previous, bundle)
     }
-
-    private fun enableAppServer(plan: VerifiedInstallationPlan): InstallationChildOutcome =
-        executeInstallationChild(
-            InstallationChildStage.APP_SERVER_ENABLE,
-            listOf(plan.targetRoot.resolve("share/kast/libexec/kast-service").toString(), "enable"),
-            ControlInstallationRecovery.controlChildEnvironment(plan),
-        )
 }
 
 private enum class ReplacementCommitPhase {

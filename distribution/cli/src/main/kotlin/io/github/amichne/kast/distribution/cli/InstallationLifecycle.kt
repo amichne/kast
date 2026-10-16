@@ -64,34 +64,10 @@ private constructor(
             return LifecycleEffect.Rejected(LifecycleFailure.FENCE_REJECTED)
         return try {
             Files.delete(path)
-            val activated =
-                try {
-                    service(LifecycleServiceAction.BOOTSTRAP)
-                } catch (_: Exception) {
-                    LifecycleEffect.Rejected(LifecycleFailure.FILESYSTEM_REJECTED)
-                }
-            when (activated) {
-                LifecycleEffect.Completed -> activated
-                is LifecycleEffect.Rejected -> restoreShutdown(activated)
-            }
+            LifecycleEffect.Completed
         } catch (_: Exception) {
             LifecycleEffect.Rejected(LifecycleFailure.FILESYSTEM_REJECTED)
         }
-    }
-
-    private fun restoreShutdown(failure: LifecycleEffect.Rejected): LifecycleEffect {
-        // A failed bootstrap may have started a coordinator before its readiness check failed.
-        for ((stage, action) in
-            listOf<Pair<LifecycleStage, () -> LifecycleEffect>>(
-                LifecycleStage.FENCE to ::fence,
-                LifecycleStage.COORDINATOR to { service(LifecycleServiceAction.DISABLE) },
-            )) {
-            when (val restored = step(LifecycleOperation.REINSTALL, stage, action)) {
-                LifecycleEffect.Completed -> Unit
-                is LifecycleEffect.Rejected -> return restored
-            }
-        }
-        return failure
     }
 
     private fun step(
@@ -275,6 +251,5 @@ internal fun payloadOwned(installation: Path, manifest: BundledManifest, relativ
 }
 
 private enum class LifecycleServiceAction(val command: String) {
-    DISABLE("disable"),
-    BOOTSTRAP("bootstrap"),
+    DISABLE("disable")
 }

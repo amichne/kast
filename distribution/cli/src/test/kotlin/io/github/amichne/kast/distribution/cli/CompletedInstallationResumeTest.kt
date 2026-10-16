@@ -50,7 +50,7 @@ class CompletedInstallationResumeTest {
             fence,
             managementJson.encodeToString(InstallationShutdownRequest(fixture.installation.toString())),
         )
-        val remaining = ArrayDeque(listOf("bootstrap"))
+        val remaining = ArrayDeque<String>()
         val execution =
             LifecycleExecution(
                 child =

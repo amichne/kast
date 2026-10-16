@@ -37,7 +37,7 @@ internal data class VerifiedInstallationPlan(
                     when (activation) {
                         InstallationActivation.Ready -> listOf("enable-app-server")
                         is InstallationActivation.Pending -> listOf("defer-app-server-activation")
-                        InstallationActivation.Planned -> listOf("enable-app-server")
+                        InstallationActivation.Planned -> emptyList()
                         InstallationActivation.NotRequested -> emptyList()
                     },
         )

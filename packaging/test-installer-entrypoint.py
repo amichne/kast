@@ -324,8 +324,8 @@ if [ "$1" = --internal-install ]; then
     *) exit 93 ;;
   esac
   printf '%s\\n' "$HOME/.local/bin/kast"
-elif [ "$1" = connect ]; then
-  printf 'connect' >> "$TEST_LOG"
+elif [ "$1" = connect ] || [ "$1" = plugin ]; then
+  printf '%s' "$1" >> "$TEST_LOG"
   shift
   for argument in "$@"; do printf ':%s' "$argument" >> "$TEST_LOG"; done
   printf '\\n' >> "$TEST_LOG"
@@ -505,7 +505,7 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
                 '--force', '--register-codex-mcp'], cwd=ROOT, env=environment,
                 text=True, capture_output=True, timeout=10)
             self.assertEqual(0, result.returncode, result.stderr)
-            self.assertEqual(['registration:check-reset', 'reset'], log.read_text().splitlines()[:2])
+            self.assertEqual(['reset'], log.read_text().splitlines()[:1])
             self.assertIn('restore-connections', log.read_text().splitlines())
             self.assertIn('installed Kast Control 1.2.4 and Kast Host 1.2.4', result.stderr)
             self.assertFalse(sentinel.exists())
@@ -525,7 +525,7 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertTrue(all(path.read_text() == 'preserve' for path in paths))
 
-    def test_explicit_mcp_registration_dispatches_to_native_transport_command(self):
+    def test_legacy_registration_option_dispatches_to_native_plugin_owner(self):
         with tempfile.TemporaryDirectory(prefix='kast-installer-codex-mode-') as directory:
             idea, environment, _, log = self.upgrade_fixture(directory)
             codex = Path(directory) / 'bin/codex'
@@ -536,7 +536,8 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
                 cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
             )
             self.assertEqual(0, result.returncode, result.stderr)
-            self.assertIn('connect:codex:mcp', log.read_text().splitlines())
+            self.assertIn('plugin:codex', log.read_text().splitlines())
+            self.assertNotIn('connect:codex:mcp', log.read_text().splitlines())
 
     def test_upgrade_finalizes_only_after_plugin_activation(self):
         with tempfile.TemporaryDirectory(prefix='kast-upgrade-trap-') as directory:
@@ -953,7 +954,7 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
                     result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea), *options],
                         cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10)
                     self.assertNotEqual(0, result.returncode)
-                    self.assertIn('--register-codex-mcp requires a paired installation', result.stderr)
+                    self.assertIn('--install-codex-plugin requires a paired installation', result.stderr)
                     self.assertNotIn('downloading', result.stderr)
                     self.assertFalse(effect_log.exists())
                     self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
@@ -1005,8 +1006,8 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
             )
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("Usage:", result.stdout)
-        self.assertIn('--register-codex-mcp requires a paired installation', result.stdout)
-        self.assertIn('and --stage-only skip registration without prompting', result.stdout)
+        self.assertIn('--install-codex-plugin requires a paired installation', result.stdout)
+        self.assertIn('and --stage-only skip plugin installation without prompting', result.stdout)
         self.assertNotIn("--clean-collisions", result.stdout)
 
     def test_unrelated_command_does_not_block_installation_plan(self):
@@ -1082,7 +1083,7 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
             self.assertIn('only macOS is supported', result.stderr)
             self.assertFalse((Path(directory) / 'install').exists())
 
-    def test_install_enables_the_complete_suite_without_prompting(self):
+    def test_install_prepares_the_managed_payload_without_prompting(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-entrypoint-") as directory:
             idea, _, environment = self.installer_fixture(directory)
             result = subprocess.run(
@@ -1092,9 +1093,9 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("██╗  ██╗", result.stderr)
         self.assertIn("IntelliJ IDEA 2026.2.1 (build 262.1234)", result.stderr)
-        self.assertIn("app server", result.stderr.lower())
-        self.assertIn("login", result.stderr)
-        self.assertNotIn("Register a user-level Kast MCP server", result.stderr)
+        self.assertIn("managed payload", result.stderr)
+        self.assertIn("installed MCP launcher", result.stderr)
+        self.assertNotIn("Install the Kast plugin in Codex?", result.stderr)
         self.assertIn("profile=persistent mode=plan", result.stderr)
 
     def test_discovers_idea_in_user_applications_without_explicit_home(self):
@@ -1280,7 +1281,7 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
                 cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
             )
             self.assertNotEqual(0, result.returncode)
-            self.assertIn("choose only one Codex MCP registration option", result.stderr)
+            self.assertIn("choose only one Codex plugin installation option", result.stderr)
             self.assertFalse((Path(directory) / "install").exists())
 
     def test_missing_matching_idea_plugin_explains_why_nothing_is_installed(self):

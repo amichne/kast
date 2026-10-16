@@ -1,6 +1,6 @@
-#!/usr/bin/env -S uv run --offline --locked --script
+#!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.11,<3.15"
+# requires-python = ">=3.9,<3.15"
 # dependencies = []
 # [tool.uv]
 # no-build = true
@@ -14,11 +14,9 @@ import sys
 from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Literal, TypeAlias, assert_never
+from typing import Literal, NoReturn, Union
 
-JsonValue: TypeAlias = (
-    "dict[str, JsonValue] | list[JsonValue] | str | int | float | bool | None"
-)
+JsonValue = Union[dict[str, "JsonValue"], list["JsonValue"], str, int, float, bool, None]
 
 MAX_INPUT_BYTES = 65_536
 MAX_CONTEXT_BYTES = 8_192
@@ -85,22 +83,13 @@ def workspace_from_event(raw: bytes) -> Path | Rejected:
 
 
 def workspace_from_path(raw: object) -> Path | Rejected:
-    if (
-        not isinstance(raw, str)
-        or not raw
-        or len(raw) > 4096
-        or any(ord(c) < 32 for c in raw)
-    ):
+    if not isinstance(raw, str) or not raw or len(raw) > 4096 or any(ord(c) < 32 for c in raw):
         return Rejected(Failure.INVALID_EVENT)
     path = Path(raw)
     if not path.is_absolute():
         return Rejected(Failure.INVALID_EVENT)
     try:
-        return (
-            path.resolve(strict=True)
-            if path.is_dir()
-            else Rejected(Failure.INVALID_EVENT)
-        )
+        return path.resolve(strict=True) if path.is_dir() else Rejected(Failure.INVALID_EVENT)
     except (OSError, ValueError, RuntimeError):
         return Rejected(Failure.INVALID_EVENT)
 
@@ -112,11 +101,7 @@ def read_context(plugin: Path, workspace: Path) -> Context | Rejected:
             return Rejected(Failure.RESOURCE_REJECTED)
         for name in RESOURCE_NAMES:
             path = references / name
-            if (
-                path.is_symlink()
-                or not path.is_file()
-                or path.stat().st_size > MAX_RESOURCE_BYTES
-            ):
+            if path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_RESOURCE_BYTES:
                 return Rejected(Failure.RESOURCE_REJECTED)
         brief = (references / "onboarding.md").read_text(encoding="utf-8")
         # Paths are JSON strings, so spaces and shell metacharacters remain literal context.
@@ -140,16 +125,17 @@ def read_context(plugin: Path, workspace: Path) -> Context | Rejected:
 
 
 def encode(host: Host, context: Context) -> str:
-    match host:
-        case Host.CODEX:
-            return json.dumps(
-                asdict(CodexOutput(CodexContext(context.text))), ensure_ascii=False
-            )
-        case Host.COPILOT:
-            return json.dumps(asdict(CopilotOutput(context.text)), ensure_ascii=False)
-        case Host.PI:
-            return context.text
-    assert_never(host)
+    if host is Host.CODEX:
+        return json.dumps(asdict(CodexOutput(CodexContext(context.text))), ensure_ascii=False)
+    if host is Host.COPILOT:
+        return json.dumps(asdict(CopilotOutput(context.text)), ensure_ascii=False)
+    if host is Host.PI:
+        return context.text
+    return unexpected_host(host)
+
+
+def unexpected_host(host: NoReturn) -> NoReturn:
+    raise AssertionError(f"Unsupported host: {host!r}")
 
 
 def main(arguments: list[str]) -> int:

@@ -145,9 +145,4 @@ private class PublicRetirementScript(roots: List<Path>) : ForceDaemonRuntime {
 
     override fun retire(capture: ResetSharedSocketCapture.Captured, allowance: Duration) =
         error("unexpected process signal")
-
-    override fun activate(installation: Path, home: Path, environment: Map<String, String>) =
-        error("unexpected activation")
-
-    override fun readiness(installation: Path) = error("unexpected readiness")
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:ddc92afbd3b8532f01122f1de205a0f2d6ba5f75e32ed662fbb900ed79a89ef8",
+  "pageVersion": "sha256:418a123059218cdea64f171482d24d149cd702e5184f1292a6ffdfc56936b955",
   "claims": [
     {
       "id": "claim_0fe7af4106b045dd82c65489eb808ff3",
@@ -12,7 +12,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:ed5a3ae6abadf4c94be4300c76c04f152820e1d5aba17b793400c305e7b3135a"
+          "version": "repo-file-v1:sha256:b3c3975177f42b34626a4dfa0e8d2fb3f767f6e07469965a46a6fd093bf3c7d3"
         }
       ]
     },
@@ -36,13 +36,13 @@
         },
         {
           "resource": "repo://distribution/release/component_release.py",
-          "version": "repo-file-v1:sha256:23d97f48512b32f20a2c0ea9fd68efb57c9906821abe37a505af477b4589f4fe"
+          "version": "repo-file-v1:sha256:986c63881eba9d0834f4387681f57e26a9db70a9fa71e6b97a985b924cfa0de0"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T00:33:05.932Z"
+    "at": "2026-10-16T06:54:44.448Z"
   }
 }

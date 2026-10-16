@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:8f0ee65a5e6541e71298c398d915e22c4c400bd19a2cf442accf6bb102e6a91f",
+  "pageVersion": "sha256:e8d74672a8e4206200ef995c45a43e8dfe4c566c08eda01791c2c6c00c69994b",
   "claims": [
     {
       "id": "claim_4418145e0e48413589ccb805f87f8741",
@@ -23,18 +23,26 @@
       ]
     },
     {
-      "id": "claim_a5413e705f3448bcb66d09670eb8f0d6",
-      "statement": "Reset readiness needs a version-matched payload and admitted service generation while the tool fence remains present.",
+      "id": "claim_1ecf8eb3c2694965a1982ca1f21e0688",
+      "statement": "Native force reinstall consumes a staged lease, re-admits the payload, and removes the exact owned fence without broker startup or readiness capabilities. RESET_INSTALLED carries no service generation.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ReadyReset.kt",
-          "version": "repo-file-v1:sha256:be182720a2c9095ca5bcf603a0d3cd5105e7081b6a9f278c29e314d03296d9ff"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt#L154-L184",
+          "version": "repo-lines-v1:sha256:36c3ab9e9a16d50ac5617fd157fb75e419bbefae834908f8379d1ba4f5063da3:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlYWU3MjhjNDMxMjYxNzg5YjExZjIxZTUyZDI5ZjlkYzYyMjBmODNhNjFlNGUzNjI5MTE0MDk5NjRhNGQxNWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5NTU1M2NlMThjMmYzODgxNjYyY2Q1NzE0MDk4ZTI3YTc1YTNhOTc2YmY3ZmRiOWM4NzZhNzkyYTE1MDRjMzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetFence.kt#L267-L273",
+          "version": "repo-lines-v1:sha256:93b9baf3f21ef1f6b658093848f87100e3d4102293c89f083e6e155789906cde:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMWVmODk2N2M5YzgyMGZhYzA1NTg4MTQ1YzViMmVhMjk2MTQyOWJkZWRlYTAxZGIwN2YyZDU0ODFkY2E1NTdkNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzg3YTUyODFkMmI2MGFlMmFjODcyNzYzNmQ2YTg2ZWE4MzQ2Njk2ZjM3ZjFjNzQ5MmM3YWVjMThlNmJmZmNhZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzdjNjIyMDQ3ZTA2ZmIzMjM1ZDFmODNlYTk5Yzc5MWY3Y2VlZjljNDQ2OTNjMzFmZjg5MGI0NTZkNzJhMGIyNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTFiMjcwZTRlNzRlNDkyM2NkOTJkODY3NDgzMjA5ZmE5OTVmY2NkOGMxOThlMmFlMTIyMDhjMTVkOGRmNzdkYyJ9"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetOutcome.kt#L47-L55",
+          "version": "repo-lines-v1:sha256:76f90fedbe8c8de0bf3a47a3e7ddb9af83003bd8a2cfddfd18beb145871a5bf6:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODkzZmUwM2MxNjIxNDFkNjYxMDlkNmNkMjZhYzBhZWYwNTI3NGExODc5ZjE3ZmY0ZWFjN2Q2NTlkNDQxNWUxZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjZhZjkyYWIwNTk3OTgxNmFiMzk3MWI5MWI5YjAyOGY0OTEwYjRiYTgxNDMxOGIwYmVhMTllMTFhZjE4YmM2OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGZkNGViZjJjNTZkZTNhOTg1MjJhMzg5ZjY0Y2Q0M2ZmNzlkOGM4MGRjNzU4YmVjMjhkN2MyMThkYmU2YjcxNCJ9"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T00:33:05.932Z"
+    "at": "2026-10-16T06:54:44.448Z"
   }
 }

@@ -24,9 +24,6 @@ code_sources:
 - path: build-logic/src/test/kotlin/support/knowledge/InstalledKnowledgeProjectionTest.kt
 - path: cli/src/test/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledgeTest.kt
 - path: build-logic/src/test/kotlin/KotlinDocumentationScannerTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-e7e9afae9a60cee55a46b246
     resource: repo://build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeDocsMain.kt
@@ -45,6 +42,9 @@ sources:
   - id: openwiki-source-d3ccbe593611586a04efc776
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-16T06:54:44.448Z
 ---
 
 # Installed knowledge projection and retrieval

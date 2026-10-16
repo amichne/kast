@@ -5,6 +5,8 @@ description: "Explains Control and Host installation ownership, managed receipts
 tags: [kast, distribution]
 
 sources:
+  - id: openwiki-source-5f9ee1677dd5352d4bd1273d
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationPublicEndpointSelection.kt
   - id: openwiki-source-8f4d86f42434fcc1ce269879
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
   - id: openwiki-source-f3718a29d9c6d868d0d9d73e
@@ -17,10 +19,10 @@ sources:
     resource: repo://packaging/test-host-installation.py
   - id: openwiki-source-a219ab80b9383d47a0037637
     resource: repo://packaging/test-installation-lifecycle.py
-generated: { by: "codex", at: "2026-10-15T03:39:16.872Z" }
+generated: { by: "codex", at: "2026-10-16T07:07:29.171Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-15T03:39:16.872Z
+    at: 2026-10-16T07:07:29.171Z
 ---
 
 
@@ -45,7 +47,10 @@ Version equality alone does not establish that compatibility.
 `ControlInstallationInput` admits the selected HOME and installation locations.
 `InstallationWorkflow` examines the request and payload inventory before replacement.
 Plan mode reports the admitted plan without activation effects.
-An applied replacement coordinates prior retirement, saved configuration, recovery snapshots, payload installation, and service activation.
+An applied replacement coordinates prior retirement, saved configuration, recovery snapshots, and payload installation.
+
+It reports installation without service activation. The plugin's MCP session owns IntelliJ preparation.
+Saved shared endpoints migrate to private settings. Explicit shared selections reject before effects.
 
 The managed root contains one ordinary `installation` directory.
 The native public command and private transport payloads keep separate locations and owners.

@@ -364,7 +364,7 @@ case "$*" in
     cp "$0" "$destination"
     printf '%s\\n' "$destination"
     ;;
-  'connect codex mcp') printf '%s\\n' 'connect codex mcp' >> "$MCP_LOG" ;;
+  'plugin codex') printf '%s\\n' 'plugin codex' >> "$MCP_LOG" ;;
   *) exit 94 ;;
 esac
 ''')
@@ -499,29 +499,29 @@ print(json.dumps({'status': 'retained', 'removed': [], 'retained': []}))
         result = self.run_installer()
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn('completion=commit-active', result.stderr)
-        self.assertIn("connect codex mcp", (self.root / "mcp-calls").read_text())
+        self.assertIn("plugin codex", (self.root / "mcp-calls").read_text())
         installed = self.root / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted"
         self.assertTrue((installed / "lib/kast-ide-hosted-1.2.3.jar").is_file())
         self.assertIn("Restart IntelliJ IDEA", result.stderr)
 
-    def test_skip_codex_mcp_installs_without_inspecting_or_registering_codex(self):
+    def test_skip_codex_plugin_installs_without_inspecting_or_registering_codex(self):
         (self.fixture.root / "tools/codex").unlink()
         result = self.run_installer("--skip-codex-mcp")
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertFalse((self.root / "mcp-calls").exists())
         self.assertTrue((self.root / ".local/share/kast/installation/bin/kast-mcp-complete").is_file())
 
-    def test_interactive_decline_skips_codex_mcp_registration(self):
+    def test_interactive_decline_skips_codex_plugin_installation(self):
         result = self.run_interactive_installer("n\n")
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertIn("Register a user-level Kast MCP server in Codex? [Y/n]", result.stderr)
+        self.assertIn("Install the Kast plugin in Codex? [Y/n]", result.stderr)
         self.assertFalse((self.root / "mcp-calls").exists())
 
-    def test_interactive_acceptance_registers_codex_mcp(self):
+    def test_interactive_acceptance_installs_codex_plugin(self):
         result = self.run_interactive_installer("\n")
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertIn("Register a user-level Kast MCP server in Codex? [Y/n]", result.stderr)
-        self.assertIn("connect codex mcp", (self.root / "mcp-calls").read_text())
+        self.assertIn("Install the Kast plugin in Codex? [Y/n]", result.stderr)
+        self.assertIn("plugin codex", (self.root / "mcp-calls").read_text())
 
     def test_staged_installer_receives_no_tool_selection(self):
         self.env.pop("KAST_APP_SERVER_TOOLS", None)

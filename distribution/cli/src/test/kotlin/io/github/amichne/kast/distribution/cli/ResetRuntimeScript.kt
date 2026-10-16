@@ -15,10 +15,6 @@ internal sealed interface ResetScriptStep {
     data class Capture(val snapshot: LifecycleProcessSnapshot, val result: ResetScriptCaptureResult) : ResetScriptStep
 
     data class Signal(val snapshot: LifecycleProcessSnapshot, val result: LifecycleProcessObservation) : ResetScriptStep
-
-    data class Activate(val result: LifecycleChildObservation) : ResetScriptStep
-
-    data class Ready(val result: ResetActivationObservation) : ResetScriptStep
 }
 
 internal enum class ResetScriptCaptureResult {
@@ -81,24 +77,6 @@ internal class ResetRuntimeScript(private val root: Path, steps: List<ResetScrip
         assertEquals(step.snapshot, capture.process.snapshot)
         assertTrue(allowance > Duration.ZERO)
         return step.result
-    }
-
-    override fun activate(installation: Path, home: Path, environment: Map<String, String>): LifecycleChildObservation {
-        assertEquals(root.resolve("installation"), installation)
-        assertTrue(
-            Files.exists(io.github.amichne.kast.distribution.contract.installationResetFence(root)),
-            "tools must remain fenced during bootstrap",
-        )
-        return next<ResetScriptStep.Activate>().result
-    }
-
-    override fun readiness(installation: Path): ResetActivationObservation {
-        assertEquals(root.resolve("installation"), installation)
-        assertTrue(
-            Files.exists(io.github.amichne.kast.distribution.contract.installationResetFence(root)),
-            "tools must remain fenced until readiness",
-        )
-        return next<ResetScriptStep.Ready>().result
     }
 }
 

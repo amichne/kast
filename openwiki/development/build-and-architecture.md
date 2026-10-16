@@ -21,9 +21,6 @@ code_sources:
   - path: build-logic/src/main/kotlin/support/architecture/projection/ArchitectureProjection.kt
   - path: build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt
   - path: build-logic/src/main/kotlin/support/tasks/nativefixtures/NativeFixtureJvmArguments.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T01:01:20.051Z
 sources:
   - id: openwiki-source-3da7270665885f2d3fdf6d53
     resource: repo://.github/scripts/ci/validation_scope.py
@@ -38,6 +35,9 @@ sources:
 generated:
   by: codex
   at: '2026-10-15T00:59:49.803Z'
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-16T06:54:44.448Z
 ---
 
 

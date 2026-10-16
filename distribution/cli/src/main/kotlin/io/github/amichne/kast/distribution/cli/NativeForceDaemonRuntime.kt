@@ -169,34 +169,6 @@ internal object NativeForceDaemonRuntime : ForceDaemonRuntime {
         observe: (ResetProcessObservation) -> Unit,
     ): LifecycleProcessObservation = NativeResetProcessRetirement.retireCapturedObserved(process, allowance, observe)
 
-    override fun activate(installation: Path, home: Path, environment: Map<String, String>): LifecycleChildObservation {
-        val selectedEnvironment =
-            environment.filterKeys { it in setOf("PATH", "JAVA_HOME", "CODEX_EXECUTABLE", "TMPDIR") } +
-                mapOf(
-                    "HOME" to home.toString(),
-                    "KAST_CONFIGURATION_FILE" to installation.resolve("config/environment").toString(),
-                )
-        return NativeLifecycleChildExecutor.execute(
-            listOf(
-                installation.resolve("share/kast/libexec/kast-service").toString(),
-                "bootstrap",
-            ),
-            installation,
-            selectedEnvironment,
-        )
-    }
-
-    override fun readiness(installation: Path): ResetActivationObservation =
-        when (val read = observeRuntime(installation)) {
-            is PassiveRuntimeObservation.Observed -> {
-                val version = read.loadedVersion.value
-                if (version != null && read.loadedVersion.state == ObservationState.VERIFIED)
-                    ResetActivationObservation.Ready(version, read.generation.value)
-                else ResetActivationObservation.Unavailable
-            }
-            is PassiveRuntimeObservation.Rejected -> ResetActivationObservation.Unavailable
-        }
-
     private const val SERVICE_ABSENT = 113
 }
 

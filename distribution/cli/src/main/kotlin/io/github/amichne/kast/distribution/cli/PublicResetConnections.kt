@@ -70,7 +70,13 @@ internal fun restorePublicResetConnections(root: Path, environment: Map<String, 
         if (registrations.isEmpty()) return LifecycleEffect.Completed
         val homeRaw = environment["HOME"] ?: return connectionRecoveryRejected()
         val home = Path.of(homeRaw)
-        for (registration in registrations) restorePublicConnection(root, home, registration, environment)
+        keepLegacyCodexRemovalFacts(root, registrations)
+        for (registration in registrations.filter { it.connection.harness != Harness.CODEX }) restorePublicConnection(
+            root,
+            home,
+            registration,
+            environment,
+        )
         LifecycleEffect.Completed
     } catch (_: ManagementRejected) {
         connectionRecoveryRejected()
@@ -80,6 +86,28 @@ internal fun restorePublicResetConnections(root: Path, environment: Map<String, 
         connectionRecoveryRejected()
     } catch (_: SecurityException) {
         connectionRecoveryRejected()
+    }
+}
+
+/** Reset recovery keeps removal evidence without recreating either retired Codex transport. */
+private fun keepLegacyCodexRemovalFacts(root: Path, registrations: List<ManagedRegistration>) {
+    val legacy = registrations.filter { it.connection.harness == Harness.CODEX }
+    if (legacy.isEmpty()) return
+    withRegistrationLock(root) {
+        val current = admittedReceipt(root)
+        for (registration in legacy) {
+            val existing = current.registrations.singleOrNull { it.connection == registration.connection }
+            if (existing != null && existing != registration)
+                throw ManagementRejected("reset-connections", "recorded Codex removal identity changed")
+        }
+        writeManagementReceipt(
+            root,
+            current.copy(
+                registrations =
+                    current.registrations +
+                        legacy.filter { saved -> current.registrations.none { it.connection == saved.connection } }
+            ),
+        )
     }
 }
 

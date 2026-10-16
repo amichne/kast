@@ -16,9 +16,6 @@ code_sources:
 - path: distribution/release/plugin-release.gradle.kts
 - path: .github/workflows/release-component.yml
 - path: .github/scripts/release/test_build_candidate.py
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-8c864abdf1b09fa67b48adbc
     resource: repo://.github/scripts/release/build_candidate.py
@@ -29,6 +26,9 @@ sources:
   - id: openwiki-source-8ac360e10edcbd99c75fa338
     resource: repo://distribution/release/component-release.schema.json
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-16T06:54:44.448Z
 ---
 
 # Release candidates and promotion

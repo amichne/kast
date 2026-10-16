@@ -57,22 +57,12 @@ internal class InstallationForceConfigurationTest {
     }
 
     @Test
-    fun `force honors explicit Codex control instead of the saved private endpoint`(@TempDir temporary: Path) {
-        val fixture = Fixture(temporary)
-        fixture.customized(BrokerPublicEndpointMode.PRIVATE)
-        val plan = fixture.plan(InstallationSwitch.ENABLED, BrokerPublicEndpointMode.CODEX_CONTROL)
-        val selected = fixture.select(plan)
-        assertEquals(InstallationConfigurationSelection.FreshExplicit(BrokerPublicEndpointMode.CODEX_CONTROL), selected)
-        fixture.assertFreshConfiguration(plan, selected, BrokerPublicEndpointMode.CODEX_CONTROL)
-    }
-
-    @Test
     fun `force honors explicit private instead of the saved Codex control endpoint`(@TempDir temporary: Path) {
         val fixture = Fixture(temporary)
         fixture.customized(BrokerPublicEndpointMode.CODEX_CONTROL)
         val plan = fixture.plan(InstallationSwitch.ENABLED, BrokerPublicEndpointMode.PRIVATE)
         val selected = fixture.select(plan)
-        assertEquals(InstallationConfigurationSelection.FreshExplicit(BrokerPublicEndpointMode.PRIVATE), selected)
+        assertEquals(InstallationConfigurationSelection.FreshExplicit, selected)
         fixture.assertFreshConfiguration(plan, selected, BrokerPublicEndpointMode.PRIVATE)
     }
 

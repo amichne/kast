@@ -16,7 +16,7 @@ internal class ConnectCommand : ManagementNode("connect") {
     private val directory by
         option(
                 "--destination",
-                help = "Harness home directory; for Codex app-server, the directory containing kast-codex.",
+                help = "Home directory for the Pi or Copilot integration.",
             )
             .convert { raw ->
                 when (val admitted = ConnectionDirectory.admit(raw)) {
@@ -33,15 +33,29 @@ internal class ConnectCommand : ManagementNode("connect") {
     private val transport by argument("transport").optional()
 
     override fun help(context: Context) =
-        "Register the release-bundled integration at user scope. Codex requires mcp or app-server."
+        "Install the Codex plugin or register the release-bundled Pi or Copilot integration."
 
     override fun selection(): ManagementCommand {
         val requiresHarness = force || strict || directory != null
         if (requiresHarness && harness == null)
             throw CliktError("--force, --destination and --no-recover require a selected harness")
         if (force && strict) throw CliktError("--force and --no-recover cannot be combined")
-        val connection = selectedConnection()
-        return ManagementCommand.Connect(
+        return selectedCommand(requiresHarness)
+    }
+
+    private fun selectedCommand(requiresHarness: Boolean): ManagementCommand =
+        when (val admission = admitConnection(harness, transport)) {
+            is ConnectionAdmission.Selected -> selectedRegistration(admission.connection)
+            is ConnectionAdmission.Plugin -> {
+                if (requiresHarness) throw CliktError(ConnectionFailure.CODEX_PLUGIN_OPTIONS.explanation)
+                ManagementCommand.Plugin(admission.harness, false)
+            }
+            is ConnectionAdmission.Rejected -> throw CliktError(admission.failure.explanation)
+            ConnectionAdmission.ListAvailable -> selectedRegistration(null)
+        }
+
+    private fun selectedRegistration(connection: HarnessConnection?) =
+        ManagementCommand.Connect(
             connection,
             when {
                 force -> RegistrationOwnership.REPLACE_SELECTED_SLOT
@@ -50,14 +64,6 @@ internal class ConnectCommand : ManagementNode("connect") {
             },
             directory,
         )
-    }
-
-    private fun selectedConnection(): HarnessConnection? =
-        when (val admission = admitConnection(harness, transport)) {
-            is ConnectionAdmission.Selected -> admission.connection
-            is ConnectionAdmission.Rejected -> throw CliktError(admission.failure.explanation)
-            ConnectionAdmission.ListAvailable -> null
-        }
 }
 
 internal class DisconnectCommand : ManagementNode("disconnect") {

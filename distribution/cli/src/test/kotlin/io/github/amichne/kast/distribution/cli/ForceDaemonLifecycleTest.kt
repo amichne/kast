@@ -213,187 +213,152 @@ class ForceDaemonLifecycleTest {
     }
 }
 
-class ForceDaemonActivationTest {
+class ForceColdInstallationTest {
     @TempDir lateinit var temporary: Path
 
     @Test
-    fun `reinstallation activates only a verified cold payload and retains the observed generation`() {
-        val root = root()
-        val runtime =
-            ResetRuntimeScript(
-                root,
-                closedRetirementSteps() +
-                    listOf(
-                        ResetScriptStep.Activate(LifecycleChildObservation.Exited(0)),
-                        ResetScriptStep.Ready(ResetActivationObservation.Ready("1.2.3", GENERATION)),
-                    ),
-            )
-        val observations = mutableListOf<ResetObservation>()
+    fun `reinstallation completes the qualified payload without a service generation`() {
+        val root = temporary.toRealPath().resolve("kast")
+        val home = Files.createDirectories(temporary.resolve("home"))
+        val runtime = ResetRuntimeScript(root, closedRetirementSteps())
         val result =
             forceResetInstallation(
                 root,
-                home(),
+                home,
                 emptyMap(),
                 ForceResetOperation.REINSTALL,
-                ForceResetExecution(runtime, freshInstaller(), observations::add),
+                ForceResetExecution(runtime, installer(), {}),
             )
         assertEquals(
-            ForceResetOutcome.Reinstalled(
+            ForceResetOutcome.Installed(
                 root.resolve("installation").toString(),
                 "1.2.3",
                 root.resolve("bin/kast").toString(),
-                GENERATION,
             ),
             result,
         )
         runtime.assertConsumed()
         assertFalse(Files.exists(installationResetFence(root)))
-        assertEquals(successfulReplacementObservations(), observations)
     }
 
     @Test
-    fun `failed bootstrap restores the fence and retires partial startup before returning pending`() {
-        val root = root()
-        val runtime =
-            ResetRuntimeScript(
-                root,
-                closedRetirementSteps() +
-                    ResetScriptStep.Activate(LifecycleChildObservation.Exited(5)) +
-                    closedRetirementSteps(),
+    fun `cold completion rejects a replacement fence without deleting it`() {
+        withStaged { staged ->
+            val marker = staged.erased.fence.marker
+            val content = Files.readString(marker)
+            Files.move(marker, marker.resolveSibling("prior-marker"))
+            Files.writeString(marker, content)
+            assertEquals(ResetInstallation.Rejected(ForceResetFailure.FENCE_REJECTED), InstalledReset.complete(staged))
+            assertEquals(content, Files.readString(marker))
+        }
+    }
+
+    @Test
+    fun `cold completion rejects a changed payload and keeps the fence`() {
+        withStaged { staged ->
+            Files.writeString(staged.payload.installation.resolve("share/kast/libexec/kast-service"), "changed")
+            assertEquals(
+                ResetInstallation.Rejected(ForceResetFailure.INSTALLATION_UNVERIFIED),
+                InstalledReset.complete(staged),
             )
-        val observations = mutableListOf<ResetObservation>()
-        val result =
+            assertTrue(Files.exists(staged.erased.fence.marker))
+        }
+    }
+
+    @Test
+    fun `cold completion cannot replay the consumed staged state`() {
+        withStaged { staged ->
+            org.junit.jupiter.api.Assertions.assertInstanceOf(
+                ResetInstallation.Installed::class.java,
+                InstalledReset.complete(staged),
+            )
+            assertEquals(ResetInstallation.Rejected(ForceResetFailure.RESET_BUSY), InstalledReset.complete(staged))
+            assertFalse(Files.exists(staged.erased.fence.marker))
+        }
+    }
+
+    @Test
+    fun `rejected cold completion keeps the fence after retirement`() {
+        val root = temporary.toRealPath().resolve("kast")
+        val home = Files.createDirectories(temporary.resolve("home"))
+        val runtime = ResetRuntimeScript(root, closedRetirementSteps() + closedRetirementSteps())
+        val outcome =
             forceResetInstallation(
                 root,
-                home(),
+                home,
                 emptyMap(),
                 ForceResetOperation.REINSTALL,
-                ForceResetExecution(runtime, freshInstaller(), observations::add),
+                ForceResetExecution(runtime, changedInstaller(), {}),
             )
         assertEquals(
             ForceResetOutcome.Pending(
                 root.resolve("installation").toString(),
                 "1.2.3",
                 root.resolve("bin/kast").toString(),
-                ForceResetFailure.ACTIVATION_REJECTED,
+                ForceResetFailure.INSTALLATION_UNVERIFIED,
             ),
-            result,
+            outcome,
         )
         runtime.assertConsumed()
         assertTrue(Files.exists(installationResetFence(root)))
-        assertEquals(
-            listOf(
-                ResetObservation.Rejected(
-                    ForceResetOperation.REINSTALL,
-                    ForceResetStage.ACTIVATION,
-                    ForceResetFailure.ACTIVATION_REJECTED,
-                ),
-                ResetObservation.Started(ForceResetOperation.REINSTALL, ForceResetStage.RECOVERY),
-                ResetObservation.Completed(ForceResetOperation.REINSTALL, ForceResetStage.RECOVERY),
-            ),
-            observations.takeLast(3),
-        )
     }
 
     @Test
-    fun `failed recovery preserves both activation and retirement failures`() {
-        val root = root()
+    fun `failed cold compensation preserves payload and retirement failures`() {
+        val root = temporary.toRealPath().resolve("kast")
+        val home = Files.createDirectories(temporary.resolve("home"))
         val runtime =
             ResetRuntimeScript(
                 root,
                 closedRetirementSteps() +
                     listOf(
-                        ResetScriptStep.Activate(LifecycleChildObservation.DeadlineExceeded),
                         ResetScriptStep.Table(ResetProcessTable.Observed(emptyList())),
                         ResetScriptStep.Job(true, true, ResetCommandObservation.Unavailable),
                     ),
             )
-        val result =
+        val outcome =
             forceResetInstallation(
                 root,
-                home(),
+                home,
                 emptyMap(),
                 ForceResetOperation.REINSTALL,
-                ForceResetExecution(runtime, freshInstaller(), {}),
+                ForceResetExecution(runtime, changedInstaller(), {}),
             )
         assertEquals(
             ForceResetOutcome.RecoveryRequired(
                 ForceResetOperation.REINSTALL,
-                ForceResetStage.ACTIVATION,
-                ForceResetFailure.ACTIVATION_REJECTED,
+                ForceResetStage.FINAL_VERIFICATION,
+                ForceResetFailure.INSTALLATION_UNVERIFIED,
                 ForceResetFailure.LAUNCH_JOB_REJECTED,
                 root.toString(),
             ),
-            result,
+            outcome,
         )
         runtime.assertConsumed()
         assertTrue(Files.exists(installationResetFence(root)))
     }
 
-    @Test
-    fun `readiness without a valid fresh generation cannot become active`() {
-        val root = root()
-        val runtime =
-            ResetRuntimeScript(
-                root,
-                closedRetirementSteps() +
-                    listOf(
-                        ResetScriptStep.Activate(LifecycleChildObservation.Exited(0)),
-                        ResetScriptStep.Ready(ResetActivationObservation.Ready("1.2.3", "unknown-generation")),
-                    ) +
-                    closedRetirementSteps(),
-            )
-        val result =
-            forceResetInstallation(
-                root,
-                home(),
-                emptyMap(),
-                ForceResetOperation.REINSTALL,
-                ForceResetExecution(runtime, freshInstaller(), {}),
-            )
-        assertEquals(
-            ForceResetOutcome.Pending(
-                root.resolve("installation").toString(),
-                "1.2.3",
-                root.resolve("bin/kast").toString(),
-                ForceResetFailure.READINESS_REJECTED,
-            ),
-            result,
-        )
-        runtime.assertConsumed()
-        assertTrue(Files.exists(installationResetFence(root)))
+    private fun changedInstaller() = ForceReinstaller { erased, home, environment ->
+        val admitted = installer().stage(erased, home, environment)
+        Files.writeString(erased.root.resolve("installation/share/kast/libexec/kast-service"), "changed")
+        admitted
     }
 
-    private fun successfulReplacementObservations(): List<ResetObservation> =
-        listOf(
-                ForceResetStage.FENCE,
-                ForceResetStage.DAEMONS,
-                ForceResetStage.CLEANUP,
-                ForceResetStage.INSTALLATION,
-                ForceResetStage.ACTIVATION,
-            )
-            .flatMap {
-                listOf(
-                    ResetObservation.Started(ForceResetOperation.REINSTALL, it),
-                    ResetObservation.Completed(ForceResetOperation.REINSTALL, it),
-                )
-            }
+    private fun withStaged(action: (StagedReset) -> Unit) {
+        val root = temporary.toRealPath().resolve("kast")
+        val home = Files.createDirectories(temporary.resolve("home"))
+        ErasedResetFixture.create(root, home).use { fixture ->
+            val result = StagedReset.stage(fixture.erased, home, emptyMap(), installer())
+            val staged =
+                org.junit.jupiter.api.Assertions.assertInstanceOf(ResetStaging.Staged::class.java, result).reset
+            action(staged)
+        }
+    }
 
-    private fun freshInstaller(): ForceReinstaller = ForceReinstaller { erased, _, _ ->
-        assertEquals(ResetEffect.Completed, erased.stagingAdmission())
-        assertFalse(Files.exists(erased.root))
-        assertTrue(Files.exists(erased.fence.marker))
+    private fun installer() = ForceReinstaller { erased, _, _ ->
         prepareFreshPayload(erased.root)
         val report = temporary.resolve("staged-report.json")
         writeStagedReport(report)
         FreshResetInstallation.admit(erased.root, report)
-    }
-
-    private fun home(): Path = Files.createDirectories(temporary.resolve("home"))
-
-    private fun root(): Path = temporary.toRealPath().resolve("kast")
-
-    companion object {
-        private const val GENERATION = "12345678-1234-1234-1234-123456789abc"
     }
 }

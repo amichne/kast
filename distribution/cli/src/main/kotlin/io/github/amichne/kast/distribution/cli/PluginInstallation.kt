@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import java.io.IOException
 import java.nio.file.Path
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -14,11 +15,13 @@ internal enum class PluginHarness(val publicName: String) {
 internal enum class PluginInstallStage {
     INSTALLATION_LOCK,
     PAYLOAD_ADMISSION,
+    LEGACY_REGISTRATION_INSPECTION,
     MARKETPLACE_INSPECTION,
     PLUGIN_INSPECTION,
     MARKETPLACE_REGISTRATION,
     PLUGIN_INSTALLATION,
     VERIFICATION,
+    LEGACY_REGISTRATION_REMOVAL,
 }
 
 @Serializable
@@ -42,6 +45,10 @@ internal sealed interface PluginInstallFailure {
     @Serializable @SerialName("PLUGIN_CONFLICT") data object PluginConflict : PluginInstallFailure
 
     @Serializable @SerialName("VERIFICATION_REJECTED") data object VerificationRejected : PluginInstallFailure
+
+    @Serializable
+    @SerialName("LEGACY_REGISTRATION_REJECTED")
+    data object LegacyRegistrationRejected : PluginInstallFailure
 }
 
 @Serializable
@@ -73,10 +80,29 @@ internal const val AGENT_TOOLS_RELATIVE_PATH = "share/kast/agent-tools"
 @Suppress("ReturnCount", "CyclomaticComplexMethod", "LongMethod")
 internal fun installCodexPlugin(
     root: Path,
+    home: Path,
     executeCodex: (List<String>) -> ProcessObservation = { runBounded(it) },
+    executeLegacyCodexAt: (Path, List<String>) -> ProcessObservation = { selected, arguments ->
+        runBounded(arguments, selected)
+    },
+    codexHome: Path = home.resolve(".codex"),
 ): PluginInstallOutcome =
     try {
-        withRegistrationLock(root) { installAdmittedCodexPlugin(root, executeCodex) }
+        withRegistrationLock(root) {
+            when (val outcome = installAdmittedCodexPlugin(root, home, codexHome, executeCodex)) {
+                is PluginInstallOutcome.Installed,
+                is PluginInstallOutcome.AlreadyInstalled ->
+                    when (val removal = removeLegacyCodexRegistrations(root, home, executeLegacyCodexAt)) {
+                        is PluginObservation.Observed -> outcome
+                        is PluginObservation.Rejected ->
+                            PluginInstallOutcome.Rejected(
+                                PluginInstallStage.LEGACY_REGISTRATION_REMOVAL,
+                                removal.failure,
+                            )
+                    }
+                is PluginInstallOutcome.Rejected -> outcome
+            }
+        }
     } catch (_: ManagementRejected) {
         PluginInstallOutcome.Rejected(
             PluginInstallStage.INSTALLATION_LOCK,
@@ -84,9 +110,29 @@ internal fun installCodexPlugin(
         )
     }
 
+private fun removeLegacyCodexRegistrations(
+    root: Path,
+    home: Path,
+    executeCodexAt: (Path, List<String>) -> ProcessObservation,
+): PluginObservation<Unit> =
+    try {
+        for (connection in HarnessConnection.entries.filter { it.harness == Harness.CODEX }) {
+            disconnectAdmittedConnection(root, home, connection, executeCodexAt)
+        }
+        PluginObservation.Observed(Unit)
+    } catch (_: ManagementRejected) {
+        PluginObservation.Rejected(PluginInstallFailure.LegacyRegistrationRejected)
+    } catch (_: IOException) {
+        PluginObservation.Rejected(PluginInstallFailure.LegacyRegistrationRejected)
+    } catch (_: SecurityException) {
+        PluginObservation.Rejected(PluginInstallFailure.LegacyRegistrationRejected)
+    }
+
 @Suppress("ReturnCount", "CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod")
 private fun installAdmittedCodexPlugin(
     root: Path,
+    home: Path,
+    codexHome: Path,
     executeCodex: (List<String>) -> ProcessObservation,
 ): PluginInstallOutcome {
     val bundle =
@@ -95,6 +141,11 @@ private fun installAdmittedCodexPlugin(
             is PluginObservation.Rejected ->
                 return PluginInstallOutcome.Rejected(PluginInstallStage.PAYLOAD_ADMISSION, admission.failure)
         }
+    when (val legacy = inspectLegacyCodexRegistration(root, home, codexHome, executeCodex)) {
+        is PluginObservation.Observed -> Unit
+        is PluginObservation.Rejected ->
+            return PluginInstallOutcome.Rejected(PluginInstallStage.LEGACY_REGISTRATION_INSPECTION, legacy.failure)
+    }
     val marketplace =
         when (val observation = observePluginMarketplace(bundle, executeCodex)) {
             is PluginObservation.Observed -> observation.value
@@ -144,6 +195,30 @@ private fun installAdmittedCodexPlugin(
             PluginInstallOutcome.Rejected(PluginInstallStage.VERIFICATION, verification.failure)
     }
 }
+
+private fun inspectLegacyCodexRegistration(
+    root: Path,
+    home: Path,
+    codexHome: Path,
+    executeCodex: (List<String>) -> ProcessObservation,
+): PluginObservation<Unit> =
+    try {
+        val observed = codexRegistration(executeCodex)
+        if (observed == null) PluginObservation.Observed(Unit)
+        else {
+            val prior =
+                admittedReceipt(root).registrations.singleOrNull { it.connection == HarnessConnection.CODEX_MCP }
+            if (
+                prior != null &&
+                    ownsCodex(observed, Path.of(prior.destination)) &&
+                    disconnectionDirectory(root, home, prior).path == codexHome
+            )
+                PluginObservation.Observed(Unit)
+            else PluginObservation.Rejected(PluginInstallFailure.LegacyRegistrationRejected)
+        }
+    } catch (_: ManagementRejected) {
+        PluginObservation.Rejected(PluginInstallFailure.LegacyRegistrationRejected)
+    }
 
 internal fun pluginProcessResult(observation: ProcessObservation): PluginObservation<String> =
     when (observation) {

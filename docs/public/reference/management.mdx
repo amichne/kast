@@ -31,6 +31,8 @@ kast upgrade
 ```
 
 Upgrade stops owned services and interrupts sessions. Restart IDEA and clients after success, then start fresh sessions and calls.
+Upgrade does not start a Codex broker. Its MCP session starts IntelliJ preparation when the client connects.
+If the Codex plugin is installed, run `kast plugin codex` to refresh its cached files.
 
 <Accordion title="Upgrade Control without replacing Host">
   Control supplies the command, coordinator, agent adapters, and sessions. Host supplies the IDEA plugin and semantic runtime.
@@ -75,17 +77,19 @@ Kast examines PID start time, main class, and installed library digests before a
 
 If shutdown rejects, preserve the fence. Payload replacement cannot continue through failed shutdown.
 
-`reinstall` installs the recorded version after shutdown succeeds. It starts the coordinator and restores integrations.
+`reinstall` installs the recorded version after shutdown succeeds. It removes the exact owned shutdown fence and restores supported integrations.
+It does not start a coordinator. Recorded Codex registrations migrate through the plugin owner.
 
-If startup fails, Kast restores the fence and returns `REINSTALLATION_PENDING` with its stage. Inspect `kast status --json` before another recovery try.
+If payload completion fails, Kast keeps the fence and reports its stage. Inspect `kast status --json` before another recovery try.
 
 The published installer can resume valid shutdown. Routine replacement retires the predecessor before it examines the state to keep.
 
-If retirement, state retention, or payload startup fails, recovery tries to restart the predecessor. The result reports that recovery outcome.
+If retirement or payload replacement fails, recovery can restore the predecessor. The result reports that recovery outcome.
 
 ### Lifecycle result contract
 
 JSON stdout reports `STOPPED`, `REINSTALLED`, `REJECTED`, or `REINSTALLATION_PENDING`. Stage evidence uses stderr, and unsuccessful results exit with code 1.
+Force reinstall reports `RESET_INSTALLED` after payload and fence completion. That result carries no service generation or readiness claim.
 
 The installed `management-lifecycle.schema.json` owns exact variants. Older payloads without fence capability reject before lifecycle effects.
 
@@ -120,7 +124,7 @@ It unlinks symlinks without reads of their targets. It rejects filesystem roots,
 
 Force reinstall selects the latest release from the saved channel. It installs Control and Host and repairs valid recorded connections.
 
-Success returns `RESET_REINSTALLED`, version, service generation, and command path. Restart IDEA and affected clients after success.
+Success returns `RESET_INSTALLED`, version, installation path, and command path. Restart IDEA and affected clients after success.
 
 The public installer uses this reset with `--force`. Developer installation requests it automatically after archive admission.
 
@@ -128,9 +132,9 @@ The public installer uses this reset with `--force`. Developer installation requ
 
 ### Reset outcomes
 
-The closed variants include `REMOVED`, `RESET_REINSTALLED`, `RESET_REINSTALLATION_PENDING`, `RESET_RETAINED`, `RESET_RECOVERY_REQUIRED`, and `RESET_REJECTED`.
+The closed variants include `REMOVED`, `RESET_INSTALLED`, `RESET_REINSTALLATION_PENDING`, `RESET_RETAINED`, `RESET_RECOVERY_REQUIRED`, and `RESET_REJECTED`.
 
-Installation failure returns `RESET_REJECTED`. Readiness failure returns `RESET_REINSTALLATION_PENDING`. Unsuccessful outcomes exit with code 1.
+Installation failure returns `RESET_REJECTED`. Payload or fence failure after staging returns `RESET_REINSTALLATION_PENDING`. Unsuccessful outcomes exit with code 1.
 
 If a result reports `recoveryPath`, preserve that path. Examine the named failed stage before another reset.
 

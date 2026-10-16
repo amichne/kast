@@ -7,24 +7,21 @@ import java.nio.file.Path
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-/** Absence retains the caller's decision to preserve an admitted prior endpoint. */
+/** Installation admits only private endpoints. Saved shared endpoints belong to legacy retirement. */
 internal sealed interface InstallationPublicEndpointSelection {
     data object Unspecified : InstallationPublicEndpointSelection
 
-    data class Explicit(val mode: BrokerPublicEndpointMode) : InstallationPublicEndpointSelection
+    data object ExplicitPrivate : InstallationPublicEndpointSelection
 
     companion object {
         fun admit(raw: String?): Refinement<InstallationPublicEndpointSelection, InstallationRequestFailure> =
             when (raw) {
                 null -> Refinement.Refined(Unspecified)
+                "private" -> Refinement.Refined(ExplicitPrivate)
                 else ->
-                    when (val endpoint = BrokerPublicEndpointMode.admit(raw)) {
-                        is Refinement.Refined -> Refinement.Refined(Explicit(endpoint.value))
-                        is Refinement.Rejected ->
-                            Refinement.Rejected(
-                                InstallationRequestFailure.InvalidValue(InstallationEnvironment.PUBLIC_ENDPOINT)
-                            )
-                    }
+                    Refinement.Rejected(
+                        InstallationRequestFailure.InvalidValue(InstallationEnvironment.PUBLIC_ENDPOINT)
+                    )
             }
     }
 }
@@ -32,14 +29,15 @@ internal sealed interface InstallationPublicEndpointSelection {
 /** Materialization retains admitted prior settings until the staged file is written. */
 internal sealed interface InstallationConfigurationSelection {
     val endpoint: BrokerPublicEndpointMode
+        get() = BrokerPublicEndpointMode.PRIVATE
+
     val reason: InstallationPublicEndpointSelectionReason
 
     data object FreshDefault : InstallationConfigurationSelection {
-        override val endpoint = BrokerPublicEndpointMode.PRIVATE
         override val reason = InstallationPublicEndpointSelectionReason.FRESH_DEFAULT
     }
 
-    data class FreshExplicit(override val endpoint: BrokerPublicEndpointMode) : InstallationConfigurationSelection {
+    data object FreshExplicit : InstallationConfigurationSelection {
         override val reason = InstallationPublicEndpointSelectionReason.EXPLICIT
     }
 
@@ -48,22 +46,20 @@ internal sealed interface InstallationConfigurationSelection {
         val admission: AdmittedAppServerConfiguration,
         private val selection: InstallationPublicEndpointSelection,
     ) : InstallationConfigurationSelection {
-        override val endpoint: BrokerPublicEndpointMode
-            get() =
-                when (selection) {
-                    is InstallationPublicEndpointSelection.Explicit -> selection.mode
-                    InstallationPublicEndpointSelection.Unspecified -> admission.publicEndpointMode
-                }
-
         fun preservesEndpoint(): Boolean = endpoint == admission.publicEndpointMode
 
         override val reason: InstallationPublicEndpointSelectionReason
             get() =
                 when (selection) {
-                    is InstallationPublicEndpointSelection.Explicit ->
+                    InstallationPublicEndpointSelection.ExplicitPrivate ->
                         InstallationPublicEndpointSelectionReason.EXPLICIT
                     InstallationPublicEndpointSelection.Unspecified ->
-                        InstallationPublicEndpointSelectionReason.SAVED_CONFIGURATION
+                        when (admission.publicEndpointMode) {
+                            BrokerPublicEndpointMode.PRIVATE ->
+                                InstallationPublicEndpointSelectionReason.SAVED_CONFIGURATION
+                            BrokerPublicEndpointMode.CODEX_CONTROL ->
+                                InstallationPublicEndpointSelectionReason.LEGACY_SHARED_ENDPOINT_MIGRATED
+                        }
                 }
     }
 }
@@ -73,6 +69,7 @@ internal enum class InstallationPublicEndpointSelectionReason {
     FRESH_DEFAULT,
     SAVED_CONFIGURATION,
     EXPLICIT,
+    LEGACY_SHARED_ENDPOINT_MIGRATED,
 }
 
 @Serializable
@@ -118,8 +115,8 @@ internal fun selectInstallationConfiguration(
 ): Refinement<InstallationConfigurationSelection, InstallationConfigurationFailure> {
     if (prior == null) {
         return when (selection) {
-            is InstallationPublicEndpointSelection.Explicit ->
-                Refinement.Refined(InstallationConfigurationSelection.FreshExplicit(selection.mode))
+            InstallationPublicEndpointSelection.ExplicitPrivate ->
+                Refinement.Refined(InstallationConfigurationSelection.FreshExplicit)
             InstallationPublicEndpointSelection.Unspecified ->
                 Refinement.Refined(InstallationConfigurationSelection.FreshDefault)
         }

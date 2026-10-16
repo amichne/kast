@@ -55,12 +55,6 @@ internal sealed interface ResetProcessTable {
     data object Unavailable : ResetProcessTable
 }
 
-internal sealed interface ResetActivationObservation {
-    data class Ready(val version: String, val generation: String) : ResetActivationObservation
-
-    data object Unavailable : ResetActivationObservation
-}
-
 internal interface ForceDaemonRuntime {
     fun launch(command: ResetLaunchCommand, home: Path): ResetCommandObservation
 
@@ -69,10 +63,6 @@ internal interface ForceDaemonRuntime {
     fun capture(process: ResetScopedProcess): ResetSharedSocketCapture
 
     fun retire(process: ResetSharedSocketCapture.Captured, allowance: Duration): LifecycleProcessObservation
-
-    fun activate(installation: Path, home: Path, environment: Map<String, String>): LifecycleChildObservation
-
-    fun readiness(installation: Path): ResetActivationObservation
 }
 
 internal class ResetScopedProcess private constructor(val snapshot: LifecycleProcessSnapshot, val root: Path) {

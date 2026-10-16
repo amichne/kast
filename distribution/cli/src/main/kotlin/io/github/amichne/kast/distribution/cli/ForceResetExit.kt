@@ -9,7 +9,7 @@ internal fun presentForceReset(outcome: ForceResetOutcome, json: Boolean): Force
     if (json) println(outcome.asJson()) else presentHumanReset(outcome)
     return when (outcome) {
         is ForceResetOutcome.Removed,
-        is ForceResetOutcome.Reinstalled -> ForceResetExit.COMPLETE
+        is ForceResetOutcome.Installed -> ForceResetExit.COMPLETE
         is ForceResetOutcome.Rejected,
         is ForceResetOutcome.Pending,
         is ForceResetOutcome.Retained,
@@ -20,9 +20,9 @@ internal fun presentForceReset(outcome: ForceResetOutcome, json: Boolean): Force
 private fun presentHumanReset(outcome: ForceResetOutcome) {
     when (outcome) {
         is ForceResetOutcome.Removed -> println("Removed the entire Kast directory: ${outcome.root}")
-        is ForceResetOutcome.Reinstalled -> {
-            println("Installed fresh Kast ${outcome.version}: ${outcome.command}")
-            println("Restart IDEA and register affected harnesses with kast connect")
+        is ForceResetOutcome.Installed -> {
+            println("Installed Kast ${outcome.version}: ${outcome.command}")
+            println("Restart IDEA and affected harnesses. Use kast plugin codex for Codex.")
         }
         is ForceResetOutcome.Retained ->
             System.err.println("kast: ${outcome.stage}: ${outcome.failure}; retained data: ${outcome.recoveryPath}")

@@ -32,7 +32,7 @@ private constructor(
 
         fun admitPublic(scope: PublicResetScope, report: Path): FreshResetResult =
             try {
-                admitPayload(scope.root, report, scope.command, InstallerReportIntent.ACTIVATION)
+                admitPayload(scope.root, report, scope.command, InstallerReportIntent.STAGING)
             } catch (_: IOException) {
                 rejected()
             } catch (_: SecurityException) {
@@ -57,7 +57,7 @@ private constructor(
             if (version !is ReinstallationVersionAdmission.Admitted) return rejected()
             val payload = FreshResetInstallation(installation, version.version, command, read.manifest)
             if (
-                payload.serviceAdmission() != ResetEffect.Completed ||
+                payload.payloadAdmission() != ResetEffect.Completed ||
                     !payloadOwned(installation, read.manifest, "share/kast/libexec/kast-management") ||
                     sha256(command) != sha256(installation.resolve("share/kast/libexec/kast-management"))
             )
@@ -78,7 +78,7 @@ private constructor(
         private const val CAPABILITY_BYTES = 64L
     }
 
-    fun serviceAdmission(): ResetEffect =
+    fun payloadAdmission(): ResetEffect =
         try {
             if (
                 payloadOwned(installation, manifest, INSTALLATION_RESET_CAPABILITY) &&

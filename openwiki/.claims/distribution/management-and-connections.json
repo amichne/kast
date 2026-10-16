@@ -1,18 +1,18 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:fc12e665e13413b3842b7812694cdc69daff30b6c9ce93a7b5bb3c056238c14b",
+  "pageVersion": "sha256:7b1a333258af0cee30929537f9010c2aae5da5e80561c87f393afbb287605a4b",
   "claims": [
     {
       "id": "claim_d60c4b147f224d3ea584e14dde77d04e",
-      "statement": "The native management command uses a closed command model and keeps private JVM command families outside the public semantic surface.",
+      "statement": "The native management command uses a closed command model. Public Codex connection forms select its plugin owner, new App Server registration rejects before effects, and legacy variants remain for receipt admission and cleanup.",
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
-          "version": "repo-file-v1:sha256:f50877db46d653285b260d4a80933dce8519c5af8e1258d61402772619c66079"
+          "version": "repo-file-v1:sha256:23280d575cc7e5134cc73708252d30676b152576156cee8801b7acaee99f09df"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt",
-          "version": "repo-file-v1:sha256:928e0c77420469a2a31481421f08c3a6fa5e51477aedee5bbc9324ad210b5ee4"
+          "version": "repo-file-v1:sha256:f1c15ca73702c961374520fcb6a094055acb620c3afc10f9906b9a6d8207ee19"
         }
       ]
     },
@@ -28,17 +28,17 @@
     },
     {
       "id": "claim_4c1df02651fe4663b0201e017c830aba",
-      "statement": "Codex plugin installation admits bundled payloads and exact host identities before requesting installation while Codex retains configuration and cache ownership.",
+      "statement": "Codex plugin installation admits bundled payloads, rejects foreign standalone MCP registrations before plugin effects, and inspects exact host identities. It removes only receipt-owned legacy registrations after success while Codex owns configuration and cache.",
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt",
-          "version": "repo-file-v1:sha256:226250971516de7a8ddd81da4e60a5ecdcac96440decfe189c9eb8490a0c4f24"
+          "version": "repo-file-v1:sha256:58532558c47f1f133c4cd9207454007dc6d01f3be5671b91625fb16ba109f669"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T00:33:05.932Z"
+    "at": "2026-10-16T07:07:29.171Z"
   }
 }

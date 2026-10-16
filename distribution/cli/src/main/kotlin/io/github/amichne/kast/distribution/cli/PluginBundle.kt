@@ -33,8 +33,6 @@ private val requiredPluginFiles =
         "plugins/kast/hooks/copilot.json",
         "plugins/kast/hooks/session_start.py",
         "plugins/kast/hooks/session_start.py.lock",
-        "plugins/kast/hooks/prepare_workspace.py",
-        "plugins/kast/hooks/prepare_workspace.py.lock",
         "plugins/kast/references/query-schema.json",
         "plugins/kast/references/query-examples.json",
     )

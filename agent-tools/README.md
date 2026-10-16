@@ -9,10 +9,10 @@ Install Kast and restart IntelliJ IDEA before a semantic query.
 Start your agent from the exact Kotlin repository or worktree.
 Preparation can save editor buffers and refresh the imported project.
 
-Codex also uses a background hook to prepare the nearest Kotlin Gradle project within the Git checkout.
-It skips other repositories and session compaction.
-The setup hook reports indexed readiness only for the exact project.
-Kast uses its private socket by default.
+The MCP session starts IntelliJ preparation for its exact Kotlin Gradle project.
+Semantic calls wait for that preparation and examine current readiness.
+Other repositories can load the catalog, but semantic calls reject without a Gradle project.
+Codex owns its App Server and control socket.
 
 ## Codex
 
@@ -54,13 +54,14 @@ The installed extension registers `kast-mcp-complete` through Pi's native `regis
 It reads the shared context at `session_start` and adds it to each model request's system prompt.
 Pi owns MCP discovery, permissions, and the connection lifetime.
 Use a Pi version with native MCP support.
+An absent or invalid context resource produces one warning. MCP stays registered, and Pi can continue the session.
 
 ## Runtime and references
 
-The context hooks need `uv` and Python 3.11 through 3.14.
-The Codex setup hook needs Python 3.12 or 3.13 and its locked Pydantic dependency.
-Install `uv` on `PATH` or at `~/.local/bin/uv`. Pi uses `~/.local/bin/uv`.
-The locked context script uses only the Python standard library and runs offline.
+The Codex and Copilot context hooks use Python 3.9 or later from `PATH` or `~/.local/bin`.
+The context script uses only the Python standard library and runs offline.
+Pi reads the resources directly with Node. It needs no Python or uv process.
+No startup path downloads dependencies or creates a Python environment.
 It reads bundled resources without IDE calls, workspace writes, or model requests.
 An invalid event, absent resource, or oversized brief rejects without partial context.
 The host decides whether a hook failure stops the session.

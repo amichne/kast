@@ -92,6 +92,8 @@ request permission to bypass tool prompts when it loads. No Copilot MCP server i
 It registers `kast-mcp-complete` through Pi's `registerMcpServer` API.
 Pi owns tool discovery, permissions, and connection lifetime.
 The extension reads the shared brief at session start and adds it to the system prompt before each model request.
+It reads local resources with Node and starts no uv or Python process.
+An absent or invalid context resource produces one warning while native MCP stays registered.
 It does not use Tool RPC.
 See [the shared context guide](../agent-tools/README.md) for plugin installation and runtime needs.
 
@@ -103,7 +105,7 @@ kast connect pi
 
 The first connection respects `PI_CODING_AGENT_DIR`. You can also select its
 agent home with `kast connect pi --destination /absolute/pi/agent`.
-All connection commands accept `--destination` and retain the selected directory
+The Pi and Copilot connection commands accept `--destination` and keep the selected directory
 in `~/.config/kast/config.json` for reconnect, upgrade, and disconnect. Start the
 harness with the same home setting so it discovers the installed connection.
 

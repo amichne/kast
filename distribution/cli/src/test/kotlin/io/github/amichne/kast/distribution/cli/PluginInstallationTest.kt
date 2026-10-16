@@ -61,6 +61,7 @@ class PluginInstallationTest {
         val marketplace = root.resolve("installation/$AGENT_TOOLS_RELATIVE_PATH")
         val executor =
             PluginScript(
+                Step(listOf("codex", "mcp", "list", "--json"), mcpServers()),
                 Step(marketplaceList, marketplaces()),
                 Step(pluginList, plugins()),
                 Step(listOf("codex", "plugin", "marketplace", "add", marketplace.toString(), "--json")),
@@ -68,7 +69,10 @@ class PluginInstallationTest {
                 Step(pluginAdd),
                 Step(pluginList, plugins(plugin(marketplace))),
             )
-        assertEquals(PluginInstallOutcome.Installed(PluginHarness.CODEX), installCodexPlugin(root, executor::execute))
+        assertEquals(
+            PluginInstallOutcome.Installed(PluginHarness.CODEX),
+            installCodexPlugin(root, temporary.toRealPath().resolve("home"), executor::execute),
+        )
         executor.assertConsumed()
         assertEquals(before, Files.readAllBytes(receiptPath(root)).toList())
     }
@@ -79,12 +83,13 @@ class PluginInstallationTest {
         val marketplace = root.resolve("installation/$AGENT_TOOLS_RELATIVE_PATH").toRealPath()
         val executor =
             PluginScript(
+                Step(listOf("codex", "mcp", "list", "--json"), mcpServers()),
                 Step(marketplaceList, marketplaces(marketplace)),
                 Step(pluginList, plugins(plugin(marketplace))),
             )
         assertEquals(
             PluginInstallOutcome.AlreadyInstalled(PluginHarness.CODEX),
-            installCodexPlugin(root, executor::execute),
+            installCodexPlugin(root, temporary.toRealPath().resolve("home"), executor::execute),
         )
         executor.assertConsumed()
     }
@@ -94,14 +99,15 @@ class PluginInstallationTest {
         val root = pluginFixture(temporary)
         val marketplace = root.resolve("installation/$AGENT_TOOLS_RELATIVE_PATH")
         val foreign = temporary.resolve("foreign")
+        val mcpAbsent = Step(listOf("codex", "mcp", "list", "--json"), mcpServers())
         listOf(marketplaces(foreign), marketplaces(marketplace, marketplace)).forEach { observation ->
-            val executor = PluginScript(Step(marketplaceList, observation))
+            val executor = PluginScript(mcpAbsent, Step(marketplaceList, observation))
             assertEquals(
                 PluginInstallOutcome.Rejected(
                     PluginInstallStage.MARKETPLACE_INSPECTION,
                     PluginInstallFailure.MarketplaceConflict,
                 ),
-                installCodexPlugin(root, executor::execute),
+                installCodexPlugin(root, temporary.toRealPath().resolve("home"), executor::execute),
             )
             executor.assertConsumed()
         }
@@ -114,13 +120,17 @@ class PluginInstallationTest {
         listOf(plugins(plugin(temporary.resolve("foreign"))), plugins(plugin(marketplace), plugin(marketplace)))
             .forEach { observation ->
                 val executor =
-                    PluginScript(Step(marketplaceList, marketplaces(marketplace)), Step(pluginList, observation))
+                    PluginScript(
+                        Step(listOf("codex", "mcp", "list", "--json"), mcpServers()),
+                        Step(marketplaceList, marketplaces(marketplace)),
+                        Step(pluginList, observation),
+                    )
                 assertEquals(
                     PluginInstallOutcome.Rejected(
                         PluginInstallStage.PLUGIN_INSPECTION,
                         PluginInstallFailure.PluginConflict,
                     ),
-                    installCodexPlugin(root, executor::execute),
+                    installCodexPlugin(root, temporary.toRealPath().resolve("home"), executor::execute),
                 )
                 executor.assertConsumed()
             }
@@ -136,10 +146,14 @@ class PluginInstallationTest {
                 ProcessObservation.Unavailable to PluginInstallFailure.ProcessUnavailable,
             )
         cases.forEach { (observation, failure) ->
-            val executor = PluginScript(Step(marketplaceList, observation = observation))
+            val executor =
+                PluginScript(
+                    Step(listOf("codex", "mcp", "list", "--json"), mcpServers()),
+                    Step(marketplaceList, observation = observation),
+                )
             assertEquals(
                 PluginInstallOutcome.Rejected(PluginInstallStage.MARKETPLACE_INSPECTION, failure),
-                installCodexPlugin(root, executor::execute),
+                installCodexPlugin(root, temporary.toRealPath().resolve("home"), executor::execute),
             )
             executor.assertConsumed()
         }
@@ -185,12 +199,16 @@ class PluginInstallationTest {
         val marketplace = root.resolve("installation/$AGENT_TOOLS_RELATIVE_PATH")
         val executor =
             PluginScript(
+                Step(listOf("codex", "mcp", "list", "--json"), mcpServers()),
                 Step(marketplaceList, marketplaces(marketplace)),
                 Step(pluginList, plugins(plugin(marketplace).copy(enabled = false, version = "1.2.2"))),
                 Step(pluginAdd),
                 Step(pluginList, plugins(plugin(marketplace))),
             )
-        assertEquals(PluginInstallOutcome.Installed(PluginHarness.CODEX), installCodexPlugin(root, executor::execute))
+        assertEquals(
+            PluginInstallOutcome.Installed(PluginHarness.CODEX),
+            installCodexPlugin(root, temporary.toRealPath().resolve("home"), executor::execute),
+        )
         executor.assertConsumed()
     }
 
@@ -200,6 +218,7 @@ class PluginInstallationTest {
         val marketplace = root.resolve("installation/$AGENT_TOOLS_RELATIVE_PATH")
         val executor =
             PluginScript(
+                Step(listOf("codex", "mcp", "list", "--json"), mcpServers()),
                 Step(marketplaceList, marketplaces(marketplace)),
                 Step(pluginList, plugins()),
                 Step(pluginAdd),
@@ -207,7 +226,7 @@ class PluginInstallationTest {
             )
         assertEquals(
             PluginInstallOutcome.Rejected(PluginInstallStage.VERIFICATION, PluginInstallFailure.VerificationRejected),
-            installCodexPlugin(root, executor::execute),
+            installCodexPlugin(root, temporary.toRealPath().resolve("home"), executor::execute),
         )
         executor.assertConsumed()
     }
@@ -218,6 +237,7 @@ class PluginInstallationTest {
         val marketplace = root.resolve("installation/$AGENT_TOOLS_RELATIVE_PATH")
         val executor =
             PluginScript(
+                Step(listOf("codex", "mcp", "list", "--json"), mcpServers()),
                 Step(marketplaceList, marketplaces(marketplace)),
                 Step(pluginList, plugins()),
                 Step(pluginAdd, observation = ProcessObservation.Exited(23, "")),
@@ -227,7 +247,7 @@ class PluginInstallationTest {
                 PluginInstallStage.PLUGIN_INSTALLATION,
                 PluginInstallFailure.ProcessExited(23),
             ),
-            installCodexPlugin(root, executor::execute),
+            installCodexPlugin(root, temporary.toRealPath().resolve("home"), executor::execute),
         )
         executor.assertConsumed()
     }
@@ -273,6 +293,7 @@ class PluginInstallationTest {
                 PluginInstallFailure.MarketplaceConflict to "MARKETPLACE_CONFLICT",
                 PluginInstallFailure.PluginConflict to "PLUGIN_CONFLICT",
                 PluginInstallFailure.VerificationRejected to "VERIFICATION_REJECTED",
+                PluginInstallFailure.LegacyRegistrationRejected to "LEGACY_REGISTRATION_REJECTED",
             )
             .forEach { (failure, expectedType) ->
                 val document =
@@ -290,7 +311,163 @@ class PluginInstallationTest {
     private fun assertPayloadRejection(root: Path) {
         assertEquals(
             PluginInstallOutcome.Rejected(PluginInstallStage.PAYLOAD_ADMISSION, PluginInstallFailure.PayloadRejected),
-            installCodexPlugin(root) { throw AssertionError("Codex must not run for unverified payloads") },
+            installCodexPlugin(
+                root,
+                temporary.toRealPath().resolve("home"),
+                executeCodex = { throw AssertionError("Codex must not run for unverified payloads") },
+            ),
+        )
+    }
+}
+
+class PluginLegacyRegistrationTest {
+    @TempDir lateinit var temporary: Path
+
+    @Test
+    fun `foreign standalone MCP registration rejects before plugin effects`() {
+        val root = pluginFixture(temporary)
+        val home = temporary.toRealPath().resolve("home")
+        val marketplace = root.resolve("installation/$AGENT_TOOLS_RELATIVE_PATH")
+        val calls = mutableListOf<List<String>>()
+        val receipt = Files.readAllBytes(receiptPath(root)).toList()
+        val outcome =
+            installCodexPlugin(
+                root,
+                home,
+                executeCodex = { arguments ->
+                    calls += arguments
+                    when (arguments) {
+                        listOf("codex", "mcp", "list", "--json") ->
+                            ProcessObservation.Exited(
+                                0,
+                                Json.encodeToString(
+                                    listOf(CodexServer("kast", CodexTransport("stdio", "/foreign/kast")))
+                                ),
+                            )
+                        marketplaceList -> ProcessObservation.Exited(0, marketplaces(marketplace))
+                        pluginList -> ProcessObservation.Exited(0, plugins(plugin(marketplace)))
+                        else -> throw AssertionError("unexpected Codex mutation: $arguments")
+                    }
+                },
+            )
+
+        org.junit.jupiter.api.Assertions.assertTrue(outcome is PluginInstallOutcome.Rejected)
+        assertEquals("LEGACY_REGISTRATION_INSPECTION", (outcome as PluginInstallOutcome.Rejected).stage.name)
+        assertEquals(listOf(listOf("codex", "mcp", "list", "--json")), calls)
+        assertEquals(receipt, Files.readAllBytes(receiptPath(root)).toList())
+    }
+
+    @Test
+    fun `plugin success retires the receipt-owned App Server launcher`() {
+        val root = pluginFixture(temporary)
+        val launcher = legacyAppServerRegistration(root, temporary.toRealPath().resolve("home"))
+        val marketplace = root.resolve("installation/$AGENT_TOOLS_RELATIVE_PATH")
+        val executor =
+            PluginScript(
+                Step(listOf("codex", "mcp", "list", "--json"), mcpServers()),
+                Step(marketplaceList, marketplaces(marketplace)),
+                Step(pluginList, plugins(plugin(marketplace))),
+            )
+
+        assertEquals(
+            PluginInstallOutcome.AlreadyInstalled(PluginHarness.CODEX),
+            installCodexPlugin(root, temporary.toRealPath().resolve("home"), executor::execute),
+        )
+
+        executor.assertConsumed()
+        assertFalse(Files.exists(launcher))
+        assertEquals(emptyList<ManagedRegistration>(), (readReceipt(root) as ReceiptRead.Read).receipt.registrations)
+    }
+
+    @Test
+    fun `plugin success removes the exact legacy MCP registration from its recorded namespace`() {
+        val root = pluginFixture(temporary)
+        val home = temporary.toRealPath().resolve("home")
+        val codexHome = Files.createDirectories(temporary.resolve("legacy-codex")).toRealPath()
+        val command = root.resolve("installation/bin/kast-mcp-complete")
+        recordLegacyMcp(root, command, codexHome)
+        val marketplace = root.resolve("installation/$AGENT_TOOLS_RELATIVE_PATH")
+        val executor =
+            PluginScript(
+                Step(
+                    listOf("codex", "mcp", "list", "--json"),
+                    Json.encodeToString(listOf(CodexServer("kast", CodexTransport("stdio", command.toString())))),
+                ),
+                Step(marketplaceList, marketplaces(marketplace)),
+                Step(pluginList, plugins(plugin(marketplace))),
+            )
+        val legacy =
+            PluginScript(
+                Step(
+                    listOf("codex", "mcp", "list", "--json"),
+                    Json.encodeToString(listOf(CodexServer("kast", CodexTransport("stdio", command.toString())))),
+                ),
+                Step(listOf("codex", "mcp", "remove", "kast")),
+                Step(listOf("codex", "mcp", "list", "--json"), mcpServers()),
+            )
+
+        assertEquals(
+            PluginInstallOutcome.AlreadyInstalled(PluginHarness.CODEX),
+            installCodexPlugin(
+                root,
+                home,
+                executor::execute,
+                codexHome = codexHome,
+                executeLegacyCodexAt = { directory, arguments ->
+                    assertEquals(codexHome, directory)
+                    legacy.execute(arguments)
+                },
+            ),
+        )
+
+        executor.assertConsumed()
+        legacy.assertConsumed()
+        assertEquals(emptyList<ManagedRegistration>(), (readReceipt(root) as ReceiptRead.Read).receipt.registrations)
+    }
+
+    @Test
+    fun `plugin reports legacy repair when a foreign launcher replaces the recorded bytes`() {
+        val root = pluginFixture(temporary)
+        val home = temporary.toRealPath().resolve("home")
+        val launcher = legacyAppServerRegistration(root, home)
+        Files.writeString(launcher, "foreign replacement")
+        val receipt = Files.readAllBytes(receiptPath(root)).toList()
+        val marketplace = root.resolve("installation/$AGENT_TOOLS_RELATIVE_PATH")
+        val executor =
+            PluginScript(
+                Step(listOf("codex", "mcp", "list", "--json"), mcpServers()),
+                Step(marketplaceList, marketplaces(marketplace)),
+                Step(pluginList, plugins(plugin(marketplace))),
+            )
+
+        assertEquals(
+            PluginInstallOutcome.Rejected(
+                PluginInstallStage.LEGACY_REGISTRATION_REMOVAL,
+                PluginInstallFailure.LegacyRegistrationRejected,
+            ),
+            installCodexPlugin(root, home, executor::execute),
+        )
+
+        executor.assertConsumed()
+        assertEquals("foreign replacement", Files.readString(launcher))
+        assertEquals(receipt, Files.readAllBytes(receiptPath(root)).toList())
+    }
+
+    private fun recordLegacyMcp(root: Path, command: Path, codexHome: Path) {
+        val receipt = (readReceipt(root) as ReceiptRead.Read).receipt
+        writeManagementReceipt(
+            root,
+            receipt.copy(
+                registrations =
+                    listOf(
+                        ManagedRegistration(
+                            HarnessConnection.CODEX_MCP,
+                            command.toString(),
+                            sha256(command),
+                            codexHome.toString(),
+                        )
+                    )
+            ),
         )
     }
 }
@@ -316,6 +493,8 @@ private class PluginScript(vararg steps: Step) {
 
     fun assertConsumed() = assertEquals(emptyList<Step>(), remaining.toList())
 }
+
+private fun mcpServers(vararg servers: CodexServer): String = managementJson.encodeToString(servers.toList())
 
 private fun marketplaces(vararg roots: Path): String =
     Json.encodeToString(
@@ -401,8 +580,6 @@ private fun sharedPluginDocuments(): Map<String, String> =
             "hooks/copilot.json",
             "hooks/session_start.py",
             "hooks/session_start.py.lock",
-            "hooks/prepare_workspace.py",
-            "hooks/prepare_workspace.py.lock",
             "references/query-schema.json",
             "references/query-examples.json",
         )

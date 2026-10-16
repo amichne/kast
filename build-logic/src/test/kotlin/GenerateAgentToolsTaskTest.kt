@@ -38,7 +38,7 @@ class GenerateAgentToolsTaskTest {
         }
         assertArrayEquals(Files.readAllBytes(task.sourceDirectory.get().asFile.toPath().resolve(".mcp.json")),
             Files.readAllBytes(plugin.resolve(".mcp.json")))
-        for (name in listOf("hooks.json", "session_start.py", "session_start.py.lock", "prepare_workspace.py", "prepare_workspace.py.lock")) {
+        for (name in listOf("hooks.json", "session_start.py", "session_start.py.lock")) {
             assertArrayEquals(Files.readAllBytes(task.sourceDirectory.get().asFile.toPath().resolve("hooks/$name")),
                 Files.readAllBytes(plugin.resolve("hooks/$name")))
         }
@@ -84,14 +84,13 @@ class GenerateAgentToolsTaskTest {
     }
 
     @Test
-    fun `missing setup script rejects before replacing admitted output`() {
+    fun `marketplace contains no dependency environment or duplicate preparation owner`() {
         val task = task()
         task.generate()
-        val output = task.outputDirectory.get().asFile.resolve("plugins/kast/hooks/prepare_workspace.py")
-        val original = output.readBytes()
-        task.sourceDirectory.get().asFile.resolve("hooks/prepare_workspace.py").delete()
-        assertThrows(IllegalStateException::class.java) { task.generate() }
-        assertArrayEquals(original, output.readBytes())
+        val plugin = task.outputDirectory.get().asFile.resolve("plugins/kast")
+        for (path in listOf("hooks/prepare_workspace.py", "hooks/prepare_workspace.py.lock", "pyproject.toml", "uv.lock")) {
+            assertTrue(!plugin.resolve(path).exists(), path)
+        }
     }
 
     @Test

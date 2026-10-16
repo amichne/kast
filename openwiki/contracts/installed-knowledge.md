@@ -20,9 +20,6 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/KnowledgeAdmission.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/KnowledgeInventoryAdmission.kt
   - path: packaging/run-installed-product.py
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T03:24:34.910Z
 sources:
   - id: openwiki-source-e7e9afae9a60cee55a46b246
     resource: repo://build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeDocsMain.kt
@@ -31,6 +28,9 @@ sources:
   - id: openwiki-source-b4184b3e65833677c17e8554
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/KnowledgeAdmission.kt
 generated: { by: "codex", at: "2026-10-02T03:24:34.910Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-16T06:54:44.448Z
 ---
 
 # Installed knowledge

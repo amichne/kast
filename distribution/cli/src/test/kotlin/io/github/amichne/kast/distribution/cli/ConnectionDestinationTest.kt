@@ -13,8 +13,8 @@ internal class ConnectionDestinationTest {
     @TempDir lateinit var temporary: Path
 
     @ParameterizedTest
-    @EnumSource(HarnessConnection::class)
-    fun `every connection accepts a selected destination`(connection: HarnessConnection) {
+    @EnumSource(HarnessConnection::class, names = ["PI", "COPILOT"])
+    fun `file integrations accept a selected destination`(connection: HarnessConnection) {
         val arguments =
             listOf("connect") +
                 connection.publicName.split(' ') +
@@ -23,7 +23,7 @@ internal class ConnectionDestinationTest {
     }
 
     @ParameterizedTest
-    @EnumSource(HarnessConnection::class, names = ["PI", "COPILOT", "CODEX_APP_SERVER"])
+    @EnumSource(HarnessConnection::class, names = ["PI", "COPILOT"])
     fun `default connect recovers the selected slot and retains its private backup`(connection: HarnessConnection) {
         val (root, home) = integrationFixture(temporary, connection)
         val target = registrationDestinationFor(root, home, connection)

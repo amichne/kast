@@ -6,7 +6,7 @@ IFS=$'\n\t'
 fail() { printf 'kast-install: %s\n' "$*" >&2; exit 1; }
 installer="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)/install.sh"
 mode=${1:-}
-case "$mode" in persistent) shift ;; session) fail 'session installations are retired; use persistent to replace the sole user installation' ;; *) fail 'usage: packaging/install-checkout.sh persistent --idea-home <path> [--force] [--register-codex-mcp|--skip-codex-mcp]' ;; esac
+case "$mode" in persistent) shift ;; session) fail 'session installations are retired; use persistent to replace the sole user installation' ;; *) fail 'usage: packaging/install-checkout.sh persistent --idea-home <path> [--force] [--install-codex-plugin|--skip-codex-plugin]' ;; esac
 [[ -n "${HOME:-}" ]] || fail 'HOME is required'
 [[ -z "${KAST_INSTALL_ROOT+x}" || "$KAST_INSTALL_ROOT" == "$HOME/.local/share/kast" ]] || fail 'KAST_INSTALL_ROOT must bind the sole per-user installation'
 [[ -z "${KAST_BIN_DIR+x}" || "$KAST_BIN_DIR" == "$HOME/.local/bin" ]] || fail 'KAST_BIN_DIR must bind the sole per-user binary directory'
@@ -28,7 +28,7 @@ while [[ $# -gt 0 ]]; do
       if [[ "$1" == --control-only ]]; then component=control; else component=host; fi
       options+=("$1"); shift; continue ;;
     --force) options+=(--force); shift; continue ;;
-    --register-codex-mcp|--skip-codex-mcp)
+    --install-codex-plugin|--skip-codex-plugin|--register-codex-mcp|--skip-codex-mcp)
       options+=("$1"); shift; continue ;;
     --idea-home) idea_home="${2:-}" ;;
     *) fail "unsupported checkout installation option: $1" ;;

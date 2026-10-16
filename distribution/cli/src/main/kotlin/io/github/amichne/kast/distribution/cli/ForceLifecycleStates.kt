@@ -116,7 +116,7 @@ internal sealed interface ResetErasure {
 internal class StagedReset private constructor(val erased: ErasedReset, val payload: FreshResetInstallation) {
     private var lease = ResetLease.FRESH
 
-    fun reserveActivation(): ResetEffect =
+    fun reserveCompletion(): ResetEffect =
         when (lease) {
             ResetLease.FRESH -> {
                 lease = ResetLease.CONSUMED
@@ -156,43 +156,29 @@ internal sealed interface ResetStaging {
     data class Rejected(val failure: ForceResetFailure) : ResetStaging
 }
 
-internal class ActiveReset private constructor(val staged: StagedReset, val generation: RuntimeServiceGeneration) {
+/** A qualified staged payload completes without a daemon startup or readiness claim. */
+internal class InstalledReset private constructor(val staged: StagedReset) {
     companion object {
-        fun activate(
-            staged: StagedReset,
-            home: Path,
-            environment: Map<String, String>,
-            runtime: ForceDaemonRuntime,
-        ): ResetActivation {
-            when (val reserved = staged.reserveActivation()) {
+        fun complete(staged: StagedReset): ResetInstallation {
+            when (val reserved = staged.reserveCompletion()) {
                 ResetEffect.Completed -> Unit
-                is ResetEffect.Rejected -> return ResetActivation.Rejected(reserved.failure)
+                is ResetEffect.Rejected -> return ResetInstallation.Rejected(reserved.failure)
             }
-            if (staged.payload.serviceAdmission() != ResetEffect.Completed)
-                return ResetActivation.Rejected(ForceResetFailure.INSTALLATION_UNVERIFIED)
-            when (val released = staged.erased.fence.beginActivation(staged)) {
+            when (val admitted = staged.payload.payloadAdmission()) {
                 ResetEffect.Completed -> Unit
-                is ResetEffect.Rejected -> return ResetActivation.Rejected(released.failure)
+                is ResetEffect.Rejected -> return ResetInstallation.Rejected(admitted.failure)
             }
-            val started = runtime.activate(staged.payload.installation, home, environment)
-            if (started !is LifecycleChildObservation.Exited || started.code != 0)
-                return ResetActivation.Rejected(ForceResetFailure.ACTIVATION_REJECTED)
-            return when (val readiness = ReadyReset.observe(staged, runtime)) {
-                is ResetReadiness.Ready -> complete(readiness.reset)
-                is ResetReadiness.Rejected -> ResetActivation.Rejected(readiness.failure)
+            val installed = InstalledReset(staged)
+            return when (val lifted = staged.erased.fence.liftInstalled(installed)) {
+                ResetEffect.Completed -> ResetInstallation.Installed(installed)
+                is ResetEffect.Rejected -> ResetInstallation.Rejected(lifted.failure)
             }
         }
-
-        private fun complete(ready: ReadyReset): ResetActivation =
-            when (val released = ready.staged.erased.fence.liftReady(ready)) {
-                ResetEffect.Completed -> ResetActivation.Active(ActiveReset(ready.staged, ready.generation))
-                is ResetEffect.Rejected -> ResetActivation.Rejected(released.failure)
-            }
     }
 }
 
-internal sealed interface ResetActivation {
-    data class Active(val reset: ActiveReset) : ResetActivation
+internal sealed interface ResetInstallation {
+    data class Installed(val reset: InstalledReset) : ResetInstallation
 
-    data class Rejected(val failure: ForceResetFailure) : ResetActivation
+    data class Rejected(val failure: ForceResetFailure) : ResetInstallation
 }
