@@ -165,7 +165,7 @@ class KtorBrokerServerTest {
         }
 
     @Test
-    fun `Ktor Unix WebSocket server transparently bridges one upstream session`(@TempDir temporary: Path) =
+    fun `Ktor Unix WebSocket server transparently bridges one upstream session`(@TempDir temporary: Path): Unit =
         runBlocking {
             val publicSocket = Path.of("/private/tmp/kast-ktor-${UUID.randomUUID()}.sock")
             val upstream = FakeUpstreamConnection()
