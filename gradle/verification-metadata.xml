@@ -506,6 +506,9 @@
          </artifact>
       </component>
       <component group="com.google.errorprone" name="error_prone_annotations" version="2.50.0">
+         <artifact name="error_prone_annotations-2.50.0.jar">
+            <sha256 value="4667724877f1d37a689202da191e23efa7657c62eef93ccdac406eccfe5cdd0a" origin="Verified official SHA256 from https://repo.maven.apache.org/maven2/com/google/errorprone/error_prone_annotations/2.50.0/error_prone_annotations-2.50.0.jar.sha256"/>
+         </artifact>
          <artifact name="error_prone_annotations-2.50.0.pom">
             <sha256 value="71a0680d277324bab46bec4b00f6f111c1b794a931d0d8cda79bcb9246982f92" origin="Verified official SHA256 from https://repo.maven.apache.org/maven2/com/google/errorprone/error_prone_annotations/2.50.0/error_prone_annotations-2.50.0.pom.sha256"/>
          </artifact>
@@ -578,6 +581,9 @@
          </artifact>
       </component>
       <component group="com.google.guava" name="guava" version="33.7.1-jre">
+         <artifact name="guava-33.7.1-jre.jar">
+            <sha256 value="796d8e28ac64e83a47c4c5935a8fecc4682650a04bbdead738ef0f5a3a0e6c46" origin="Verified official SHA256 from https://repo.maven.apache.org/maven2/com/google/guava/guava/33.7.1-jre/guava-33.7.1-jre.jar.sha256"/>
+         </artifact>
          <artifact name="guava-33.7.1-jre.module">
             <sha256 value="c012eccbfb1e12a0c06ed23175cccd19c8a0dcb43f1a1694771583a906d95e56" origin="Verified official SHA256 from https://repo.maven.apache.org/maven2/com/google/guava/guava/33.7.1-jre/guava-33.7.1-jre.module.sha256"/>
          </artifact>
@@ -640,6 +646,9 @@
          </artifact>
       </component>
       <component group="com.google.jimfs" name="jimfs" version="1.3.2">
+         <artifact name="jimfs-1.3.2.jar">
+            <sha256 value="30f4c0d36508d794b0107286eae7a43e9ad8ad593148002acac941196f619c59" origin="Verified official SHA256 from https://repo.maven.apache.org/maven2/com/google/jimfs/jimfs/1.3.2/jimfs-1.3.2.jar.sha256"/>
+         </artifact>
          <artifact name="jimfs-1.3.2.pom">
             <sha256 value="7a75b7ee8475bdc63406102e692974a2859b1a0254c59547b5f1a2abd47e10f3" origin="Verified official SHA256 from https://repo.maven.apache.org/maven2/com/google/jimfs/jimfs/1.3.2/jimfs-1.3.2.pom.sha256"/>
          </artifact>
@@ -7967,6 +7976,9 @@
          </artifact>
       </component>
       <component group="org.jspecify" name="jspecify" version="1.0.1">
+         <artifact name="jspecify-1.0.1.jar">
+            <sha256 value="070d75f261fe4c5b8202508366715f7f2d4660f88c8ef7e6d3575e48c9683b66" origin="Verified detached signature from https://repo.maven.apache.org/maven2/org/jspecify/jspecify/1.0.1/jspecify-1.0.1.jar.asc; primary 41CD49B4EF5876F9E9F691DABAC30622339994C4, continuous with SHA256-pinned 1.0.0 module"/>
+         </artifact>
          <artifact name="jspecify-1.0.1.module">
             <sha256 value="6835d6ac762a99c85e6c3ba6c942be2c6997aaec98f07dedfe9917dae22bda96" origin="Verified detached signature from https://repo.maven.apache.org/maven2/org/jspecify/jspecify/1.0.1/jspecify-1.0.1.module.asc; primary 41CD49B4EF5876F9E9F691DABAC30622339994C4, continuous with SHA256-pinned 1.0.0 module"/>
          </artifact>
