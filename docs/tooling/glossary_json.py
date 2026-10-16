@@ -383,6 +383,7 @@ class _MarkdownLine:
     content: str
     prefix_columns: int = 0
     item: Literal["NEW", "CONTINUED"] = "CONTINUED"
+    setext: Literal["ELIGIBLE", "OUTDENTED"] = "ELIGIBLE"
 
     @property
     def container_indent(self) -> int:
@@ -390,8 +391,43 @@ class _MarkdownLine:
 
 
 _LIST_MARKER = re.compile(r"(?P<marker>[*+-]|[0-9]{1,9}[.)])(?P<padding> +|$)")
-_BLOCK_START = re.compile(r"(?:#{1,6}(?: +|$)|>|`{3,}|~{3,}|<|(?:[-*_] *){3,}$)")
 _THEMATIC_BREAK = re.compile(r"(?:\*(?: *\*){2,}|-(?: *-){2,}|_(?: *_){2,}) *")
+
+
+@dataclass(frozen=True, slots=True)
+class _ListStart:
+    content_column: int
+
+
+def _flow_indent(containers: tuple[int, ...], cursor: int) -> int:
+    for column in reversed(containers):
+        if column <= cursor:
+            return column
+    return 0
+
+
+def _list_start(
+    expanded: str,
+    cursor: int,
+    paragraph: Literal["OPEN", "CLOSED"],
+    containers: tuple[int, ...],
+) -> _ListStart | Literal["CONTINUATION"]:
+    container = containers[-1] if containers else 0
+    if cursor - _flow_indent(containers, cursor) >= 4:
+        return "CONTINUATION"
+    marker = _LIST_MARKER.match(expanded, cursor)
+    if marker is None:
+        return "CONTINUATION"
+    payload = expanded[marker.end() :].strip()
+    if (
+        paragraph == "OPEN"
+        and cursor >= container
+        and (not payload or marker["marker"] not in {"*", "+", "-", "1.", "1)"})
+    ):
+        return "CONTINUATION"
+    padding = len(marker["padding"])
+    width = padding if payload and 1 <= padding <= 4 else 1
+    return _ListStart(marker.end() - padding + width)
 
 
 def _markdown_line(
@@ -402,37 +438,36 @@ def _markdown_line(
         return _MarkdownLine(containers, "")
     indent = len(expanded) - len(expanded.lstrip(" "))
     tail = expanded[indent:]
-    marker = _LIST_MARKER.match(tail)
-    if (
-        paragraph == "OPEN"
-        and not containers
-        and marker
-        and marker["marker"][0].isdigit()
-        and marker["marker"] not in {"1.", "1)"}
-    ):
-        return _MarkdownLine(containers, expanded)
     levels = list(containers)
-    if paragraph == "CLOSED" or _LIST_MARKER.match(tail) or _BLOCK_START.match(tail):
+    container = levels[-1] if levels else 0
+    start = _list_start(expanded, indent, paragraph, tuple(levels))
+    block_paragraph = paragraph if indent >= container else "CLOSED"
+    block_content = expanded[_flow_indent(containers, indent) :]
+    if (
+        paragraph == "CLOSED"
+        or isinstance(start, _ListStart)
+        or _paragraph_block_start(block_content, "markdown", block_paragraph)
+        or (tail.startswith("<") and not tail.startswith("<!--"))
+    ):
         while levels and indent < levels[-1]:
             _ = levels.pop()
     container = levels[-1] if levels else 0
     if indent < container:
-        return _MarkdownLine(tuple(levels), expanded)
+        return _MarkdownLine(tuple(levels), expanded, setext="OUTDENTED")
     if _THEMATIC_BREAK.fullmatch(tail):
         return _MarkdownLine(tuple(levels), expanded[container:], container)
     cursor = indent
     item: Literal["NEW", "CONTINUED"] = "CONTINUED"
     while cursor - container < 4:
-        marker = _LIST_MARKER.match(expanded, cursor)
-        if marker is None:
+        if start == "CONTINUATION":
             break
-        padding = len(marker["padding"])
-        container = marker.end() - padding + (padding if 1 <= padding <= 4 else 1)
+        container = start.content_column
         levels.append(container)
         item = "NEW"
         cursor = container
         while cursor < len(expanded) and expanded[cursor] == " ":
             cursor += 1
+        start = _list_start(expanded, cursor, "CLOSED", tuple(levels))
     return _MarkdownLine(tuple(levels), expanded[container:], container, item)
 
 
@@ -446,6 +481,38 @@ def _fence_opener(
     if match is None or (match[1][0] == "`" and "`" in match[2]):
         return "NOT_FENCE"
     return _Fence(match[1], container_indent)
+
+
+def _single_line_block(
+    content: str, markup: Literal["markdown", "mdx"], paragraph: Literal["OPEN", "CLOSED"]
+) -> bool:
+    prefix = r" {0,3}" if markup == "markdown" else r"\s*"
+    if re.match(prefix + r"#{1,6}(?: +|$)", content):
+        return True
+    if paragraph == "OPEN" and re.fullmatch(prefix + r"(?:=+|-+) *", content):
+        return True
+    stripped = content.lstrip(" ")
+    return (markup == "mdx" or len(content) - len(stripped) < 4) and _THEMATIC_BREAK.fullmatch(
+        stripped
+    ) is not None
+
+
+def _paragraph_block_start(
+    content: str, markup: Literal["markdown", "mdx"], paragraph: Literal["OPEN", "CLOSED"]
+) -> bool:
+    if _single_line_block(content, markup, paragraph):
+        return True
+    prefix = r" {0,3}" if markup == "markdown" else r"\s*"
+    if re.match(prefix + r"(?:>|<!--)", content):
+        return True
+    if markup == "mdx" and re.match(r"\s*</?[A-Za-z][\w.-]*(?:\s|>)", content):
+        return True
+    fence = _fence_opener(content, markup, 0)
+    if isinstance(fence, _Fence):
+        return True
+    if fence != "NOT_FENCE":
+        assert_never(fence)
+    return False
 
 
 @dataclass(frozen=True, slots=True)
@@ -474,30 +541,13 @@ def _code_end(
         if not line.strip():
             break
         layout = _markdown_line(line, containers, "OPEN")
-        if markup == "markdown" and layout.containers != containers:
+        if (markup == "markdown" and layout.containers != containers) or layout.item == "NEW":
             break
         content = layout.content if markup == "markdown" else line.expandtabs(4)
-        fence = _fence_opener(content, markup, layout.container_indent)
-        if isinstance(fence, _Fence):
-            break
-        if fence != "NOT_FENCE":
-            assert_never(fence)
-        block_indent = r" {0,3}" if markup == "markdown" else r"\s*"
-        if re.match(block_indent + r"(?:#{1,6}(?: +|$)|>|<!--|(?:=+|-+) *$)", content):
-            break
-        if markup == "mdx" and re.match(r"\s*</?[A-Za-z][\w.-]*(?:\s|>)", content):
-            break
-        if _THEMATIC_BREAK.fullmatch(content.lstrip(" ")) and not content.startswith("    "):
-            break
-        expanded = line.expandtabs(4)
-        indent = len(expanded) - len(expanded.lstrip(" "))
-        marker = _LIST_MARKER.match(expanded, indent)
-        container = containers[-1] if containers else 0
-        if (
-            marker
-            and indent - container < 4
-            and (containers or marker["marker"] in {"*", "+", "-", "1.", "1)"})
-        ):
+        block_paragraph = (
+            "CLOSED" if markup == "markdown" and layout.setext == "OUTDENTED" else "OPEN"
+        )
+        if _paragraph_block_start(content, markup, block_paragraph):
             break
         match = closing.search(line)
         if match is not None:
@@ -633,12 +683,11 @@ def prose_lines(text: str, markup: Literal["markdown", "mdx"]) -> tuple[str, ...
                 if paragraph == "CLOSED" and content.startswith("    "):
                     lines.append("")
                     continue
-                paragraph_break = (
-                    re.match(r" {0,3}(?:#{1,6}(?: +|$)|(?:[-*_] *){3,}$)", content) is not None
-                )
+                block_paragraph = paragraph if layout.setext == "ELIGIBLE" else "CLOSED"
+                paragraph_break = _single_line_block(content, markup, block_paragraph)
                 if paragraph_break:
                     inline_scope = "LINE"
-            elif re.match(r"\s*#{1,6}(?: +|$)", content):
+            elif _single_line_block(content, markup, paragraph):
                 inline_scope = "LINE"
             fence = _fence_opener(content, markup, container_indent)
             if isinstance(fence, _Fence):

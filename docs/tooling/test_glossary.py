@@ -436,6 +436,81 @@ def test_code_span_opener_in_a_heading_cannot_reach_another_block(
     assert tuple((hit.line, hit.start, hit.end) for hit in hits) == expected
 
 
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Use `code\n+\nsaved result\n` here.\n", ()),
+        ("Use `code\n*   \nsaved result\n` here.\n", ()),
+        ("Use `code\n1.\nsaved result\n` here.\n", ()),
+        ("Use `code\n1)  \nsaved result\n` here.\n", ()),
+        ("Use `code\n-\nsaved result\n` here.\n", ((3, 1, 12),)),
+        ("- Use `code\n  +\n  saved result\n  ` here.\n", ()),
+        ("- Use `code\n+\nsaved result\n` here.\n", ((3, 1, 12),)),
+        ("- Outer\n  - Use `code\n    *\n    saved result\n    ` here.\n", ()),
+        ("Use `code\n+ <!-- hidden -->\nsaved result\n` here.\n", ((3, 1, 12),)),
+        ("Use `code\n+ `code`\nsaved result\n` here.\n", ((3, 1, 12),)),
+        ("Use `code\n2. `code`\nsaved result\n` here.\n", ()),
+        ("Use `code\n01. Item\nsaved result\n` here.\n", ()),
+        ("Use `code\n001) Item\nsaved result\n` here.\n", ()),
+        ("Use `code\n\n+\nsaved result\n` here.\n", ((4, 1, 12),)),
+        ("- Use `code\n_*_\nsaved result\n` here.\n", ()),
+        ("- Use `code\n*-*\nsaved result\n` here.\n", ()),
+        ("Use `code\n***\nsaved result\n` here.\n", ((3, 1, 12),)),
+        ("Use `code\n* - *\nsaved result\n` here.\n", ((3, 1, 12),)),
+        ("- Use `code\n--\n  saved result\n  ` here.\n", ()),
+        ("- Use `code\n=\n  saved result\n  ` here.\n", ()),
+        ("- Outer\n  - A paragraph.\n--\n    saved result\n    End.\n", ((4, 5, 16),)),
+        ("- Outer\n  - A paragraph.\n=\n    saved result\n    End.\n", ((4, 5, 16),)),
+        ("Use `code\n+\t\nsaved result\n` here.\n", ()),
+        ("A paragraph.\n\n+\t\n    saved result\n", ((4, 5, 16),)),
+        ("- Outer\n  -    Use `code\n      +\n       saved result\n       ` here.\n", ()),
+        ("- Outer\n  -    Use `code\n      + Item\n       saved result\n       ` here.\n", ()),
+        ("- Outer\n  -    Use `code\n     +\n       saved result\n       ` here.\n", ((4, 8, 19),)),
+        (
+            "- Outer\n  -    Use `code\n     + Item\n       saved result\n       ` here.\n",
+            ((4, 8, 19),),
+        ),
+    ],
+    ids=[
+        "empty-plus-keeps-paragraph",
+        "whitespace-star-keeps-paragraph",
+        "empty-ordered-dot",
+        "empty-ordered-parenthesis",
+        "single-minus-is-setext",
+        "empty-child-keeps-paragraph",
+        "empty-sibling-ends-paragraph",
+        "empty-nested-child-keeps-paragraph",
+        "comment-payload-can-interrupt",
+        "code-payload-can-interrupt",
+        "noninitial-code-payload",
+        "leading-zero-first-dot",
+        "leading-zero-first-parenthesis",
+        "empty-item-after-blank",
+        "mixed-underscore-run-is-lazy-prose",
+        "mixed-bullet-run-is-lazy-prose",
+        "homogeneous-thematic-break",
+        "mixed-spaced-markers-can-start-a-list",
+        "outdented-setext-code-dash",
+        "outdented-setext-code-equals",
+        "outdented-setext-prose-dash",
+        "outdented-setext-prose-equals",
+        "tab-padding-keeps-open-paragraph",
+        "tab-padding-empty-item-after-blank",
+        "wide-parent-indented-empty-marker-is-lazy",
+        "wide-parent-indented-content-is-lazy",
+        "wide-parent-admitted-empty-sibling",
+        "wide-parent-admitted-content-sibling",
+    ],
+)
+def test_list_interruption_preserves_empty_payload_and_block_precedence(
+    text: str, expected: tuple[tuple[int, int, int], ...]
+) -> None:
+    glossary = load_glossary(ROOT / "docs/glossary.json")
+    assert not isinstance(glossary, Rejected)
+    hits = occurrences(glossary, text, Path("guide.md"))
+    assert tuple((hit.line, hit.start, hit.end) for hit in hits) == expected
+
+
 @pytest.mark.parametrize("suffix", [".md", ".mdx"])
 @pytest.mark.parametrize(
     ("text", "expected"),
