@@ -9,6 +9,9 @@ tags:
 code_sources:
 - path: .github/workflows/ci.yml
 - path: .github/scripts/ci/required_checks.py
+- path: .github/scripts/ci/validation_scope.py
+- path: .github/scripts/ci/validation_outcome.py
+- path: .github/scripts/ci/test_validation_outcome.py
 - path: .github/scripts/ci/verify-checks.py
 - path: .github/scripts/release/build_candidate.py
 - path: distribution/release/component_release.py
@@ -41,8 +44,21 @@ Each asset record keeps its name, byte count, and digest.
 The candidate artifact belongs to that exact successful producer run.
 
 The required aggregate examines the jobs selected by the scope decision.
+After those checks succeed, it seals the selected plan, exact source revision, source tree, and producer run identities.
 A successful unrelated run or a passing earlier head does not authorize the current candidate.
 Product failures, missing producer evidence, and incomplete check state remain distinct rejection causes.
+
+## Successful documentation validation
+
+Only the reviewed authored site inputs can select documentation-only validation.
+Installer examples, generated schemas, scripts, build configuration, protected paths, and unknown or mixed inputs keep full validation.
+The documentation lane runs Mintlify, the Markdown parser, glossary tests, and glossary projection checks.
+
+Developer promotion requires the outcome record from the exact successful main push run and attempt.
+`DOCS_VALIDATED` completes without a candidate, promotion record, product release, or developer pointer update.
+It does not assign the documentation revision to an earlier binary.
+`PRODUCT_VALIDATED` is required before the existing candidate admission.
+Missing, malformed, contradictory, or mismatched outcome evidence rejects promotion.
 
 ## Reuse after merge
 
