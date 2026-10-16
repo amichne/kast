@@ -62,6 +62,33 @@ class GitReference:
     object: GitTree
 
 
+@dataclass(frozen=True)
+class ValidationEvidence:
+    schemaVersion: int = 1
+    outcome: str = "PRODUCT_VALIDATED"
+    scope: str = "FULL"
+    repository: str = REPOSITORY
+    sourceRevision: str = MERGED
+    sourceTree: str = TREE
+    baseRevision: str = "e" * 40
+    runId: int = 456
+    runNumber: int = 124
+    runAttempt: int = 1
+    event: str = "push"
+
+
+@dataclass(frozen=True)
+class ValidationArtifact:
+    name: str = f"ci-validation-outcome-{MERGED}-1"
+    expired: bool = False
+
+
+@dataclass(frozen=True)
+class ArtifactListing:
+    total_count: int
+    artifacts: tuple[ValidationArtifact, ...]
+
+
 @dataclass
 class SbomProperty:
     name: str
@@ -85,6 +112,7 @@ class GhCall:
     stdout: str = ""
     exit_code: int = 0
     upload: bool = False
+    retained_validation: str | None = None
 
 
 @dataclass
@@ -113,6 +141,14 @@ def scripted_gh(state: Path, calls: Path, violation: Path, arguments: list[str])
             if (arguments[:3] != expected.arguments[:3]
                     or arguments[observed_suffix:] != expected.arguments[expected_suffix:]):
                 raise AssertionError("unexpected release creation command")
+        elif expected.retained_validation is not None:
+            if arguments[:-1] != expected.arguments:
+                raise AssertionError("unexpected validation download command")
+            destination = Path(arguments[-1])
+            if (destination.is_symlink() or not destination.is_dir()
+                    or destination.resolve().parent != Path(os.environ["TMPDIR"]).resolve()):
+                raise AssertionError("validation download must use an owned temporary directory")
+            (destination / "validation.json").write_bytes(Path(expected.retained_validation).read_bytes())
         elif arguments != expected.arguments:
             raise AssertionError("unexpected GitHub command")
         with calls.open("a") as log:
@@ -171,6 +207,8 @@ class DeveloperPublicationTest(unittest.TestCase):
         self.promotion = self.root / "promotion.json"
         self.promotion.write_text(json.dumps(asdict(candidate.Promotion(1, REPOSITORY, REVISION, MERGED, TREE,
                                   VERSION, 123, 1, 456, 1, checksum(self.identity)))))
+        self.validation = self.root / "validation.json"
+        self.validation.write_text(json.dumps(asdict(ValidationEvidence())))
         self.uploads.extend((str(self.identity), str(self.promotion)))
         self.script = self.root / "gh-script.json"
         self.calls = self.root / "gh-calls.jsonl"
@@ -192,11 +230,15 @@ class DeveloperPublicationTest(unittest.TestCase):
         }
 
     def admission_calls(self) -> list[GhCall]:
-        main = replace(Run(), id=456, event="push", head_sha=MERGED, head_branch="main")
+        main = replace(Run(), id=456, run_number=124, event="push", head_sha=MERGED, head_branch="main")
         return [
             GhCall(["api", f"repos/{REPOSITORY}/actions/runs/456"], json.dumps(asdict(main))),
-            GhCall(["api", f"repos/{REPOSITORY}/actions/runs/123"], json.dumps(asdict(Run()))),
             GhCall(["api", f"repos/{REPOSITORY}/git/commits/{MERGED}"], json.dumps(asdict(GitCommit(MERGED)))),
+            GhCall(["api", f"repos/{REPOSITORY}/actions/runs/456/artifacts?per_page=100"],
+                   json.dumps(asdict(ArtifactListing(1, (ValidationArtifact(),))))),
+            GhCall(["run", "download", "456", "--repo", REPOSITORY, "--name", ValidationArtifact().name, "--dir"],
+                   retained_validation=str(self.validation)),
+            GhCall(["api", f"repos/{REPOSITORY}/actions/runs/123"], json.dumps(asdict(Run()))),
             GhCall(["api", f"repos/{REPOSITORY}/git/commits/{REVISION}"], json.dumps(asdict(GitCommit(REVISION)))),
         ]
 
@@ -272,6 +314,24 @@ class DeveloperPublicationTest(unittest.TestCase):
         self.assertIn("build-candidate: PAYLOAD_MISMATCH", result.stderr)
         self.assert_consumed(0)
         self.assertFalse(self.calls.exists())
+
+    def test_missing_validation_rejects_before_release_or_pointer_effects(self):
+        calls = self.admission_calls()[:2] + [
+            GhCall(["api", f"repos/{REPOSITORY}/actions/runs/456/artifacts?per_page=100"],
+                   json.dumps(asdict(ArtifactListing(0, ())))),
+        ]
+        result = self.run_publisher(calls)
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("build-candidate: INVALID_RECORD", result.stderr)
+        self.assert_consumed(len(calls))
+
+    def test_wrong_validation_attempt_rejects_before_release_or_pointer_effects(self):
+        self.validation.write_text(json.dumps(asdict(replace(ValidationEvidence(), runAttempt=2))))
+        calls = self.admission_calls()[:4]
+        result = self.run_publisher(calls)
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("build-candidate: WRONG_PRODUCER", result.stderr)
+        self.assert_consumed(len(calls))
 
     def test_delayed_publication_preserves_latest(self):
         calls = [*self.admission_calls(), GhCall(["release", "view", TAG, "--repo", REPOSITORY]),
