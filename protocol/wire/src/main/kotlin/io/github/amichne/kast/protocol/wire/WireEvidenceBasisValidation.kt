@@ -36,11 +36,8 @@ internal fun OperationResult.retainsEvidenceBasis(basis: EvidenceBasis): Boolean
 
 private fun matchesEnvelopeBasis(observed: ImpactSemanticBasisDocument, expected: EvidenceBasis): Boolean =
     when (observed) {
-        is ImpactSemanticBasisDocument.Published ->
-            when (expected) {
-                is EvidenceBasis.Published -> observed.generation.value == expected.generation.value
-                is EvidenceBasis.Live -> false
-            }
+        // A generation-only envelope cannot establish the workspace of a published callback frame.
+        is ImpactSemanticBasisDocument.Published -> false
         is ImpactSemanticBasisDocument.Live ->
             when (expected) {
                 is EvidenceBasis.Published -> false

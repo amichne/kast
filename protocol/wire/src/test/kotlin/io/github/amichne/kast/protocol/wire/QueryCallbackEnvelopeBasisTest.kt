@@ -68,6 +68,37 @@ class QueryCallbackEnvelopeBasisTest {
             }
         }
 
+    @TestFactory
+    fun `published frames need an independent workspace identity`() =
+        Placement.entries.flatMap { placement ->
+            Content.entries.flatMap { content ->
+                listOf("/workspace", "/foreign").map { root ->
+                    DynamicTest.dynamicTest("$placement/$content/published-root-$root") {
+                        assertUnanchoredPublished(placement, content, root)
+                    }
+                }
+            }
+        }
+
+    private fun assertUnanchoredPublished(placement: Placement, content: Content, root: String) {
+        val basis = EvidenceBasis.Published(EvidenceGeneration.parse(1).refined())
+        val observed = ImpactSemanticBasisDocument.Published(fixture.text(root), revision(1))
+        val result = payload(placement, frame(content, observed))
+        val empty = result.copy(relationObservations = bounded(emptyList()), walkObservations = bounded(emptyList()))
+        val control = outcome(basis, empty)
+        val encoded = binding.encodeOutcome(control) as WireEncoding.Encoded
+        assertEquals(WireDecoding.Decoded(control), binding.decodeOutcome(encoded.document))
+        val document = wireJson.decodeFromString(WireEnvelopeDocument.serializer(), encoded.document)
+        val body = document.body as WireBodyDocument.Qualified
+        val nested = CanonicalQuerySerializers.result.encode(result, WireValueRole.RESULT) as WireValueEncoding.Encoded
+        val substituted = document.copy(body = body.copy(result = nested.value))
+        val raw = wireJson.encodeToString(WireEnvelopeDocument.serializer(), substituted)
+        assertAll(
+            { assertEquals(WireDecoding.Rejected(invalid), binding.decodeOutcome(raw)) },
+            { assertEquals(WireEncoding.Rejected(invalid), binding.encodeOutcome(outcome(basis, result))) },
+        )
+    }
+
     private fun assertEnvelope(placement: Placement, content: Content, case: BasisCase) {
         val original = outcome(case.envelope, payload(placement, frame(content, case.correct)))
         val encoded = binding.encodeOutcome(original) as WireEncoding.Encoded
@@ -254,7 +285,6 @@ class QueryCallbackEnvelopeBasisTest {
     }
 
     private fun basisCases(): List<BasisCase> {
-        val published = EvidenceBasis.Published(EvidenceGeneration.parse(1).refined())
         val host = "00000000-0000-0000-0000-000000000001"
         val live =
             EvidenceBasis.Live(
@@ -277,8 +307,6 @@ class QueryCallbackEnvelopeBasisTest {
                 ImpactModelFormatDocument.parse(1).refined(),
             )
         return listOf(
-            BasisCase("published-generation", published, p, p.copy(generation = revision(2))),
-            BasisCase("published-kind", published, p, l),
             BasisCase("live-kind", live, l, p),
             BasisCase("live-root", live, l, l.copy(root = fixture.text("/foreign"))),
             BasisCase("live-host", live, l, l.copy(host = fixture.text("00000000-0000-0000-0000-000000000002"))),
