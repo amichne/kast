@@ -5,40 +5,48 @@ description: "Know what Kast starts, what it waits for, and which blockers need 
 icon: "monitor-cog"
 ---
 
-A semantic request needs an imported and indexed IDEA project for one exact Gradle root. Kast prepares that project when the request needs it.
+<a id="control-when-an-agent-uses-kast" />
+
+A semantic request needs a compatible, imported, indexed IDEA project for the exact Gradle root. Kast prepares that project when authorized demand needs it.
 
 ## What happens on the first question
 
-Kast selects the exact Gradle root, reuses or starts IDEA, and waits for import and indexing. Project readiness controls query admission.
+The coordinator selects the canonical root and requests project preparation. The Host reuses or starts the selected IDEA instance and admits the project.
 
 ```mermaid
-flowchart TB
-  accTitle: Readiness determines whether Kast queries or reports a blocker
-  accDescr: Kast selects the exact Gradle root, reuses or starts IDEA, and waits for import and indexing. A ready project permits the query. A blocker requires attention and never becomes an empty semantic result.
-  A["Select exact Gradle root"] --> B["Reuse or start selected IDEA"]
-  B --> C{"Import and indexing ready?"}
-  C -->|Yes| D["Query with coverage"]
-  C -->|Blocked| E["Report trust, save, or import blocker"]
-  E -->|Resolve and repeat read| C
-  class A,B authority;
-  class D evidence;
-  class E limited;
-  classDef authority fill:#3154C7,color:#FFFFFF,stroke:#8FA7FF,stroke-width:2px;
-  classDef evidence fill:#166534,color:#FFFFFF,stroke:#86EFAC,stroke-width:1.5px;
-  classDef limited fill:#92400E,color:#FFFFFF,stroke:#FCD34D,stroke-width:1.5px;
-  classDef rejected fill:#991B1B,color:#FFFFFF,stroke:#FCA5A5,stroke-width:1.5px;
+flowchart TD
+  R["Canonical Gradle root"] --> O["Reuse or start selected IDEA"]
+  O --> I["Open project and examine import"]
+  I --> X["Wait for indexing and current read state"]
+  X --> A["Admit semantic request"]
+  I -->|Blocked| B["Trust, save, import, or plugin cause"]
+  X -->|Blocked| B
 ```
 
-The first request can take longer because IDEA needs import and indexing before semantic admission. Background presentation is not assured. A trust prompt, unsaved document, or failed import can need your attention in IDEA.
+`WorkspacePreparations` owns one sequence for each root. It opens once and observes the issued operation until readiness or a terminal cause.
 
-Results belong to the selected worktree. References from another worktree need their own admission. Use the [first query](/reference/integrations#run-the-first-query) to examine readiness and tool use.
+Multiple demands can share pending preparation. Later demand can reexamine the Host after a blocked or rejected preparation.
 
-<a id="control-when-an-agent-uses-kast" />
+This retry gets current native facts. It does not rewrite historical outcomes or replay earlier semantic operations.
+
+## Readiness and blockers
+
+Import and indexing can make the first call slower. Background presentation is not assured because IDEA can need user attention.
+
+Trust prompts, unsaved documents, incompatible plugins, and failed import keep explicit causes. They cannot become an empty successful query.
+
+Readiness belongs to the exact worktree. A ready project in another worktree cannot supply the requested authority.
 
 ## Connection state and project readiness differ
 
-An installed connection exposes tools. It does not establish IDEA readiness or compiler evidence. A fresh semantic call needs its own project admission.
+Registration supplies a client adapter. Catalog admission supplies available tool schemas. Neither fact establishes a ready IDEA project.
 
-[Manage Kast](/reference/management) describes disconnection and workspace actions. Disconnection leaves IDEA, existing sessions, and other clients in place.
+Each semantic request still needs current read admission. A completed preparation is reusable only while its native authority remains valid.
 
-Semantic queries use automatic preparation. Kast has no management command to disable preparation while those queries remain enabled. Hosted App Server supplies explicit project actions through [workspace lifecycle controls](/reference/management#explicit-workspace-control-in-the-hosted-app-server).
+Disconnection removes recorded integration rather than IDEA state. An already loaded client adapter needs a restart to unload.
+
+Automatic preparation remains part of semantic demand. Kast has no management switch that disables preparation while semantic tools remain enabled.
+
+Hosted `workspace_lifecycle` supplies separate project actions. [Manage Kast](/reference/management#explicit-workspace-control-in-the-hosted-app-server) describes their use.
+
+[Lifecycles](/reference/lifecycles#workspace-preparation-lifecycle) defines preparation ownership and finite lookup history. [The source map](/reference/source-map) identifies its implementation.
