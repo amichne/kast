@@ -5,11 +5,11 @@ description: "Understand compiler authority, completion, callback ownership, que
 icon: "workflow"
 ---
 
-Kast separates declaration identity, search completeness, output delivery, and runtime behavior. Each fact answers a different question.
+A symbol identity, a complete search, delivered output, and runtime behavior are distinct facts. Each answers a different question.
 
 | Question | Architecture topic |
 | --- | --- |
-| Who establishes a program fact? | [Authority boundaries](/reference/internals/architecture). |
+| Who proves a program fact? | [Authority boundaries](/reference/internals/architecture). |
 | How does a question become an answer? | [Query lifecycle](/explanation/query-lifecycle). |
 | When can evidence be reused? | [Retention and invalidation](/reference/staleness). |
 | Where do the components run? | [Topology and ownership](/architecture/topology). |
@@ -17,8 +17,8 @@ Kast separates declaration identity, search completeness, output delivery, and r
 
 For a first result, follow [Install Kast](/start) and [the controlled exercise](/tutorials/first-query).
 
-For an operation to complete, its source scope and proof obligations must satisfy the fixed compiler-static model.
+A complete call meets the proof rules of the fixed compiler-static model. Those rules apply to its source scope.
 
-A retained result preserves the original answer. More output pages cannot strengthen an incomplete answer.
+A retained result keeps the original answer. Reading more pages cannot make an incomplete answer complete.
 
-[Reference](/reference) defines fields and variants. [Guides](/how-to) give procedures that use this evidence.
+[Reference](/reference) defines fields and result kinds. [Guides](/how-to) shows how to use this evidence.

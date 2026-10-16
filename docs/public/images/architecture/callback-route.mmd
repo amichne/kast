@@ -1,0 +1,6 @@
+flowchart TD
+  L["Lambda containing charge()"] --> S["Supply to submit.block"]
+  S --> A["Immutable alias: action"]
+  A --> F["Forward to forward.next"]
+  F --> I["Invocation site: next()"]
+  I --> B["Anonymous body and charge() occurrence"]

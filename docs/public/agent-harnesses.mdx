@@ -48,7 +48,7 @@ icon: "plug"
 
 Select the exact Kotlin repository or worktree in the agent. Keep IDEA open with that project imported.
 
-The plugin's MCP session starts IDEA preparation for projects with `settings.gradle.kts`. Semantic calls wait for preparation and report blockers.
+The plugin's MCP session starts IDEA setup for projects with `settings.gradle.kts`. Semantic calls wait for that setup. If it stops, they report the cause.
 
 <Prompt description="Use Kast to find a Kotlin function in this repository. Show its name and source location. Report a setup problem if you cannot." actions={["copy"]}>
 Use Kast to find a Kotlin function in this repository. Show its name and source location. Report a setup problem if you cannot.
@@ -56,7 +56,7 @@ Use Kast to find a Kotlin function in this repository. Show its name and source 
 
 A Kast result identifies the declaration and its source location in the selected project. Trust, import, or indexing blockers need recovery before the next query.
 
-The request is an example, not a recorded native run. A listed catalog alone does not establish semantic readiness.
+The request is an example, not a recorded native run. A listed catalog alone does not prove semantic readiness.
 
 ## 3. Compare the evidence
 

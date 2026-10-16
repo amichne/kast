@@ -1,25 +1,25 @@
-# Documentation reader tracks
+# Docs reader tracks
 
-Kast uses one Mintlify site with three navigation tracks: Guides, Architecture, and Reference. `docs/public/docs.json` owns navigation. Existing URLs keep their established routes.
+Kast has one Mintlify site. It has three tracks: Guides, Architecture, and Reference. `docs/public/docs.json` owns navigation. Existing URLs keep their established routes.
 
-The [Diátaxis framework](https://diataxis.fr/) distinguishes tutorials, how-to guides, reference, and explanation by the reader's need.
+The [Diátaxis framework](https://diataxis.fr/) groups pages by what the reader needs. Its four groups are tutorials, how-to guides, reference, and explanation.
 
-This policy applies to the authored public site. Contributor guides and historical review reports keep their separate purpose and evidence revisions.
+This policy applies to the authored public site. Guides for contributors have their own purpose. Past review reports keep their recorded source version.
 
-Guides contain tutorials, task procedures, and recovery. Architecture contains explanations. Reference contains exact interface contracts. These navigation tracks preserve the four Diátaxis page purposes below.
+Guides teach, show tasks, and help readers recover. Architecture explains how Kast works. Reference gives exact interface contracts. These tracks keep the four Diátaxis page purposes below.
 
 ## Choose the page's purpose
 
 | Track | Reader need | Page contract | Expected evidence |
 | --- | --- | --- | --- |
-| Tutorials | Learn through one exercise. | One starting state, ordered steps, expected results, and owned cleanup. | The learner compares the result with controlled source. |
-| How-to guides | Complete a known task. | Prerequisites, commands, decision points, completion evidence, and recovery. | A result that establishes the task's stated outcome. |
-| Reference | Find precise technical facts. | Inputs, outputs, defaults, legal combinations, finite failures, and source owners. | Current contract or installed catalog. |
-| Explanation | Understand a mechanism or decision. | Causes, ownership, relationships, invariants, tradeoffs, and evidence limits. | Source-backed flow and the nearest distinct concept. |
+| Tutorials | Learn through one exercise. | One starting state, ordered steps, expected results, and cleanup of the learner's files. | The learner checks the result against known source. |
+| How-to guides | Complete a known task. | Prerequisites, commands, choices, proof of success, and recovery. | A result that proves the stated task is done. |
+| Reference | Find precise technical facts. | Inputs, outputs, defaults, valid forms, defined failures, and source owners. | Current contract or installed catalog. |
+| Explanation | Understand a mechanism or decision. | Causes, owners, links, rules, tradeoffs, and limits on proof. | A flow proved by source, with its nearest distinct concept. |
 
-Keep the page in one track. Link to another track when the reader needs a procedure, field definition, or explanation.
+Keep each page in one track. Link to the other tracks for steps, field meanings, or reasons.
 
-The [reference guidance](https://diataxis.fr/reference/) favors neutral descriptions and standard lookup patterns. A procedure belongs in a how-to guide.
+The [reference guidance](https://diataxis.fr/reference/) favors neutral facts and consistent lookup pages. Put task steps in a how-to guide.
 
 ## Public routes
 
@@ -40,33 +40,33 @@ The [reference guidance](https://diataxis.fr/reference/) favors neutral descript
 | Runtime explanation | `/reference/internals/architecture`, `/reference/internals/background-startup`. |
 | Source ownership | `/reference/source-map`. |
 
-Several established `/reference/...` URLs contain procedures or explanations. Their navigation group and Vale section use their reader purpose.
+Some old `/reference/...` URLs teach a task or explain how it works. Their track and Vale rules match that reader need.
 
-The Architecture track has five main topics: authority boundaries, query lifecycle, retention and invalidation, topology and ownership, and change lifecycle. `/explanation` remains its overview route; `/architecture` redirects there. New pages use `/architecture/topology` and `/architecture/change-lifecycle`.
+The Architecture track has five main topics. They cover authority boundaries, query lifecycle, retention and invalidation, topology and ownership, and change lifecycle. `/explanation` remains its overview route; `/architecture` redirects there. New pages use `/architecture/topology` and `/architecture/change-lifecycle`.
 
-Do not move a page solely to match a directory name. Preserve inbound routes and heading anchors when their meaning stays unchanged.
+Do not move a page just to match a directory name. Keep its routes and heading anchors when their meaning stays the same.
 
 ## Source evidence and OpenWiki
 
-Before a material claim, examine its contract owner, callers, encoded schema, and focused tests. Trace cross-component behavior through one real source path.
+Before a key claim, read its contract owner. Check its callers, encoded schema, and focused tests. Trace a flow through one real source path.
 
-Use OpenWiki search and read for the concrete architecture question. Read its source citations and examine the current implementation.
+Use OpenWiki search and read for a specific design question. Follow its source links. Check the current code.
 
-OpenWiki supplies context and provenance. Its summary does not replace current source, generated contracts, or the installed catalog.
+OpenWiki gives context and source history. It does not replace current source, generated contracts, or the installed catalog.
 
-The public source map records the inspected revision and links contract owners, focused tests, and OpenWiki concepts.
+The public source map names the checked revision. It links contract owners, focused tests, and OpenWiki concepts.
 
-Keep historical captures tied to their original revision and environment. Distinguish schema-valid examples from recorded native results.
+Keep past captures tied to their source version and environment. State which examples only pass a schema check. State which record a native result.
 
-Use OpenWiki's page-job lifecycle for a requested wiki update. Keep generated Claims, indexes, run metadata, and provenance under OpenWiki ownership.
+Use OpenWiki's page jobs for a requested wiki update. OpenWiki owns the generated Claims, indexes, run details, and source history.
 
 After cited source changes, run `knowledgeImpact`. If a material Claim changes, reconcile its assigned page through OpenWiki. Run `verifyKnowledgeBase` afterward.
 
 ## Generated contracts
 
-The authored public tool contract owns input shapes and normalization defaults. The installed client catalog governs its release.
+The authored public tool contract owns input shapes and defaults. The installed client catalog governs its release.
 
-The callable generator owns `docs/public/reference/callables.openapi.json`. Its `/callables/...` labels describe documentation sections, not HTTP endpoints.
+The callable generator owns `docs/public/reference/callables.openapi.json`. Its `/callables/...` labels name parts of the docs. They are not HTTP endpoints.
 
 From the repository root, use:
 
@@ -74,26 +74,26 @@ From the repository root, use:
 mise exec -- ./gradlew :cli:generateMintlifyCallableReference :cli:verifyMintlifyCallableReference
 ```
 
-Regenerate only when its authoritative inputs change. Preserve model bindings and source links during a prose rewrite.
+Generate it again only when its source inputs change. Keep model bindings and source links when changing prose.
 
 ## Glossary ownership
 
-[The glossary](GLOSSARY.md) defines the canonical vocabulary for current documentation and agent instructions. `docs/glossary.json` owns its definitions and document scope.
+[The glossary](GLOSSARY.md) defines the terms for current docs and agent guides. `docs/glossary.json` owns its definitions and document scope. The public `/glossary` page and internal `GLOSSARY.md` are generated from it.
 
-Each entry records a definition, example, distinction, and source evidence. Use the established term for that concept. Preserve identifiers, commands, and attributed quotations.
+Each entry defines a term and gives an example. It states what makes the concept distinct. It cites source proof. Use that term for that concept. Keep code names, commands, and attributed quotes.
 
-The glossary governs terminology within its declared scope. Historical review reports keep their recorded terms. Independent reader review remains absent.
+The glossary governs terms within its declared scope. Past review reports keep their recorded terms. It still needs an independent reader review.
 
-Canonical use is repository policy. `PROVISIONAL` records the absent independent reader review.
+Use these terms as repository policy. `PROVISIONAL` means the independent reader review is still absent.
 
-An accepted spelling does not establish a definition. A related concept does not establish a synonym. Add a rejected form only with evidence of the same referent.
+An accepted spelling does not define a concept. Related concepts are not always synonyms. Reject a form only with proof that it names the same thing.
 
-Kast owns the JSON parser, renderer, and schema under `docs/tooling`. The retired shared glossary tool no longer supplies these operations.
+Kast owns the JSON parser, renderer, and schema in `docs/tooling`. The retired shared tool no longer does this work.
 
-From the repository root, regenerate the reader view:
+From the repository root, regenerate both reader views:
 
 ```shell
-uv run --locked --project docs/tooling python docs/tooling/check_glossary.py docs/glossary.json --render docs/GLOSSARY.md
+uv run --locked --project docs/tooling python docs/tooling/check_glossary.py docs/glossary.json --render docs/GLOSSARY.md --public-render docs/public/glossary.mdx
 ```
 
 Export terminology rules into a new temporary directory:
@@ -109,18 +109,18 @@ Before acceptance, examine the reader view, rule bytes, and current prose:
 ```shell
 uv run --locked --project docs/tooling python docs/tooling/check_glossary.py \
   docs/glossary.json README.md AGENTS.md docs \
-  --check-render docs/GLOSSARY.md --check-vale config/vale/styles/Kast
+  --check-render docs/GLOSSARY.md --check-public-render docs/public/glossary.mdx --check-vale config/vale/styles/Kast
 ```
 
 `verifyDocumentationGlossary` runs this procedure through `check` and `productBuildGate`. It rejects stale views, changed rules, extra rules, and rejected forms.
 
-The parser rejects unknown variants, label collisions, missing evidence, and invalid concept references. It preserves `REVIEW` forms without an automatic replacement.
+The parser rejects unknown variants and clashing labels. It rejects missing evidence and invalid concept links. It keeps `REVIEW` forms without replacing them.
 
-The root `.vale.ini` applies these rules to the same authored document scope. The glossary reader view describes rejected forms as literals.
+The root `.vale.ini` applies these rules to the same authored scope. The glossary view shows rejected forms as literals.
 
 ## Local Vale integration
 
-Vale `3.24.0` runs locally with checked-in rules and licenses. The repository needs no style download, hosted service, or plugin installation for ordinary lint.
+Vale `3.24.0` runs locally with checked-in rules and licenses. Normal lint needs no style download, hosted service, or installed plugin.
 
 From the repository root, install the pinned executable:
 
@@ -140,9 +140,9 @@ mise exec -- vale --no-global --config=.vale.ini --output=JSON README.md AGENTS.
 mise exec -- vale --no-global --config=.vale.ini --path=COMMIT_EDITMSG < /path/to/message.txt
 ```
 
-`config/vale/styles/config/vocabularies/Kast/accept.txt` owns reviewed spellings. `docs/glossary.json` owns domain meaning. [Vale provenance](../config/vale/README.md) records imported rules and licenses.
+`config/vale/styles/config/vocabularies/Kast/accept.txt` owns reviewed spellings. `docs/glossary.json` owns domain meaning. [The Vale record](../config/vale/README.md) lists imported rules and licenses.
 
-Ordinary Vale output reports lexical and structural findings. Exit zero does not mean that warnings or suggestions are absent.
+Vale reports word and page structure findings. Exit zero can still leave warnings or suggestions.
 
 For the shared prose assessment, set `KAST_WRITING_SKILL` to the installed `skills/controlled-technical-writing` directory. Use its locked procedure:
 
@@ -152,17 +152,17 @@ uv run --locked --script "$KAST_WRITING_SKILL/scripts/assess_text.py" \
   README.md AGENTS.md docs/documentation-structure.md
 ```
 
-Supply each changed prose file explicitly. Save JSON reports under `build/reports/documentation/`. Keep engine, policy, and document digests with located findings.
+List each changed prose file. Save JSON reports under `build/reports/documentation/`. Keep engine, policy, and file digests. Keep each finding's source location.
 
-Assessment report v2 omits glossary data. Keep its prose findings separate from the Kast glossary report and its source digest.
+Assessment report v2 omits glossary data. Keep its findings apart from the Kast glossary report and source digest.
 
-Historical reports keep their recorded schema and glossary fields. Do not rewrite them as current assessment evidence.
+Past reports keep their recorded schema and glossary fields. Do not claim that they prove the current state.
 
 `ASSESSED` means that the procedure ran. It does not mean that findings are absent. Record each unresolved rule, location, and reason.
 
-The shared procedure uses a fixed measurement policy. Root Vale also examines spelling, modal verbs, contractions, and page structure. Keep these evidence levels separate.
+The shared procedure has a fixed policy for prose metrics. Root Vale also checks spelling, modal verbs, contractions, and page structure. Report these evidence levels on their own.
 
-Review grade-8 and 25-word advisories without removal of necessary precision. Examine the 20-word procedural limit and controlled-English rules separately.
+Review grade-8 and 25-word advisories. Keep the precision the reader needs. Also check the 20-word limit for task steps and the controlled-English rules.
 
 ## Acceptance procedure
 
@@ -174,8 +174,8 @@ Review grade-8 and 25-word advisories without removal of necessary precision. Ex
 6. Run local Vale and the shared prose assessment.
 7. Read each changed page without conversation context and identify its prerequisites, next action, and completion evidence.
 
-An author review is a simulated reader review. A readability score and documentation build do not establish human comprehension or native behavior.
+An author review simulates a reader review. A prose score and docs build do not prove that readers understand the page. They do not prove native behavior.
 
-The deployment reads `docs/public` from `main`. Publication needs separate authorization. After publication, examine the rendered tracks and redirects.
+The live site reads `docs/public` from `main`. Get separate approval to publish. After it is live, check the rendered tracks and redirects.
 
-If deployment fails, restore the previous documentation revision. Local changes remain reviewable before publication.
+If the deploy fails, restore the prior docs revision. Review local changes before they go live.

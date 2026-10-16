@@ -9,34 +9,36 @@ icon: "code"
 
 <span id="work-on-kast" />
 
-Kast turns compiler-resolved Kotlin facts into evidence that an agent can inspect and reuse. Its contracts preserve declaration identity, source state, scope, and proof limits.
+Kast gives an agent Kotlin facts resolved by the compiler. The agent can read and reuse this evidence. Each contract keeps the declaration identity, source state, scope, and proof limits.
 
 <span id="understand-the-mechanisms" />
 
+[Glossary](/glossary) defines the terms used on these pages.
+
 ## Related architecture
 
-| Mechanism | What Kast establishes |
+| Mechanism | What Kast proves |
 | --- | --- |
-| [Program tracing](/reference/program-tracing) | Calls, callback routes, and transfers inside functions, with evidence for each supported hop. |
-| [Staleness](/reference/staleness) | The state a read needs, fresh authority for exact references, and rejection of obsolete retained evidence. |
-| [Lifecycles](/reference/lifecycles) | The owners of requests, connections, workspace preparation, and daemon startup or retirement. |
+| [Program tracing](/reference/program-tracing) | Calls, callback paths, and value flow inside functions. Each supported hop keeps its evidence. |
+| [Staleness](/reference/staleness) | The state a read needs. Exact references can gain fresh authority. Old retained evidence can be rejected. |
+| [Lifecycles](/reference/lifecycles) | Who owns a request, connection, project setup, or daemon start and stop. |
 
-The compiler-static model does not establish runtime execution or path feasibility. Missing proof returns a finite rejection with available evidence.
+The compiler-static model does not prove that code ran or that a path can run. If proof is missing, Kast rejects the claim. It reports the cause and available evidence.
 
 ## Queries and semantic evidence
 
 | Contract | Lookup |
 | --- | --- |
-| [Query forms](/reference/api) | Actions, sources, ordered steps, outputs, scope defaults, and value-impact inputs. |
-| [Results](/reference/responses) | Semantic completion, output previews, retained rows, evidence cursors, and recovery. |
+| [Query forms](/reference/api) | Look up actions, sources, steps, outputs, scope defaults, and value-impact inputs. |
+| [Results](/reference/responses) | Read status, previews, retained rows, evidence cursors, and recovery. |
 | [Symbol identity](/reference/symbols) | Exact references, signatures, source ranges, and local declarations. |
-| [Callback observations](/reference/callback-observations) | Supply, binding, invocation, ownership, declared effects, and unresolved obligations. |
+| [Callback observations](/reference/callback-observations) | Check supply, binding, calls, owners, declared effects, and proof still needed. |
 | [Composition](/reference/composition) | Set operations, joins, row kinds, and absence rules. |
-| [Limits and failures](/reference/limits) | Execution grants, storage limits, and finite rejection causes. |
+| [Limits and failures](/reference/limits) | Look up run grants, storage limits, and rejection causes. |
 
 ## Client contracts
 
-MCP and Tool RPC carry canonical operation documents. The current Codex plugin uses MCP.
+MCP and Tool RPC carry canonical tool documents. The current Codex plugin uses MCP.
 
 | Client | Contract authority |
 | --- | --- |
@@ -46,14 +48,14 @@ MCP and Tool RPC carry canonical operation documents. The current Codex plugin u
 
 The shared tools are `query_symbols`, `check_diagnostics`, `add_declaration`, and `replace_body`.
 
-Direct MCP and Tool RPC expose `health_check`. Hosted App Server model pages describe the separate `workspace_lifecycle` contract. [Compatibility](/reference/compatibility) distinguishes that earlier client surface from current Codex setup.
+Direct MCP and Tool RPC expose `health_check`. The hosted App Server has a distinct `workspace_lifecycle` contract. Its model pages describe that contract. [Compatibility](/reference/compatibility) distinguishes that earlier client surface from current Codex setup.
 
 ## Schemas and source owners
 
-[Schemas and samples](/reference/schemas) connects inputs and outputs to generated contracts. Model pages describe individual variants.
+[Schemas and samples](/reference/schemas) links inputs and outputs to generated contracts. Model pages describe each result kind.
 
-[Recorded query evidence](/reference/walkthrough) preserves a historical run. Its handles and counts do not describe your current workspace.
+[Recorded query evidence](/reference/walkthrough) keeps a historical run. Its handles and counts do not describe your current workspace.
 
-[The source map](/reference/source-map) links inspected owners and counterexample tests. The installed catalog governs your release when `main` describes newer behavior.
+[The source map](/reference/source-map) links source owners and tests of invalid cases. Use the installed catalog for your release. The `main` branch can describe newer behavior.
 
-[Tutorials](/tutorials) supplies a controlled exercise. [Guides](/how-to) supplies commands and recovery procedures. [Architecture](/explanation) develops the evidence model.
+[Tutorials](/tutorials) gives a controlled exercise. [Guides](/how-to) gives commands and recovery steps. [Architecture](/explanation) explains the evidence model.

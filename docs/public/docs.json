@@ -101,7 +101,8 @@
           {
             "group": "Interface reference",
             "pages": [
-              "reference"
+              "reference",
+              "glossary"
             ]
           },
           {

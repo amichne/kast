@@ -2,10 +2,14 @@
 title: "MCP contract"
 description: "Discover Kast tools, call one by name, and decode the direct MCP result."
 icon: "plug"
-keywords: ["MCP", "tools/list", "tools/call", "structuredContent"]
+keywords:
+  - "MCP"
+  - "tools/list"
+  - "tools/call"
+  - "structuredContent"
 ---
 
-Direct MCP carries Kast tool calls over stdio. The client starts the process from the intended repository directory and admits its catalog after negotiation.
+Direct MCP carries Kast tool calls over stdio. The client starts the process in the intended repository directory. After negotiation, it admits the catalog.
 
 ## Catalog
 
@@ -18,13 +22,13 @@ Direct MCP carries Kast tool calls over stdio. The client starts the process fro
 | `health_check` | Workspace binding and readiness. |
 | `add_declaration`, `replace_body` | Targeted source changes. |
 
-Direct MCP omits `workspace_lifecycle`. Hosted App Server supplies that separate project-control tool.
+Direct MCP omits `workspace_lifecycle`. Hosted App Server supplies that distinct tool to control projects.
 
-Tool discovery establishes available operations. It does not establish readiness of the IDEA project or completion of a semantic query.
+Tool discovery shows which tools are available. It does not prove that the IDEA project is ready. It does not prove that a semantic query is complete.
 
 ## Call and result
 
-`tools/call` selects a catalog tool and argument object. This example requests readiness rather than declaration evidence.
+`tools/call` selects a catalog tool and its input object. This example asks whether the workspace is ready. It does not ask for declaration evidence.
 
 ```json
 {
@@ -35,16 +39,16 @@ Tool discovery establishes available operations. It does not establish readiness
 }
 ```
 
-The reply separates display text in `content[]` from admitted `structuredContent`. `isError` reports tool-call failure.
+The reply puts display text in `content[]`. It puts the checked tool document in `structuredContent`. `isError` reports a failed tool call.
 
-For semantic tools, `structuredContent` is the canonical operation document. Its own status reports semantic completion, qualification, or rejection.
+For semantic tools, `structuredContent` is the canonical tool document. It has its own status: complete, qualified, or rejected.
 
-An invocation failure can omit the operation document. `health_check` uses a separate readiness shape with its own schema.
+A failed tool call can omit the document. `health_check` uses a distinct readiness shape with its own schema.
 
-Clients must decode the wrapper and selected tool document separately. A successful JSON-RPC exchange cannot strengthen an incomplete semantic answer.
+Decode both the wrapper and the selected tool document. A successful JSON-RPC exchange does not make an incomplete semantic answer complete.
 
 ## Source owner and integration procedure
 
-[Transport owners](/reference/source-map#installation-and-transport) identify the projection and schema admission. [Lifecycles](/reference/lifecycles#connection-lifecycle) describes session lifetime.
+[Transport owners](/reference/source-map#installation-and-transport) names the code that maps results and checks schemas. [Lifecycles](/reference/lifecycles#connection-lifecycle) describes the session lifetime.
 
-[Connect your agent](/reference/integrations) supplies registration procedures. [Schemas](/reference/schemas) links the generated documents and their ownership.
+[Connect your agent](/reference/integrations) gives setup steps. [Schemas](/reference/schemas) links the generated documents and names their owners.

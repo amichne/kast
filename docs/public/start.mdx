@@ -23,9 +23,13 @@ codex --version
 python3 --version
 ```
 
-If either command is unavailable, install it first. [Integration requirements](/reference/integrations) describe the supported agent startup tools.
+If either command is not available, install it first. [Integration requirements](/reference/integrations) describe the supported agent startup tools.
 
 <span id="1-install-kast" />
+
+1. [Install Kast.](#1-install-kast)
+2. [Load the IDEA plugin.](#2-restart-intellij-idea)
+3. [Connect your agent.](#3-connect-your-agent)
 
 <Steps>
   <Step title="Install Kast">
@@ -40,7 +44,7 @@ If either command is unavailable, install it first. [Integration requirements](/
   <Step title="Load the IDEA plugin">
     <span id="2-restart-intellij-idea" />
 
-    Restart IDEA to load the plugin. Then examine the installation:
+    Restart IDEA to load the plugin. Then check the installation:
 
     ```shell
     kast status
@@ -59,12 +63,14 @@ If either command is unavailable, install it first. [Integration requirements](/
   </Step>
 </Steps>
 
-## 4. Establish readiness
+<span id="4-establish-readiness" />
+
+## 4. Prove readiness
 
 Complete [the first-query exercise](/tutorials/first-query) in the selected project. Compare the returned declaration and caller with the exercise source.
 
 <Warning>
-  `kast status` reports installation state. A tool catalog proves availability. A fresh semantic query establishes that the selected project admits the requested read.
+  `kast status` reports installation state. A tool catalog proves availability. A fresh semantic query proves that the selected project admits the requested read.
 </Warning>
 
 If setup stops, use [Troubleshoot Kast](/troubleshooting).

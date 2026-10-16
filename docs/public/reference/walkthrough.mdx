@@ -4,7 +4,7 @@ description: "Inspect historical requests and observed results, with their sourc
 icon: "notebook-text"
 ---
 
-This page preserves historical query evidence at `56df091`. Its counts and handles belong to the recorded workspace state.
+This page keeps past query evidence at `56df091`. Its counts and handles belong to the recorded workspace state.
 
 [Capture details](/reference/schemas#recorded-walkthrough) names the revision, Host, epoch, and environment. [The first-query tutorial](/tutorials/first-query) supplies a current exercise.
 
@@ -32,9 +32,9 @@ This `SEARCH_TEXT` request illustrates current inputs. The historical recording 
 }
 ```
 
-Text discovery returns a containing declaration and matching-line context. Its one-based line number and UTF-16 range describe the match.
+Text discovery returns the containing declaration and the line that matched. The match has a one-based line number and a UTF-16 range.
 
-One ASCII identifier word is supported. A relation query must establish calls after discovery.
+One ASCII identifier word is supported. A relation query must prove calls after discovery.
 
 <a id="1-find-a-declaration-and-inspect-its-source" />
 
@@ -65,13 +65,13 @@ Call `01-discovery` found one `QueryStepSyntax` with exhaustive coverage, signat
 }
 ```
 
-`CLASS` includes this interface in the supported class-like request family. Its identity belongs to the captured source rather than today's checkout.
+`CLASS` includes this interface. It belongs to the supported class-like request family. Its identity comes from the captured source, not today's checkout.
 
 <a id="2-follow-its-implementations" />
 
 ## Recorded implementation query
 
-Call `02-implementations-a` found ten implementations with exhaustive coverage. Its retained result supplies composition input A.
+Call `02-implementations-a` returned ten `IMPLEMENTATIONS` matches with a complete scan. It retained that result as composition input A.
 
 ```json
 {
@@ -91,7 +91,7 @@ Call `02-implementations-a` found ten implementations with exhaustive coverage. 
 }
 ```
 
-Each row preserved its exact declaration and relationship evidence. [Composition examples](/reference/query-pipelines) compare this set with a separate name search.
+Each row kept its exact declaration and relationship proof. [Composition examples](/reference/query-pipelines) compares this set with a distinct name search.
 
 <a id="3-trace-callers-to-a-chosen-depth" />
 
@@ -116,10 +116,10 @@ Call `15-caller-walk` started from `QueryPlanCompiler.exactStage`. It returned `
 }
 ```
 
-The recorded result had exhaustive coverage and no continuation. Depth described requested extent rather than runtime stack depth.
+The recorded result had complete coverage and no continuation. Depth described the requested graph extent. It did not describe runtime stack depth.
 
 ## Interpretation limits
 
-The recording predates compact output and current complete-only execution. Historical semantic continuation does not authorize current public `RESUME` behavior.
+The recording is older than compact output and current complete-only execution. Its semantic continuation is historical. It is not how public `RESUME` works today.
 
 New investigations need current handles and installed schemas. [Staleness](/reference/staleness) defines reuse, and [Program tracing](/reference/program-tracing) defines source-path claims.

@@ -4,19 +4,19 @@ description: "Trace calls, callback values, and producer values through compiler
 icon: "route"
 ---
 
-Kast traces relationships between declarations and transfers inside function bodies. Each path keeps its source sites, compiler identities, and unresolved obligations.
+Kast traces relationships between declarations. It also traces transfers inside function bodies. Each path keeps its source sites, compiler identities, and proof still needed.
 
-The intrafunctional part answers how a value moves through a body. Callback evidence connects that body to its supplier and invocation owner.
+The body-level trace shows how a value moves through that body. Callback evidence connects that body to its supplier and call owner.
 
 ## Three tracing contracts
 
 | Question | Contract | Evidence |
 | --- | --- | --- |
 | Which declarations connect to this symbol? | `EXPAND_RELATION`, `WALK`, or `TRACE` | References, calls, implementations, overrides, and traversal depth. |
-| How does this callback reach an invocation? | Callback observations within relationship reads | Supply, formal binding, aliases, forwarding, invocation sites, and callable ownership. |
+| How does this callback reach a call? | Callback observations within relationship reads | Supply, formal binding, aliases, forwarding, call sites, and callable ownership. |
 | Where does this producer value travel? | `IMPACT` with `KOTLIN_FORWARD_V1` | Value paths, representation models, destination sites, terminals, and obligations. |
 
-These contracts share exact identities and source state. Their edges describe different facts, so a reference count cannot stand for an invocation count.
+These contracts share exact identities and source state. Their edges state different facts. A reference count cannot stand for a call count.
 
 ## Inside a function body
 
@@ -37,56 +37,66 @@ fun checkout() {
 }
 ```
 
-The compiler maps the supplied lambda to `submit.block`. Immutable value evidence preserves the alias through `action`.
+The compiler maps the supplied lambda to `submit.block`. Immutable value evidence keeps the alias through `action`.
 
-Forwarding evidence connects that formal to `forward.next`. The invocation of `next()` keeps its actual owner, and the anonymous body keeps `charge()`.
+Forwarding evidence connects that formal to `forward.next`. The call of `next()` keeps its actual owner, and the anonymous body keeps `charge()`.
 
-```mermaid
-flowchart LR
-  L["Lambda containing charge()"] --> S["Supply to submit.block"]
-  S --> A["Immutable alias: action"]
-  A --> F["Forward to forward.next"]
-  F --> I["Invocation site: next()"]
-  I --> B["Anonymous body and charge() occurrence"]
-```
+<div role="region" aria-label="Architecture diagram; scroll horizontally on narrow screens" tabIndex={0} className="overflow-x-auto">
+  <div style={{minWidth: "440px"}}>
+    <img className="block dark:hidden" alt="A lambda is supplied to submit.block, kept through the action alias, and forwarded to forward.next. Its call keeps the anonymous body and charge occurrence." src="/images/architecture/callback-route.light.svg" />
 
-An admitted graph keeps the derivation for each hop. Unsupported transfer or incomplete enumeration prevents a complete graph claim.
+    <img className="hidden dark:block" alt="A lambda is supplied to submit.block, kept through the action alias, and forwarded to forward.next. Its call keeps the anonymous body and charge occurrence." src="/images/architecture/callback-route.dark.svg" />
+  </div>
+</div>
+
+On a narrow screen, scroll the diagram or read the steps below.
+
+[Open full-size diagram](/images/architecture/callback-route.light.svg) · [Mermaid source](/images/architecture/callback-route.mmd)
+
+1. The lambda body contains the call to charge.
+2. The caller supplies that lambda to submit.block.
+3. The immutable action alias keeps the supplied value.
+4. Forwarding sends the value to forward.next.
+5. The call to next invokes that value.
+6. The evidence keeps the anonymous body and its charge call.
+
+An admitted graph keeps proof for each hop. If a transfer is not supported or the scan is incomplete, Kast cannot claim a complete graph.
 
 `checkout` supplies the lambda. Supply alone does not make `checkout` a direct named caller of every call inside that lambda.
 
 ## Ownership and execution
 
-Kast distinguishes the named lexical container, anonymous body, supplying callable, receiving formal, and actual invocation owner.
+Kast keeps five roles distinct: the named lexical container, anonymous body, supplying callable, receiving formal, and actual call owner.
 
-An unused default keeps its formal and expression without an invented invocation. A nested body needs evidence for its own activation route.
+An unused default keeps its formal and expression without an invented call. A nested body needs evidence for its own activation route.
 
-Reviewed calls-in-place contracts preserve their declared invocation kind. Missing or contradictory effects cannot become `UNKNOWN` as a substitute for absent proof.
+Reviewed calls-in-place contracts keep their declared call kind. Missing effects or effects that conflict cannot become `UNKNOWN`. That value cannot stand in for missing proof.
 
-The reviewed `kotlin.lazy` model records deferred initializer supply. It establishes neither property access nor initializer execution.
+The reviewed `kotlin.lazy` model records deferred initializer supply. It does not prove that the property was read or that the initializer ran.
 
 [Callback evidence](/reference/callbacks) describes these mechanisms. [Callback observation fields](/reference/callback-observations) defines their encoded variants.
 
 ## Producer values and representations
 
-`IMPACT` starts from exact producer invocations. Native reads establish source identity and supported Kotlin transfers.
+`IMPACT` starts from exact producer calls. Native reads prove source identity and supported Kotlin transfers.
 
-Supplied reviewed models define representation changes and modeled callable behavior. Paths keep those model applications beside native evidence.
+Supplied reviewed models define how values change form and how modeled callables behave. Each path records where a model was used beside the native evidence.
 
-A final try or catch value can supply the try expression under normal completion. Catch alternatives keep their own producer identities.
+Under normal completion, the final value of a try or catch body can supply the try expression. Each catch alternative keeps its own producer identity.
 
 Throws do not supply a normal result. Transfers across `finally` keep `FINALLY_UNSUPPORTED` because its effect remains outside the supported proof.
 
-The retained witness exposes producers, models, native reads, read rejections, findings, and requested-site accounting. Site identity alone cannot establish a producer relationship.
+The retained witness lists producers, models, native reads, read rejections, and findings. It also keeps the record for each requested site. A site identity alone cannot prove a producer relationship.
 
 [Query forms](/reference/api#investigate-value-impact) defines inputs and witness sections.
 
 ## Completion and limits
 
-Every public `RUN` uses `COMPILER_RESOLVED_STATIC_V1` with `COMPLETE_ONLY`. Completion needs exhausted execution and discharged proof obligations.
+Every public `RUN` uses `COMPILER_RESOLVED_STATIC_V1` with `COMPLETE_ONLY`. To complete, a run must finish its work and meet its proof rules.
 
-Mutable or unsupported flow, missing source, unresolved owners, and exhausted grants can prevent completion. A rejection keeps established evidence when retention admits it.
+A run cannot complete when flow is mutable or not supported, source is missing, owners remain unresolved, or grants run out. A rejection keeps proved evidence when retention admits it.
 
-The model establishes compiler-resolved source relationships. It does not establish runtime execution, branch feasibility, execution frequency, or project behavior after an edit.
+The model proves source relationships resolved by the compiler. It does not prove that code ran, that a branch can run, or how often code runs. It does not prove project behavior after an edit.
 
 ## Source evidence
 

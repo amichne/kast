@@ -896,15 +896,55 @@ def occurrences(glossary: Glossary, prose: ProseDocument) -> tuple[Occurrence, .
     return tuple(selected)
 
 
-def render_markdown(glossary: Glossary) -> str:
-    """Serialize a reader view without becoming a second editable glossary."""
+def render_public_mdx(glossary: Glossary) -> str:
+    """Project canonical definitions and source links into the public reader view."""
     lines = [
-        "# Slopsentral Glossary",
+        "---",
+        'title: "Glossary"',
+        'description: "Look up the terms used in Kast answers and guides."',
+        'icon: "book-open"',
+        "---",
         "",
-        "Generated from `glossary.json`. Edit the JSON source.",
+        "<!-- Generated from docs/glossary.json. Edit its canonical definitions. -->",
+        "",
+        "Use these terms to read a Kast answer. Exact fields and their values keep the spelling from your installed catalog.",
+        "",
+    ]
+    for entry in glossary.entries:
+        source = entry.usage[0]
+        lines.extend(
+            [
+                f"## {entry.term}",
+                "",
+                entry.definition,
+                "",
+                f"[Source: `{source.locator}`]({source.url}).",
+                "",
+            ]
+        )
+    lines.extend(
+        [
+            "## Read an answer",
+            "",
+            "[Evidence limits](/reference/evidence-boundaries) explains what each fact can prove. "
+            "[Results](/reference/responses) defines the fields in an answer.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def render_markdown(glossary: Glossary) -> str:
+    """Project definitions, distinctions and citations without duplicate source prose."""
+    lines = [
+        "# Kast glossary",
+        "",
+        "Generated from `docs/glossary.json`. Edit the JSON source.",
         "",
         glossary.domain + ".",
         glossary.review_reason,
+        "",
+        "The JSON source also records each term's scope, reason, and source meaning.",
         "",
         "## Terms",
         "",
@@ -916,24 +956,19 @@ def render_markdown(glossary: Glossary) -> str:
                 "",
                 entry.definition,
                 "",
-                f"Scope: {entry.scope}",
                 f"Example: {entry.example}",
-                f"Distinction: {entry.distinction}",
-                f"Justification: {entry.justification}",
+                f"Keep distinct: {entry.distinction}",
                 "",
-                "Domain usage:",
+                "Source evidence:",
                 "",
             ]
         )
         lines.extend(
-            f"- [{use.locator}]({use.url}), examined {use.examined}. {use.meaning}"
-            for use in entry.usage
+            f"- [`{use.locator}`]({use.url}), checked {use.examined}." for use in entry.usage
         )
-        lines.extend(["", "Local evidence:", ""])
-        lines.extend(f"- `{source.path}`: {source.locator}." for source in entry.local_sources)
-        lines.extend(["", "Rejected forms:", ""])
-        if not entry.rejected_forms:
-            lines.append("No replacement or review target passed the evidence review.")
+        lines.extend(f"- `{source.path}`: `{source.locator}`." for source in entry.local_sources)
+        if entry.rejected_forms:
+            lines.extend(["", "Rejected forms:", ""])
         for form in entry.rejected_forms:
             action = "Replacement" if isinstance(form, _Replacement) else "Context review"
             lines.append(f"- `{form.form}`: {action}. {form.reason}")

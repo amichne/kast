@@ -1,5 +1,5 @@
 ---
-mode: wide
+mode: "wide"
 icon: "stethoscope"
 sidebarTitle: "Diagnostic entry"
 title: "Diagnostic entry"
@@ -7,10 +7,10 @@ description: "Read an IDEA diagnostic with its source location and reported scop
 openapi-schema: "reference/callables.openapi.json check_diagnosticsResponse_diagnostic"
 ---
 
-A diagnostic records IDEA's severity, message, and source location. Its producing response states the requested scope and coverage.
+A diagnostic is an IDEA finding. It gives a severity, message, and place in source. The response states which scope the scan covers.
 
-Complete empty coverage can establish no reported diagnostics within that admitted scope. Incomplete empty coverage cannot establish that conclusion.
+A complete scan with no findings can prove that IDEA reported none within that admitted scope. A scan that did not finish cannot prove this.
 
-IDEA diagnostics do not establish project build success. A change receipt describes a separate source effect and its examination scope.
+Clean IDEA diagnostics do not prove that the project builds. A change receipt proves a distinct source effect. It also records which checks took place.
 
-[Inspect diagnostics](/how-to/inspect-diagnostics) supplies the procedure. [Evidence limits](/reference/evidence-boundaries) defines the supported conclusion.
+[Check diagnostics](/how-to/inspect-diagnostics) gives the steps. [Evidence limits](/reference/evidence-boundaries) defines what the result can prove.

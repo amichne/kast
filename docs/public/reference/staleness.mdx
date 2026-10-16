@@ -5,7 +5,7 @@ description: "Understand read epochs, content admission, exact-reference reacqui
 icon: "history"
 ---
 
-Kast binds semantic evidence to one workspace root, IDEA owner, read epoch, and source state. A later request must establish the facts its action needs.
+Semantic evidence belongs to one workspace root, IDEA owner, read epoch, and source state. A later request needs fresh proof of the facts its action requires.
 
 A path or signature can help find a declaration. Neither value grants authority to reuse an earlier answer.
 
@@ -21,23 +21,23 @@ A path or signature can help find a declaration. Neither value grants authority 
 | Root model | Source roots or dependencies change. |
 | Indexing | IDEA enters or leaves an indexing cycle. |
 
-The read epoch is an opaque snapshot of these signals. Equality does not replace content or compiler identity admission.
+The read epoch is an opaque snapshot of these signals. Equal epochs do not replace checks of content and compiler identity.
 
-Kast also examines committed documents and request-specific source evidence. Unsaved documents or an unavailable project can reject admission before semantic work.
+Kast also checks committed documents and the source evidence needed for a request. Unsaved documents or a missing project can block admission before semantic work.
 
 An IDEA restart changes the live owner. Another worktree remains another workspace, even when both contain the same commit.
 
 ## Exact references can get fresh authority
 
-Exact-reference reacquisition preserves a locator for the original declaration. Kast examines the workspace and owner before compiler revalidation.
+To reacquire an exact reference, Kast keeps a locator for the original declaration. It checks the workspace and owner before it asks the compiler to revalidate the identity.
 
-The compiler must establish the declaration under current authority. Kast examines that authority again before it issues the fresh reference.
+The compiler proves the declaration under current authority. Kast checks that authority again before it issues the fresh reference.
 
 <div role="region" aria-label="Architecture diagram; scroll horizontally on narrow screens" tabIndex={0} className="overflow-x-auto">
   <div style={{minWidth: "500px"}}>
-    <img className="block dark:hidden" alt="An earlier exact reference needs current workspace admission, compiler revalidation, and a final source-state check before a fresh reference. Mismatches reject reuse." src="/images/architecture/retention.light.svg" />
+    <img className="block dark:hidden" alt="An old exact reference needs fresh workspace and compiler checks. A state or identity mismatch blocks reuse." src="/images/architecture/retention.light.svg" />
 
-    <img className="hidden dark:block" alt="An earlier exact reference needs current workspace admission, compiler revalidation, and a final source-state check before a fresh reference. Mismatches reject reuse." src="/images/architecture/retention.dark.svg" />
+    <img className="hidden dark:block" alt="An old exact reference needs fresh workspace and compiler checks. A state or identity mismatch blocks reuse." src="/images/architecture/retention.dark.svg" />
   </div>
 </div>
 
@@ -47,10 +47,10 @@ On a narrow screen, scroll the diagram horizontally or use the numbered explanat
 
 1. Admit the current workspace and IDEA owner.
 2. Revalidate the original declaration with the compiler.
-3. Reexamine source state before issuing a fresh exact reference.
-4. Reject reuse if identity or state cannot be established.
+3. Check source state again before issuing a fresh exact reference.
+4. Reject reuse if identity or state cannot be proved.
 
-The policy for a local declaration needs unchanged owning-file content. After a local edit or move, discovery must establish a new identity.
+For a local declaration, the owning file has to stay unchanged. After a local edit or move, use discovery to prove a new identity.
 
 `reference_acquisitions` reports reacquisition when the operation supplies it. A different opaque token alone does not prove a source change.
 
@@ -58,29 +58,29 @@ The policy for a local declaration needs unchanged owning-file content. After a 
 
 | Handle | Reuse rule |
 | --- | --- |
-| Exact reference | Current identity admission can establish a fresh reference. |
+| Exact reference | Current identity checks can prove a fresh reference. |
 | Anonymous `candidateSelector` | Anchored source reads need its admitted source state. |
-| Retained result reference | The original workspace, owner, read state, and lifetime must remain available. |
-| Output continuation | The original produced output and authority must remain available. |
+| Retained result reference | Reuse needs the original workspace, owner, read state, and valid lifetime. |
+| Output continuation | Reuse needs the original produced output and authority. |
 | Row ID | The owning retained result must match. |
 | Result or evidence cursor | The cursor selects a position within its identified result. |
 
-Retained results contain immutable rows and evidence. Kast does not move them to a new epoch or rerun their producer during presentation.
+Retained results hold rows and evidence that cannot change. Kast does not move them to a new epoch. Reading their output does not rerun the producer.
 
-Expiry, eviction, owner retirement, incompatible identity, or changed source state can block reuse. A larger grant cannot restore missing state.
+Expiry, eviction, or owner retirement can block reuse. So can identity that does not match or source state that has changed. A larger grant cannot restore missing state.
 
 ## Rejection and recovery
 
-`FRESHNESS_REJECTED` identifies failure to establish the needed read state. Its stage and finite reason distinguish model admission from later content revalidation.
+`FRESHNESS_REJECTED` means that the needed read state was not proved. Its stage and specific reason show whether the model admission or a later content check failed.
 
-The returned action can direct a fresh read or new authority admission. The client must preserve that cause and use newly issued handles.
+The returned action ca call for a fresh read or new authority checks. The client keeps that cause and uses newly issued handles.
 
-A new `RUN` establishes a new answer. It cannot restore the exact output delivery from a retired result.
+A new `RUN` produces a new answer. It cannot restore the exact output from a retired result.
 
-For writes, staleness also protects the planned preimage. A lost response needs source-effect recovery before another write.
+For writes, staleness also protects the source state in the plan. If a response is lost, check the source effect and recovery state before another write.
 
 [Results](/reference/responses#saved-state-and-identity) defines handle use. [Troubleshooting](/reference/troubleshooting) gives recovery procedures.
 
 ## Source evidence
 
-[The source map](/reference/source-map#staleness-and-reacquisition) links epoch signals, freshness admission, compiler reacquisition, and rejection tests.
+[The source map](/reference/source-map#staleness-and-reacquisition) links the code and tests for epoch signals. It also covers freshness checks and how Kast gets fresh compiler identity.

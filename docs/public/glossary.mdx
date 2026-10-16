@@ -1,0 +1,151 @@
+---
+title: "Glossary"
+description: "Look up the terms used in Kast answers and guides."
+icon: "book-open"
+---
+
+<!-- Generated from docs/glossary.json. Edit its canonical definitions. -->
+
+Use these terms to read a Kast answer. Exact fields and their values keep the spelling from your installed catalog.
+
+## declaration
+
+A named Kotlin code element, such as a class, function, property, or type alias.
+
+[Source: `CompilerSymbolKind`](https://github.com/amichne/kast/blob/52b5599de559d9b82f990bbd16b882762dbdf402/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt).
+
+## diagnostic
+
+A compiler finding. It gives a severity, message, source location, and the identity of the admitted read.
+
+[Source: `DiagnosticFact`](https://github.com/amichne/kast/blob/52b5599de559d9b82f990bbd16b882762dbdf402/diagnostic/contract/src/main/kotlin/io/github/amichne/kast/diagnostic/contract/DiagnosticFact.kt).
+
+## Control
+
+The part of Kast that provides the native command, coordinator, and agent adapters.
+
+[Source: `Recorded release pair and compatibility`](https://github.com/amichne/kast/blob/52b5599de559d9b82f990bbd16b882762dbdf402/docs/public/reference/compatibility.mdx).
+
+## Host
+
+The part of Kast that provides the IntelliJ IDEA plugin and semantic runtime.
+
+[Source: `HostedEndpointService`](https://github.com/amichne/kast/blob/52b5599de559d9b82f990bbd16b882762dbdf402/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt).
+
+## workspace root
+
+The canonical root of the exact repository or worktree that Kast admits for a call.
+
+[Source: `SemanticReadAuthority`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt).
+
+## exact reference
+
+An opaque handle that Kast issues for one exact declaration. Reuse needs a check of the current identity.
+
+[Source: `SymbolSelector`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt).
+
+## canonical identity
+
+The identity that Kast has proved for a declaration. Display names or opaque reference strings alone cannot prove that two symbols are the same.
+
+[Source: `SymbolSelector`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt).
+
+## semantic basis
+
+Where a call's evidence came from: published workspace state or live IDEA read state. This record grants no right to run a call.
+
+[Source: `EvidenceEnvelope`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/kernel/src/main/kotlin/io/github/amichne/kast/kernel/EvidenceEnvelope.kt).
+
+## read epoch
+
+An opaque version of an IDEA project's admitted read state. Equal values do not replace current source or compiler checks.
+
+[Source: `ProjectReadEpoch`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/ProjectReadEpoch.kt).
+
+## discovery scope
+
+The source filters used to find seed declarations. They do not restrict later relationship destinations.
+
+[Source: `PublicToolDiscoveryDocuments`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDiscoveryDocuments.kt).
+
+## expansion scope
+
+The domain that Kast searches for native relationships. Kast selects it before the scan. A later row filter cannot reduce that search work.
+
+[Source: `PublicToolExpansionScopeMapping`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolExpansionScopeMapping.kt).
+
+## complete coverage
+
+A finished scan of the declared supported scope and requested traversal extent. This fact alone does not prove semantic completion.
+
+[Source: `QueryExecution`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryExecution.kt).
+
+## qualified coverage
+
+Evidence of a proved minimum, with stated limits or work still to do. An empty result with this status does not prove absence.
+
+[Source: `QueryExecution`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryExecution.kt).
+
+## known minimum
+
+The proved count of logical final output. It includes rows already sent. It does not count pages left or provider candidates before filters.
+
+[Source: `responses`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/docs/public/reference/responses.mdx).
+
+## compiler-static model
+
+The fixed `COMPILER_RESOLVED_STATIC_V1` model of source relationships resolved by the compiler. It does not prove that code ran or that a path can run.
+
+[Source: `QueryCompletionDocument`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt).
+
+## semantic completion
+
+Execution has exhausted its work under the compiler-static model. No item has failed, and no evidence is omitted. Callback graphs and original investigation ledgers also meet their proof rules.
+
+[Source: `QueryCompletionDocument`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt).
+
+## retained result
+
+Immutable query rows and evidence kept under the read authority that produced them. They keep each row's kind, stated limits, and producer progress.
+
+[Source: `QueryRetainedResult`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt).
+
+## retained result reference
+
+A handle that Kast issues for one retained result. It differs from an exact reference and an output continuation.
+
+[Source: `QueryResultReferences`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt).
+
+## row id
+
+An issued ID for one row in one retained result. The owning result must match when Kast restores it.
+
+[Source: `QueryResultReferences`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt).
+
+## output continuation
+
+An issued token that lets `RESUME` present the produced output that is left. It grants no right to run semantic work or extend expiry.
+
+[Source: `QueryExecutionContinuation`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryExecutionContinuation.kt).
+
+## result cursor
+
+A position in the saved rows of a result identified on its own. It grants no right to run semantic work.
+
+[Source: `QueryResultReferences`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryResultReferences.kt).
+
+## evidence cursor
+
+A position in saved failures, omissions, and observations. It moves on its own, apart from the result cursor.
+
+[Source: `CanonicalQueryOperationModels`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CanonicalQueryOperationModels.kt).
+
+## result preview
+
+A view of produced rows with a fixed size limit. It describes the output shown. It does not describe search completeness.
+
+[Source: `responses`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/docs/public/reference/responses.mdx).
+
+## Read an answer
+
+[Evidence limits](/reference/evidence-boundaries) explains what each fact can prove. [Results](/reference/responses) defines the fields in an answer.
