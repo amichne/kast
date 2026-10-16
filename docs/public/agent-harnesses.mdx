@@ -16,15 +16,15 @@ icon: "plug"
 
 <Tabs sync={false}>
   <Tab title="Codex">
-    The installer offers a Codex MCP connection by default. If you accepted it, restart Codex and select your Kotlin repository or worktree.
+    The installer offers the Kast plugin in Codex by default. If you accepted it, restart Codex and select your Kotlin repository or worktree.
 
-    If you skipped registration, run:
+    If you skipped plugin installation, run:
 
     ```shell
-    kast connect codex mcp
+    kast plugin codex
     ```
 
-    Restart Codex after a connection change. For the optional bundled plugin and other transports, use [integration options](/reference/integrations).
+    Restart Codex after installation. Review and trust its session context hook in Codex. Use [integration options](/reference/integrations) for startup requirements and compatibility commands.
   </Tab>
   <Tab title="Copilot">
     ```shell
@@ -47,6 +47,8 @@ icon: "plug"
 ## 2. Request a declaration
 
 Select the exact Kotlin repository or worktree in the agent. Keep IDEA open with that project imported.
+
+The plugin's MCP session starts IDEA preparation for projects with `settings.gradle.kts`. Semantic calls wait for preparation and report blockers.
 
 <Prompt description="Use Kast to find a Kotlin function in this repository. Show its name and source location. Report a setup problem if you cannot." actions={["copy"]}>
 Use Kast to find a Kotlin function in this repository. Show its name and source location. Report a setup problem if you cannot.

@@ -14,7 +14,7 @@ Other IDEA release lines reject admission. A separate project JDK does not repla
 | --- | --- |
 | MCP | `tools/list` |
 | Tool RPC | `catalog` |
-| Codex App Server | Conversation's provider catalog |
+| Codex plugin | MCP `tools/list` |
 
 Component admission compares runtime protocol, operation registry, wire schema, capabilities, and IDEA/Kotlin support. Equal component version numbers cannot establish compatibility.
 
@@ -53,4 +53,6 @@ Historical offsets, counts, and handles belong to their captured revision. Curre
 
 After an upgrade, IDEA and clients must load the new components. Retained output cannot cross retired live authority.
 
-Hosted Codex App Server remains a preview. [Recorded client compatibility](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md) defines its tested protocol and desktop limits.
+The [App Server compatibility record](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md) describes its tested protocol and earlier desktop limits. Current Codex setup uses the bundled plugin over MCP.
+
+`kast connect codex app-server` rejects before registration effects. Codex owns its App Server and control socket. Use [integration options](/reference/integrations) for the current setup contract.

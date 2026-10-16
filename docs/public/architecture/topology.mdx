@@ -1,6 +1,6 @@
 ---
 title: "Topology and ownership"
-description: "Locate the agent adapters, shared coordinator, IDEA Host, and stored evidence."
+description: "Locate the agent adapters, IDEA Host, and stored evidence."
 icon: "network"
 ---
 
@@ -10,21 +10,13 @@ Kast separates the agent connection from the IDEA project that supplies semantic
 
 <div role="region" aria-label="Architecture diagram; scroll horizontally on narrow screens" tabIndex={0} className="overflow-x-auto">
   <div style={{minWidth: "400px"}}>
-<img
-  className="block dark:hidden"
-  alt="MCP or Tool RPC adapters and hosted App Server reach the IDEA Host for an exact root. Canonical queries use compiler-backed domains and retain evidence."
-  src="/images/architecture/topology.light.svg"
-/>
-<img
-  className="hidden dark:block"
-  alt="MCP or Tool RPC adapters and hosted App Server reach the IDEA Host for an exact root. Canonical queries use compiler-backed domains and retain evidence."
-  src="/images/architecture/topology.dark.svg"
-/>
+    <img className="block dark:hidden" alt="MCP or Tool RPC adapters reach the IDEA Host for an exact root. Canonical queries use compiler-backed domains and retain evidence." src="/images/architecture/topology.light.svg" />
+
+    <img className="hidden dark:block" alt="MCP or Tool RPC adapters reach the IDEA Host for an exact root. Canonical queries use compiler-backed domains and retain evidence." src="/images/architecture/topology.dark.svg" />
   </div>
 </div>
 
 On a narrow screen, scroll the diagram horizontally or use the numbered explanation below.
-
 
 [Open full-size diagram](/images/architecture/topology.light.svg) · [Mermaid source](/images/architecture/topology.mmd)
 
@@ -33,13 +25,13 @@ On a narrow screen, scroll the diagram horizontally or use the numbered explanat
 3. The canonical query uses domain services backed by compiler analysis and project indexes.
 4. Retained query state keeps produced evidence for later presentation. It cannot replace current compiler authority.
 
-The arrows show responsibility, not a complete process or deployment graph. Direct adapters and hosted App Server have different session lifecycles.
+The arrows show responsibility, not a complete process or deployment graph. MCP and Tool RPC have different session lifecycles. The current Codex plugin uses MCP; Codex owns its App Server and control socket.
 
 ## Find the source owner
 
 | Boundary | Owner | Responsibility |
 | --- | --- | --- |
-| Agent adapters | `cli`, `app-server`, `copilot`, `pi` | Carry requests and preserve operation results. |
+| Agent adapters | `cli`, `copilot`, `pi` | Carry requests and preserve operation results. |
 | IDEA integration | `runtime/hosted`, `workspace/intellij-read` | Admit the selected project and native read state. |
 | Semantic coordination | `query/protocol`, `query/service` | Execute a fixed question and preserve completion evidence. |
 | Domain facts | `symbol`, `relation`, `source`, `traversal`, `diagnostic` | Establish the supported program facts. |
@@ -52,8 +44,10 @@ Use [Lifecycles](/reference/lifecycles) for connection and daemon ownership. Use
 
 ## Source evidence
 
-Reviewed at `3ffe57068`. [`settings.gradle.kts`](https://github.com/amichne/kast/blob/3ffe570686a886cda71e8a0d6194b62592cbb90f/settings.gradle.kts) owns module inclusion.
+Reviewed at `a6faea2de`. [`settings.gradle.kts`](https://github.com/amichne/kast/blob/a6faea2de1e9f1043b121cdd7fef691a4320a37a/settings.gradle.kts) owns module inclusion.
 
-[HostedCanonicalQuery](https://github.com/amichne/kast/blob/3ffe570686a886cda71e8a0d6194b62592cbb90f/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt) composes the admitted project, domain services, and retained state.
+[HostedCanonicalQuery](https://github.com/amichne/kast/blob/a6faea2de1e9f1043b121cdd7fef691a4320a37a/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt) composes the admitted project, domain services, and retained state.
+
+[KastMcpMain](https://github.com/amichne/kast/blob/a6faea2de1e9f1043b121cdd7fef691a4320a37a/cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt) binds the client-owned MCP session and preparation callback. This transport starts no App Server or broker.
 
 [The source map](/reference/source-map) links adapter dispatch and focused tests.

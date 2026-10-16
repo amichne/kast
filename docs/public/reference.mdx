@@ -36,17 +36,17 @@ The compiler-static model does not establish runtime execution or path feasibili
 
 ## Client contracts
 
-MCP, Tool RPC, and hosted App Server carry canonical operation documents through distinct client lifecycles.
+MCP and Tool RPC carry canonical operation documents. The current Codex plugin uses MCP.
 
 | Client | Contract authority |
 | --- | --- |
 | [Direct MCP](/reference/mcp-catalog) | Installed `tools/list` entries and input and output schemas. |
 | [Tool RPC](/reference/rpc-catalog) | Installed `catalog`, process commands, and reply variants. |
-| [Hosted App Server](/reference/compatibility) | The conversation's provider catalog and admitted client protocol. |
+| [Codex plugin](/reference/integrations) | MCP tools from the installed plugin. |
 
 The shared tools are `query_symbols`, `check_diagnostics`, `add_declaration`, and `replace_body`.
 
-Direct MCP and Tool RPC expose `health_check`. Hosted App Server exposes `workspace_lifecycle` for separate project actions.
+Direct MCP and Tool RPC expose `health_check`. Hosted App Server model pages describe the separate `workspace_lifecycle` contract. [Compatibility](/reference/compatibility) distinguishes that earlier client surface from current Codex setup.
 
 ## Schemas and source owners
 
