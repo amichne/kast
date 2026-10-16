@@ -54,6 +54,11 @@ private val kotlinPluginLibs: ConfigurableFileCollection =
         )
         .builtBy(extractDiagnosticKotlinPlugin)
 
+// Unit tests use the catalog coroutines runtime. Production compileOnly keeps the IDE fork.
+configurations.testImplementation {
+    exclude(group = "org.jetbrains.intellij.deps.kotlinx", module = "kotlinx-coroutines-core-jvm")
+}
+
 dependencies {
     implementation(catalog.findLibrary("serialization-json").get())
     implementation(project(":protocol:contract"))
@@ -84,4 +89,7 @@ dependencies {
     testImplementation("com.jetbrains.intellij.platform:lang-impl:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:util:$ideaPlatformBuild")
     testImplementation("com.jetbrains.intellij.platform:project-model:$ideaPlatformBuild")
+    testRuntimeOnly(
+        "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:${catalog.findVersion("coroutines").get().requiredVersion}"
+    )
 }
