@@ -49,10 +49,10 @@ sources:
     resource: repo://pi/extension.ts
   - id: openwiki-source-6b18658d32b10e2368e7dc20
     resource: repo://pi/mcp-extension.ts
-generated: { by: "codex", at: "2026-10-15T19:07:35.337Z" }
+generated: { by: "codex", at: "2026-10-16T07:07:29.171Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-15T19:07:35.337Z
+    at: 2026-10-16T07:07:29.171Z
 ---
 
 # Agent context and harness delivery
@@ -62,7 +62,9 @@ verified:
 The Codex and Copilot plugins select host-specific session hooks.
 Their shared script reads the same brief and emits the envelope that each host accepts.
 It adds the exact session workspace and absolute paths to the query schema and named example array.
-The script runs offline with locked uv metadata and the Python standard library.
+The hook invokes Python 3.9 or later and uses only the standard library.
+It starts no uv process and downloads no dependencies.
+
 Invalid events, absent resources, linked resources, and oversized context reject without partial context.
 Codex owns hook trust. Plugin installation alone does not prove context delivery.
 
@@ -73,7 +75,9 @@ It distinguishes directory paths, Kotlin packages, exact source-set names, outpu
 The plugin does not publish a discoverable skill.
 
 The installed Pi extension registers Kast through native `registerMcpServer`.
-It reads the shared brief at session start and adds it before each model request.
+It reads bounded local resources directly with Node and adds the shared brief before each model request.
+An absent or invalid resource produces one warning while normal turns and native MCP stay available.
+Pi starts no Python or uv process for context.
 Pi owns MCP discovery, permissions, and connection lifetime.
 The CLI distribution selects `pi/mcp-extension.ts` for `kast connect pi`.
 

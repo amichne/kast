@@ -34,6 +34,8 @@ code_sources:
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlanTest.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/QuerySessionRejectionDetailTest.kt
 sources:
+  - id: openwiki-source-a856ab1fe259496cbf44bc53
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt
   - id: openwiki-source-7685e27063adfdefffa21252
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
   - id: openwiki-source-59b559d53d91096a82b485a2
@@ -44,10 +46,10 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt
   - id: openwiki-source-210e5a1fdf9d35bc022594a2
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt
-generated: { by: "codex", at: "2026-10-15T01:04:37.434Z" }
+generated: { by: "codex", at: "2026-10-16T06:54:44.448Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-15T01:04:37.434Z
+    at: 2026-10-16T06:54:44.448Z
 ---
 
 # Direct MCP and tool RPC
@@ -72,7 +74,8 @@ The connection cannot switch eras after admission.
 Modern requests need the supported protocol version.
 The server distinguishes initialization, discovery, tool listing, calls, and unsupported methods.
 
-Initialization starts workspace preparation once.
+Legacy initialization or the first admitted modern request starts workspace preparation once.
+The same session owner serves later semantic demand and health requests without a separate setup hook.
 Tool annotations describe the preparation effect as well as the tool's nominal read behavior.
 Preparation can save editor buffers and refresh the project.
 A read query therefore does not imply an entirely effect-free client invocation.

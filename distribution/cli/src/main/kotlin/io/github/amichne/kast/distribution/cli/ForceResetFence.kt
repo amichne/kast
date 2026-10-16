@@ -221,13 +221,6 @@ private constructor(
             ResetPathPresence.REJECTED
         }
 
-    fun beginActivation(staged: StagedReset): ResetEffect {
-        if (staged.erased.fence !== this) return ResetEffect.Rejected(ForceResetFailure.ROOT_REJECTED)
-        if (admission() != ResetEffect.Completed) return ResetEffect.Rejected(ForceResetFailure.FENCE_REJECTED)
-        storage = InstallationResetStorage.Activating
-        return hold()
-    }
-
     fun erased(): ResetEffect {
         storage = InstallationResetStorage.Erased
         return hold()
@@ -271,8 +264,8 @@ private constructor(
         return lift()
     }
 
-    fun liftReady(ready: ReadyReset): ResetEffect {
-        if (ready.staged.erased.fence !== this || storage != InstallationResetStorage.Activating)
+    fun liftInstalled(installed: InstalledReset): ResetEffect {
+        if (installed.staged.erased.fence !== this || storage != InstallationResetStorage.Erased)
             return ResetEffect.Rejected(ForceResetFailure.RESET_BUSY)
         return lift()
     }

@@ -19,7 +19,7 @@ internal class ConnectionPersistenceTest {
     @TempDir lateinit var temporary: Path
 
     @ParameterizedTest
-    @EnumSource(HarnessConnection::class, names = ["PI", "COPILOT", "CODEX_APP_SERVER"])
+    @EnumSource(HarnessConnection::class, names = ["PI", "COPILOT"])
     fun selectedDirectorySurvivesReconnectRelocationAndDisconnect(connection: HarnessConnection) {
         val (root, home) = integrationFixture(temporary, connection)
         val first = temporary.resolve("custom one")
@@ -71,7 +71,7 @@ internal class ConnectionPersistenceTest {
     }
 
     @ParameterizedTest
-    @EnumSource(HarnessConnection::class, names = ["PI", "COPILOT", "CODEX_APP_SERVER"])
+    @EnumSource(HarnessConnection::class, names = ["PI", "COPILOT"])
     fun failedRelocationRestoresConnectionConfigCheckpointAndReceipt(connection: HarnessConnection) {
         val (root, home) = integrationFixture(temporary, connection)
         connectHarness(root, home, connection)

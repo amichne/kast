@@ -39,9 +39,10 @@ Run the public installer from a terminal.
 
 The default selects stable Control and Host independently. The installer examines component contracts before it reports installation success.
 
-The installer offers a user-level Codex MCP connection. Accept the default to use Codex after you restart IDEA and Codex.
+The installer offers the Codex plugin. Accept the default to use Codex after you restart IDEA and Codex.
 
-For registration without a prompt, append `-- --register-codex-mcp`. To preserve existing Codex MCP configuration, append `-- --skip-codex-mcp`.
+For installation without a prompt, append `-- --install-codex-plugin`. To omit Codex plugin installation, append `-- --skip-codex-plugin`.
+The former `--register-codex-mcp` and `--skip-codex-mcp` options remain aliases for these plugin choices.
 
 For structured diagnostics, append `-- --verbose`. Preserve the `--` separator before installer options.
 
@@ -58,7 +59,7 @@ Terminal downloads show progress. Ctrl-C stops installation. `kast upgrade` keep
 
 Developer installation resets stale Kast state before replacement. Stable installation requests the same cleanup with `--force`.
 
-If you need a preview without file or registration changes, use `--dry-run`. To preserve existing Codex MCP registration, use `--skip-codex-mcp`.
+If you need a preview without file or registration changes, use `--dry-run`. To omit Codex plugin installation, use `--skip-codex-plugin`.
 </Accordion>
 
 <Accordion title="Another IDEA installation">
@@ -95,9 +96,10 @@ The installer reports a missing `PATH` entry. It does not change shell profiles.
 
 ### Coordinator endpoint
 
-Fresh installations use a private endpoint. Routine installation preserves admitted saved settings unless you select another endpoint.
+Fresh and replacement installations use a private endpoint. Replacement migrates an admitted saved `codex-control` selection to `private`.
 
-Select `codex-control` explicitly to expose the standard Codex control socket. An occupied or unreadable socket does not establish ownership.
+The installer rejects an explicit `codex-control` selection. It does not start a broker or publish desktop discovery.
+The plugin's MCP session owns IntelliJ preparation. Codex owns its App Server and control socket.
 
 Read [App Server compatibility](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md) for endpoint admission and migration details.
 

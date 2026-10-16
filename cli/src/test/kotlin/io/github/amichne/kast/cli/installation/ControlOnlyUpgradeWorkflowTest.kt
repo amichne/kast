@@ -46,9 +46,9 @@ class ControlOnlyUpgradeWorkflowTest {
                 InstallationOutcome.Complete::class.java,
                 executeFixtureInstallation(request, InstallationActivationPolicy.ACTIVATE),
             )
-        assertEquals(InstallationActivation.Ready, outcome.report.activation)
+        assertEquals(InstallationActivation.NotRequested, outcome.report.activation)
         assertEquals("1.2.4", outcome.report.semanticVersion)
-        assertEquals(listOf("C2 host-admission", "C1 disable", "C2 enable", "C2 host-admission"), fixture.effects())
+        assertEquals(listOf("C2 host-admission", "C1 disable", "C2 host-admission"), fixture.effects())
         assertEquals(priorConfiguration, Files.readString(configuration))
         assertFalse(Files.exists(fixture.selected.resolve("state/prior-session")))
         assertFalse(Files.exists(fixture.selected.resolve("share/kast/plugins")))
@@ -57,28 +57,26 @@ class ControlOnlyUpgradeWorkflowTest {
     }
 
     @Test
-    fun `explicit control endpoint overrides prior choice while preserving other saved settings`(
-        @TempDir temporary: Path
-    ) {
+    fun `saved shared endpoint migrates to private while preserving other saved settings`(@TempDir temporary: Path) {
         val fixture = Fixture(temporary)
         fixture.prior()
         val configuration = fixture.selected.resolve("config/environment")
-        Files.writeString(configuration, "KAST_DEBUG=1\nKAST_APP_SERVER_PUBLIC_ENDPOINT=private\n")
-        val request = fixture.candidate(endpoint = BrokerPublicEndpointMode.CODEX_CONTROL)
+        Files.writeString(configuration, "KAST_DEBUG=1\nKAST_APP_SERVER_PUBLIC_ENDPOINT=codex-control\n")
+        val request = fixture.candidate()
         val outcome =
             assertInstanceOf(
                 InstallationOutcome.Complete::class.java,
                 executeFixtureInstallation(request, InstallationActivationPolicy.ACTIVATE),
             )
-        assertEquals(InstallationActivation.Ready, outcome.report.activation)
+        assertEquals(InstallationActivation.NotRequested, outcome.report.activation)
         val admitted =
             (readInstallationConfiguration(configuration) as io.github.amichne.kast.kernel.Refinement.Refined).value
         assertEquals("1", admitted.configuration.launchEnvironment().variables["KAST_DEBUG"])
         assertEquals(
-            "codex-control",
+            "private",
             admitted.configuration.launchEnvironment().variables["KAST_APP_SERVER_PUBLIC_ENDPOINT"],
         )
-        assertEquals(listOf("C2 host-admission", "C1 disable", "C2 enable", "C2 host-admission"), fixture.effects())
+        assertEquals(listOf("C2 host-admission", "C1 disable", "C2 host-admission"), fixture.effects())
         fixture.assertHostUnchanged()
     }
 
@@ -99,7 +97,6 @@ class ControlOnlyUpgradeWorkflowTest {
             listOf(
                 "C2 host-admission",
                 "C1 disable",
-                "C2 enable",
                 "C2 host-admission",
                 "C2 disable",
                 "C1 enable",
@@ -125,7 +122,7 @@ class ControlOnlyUpgradeWorkflowTest {
         assertEquals(InstallationFailure.CONTROL_RECOVERY_REJECTED, outcome.recoveryFailure)
         assertTrue(Files.exists(fixture.install.resolve("recovery/replacement/rejected-control")))
         assertEquals(
-            listOf("C2 host-admission", "C1 disable", "C2 enable", "C2 host-admission", "C2 disable", "C1 enable"),
+            listOf("C2 host-admission", "C1 disable", "C2 host-admission", "C2 disable", "C1 enable"),
             fixture.effects(),
         )
         fixture.assertHostUnchanged()
@@ -150,7 +147,6 @@ class ControlOnlyUpgradeWorkflowTest {
             listOf(
                 "C2 host-admission",
                 "C1 disable",
-                "C2 enable",
                 "C2 host-admission",
                 "C2 disable",
                 "C1 enable",
@@ -203,7 +199,6 @@ class ControlOnlyUpgradeWorkflowTest {
             listOf(
                 "C2 host-admission",
                 "C1 disable",
-                "C2 enable",
                 "C2 host-admission",
                 "C2 disable",
                 "C1 enable",

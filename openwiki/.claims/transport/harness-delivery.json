@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:77f1704b48c80359239aa9a92039afc8158429e6bf21a2b8626adc66be8772cc",
+  "pageVersion": "sha256:ffcfd412a874c5d7559cc59da0898643dca27925cfbc6ecd1fa82eccb0bf5751",
   "claims": [
     {
       "id": "claim_a5aabd0ac08b46be89a2eef490220d68",
@@ -52,25 +52,25 @@
     },
     {
       "id": "claim_62e9689fb94d439cb56fc70a8129fcb6",
-      "statement": "Codex and Copilot plugin hooks use one passive script to emit the shared brief, exact workspace, and absolute schema and example paths, with finite rejection before partial context.",
+      "statement": "Codex and Copilot hooks invoke one passive standard-library Python script without uv or dependency downloads. It emits bounded shared context with exact workspace and reference paths, rejecting invalid inputs without partial context.",
       "evidence": [
         {
           "resource": "repo://agent-tools/hooks/copilot.json",
-          "version": "repo-file-v1:sha256:ce27934f02d2e28698e3e2da24406abedddc610297ce9a4a51f20963b61c266d"
+          "version": "repo-file-v1:sha256:0ebe32717b265c9fb8aaac9ac26b7b5d7c3fad36ff73aef88552a224fae3aec9"
         },
         {
           "resource": "repo://agent-tools/hooks/hooks.json",
-          "version": "repo-file-v1:sha256:84d8a79a3cfc6a5b858d3a2331a03a473cc1a5d2eea836ade635d8531b7645d3"
+          "version": "repo-file-v1:sha256:a0c53cbd7da3edc348425f30c31a1c03d0570cc85c6b888c39133208efb6deab"
         },
         {
           "resource": "repo://agent-tools/hooks/session_start.py",
-          "version": "repo-file-v1:sha256:a81bfe5ffabb1a367454edd004b948f8ecea19ec41452bdb8dcf10dd07d2acf1"
+          "version": "repo-file-v1:sha256:94c2ba4afd2d99a38a4703c48527171148e27b43419e009e0143fa7ba53a4519"
         }
       ]
     },
     {
       "id": "claim_5564e7cf80574a1b8c498fe560f82e2c",
-      "statement": "The CLI distribution selects the Pi native MCP extension, which registers Kast through registerMcpServer and adds the shared session context before model requests.",
+      "statement": "The CLI selects Pi's native MCP extension, which registers Kast and reads bounded bundled context directly with Node. Context rejection emits one warning while later turns and MCP remain available, without Python or uv processes.",
       "evidence": [
         {
           "resource": "repo://cli/build.gradle.kts",
@@ -78,7 +78,7 @@
         },
         {
           "resource": "repo://pi/mcp-extension.ts",
-          "version": "repo-file-v1:sha256:2254e6622f14343dcf4e756240dbe0379934fededc152dbcfe5383ddf188f71e"
+          "version": "repo-file-v1:sha256:488b295bf9ae1fb58f5fb504d532d78fa1fc3ca855d189009d3552879ba3cf0d"
         }
       ]
     },
@@ -99,6 +99,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T19:07:35.337Z"
+    "at": "2026-10-16T07:07:29.171Z"
   }
 }

@@ -46,16 +46,16 @@ class ManagementCliTest {
     @TempDir lateinit var temporary: Path
 
     @Test
-    fun `Codex requires an explicit supported transport`() {
-        assertTrue(parseManagementCommand(listOf("connect", "codex")) is ManagementParsing.Print)
+    fun `Codex connection selects only the native plugin owner`() {
         assertEquals(
-            ManagementParsing.Selected(ManagementCommand.Connect(HarnessConnection.CODEX_MCP)),
+            ManagementParsing.Selected(ManagementCommand.Plugin(PluginHarness.CODEX, false)),
+            parseManagementCommand(listOf("connect", "codex")),
+        )
+        assertEquals(
+            ManagementParsing.Selected(ManagementCommand.Plugin(PluginHarness.CODEX, false)),
             parseManagementCommand(listOf("connect", "codex", "mcp")),
         )
-        assertEquals(
-            ManagementParsing.Selected(ManagementCommand.Connect(HarnessConnection.CODEX_APP_SERVER)),
-            parseManagementCommand(listOf("connect", "codex", "app-server")),
-        )
+        assertTrue((parseManagementCommand(listOf("connect", "codex", "app-server")) as ManagementParsing.Print).error)
         assertTrue((parseManagementCommand(listOf("connect", "codex", "--force")) as ManagementParsing.Print).error)
         assertTrue((parseManagementCommand(listOf("connect", "codex", "other")) as ManagementParsing.Print).error)
         assertTrue((parseManagementCommand(listOf("connect", "pi", "mcp")) as ManagementParsing.Print).error)
@@ -168,7 +168,24 @@ class ManagementCliTest {
     }
 
     @Test
-    fun `upgrade reports pending service activation after verified installation`() {
+    fun `upgrade accepts the installed report without broker activation`() {
+        val (root, home) = integrationFixture(temporary, HarnessConnection.PI)
+        val report =
+            managementJson.encodeToString(
+                FixtureInstallerReport(status = "installed", activation = FixtureActivation("not-requested"))
+            )
+        val installer = root.resolve("installation/share/kast/install.sh")
+        Files.createDirectories(installer.parent)
+        Files.writeString(installer, "#!/bin/bash\nprintf '%s' '$report' > \"\$KAST_MANAGEMENT_REPORT_PATH\"\n")
+
+        upgradeInstallation(root, home)
+
+        assertTrue(Files.isRegularFile(Path.of((readReceipt(root) as ReceiptRead.Read).receipt.executable)))
+        assertTrue(Files.notExists(root.resolve("installation/state/broker/service-readiness.json")))
+    }
+
+    @Test
+    fun `upgrade rejects a report that claims pending broker activation`() {
         val (root, home) = integrationFixture(temporary, HarnessConnection.PI)
         val report =
             Json.encodeToString(
@@ -183,10 +200,8 @@ class ManagementCliTest {
         Files.createDirectories(installer.parent)
         Files.writeString(installer, "#!/bin/bash\nprintf '%s' '$report' > \"\$KAST_MANAGEMENT_REPORT_PATH\"\n")
         val failure = org.junit.jupiter.api.assertThrows<ManagementRejected> { upgradeInstallation(root, home) }
-        assertEquals("service-activation", failure.stage)
-        assertTrue(failure.reason.contains("installed 1.2.3"))
-        assertTrue(failure.reason.contains("service restart required"))
-        assertTrue(failure.reason.contains("restart IntelliJ IDEA and connected harnesses"))
+        assertEquals("upgrade-report", failure.stage)
+        assertTrue(failure.reason.contains("installed state is unverified"))
         assertTrue(Files.exists(Path.of((readReceipt(root) as ReceiptRead.Read).receipt.executable)))
     }
 

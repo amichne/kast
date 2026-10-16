@@ -65,11 +65,10 @@ class LifecycleContractTest {
         val completed =
             listOf(
                 ForceResetOutcome.Removed("/kast"),
-                ForceResetOutcome.Reinstalled(
+                ForceResetOutcome.Installed(
                     "/kast/installation",
                     "1.2.3",
                     "/kast/bin/kast",
-                    "12345678-1234-1234-1234-123456789abc",
                 ),
                 ForceResetOutcome.Pending(
                     "/kast/installation",
@@ -97,9 +96,19 @@ class LifecycleContractTest {
                 ),
             )
         val expected = resourceArray("force-reset-expected-shapes.json")
+        assertEquals(expected.size, completed.size)
         completed.forEachIndexed { index, result ->
             assertTrue(schema.validate(result.asJson(), InputFormat.JSON).isEmpty(), result.asJson())
             assertEquals(expected[index], Json.parseToJsonElement(result.asJson()))
+        }
+    }
+
+    @Test
+    fun `pending cold installation keeps final verification for every finite failure`() {
+        ForceResetFailure.entries.forEach { failure ->
+            val result = ForceResetOutcome.Pending("/kast/installation", "1.2.3", "/kast/bin/kast", failure)
+            assertEquals(ForceResetStage.FINAL_VERIFICATION, result.stage)
+            assertTrue(schema.validate(result.asJson(), InputFormat.JSON).isEmpty(), result.asJson())
         }
     }
 

@@ -16,7 +16,7 @@ class InstallationCompletionTest {
     fun `active completion publishes the new native executable before resuming an exact shutdown`(@TempDir root: Path) {
         val fixture = createLifecycleFixture(root)
         fence(fixture)
-        val script = Script(fixture, Step("bootstrap", LifecycleChildObservation.Exited(0)))
+        val script = Script(fixture)
         val events = mutableListOf<LifecycleObservation>()
 
         val completed =
@@ -122,46 +122,6 @@ class InstallationCompletionTest {
         assertTrue(Files.isSymbolicLink(fence))
         assertEquals(raw, Files.readString(external))
         script.exhausted()
-    }
-
-    @Test
-    fun `failed bootstrap restores the shutdown request and retires partial startup`(@TempDir root: Path) {
-        val rejections =
-            listOf(
-                LifecycleChildObservation.Exited(7) to LifecycleFailure.CHILD_REJECTED,
-                LifecycleChildObservation.DeadlineExceeded to LifecycleFailure.CHILD_DEADLINE_EXCEEDED,
-                LifecycleChildObservation.Unavailable to LifecycleFailure.CHILD_REJECTED,
-            )
-        for ((index, rejection) in rejections.withIndex()) {
-            val fixture = createLifecycleFixture(Files.createDirectory(root.resolve("case-$index")))
-            val fence = fence(fixture)
-            val bytes = Files.readString(fence)
-            val script =
-                Script(
-                    fixture,
-                    Step("bootstrap", rejection.first),
-                    Step("disable", LifecycleChildObservation.Exited(0)),
-                )
-            val events = mutableListOf<LifecycleObservation>()
-
-            val result =
-                assertInstanceOf(
-                    InstallationCompletionResult.ActivationRejected::class.java,
-                    complete(fixture, script, events),
-                )
-
-            assertEquals(rejection.second, result.failure)
-            assertEquals(bytes, Files.readString(fence))
-            assertEquals(
-                LifecycleObservation.rejected(
-                    LifecycleOperation.REINSTALL,
-                    LifecycleStage.ACTIVATION,
-                    rejection.second,
-                ),
-                events.last(),
-            )
-            script.exhausted()
-        }
     }
 
     private fun fence(fixture: LifecycleFixture): Path =

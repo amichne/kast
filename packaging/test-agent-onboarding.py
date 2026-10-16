@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import ast
 import json
-from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = ROOT / "agent-tools"
@@ -53,9 +54,7 @@ class AgentOnboardingTest(unittest.TestCase):
                 texts.append(text)
                 self.assertLessEqual(len(text.encode()), 8192)
                 self.assertIn("Use `CLASS` for interfaces", text)
-                self.assertIn(
-                    json.dumps(str(PLUGIN / "references/query-examples.json")), text
-                )
+                self.assertIn(json.dumps(str(PLUGIN / "references/query-examples.json")), text)
                 self.assertIn(json.dumps(str(workspace)), text)
             self.assertEqual(texts[0], texts[1])
             self.assertEqual(texts[1], texts[2])
@@ -121,9 +120,7 @@ class AgentOnboardingTest(unittest.TestCase):
             )
             self.assertEqual(1, oversized.returncode)
             self.assertEqual("", oversized.stdout)
-            self.assertEqual(
-                "CONTEXT_TOO_LARGE", json.loads(oversized.stderr)["outcome"]
-            )
+            self.assertEqual("CONTEXT_TOO_LARGE", json.loads(oversized.stderr)["outcome"])
             brief.unlink()
             brief.symlink_to(PLUGIN / "references/onboarding.md")
             linked = subprocess.run(
@@ -137,16 +134,9 @@ class AgentOnboardingTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             workspace = Path(temporary).resolve()
             home = workspace / "home"
-            binary = home / ".local/bin/uv"
+            binary = home / ".local/bin/python3"
             binary.parent.mkdir(parents=True)
-            # This adapter fixture proves lookup and literal argv. The real hook owns the context.
-            binary.write_text(
-                f"#!{sys.executable}\n"
-                "import os, sys\n"
-                "assert sys.argv[1:5] == ['run', '--offline', '--locked', '--script']\n"
-                "os.execv(sys.executable, [sys.executable, *sys.argv[5:]])\n"
-            )
-            binary.chmod(0o700)
+            binary.symlink_to(sys.executable)
             environment = {
                 "HOME": str(home),
                 "PATH": "/usr/bin:/bin",
@@ -157,14 +147,9 @@ class AgentOnboardingTest(unittest.TestCase):
                 ("codex", "hooks.json", "SessionStart"),
                 ("copilot", "copilot.json", "sessionStart"),
             ):
-                hooks = json.loads((PLUGIN / "hooks" / filename).read_text())["hooks"][
-                    event
-                ]
-                command = (
-                    hooks[0]["hooks"][0]["command"]
-                    if host == "codex"
-                    else hooks[0]["bash"]
-                )
+                hooks = json.loads((PLUGIN / "hooks" / filename).read_text())["hooks"][event]
+                command = hooks[0]["hooks"][0]["command"] if host == "codex" else hooks[0]["bash"]
+                self.assertNotIn("uv ", command)
                 result = subprocess.run(
                     ["/bin/bash", "-c", command],
                     cwd=workspace,
@@ -177,6 +162,17 @@ class AgentOnboardingTest(unittest.TestCase):
                 )
                 self.assertEqual(0, result.returncode, result.stderr)
                 self.assertIn("additionalContext", result.stdout)
+
+    def test_context_script_uses_python39_syntax_without_runtime_dependencies(self):
+        source = (PLUGIN / "hooks/session_start.py").read_text()
+        ast.parse(source, feature_version=(3, 9))
+        self.assertNotIn("pydantic", source)
+
+    def test_codex_has_only_passive_context_hook(self):
+        hooks = json.loads((PLUGIN / "hooks/hooks.json").read_text())["hooks"]["SessionStart"]
+        self.assertEqual(1, len(hooks))
+        self.assertEqual(1, len(hooks[0]["hooks"]))
+        self.assertNotIn("prepare_workspace", hooks[0]["hooks"][0]["command"])
 
 
 if __name__ == "__main__":

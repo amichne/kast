@@ -2,7 +2,6 @@ package io.github.amichne.kast.distribution.cli
 
 import java.nio.file.Files
 import java.nio.file.Path
-import java.time.Duration
 import kotlinx.serialization.encodeToString
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -43,19 +42,13 @@ class PublicReinstallationTest {
                         writeActiveReport(Path.of(environment.getValue("KAST_MANAGEMENT_REPORT_PATH")))
                         LifecycleChildObservation.Exited(0)
                     },
-                runtime =
-                    PublicReadinessScript(
-                        root.resolve("installation"),
-                        ResetActivationObservation.Ready("1.2.3", "fresh-generation"),
-                    ),
             )
         assertEquals(1, calls)
         assertEquals(
-            ForceResetOutcome.Reinstalled(
+            ForceResetOutcome.Installed(
                 root.resolve("installation").toString(),
                 "1.2.3",
                 command.toString(),
-                "fresh-generation",
             ),
             result,
         )
@@ -65,7 +58,7 @@ class PublicReinstallationTest {
         Files.writeString(
             path,
             managementJson.encodeToString(
-                FixtureInstallerReport(status = "installed", activation = FixtureActivation("ready"))
+                FixtureInstallerReport(status = "installed", activation = FixtureActivation("not-requested"))
             ),
         )
 
@@ -101,7 +94,6 @@ class PublicReinstallationTest {
                 scope,
                 emptyMap(),
                 executor = LifecycleChildExecutor { _, _, _ -> LifecycleChildObservation.Exited(0) },
-                runtime = PublicReadinessScript(root.resolve("installation"), ResetActivationObservation.Unavailable),
             )
         assertEquals(
             ForceResetOutcome.Rejected(
@@ -138,6 +130,26 @@ class PublicReinstallationTest {
     }
 
     @Test
+    fun `receipt recovery keeps legacy Codex removal facts without recreating its launcher`() {
+        val (root, home) = integrationFixture(temporary, HarnessConnection.CODEX_APP_SERVER)
+        val launcher = legacyAppServerRegistration(root, home)
+        val registrations = (readReceipt(root) as ReceiptRead.Read).receipt.registrations
+        val environment =
+            mapOf(
+                "HOME" to home.toString(),
+                "KAST_PUBLIC_RESET_RECOVERY" to temporary.resolve("saved-connections.json").toString(),
+            )
+        assertEquals(LifecycleEffect.Completed, savePublicResetConnections(root, environment))
+        Files.delete(launcher)
+        integrationFixture(temporary, HarnessConnection.CODEX_APP_SERVER)
+
+        assertEquals(LifecycleEffect.Completed, restorePublicResetConnections(root, environment))
+
+        assertFalse(Files.exists(launcher))
+        assertEquals(registrations, (readReceipt(root) as ReceiptRead.Read).receipt.registrations)
+    }
+
+    @Test
     fun `saved connections survive erasure and foreign recovery receipts cannot select connections`() {
         val home = Files.createDirectories(temporary.toRealPath().resolve("home"))
         val root = Files.createDirectories(home.resolve(".local/share/kast"))
@@ -164,25 +176,5 @@ class PublicReinstallationTest {
             managementJson.encodeToString(receipt.copy(installationRoot = home.resolve("foreign").toString())),
         )
         org.junit.jupiter.api.assertThrows<ManagementRejected> { publicResetConnections(root, environment) }
-    }
-}
-
-private class PublicReadinessScript(private val installation: Path, private val result: ResetActivationObservation) :
-    ForceDaemonRuntime {
-    override fun launch(command: ResetLaunchCommand, home: Path) = error("unexpected launch effect")
-
-    override fun processes() = error("unexpected process observation")
-
-    override fun capture(process: ResetScopedProcess) = error("unexpected socket capture")
-
-    override fun retire(capture: ResetSharedSocketCapture.Captured, allowance: Duration) =
-        error("unexpected retirement")
-
-    override fun activate(installation: Path, home: Path, environment: Map<String, String>) =
-        error("unexpected activation")
-
-    override fun readiness(installation: Path): ResetActivationObservation {
-        assertEquals(this.installation, installation)
-        return result
     }
 }

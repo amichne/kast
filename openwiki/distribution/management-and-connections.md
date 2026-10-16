@@ -17,9 +17,6 @@ code_sources:
 - path: distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ManagementCliTest.kt
 - path: distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfigurationContractTest.kt
 - path: distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallationTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-75e91bf709db8b5e164b1b31
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt
@@ -29,7 +26,10 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt
   - id: openwiki-source-927dce901b5dbac4a4d84f48
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+generated: { by: "codex", at: "2026-10-16T07:07:29.171Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-16T07:07:29.171Z
 ---
 
 # Native management and harness connections
@@ -48,8 +48,10 @@ Status does not start Java, prepare a workspace, or contact a release server to 
 
 ## Connection destinations and ownership
 
-The command model distinguishes Codex MCP, Codex App Server, Copilot, and Pi connections.
-Codex selection needs an explicit transport when the command cannot identify one.
+The command model selects the Codex plugin, Copilot, or Pi.
+`kast connect codex` and the compatibility form `kast connect codex mcp` select the plugin owner.
+New App Server registration rejects before effects. Legacy connection variants remain for receipt admission and exact cleanup.
+
 `ConnectionDirectory.admit` establishes a canonical absolute path with bounded printable input.
 Physical registration admission separately establishes filesystem ownership before effects.
 A syntactically valid directory is not an owned host configuration.
@@ -62,13 +64,14 @@ An ambiguous legacy registration does not grant permission to replace another to
 ## Codex plugin installation
 
 `kast plugin codex` first admits the installed launcher and bundled marketplace payload.
+It rejects a foreign standalone MCP registration before plugin effects.
 It then inspects the exact marketplace and plugin identities through the Codex adapter.
 Conflicting marketplace or plugin evidence rejects before registration or installation.
 The admitted path asks Codex to install `kast@kast` and examines the resulting state.
 Codex owns its configuration, cache, and plugin removal.
 
-Keep plugin installation distinct from direct MCP connection registration.
-Both operations can expose Kast tools, but their host-owned configuration and removal rules differ.
+After Codex admits the plugin, Kast removes only exact receipt-owned legacy registrations.
+Codex owns cached plugin updates. After an upgrade, repeat `kast plugin codex` to refresh cached files.
 Command tests establish parsing and finite outcomes under fixtures.
 A native registration in a user's host needs separate effect evidence.
 

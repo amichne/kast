@@ -207,7 +207,7 @@ Bootstrap Kast for the current user.
 Usage:
   install.sh [--control-only | --host-only] [--host-version <major.minor.patch>] [--idea-home <absolute-path>]
              [--version <major.minor.patch> | --developer-latest] [--force] [--dry-run]
-             [--register-codex-mcp | --skip-codex-mcp] [--install-root <absolute-path>] [--stage-only] [--verbose]
+             [--install-codex-plugin | --skip-codex-plugin] [--install-root <absolute-path>] [--stage-only] [--verbose]
   install.sh uninstall [--install-root <absolute-path>] [--dry-run] [--managed-registrations] [--verbose]
   install.sh --help
 
@@ -241,15 +241,17 @@ of the latest stable release. Developer installs reset the user installation aut
 
 Development builds use packaging/install-checkout.sh persistent.
 
-Installation enables the app server and its macOS login LaunchAgent by default.
+Installation prepares the managed MCP launcher and the IntelliJ host plugin.
+The Codex plugin starts Kast when a session needs its tools.
 Upgrades review historical Kast entries one at a time when current ownership
 checks cannot admit them. Only an exact `yes` removes a reviewed entry; without
 a terminal, uncertain entries are retained and reported.
-Interactive paired installs ask whether to register a user-level Codex MCP
-server. Pass --register-codex-mcp or --skip-codex-mcp to make the choice without
-a prompt. Non-interactive paired installs default to registration for compatibility.
---register-codex-mcp requires a paired installation. --control-only, --host-only,
-and --stage-only skip registration without prompting; explicit --skip-codex-mcp is accepted.
+Interactive paired installs ask whether to install the Kast plugin in Codex.
+Pass --install-codex-plugin or --skip-codex-plugin to select without a prompt.
+Non-interactive paired installs install the plugin by default.
+--install-codex-plugin requires a paired installation. --control-only, --host-only,
+and --stage-only skip plugin installation without prompting.
+The legacy --register-codex-mcp and --skip-codex-mcp options select the same plugin behavior.
 After installation, use kast status, kast connect, kast upgrade, or kast uninstall.
 `--force` uses the fresh archive to stop Kast and remove its old installation,
 legacy `$HOME/.kast` state, historical `.kast-*` artifacts, and public command.
@@ -488,7 +490,7 @@ mode=apply
 force=0
 stage_only=0
 developer_latest=0
-codex_mcp_choice=unspecified
+codex_plugin_choice=unspecified
 verbose=0
 
 if [[ "${1:-}" == uninstall ]]; then
@@ -545,13 +547,13 @@ while [[ $# -gt 0 ]]; do
       developer_latest=1
       shift
       ;;
-    --register-codex-mcp|--skip-codex-mcp)
+    --install-codex-plugin|--skip-codex-plugin|--register-codex-mcp|--skip-codex-mcp)
       [[ "$action" == install ]] || fail "$1 is valid only for installation"
-      [[ "$codex_mcp_choice" == unspecified ]] || fail "choose only one Codex MCP registration option"
-      if [[ "$1" == --register-codex-mcp ]]; then
-        codex_mcp_choice=register
+      [[ "$codex_plugin_choice" == unspecified ]] || fail "choose only one Codex plugin installation option"
+      if [[ "$1" == --install-codex-plugin || "$1" == --register-codex-mcp ]]; then
+        codex_plugin_choice=register
       else
-        codex_mcp_choice=skip
+        codex_plugin_choice=skip
       fi
       shift
       ;;
@@ -593,8 +595,8 @@ if [[ "$stage_only" == 1 ]]; then
   host_version=""
 fi
 if [[ "$component" != pair ]]; then
-  [[ "$codex_mcp_choice" != register ]] || fail "--register-codex-mcp requires a paired installation"
-  [[ "$codex_mcp_choice" != unspecified ]] || codex_mcp_choice=skip
+  [[ "$codex_plugin_choice" != register ]] || fail "--install-codex-plugin requires a paired installation"
+  [[ "$codex_plugin_choice" != unspecified ]] || codex_plugin_choice=skip
 fi
 
 [[ -z "$uninstall_journal" || ( "$managed_registrations" == 1 && "$mode" == apply ) ]] || fail "uninstall journal requires native managed removal"
@@ -778,15 +780,15 @@ success "found IntelliJ IDEA $idea_version (build $idea_build)"
 info "The IntelliJ plugin gives Kast compiler-grounded access to projects opened in this exact IDEA release line."
 idea_plugin_root="$HOME/Library/Application Support/JetBrains/$idea_data_directory/plugins"
 
-if [[ "$codex_mcp_choice" == unspecified ]]; then
-  codex_mcp_choice=register
+if [[ "$codex_plugin_choice" == unspecified ]]; then
+  codex_plugin_choice=register
   if [[ "$mode" == apply && -t 0 ]]; then
     while true; do
-      printf '  Register a user-level Kast MCP server in Codex? [Y/n] ' >&2
-      IFS= read -r answer || fail "Codex MCP registration choice was not provided"
+      printf '  Install the Kast plugin in Codex? [Y/n] ' >&2
+      IFS= read -r answer || fail "Codex plugin choice was not provided"
       case "$answer" in
         ''|y|Y|yes|YES) break ;;
-        n|N|no|NO) codex_mcp_choice=skip; break ;;
+        n|N|no|NO) codex_plugin_choice=skip; break ;;
         *) warning "Enter yes or no." ;;
       esac
     done
@@ -947,13 +949,8 @@ if [[ "$force" == 1 && "$stage_only" == 0 ]]; then
 fi
 management_destination="$("$reset_management" --internal-install "$management_preflight")" ||
   fail "native executable destination was rejected before service retirement"
-if [[ "$mode" == apply && "$codex_mcp_choice" == register ]]; then
+if [[ "$mode" == apply && "$codex_plugin_choice" == register ]]; then
   require_command codex
-  registration_source="$reset_control_root/share/kast/codex-mcp-registration.py"
-  [[ -f "$registration_source" ]] || fail "control archive has no Codex MCP registration helper"
-  registration_check=check
-  [[ "$management_preflight" != preflight-reset ]] || registration_check=check-reset
-  python3 "$registration_source" "$registration_check" "$install_root" || fail "Codex MCP name 'kast' is unavailable"
 fi
 
 if [[ "$mode" == apply && "$management_preflight" == preflight-reset ]]; then
@@ -961,11 +958,11 @@ if [[ "$mode" == apply && "$management_preflight" == preflight-reset ]]; then
   run_installer_step "Fresh installation reset" "" "$reset_management" --internal-install reset
 fi
 
-info "The app server provides the complete Kast suite. Persistent installations start it at login."
-if [[ "$codex_mcp_choice" == skip ]]; then
-  info "Codex MCP registration is skipped; use the app server or kast connect for your harness."
+info "The Codex plugin uses the installed MCP launcher and the IntelliJ host plugin."
+if [[ "$codex_plugin_choice" == skip ]]; then
+  info "Codex plugin installation is skipped; use kast connect for your harness."
 fi
-note "$([[ "$mode" == plan ]] && printf 'planning' || printf 'installing') the app server and private service control"
+note "$([[ "$mode" == plan ]] && printf 'planning' || printf 'installing') the managed payload and IntelliJ host plugin"
 
 export KAST_INSTALL_CONTROL_ROOT="$control_root"
 export KAST_INSTALL_CONTROL_ARCHIVE="$temporary_root/$control_name"
@@ -996,10 +993,10 @@ if [[ "$stage_only" == 1 ]]; then
   installation_options+=(--stage-only)
 fi
 if [[ -n "${KAST_MANAGEMENT_REPORT_PATH:-}" && "$mode" == apply ]]; then
-  run_installer_step "App server and service installation" "$KAST_MANAGEMENT_REPORT_PATH" \
+  run_installer_step "Managed payload installation" "$KAST_MANAGEMENT_REPORT_PATH" \
     "$control_root/share/kast/libexec/kast-service" install ${installation_options[@]+"${installation_options[@]}"}
 else
-  run_installer_step "App server and service installation" "" \
+  run_installer_step "Managed payload installation" "" \
     "$control_root/share/kast/libexec/kast-service" install ${installation_options[@]+"${installation_options[@]}"}
 fi
 if [[ "$mode" == plan ]]; then
@@ -1026,11 +1023,11 @@ else
   [[ "$installed_management" == "$management_destination" ]] ||
     fail "native executable destination changed during installation"
   if [[ "$management_preflight" == preflight-reset && "$reset_management" != "$management_executable" ]]; then
-    run_installer_step "Recorded connection recovery" "" "$reset_management" --internal-install restore-connections
+    run_installer_step "Recorded connection recovery" "" "$management_executable" --internal-install restore-connections
   fi
-  if [[ "$codex_mcp_choice" == register ]]; then
+  if [[ "$codex_plugin_choice" == register ]]; then
     [[ -x "$install_root/installation/bin/kast-mcp-complete" ]] || fail "installed Kast MCP launcher is unavailable"
-    "$reset_management" connect codex mcp
+    "$management_executable" plugin codex
   fi
   installation_complete=1
 fi

@@ -4,8 +4,8 @@ title: "Kast packaging"
 description: "Owns installer adapters, offline lifecycle helpers, contract generation, and assembled-product acceptance scripts."
 resource: "repo://packaging"
 tags: [kast, navigation]
-timestamp: "2026-10-15T01:07:09Z"
-source_revision: 5a82727f790d365936682699502ee32a792b3634
+timestamp: "2026-10-16T06:50:12Z"
+source_revision: c63215981504766de0d3b861c801414e05768f57
 code_sources:
   - path: packaging/generate-public-query.py
   - path: packaging/host-installation.py
@@ -51,7 +51,7 @@ Owns installer adapters, offline lifecycle helpers, contract generation, and ass
 - Native reset scripts need the disposable installation setup stated in their own arguments and documentation.
 - [test-host-installation.py](test-host-installation.py) - Host target and receipt protection.
 - [test-installer-entrypoint.py](test-installer-entrypoint.py) - published-channel selection and installer ingress.
-- For the Kast plugin session hook, run `./gradlew agentSessionSetupTest`. Its locked uv environment stays in the build directory.
+- For passive context hooks, run `python3 packaging/test-agent-onboarding.py`. MCP session tests own IntelliJ preparation evidence.
 
 ## Navigation Hints
 

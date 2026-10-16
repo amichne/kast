@@ -4,8 +4,8 @@ title: "Kast cli"
 description: "Owns private JVM entry points, direct MCP and tool RPC sessions, installation workflows, and typed output projections."
 resource: "repo://cli"
 tags: [kast, navigation]
-timestamp: "2026-10-15T01:04:25Z"
-source_revision: 5a82727f790d365936682699502ee32a792b3634
+timestamp: "2026-10-16T06:38:53Z"
+source_revision: c63215981504766de0d3b861c801414e05768f57
 code_sources:
   - path: cli/build.gradle.kts
   - path: cli/src/main/js/query-delivery.mjs
@@ -73,6 +73,7 @@ Owns private JVM entry points, direct MCP and tool RPC sessions, installation wo
 ## Navigation Hints
 
 - Trace MCP and tool RPC through `KastDirectToolSession`. The MCP transport does not start an App Server broker.
+- Fresh and replacement installations select private endpoints and do not enable a daemon. Legacy retirement and recovery keep their ownership rules.
 - MCP starts preparation at legacy initialization or its first admitted modern request. Semantic calls wait for the selected workspace endpoint.
 - For query output, trace canonical serializers into `InstalledServerProjectionDocuments` and the shared JavaScript delivery and presentation owners.
 - For source reads and session rejection, examine `KastToolRpcQuerySession` and `QuerySessionRejectionDetail`. Issued selectors keep their current authority.

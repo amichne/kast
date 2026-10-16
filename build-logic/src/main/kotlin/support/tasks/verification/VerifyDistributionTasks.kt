@@ -64,8 +64,6 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
             "share/kast/agent-tools/plugins/kast/references/query-examples.json",
             "share/kast/agent-tools/plugins/kast/hooks/session_start.py",
             "share/kast/agent-tools/plugins/kast/hooks/session_start.py.lock",
-            "share/kast/agent-tools/plugins/kast/hooks/prepare_workspace.py",
-            "share/kast/agent-tools/plugins/kast/hooks/prepare_workspace.py.lock",
             "share/kast/agent-tools/plugins/kast/hooks/hooks.json",
             "share/kast/agent-tools/plugins/kast/hooks/copilot.json",
             "share/kast/libexec/kast-daemon",

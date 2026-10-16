@@ -48,13 +48,8 @@ internal sealed interface ForceResetOutcome {
     }
 
     @Serializable
-    @SerialName("RESET_REINSTALLED")
-    data class Reinstalled(
-        val installation: String,
-        val version: String,
-        val command: String,
-        val generation: String,
-    ) : ForceResetOutcome {
+    @SerialName("RESET_INSTALLED")
+    data class Installed(val installation: String, val version: String, val command: String) : ForceResetOutcome {
         val operation = ForceResetOperation.REINSTALL
     }
 
@@ -67,7 +62,7 @@ internal sealed interface ForceResetOutcome {
         val failure: ForceResetFailure,
     ) : ForceResetOutcome {
         val operation = ForceResetOperation.REINSTALL
-        val stage = ForceResetStage.ACTIVATION
+        val stage = ForceResetStage.FINAL_VERIFICATION
     }
 
     @Serializable

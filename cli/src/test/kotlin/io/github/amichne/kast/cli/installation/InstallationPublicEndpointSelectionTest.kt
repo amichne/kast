@@ -31,16 +31,16 @@ internal class InstallationPublicEndpointSelectionTest {
 
     private fun observations(): List<InstallationPublicEndpointObservation> =
         listOf(
-                BrokerPublicEndpointMode.CODEX_CONTROL to InstallationPublicEndpointSelectionReason.FRESH_DEFAULT,
+                BrokerPublicEndpointMode.PRIVATE to InstallationPublicEndpointSelectionReason.FRESH_DEFAULT,
                 BrokerPublicEndpointMode.PRIVATE to InstallationPublicEndpointSelectionReason.SAVED_CONFIGURATION,
-                BrokerPublicEndpointMode.CODEX_CONTROL to InstallationPublicEndpointSelectionReason.SAVED_CONFIGURATION,
                 BrokerPublicEndpointMode.PRIVATE to InstallationPublicEndpointSelectionReason.EXPLICIT,
-                BrokerPublicEndpointMode.CODEX_CONTROL to InstallationPublicEndpointSelectionReason.EXPLICIT,
+                BrokerPublicEndpointMode.PRIVATE to
+                    InstallationPublicEndpointSelectionReason.LEGACY_SHARED_ENDPOINT_MIGRATED,
             )
             .map { (endpoint, reason) -> InstallationPublicEndpointObservation(endpoint = endpoint, reason = reason) }
 
     @Test
-    fun `fresh unspecified endpoint selects Codex control without external observations`() {
+    fun `fresh unspecified endpoint selects private without external effects`() {
         assertEquals(
             Refinement.Refined(InstallationConfigurationSelection.FreshDefault),
             selectInstallationConfiguration(InstallationPublicEndpointSelection.Unspecified, null),
@@ -49,16 +49,11 @@ internal class InstallationPublicEndpointSelectionTest {
 
     @Test
     fun `explicit fresh endpoint preserves the selected mode`() {
-        for (endpoint in BrokerPublicEndpointMode.entries) {
-            val selected =
-                selectInstallationConfiguration(
-                    InstallationPublicEndpointSelection.Explicit(endpoint),
-                    null,
-                )
-                    as Refinement.Refined
-            assertEquals(endpoint, selected.value.endpoint)
-            assertEquals(InstallationPublicEndpointSelectionReason.EXPLICIT, selected.value.reason)
-        }
+        val selected =
+            selectInstallationConfiguration(InstallationPublicEndpointSelection.ExplicitPrivate, null)
+                as Refinement.Refined
+        assertEquals(BrokerPublicEndpointMode.PRIVATE, selected.value.endpoint)
+        assertEquals(InstallationPublicEndpointSelectionReason.EXPLICIT, selected.value.reason)
     }
 
     @Test
@@ -89,7 +84,7 @@ internal class InstallationPublicEndpointSelectionTest {
             assertEquals(
                 Refinement.Rejected(failure),
                 selectInstallationConfiguration(
-                    InstallationPublicEndpointSelection.Explicit(BrokerPublicEndpointMode.PRIVATE),
+                    InstallationPublicEndpointSelection.ExplicitPrivate,
                     root,
                 ),
             )

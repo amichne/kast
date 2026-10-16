@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:0b94512ae83ce63208167a9a5ff00c32a07899f49db9b6207bdba5c459a18b33",
+  "pageVersion": "sha256:c7ca7866afafcbee1cc2078494d7aa302d3cf68fdad4fbfc0c3e9d4f0e98da52",
   "claims": [
     {
       "id": "claim_ace555ef5bde4d7ca87a186cd8d9b62d",
@@ -54,13 +54,13 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt",
-          "version": "repo-file-v1:sha256:928e0c77420469a2a31481421f08c3a6fa5e51477aedee5bbc9324ad210b5ee4"
+          "version": "repo-file-v1:sha256:f1c15ca73702c961374520fcb6a094055acb620c3afc10f9906b9a6d8207ee19"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T00:33:05.932Z"
+    "at": "2026-10-16T06:54:44.448Z"
   }
 }

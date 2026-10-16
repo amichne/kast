@@ -97,19 +97,49 @@
       "examples": [
         "REINSTALL_FORCE"
       ]
-    },
-    "generation": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-      "minLength": 36,
-      "maxLength": 36,
-      "description": "The freshly activated service incarnation, admitted from verified readiness.",
-      "examples": [
-        "12345678-1234-1234-1234-123456789abc"
-      ]
     }
   },
   "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "operation",
+        "installation",
+        "version",
+        "command"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "RESET_INSTALLED"
+          ]
+        },
+        "operation": {
+          "const": "REINSTALL_FORCE"
+        },
+        "installation": {
+          "$ref": "#/$defs/installation"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "command": {
+          "$ref": "#/$defs/installation"
+        }
+      },
+      "examples": [
+        {
+          "type": "RESET_INSTALLED",
+          "operation": "REINSTALL_FORCE",
+          "installation": "/Users/example/.local/share/kast/installation",
+          "version": "0.50.0",
+          "command": "/Users/example/.local/share/kast/bin/kast"
+        }
+      ]
+    },
     {
       "type": "object",
       "required": [
@@ -298,51 +328,6 @@
         "installation",
         "version",
         "command",
-        "generation"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "RESET_REINSTALLED"
-          ]
-        },
-        "operation": {
-          "const": "REINSTALL_FORCE"
-        },
-        "installation": {
-          "$ref": "#/$defs/installation"
-        },
-        "version": {
-          "$ref": "#/$defs/version"
-        },
-        "command": {
-          "$ref": "#/$defs/installation"
-        },
-        "generation": {
-          "$ref": "#/$defs/generation"
-        }
-      },
-      "examples": [
-        {
-          "type": "RESET_REINSTALLED",
-          "operation": "REINSTALL_FORCE",
-          "installation": "/Users/example/.local/share/kast/installation",
-          "version": "0.50.0",
-          "command": "/Users/example/.local/share/kast/bin/kast",
-          "generation": "12345678-1234-1234-1234-123456789abc"
-        }
-      ]
-    },
-    {
-      "type": "object",
-      "required": [
-        "type",
-        "operation",
-        "installation",
-        "version",
-        "command",
         "stage",
         "failure"
       ],
@@ -369,7 +354,7 @@
         "stage": {
           "type": "string",
           "enum": [
-            "ACTIVATION"
+            "FINAL_VERIFICATION"
           ]
         },
         "failure": {
@@ -383,7 +368,7 @@
           "installation": "/Users/example/.local/share/kast/installation",
           "version": "0.50.0",
           "command": "/Users/example/.local/share/kast/bin/kast",
-          "stage": "ACTIVATION",
+          "stage": "FINAL_VERIFICATION",
           "failure": "READINESS_REJECTED"
         }
       ]
@@ -511,6 +496,13 @@
   ],
   "examples": [
     {
+      "type": "RESET_INSTALLED",
+      "operation": "REINSTALL_FORCE",
+      "installation": "/Users/example/.local/share/kast/installation",
+      "version": "0.50.0",
+      "command": "/Users/example/.local/share/kast/bin/kast"
+    },
+    {
       "type": "STOPPED",
       "operation": "STOP",
       "installation": "/Users/example/.local/share/kast/installation"
@@ -540,14 +532,6 @@
       "root": "/Users/example/.local/share/kast"
     },
     {
-      "type": "RESET_REINSTALLED",
-      "operation": "REINSTALL_FORCE",
-      "installation": "/Users/example/.local/share/kast/installation",
-      "version": "0.50.0",
-      "command": "/Users/example/.local/share/kast/bin/kast",
-      "generation": "12345678-1234-1234-1234-123456789abc"
-    },
-    {
       "type": "RESET_REJECTED",
       "operation": "UNINSTALL_FORCE",
       "stage": "CLEANUP",
@@ -559,7 +543,7 @@
       "installation": "/Users/example/.local/share/kast/installation",
       "version": "0.50.0",
       "command": "/Users/example/.local/share/kast/bin/kast",
-      "stage": "ACTIVATION",
+      "stage": "FINAL_VERIFICATION",
       "failure": "READINESS_REJECTED"
     },
     {

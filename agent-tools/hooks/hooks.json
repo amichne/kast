@@ -5,22 +5,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PATH=\"${HOME}/.local/bin:${PATH}\" uv run --offline --locked --script \"${PLUGIN_ROOT}/hooks/session_start.py\" codex",
+            "command": "PATH=\"${HOME}/.local/bin:${PATH}\" python3 \"${PLUGIN_ROOT}/hooks/session_start.py\" codex",
             "timeout": 10,
             "additionalContextLimit": 2000,
             "statusMessage": "Load Kast context"
-          }
-        ]
-      },
-      {
-        "matcher": "^(startup|resume|fork|clear)$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run --locked --script \"${PLUGIN_ROOT}/hooks/prepare_workspace.py\"",
-            "async": true,
-            "timeout": 1320,
-            "statusMessage": "Prepare Kast Kotlin workspace"
           }
         ]
       }

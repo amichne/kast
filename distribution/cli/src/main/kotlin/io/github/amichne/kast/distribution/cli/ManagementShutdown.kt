@@ -59,7 +59,7 @@ internal fun executeInstallationLifecycle(
             LifecycleOutcome.Rejected(operation, LifecycleStage.ADMISSION, LifecycleFailure.OWNERSHIP_UNPROVEN)
         }
     return when (outcome) {
-        is LifecycleOutcome.Reinstalled -> reconnect(root, home, prior, outcome, execution.observe)
+        is LifecycleOutcome.Reinstalled -> reconnect(root, home, prior, outcome, execution.observe, environment)
         is LifecycleOutcome.Stopped,
         is LifecycleOutcome.Rejected,
         is LifecycleOutcome.Pending -> outcome
@@ -146,11 +146,12 @@ private fun reconnect(
     prior: ManagementReceipt,
     outcome: LifecycleOutcome.Reinstalled,
     observe: (LifecycleObservation) -> Unit,
+    environment: Map<String, String>,
 ): LifecycleOutcome {
     observe(LifecycleObservation.started(outcome.operation, LifecycleStage.REGISTRATIONS))
-    for (registration in prior.registrations) {
+    for (registration in prior.registrations.distinctBy { it.connection.harness }) {
         try {
-            connectHarness(root, home, registration.connection)
+            reconnectHarness(root, home, registration.connection, environment)
         } catch (_: ManagementRejected) {
             observe(
                 LifecycleObservation.rejected(

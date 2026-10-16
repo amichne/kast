@@ -1,5 +1,96 @@
 [
   {
+    "type": "RESET_REINSTALLATION_PENDING",
+    "installation": "/kast/installation",
+    "version": "1.2.3",
+    "command": "/kast/bin/kast",
+    "operation": "REINSTALL_FORCE",
+    "stage": "ACTIVATION",
+    "failure": "READINESS_REJECTED"
+  },
+  {
+    "type": "RESET_REINSTALLED",
+    "installation": "/kast/installation",
+    "version": "1.2.3",
+    "command": "/kast/bin/kast",
+    "operation": "REINSTALL_FORCE",
+    "generation": "12345678-1234-1234-1234-123456789abc"
+  },
+  {
+    "installation": "/kast/installation",
+    "version": "1.2.3",
+    "command": "/kast/bin/kast",
+    "operation": "REINSTALL_FORCE"
+  },
+  {
+    "type": "RESET_INSTALLED",
+    "version": "1.2.3",
+    "command": "/kast/bin/kast",
+    "operation": "REINSTALL_FORCE"
+  },
+  {
+    "type": "RESET_INSTALLED",
+    "installation": "/kast/installation",
+    "command": "/kast/bin/kast",
+    "operation": "REINSTALL_FORCE"
+  },
+  {
+    "type": "RESET_INSTALLED",
+    "installation": "/kast/installation",
+    "version": "1.2.3",
+    "operation": "REINSTALL_FORCE"
+  },
+  {
+    "type": "RESET_INSTALLED",
+    "installation": "/kast/installation",
+    "version": "1.2.3",
+    "command": "/kast/bin/kast"
+  },
+  {
+    "type": "RESET_INSTALLED",
+    "installation": "/kast/installation",
+    "version": "1.2.3",
+    "command": "/kast/bin/kast",
+    "operation": "UNINSTALL_FORCE"
+  },
+  {
+    "type": "RESET_INSTALLED",
+    "installation": "/kast/installation",
+    "version": "1.2.3",
+    "command": "/kast/bin/kast",
+    "operation": "REINSTALL_FORCE",
+    "generation": "12345678-1234-1234-1234-123456789abc"
+  },
+  {
+    "type": "RESET_INSTALLED",
+    "installation": "/kast/installation",
+    "version": "1.2.3",
+    "command": "/kast/bin/kast",
+    "operation": "REINSTALL_FORCE",
+    "stage": "ACTIVATION"
+  },
+  {
+    "type": "RESET_INSTALLED",
+    "installation": "/kast/installation",
+    "version": null,
+    "command": "/kast/bin/kast",
+    "operation": "REINSTALL_FORCE"
+  },
+  {
+    "type": "RESET_INSTALLED",
+    "installation": "/kast/installation",
+    "version": "1.2.3",
+    "command": "relative/kast",
+    "operation": "REINSTALL_FORCE"
+  },
+  {
+    "type": "RESET_INSTALLED",
+    "installation": "/kast/installation",
+    "version": "unknown",
+    "command": "/kast/bin/kast",
+    "operation": "REINSTALL_FORCE"
+  },
+  {
     "root": "/kast",
     "operation": "UNINSTALL_FORCE"
   },
@@ -86,7 +177,7 @@
     "version": "1.2.3",
     "command": "/kast/bin/kast",
     "operation": "REINSTALL_FORCE",
-    "stage": "ACTIVATION",
+    "stage": "FINAL_VERIFICATION",
     "failure": "READINESS_REJECTED"
   },
   {
@@ -94,7 +185,7 @@
     "version": "1.2.3",
     "command": "/kast/bin/kast",
     "operation": "REINSTALL_FORCE",
-    "stage": "ACTIVATION",
+    "stage": "FINAL_VERIFICATION",
     "failure": "READINESS_REJECTED"
   },
   {
@@ -102,7 +193,7 @@
     "installation": "/kast/installation",
     "command": "/kast/bin/kast",
     "operation": "REINSTALL_FORCE",
-    "stage": "ACTIVATION",
+    "stage": "FINAL_VERIFICATION",
     "failure": "READINESS_REJECTED"
   },
   {
@@ -110,7 +201,7 @@
     "installation": "/kast/installation",
     "version": "1.2.3",
     "operation": "REINSTALL_FORCE",
-    "stage": "ACTIVATION",
+    "stage": "FINAL_VERIFICATION",
     "failure": "READINESS_REJECTED"
   },
   {
@@ -118,15 +209,7 @@
     "installation": "/kast/installation",
     "version": "1.2.3",
     "command": "/kast/bin/kast",
-    "stage": "ACTIVATION",
-    "failure": "READINESS_REJECTED"
-  },
-  {
-    "type": "RESET_REINSTALLATION_PENDING",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE",
+    "stage": "FINAL_VERIFICATION",
     "failure": "READINESS_REJECTED"
   },
   {
@@ -135,7 +218,7 @@
     "version": "1.2.3",
     "command": "/kast/bin/kast",
     "operation": "REINSTALL_FORCE",
-    "stage": "ACTIVATION"
+    "failure": "READINESS_REJECTED"
   },
   {
     "type": "RESET_REINSTALLATION_PENDING",
@@ -143,7 +226,15 @@
     "version": "1.2.3",
     "command": "/kast/bin/kast",
     "operation": "REINSTALL_FORCE",
-    "stage": "ACTIVATION",
+    "stage": "FINAL_VERIFICATION"
+  },
+  {
+    "type": "RESET_REINSTALLATION_PENDING",
+    "installation": "/kast/installation",
+    "version": "1.2.3",
+    "command": "/kast/bin/kast",
+    "operation": "REINSTALL_FORCE",
+    "stage": "FINAL_VERIFICATION",
     "failure": "READINESS_REJECTED",
     "unexpected": "unknown"
   },
@@ -153,7 +244,7 @@
     "version": "1.2.3",
     "command": "/kast/bin/kast",
     "operation": "STOP_FORCE",
-    "stage": "ACTIVATION",
+    "stage": "FINAL_VERIFICATION",
     "failure": "READINESS_REJECTED"
   },
   {
@@ -345,7 +436,7 @@
     "version": "1.2.3",
     "command": "/kast/bin/kast",
     "operation": "REINSTALL_FORCE",
-    "stage": "ACTIVATION",
+    "stage": "FINAL_VERIFICATION",
     "failure": "UNKNOWN"
   },
   {

@@ -120,14 +120,11 @@ class InstallationRequestTest {
             InstallationPublicEndpointSelection.Unspecified,
             default.value.publicEndpoint,
         )
-        for (endpoint in io.github.amichne.kast.distribution.contract.configuration.BrokerPublicEndpointMode.entries) {
-            val request =
-                InstallationRequest.parse(
-                    validEnvironment() + (InstallationEnvironment.PUBLIC_ENDPOINT.key to endpoint.configurationValue)
-                ) as Refinement.Refined
-            assertEquals(InstallationPublicEndpointSelection.Explicit(endpoint), request.value.publicEndpoint)
-        }
-        for (invalid in listOf("", "unknown")) {
+        val request =
+            InstallationRequest.parse(validEnvironment() + (InstallationEnvironment.PUBLIC_ENDPOINT.key to "private"))
+                as Refinement.Refined
+        assertEquals(InstallationPublicEndpointSelection.ExplicitPrivate, request.value.publicEndpoint)
+        for (invalid in listOf("", "unknown", "codex-control")) {
             assertEquals(
                 Refinement.Rejected(InstallationRequestFailure.InvalidValue(InstallationEnvironment.PUBLIC_ENDPOINT)),
                 InstallationRequest.parse(

@@ -9,7 +9,6 @@ internal fun reinstallPublicInstallation(
     scope: PublicResetScope,
     environment: Map<String, String>,
     executor: LifecycleChildExecutor = NativeForceInstallerExecutor,
-    runtime: ForceDaemonRuntime = NativeForceDaemonRuntime,
 ): ForceResetOutcome {
     val channel =
         when (val receipt = readReceipt(scope.root)) {
@@ -24,7 +23,7 @@ internal fun reinstallPublicInstallation(
         }
     val outcome =
         try {
-            runPublicReinstaller(scope, channel, environment, temporary, executor, runtime)
+            runPublicReinstaller(scope, channel, environment, temporary, executor)
         } catch (_: IOException) {
             publicReinstallRejected(ForceResetFailure.FILESYSTEM_REJECTED)
         } catch (_: SecurityException) {
@@ -46,7 +45,6 @@ private fun runPublicReinstaller(
     environment: Map<String, String>,
     temporary: Path,
     executor: LifecycleChildExecutor,
-    runtime: ForceDaemonRuntime,
 ): ForceResetOutcome {
     val script = temporary.resolve("install.sh")
     when (val copied = materializeBootstrap(script)) {
@@ -79,27 +77,12 @@ private fun runPublicReinstaller(
             is FreshResetResult.Prepared -> admitted.installation
             is FreshResetResult.Rejected -> return publicReinstallRejected(admitted.failure)
         }
-    return when (val ready = runtime.readiness(fresh.installation)) {
-        is ResetActivationObservation.Ready ->
-            if (ready.version == fresh.version.value) {
-                ForceResetOutcome.Reinstalled(
-                    fresh.installation.toString(),
-                    fresh.version.value,
-                    fresh.command.toString(),
-                    ready.generation,
-                )
-            } else pendingPublicReinstall(fresh)
-        ResetActivationObservation.Unavailable -> pendingPublicReinstall(fresh)
-    }
+    return ForceResetOutcome.Installed(
+        fresh.installation.toString(),
+        fresh.version.value,
+        fresh.command.toString(),
+    )
 }
 
 private fun publicReinstallRejected(failure: ForceResetFailure) =
     ForceResetOutcome.Rejected(ForceResetOperation.REINSTALL, ForceResetStage.INSTALLATION, failure)
-
-private fun pendingPublicReinstall(fresh: FreshResetInstallation) =
-    ForceResetOutcome.Pending(
-        fresh.installation.toString(),
-        fresh.version.value,
-        fresh.command.toString(),
-        ForceResetFailure.READINESS_REJECTED,
-    )

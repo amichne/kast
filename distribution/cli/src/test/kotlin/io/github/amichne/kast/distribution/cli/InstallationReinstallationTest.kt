@@ -13,7 +13,7 @@ class InstallationReinstallationTest {
     @TempDir lateinit var temporary: Path
 
     @Test
-    fun `reinstall pins release and removes fence only for verified activation`() {
+    fun `reinstall pins release and removes the exact fence without startup`() {
         val fixture = createLifecycleFixture(temporary)
         val calls = mutableListOf<String>()
         val events = mutableListOf<LifecycleObservation>()
@@ -52,7 +52,7 @@ class InstallationReinstallationTest {
             LifecycleOutcome.Reinstalled(LifecycleOperation.REINSTALL, fixture.installation.toString(), "1.2.3"),
             result,
         )
-        assertEquals(listOf("disable", "installer", "bootstrap"), calls)
+        assertEquals(listOf("disable", "installer"), calls)
         assertFalse(Files.exists(fixture.root.resolve(SHUTDOWN_FENCE)))
         assertEquals(before, Files.readString(fixture.installation.resolve("config/environment")))
         assertEquals(LifecycleStage.REGISTRATIONS, events.last().stage)
@@ -176,7 +176,7 @@ class InstallationReinstallationTest {
     }
 
     @Test
-    fun `failed reactivation restores fence and reports committed installation pending`() {
+    fun `changed shutdown fence keeps the committed installation pending`() {
         val fixture = createLifecycleFixture(temporary)
         val calls = mutableListOf<String>()
         val result =
@@ -189,11 +189,14 @@ class InstallationReinstallationTest {
                     child =
                         LifecycleChildExecutor { command, _, _ ->
                             calls += command.last()
-                            LifecycleChildObservation.Exited(if (command.last() == "bootstrap") 7 else 0)
+                            LifecycleChildObservation.Exited(0)
                         },
                     processes = closedHostProcesses(),
                     installer =
                         InstallerExecutor { _, _, report ->
+                            val fence = fixture.root.resolve(SHUTDOWN_FENCE)
+                            Files.move(fence, fixture.root.resolve("old-fence"))
+                            Files.writeString(fence, "foreign replacement")
                             writeStagedReport(report)
                             0
                         },
@@ -205,11 +208,11 @@ class InstallationReinstallationTest {
                 LifecycleOperation.REINSTALL,
                 "1.2.3",
                 LifecycleStage.ACTIVATION,
-                LifecycleFailure.CHILD_REJECTED,
+                LifecycleFailure.FENCE_REJECTED,
             ),
             result,
         )
-        assertEquals(listOf("disable", "bootstrap", "disable"), calls)
+        assertEquals(listOf("disable"), calls)
         assertTrue(Files.isRegularFile(fixture.root.resolve(SHUTDOWN_FENCE)))
     }
 }

@@ -1,14 +1,18 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:9b77f52b9c13e734d44619cf95b846060f5bdc2ccc6dcc1f31cc71df08f67712",
+  "pageVersion": "sha256:4ea9804d40eac2ee44a5b7a7592ceed12b9eeacc17aeb2cf00abadfe07d778b0",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
-      "statement": "Kast admits installed agent-tool payload bytes and observes exact Codex marketplace/plugin identities under the registration lock; conflicts or failed verification return a finite stage-qualified rejection, while Codex owns its cache and removal.",
+      "statement": "Kast admits bundled context resources and MCP configuration under the registration lock, rejects foreign standalone MCP entries before plugin effects, and removes exact receipt-owned legacy registrations after success while Codex owns its cache and removal.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt#L72-L140",
-          "version": "repo-lines-v1:sha256:756f4ef5b7541347dbc96b1b5c72f332aaf960369125f1d28cb62ef8b7aa9c07:eyJzZWxlY3RlZExpbmVDb3VudCI6NjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAwMGE1OGZhMjNiNDU3ZGE4M2NhZDBlZjYyMWUyNzg1ZDY3YmEzNGQ3MWE1Zjg5YjgzYTA1OTQ4YzMwOGNhOTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4NWUzN2Q3NTUzZWZkZWZjNTFlZWFlNGUzYmJhYWI0N2QxYjVjZDY4YmRkZWViYWI3YTYwZTE4NDU5ZDRmYjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYxMjIyNDAzYjBjMWJjYTIzODYwNDhhOTBjZGFlNzZhOTQzNjM4NGNlMzU3MjEyYjA1MWYxNDJhZWE1NDMzMjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYwYTE1NmIxNWZiZTQyODM3YjQ4YzE3ZGZjNmY0YTUzZDg0ODNiMzBmZGY5YmMxOGE0YmE0ZGUyZjIwZjBkY2IifQ"
+          "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt",
+          "version": "repo-file-v1:sha256:3358969b7fed3f71e64ad11f1b7003eb8baafd2f4f6ed31057cf1af637f23e65"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt",
+          "version": "repo-file-v1:sha256:58532558c47f1f133c4cd9207454007dc6d01f3be5671b91625fb16ba109f669"
         }
       ]
     },
@@ -53,26 +57,12 @@
       ]
     },
     {
-      "id": "claim_3e31041f63a14126b380723ac1f23ef5",
-      "statement": "Reset activation retains the exterior fence until readiness verifies the fresh payload version and a canonical service generation; only a ReadyReset can lift the fence and produce ActiveReset.",
-      "evidence": [
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt#L159-L190",
-          "version": "repo-lines-v1:sha256:d2b10c1e72fbf95732d90b7b4eaed4ce372d3c9ca59552144f4d11ef0c49e928:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmMTJjYzc2OGQyZTljYWQyYTIyNTk5OWJiOGRiZTJlOTg1NmRlN2YyZDA4N2QyOTYyZmY3ZDhjOGUwYzk3ZGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MjJjNDJjZDE5YzZkMDNkODA4YzQ1MjcyMDU1MjgyNWI3ZWExYzViNDkxYjIxODUxMWNhYzc0MTVjZjlkOWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRiMDM2MTUxNWIxMWIxNDhhYzc3NzgwNGQ0NDM0Y2M1YzE5MjQ3MWIzNWI3ZjJmYWEzYjM3ZDk2YjA0NWM3NjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
-        },
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ReadyReset.kt#L3-L16",
-          "version": "repo-lines-v1:sha256:c267c35726fd54a91e03c0dd0654cffe3f46d43696477edce2a827628f76d04f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhODk0NGFmODA1Yjk3OTQxY2E5ZGMyNDkyOTYzZTk0NjdiMWZkODNhOTYxYjk0NDU5Njc3NWQwZWEwNmFmZmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVlNzY5ZjEyYTEyNjZmYmY1OTQwZjQ2YWVhYmM0MDMyYjM4NzM4ZjZjNTk0Zjg3ZmRmMmY3YmYyNThlNDczOGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM1YWJkZTE1NGFhZWNiM2ZlYzkzMTMyY2FlYzk1OGEyZTgxZjc0ZjQ5NDE3Y2ZiN2ZmYjk1OGZjOWY5ODM4MDkifQ"
-        }
-      ]
-    },
-    {
       "id": "claim_230f86cec81d4dadb1e81f512bc1ad92",
-      "statement": "Failed staging or activation triggers stopped-state compensation; when compensation fails the reset outcome retains both the original failure and the recovery failure instead of manufacturing completion.",
+      "statement": "Failed staging or payload completion triggers stopped-state compensation. A failed compensation preserves both the original failure and recovery failure instead of reporting completion.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetExecution.kt#L155-L172",
-          "version": "repo-lines-v1:sha256:000edd43f70c9ee49c69324e344ebdc8e8bd5bbbd87513f76fe4c12668672593:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkZTE3MzBmNTMxMDE4YjVkNzFiZjI4ZGI4YmQ3OGJmN2FlYjk1M2MxMGFlNmUwNzkwNjI5YWExNDk4NTM2N2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetExecution.kt",
+          "version": "repo-file-v1:sha256:4b55040765fe2e228418a62f86387f3755992e3ef81eb119c72602856ab635d4"
         }
       ]
     },
@@ -86,7 +76,7 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:20f66494a7f382ba9fcb9fb0e7100a5c739c588da34de139c8685f995f1732b5"
+          "version": "repo-file-v1:sha256:35a7245ec94fcdf69ff2df00da917d4d92ea15d2750156d6ddaad4a9f19815a3"
         },
         {
           "resource": "repo://packaging/host-installation.py",
@@ -96,7 +86,7 @@
     },
     {
       "id": "claim_acf440b51fcb4a90a652aaca679121f1",
-      "statement": "A control-only upgrade admits the running Host before retiring Control, then verifies candidate readiness and repeats admission; failure after retirement invokes Control-only recovery preserving original and recovery failures.",
+      "statement": "Control-only upgrade admits the running Host before retiring Control and repeats Host admission after replacement without broker startup. Failure after retirement uses Control recovery and preserves original and recovery failures.",
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationRecovery.kt",
@@ -104,25 +94,25 @@
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:e227b44fca152f313889a870fd65a096fd512091cb8bfdb35d7d9ced10971144"
+          "version": "repo-file-v1:sha256:1739e0793cc20af80010fdeb2acb77a48de98d806d1ac080bd69fbbe3d4613b7"
         }
       ]
     },
     {
       "id": "claim_b12b0cb12d684d09af1019d1b2de6893",
-      "statement": "Exact reinstall and force reset cold-stage Control without a Host artifact; their existing fenced lifecycle owns later activation, while stage-only and bounded control-only upgrade cannot be combined.",
+      "statement": "Exact reinstall and force reset stage Control without a Host artifact and complete through the existing fence owner without broker activation. Stage-only and control-only upgrade cannot be combined.",
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:e227b44fca152f313889a870fd65a096fd512091cb8bfdb35d7d9ced10971144"
+          "version": "repo-file-v1:sha256:1739e0793cc20af80010fdeb2acb77a48de98d806d1ac080bd69fbbe3d4613b7"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt",
+          "version": "repo-file-v1:sha256:b1194829567a0af1e4ebe2c45fa8d54564be88c994ca47836bcbc3b2e571cdc5"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt",
-          "version": "repo-file-v1:sha256:02c3de25dbfd9ec4af9cc39f2a42c0c0e75ac03740307e5a9f8a4fad1bd71fb2"
-        },
-        {
-          "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:c31224a0f02de12664464ff2918b22be23eb3812524b9a03d238d3aa6790842b"
+          "version": "repo-file-v1:sha256:a83b08d6dc545490ef1a34916dd291793ef3cca0b0c8900e1d9f52843194f494"
         }
       ]
     },
@@ -135,7 +125,7 @@
           "version": "repo-file-v1:sha256:25a0bddfbcc6fcde44e799fdd58fdf1b5e080f33172a043694dfb8c9ede86282"
         },
         {
-          "resource": "repo://install.sh#L600-L624",
+          "resource": "repo://install.sh#L602-L626",
           "version": "repo-lines-v1:sha256:61b79c53302dbd050f51a56b9467d1271544d67aad22237e5c8febf726ae7526:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVmYTE4NWY2MGNlZWUwNGJmOTI0OTI0YWQ1NzRjYzZiM2M5MGRhNDI0ZGI2YjBjOGNjMDZiNGJhNjI2YmE2NmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM1ZmM5MGZmOGE0NDE0YzU0NDFkMGY2NzdjNWNiZmRhMzhiNDc0ZTUxYmZkNTU5YTU1NTlkZTBmODc3MDU1MjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ1ZjYzMTQ1NzAyOWY2ZjgxNzc0M2VkMTQ2MmJlMjg1YTFmYmNjMjM2ZWVlMTQwMmQ4NjQ4NjkwODJkOTk2N2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhkYzRiNDU2M2QwODdmM2Y1ZjI2ZWEwOWI0YTBkMDkxZDc5ZTkzMjg3NTc5ZDY2MDFiZTMyMDdjMTJkMmI2MmQifQ"
         },
         {
@@ -149,7 +139,7 @@
       "statement": "The existing installation and reset effect owners reject symlinked ancestors before directory creation or root detachment; public executable publication separately rejects aliased destination parents before writing.",
       "evidence": [
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt#L948-L966",
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt#L928-L946",
           "version": "repo-lines-v1:sha256:5fb91fbe67679114dbc2cc07a1ee59663734a36dfdd618581ceb11c3be3fc11f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwODMzMTE3ODE4OTMzYWMxNTA4MThkZjMxZTQ3ZWZjYmE2ZGE2ZjNjMDNkYmIzOTExZmQ2NmYzYjYxZTk0OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyMTRmYTBlZjIyMmY5OGZhZDg4ODAxMDcwOWE0NzgxOGVjMTVmMTVmNDkxMjFiZGI1NzI1OWI0YzBkNjNiNDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzOTJmZTM3MTljNzFiNzdkZGU2YzAzMDFmYTNlYmNiNTVjYjNlZTExYzBhNWEyY2E3NTc1ZWUxNzkzMTQ5OTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdkMjBmYzYxMTc3N2M4OWRkYjlmZmJhMDE5ODk1YmI3NzVjMmVhMTg4ZmJkNzhmYjUwYzFjOGZiNThlMzFjNjYifQ"
         },
         {
@@ -254,15 +244,15 @@
     },
     {
       "id": "claim_539123f98b294889b48c968e8754549a",
-      "statement": "The public installer parses the explicit Codex registration choice once: Control-only, Host-only and Control cold staging default to skip and accept explicit skip in either order; explicit registration requires a paired installation and rejects component installs before download or installation effects.",
+      "statement": "The public installer parses the Codex plugin choice once. Component and stage-only installation skip it by default, explicit plugin installation needs a paired install, and former MCP registration flags remain aliases.",
       "evidence": [
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:c31224a0f02de12664464ff2918b22be23eb3812524b9a03d238d3aa6790842b"
+          "version": "repo-file-v1:sha256:53f2705df0ee0365840f2691ceaae7878ce652d41013428d91d90a1713b2977e"
         },
         {
           "resource": "repo://packaging/test-installer-entrypoint.py",
-          "version": "repo-file-v1:sha256:fca63bf11a7c3ff7f7b5257191784696d88a4bcee36527e71c4b8686fb8137a3"
+          "version": "repo-file-v1:sha256:3d91d3518bccc10f0ac910c42cddb14f191d86a4950943401f7331f6631d20f2"
         }
       ]
     },
@@ -316,7 +306,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:ed5a3ae6abadf4c94be4300c76c04f152820e1d5aba17b793400c305e7b3135a"
+          "version": "repo-file-v1:sha256:b3c3975177f42b34626a4dfa0e8d2fb3f767f6e07469965a46a6fd093bf3c7d3"
         }
       ]
     },
@@ -347,8 +337,8 @@
           "version": "repo-file-v1:sha256:0a03e166df92557b9de822f5a682334b5bbec1d1582aba64314f694ddf96fe93"
         },
         {
-          "resource": "repo://.github/workflows/ci.yml#L104-L149",
-          "version": "repo-lines-v1:sha256:f608a2b2088d686f0d141de98e9626da38504b289e1ae6e8db8158e823317a44:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1OTRjZmRjNjRjMzAyZDQ0MDE1NDE5ZjdiMDJiYmJkYjMxNDk2OTJlNWY1OTBjN2Q3MDU3ZjYzYWMyZjdkOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OGJmMzg0ZmQyMGNkZjkwZGQ5OTVhZWZkZjI2NWRjNDNjZWViY2Q0NjdjYzU5NTlkZDdkMjMxNTkxMTE3NDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRlNGNiZGE4MTE5YjBiNmVmMTI3ZGVhZjlkNjEyODJlODQ0MjEwZTk1MzY1OThjZDc0Y2IwOGJjNTcyNGZmYmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIyZmUzYjc4Y2ZlOWMwYmUzMjFhODNmNzc2MjUwMDdjODJjOTgyNDRhOThkZDNhZGJlYzhlZGE3NTU0ZmM2OTkifQ"
+          "resource": "repo://.github/workflows/ci.yml#L104-L155",
+          "version": "repo-lines-v1:sha256:5086143c149060be774f7a1d1334d3ba851d514644f73648165291f253bb743a:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1OTRjZmRjNjRjMzAyZDQ0MDE1NDE5ZjdiMDJiYmJkYjMxNDk2OTJlNWY1OTBjN2Q3MDU3ZjYzYWMyZjdkOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OGJmMzg0ZmQyMGNkZjkwZGQ5OTVhZWZkZjI2NWRjNDNjZWViY2Q0NjdjYzU5NTlkZDdkMjMxNTkxMTE3NDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRlNGNiZGE4MTE5YjBiNmVmMTI3ZGVhZjlkNjEyODJlODQ0MjEwZTk1MzY1OThjZDc0Y2IwOGJjNTcyNGZmYmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIyZmUzYjc4Y2ZlOWMwYmUzMjFhODNmNzc2MjUwMDdjODJjOTgyNDRhOThkZDNhZGJlYzhlZGE3NTU0ZmM2OTkifQ"
         },
         {
           "resource": "repo://distribution/cli/build.gradle.kts#L60-L69",
@@ -365,7 +355,7 @@
           "version": "repo-lines-v1:sha256:f75d6ff2626eba0dd5d9846c8dfa19e66d0ec80d6e0dc24a341feea8dd15e776:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4ZTg3Nzg1MTlkZTdlMjFjZWFiYzViMjI2ZjMwMDM2NzA3YTNjMDk2ODg4MGE5MjA5MTk0NjVlZDA4MjQ1MzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNjMzA3NGUxNWY1YjM5ZTQ4ZGQxMTVmNjUxN2Q2ZWUzMjY5ZmQxYTllYjA1ZDQxOWRmNmMzNzY5YjI4ZTcwMGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczN2RlNmEwOTU3ZTNmODJkZGUyZTg4YWJlYjc4OWE3NmE2ZWU5MGRkYzFlODFkYWE4MTE4ZDEzMTc1NDU5NDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYzMmNlMjUxNmY2YTkwODZkMjRjZGU0YzY0Yjg4NTBiMzY4MTIyMjc5YzE2OGU3ZDk3Y2ZkM2JjODRjNjk2ZTcifQ"
         },
         {
-          "resource": "repo://.github/workflows/ci.yml#L156-L171",
+          "resource": "repo://.github/workflows/ci.yml#L162-L177",
           "version": "repo-lines-v1:sha256:dfe9abba222720d275953e15b9941838b072100f1c4ba6134eb91f1e18549c26:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkxNzllOTFhYTVhNWNhNmQzODZkMWYyODY2MDY3MTE5Y2MyOWY1NzkxMDRlZmQ1OTEyODZlZmNhOGZjNWNiOTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiMzJiOTg3MjYzZGYyMTYzZTcyNmQ0OGI5MmY2Zjk2NTE0OGNiNmI2ZDI4MzE3OTE1MTRjOTM5ZjgzN2ExNDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2ZGM0MWU2YzIzZjk2ODY0NDY4MWFmYzE0MTA2MjU2Mzk5NmMwY2MyN2UxMWM2MWY3ZTA4NWE5OWYzOTM4NjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNjNTkxMGRmYzViM2FjNjAwODQ1YTdkMTVmOTRmNWRjZjc2YzY1ZDA5NDNiMWRmZTBkYmQ2NjhjZDlhM2IxMTgifQ"
         },
         {
@@ -393,14 +383,32 @@
           "version": "repo-lines-v1:sha256:a2abdcf6f95bfacb4d7bdec3087b6747dd0c1629a376c46de164697829aa9513:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjNTg1ZjgxMzFkNTg5MGJiMGUzMTNmZDM0YzhlMzViNmU0OWJkMDYzYWNlNmFhMjE5ZGMwYjliM2QzZjI5MmVjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI1MjJjYjVkYjA2NTY4OWFkOGJlNmVlYWY4ZDVjYmY0MjRiN2VlZGMzODY1YTUyYTIwMDVlYTg4YWM4MmViZDFkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJmMjQ4MDUxODRmODZkNGVlZDExOWVkZjNiMTBlZDc0YTNhOGRhMWVhOTg4MzUwMzUwNGFhODk0Zjk2M2I4Y2RhIn0"
         },
         {
-          "resource": "repo://packaging/test-installer-entrypoint.py#L605-L662",
+          "resource": "repo://packaging/test-installer-entrypoint.py#L606-L663",
           "version": "repo-lines-v1:sha256:72ed803b67a7c29c67caad1d8974e873e2c70a76e549ffb5072c33f616d412a9:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxOWUzNzA5ZTg1MTg4MTE5MDBkODEzNWI4MTY1ZjI1MmU4NDUwMGQ2ZmQyYTcxZDRhNGI2ODU4ZGQ3ZDA3OTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhZjM2YzVhNTg1ZGM4YWUwNTlmM2JmNDlkM2JlY2YxNzliYmI4MTU0MDI5ZjQwNWNiMGZiM2FhZDkzYjEzZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZhMWI3NGViNzI0ZjA2YzlhNDRjMTFkZTJiYmUzODYyMzdiMzIxZWJjYmNlMjFlMGJiOGYyMDZhMzk1MDEzZjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjMjgwNDc1ODQzYTA3MTc2NDlkNDdhMzVlNDM1Yzk0OTFiNDI5YzE0ZGQ0N2ExMTQ1ODE1MWNlOTVlMWQ2MTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5972726abcac4e90b0bcb2ee465d2480",
+      "statement": "Force reset completes through InstalledReset with single-use payload and exact-fence admission, exposes no startup or readiness capability, and reports RESET_INSTALLED without a service generation.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceDaemonRuntime.kt",
+          "version": "repo-file-v1:sha256:6801025d5bb075ab4b1a67a09880b1fd64d478a9d8d40b60dab3d52618c361e4"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt#L154-L184",
+          "version": "repo-lines-v1:sha256:36c3ab9e9a16d50ac5617fd157fb75e419bbefae834908f8379d1ba4f5063da3:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlYWU3MjhjNDMxMjYxNzg5YjExZjIxZTUyZDI5ZjlkYzYyMjBmODNhNjFlNGUzNjI5MTE0MDk5NjRhNGQxNWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5NTU1M2NlMThjMmYzODgxNjYyY2Q1NzE0MDk4ZTI3YTc1YTNhOTc2YmY3ZmRiOWM4NzZhNzkyYTE1MDRjMzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetOutcome.kt",
+          "version": "repo-file-v1:sha256:07f243ac1e4445290b192a6f4932bdfe555352078524b19dcbddf66aefd6fba6"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T19:07:35.337Z"
+    "at": "2026-10-16T07:07:29.171Z"
   }
 }

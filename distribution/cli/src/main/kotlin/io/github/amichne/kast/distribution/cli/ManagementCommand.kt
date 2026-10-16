@@ -24,15 +24,18 @@ internal enum class HarnessConnection(val harness: Harness, val publicName: Stri
 }
 
 internal enum class ConnectionFailure(val explanation: String) {
-    CODEX_TRANSPORT_REQUIRED("Codex requires an explicit transport: mcp or app-server"),
-    CODEX_TRANSPORT_UNSUPPORTED("Supported Codex transports: mcp, app-server"),
-    OTHER_HARNESS_TRANSPORT("Only Codex accepts a transport: mcp or app-server"),
+    CODEX_APP_SERVER_RETIRED("Codex App Server registration is retired; use kast plugin codex"),
+    CODEX_TRANSPORT_UNSUPPORTED("Codex uses the Kast plugin; use kast connect codex"),
+    CODEX_PLUGIN_OPTIONS("Codex owns plugin configuration; use kast plugin codex without registration options"),
+    OTHER_HARNESS_TRANSPORT("Only the legacy Codex mcp alias accepts a transport"),
 }
 
 internal sealed interface ConnectionAdmission {
     data object ListAvailable : ConnectionAdmission
 
     data class Selected(val connection: HarnessConnection) : ConnectionAdmission
+
+    data class Plugin(val harness: PluginHarness) : ConnectionAdmission
 
     data class Rejected(val failure: ConnectionFailure) : ConnectionAdmission
 }
@@ -43,9 +46,9 @@ internal fun admitConnection(harness: Harness?, transport: String?): ConnectionA
     return when (harness) {
         Harness.CODEX ->
             when (transport) {
-                "mcp" -> ConnectionAdmission.Selected(HarnessConnection.CODEX_MCP)
-                "app-server" -> ConnectionAdmission.Selected(HarnessConnection.CODEX_APP_SERVER)
-                null -> ConnectionAdmission.Rejected(ConnectionFailure.CODEX_TRANSPORT_REQUIRED)
+                "mcp",
+                null -> ConnectionAdmission.Plugin(PluginHarness.CODEX)
+                "app-server" -> ConnectionAdmission.Rejected(ConnectionFailure.CODEX_APP_SERVER_RETIRED)
                 else -> ConnectionAdmission.Rejected(ConnectionFailure.CODEX_TRANSPORT_UNSUPPORTED)
             }
         Harness.COPILOT -> ConnectionAdmission.Selected(HarnessConnection.COPILOT)

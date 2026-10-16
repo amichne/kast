@@ -11,12 +11,23 @@ rejects a missing or incompatible catalog and changes between qualification and
 provider startup. Installed payload admission, IDEA compatibility, and Codex
 schema qualification retain their existing owners.
 
-## Enable and attach
+## Codex plugin
 
-Persistent installation uses an installation-private socket by default.
+Fresh and replacement installations use private settings and do not enable the broker.
+An admitted saved `codex-control` setting migrates to `private`.
+The installer rejects an explicit shared-endpoint selection.
 The Kast MCP plugin connects independently of Codex's control socket.
-Its `SessionStart` hook prepares `settings.gradle.kts` projects through the direct tool RPC.
-Codex needs your trust decision before it runs the hook.
+The MCP session starts preparation for `settings.gradle.kts` projects through the existing workspace lifecycle.
+Its passive `SessionStart` hook supplies context with the Python standard library.
+
+Use `kast plugin codex` or `kast connect codex` for public Codex registration.
+The former `kast connect codex mcp` form selects the same plugin.
+The App Server registration form rejects before effects.
+
+## Legacy broker implementation
+
+The rest of this section describes the broker implementation kept for legacy retirement and recovery.
+These internal mechanisms do not define the current installation path.
 
 An explicit `KAST_APP_SERVER_PUBLIC_ENDPOINT=codex-control` selects
 `<CODEX_HOME>/app-server-control/app-server-control.sock`. After native
@@ -36,9 +47,7 @@ Registration is handled by the daemon management RPC. The private entry point
 also accepts `enable`, `disable`, `stop`, and `repair --destructive`.
 A rejected registration retains its finite daemon reason.
 
-Fresh installation and force reinstall select `private` unless you request another mode.
-An explicit `codex-control` selection rejects an occupied standard socket
-with `PUBLIC_SOCKET_OWNED`.
+The legacy service rejects an occupied standard socket with `PUBLIC_SOCKET_OWNED`.
 The canonical public socket remains installation-owned and is never taken over
 from an unproven incumbent. Private mode uses `state/run/c.sock`
 with an owned short-path transport when needed. The CLI connection command is
@@ -71,8 +80,7 @@ identity through discovery cleanup and login-agent removal even if settings
 have since changed.
 
 Desktop processes keep their launch environment until their next launch.
-An existing installation keeps its saved endpoint selection during an ordinary upgrade.
-The private default applies when no selection is saved or force reinstall resets settings.
+Current installation migrates saved shared-endpoint settings to private settings.
 Client overrides can bypass
 the daemon, and CLI discovery may fall back to its embedded server.
 

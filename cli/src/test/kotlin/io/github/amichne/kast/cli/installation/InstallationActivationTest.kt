@@ -1,6 +1,5 @@
 package io.github.amichne.kast.cli.installation
 
-import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -33,7 +32,7 @@ class InstallationActivationTest {
                     environmentOverrides =
                         mapOf(
                             "KAST_INSTALL_PROFILE" to "persistent",
-                            "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "codex-control",
+                            "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private",
                         ),
                 )
             val service = request.controlRoot.value.resolve("share/kast/libexec/kast-service")
@@ -43,14 +42,10 @@ class InstallationActivationTest {
             val result = executeFixtureInstallation(request, policy)
             val report = assertInstanceOf(InstallationOutcome.Complete::class.java, result).report
             assertEquals(InstallationReportStatus.INSTALLED, report.status)
-            assertEquals(
-                if (policy == InstallationActivationPolicy.ACTIVATE) InstallationActivation.Ready
-                else InstallationActivation.NotRequested,
-                report.activation,
-            )
+            assertEquals(InstallationActivation.NotRequested, report.activation)
             assertTrue(
                 Files.readString(installation.resolve("installation/config/environment"))
-                    .contains("KAST_APP_SERVER_PUBLIC_ENDPOINT=codex-control")
+                    .contains("KAST_APP_SERVER_PUBLIC_ENDPOINT=private")
             )
             assertLoginAnchor(installation.resolve("installation").toRealPath(), home)
         }
@@ -84,71 +79,22 @@ class InstallationActivationTest {
     }
 
     @Test
-    fun `activation rejection retains committed installation and can resume through private control`(
-        @TempDir temporary: Path
-    ) {
+    fun `plan excludes broker activation from the reported changes`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
         val home = Files.createDirectory(root.resolve("home"))
-        val install = root.resolve("home/.local/share/kast")
         val request =
             releaseRequest(
                 root,
-                install,
-                root.resolve("home/.local/bin"),
+                home.resolve(".local/share/kast"),
+                home.resolve(".local/bin"),
                 home,
-                Files.createDirectory(root.resolve("codex-home")),
+                Files.createDirectory(root.resolve("codex")),
                 "1.2.3",
-                environmentOverrides = mapOf("KAST_INSTALL_PROFILE" to "persistent"),
+                mode = InstallationMode.PLAN,
             )
-        val service = request.controlRoot.value.resolve("share/kast/libexec/kast-service")
-        Files.createDirectories(service.parent)
-        Files.writeString(
-            service,
-            """
-            #!/bin/sh
-            if [ "${'$'}1" = enable ]; then
-              test -f "${'$'}HOME/activation-ready"
-              exit ${'$'}?
-            fi
-            exit 2
-            """
-                .trimIndent() + "\n",
-        )
-        service.toFile().setExecutable(true)
-        val result = executeFixtureInstallation(request, InstallationActivationPolicy.ACTIVATE)
-        val complete = assertInstanceOf(InstallationOutcome.Complete::class.java, result)
-        verifyPendingReport(complete.report)
-        val selected = install.resolve("installation").toRealPath()
-        assertTrue(Files.exists(selected.resolve("installation.json")))
-        assertFalse(Files.readString(selected.resolve("config/environment")).contains("KAST_ENABLE_APP_SERVER"))
-        val configuration = Files.readString(selected.resolve("config/environment"))
-        assertTrue(configuration.contains("KAST_APP_SERVER_PUBLIC_ENDPOINT=private"))
-        val identity = Files.readString(selected.resolve("installation.json"))
-        Files.createFile(home.resolve("activation-ready"))
-        val resume =
-            ProcessBuilder(selected.resolve("share/kast/libexec/kast-service").toString(), "enable")
-                .apply { environment()["HOME"] = home.toString() }
-                .start()
-        assertEquals(0, resume.waitFor())
-        assertEquals(selected, install.resolve("installation").toRealPath())
-        assertEquals(configuration, Files.readString(selected.resolve("config/environment")))
-        assertEquals(identity, Files.readString(selected.resolve("installation.json")))
-    }
-
-    private fun verifyPendingReport(report: InstallationReport) {
-        assertEquals(InstallationReportStatus.INSTALLED_ACTIVATION_PENDING, report.status)
-        assertEquals(
-            InstallationActivation.Pending(InstallationActivationFailure.EXIT_REJECTED),
-            report.activation,
-        )
-        assertFalse("enable-app-server" in report.changes)
-        val encoded =
-            Json.parseToJsonElement(
-                    CanonicalJsonDocument.generated(InstallationReport.serializer()).create(report).value
-                )
-                .jsonObject
-        assertEquals("installation.install", encoded.getValue("operation").jsonPrimitive.content)
-        assertEquals("installed-activation-pending", encoded.getValue("status").jsonPrimitive.content)
-        assertEquals("pending", encoded.getValue("activation").jsonObject.getValue("type").jsonPrimitive.content)
+        val outcome = assertInstanceOf(InstallationOutcome.Complete::class.java, executeFixtureInstallation(request))
+        assertEquals(InstallationActivation.Planned, outcome.report.activation)
+        assertFalse("enable-app-server" in outcome.report.changes)
+        assertTrue(Files.notExists(request.installRoot.value))
     }
 }

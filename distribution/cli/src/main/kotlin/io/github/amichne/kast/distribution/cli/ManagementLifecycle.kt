@@ -159,7 +159,7 @@ private fun installerReportIntent(selection: InstallationSelection): InstallerRe
     when (selection) {
         is InstallationSelection.Exact -> InstallerReportIntent.STAGING
         InstallationSelection.Latest,
-        InstallationSelection.ControlOnly -> InstallerReportIntent.ACTIVATION
+        InstallationSelection.ControlOnly -> InstallerReportIntent.STAGING
     }
 
 private fun latestInstallerOptions(channel: ReleaseChannel): List<String> =
@@ -213,18 +213,25 @@ private fun reportMatchesSelectedInstallation(
                 intent == InstallerReportIntent.ACTIVATION && report.activation.type == ActivationType.PENDING
         }
 
-internal fun upgradeInstallation(root: Path, home: Path, controlOnly: Boolean = false) {
+internal fun upgradeInstallation(
+    root: Path,
+    home: Path,
+    controlOnly: Boolean = false,
+    environment: Map<String, String> = emptyMap(),
+) {
     val prior = requireOwnedExecutable(root)
     val selection = if (controlOnly) InstallationSelection.ControlOnly else InstallationSelection.Latest
     val report = withRegistrationLock(root) { installLatest(root, prior, selection) }
     val failures = mutableListOf<HarnessConnection>()
-    prior.registrations.forEach { registration ->
-        try {
-            connectHarness(root, home, registration.connection)
-        } catch (_: ManagementRejected) {
-            failures += registration.connection
+    prior.registrations
+        .distinctBy { it.connection.harness }
+        .forEach { registration ->
+            try {
+                reconnectHarness(root, home, registration.connection, environment)
+            } catch (_: ManagementRejected) {
+                failures += registration.connection
+            }
         }
-    }
     if (failures.isNotEmpty()) {
         val status = readStatus(root, prior.executable)
         throw ManagementRejected(
@@ -249,6 +256,7 @@ internal fun upgradeInstallation(root: Path, home: Path, controlOnly: Boolean = 
             "Existing calls and sessions were interrupted. " +
                 "Restart IntelliJ IDEA and connected harnesses to load the new payload."
     )
+    println("If the Kast plugin is installed, run kast plugin codex to refresh its cached files.")
 }
 
 private fun registrationRepairAdvice(controlOnly: Boolean): String =

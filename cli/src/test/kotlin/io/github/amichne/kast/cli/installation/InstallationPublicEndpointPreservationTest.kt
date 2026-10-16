@@ -52,34 +52,36 @@ internal class InstallationPublicEndpointPreservationTest {
     }
 
     @Test
-    fun `explicit Codex control preserves an occupied fresh endpoint`(@TempDir temporary: Path) {
+    fun `explicit private preserves an occupied fresh endpoint`(@TempDir temporary: Path) {
         val fixture = Fixture(temporary)
         val socket =
             Files.writeString(
                 Files.createDirectory(fixture.codex.resolve("app-server-control")).resolve("app-server-control.sock"),
                 "incumbent",
             )
-        fixture.install("1.2.3", BrokerPublicEndpointMode.CODEX_CONTROL)
-        assertEquals(BrokerPublicEndpointMode.CODEX_CONTROL, savedEndpoint(fixture.configuration))
+        fixture.install("1.2.3", BrokerPublicEndpointMode.PRIVATE)
+        assertEquals(BrokerPublicEndpointMode.PRIVATE, savedEndpoint(fixture.configuration))
         assertEquals("incumbent", Files.readString(socket))
     }
 
     @Test
-    fun `explicit paired endpoint overrides an admitted saved private endpoint`(@TempDir temporary: Path) {
+    fun `explicit paired private endpoint replaces an admitted saved shared endpoint`(@TempDir temporary: Path) {
         val fixture = Fixture(temporary)
         fixture.install("1.2.3", BrokerPublicEndpointMode.PRIVATE)
+        Files.writeString(fixture.configuration, "KAST_APP_SERVER_PUBLIC_ENDPOINT=codex-control\n")
         fixture.preparePrior()
-        fixture.install("1.2.4", BrokerPublicEndpointMode.CODEX_CONTROL, expectedUpgrades = 1)
-        assertEquals(BrokerPublicEndpointMode.CODEX_CONTROL, savedEndpoint(fixture.configuration))
+        fixture.install("1.2.4", BrokerPublicEndpointMode.PRIVATE, expectedUpgrades = 1)
+        assertEquals(BrokerPublicEndpointMode.PRIVATE, savedEndpoint(fixture.configuration))
     }
 
     @Test
-    fun `paired upgrade preserves an admitted saved Codex control endpoint`(@TempDir temporary: Path) {
+    fun `paired upgrade migrates an admitted saved shared endpoint to private`(@TempDir temporary: Path) {
         val fixture = Fixture(temporary)
-        fixture.install("1.2.3", BrokerPublicEndpointMode.CODEX_CONTROL)
+        fixture.install("1.2.3", BrokerPublicEndpointMode.PRIVATE)
+        Files.writeString(fixture.configuration, "KAST_APP_SERVER_PUBLIC_ENDPOINT=codex-control\n")
         fixture.preparePrior()
         fixture.install("1.2.4", expectedUpgrades = 1)
-        assertEquals(BrokerPublicEndpointMode.CODEX_CONTROL, savedEndpoint(fixture.configuration))
+        assertEquals(BrokerPublicEndpointMode.PRIVATE, savedEndpoint(fixture.configuration))
     }
 
     @Test
@@ -110,15 +112,17 @@ internal class InstallationPublicEndpointPreservationTest {
         fixture.preparePrior()
         Files.writeString(
             fixture.configuration,
-            Files.readString(fixture.configuration).replace("KAST_DEBUG=0", "KAST_DEBUG=1"),
+            Files.readString(fixture.configuration)
+                .replace("KAST_DEBUG=0", "KAST_DEBUG=1")
+                .replace("KAST_APP_SERVER_PUBLIC_ENDPOINT=private", "KAST_APP_SERVER_PUBLIC_ENDPOINT=codex-control"),
         )
         val boundary = ScriptedUpgrades(fixture.selected, 1)
-        val request = fixture.repeat(prior, BrokerPublicEndpointMode.CODEX_CONTROL)
+        val request = fixture.repeat(prior, BrokerPublicEndpointMode.PRIVATE)
         assertInstanceOf(
             InstallationOutcome.Complete::class.java,
             InstallationWorkflow.execute(request, boundary.gateway, InstallationActivationPolicy.STAGE_ONLY),
         )
-        assertEquals(BrokerPublicEndpointMode.CODEX_CONTROL, savedEndpoint(fixture.configuration))
+        assertEquals(BrokerPublicEndpointMode.PRIVATE, savedEndpoint(fixture.configuration))
         val configuration =
             (readInstallationConfiguration(fixture.configuration) as Refinement.Refined).value.configuration
         assertEquals("1", configuration.launchEnvironment().variables["KAST_DEBUG"])
@@ -127,11 +131,10 @@ internal class InstallationPublicEndpointPreservationTest {
     }
 
     @Test
-    fun `conflicting explicit endpoint preserves the committed transaction and requires recovery`(
-        @TempDir temporary: Path
-    ) {
+    fun `shared endpoint migration preserves the committed transaction and needs recovery`(@TempDir temporary: Path) {
         val fixture = Fixture(temporary)
         val prior = fixture.install("1.2.3", BrokerPublicEndpointMode.PRIVATE)
+        Files.writeString(fixture.configuration, "KAST_APP_SERVER_PUBLIC_ENDPOINT=codex-control\n")
         val identity = observeInstallationFilesystemIdentity(fixture.selected)
         val transaction = fixture.installation.resolve("recovery/replacement")
         val transactionIdentity = observeInstallationFilesystemIdentity(transaction)
@@ -140,7 +143,7 @@ internal class InstallationPublicEndpointPreservationTest {
             assertInstanceOf(
                 InstallationOutcome.Rejected::class.java,
                 InstallationWorkflow.execute(
-                    fixture.repeat(prior, BrokerPublicEndpointMode.CODEX_CONTROL),
+                    fixture.repeat(prior, BrokerPublicEndpointMode.PRIVATE),
                     boundary.gateway,
                     InstallationActivationPolicy.STAGE_ONLY,
                 ),
@@ -160,7 +163,7 @@ internal class InstallationPublicEndpointPreservationTest {
         Files.writeString(fixture.configuration, "KAST_APP_SERVER_PUBLIC_ENDPOINT=unsupported\n")
         val identity = observeInstallationFilesystemIdentity(fixture.selected)
         val effects = fixture.effects()
-        val request = fixture.request("1.2.4", BrokerPublicEndpointMode.CODEX_CONTROL)
+        val request = fixture.request("1.2.4", BrokerPublicEndpointMode.PRIVATE)
         val boundary = ScriptedUpgrades(fixture.selected, 0)
         val outcome =
             assertInstanceOf(

@@ -22,7 +22,7 @@ Make sure that your terminal can run your agent's command. In these examples, re
   <Tab title="Codex">
     The bundled plugin supplies MCP tools and a compact brief at session start. The brief includes absolute paths to the schema and examples.
 
-    If direct MCP is already registered, run `kast disconnect codex` before plugin installation.
+    Plugin installation removes only Kast-owned legacy MCP and App Server registrations after Codex admits the plugin.
 
     ```shell
     kast plugin codex
@@ -32,33 +32,8 @@ Make sure that your terminal can run your agent's command. In these examples, re
 
     Restart Codex after installation. Review and trust its session hook in Codex. Untrusted hooks do not inject context.
 
-    <Accordion title="Direct MCP without the bundled plugin">
-      ```shell
-      kast connect codex mcp
-      cd /path/to/kotlin-repository
-      codex
-      ```
-
-      Start a new session to load the registration. `kast connect codex` needs an explicit transport.
-    </Accordion>
-
-    <Accordion title="App Server transport">
-      New persistent installations use a private endpoint. Routine installation preserves your saved endpoint. Select `codex-control` explicitly to expose the standard Codex control socket.
-
-      At the standard socket, managed `codex` invocations can discover Kast automatically. Compatible desktop builds use the service's daemon-selection flag on a fresh launch.
-
-      Quit and reopen the desktop app. Saved `private` endpoints and client overrides can bypass discovery. Examine the [recorded client compatibility](https://github.com/amichne/kast/blob/main/app-server/docs/compatibility.md) for limits on desktop tools.
-
-      To attach explicitly, use:
-
-      ```shell
-      kast connect codex app-server
-      cd /path/to/kotlin-repository
-      kast-codex
-      ```
-
-      This command installs `~/.local/bin/kast-codex`. Start a fresh thread to load dynamic tools. Custom clients can use `kast-codex app-server` for JSONL stdio.
-    </Accordion>
+    `kast connect codex` selects the same plugin. The compatibility form `kast connect codex mcp` also selects the plugin.
+    `kast connect codex app-server` rejects before registration effects. Codex owns its App Server and control socket.
   </Tab>
   <Tab title="Copilot">
     If `kast connect copilot` installed the RPC extension, first remove it with `kast disconnect copilot`.
@@ -82,12 +57,12 @@ Make sure that your terminal can run your agent's command. In these examples, re
   </Tab>
 </Tabs>
 
-Session context needs `uv` and Python 3.11 through 3.14. Pi uses `~/.local/bin/uv`.
-Codex and Copilot accept `uv` on `PATH` and add `~/.local/bin` before the hook command.
-The context script runs offline and uses no third-party Python packages.
-Codex also prepares Kotlin Gradle projects through a background hook. That hook needs Python 3.12 or 3.13 and its locked Pydantic dependency.
+Codex and Copilot context hooks use Python 3.9 or later with the standard library.
+Pi reads bundled context directly with Node. Startup needs no uv process, dependency download, or Python environment.
+If Pi cannot read context, it reports one warning and keeps native MCP registered.
 
-Queries [prepare IntelliJ automatically](/reference/internals/background-startup). You do not need a separate workspace-open step.
+The MCP session starts [IntelliJ preparation](/reference/internals/background-startup) for the exact Kotlin Gradle project.
+Semantic calls wait for that preparation. No separate setup hook or workspace-open step is necessary.
 
 <a id="check-that-the-tools-work" />
 <a id="run-the-first-query" />
@@ -121,22 +96,19 @@ Supply an absolute destination for the selected integration.
 ```shell
 kast connect pi --destination "$HOME/.config/pi/agent"
 kast connect copilot --destination "$HOME/.config/copilot"
-kast connect codex mcp --destination "$HOME/.config/codex"
-kast connect codex app-server --destination "$HOME/bin"
 ```
 
 | Connection | What the directory contains |
 | --- | --- |
 | Pi | `extensions/kast.ts` under the Pi agent home |
 | Copilot | `extensions/kast/extension.mjs` under the Copilot home |
-| Codex MCP | Codex's `config.toml`. The registered executable stays in the Kast installation. |
-| Codex App Server | The `kast-codex` launcher |
+| Codex plugin | Codex owns its plugin cache and configuration. Kast does not select a connection destination. |
 
 Kast saves preferences in `~/.config/kast/config.json`. An explicit destination overrides the recorded preference.
 
 Without a preference, Kast reads the selected agent's `PI_CODING_AGENT_DIR`, `COPILOT_HOME`, or `CODEX_HOME`. Otherwise, it uses that agent's default home.
 
-App Server defaults to `~/.local/bin`. A saved destination does not change the agent's own home selection.
+A saved destination does not change the agent's own home selection.
 
 If you use a custom home, start the agent with the same home. For Pi, use `PI_CODING_AGENT_DIR="$HOME/.config/pi/agent" pi`.
 
@@ -188,5 +160,5 @@ For the bundled Codex plugin, repeat `kast plugin codex`. Disconnection does not
 
   The source marketplace is available through `codex plugin marketplace add amichne/kast`. Install Kast and a compatible Host first.
 
-  Custom clients can use [MCP](/reference/mcp-catalog), [Tool RPC](/reference/rpc-catalog), or App Server. See the [adapter guide](https://github.com/amichne/kast/blob/main/docs/tool-rpc.md).
+  Custom clients can use [MCP](/reference/mcp-catalog) or [Tool RPC](/reference/rpc-catalog). See the [adapter guide](https://github.com/amichne/kast/blob/main/docs/tool-rpc.md).
 </Accordion>

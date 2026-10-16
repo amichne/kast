@@ -4,8 +4,8 @@ title: "Native management CLI engineering rules"
 description: "Defines public command scope, installation ownership, guarded lifecycle transitions, and Codex plugin installation."
 resource: "repo://distribution/cli"
 tags: [kast, navigation]
-timestamp: "2026-10-14T23:25:10Z"
-source_revision: e014a489bfd7e69cbf2c4b61140ee771d857a03e
+timestamp: "2026-10-16T06:50:12Z"
+source_revision: c63215981504766de0d3b861c801414e05768f57
 code_sources:
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt
@@ -21,9 +21,23 @@ This module owns the public `kast` executable. Keep its command graph limited to
 
 Keep receipt facts separate from passive runtime observations. Status must not start Java, prepare workspaces, or contact release servers. Admit release manifests and external registration documents before effects; preserve foreign files and registrations. Use the existing installer and service shutdown boundary for verified replacement and removal. Explicit uninstall/reinstall --force bypass old payload and receipt ownership admission. They still require a canonical deletion scope, an exterior reset fence and stable lock, durable retention intent before atomic detachment, and verified retirement of root-scoped jobs and process incarnations before erasure. Remove only the exact selected installation's exterior login entries. Never signal shared IDEA or Gradle processes. Keep deletion scope distinct from ownership; never erase filesystem roots, HOME or its ancestors.
 
-Force lifecycle transitions retain prerequisites in privately constructed types: fenced, quiescent, erased, staged, and active. A single-use lease rejects replayed detach, erase, stage, and activation effects. A staged payload cannot claim active readiness. The bundled installer stages a manifest-qualified reset-capable replacement without service activation; activation success requires the fresh version and service generation. Keep the exterior marker through activation: only persisted ACTIVATING intent plus a held exclusive reset lock admits daemon startup, while tools remain fenced until readiness and final marker removal. Failed staging or activation restores the fence and retires partial startup, preserving both causes if recovery fails. Report retained storage when retirement or cleanup rejects. OS refusal is a finite failure, never a manufactured success. The exterior lock remains stable across directory deletion and subsequent reset attempts.
+Force lifecycle transitions carry prerequisites in privately constructed types: fenced, quiescent, erased, staged, and installed.
+A single-use lease rejects repeated detach, erase, stage, and completion effects.
+
+The bundled installer stages a manifest-qualified replacement without service activation.
+Completion examines the payload again and removes the exact owned reset fence.
+`RESET_INSTALLED` carries installation identity, version, and command. It carries no service generation or readiness claim.
+No success path starts a broker or publishes Codex discovery.
+
+Failed staging or completion restores the fence and retires partial processes, with both causes if recovery fails.
+Report kept storage when retirement or cleanup rejects. OS refusal is a finite failure.
+The exterior lock stays stable across directory deletion and later reset tries.
 
 `kast plugin codex` verifies the complete bundled marketplace and installed MCP launcher before asking Codex to install `kast@kast`. Codex owns plugin configuration, cache, and removal. Preserve foreign marketplace and plugin identities; do not add a second Kast ownership receipt or edit Codex files directly.
+
+`kast connect codex` and `kast connect codex mcp` select that same plugin owner.
+Reject new App Server registration before effects. Keep legacy receipt variants only for exact owned cleanup and plugin migration.
+Preserve unrecorded or foreign MCP entries. Reject their conflict before plugin installation.
 
 The managed root contains one ordinary `installation` directory. Its stable `bin`, `share`, `config`, and `state` paths survive replacement. Ordinary installation locks and the management receipt remain in the managed root; the destructive reset fence and stable lock live beside it. Do not introduce version directories, selection links, or native legacy-layout fallback; the installer owns admitted migration and transaction recovery.
 

@@ -48,23 +48,17 @@ class InstallationStageOnlyTest {
     }
 
     @Test
-    fun `persistent default activation executes service and retains typed failure`(@TempDir temporary: Path) {
+    fun `persistent default installation commits without service activation`(@TempDir temporary: Path) {
         val request = persistentRequest(temporary)
         val complete =
             assertInstanceOf(
                 InstallationOutcome.Complete::class.java,
                 InstallationWorkflow.execute(request, unexpectedPriorUpgrade),
             )
-        assertEquals(
-            InstallationActivation.Pending(InstallationActivationFailure.EXIT_REJECTED),
-            complete.report.activation,
-        )
-        assertEquals(InstallationReportStatus.INSTALLED_ACTIVATION_PENDING, complete.report.status)
-        assertEquals(
-            listOf("enable"),
-            Files.readAllLines(
-                request.installRoot.value.resolve("installation/share/kast/libexec/kast-service.called")
-            ),
+        assertEquals(InstallationActivation.NotRequested, complete.report.activation)
+        assertEquals(InstallationReportStatus.INSTALLED, complete.report.status)
+        assertTrue(
+            Files.notExists(request.installRoot.value.resolve("installation/share/kast/libexec/kast-service.called"))
         )
     }
 

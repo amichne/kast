@@ -270,7 +270,7 @@ private fun perform(command: ManagementCommand) {
     when (command) {
         is ManagementCommand.Status -> printManagementStatus(root, command.json)
         is ManagementCommand.Connect -> {
-            if (command.connection == null) println("Supported integrations: codex mcp, codex app-server, copilot, pi")
+            if (command.connection == null) println("Supported integrations: codex plugin, copilot, pi")
             else {
                 val repeated =
                     connectHarness(
@@ -285,15 +285,7 @@ private fun perform(command: ManagementCommand) {
                     if (repeated) "${command.connection.publicName} is already registered"
                     else "Registered ${command.connection.publicName}"
                 )
-                if (command.connection == HarnessConnection.CODEX_APP_SERVER) {
-                    val launcher =
-                        (readReceipt(root) as ReceiptRead.Read)
-                            .receipt
-                            .registrations
-                            .single { it.connection == command.connection }
-                            .destination
-                    println("Launch $launcher for Codex, or $launcher app-server for an App Server client.")
-                } else println("Restart the harness to load it")
+                println("Restart the harness to load it")
             }
         }
         is ManagementCommand.Disconnect -> {
@@ -307,7 +299,16 @@ private fun perform(command: ManagementCommand) {
         is ManagementCommand.Plugin -> {
             val outcome =
                 when (command.harness) {
-                    PluginHarness.CODEX -> installCodexPlugin(root)
+                    PluginHarness.CODEX ->
+                        installCodexPlugin(
+                            root,
+                            Path.of(home),
+                            codexHome =
+                                admittedConnectionDirectory(
+                                        environment["CODEX_HOME"] ?: Path.of(home).resolve(".codex").toString()
+                                    )
+                                    .path,
+                        )
                 }
             if (command.json) println(outcome.asJson())
             when (outcome) {
@@ -359,7 +360,7 @@ private fun perform(command: ManagementCommand) {
                 ForceResetExit.INCOMPLETE -> exitProcess(1)
             }
         }
-        is ManagementCommand.Upgrade -> upgradeInstallation(root, Path.of(home), command.controlOnly)
+        is ManagementCommand.Upgrade -> upgradeInstallation(root, Path.of(home), command.controlOnly, environment)
         ManagementCommand.Uninstall -> uninstallInstallation(root, Path.of(home))
         ManagementCommand.Version -> println(MANAGEMENT_VERSION)
         ManagementCommand.Help -> Unit

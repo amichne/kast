@@ -4,12 +4,11 @@ title: "Kast agent onboarding"
 description: "Defines the shared brief, generated references, and passive host adapters."
 resource: "repo://agent-tools"
 tags: [kast, agents, plugins]
-timestamp: "2026-10-15T19:04:53Z"
-source_revision: 0b95306caef9f314f4419bd73ed0171bc67da230
+timestamp: "2026-10-16T06:50:12Z"
+source_revision: c63215981504766de0d3b861c801414e05768f57
 code_sources:
   - path: agent-tools/onboarding.template.md
   - path: agent-tools/hooks/session_start.py
-  - path: agent-tools/hooks/prepare_workspace.py
   - path: packaging/generate-public-query.py
   - path: build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt
   - path: pi/mcp-extension.ts
@@ -25,10 +24,11 @@ Do not add a discoverable `SKILL.md` or a standalone skill archive.
 `hooks/session_start.py` owns context assembly and host envelopes.
 Keep its runtime passive, bounded, offline, and free of semantic calls or workspace writes.
 Keep its PEP 723 metadata and lock together.
-`hooks/prepare_workspace.py` owns the separate background setup through direct RPC.
-Keep its locked Pydantic runtime and `agentSessionSetupTest` under their existing owners.
+The context hooks use Python 3.9 or later with the standard library.
+Keep dependency downloads and workspace preparation outside these hooks.
+The MCP session owns IntelliJ preparation through `KastMcpServer` and `McpWorkspaceOperationClient`.
 The Codex and Copilot manifests select their own hook configuration and share the same MCP entry.
-The Pi adapter in `pi/mcp-extension.ts` uses the shared script and native MCP support.
+The Pi adapter in `pi/mcp-extension.ts` reads bundled resources directly with Node and uses native MCP support.
 
 Run `python3 packaging/test-agent-onboarding.py` for hook output, rejection, and host-command cases.
 Run `python3 packaging/test-public-query-generation.py` for schema and brief parity.

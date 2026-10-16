@@ -50,7 +50,7 @@ code_sources:
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/gradle/GradleImportEnvironment.kt
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-15T19:07:35.337Z
+    at: 2026-10-16T06:54:44.448Z
 sources:
   - id: openwiki-source-b49f63bec354bf14b4c28692
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt
@@ -60,6 +60,8 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationInput.kt
   - id: openwiki-source-82001d1847d4403e8e24787a
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt
+  - id: openwiki-source-5f9ee1677dd5352d4bd1273d
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationPublicEndpointSelection.kt
   - id: openwiki-source-211f90f77f217ad3273b0d4f
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt
   - id: openwiki-source-8f4d86f42434fcc1ce269879
@@ -80,7 +82,7 @@ sources:
     resource: repo://packaging/install-checkout.sh
   - id: openwiki-source-37ffb827b915bda4bcca9865
     resource: repo://packaging/install-local.sh
-generated: { by: "codex", at: "2026-10-15T00:57:31.735Z" }
+generated: { by: "codex", at: "2026-10-16T06:54:44.448Z" }
 ---
 
 # Installation configuration
@@ -100,11 +102,11 @@ managed Kast root. The selected file must have an ordinary canonical absolute
 path. Symlinks in the file or its ancestors reject. Bounded reads retain the
 selected configuration's provenance and check file identity again after reading.
 
-`KAST_APP_SERVER_PUBLIC_ENDPOINT` defaults to `private`. Installation admits and
-persists an explicit `codex-control` selection through the same broker-owned type;
-unknown or empty selections reject. Private routing lets the native Codex daemon
-retain its own discovery endpoint. Saved installation configuration remains the
-desired state when post-install activation is pending.
+`KAST_APP_SERVER_PUBLIC_ENDPOINT` defaults to `private`.
+Installation admits only an explicit `private` selection.
+It migrates an admitted saved `codex-control` selection to `private` with finite provenance.
+Unknown, empty, or explicit shared selections reject before installation effects.
+Codex keeps its own App Server and discovery endpoint. Installation does not start a broker.
 
 See [distribution](../modules/distribution.md).
 
@@ -172,8 +174,8 @@ paths retain their HOME-derived proofs in typed request values.
 The derived `KAST_INSTALL_PROFILE` accepts only persistent. Session installation
 is retired, and checkout session requests reject before Gradle or installation
 effects. `KAST_INSTALL_ROOT` and `KAST_BIN_DIR` are derived bindings, not saved
-user settings. Explicit cold staging defers Control activation through the
-existing lifecycle owner; it does not create another installation.
+user settings. Explicit staging qualifies the replacement payload through the existing lifecycle owner.
+Completion removes the exact owned fence without service activation. It does not create another installation.
 
 The private daemon entry point is a declared raw-environment ingress owner. It checks managed readiness inputs and the saved-configuration rejection marker before invoking the existing coordinator configuration admission. Its generated launcher uses the existing derived `KAST_OPTS` JVM boundary; it adds no saved configuration setting. The installed MCP process is also a declared ingress owner. It resolves the selected installation and IDEA host from saved configuration for each session; it adds no saved configuration setting. After exact Gradle-root discovery, the first valid modern request or legacy initialization starts workspace preparation through that selected host. Direct MCP file refresh and one-call change reuse the session's selected host and exact root. The harness-neutral tool RPC uses that same direct tool composition and selected configuration. Its process command adds no saved configuration setting or Codex App Server request.
 The private service-control entry point is also a declared raw-environment ingress owner. It selects the installed release's saved configuration only when no selector was supplied, then delegates registration, passive status, enable, disable, stop, bootstrap, or repair to the existing owners.

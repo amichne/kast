@@ -136,19 +136,18 @@ private fun stageReplacement(
             is ResetStaging.Rejected -> return compensate(erased, home, preparation.failure, execution)
         }
     execution.observe(ResetObservation.Completed(operation, ForceResetStage.INSTALLATION))
-    execution.observe(ResetObservation.Started(operation, ForceResetStage.ACTIVATION))
-    return when (val activation = ActiveReset.activate(staged, home, environment, execution.runtime)) {
-        is ResetActivation.Active -> {
-            execution.observe(ResetObservation.Completed(operation, ForceResetStage.ACTIVATION))
-            val active = activation.reset
-            ForceResetOutcome.Reinstalled(
-                staged.payload.installation.toString(),
-                staged.payload.version.value,
-                staged.payload.command.toString(),
-                active.generation.value,
+    execution.observe(ResetObservation.Started(operation, ForceResetStage.FINAL_VERIFICATION))
+    return when (val completion = InstalledReset.complete(staged)) {
+        is ResetInstallation.Installed -> {
+            execution.observe(ResetObservation.Completed(operation, ForceResetStage.FINAL_VERIFICATION))
+            val installed = completion.reset.staged.payload
+            ForceResetOutcome.Installed(
+                installed.installation.toString(),
+                installed.version.value,
+                installed.command.toString(),
             )
         }
-        is ResetActivation.Rejected -> compensateStaged(staged, home, activation.failure, execution)
+        is ResetInstallation.Rejected -> compensateStaged(staged, home, completion.failure, execution)
     }
 }
 
@@ -179,7 +178,9 @@ private fun compensateStaged(
     failure: ForceResetFailure,
     execution: ForceResetExecution,
 ): ForceResetOutcome {
-    execution.observe(ResetObservation.Rejected(ForceResetOperation.REINSTALL, ForceResetStage.ACTIVATION, failure))
+    execution.observe(
+        ResetObservation.Rejected(ForceResetOperation.REINSTALL, ForceResetStage.FINAL_VERIFICATION, failure)
+    )
     return when (val recovery = restoreStopped(staged.erased, home, execution)) {
         ResetEffect.Completed ->
             ForceResetOutcome.Pending(
@@ -191,7 +192,7 @@ private fun compensateStaged(
         is ResetEffect.Rejected ->
             ForceResetOutcome.RecoveryRequired(
                 ForceResetOperation.REINSTALL,
-                ForceResetStage.ACTIVATION,
+                ForceResetStage.FINAL_VERIFICATION,
                 failure,
                 recovery.failure,
                 staged.erased.root.toString(),
