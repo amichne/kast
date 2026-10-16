@@ -555,7 +555,7 @@ def _code_end(
     return "UNMATCHED"
 
 
-type _BlockState = Literal["PROSE", "COMMENT", "FRONTMATTER"] | _Fence | _CodeEnd
+type _BlockState = Literal["PROSE", "COMMENT"] | _Fence | _CodeEnd
 type _InlineState = Literal["PROSE", "COMMENT"] | _CodeEnd
 
 
@@ -629,6 +629,102 @@ def _mask_inline(
     return _InlineMask("".join(parts), state, tuple(code_spans))
 
 
+def _frontmatter_lines(source: tuple[str, ...]) -> range:
+    if not source or re.fullmatch(r"---[ \t]*", source[0]) is None:
+        return range(0)
+    for index in range(1, len(source)):
+        if re.fullmatch(r"(?:---|\.\.\.)[ \t]*", source[index]):
+            return range(index + 1)
+    return range(0)
+
+
+def _link_resource(source: str, start: int) -> range | Literal["UNMATCHED"]:
+    cursor = start + 1
+    while cursor < len(source) and source[cursor] in " \t":
+        cursor += 1
+    if cursor < len(source) and source[cursor] == "<":
+        destination = re.match(r"<(?:[^<>\\]|\\.)*>", source[cursor:])
+        if destination is None:
+            return "UNMATCHED"
+        cursor += destination.end()
+    else:
+        depth = 0
+        while cursor < len(source):
+            char = source[cursor]
+            if ord(char) <= 32 or ord(char) == 127:
+                break
+            if char == "\\" and cursor + 1 < len(source) and source[cursor + 1] in "()\\":
+                cursor += 2
+                continue
+            if char == "(":
+                depth += 1
+                if depth > 32:
+                    return "UNMATCHED"
+            elif char == ")":
+                if depth == 0:
+                    break
+                depth -= 1
+            cursor += 1
+        if depth:
+            return "UNMATCHED"
+    destination_end = cursor
+    while cursor < len(source) and source[cursor] in " \t":
+        cursor += 1
+    if cursor > destination_end and cursor < len(source) and source[cursor] in "\"'(":
+        closer = ")" if source[cursor] == "(" else source[cursor]
+        cursor += 1
+        while cursor < len(source) and source[cursor] != closer:
+            if (
+                source[cursor] == "\\"
+                and cursor + 1 < len(source)
+                and source[cursor + 1] in {closer, "\\"}
+            ):
+                cursor += 2
+            else:
+                cursor += 1
+        if cursor == len(source):
+            return "UNMATCHED"
+        cursor += 1
+        while cursor < len(source) and source[cursor] in " \t":
+            cursor += 1
+    if cursor < len(source) and source[cursor] == ")":
+        return range(start, cursor + 1)
+    return "UNMATCHED"
+
+
+def _mask_link_destinations(line: str, source: str) -> str:
+    parts: list[str] = []
+    labels: list[Literal["LINK", "IMAGE"]] = []
+    cursor = 0
+    visible = 0
+    while cursor < len(line):
+        char = line[cursor]
+        if char == "\\":
+            cursor += 2
+            continue
+        if line.startswith("![", cursor):
+            labels.append("IMAGE")
+            cursor += 2
+            continue
+        if char == "[":
+            labels.append("LINK")
+        elif char == "]" and labels:
+            label = labels.pop()
+            if source.startswith("(", cursor + 1):
+                resource = _link_resource(source, cursor + 1)
+                if isinstance(resource, range):
+                    parts.extend((line[visible : resource.start], " " * len(resource)))
+                    cursor = visible = resource.stop
+                    if label == "LINK":
+                        labels.clear()
+                    continue
+                if resource != "UNMATCHED":
+                    assert_never(resource)
+        cursor += 1
+    parts.append(line[visible:])
+    return "".join(parts)
+
+
 def prose_lines(text: str, markup: Literal["markdown", "mdx"]) -> tuple[str, ...]:
     """Conservative lexical view. Vale remains the native markup parser."""
     lines: list[str] = []
@@ -636,14 +732,9 @@ def prose_lines(text: str, markup: Literal["markdown", "mdx"]) -> tuple[str, ...
     containers: tuple[int, ...] = ()
     paragraph: Literal["OPEN", "CLOSED"] = "CLOSED"
     source = tuple(text.splitlines())
+    frontmatter = _frontmatter_lines(source)
     for index, line in enumerate(source):
-        if index == 0 and line.strip() == "---":
-            state = "FRONTMATTER"
-            lines.append("")
-            continue
-        if state == "FRONTMATTER":
-            if line.strip() in {"---", "..."}:
-                state = "PROSE"
+        if index in frontmatter:
             lines.append("")
             continue
         if isinstance(state, _Fence):
@@ -699,7 +790,7 @@ def prose_lines(text: str, markup: Literal["markdown", "mdx"]) -> tuple[str, ...
                 assert_never(fence)
         mask = _mask_inline(source, index, state, markup, containers, inline_scope)
         line, state = mask.text, mask.state
-        line = re.sub(r"\]\([^\n]*?\)", lambda m: "]" + " " * (len(m[0]) - 1), line)
+        line = _mask_link_destinations(line, source[index])
         line = re.sub(r"https?://\S+", lambda m: " " * len(m[0]), line)
         visible_content = line.expandtabs(4)[prefix_columns:]
         paragraph = (
