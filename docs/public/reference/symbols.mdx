@@ -4,42 +4,42 @@ description: "Use exact compiler references, locations, and signatures without g
 icon: "braces"
 ---
 
-An exact reference carries compiler-established declaration identity into another request. Its producing query separately supplies scope and coverage.
+An exact reference carries a declaration identity proved by the compiler into the next request. The query that issued it also states its scope and coverage.
 
 ## Public fields
 
 | Field | Meaning |
 | --- | --- |
-| `ref` | Opaque handle for subsequent identity admission. |
-| `location` | Established declaration location. |
-| `signature` | Compiler-established identity and callable or property facts. |
-| `source` | Bounded committed source, when requested. |
+| `ref` | An opaque handle. Kast checks its identity on the next request. |
+| `location` | Where the proved declaration is found. |
+| `signature` | The identity and facts about a callable or property, proved by the compiler. |
+| `source` | A bounded slice of committed source, if requested. |
 
-Signature and location distinguish candidates for human selection. The issued `ref` supplies the identity that Kast admits for semantic operations.
+Use signature and location to tell candidates apart. The issued `ref` gives Kast the identity to check for a semantic call.
 
-`SOURCE` adds bounded committed source context. Anonymous bodies and exact occurrences use the separate anchored `READ_SOURCE` action.
+`SOURCE` adds a bounded slice of committed source. To read an anonymous body or exact occurrence, use the distinct anchored `READ_SOURCE` action.
 
-Source positions use UTF-16 code units. Byte offsets and line numbers do not replace the encoded range.
+Source positions use UTF-16 code units. A byte offset or line number does not replace the encoded range.
 
 ## Local declarations
 
-Local properties use `LOCAL_PROPERTY` signatures with type and `VAL` or `VAR` mutability. Local named functions use `LOCAL_FUNCTION` signatures.
+A local property uses a `LOCAL_PROPERTY` signature. It states the type and whether it is `VAL` or `VAR`. A local named function uses a `LOCAL_FUNCTION` signature.
 
-Their identities keep the file, declaration range, compiler identity, containing declaration range, and bounded lexical ownership ranges.
+Each identity keeps the file and compiler identity. It also keeps the declaration range, the range of its containing declaration, and bounded lexical owner ranges.
 
-Equal names in separate scopes identify separate declarations. A local property identity does not establish its assignment flow.
+Equal names in distinct scopes can name distinct declarations. A local property identity does not prove how values are assigned to it.
 
-Local reacquisition needs unchanged owning-file content. A local edit or move needs fresh discovery, even when the displayed signature stays the same.
+To reacquire a local reference, the owning file must stay unchanged. After a local edit or move, run discovery again. Do so even if the displayed signature stays the same.
 
 ## Evidence limits
 
-A local function identity does not establish execution of its deferred body. An anonymous body's lexical container does not automatically become its named caller.
+A local function identity does not prove that its deferred body runs. An anonymous body's lexical container does not become its named caller by default.
 
-[Program tracing](/reference/program-tracing) connects those identities to callback and value-flow evidence. [Staleness](/reference/staleness) defines reuse.
+For callback and value-flow proof, read [Program tracing](/reference/program-tracing). [Staleness](/reference/staleness) defines reuse.
 
 ## Output selection example
 
-This output adds descriptive fields to the necessary identity and kind.
+This output adds fields to the required identity and kind.
 
 ```json
 {"type":"SYMBOLS","fields":["NAME","LOCATION","SIGNATURE","SOURCE"]}

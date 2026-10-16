@@ -4,9 +4,9 @@ description: "Look up query actions, inputs, ordered stages, output forms, scope
 icon: "book-open"
 ---
 
-`query_symbols` selects a semantic operation through `request.type`. Its sources, stages, outputs, and scopes define the question that Kast must answer.
+`request.type` selects the semantic action for `query_symbols`. Its source, stages, output, and scope define the question for Kast to answer.
 
-The installed catalog owns the release contract. [Generated schemas](/reference/schemas) define exact fields, discriminators, and legal combinations.
+Use the installed catalog for your release. [Generated schemas](/reference/schemas) define exact fields and discriminators. They also define which choices can be combined.
 
 <a id="choose-an-action" />
 
@@ -15,13 +15,13 @@ The installed catalog owns the release contract. [Generated schemas](/reference/
 | Action | Necessary input | Behavior |
 | --- | --- | --- |
 | `RUN` | `source` | Evaluate optional `steps` in order. Select `output` and optional `retention`. |
-| `RESUME` | Issued output `continuation` | Present remaining produced output without semantic execution. |
-| `READ_RESULT` | Issued `result`. Optional `cursor` | Present retained rows without semantic execution. Output must match the retained row type. |
+| `RESUME` | Issued output `continuation` | Show the produced output that is left. Do no semantic work. |
+| `READ_RESULT` | Issued `result`. Optional `cursor` | Show retained rows without semantic work. Match the output to the retained row type. |
 | `READ_SOURCE` | Issued `candidateRef` | Read an exact anchored occurrence or anonymous body. See [callbacks](/reference/callbacks#read-the-exact-anonymous-source). |
 
-`RUN` establishes a new answer. `RESUME` and `READ_RESULT` present produced evidence without new semantic work.
+`RUN` produces a new answer. `RESUME` and `READ_RESULT` show produced evidence. They do no new semantic work.
 
-`READ_SOURCE` selects an anchored occurrence or anonymous body through its issued `candidateRef`. Exact symbol references belong to a different input family.
+`READ_SOURCE` uses an issued `candidateRef` to select an anchored occurrence or anonymous body. An exact symbol reference belongs to a different input family.
 
 ```json
 {
@@ -37,34 +37,35 @@ The installed catalog owns the release contract. [Generated schemas](/reference/
 
 Omitted output selects symbol names and locations. `retention: "RETAIN"` keeps the result for later reads or composition.
 
-Every public `RUN` uses `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`. A supplied completion selector rejects admission.
+Every public `RUN` uses `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`. If you supply a completion selector, Kast rejects the input.
 
-The runner drains internal semantic pages under one grant. Missing proof returns `COMPLETION_UNPROVEN` with available evidence.
+The runner drains internal semantic pages under one grant. If proof is missing, it returns `COMPLETION_UNPROVEN` with available evidence.
 
 <a id="start-from-the-right-input" />
+
 <a id="choose-an-input" />
 
 ## Sources
 
 | Source | Purpose |
 | --- | --- |
-| `SEARCH_DECLARATIONS` | Simple declaration name. Exact, case-sensitive matching by default. Fuzzy matching is explicit. |
-| `SEARCH_TEXT` | One case-sensitive ASCII identifier word. Exact containing declarations and match context. |
-| `ALL_DECLARATIONS` | Supported Kotlin declarations, including nested declarations, ordered by file path and source offset. |
+| `SEARCH_DECLARATIONS` | Find a simple declaration name. Match exact case by default. Ask for fuzzy matching explicitly. |
+| `SEARCH_TEXT` | Find one case-sensitive ASCII identifier word. Return the exact containing declarations and match context. |
+| `ALL_DECLARATIONS` | List supported Kotlin declarations, including nested ones. Order them by file path and source offset. |
 | `AT_LOCATION` | Nearest containing named declaration at a workspace-relative `file` and UTF-16 `offset`. |
 | `SYMBOL_REFS` | Exact references from previous results. |
 | `RESULT` | Retained rows, optionally selected by their issued row IDs. |
-| `IMPACT` | Producer values through supported Kotlin transfers and supplied reviewed models. |
+| `IMPACT` | Trace producer values through supported Kotlin transfers and supplied reviewed models. |
 
-Discovery defaults to recursive workspace scope in `main` and `test`. Directory, package, source-set, and kind constraints restrict seed discovery.
+By default, discovery searches the workspace and its subdirectories in `main` and `test`. Set directory, package, source-set, and kind limits to narrow seed discovery.
 
-Those seed restrictions do not limit later relationship destinations. `expansionScope` controls that separate domain.
+Those seed limits do not restrict the destinations of later relationship reads. `expansionScope` controls that distinct domain.
 
-`SEARCH_DECLARATIONS` uses exact case-sensitive names by default. Explicit fuzzy matching changes name selection without proof of unique identity.
+`SEARCH_DECLARATIONS` uses exact case-sensitive names by default. Explicit fuzzy matching changes which names it selects. It does not prove a unique identity.
 
-`SEARCH_TEXT` accepts one ASCII identifier word that starts with a letter or underscore. Phrases, substrings, qualified literals, and regular expressions reject admission.
+`SEARCH_TEXT` accepts one ASCII identifier word. It starts with a letter or underscore. Kast rejects phrases, substrings, qualified literals, and regular expressions.
 
-`ALL_DECLARATIONS` includes supported nested Kotlin declarations. It excludes direct library enumeration and keeps the admitted declaration-family restrictions.
+`ALL_DECLARATIONS` includes supported nested Kotlin declarations. It does not scan libraries directly. It keeps the admitted limits on declaration families.
 
 `AT_LOCATION` selects the nearest containing named declaration. An offset on a call expression selects its container rather than its target.
 
@@ -78,29 +79,29 @@ Those seed restrictions do not limit later relationship destinations. `expansion
 | `DISTINCT_SYMBOLS` | Keep the first row per canonical identity at this pipeline position. |
 | `EXPAND_RELATION` | One hop through `REFERENCES`, `CALLERS`, `CALLEES`, `IMPLEMENTATIONS`, `INHERITORS`, `OVERRIDES`, or `TYPE_USES`. |
 | `WALK` | Exhaust the reachable graph with omitted or null `maximumDepth`. An explicit depth limits reach. Breadth-first by default. |
-| `TRACE` | Terminal bounded investigation returning the seed, its direct callable members, reference owners, implementations or overrides, direct callers, and one further caller layer. Select `SYMBOLS`. |
-| `CONCAT` | Append `input`, preserving order and duplicates. |
+| `TRACE` | Put this bounded investigation last. Return the seed, direct callable members for types, reference owners, implementations or overrides, and direct callers. Add one further caller layer. Select `SYMBOLS`. |
+| `CONCAT` | Append `input`, keeping order and duplicates. |
 | `UNION`, `INTERSECT`, `DIFFERENCE` | Compare saved symbol rows in `right` by canonical identity. Difference needs complete coverage of that input. |
-| `JOIN` | `INNER` pairs named cells. `SEMI` keeps matches. `ANTI` needs complete coverage of `right` to establish absence. |
+| `JOIN` | `INNER` pairs named cells. `SEMI` keeps matches. `ANTI` needs complete coverage of `right` to prove absence. |
 | `PROJECT_BINDING` | Select one named symbol cell before further symbol steps. |
 
-Stages consume the preceding stage's row kind. A stage after composition acts on the combined stream.
+Each stage consumes rows of the kind produced by the stage before it. A stage after composition acts on the combined stream.
 
-`WHERE` cannot retroactively reduce native enumeration. Known discovery constraints and native expansion scope must apply before expensive semantic work.
+`WHERE` cannot reduce native scan work already done. Apply known discovery limits and native expansion scope before that semantic work.
 
 <a id="trace-an-interface-or-adapter" />
 
 ### TRACE topology
 
-`TRACE` is a terminal stage with `SYMBOLS` output. It groups results by canonical identity while it preserves relation and occurrence evidence.
+Put `TRACE` last and use `SYMBOLS` output. It groups results by canonical identity. It keeps relation and occurrence evidence.
 
-Its fixed topology includes the seed, direct callable members of type seeds, reference owners, implementations or overrides, and direct callers.
+Its topology is fixed. It includes the seed, reference owners, implementations or overrides, and direct callers. For type seeds, it adds direct callable members.
 
-One further caller layer includes discovered owners and callers. Imported type uses and ordinary code references keep distinct occurrence evidence.
+One further caller layer includes the owners and callers found. Imported type uses keep their own occurrence evidence, apart from ordinary code references.
 
-Member inventory uses source and compiler evidence. It does not invent a class-to-member call edge or a named caller for a type.
+Kast finds members from source and compiler evidence. It does not invent a call edge from a class to a member. It does not invent a named caller for a type.
 
-`TRACE` supports bounded static investigations of interfaces and adapters. It does not establish an exhaustive runtime graph.
+`TRACE` supports bounded static investigations of interfaces and adapters. It does not prove a full runtime graph.
 
 <a id="choose-the-relationship-search-domain" />
 
@@ -112,15 +113,15 @@ Member inventory uses source and compiler evidence. It does not invent a class-t
 | `RETAINED_SEED` | Scope carried by each seed. Default for `WALK` with explicit `maximumDepth`. Acquire an `AT_LOCATION` seed for exact-file scope. |
 | `SOURCE_DOMAIN` | Exact imported `sourceSets`, source policy, generated-source policy, and optional workspace-relative directory. |
 
-Omission or `null` selects the operation's default. Explicit expansion scope applies before relation enumeration.
+If scope is omitted or `null`, Kast uses the action's default. Explicit expansion scope applies before the relation scan.
 
 `SOURCE_DOMAIN` needs `sourcePolicy` and `generatedSources`. Its `includeSubdirectories` default is `true`.
 
 An omitted or null `WALK.maximumDepth` requests the reachable graph and defaults to workspace expansion. Its evidence records `EXHAUSTIVE` extent.
 
-An explicit depth includes nodes at that depth without expansion from those nodes. Its evidence records `THROUGH_DEPTH` and `maximum_depth`.
+An explicit depth includes nodes at that depth. It does not expand from those nodes. The evidence records `THROUGH_DEPTH` and `maximum_depth`.
 
-Complete traversal needs complete one-hop reads at every necessary node. Resource exhaustion cannot silently reduce the requested extent.
+A complete traversal needs complete one-hop reads at each required node. If resources run out, Kast cannot silently reduce the requested extent.
 
 <a id="choose-the-result-you-need" />
 
@@ -132,39 +133,39 @@ Complete traversal needs complete one-hop reads at every necessary node. Resourc
 | `OCCURRENCES` | Relation facts and use sites, including file-scoped imports and aliases. |
 | `TRAVERSAL_RECORDS` | Relation facts with hop depth. |
 | `BINDING_ROWS` | Named cells from an inner join. |
-| `VALUE_PATHS` | Producer sites, transfers, model applications, representation history, terminals, and obligations. |
+| `VALUE_PATHS` | Track producer sites and transfers. Keep model use, how values changed form, terminals, and proof still needed. |
 | `IMPACT_WITNESS` | Retained impact sections from a complete-only `IMPACT` run or `READ_RESULT`. |
 
-Explicit symbol `fields: []` selects identity and kind alone. `SOURCE` adds bounded committed source context.
+Explicit symbol `fields: []` selects identity and kind alone. `SOURCE` adds a bounded slice of committed source.
 
-File-scoped occurrences preserve imports and aliases. They cannot act as declaration endpoints for later graph expansion.
+File-scoped occurrences keep imports and aliases. They cannot act as declaration endpoints for later graph expansion.
 
 <a id="investigate-value-impact" />
 
 ## Value impact inputs and qualifications
 
-`IMPACT` traces exact producer invocations with `KOTLIN_FORWARD_V1`. Its input must state seeds, declarations, domain, flow, and reviewed models.
+`IMPACT` traces exact producer calls with `KOTLIN_FORWARD_V1`. State the seeds, declarations, domain, flow, and reviewed models in its input.
 
 | Input | Requirement |
 | --- | --- |
-| `seeds` | Issued `enclosing` and producer `callable` references, plus UTF-16 `start` and `end` covering the whole invocation. |
-| `declarations` | Modeled callable references paired with identity claims for fresh revalidation. |
+| `seeds` | Issued `enclosing` and producer `callable` references, plus UTF-16 `start` and `end` covering the whole call. |
+| `declarations` | Pair modeled callable references with identity claims. Kast checks those claims again. |
 | `flow` | `KOTLIN_FORWARD_V1`. |
 | `domain` | Explicit expansion scope. |
 | `models` | Reviewed representation rules or rules for modeled interfaces. `[]` supplies none. |
-| Optional `requestedSites` | Enclosing identity, range, and role. Argument sites also identify invocation, callable, and formal parameter index. |
+| Optional `requestedSites` | State the enclosing identity, range, and role. For an argument site, also identify the call, callable, and formal parameter index. |
 
-Native reads establish invocation and site identity. Supplied models establish representation meaning or modeled callable behavior.
+Native reads prove call and site identity. Supplied models prove what a representation means or how a modeled callable behaves.
 
-`IMPACT` accepts no transformation steps. `VALUE_PATHS` presents paths, while `IMPACT_WITNESS` presents a section after the original investigation completes.
+`IMPACT` accepts no transformation steps. `VALUE_PATHS` shows paths. `IMPACT_WITNESS` shows a section after the original investigation completes.
 
-A final try or catch value can supply its try expression through a compiler-confirmed normal-completion transfer. Catch fallback values keep separate producers.
+Under normal completion, a final try or catch value can supply its try expression. The compiler proves that transfer. Catch fallback values keep their own producers.
 
-Non-final expressions do not supply that result. Returns keep return transfers, and throws do not supply normal branch values.
+Non-final expressions do not supply that result. Returns keep return transfers. Throws do not supply normal branch values.
 
-A transfer across `finally` keeps `FINALLY_UNSUPPORTED`. Mutable, cyclic, or unsupported flow also keeps its unresolved proof.
+A transfer across `finally` keeps `FINALLY_UNSUPPORTED`. Mutable or cyclic flow keeps proof still needed. So does flow that is not supported.
 
-Strict completion needs all original paths and discharged obligations from the original ledger. Selected preview paths cannot replace that accounting.
+Strict completion needs all original paths. It needs all proof rules from the original ledger to be met. Selected preview paths cannot replace that ledger.
 
 <a id="read-retained-witnesses" />
 
@@ -172,28 +173,28 @@ Strict completion needs all original paths and discharged obligations from the o
 
 `READ_RESULT` supports `PRODUCERS`, `MODELS`, `NATIVE_READS`, `READ_REJECTIONS`, `FINDINGS`, and `SITE_ACCOUNTING`.
 
-`FINDINGS` presents one compact row per original path. Each row keeps producer, destination, representation, model provenance, terminal, and obligations.
+`FINDINGS` shows one compact row for each original path. It keeps producer, destination, representation, model provenance, terminal, and proof still needed.
 
 `VALUE_PATHS` with cursor `pathOrdinal` and `maxResults: 1` expands that path. Its `pathRowId` stays attached to the original result.
 
 | State | Meaning |
 | --- | --- |
-| `REACHED` | Links original paths by ordinal and row ID, preserving separate scope exits. |
+| `REACHED` | Links original paths by ordinal and row ID, keeping separate scope exits. |
 | `EXCLUDED` | Keeps proven scope-exclusion witnesses. |
-| `RELATIONSHIP_UNPROVEN` | Preserves identity and adds `REQUESTED_SITE_RELATIONSHIP`, preventing semantic completion. |
+| `RELATIONSHIP_UNPROVEN` | Keeps identity and adds `REQUESTED_SITE_RELATIONSHIP`, preventing semantic completion. |
 
-Requested-site identity alone does not establish a producer relationship. `RELATIONSHIP_UNPROVEN` prevents semantic completion.
+A requested-site identity alone does not prove a producer relationship. If its state is `RELATIONSHIP_UNPROVEN`, the run cannot reach semantic completion.
 
-Before ledger finalization, witness reads return `RESULT_FIELD_UNAVAILABLE`. Rejection evidence uses `EVIDENCE_ONLY` and grants no semantic replay.
+Before the ledger is final, witness reads return `RESULT_FIELD_UNAVAILABLE`. Rejection evidence uses `EVIDENCE_ONLY`. It grants no semantic replay.
 
 ## Defaults and limits
 
-Omitted or null budget dimensions use configured defaults and ceilings. Requested values remain subject to the admitted grant.
+Omitted or null budget fields use the default settings and ceilings. The admitted grant can lower requested values.
 
-The root-level boolean `verbose` defaults to `false`. Compact output keeps semantic qualifications, exact references, and recovery evidence.
+Set the boolean `verbose` at the root. Its default is `false`. Compact output keeps semantic limits, exact references, and recovery evidence.
 
 [Program tracing](/reference/program-tracing) explains path evidence. [Results](/reference/responses) defines presentation. [Limits](/reference/limits) defines resource and state failures.
 
 ## Contract owner
 
-[The authored tool contract](/reference/source-map#public-requests) owns public inputs and defaults. Its generated projections must preserve the same discriminators and fields.
+[The authored tool contract](/reference/source-map#public-requests) owns public inputs and defaults. Its generated projections must keep the same discriminators and fields.

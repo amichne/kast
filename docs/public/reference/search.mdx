@@ -2,10 +2,14 @@
 title: "Find and trace code"
 description: "Find a declaration in your project, read its source, and trace callers or implementations."
 icon: "search"
-keywords: ["query_symbols", "Kotlin", "compiler references", "relations"]
+keywords:
+  - "query_symbols"
+  - "Kotlin"
+  - "compiler references"
+  - "relations"
 ---
 
-Use this procedure to select one declaration and trace its compiler-resolved relationships. First, connect a client to the intended Kotlin Gradle worktree.
+Use these steps to select one declaration and trace the relationships proved by the compiler. First, connect a client to the intended Kotlin Gradle worktree.
 
 1. [Find a declaration and inspect its source.](#1-find-a-declaration-and-inspect-its-source)
 2. [Trace the selected declaration.](#2-trace-the-selected-declaration)
@@ -23,7 +27,7 @@ Select the intended overload and owner. Ask the agent to read its source and kee
 
 | Evidence | Why it matters |
 | --- | --- |
-| Signature | Distinguishes overloads. |
+| Signature | Tells overloads apart. |
 | Location | Identifies the repository and declaration. |
 | Coverage | Reports whether the requested search finished. |
 | Exact reference | Carries the selected identity into the next request. |
@@ -52,17 +56,17 @@ For an interface, use the request family `CLASS`. Returned class-like declaratio
 }
 ```
 
-An exact name can match several owners. To find a method, search its name with `FUNCTION`, then examine each signature.
+An exact name can match several owners. To find a method, search its name with `FUNCTION`. Then check each signature.
 
-Apply known directory, package, source-set, and kind constraints before discovery. The completeness scan can visit more files than the name index returns.
+Before discovery, set the directory, package, source set, and kind that you know. To prove completeness, the scan can visit files that the name index did not return.
 
 `AT_LOCATION` selects the nearest containing named declaration. It does not resolve a call token to its target.
 
-Use `REFERENCES` or `CALLERS` from the selected target to establish that relationship. Source offsets use UTF-16 code units.
+Use `REFERENCES` or `CALLERS` from the selected target to prove that relationship. Source offsets use UTF-16 code units.
 
 ## 2. Trace the selected declaration
 
-Pass the exact reference unchanged. Choose the relationship domain before native enumeration.
+Pass the exact reference unchanged. Choose the relationship domain before the native scan.
 
 ```text wrap
 Use the exact Kast reference we selected to TRACE affected uses across the workspace. Show signatures, locations, occurrence evidence, and completion. Keep the result for follow-up reads.
@@ -83,31 +87,31 @@ This current input example uses a placeholder for the issued reference.
 }
 ```
 
-`TRACE` includes references, implementations or overrides, direct callers, and one further caller layer. Type seeds also include direct callable members.
+`TRACE` includes references, implementations or overrides, and direct callers. It adds one further caller layer. For a type seed, it also includes direct callable members.
 
-The topology is fixed, and `TRACE` must be terminal with `SYMBOLS` output. Its grouped symbols keep original relation and occurrence evidence.
+The topology is fixed. Put `TRACE` last and use `SYMBOLS` output. Its grouped symbols keep the original relation and occurrence evidence.
 
 `WORKSPACE` can reach clients outside the discovery directory. Use explicit `SOURCE_DOMAIN` when the question excludes those destinations.
 
-The requested 30 seconds remains subject to the host grant. All trace branches share the admitted elapsed allowance.
+The host grant can lower the requested 30 seconds. All trace branches share the admitted elapsed allowance.
 
 For one hop, use `EXPAND_RELATION`. For a graph, use `WALK` and state the intended depth or expansion scope.
 
-An omitted or null walk depth requests the reachable graph with workspace expansion. A later row filter cannot reduce that native work.
+If walk depth is omitted or null, the request covers the reachable graph with workspace expansion. A later row filter cannot reduce that native work.
 
 <a id="3-read-completion-and-follow-recovery" />
 
 ## 3. Read completion and choose recovery
 
-Examine completion, searched domain, and occurrence evidence before a conclusion. An empty qualified result does not prove absence.
+Check completion, searched domain, and occurrence evidence before a conclusion. A qualified result with no rows does not prove absence.
 
-Every public run uses `COMPLETE_ONLY`. Incomplete execution or callback proof returns `COMPLETION_UNPROVEN` with available evidence.
+Every public run uses `COMPLETE_ONLY`. If execution or callback proof is incomplete, the result returns `COMPLETION_UNPROVEN`. It keeps available evidence.
 
 Use its issued `nextQuery` to inspect retained rejection evidence. That read does not resume the unfinished semantic work.
 
 Use public `RESUME` only with an issued output continuation. The internal runner owns semantic page continuation.
 
-For callback code, examine supply, formal binding, and actual invocation ownership. [Program tracing](/reference/program-tracing) explains each path's meaning.
+For callback code, check supply, formal binding, and actual call ownership. [Program tracing](/reference/program-tracing) explains each path's meaning.
 
 ## Start from remembered text
 
@@ -117,12 +121,14 @@ Use one case-sensitive ASCII identifier word to discover containing declarations
 Use Kast to find functions containing the word retry under checkout in main. Show a matching line for each function, then let me choose one to inspect or trace.
 ```
 
-Phrases, substrings, qualified literals, and regular expressions reject admission. A word match explains discovery rather than a caller relationship.
+Kast rejects phrases, substrings, qualified literals, and regular expressions. A word match explains why discovery found the body. It does not prove a caller relationship.
 
-## Keep the investigation current
+<span id="keep-the-investigation-current" />
 
-If retained state is unavailable, start a fresh query. After edits, get new source offsets and handles.
+## Keep reads current
 
-An exact reference can get fresh compiler authority when its identity policy succeeds. Read `reference_acquisitions` when the response supplies it.
+If retained state is not available, start a fresh query. After edits, get new source offsets and handles.
 
-[Staleness](/reference/staleness) explains reacquisition and original-state retention. [Results](/reference/responses) defines progress and recovery fields.
+An exact reference can gain fresh compiler authority after its identity checks pass. Read `reference_acquisitions` if the response supplies it.
+
+For reuse rules, read [Staleness](/reference/staleness). [Results](/reference/responses) defines progress and recovery fields.

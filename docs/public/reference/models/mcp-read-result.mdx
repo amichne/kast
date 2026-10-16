@@ -5,10 +5,10 @@ openapi-schema: "reference/callables.openapi.json query_symbolsSemanticResult"
 mode: "wide"
 ---
 
-Direct MCP places the canonical `query_symbols` document in `result.structuredContent`. Its status is `complete`, `qualified`, or `rejected`.
+Direct MCP puts the canonical `query_symbols` document in `result.structuredContent`. Its status is `complete`, `qualified`, or `rejected`.
 
-The document keeps exact identities, coverage, proof limits, producer progress, and retained evidence. Output presentation has separate row and byte limits.
+This document keeps exact identities, coverage, proof limits, producer progress, and retained evidence. How much output fits on a page has its own row and byte limits.
 
-An invocation failure can omit this document. `check_diagnostics` uses its own `check_diagnosticsSemanticResult` schema.
+A failed tool call can omit this document. `check_diagnostics` has its own schema: `check_diagnosticsSemanticResult`.
 
-[Results](/reference/responses) defines semantic fields. [The MCP wrapper](/reference/models/mcp-tool-call-result) defines transport failure.
+[Results](/reference/responses) defines the fields. [The MCP wrapper](/reference/models/mcp-tool-call-result) defines how a tool-call failure is reported.

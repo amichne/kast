@@ -2,10 +2,14 @@
 title: "Tool RPC contract"
 description: "Use the installed one-shot JSON process interface without MCP."
 icon: "terminal"
-keywords: ["RPC", "catalog", "Copilot CLI", "Pi"]
+keywords:
+  - "RPC"
+  - "catalog"
+  - "Copilot CLI"
+  - "Pi"
 ---
 
-Tool RPC carries JSON through an installed process interface. Its working directory selects the intended Kotlin repository or worktree.
+Tool RPC carries JSON through an installed process. Its working directory selects the Kotlin repository or worktree.
 
 <a id="discover" />
 
@@ -19,7 +23,7 @@ Tool RPC carries JSON through an installed process interface. Its working direct
 
 The reply uses `type: "catalog"` and `catalog.schemaVersion: 2`. Each effect is `READ` or `WRITE`.
 
-The catalog also reports call timeout, maximum response bytes, and optional `querySession` capability. An absent capability selects one-shot calls.
+The catalog reports the call timeout and maximum response bytes. It can also report the `querySession` capability. If that capability is absent, use one-shot calls.
 
 <a id="call" />
 
@@ -34,17 +38,17 @@ printf '%s\n' '{}' |
 
 Tool RPC shares direct MCP's tool names, including `health_check` and change tools. It omits hosted `workspace_lifecycle`.
 
-The process admits input shape, installation state, and exact root before semantic dispatch. Its reply preserves finite process or operation failures.
+The process checks input shape, installation state, and the exact root. It then dispatches semantic work. The reply keeps specific failures from the process or tool.
 
 ## Query session
 
-When advertised, `query-session` accepts newline-delimited `query_symbols` arguments. It owns one initial query and later presentation of authority issued by preceding replies.
+If advertised, `query-session` accepts `query_symbols` inputs, one JSON object per line. It owns one initial query. Later output reads use authority issued by earlier replies.
 
-The session admits at most 64 requests. Later actions can read the issued retained result or resume the issued output continuation.
+A session admits at most 64 requests. Later actions can read the issued retained result. They can also resume the issued output continuation.
 
-A second `RUN`, unrelated result, source action, or unsupported transition returns `QUERY_SESSION_TRANSITION_REJECTED`. The child then ends.
+The child returns `QUERY_SESSION_TRANSITION_REJECTED` for a second `RUN`, unrelated result, source action, or unsupported transition. It then ends.
 
-This process lifetime does not extend retained-state expiry or authorize semantic replay. [Staleness](/reference/staleness) still governs each action.
+Keeping the process alive does not extend retained-state expiry. It does not authorize semantic replay. [Staleness](/reference/staleness) still governs each action.
 
 <a id="decode" />
 
@@ -58,9 +62,9 @@ This process lifetime does not extend retained-state expiry or authorize semanti
 | `rejected_document` | `document` | Semantic or hosted rejection. |
 | `rejected` | `failure` | Finite failure at the process interface. |
 
-Each document uses its tool-specific response schema. Unknown variants identify an incompatible contract.
+Each document uses the response schema for its tool. An unknown reply kind means the contracts do not match.
 
-`rejected_document` preserves a semantic or hosted rejection. `rejected` reports failure at the process interface before an admitted document is available.
+`rejected_document` keeps a semantic or hosted rejection. `rejected` reports a process failure. In that case, no admitted document is yet available.
 
 [The reply schema](/reference/models/tool-rpc-reply) defines the wrapper. [The adapter guide](https://github.com/amichne/kast/blob/main/docs/tool-rpc.md) supplies integration details.
 

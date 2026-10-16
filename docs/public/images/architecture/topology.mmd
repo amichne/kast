@@ -1,0 +1,6 @@
+flowchart TD
+  A["Agent in selected worktree"] --> T["MCP or Tool RPC adapter"]
+  T --> H["IDEA Host for exact root"]
+  H --> Q["Canonical query and domain services"]
+  Q --> P["Compiler and project indexes"]
+  Q --> R["Retained query state"]

@@ -8,7 +8,6 @@ Use this guide when a query returns a preview, a retained result reference, or a
 
 You need the original response and its issued handles. The original read state and retention lifetime must remain valid.
 
-
 1. [Identify the issued capability.](#1-identify-the-capability)
 2. [Read rows with their own cursor.](#2-read-the-next-row-page)
 3. [Read evidence with its separate cursor.](#3-read-the-evidence-pages)
@@ -23,7 +22,7 @@ Read the response's status, coverage, and progress. Then identify the issued cap
 | Retained result reference | `READ_RESULT` presents stored rows and evidence. |
 | Rejection's `nextQuery` | Copy the emitted `READ_RESULT` arguments unchanged. |
 
-Keep the original qualifications. A saved rejection remains a rejection after all evidence pages reach their end.
+Keep the original status and limits. A saved rejection stays a rejection after the last evidence page.
 
 ## 2. Read the next row page
 
@@ -39,7 +38,7 @@ For retained symbol rows, substitute the issued result reference and cursor:
 }
 ```
 
-Use `next_cursor` from the previous reply for subsequent pages. Match the output to the retained row kind.
+Use `next_cursor` from the last reply to read the next page. Match the output to the retained row kind.
 
 For retained binding rows, include `"output": {"type": "BINDING_ROWS"}`. [Results](/reference/responses) defines each retained output form.
 
@@ -47,7 +46,7 @@ For retained binding rows, include `"output": {"type": "BINDING_ROWS"}`. [Result
 
 If `evidence_window.type` is `MORE`, use `evidence_window.end` as the next `evidence_cursor`.
 
-Keep the row cursor independent. After the last row, keep it at `invocation.accumulated_row_count`.
+Keep the row cursor distinct. After the last row, keep it at `invocation.accumulated_row_count`.
 
 ```json
 {
@@ -64,12 +63,14 @@ The numbers illustrate positions only. Substitute the values from your response.
 
 An evidence-only page can advance without a row. Continue until the response reports the final evidence position.
 
-## 4. Handle unavailable state
+<span id="4-handle-unavailable-state" />
+
+## 4. Cannot reuse saved state
 
 If a handle rejects, keep its finite cause. Do not substitute an exact reference for a retained result reference.
 
-If the original state is unavailable, start a fresh query with current references. A fresh query produces a separate answer.
+If the original state is not available, start a fresh query with current references. A fresh query produces a separate answer.
 
-`RETENTION_UNAVAILABLE` supplies no invented handle. Reading retained evidence neither renews its lifetime nor resumes semantic execution.
+`RETENTION_UNAVAILABLE` supplies no invented handle. Reading retained evidence does not extend its lifetime. It does not resume semantic work.
 
 [Query execution and evidence delivery](/explanation/query-lifecycle) explains the separate owners. [Results](/reference/responses) defines progress and failure variants.

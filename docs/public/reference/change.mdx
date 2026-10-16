@@ -6,13 +6,14 @@ icon: "file-pen-line"
 
 <a id="exact-inputs-for-tool-authors" />
 
-Use this procedure after authorization for one source change. Kast supports declaration insertion into an existing file and replacement of a supported function body.
+Use these steps after you have authority for one source change. Kast can add a declaration to an existing file. It can also replace a supported function body.
 
 1. [Select the target and scope.](#1-select-the-target-and-scope)
-2. [Establish the source effect.](#2-establish-the-source-effect)
+2. [Prove the source effect.](#2-establish-the-source-effect)
 3. [Use the supported input form.](#3-use-the-supported-input-form)
 
 <a id="check-the-target-and-scope" />
+
 <a id="select-the-target-and-scope" />
 
 ## 1. Select the target and scope
@@ -23,31 +24,33 @@ Find the exact target before the write. Read its source. If several declarations
 Use Kast to find retryLimit under checkout. Show matching signatures and locations. If several functions match, stop so I can choose. Read the selected function's source and check whether it has a supported block body before changing it.
 ```
 
-Request the body replacement with an explicit preservation rule.
+When you request a new body, state which source has to stay unchanged.
 
 ```text wrap
 Use Kast to replace the chosen function's body with { return 3 }. Keep its signature and the source outside the body unchanged. Report verification and the change receipt; if the outcome is uncertain, preserve recovery evidence and stop before retrying the write.
 ```
 
-Replacement supports a non-inline named Kotlin function with a block body and no contract. Expression bodies and unsupported ownership reject admission.
+The target is a named, non-inline Kotlin function. It needs a block body and no contract. Kast rejects expression bodies and ownership that is not supported.
 
 The tools do not create files, rename symbols, replace arbitrary ranges, or do multi-file refactors.
 
 <a id="read-the-receipt" />
 
-## 2. Establish the source effect
+<span id="2-establish-the-source-effect" />
 
-One public call owns planning, exact internal authorization, preimage admission, source effect, post-write examination, and receipt delivery.
+## 2. Prove the source effect
 
-The planned preimage must remain current before the write. Recovery evidence preserves the planned and resulting source effect when a later stage fails.
+One public call owns the whole sequence. It plans, grants exact internal authority, checks the preimage, changes source, checks the result, and sends a receipt.
 
-Examine the receipt's plan identity, phase, state, qualification, source location, and fresh reference. Review the resulting diff.
+Before the write, the source has to match the planned preimage. If a later stage fails, recovery evidence keeps the planned effect and the resulting source effect.
 
-Known pre-write rejection can establish no write within its reported phase. A missing response or uncertain settlement after dispatch cannot establish that fact.
+Check the receipt's plan identity, phase, and state. Check its qualification, source location, and fresh reference. Review the resulting diff.
 
-If the effect is uncertain, preserve the receipt. Read current source before another write. Complete the reported recovery before another write.
+A known rejection before a write can prove that no write took place within that phase. A missing response or uncertain outcome after dispatch cannot prove this.
 
-IDEA diagnostics and post-write examination cover only the receipt's scope. Run the project's build and tests after a verified source effect.
+If the effect is uncertain, keep the receipt. Read current source before another write. Complete the reported recovery before another write.
+
+IDEA diagnostics and checks after a write cover only the receipt's scope. After a verified source effect, run the project's build and tests.
 
 ## 3. Use the supported input form
 
@@ -62,7 +65,7 @@ These examples use placeholders for current exact references. Pass issued handle
 }
 ```
 
-Select the existing file. Examine the insertion location. [The generated schema](/reference/callables/add-declaration) defines the full input.
+Select the existing file. Check the insertion location. [The generated schema](/reference/callables/add-declaration) defines the full input.
 
 ### Replace a function body
 
@@ -77,8 +80,8 @@ Supply the full block with braces. [The generated schema](/reference/callables/r
 
 ### Carry exact identity across a change
 
-Use the returned `freshRef` for later operations after a verified change. Earlier references still need current compiler identity admission.
+After a verified change, use the returned `freshRef` for later calls. Earlier references still need current compiler identity checks.
 
 The token prefix remains part of the opaque handle. Do not substitute one reference version for another.
 
-[Staleness](/reference/staleness) protects read and preimage authority. [Lifecycles](/reference/lifecycles) describes uncertain mutation settlement and workspace recovery.
+[Staleness](/reference/staleness) protects read and preimage authority. [Lifecycles](/reference/lifecycles) describes recovery for uncertain writes and workspace state.

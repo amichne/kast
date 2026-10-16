@@ -1,0 +1,7 @@
+flowchart TD
+  R["Canonical Gradle root"] --> O["Reuse or start selected IDEA"]
+  O --> I["Open project and examine import"]
+  I --> X["Wait for indexing and current read state"]
+  X --> A["Admit semantic request"]
+  I -->|Blocked| B["Trust, save, import, or plugin cause"]
+  X -->|Blocked| B

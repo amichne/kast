@@ -4,15 +4,15 @@ description: "Look up named-edge policies, binding variants, scan states, and ca
 icon: "route"
 ---
 
-Callback observations preserve the occurrence, named lexical container, anonymous body, and named-edge policy. Their static facts do not establish runtime activation.
+Callback observations keep the source occurrence, named lexical container, anonymous body, and named-edge policy. These are static facts. They do not prove that code ran.
 
 ## Named-edge policy
 
 | Policy | Named-edge meaning |
 | --- | --- |
-| `EXCLUDED` | Invocation is absent from named callers, with its reason. |
-| `ADMITTED_DIRECT` | A compiler-confirmed immediate invocation admits a named edge while preserving its anonymous body. |
-| `ADMITTED_INLINE` | Inline policy admits a named edge while preserving the anonymous owner. |
+| `EXCLUDED` | Call is absent from named callers, with its reason. |
+| `ADMITTED_DIRECT` | The compiler proves a direct call. It admits a named edge and keeps the anonymous body. |
+| `ADMITTED_INLINE` | Inline policy admits a named edge. It keeps the anonymous owner. |
 | `UNAVAILABLE` | Ownership remains incomplete. |
 
 An admitted named edge keeps its anonymous owner evidence. An excluded edge keeps the reason and exact excluded occurrence.
@@ -24,35 +24,37 @@ An admitted named edge keeps its anonymous owner evidence. An excluded edge keep
 | `BOUND` | An explicit argument supplies the value. |
 | `DEFAULT` | A declared default supplies the value. |
 | `DIRECT` | A literal or anonymous function is invoked directly. |
-| `DEPENDENCY_CONTRACT` | Compiler contract and dependency binary identity establish a supported calls-in-place effect. |
-| `DEFERRED_DEPENDENCY` | Reviewed dependency binaries establish initializer supply without an invocation claim. |
-| `UNAVAILABLE` | The mapping is unavailable. |
+| `DEPENDENCY_CONTRACT` | The compiler contract proves a supported calls-in-place effect. The dependency binary identity is checked. |
+| `DEFERRED_DEPENDENCY` | Reviewed dependency binaries prove initializer supply without a call claim. |
+| `UNAVAILABLE` | The mapping is not available. |
 
-`BOUND` records compiler argument-to-parameter mapping. `DEFAULT` preserves the defining formal and default expression rather than an invented argument.
+`BOUND` records how the compiler maps an argument to a parameter. `DEFAULT` keeps the defining formal and default expression. It does not invent an argument.
 
-`DIRECT` keeps the actual invocation owner without a receiving formal. `DEFERRED_DEPENDENCY` establishes initializer supply without an invocation site or count.
+`DIRECT` keeps the actual call owner without a receiving formal. `DEFERRED_DEPENDENCY` proves initializer supply without a call site or count.
 
-## Invocation scan
+<span id="invocation-scan" />
+
+## Call scan
 
 | Scan | Meaning |
 | --- | --- |
-| `EXHAUSTIVE` | The admitted scan finished. Empty invocations establish no supported invocation sites in that scanned flow. |
+| `EXHAUSTIVE` | The admitted scan finished. Empty calls prove no supported call sites in that scanned flow. |
 | `INCOMPLETE` | A limit or unsupported flow prevents an absence claim. |
 | `NOT_APPLICABLE` | A directly invoked body has no receiving formal to scan. |
 
-The scan states the extent of formal-invocation enumeration. An exhaustive scan can still need proof that a nested invocation owner executes.
+The scan states how far it searched the formal for call sites. A full scan can still need proof that a nested call owner executes.
 
-Each parameter invocation keeps `forwardings`, including an empty array. Each hop identifies the source formal, supplied expression, and destination binding.
+Each parameter call keeps `forwardings`, even if the array is empty. Each hop names the source formal, supplied expression, and destination binding.
 
-`owner_bindings` preserves a nested anonymous owner's supply and mapping. `callable_observations` records symbolic formal invocations and source-less compiler targets.
+`owner_bindings` keeps the supply and mapping of a nested anonymous owner. `callable_observations` records symbolic formal calls. It also records compiler targets without source.
 
 ## Declared dependency effects
 
 Calls-in-place evidence keeps `EXACTLY_ONCE`, `AT_MOST_ONCE`, `AT_LEAST_ONCE`, or explicitly declared `UNKNOWN`.
 
-The effect must belong to the compiler-selected formal and reviewed binary identity. Missing, duplicate, or unsupported effects return `DEPENDENCY_CONTRACT_EFFECT_UNPROVEN`.
+The effect belongs to the formal selected by the compiler and the reviewed binary identity. If effects are missing, repeated, or not supported, the result returns `DEPENDENCY_CONTRACT_EFFECT_UNPROVEN`.
 
-These kinds describe the declared contract. They do not count runtime invocations or invent dependency body sites.
+These kinds describe the declared contract. They do not count calls at runtime. They do not invent sites within dependency bodies.
 
 ## Unresolved obligations
 
@@ -67,7 +69,7 @@ These kinds describe the declared contract. They do not count runtime invocation
 
 The list groups ownership and transfer failures. Work, time, result, and byte limits keep their separate causes.
 
-`FINALLY_UNSUPPORTED` and `ABRUPT_COMPLETION` preserve unsupported control-flow effects. An empty invocation list cannot erase an incomplete scan or unresolved obligation.
+`FINALLY_UNSUPPORTED` and `ABRUPT_COMPLETION` keep control-flow effects that are not supported. An empty call list does not erase an incomplete scan. It does not erase proof still needed.
 
 ## Candidate source action
 
@@ -83,4 +85,4 @@ The selector needs its admitted source state. It does not select the enclosing n
 
 [Callback source owners](/reference/source-map#callback-and-deferred-ownership) define the variants and rejection cases.
 
-[Callback evidence](/reference/callbacks) explains supply and invocation. [Results](/reference/responses) defines their presentation pages.
+[Callback evidence](/reference/callbacks) explains supply and call. [Results](/reference/responses) defines their presentation pages.

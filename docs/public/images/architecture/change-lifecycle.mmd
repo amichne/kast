@@ -1,0 +1,9 @@
+flowchart TD
+  I["Authorized intent and exact target"] --> P["Plan supported change"]
+  P --> A{"Admit stored plan and current preimage"}
+  A -->|Rejected| N["Reject before source effect"]
+  A -->|Admitted| W["Apply with recovery record"]
+  W --> V["Examine resulting source"]
+  V --> R["Verification outcome and receipt"]
+  W -->|Uncertain effect| U["Preserve evidence and recover"]
+  V -->|Recovery required| U

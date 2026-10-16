@@ -6,53 +6,56 @@ icon: "life-buoy"
 ---
 
 <a id="choose-the-symptom" />
+
 <a id="a-write-has-an-uncertain-outcome" />
 
-Preserve the finite failure, selected root, installed contract, and reported stage before recovery. Inspect installation and connection state first.
+Before recovery, keep the specific failure and reported stage. Keep the selected root and installed contract too. First, check what is installed and how the client connects.
 
 ```shell
 kast status
 ```
 
 1. [Match the cause to its owner.](#1-match-the-cause-to-its-owner)
-2. [Establish an uncertain source effect.](#2-establish-an-uncertain-source-effect)
-3. [Establish recovery.](#3-establish-recovery)
+2. [Prove an uncertain source effect.](#2-establish-an-uncertain-source-effect)
+3. [Prove recovery.](#3-establish-recovery)
 
 ## 1. Match the cause to its owner
 
-| Failure | Recovery |
-| --- | --- |
-| Missing tools | Examine registration and restart the affected client. |
-| Host or schema mismatch | Compare selected executable, installed contract, and loaded IDEA plugin. |
-| Trust, save, import, or indexing blocker | Resolve the named state in the exact IDEA project. |
-| Completion unproven | Inspect retained evidence and the finite proof cause. |
-| Stale or unavailable retained state | Establish current authority or start a new query. |
-| Uncertain source effect | Examine source and recovery evidence before another write. |
+- **Missing tools:** Check registration and restart the affected client.
+- **Host or schema mismatch:** Compare selected executable, installed contract, and loaded IDEA plugin.
+- **Trust, save, import, or indexing blocker:** Resolve the named state in the exact IDEA project.
+- **Completion unproven:** Read the retained evidence and the reason proof failed.
+- **Retained state is stale or not available:** Prove current authority or start a new query.
+- **Uncertain source effect:** Check source and recovery evidence before another write.
 
-`health_check` reports readiness when the catalog exposes it. It does not establish declaration or relationship evidence.
+If the catalog exposes `health_check`, use it to read readiness. It does not prove a declaration or relationship.
 
 If the client selects the wrong root, restart it from the intended Gradle worktree.
 
-For contract mismatch, install compatible components. Restart IDEA and the client, then rediscover the installed catalog.
+If contracts do not match, install compatible components. Restart IDEA and the client. Then find the installed catalog again.
 
-A hosted thread also needs admitted ownership, generated namespace, and workspace binding. Reconnection does not repair those facts automatically.
+A hosted thread also needs admitted ownership, a generated namespace, and a workspace binding. Connecting again does not repair those facts by itself.
 
-For retained-state failure, preserve expiry, eviction, owner, dependency, and stale-basis causes. A larger budget cannot recover missing state.
+If retained state fails, keep its specific cause. This can be expiry, eviction, owner, dependency, or stale basis. A larger budget cannot recover missing state.
 
-Revocation receipts also have finite retention. After reclamation, an unavailable token does not establish its historical cause.
+Receipts that revoke authority also expire or get removed. Once the receipt is gone, a failed token lookup cannot prove why the token is no longer valid.
 
-## 2. Establish an uncertain source effect
+<span id="2-establish-an-uncertain-source-effect" />
+
+## 2. Prove an uncertain source effect
 
 If a response is lost after dispatch, keep plan identity and phase evidence. Read current source before another write.
 
-Use [change recovery](/reference/change#read-the-receipt) to establish the effect. Known pre-write rejection and uncertain post-dispatch settlement need different actions.
+Use [change recovery](/reference/change#read-the-receipt) to prove the effect. A known rejection before a write and an uncertain outcome after dispatch need different actions.
 
-The hosted App Server can fence the workspace after an uncertain mutation. [Lifecycles](/reference/lifecycles#hosted-workspace-settlement) describes reconciliation.
+After an uncertain write, the hosted App Server can fence the workspace. [Lifecycles](/reference/lifecycles#hosted-workspace-settlement) describes how to settle that state.
 
-## 3. Establish recovery
+<span id="3-establish-recovery" />
 
-After the cause changes, repeat the original read in the same worktree. Compare its identity, declared scope, and completion evidence.
+## 3. Prove recovery
 
-If original retained authority is unavailable, start a fresh query. Do not reconstruct token strings or transfer earlier cursors to a new result.
+After the cause changes, repeat the original read in the same worktree. Compare its identity and declared scope. Check its completion evidence.
 
-[Staleness](/reference/staleness) defines those rules. [Retained evidence procedures](/how-to/read-retained-evidence) apply when original state remains valid.
+If the original retained authority is not available, start a fresh query. Do not rebuild token strings. Do not move old cursors to a new result.
+
+[Staleness](/reference/staleness) defines those rules. If original state is still valid, use [the retained-evidence steps](/how-to/read-retained-evidence).

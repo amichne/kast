@@ -412,7 +412,7 @@ val verifyDocumentationGlossary = tasks.register<Exec>("verifyDocumentationGloss
     commandLine("uv", "run", "--locked", "--project", "docs/tooling", "python", "docs/tooling/check_glossary.py",
         "docs/glossary.json", "README.md", "docs")
     args(scopedGuides.files.map { it.relativeTo(rootDir).path }.sorted())
-    args("--check-render", "docs/GLOSSARY.md", "--check-vale", "config/vale/styles/Kast")
+    args("--check-render", "docs/GLOSSARY.md", "--check-public-render", "docs/public/glossary.mdx", "--check-vale", "config/vale/styles/Kast")
 }
 
 tasks.named("check") { dependsOn(verifyDocumentationGlossary) }

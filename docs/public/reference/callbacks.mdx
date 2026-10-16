@@ -4,61 +4,61 @@ description: "Interpret anonymous callable ownership, static bindings, and the l
 icon: "route"
 ---
 
-Kast preserves the anonymous body that owns a call. It also records how that body receives a value and reaches a supported invocation.
+Kast keeps the anonymous body that owns a call. It also records how that body receives a value and reaches a supported call.
 
-Kast keeps those owners separate because callback supply does not establish execution. The agent can trace the body without a guessed named caller.
+Kast keeps these owners distinct because supplying a callback does not prove that it runs. The agent can trace the body without guessing a named caller.
 
 ## Named callers and lexical ownership
 
-`REFERENCES` can establish lexical containment. `CALLERS` and `CALLEES` add callback observations with a separate named-edge policy.
+`REFERENCES` can prove which named body contains a source site. `CALLERS` and `CALLEES` add callback observations. Their named-edge policy is distinct.
 
-Direct or supported inline invocation can admit a named edge while it keeps anonymous ownership. Non-inline, `noinline`, and `crossinline` exclusions keep their reasons.
+A direct or supported inline call can admit a named edge. It still keeps the anonymous owner. Non-inline, `noinline`, and `crossinline` exclusions keep their reasons.
 
-Containment supplies location context. It does not establish that a named function directly invokes the call inside a deferred body.
+Containment supplies location context. It does not prove that a named function directly invokes the call inside a deferred body.
 
 ## Static bindings and unfinished proof
 
-Compiler argument mapping establishes the supplied value's receiving formal. Formal-body evidence then enumerates supported invocation and forwarding sites.
+The compiler maps a supplied value to the formal that receives it. Evidence from the formal's body then lists supported call and forwarding sites.
 
-An immutable alias keeps the value-transfer derivation. Each forwarding hop keeps source formal, exact expression, and destination binding.
+An immutable alias keeps proof of how the value moved. Each forwarding hop keeps the source formal, exact expression, and destination binding.
 
 A default keeps its defining formal and expression. An explicit supplied argument replaces that default for the selected call.
 
-An unused formal can have an exhaustive scan with no invocations. That fact does not create a call to the default body.
+An unused formal can have an exhaustive scan with no calls. That fact does not create a call to the default body.
 
-A nested anonymous or local named owner needs its own activation proof. An exhaustive formal scan cannot discharge that obligation by itself.
+A nested anonymous or local named owner needs proof of its own activation path. A full scan of the formal alone cannot supply that proof.
 
-`owner_bindings` preserves anonymous supply and mapping when available. Unresolved mapping, escaped storage, returns, cycles, or exhausted grants keep finite causes.
+`owner_bindings` keeps anonymous supply and mapping when available. Mapping still to resolve, escaped storage, returns, cycles, or exhausted grants keep specific causes.
 
 [Observation fields](/reference/callback-observations) defines policies, bindings, scan states, forwarding, and obligations.
 
 ## Reviewed dependency models
 
-Kast admits supported calls-in-place effects from the compiler-selected formal and dependency class digest. The record keeps the exact declared invocation kind.
+Kast admits supported calls-in-place effects. It checks the formal selected by the compiler and the dependency class digest. The record keeps the exact declared call kind.
 
-Missing effects cannot become a guessed `UNKNOWN`. Explicit `UNKNOWN` is a supported declared effect with its own limited meaning.
+Missing effects cannot become a guessed `UNKNOWN`. An explicit `UNKNOWN` is a supported declared effect. It has its own limited meaning.
 
-The contract does not supply invented dependency-body invocation sites. Unsupported or contradictory effect evidence rejects the model.
+The contract does not invent call sites within dependency bodies. Evidence that is not supported or conflicts with an effect rejects the model.
 
 `KOTLIN_LAZY_JVM_V1` admits reviewed digests for the facade, factory, initializer implementations, and mode dispatch.
 
-Its `DEFERRED_DEPENDENCY` records the callable or property that supplies the initializer. It contains no invocation site or count.
+Its `DEFERRED_DEPENDENCY` records which callable or property supplies the initializer. It contains no call site or count.
 
-The supplying container does not gain a direct named caller edge for the deferred body. Property access and initializer execution remain unproved.
+The supplying container gains no direct named caller edge for the deferred body. This does not prove that the property was read or that the initializer ran.
 
-Unavailable or changed binaries keep finite dependency-model failures. [The source map](/reference/source-map#callback-and-deferred-ownership) links those rejection cases.
+Missing or changed binaries keep specific failures from the dependency model. [The source map](/reference/source-map#callback-and-deferred-ownership) links those rejection cases.
 
 <a id="symbolic-callees-and-known-boundaries" />
 
 ## Symbolic callees and source exclusions
 
-For `block()` or `block.invoke()`, `PARAMETER_INVOCATION` records the defining named callable, formal position, exact occurrence, and actual owner.
+For `block()` or `block.invoke()`, `PARAMETER_INVOCATION` records the named callable that defines the formal. It also records the formal position, exact occurrence, and actual owner.
 
-That symbolic target does not select a runtime function value. Formals owned by anonymous functions remain unsupported.
+That symbolic target does not select a runtime function value. Kast does not support formals owned by anonymous functions.
 
-`SOURCE_LESS` preserves resolved compiler callable identity and compiler module. Proven builtin or excluded-library facts can support complete enumeration as known exclusions.
+`SOURCE_LESS` keeps the callable identity and module resolved by the compiler. Proved builtin or excluded-library facts can count as known exclusions in a complete scan.
 
-Requested but unavailable library source keeps `LIBRARY_SOURCE_UNAVAILABLE` and qualified coverage. Missing PSI alone cannot establish a source exclusion.
+If requested library source is not available, the result keeps `LIBRARY_SOURCE_UNAVAILABLE` and qualified coverage. Missing PSI alone cannot prove that source is excluded.
 
 <a id="read-the-exact-anonymous-source" />
 
@@ -75,15 +75,15 @@ This action reads the anonymous body's anchored source through its issued select
 }
 ```
 
-An epoch change needs new source authority. The enclosing named function remains a separate declaration identity.
+An epoch change needs new source authority. The enclosing named function still has its own declaration identity.
 
 <a id="continue-output-delivery" />
 
 ## Output delivery
 
-Callback and callable evidence can advance on a zero-row page. `page_progress` and the issued `next_action` describe that presentation.
+Callback and callable evidence can advance on a page with no rows. `page_progress` and the issued `next_action` describe that output.
 
-Relation and walk documents need `callable_observations`, including empty arrays. Observed flows need `scan`, and parameter invocations need `forwardings`.
+Relation and walk documents need `callable_observations`, including empty arrays. Observed flows need `scan`, and parameter calls need `forwardings`.
 
 Missing fields reject schema admission. Complete traversal coverage can precede the final output page.
 

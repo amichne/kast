@@ -6,7 +6,7 @@
   "colors": {
     "primary": "#3154C7",
     "light": "#8FA7FF",
-    "dark": "#27439F"
+    "dark": "#607BDB"
   },
   "fonts": {
     "family": "SUSE"
@@ -29,54 +29,68 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Tutorials",
+        "tab": "Guides",
         "groups": [
           {
             "group": "Start here",
             "pages": [
               "index",
-              "tutorials",
+              "start",
+              "agent-harnesses",
               "tutorials/first-query"
+            ]
+          },
+          {
+            "group": "Task guides",
+            "pages": [
+              "how-to",
+              "search",
+              "reference/search",
+              "how-to/inspect-diagnostics",
+              "how-to/read-retained-evidence",
+              "reference/query-pipelines",
+              "reference/change",
+              "how-to/complete-engineering-task"
+            ]
+          },
+          {
+            "group": "Troubleshoot and maintain",
+            "pages": [
+              "troubleshooting",
+              "reference/troubleshooting",
+              "reference/management"
+            ]
+          },
+          {
+            "group": "More exercises",
+            "pages": [
+              "tutorials"
             ]
           }
         ]
       },
       {
-        "tab": "How-to guides",
+        "tab": "Architecture",
         "groups": [
           {
-            "group": "Choose a task",
+            "group": "Understand Kast",
             "pages": [
-              "how-to",
-              "search"
+              "explanation",
+              "reference/internals/architecture",
+              "explanation/query-lifecycle",
+              "reference/staleness",
+              "architecture/topology",
+              "architecture/change-lifecycle"
             ]
           },
           {
-            "group": "Install and connect",
+            "group": "Further reading",
             "pages": [
-              "start",
-              "agent-harnesses",
-              "reference/installation",
-              "reference/integrations"
-            ]
-          },
-          {
-            "group": "Investigate and change code",
-            "pages": [
-              "how-to/complete-engineering-task",
-              "reference/search",
-              "how-to/inspect-diagnostics",
-              "how-to/read-retained-evidence",
-              "reference/query-pipelines",
-              "reference/change"
-            ]
-          },
-          {
-            "group": "Recover and maintain",
-            "pages": [
-              "troubleshooting",
-              "reference/troubleshooting",
-              "reference/management"
+              "reference/evidence-boundaries",
+              "reference/program-tracing",
+              "reference/callbacks",
+              "reference/lifecycles",
+              "reference/internals/background-startup"
             ]
           }
         ]
@@ -85,12 +99,10 @@
         "tab": "Reference",
         "groups": [
           {
-            "group": "Kast mechanisms",
+            "group": "Interface reference",
             "pages": [
               "reference",
-              "reference/program-tracing",
-              "reference/staleness",
-              "reference/lifecycles"
+              "glossary"
             ]
           },
           {
@@ -109,7 +121,9 @@
             "pages": [
               "reference/mcp-catalog",
               "reference/rpc-catalog",
-              "reference/compatibility"
+              "reference/compatibility",
+              "reference/installation",
+              "reference/integrations"
             ]
           },
           {
@@ -168,40 +182,11 @@
             ]
           }
         ]
-      },
-      {
-        "tab": "Explanation",
-        "groups": [
-          {
-            "group": "Understand the evidence",
-            "pages": [
-              "explanation",
-              "reference/evidence-boundaries",
-              "explanation/query-lifecycle",
-              "reference/callbacks"
-            ]
-          },
-          {
-            "group": "Runtime ownership",
-            "pages": [
-              "reference/internals/architecture",
-              "reference/internals/background-startup"
-            ]
-          }
-        ]
       }
     ]
   },
   "navbar": {
     "links": [
-      {
-        "label": "How-to guides",
-        "href": "/how-to"
-      },
-      {
-        "label": "Reference",
-        "href": "/reference"
-      },
       {
         "label": "GitHub",
         "href": "https://github.com/amichne/kast"
@@ -372,6 +357,11 @@
     {
       "source": "/developers",
       "destination": "/reference",
+      "permanent": true
+    },
+    {
+      "source": "/architecture",
+      "destination": "/explanation",
       "permanent": true
     }
   ],

@@ -4,97 +4,97 @@ description: "Trace public documentation to contract owners, focused tests, and 
 icon: "map"
 ---
 
-This map records source inspection at `888205ff05af225f1496b25faee3c4cb310f7038`. Every immutable link identifies the owner used for this reference rewrite.
+This map records source inspection at `888205ff05af225f1496b25faee3c4cb310f7038`. Each link pins the owner used for this reference rewrite.
 
-Current installed catalogs govern their release. OpenWiki supplies architectural context, while source, schemas, and focused tests supply contract evidence.
+Use the installed catalog for your release. OpenWiki explains the design. Use source, schemas, and focused tests to check the contract.
 
 ## Public requests
 
-[tools.schema.json](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json) owns public inputs, metadata, and defaults.
+[tools.schema.json](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json) owns the public inputs, their metadata, and their defaults.
 
-[PublicToolMapping](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt) lowers admitted arguments into canonical operations.
+[`PublicToolMapping`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt) Turns checked inputs into canonical operations.
 
-[PublicToolSchemaTest](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolSchemaTest.kt) examines legal shapes and rejected inputs.
+[`PublicToolSchemaTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolSchemaTest.kt) Checks valid shapes and rejected inputs.
 
 ## Query execution and retention
 
-[HostedCanonicalQuery](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt) connects the admitted IDEA project to canonical execution.
+[`HostedCanonicalQuery`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt) Connects the admitted IDEA project to the query runner.
 
-[CanonicalQueryProtocol](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt) owns run dispatch, internal semantic continuation, and output-only actions.
+[`CanonicalQueryProtocol`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt) Owns query runs, their internal semantic continuation, and output-only reads.
 
-[QueryStateStore](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt) owns retained state and acquisition.
+[`QueryStateStore`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt) Stores retained state and checks each load.
 
-[QueryCompletionDocument](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt) defines the fixed model, finite failures, and rejection evidence.
+[`QueryCompletionDocument`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt) Defines the fixed model. It names each failure and the evidence a rejection keeps.
 
-[CompleteOnlyQueryTest](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CompleteOnlyQueryTest.kt) covers complete answers and missing proof.
+[`CompleteOnlyQueryTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CompleteOnlyQueryTest.kt) Checks complete answers and cases where proof is missing.
 
-[PublicToolCompletionRecoveryTest](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolCompletionRecoveryTest.kt) examines emitted recovery request admission.
+[`PublicToolCompletionRecoveryTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolCompletionRecoveryTest.kt) Checks whether the emitted recovery request can be admitted.
 
 ## Callback and deferred ownership
 
-[CallbackInvocationFlow](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackInvocationFlow.kt) keeps binding, invocations, forwarding, scan extent, and obligations.
+[`CallbackInvocationFlow`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackInvocationFlow.kt) Keeps how a value is bound, called, and passed on. It also records scan extent and proof still needed.
 
-[CompleteStaticCallbackGraph](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraph.kt) admits supported static routes without lexical caller invention.
+[`CompleteStaticCallbackGraph`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraph.kt) Checks supported static paths. It does not invent callers from lexical nesting.
 
-[IntellijCallbackFlowRead](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackFlowRead.kt) captures formal proof before supplier activation.
+[`IntellijCallbackFlowRead`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackFlowRead.kt) Records proof for the formal before it checks the supplier's static activation path.
 
-[IntellijCallbackFlowScan](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackFlowScan.kt) preserves compiler-confirmed immutable aliases through formal forwarding.
+[`IntellijCallbackFlowScan`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackFlowScan.kt) Keeps immutable aliases proved by the compiler as formals pass values on.
 
-[DeclaredCallbackInvocationKind](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/DeclaredCallbackInvocationKind.kt) preserves declared effects and rejects missing or contradictory evidence.
+[`DeclaredCallbackInvocationKind`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/DeclaredCallbackInvocationKind.kt) Keeps declared effects. It rejects evidence that is missing or conflicts with them.
 
-[CallbackDeferredDependency](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackDeferredDependency.kt) constrains reviewed `kotlin.lazy` supply without invented invocations.
+[`CallbackDeferredDependency`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackDeferredDependency.kt) Constrains the reviewed supply to `kotlin.lazy`. It does not invent calls.
 
-[CompleteStaticCallbackGraphTest](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraphTest.kt) covers forwarding, incomplete proof, cycles, and workspace mismatch.
+[`CompleteStaticCallbackGraphTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraphTest.kt) Checks forwarding, missing proof, cycles, and a mismatch in workspaces.
 
-[CallbackAliasForwardingTest](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/CallbackAliasForwardingTest.kt) covers connected alias routes and rejection of disconnected or foreign evidence.
+[`CallbackAliasForwardingTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/CallbackAliasForwardingTest.kt) Checks linked alias paths. It rejects evidence from a path that is not linked or from another owner.
 
-[DeclaredCallbackInvocationKindTest](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/DeclaredCallbackInvocationKindTest.kt) covers exact effect kinds and invalid effect inventories.
+[`DeclaredCallbackInvocationKindTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/DeclaredCallbackInvocationKindTest.kt) Checks exact effect kinds and rejects invalid sets of effects.
 
-[QueryCallbackDeferredDependencyWireTest](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/QueryCallbackDeferredDependencyWireTest.kt) rejects invented deferred invocations and mismatched binary identities.
+[`QueryCallbackDeferredDependencyWireTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/QueryCallbackDeferredDependencyWireTest.kt) Rejects invented deferred calls. It also rejects binary identities that do not match.
 
 ## Value impact
 
-[ValueFlow](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlow.kt) defines supported transfer evidence.
+[`ValueFlow`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlow.kt) Defines evidence for supported value transfers.
 
-[IntellijValueFlowNative](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowNative.kt) captures compiler-backed native flow.
+[`IntellijValueFlowNative`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowNative.kt) Reads native value flow through the compiler.
 
-[QueryImpactLedger](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt) preserves original path and model accounting.
+[`QueryImpactLedger`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt) Keeps the original record of paths and models.
 
-[QueryImpactSiteAccounting](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteAccounting.kt) keeps requested-site identity and relationship status separate.
+[`QueryImpactSiteAccounting`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteAccounting.kt) Keeps two distinct facts: the requested site identity and its relationship status.
 
-[QueryImpactLedgerTest](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/query/contract/src/test/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedgerTest.kt) covers original investigation accounting.
+[`QueryImpactLedgerTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/query/contract/src/test/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedgerTest.kt) Checks the original evidence ledger for an investigation.
 
-[TryBranchResultPositionTest](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/TryBranchResultPositionTest.kt) covers final branch positions and unsupported try forms.
+[`TryBranchResultPositionTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/TryBranchResultPositionTest.kt) Checks final branch positions and try forms that are not supported.
 
 ## Staleness and reacquisition
 
-[ProjectReadEpochState](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/ProjectReadEpochState.kt) records model, root, import, PSI, VFS, root-model, and indexing signals.
+[`ProjectReadEpochState`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/ProjectReadEpochState.kt) Records signals for the model, root, import, PSI, VFS, root model, and indexing.
 
-[HostedReadFreshnessOwner](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadFreshnessOwner.kt) admits committed documents and current read state.
+[`HostedReadFreshnessOwner`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadFreshnessOwner.kt) Checks committed documents and the current read state.
 
-[ExactRevalidationService](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt) examines current authority before and after compiler identity revalidation.
+[`ExactRevalidationService`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt) Checks current authority before and after it checks compiler identity again.
 
-[LocalExactRevalidationTest](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/symbol/service/src/test/kotlin/io/github/amichne/kast/symbol/service/LocalExactRevalidationTest.kt) rejects changed local owning-file content.
+[`LocalExactRevalidationTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/symbol/service/src/test/kotlin/io/github/amichne/kast/symbol/service/LocalExactRevalidationTest.kt) Rejects a local reference when its owning file has changed.
 
-[EpochSignalCharacterizationNegativeTest](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/EpochSignalCharacterizationNegativeTest.kt) covers rejected epoch evidence.
+[`EpochSignalCharacterizationNegativeTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/EpochSignalCharacterizationNegativeTest.kt) Checks rejected read-epoch evidence.
 
 ## Request, connection, and daemon ownership
 
-[KastToolRpcMain](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt) admits process input and result schemas around the direct production path.
+[`KastToolRpcMain`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt) Checks the process input and result schemas around the direct production path.
 
-[KastToolRpcQuerySession](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt) owns bounded query-session transitions and rejects unrelated output authority.
+[`KastToolRpcQuerySession`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt) Owns the bounded query session and its state changes. It rejects unrelated output authority.
 
-[WorkspacePreparations](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt) owns one preparation sequence per root and finite historical lookup.
+[`WorkspacePreparations`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt) Owns one setup sequence for each root. Its lookup history has a fixed capacity.
 
-[WorkspaceExecution](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt) owns hosted permits, queues, cancellation, and mutation reconciliation.
+[`WorkspaceExecution`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt) Owns hosted permits, queues, and cancellation. It also owns recovery after an uncertain write.
 
-[MacOsPersistentBrokerServiceHost](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/main/kotlin/io/github/amichne/kast/appserver/MacOsPersistentBrokerServiceHost.kt) serializes startup and stop with service identity and socket admission.
+[`MacOsPersistentBrokerServiceHost`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/main/kotlin/io/github/amichne/kast/appserver/MacOsPersistentBrokerServiceHost.kt) Runs startup and stop one at a time. It checks service identity and the socket.
 
-[InstallationLifecycleFence](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFence.kt) prevents startup through stop, reset, or payload transition.
+[`InstallationLifecycleFence`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFence.kt) Blocks startup during stop, reset, or a payload change.
 
-[WorkspaceExecutionBudgetTest](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecutionBudgetTest.kt) covers queue time within the interaction allowance and recovery settlement.
+[`WorkspaceExecutionBudgetTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecutionBudgetTest.kt) Checks that queue time counts toward the interaction allowance. It also checks recovery settlement.
 
-[WorkspacePreparationRecoveryTest](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparationRecoveryTest.kt) covers renewed demand without history replacement.
+[`WorkspacePreparationRecoveryTest`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparationRecoveryTest.kt) Checks a new demand without replacing the saved history.
 
 ## Changes and recovery
 
@@ -108,17 +108,17 @@ The [authored tool contract](https://github.com/amichne/kast/blob/888205ff05af22
 
 [install.sh](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/install.sh) owns public release selection and installer options.
 
-[McpStructuredResults](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt) projects canonical documents and admits their schemas.
+[`McpStructuredResults`](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt) Projects canonical documents and checks their schemas.
 
-Tool RPC process and query-session owners appear in the lifecycle section. Their reply union preserves document rejection separately from process failure.
+The lifecycle section names the Tool RPC process and query-session owners. Their reply type keeps two distinct failures: a rejected document and a failed process.
 
 ## Documentation owners
 
 `docs/public/docs.json` owns routes and navigation. The callable generator owns `reference/callables.openapi.json` and its schema bindings.
 
-[Documentation policy](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/docs/documentation-structure.md) defines reader tracks and local Vale assessment.
+[Documentation policy](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/docs/documentation-structure.md) sets the reader tracks and local Vale checks.
 
-[glossary.json](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/docs/glossary.json) owns provisional terminology. Its [reader view](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/docs/GLOSSARY.md) keeps the same definitions.
+[glossary.json](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/docs/glossary.json) owns the terms. They still need reader review. Its [reader view](https://github.com/amichne/kast/blob/888205ff05af225f1496b25faee3c4cb310f7038/docs/GLOSSARY.md) keeps the same definitions.
 
 ## Representative source path
 
@@ -126,4 +126,4 @@ Tool RPC process and query-session owners appear in the lifecycle section. Their
 tools.schema.json -> PublicToolMapping -> HostedCanonicalQuery -> CanonicalQueryProtocol
 ```
 
-`READ_RESULT` enters retained presentation within the protocol owner. It does not repeat discovery or upgrade original proof.
+`READ_RESULT` reads saved output through the protocol owner. It does not repeat discovery. It cannot strengthen the original proof.
