@@ -1,0 +1,357 @@
+{
+  "type": "LOCAL_DOCUMENTATION_REVIEW",
+  "kastSourceRevision": "888205ff05af225f1496b25faee3c4cb310f7038",
+  "branch": "docs/reference-program-tracing",
+  "slopsentralSourceRevision": "154e0bb4bd273052506c12c46aca01ded166fe24",
+  "policy": {
+    "policySha256": "987e81b299dd7578f0c1a3853de96d69ce3ab418ee6e87f6c91ad91a7f6a2669",
+    "type": "VALE",
+    "version": "3.24.0"
+  },
+  "glossary": {
+    "entries": 19,
+    "sourceSha256": "1f30cee93150a17de83f0cbdb914e7020ea6e590d56c34a3c5b46bce1bc18ec2",
+    "type": "CHECKED"
+  },
+  "checks": [
+    {
+      "command": "npx --yes mint@4.2.841 validate",
+      "directory": "docs/public",
+      "status": "PASSED"
+    },
+    {
+      "command": "npx --yes mint@4.2.841 broken-links",
+      "directory": "docs/public",
+      "status": "PASSED"
+    },
+    {
+      "command": "mise exec -- ./gradlew :cli:verifyMintlifyCallableReference verifyJsonContracts knowledgeImpact verifyKnowledgeBase --quiet",
+      "status": "PASSED"
+    },
+    {
+      "command": "python3 packaging/test-installer-entrypoint.py InstallerEntrypointTest.test_documented_remote_invocations_use_bash_c",
+      "status": "PASSED",
+      "selectedCases": 1
+    },
+    {
+      "command": "uv run --locked --script /Users/amichne/code/slopsentral/source/skills/controlled-technical-writing/scripts/check_glossary.py docs/glossary.json --check-render docs/GLOSSARY.md",
+      "status": "PASSED"
+    },
+    {
+      "command": "uv run --with jsonschema==4.23.0 python /tmp/audit-kast-reference.py",
+      "status": "PASSED",
+      "evidence": "reference-audit.json",
+      "scope": "All reference examples and preserved contract bindings, with placeholder-token substitution for shape admission only."
+    },
+    {
+      "command": "uv run --locked --script /Users/amichne/code/slopsentral/source/skills/controlled-technical-writing/scripts/assess_text.py --vale-bin .vale-local/bin/vale --glossary docs/glossary.json docs/public/reference.mdx docs/public/reference/**/*.mdx docs/documentation-structure.md docs/reviews/reference-rewrite/README.md",
+      "status": "ASSESSED",
+      "exitCode": 1,
+      "findings": 38,
+      "evidence": "text-assessment.json"
+    },
+    {
+      "command": ".vale-local/bin/vale --no-global --config=.vale.ini --output=JSON docs/public/reference.mdx docs/public/reference/**/*.mdx",
+      "status": "ASSESSED",
+      "exitCode": 0,
+      "evidence": "diataxis-vale.json"
+    },
+    {
+      "command": "git diff --check",
+      "status": "PASSED"
+    },
+    {
+      "command": "productBuildGate",
+      "status": "NOT_RUN",
+      "reason": "This task changes documentation and vocabulary only."
+    },
+    {
+      "command": "read_thread",
+      "status": "NOT_RUN",
+      "reason": "The session exposes no read_thread tool. No linked-chat contents support the rewrite."
+    }
+  ],
+  "keptFindings": [
+    {
+      "path": "docs/public/reference.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/api.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/callback-observations.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/callbacks.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/change.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/compatibility.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/composition.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/evidence-boundaries.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/installation.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/integrations.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/internals/architecture.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/internals/background-startup.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/lifecycles.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/limits.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/management.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/mcp-catalog.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/models/diagnostic.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/models/live-evidence.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/models/mcp-change-result.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/models/mcp-investigation-result.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/models/mcp-read-result.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/models/mcp-tool-call-result.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/models/query-item.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/models/relation-fact.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/models/tool-rpc-reply.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/program-tracing.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/query-pipelines.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/responses.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/rpc-catalog.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/schemas.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/search.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/source-map.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/staleness.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/symbols.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/troubleshooting.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/walkthrough.mdx",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/documentation-structure.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/reviews/reference-rewrite/README.md",
+      "line": 1,
+      "rule": "Slopsentral.Grade",
+      "reason": "The page preserves necessary source terms, exact identities, and proof qualifications. The grade estimate does not assess comprehension."
+    },
+    {
+      "path": "docs/public/reference/troubleshooting.mdx",
+      "line": 23,
+      "rule": "HowTo.Reference",
+      "reason": "The compact table maps six failure groups to recovery actions. It supports the how-to decision without an exhaustive flag or schema inventory."
+    }
+  ],
+  "readerReview": {
+    "type": "SIMULATED_AUTHOR_REVIEW",
+    "questions": [
+      {
+        "question": "What does callback supply establish?",
+        "answer": "The body and receiving formal. Invocation needs its separate site and owner evidence.",
+        "page": "docs/public/reference/program-tracing.mdx"
+      },
+      {
+        "question": "What happens after the read state changes?",
+        "answer": "Exact references need current identity admission. Retained evidence cannot migrate to the new state.",
+        "page": "docs/public/reference/staleness.mdx"
+      },
+      {
+        "question": "Does a live connection establish a ready project?",
+        "answer": "No. Catalog, compatible Host, exact workspace preparation, and current read authority remain separate facts.",
+        "page": "docs/public/reference/lifecycles.mdx"
+      },
+      {
+        "question": "Does an output continuation resume unfinished semantic work?",
+        "answer": "No. Public RESUME presents produced output. RUN owns internal semantic continuation.",
+        "page": "docs/public/reference/responses.mdx"
+      },
+      {
+        "question": "Can a prefix establish absence for difference or an anti join?",
+        "answer": "No. Both operations need complete right coverage and reject an incomplete right input.",
+        "page": "docs/public/reference/composition.mdx"
+      }
+    ],
+    "unresolvedHumanQuestions": "Human comprehension remains NOT_ASSESSED."
+  },
+  "nativeExecution": {
+    "status": "NOT_RUN",
+    "scope": "The Kotlin tracing illustration and fresh live-IDE behavior."
+  },
+  "delivery": "Local uncommitted documentation changes. Publication was not requested.",
+  "artifacts": {
+    "installer.log": "d10ffbd9f0faa72cd6837063279524e199b59fbc3d035051302a1e8dbc4b36ad",
+    "reference-audit.json": "ea9910f5c3e551d15b9b0e28ef17e9f80f83abbf5fd5b22697bf5ca5f496160c",
+    "gradle.log": "a268b4c54a4abf7230b538f4b885a7395d0a745ba720f35ec1378f39f931a28d",
+    "mint-links.log": "ada4737bf15b21898fc389a96053c6d740a2a2e4901e9665281d230218a5b029",
+    "mint-validate.log": "4059ca45f6967fe11225c46a5396d0525c70860acb839e8b3a2cad521ec91acf",
+    "text-assessment.json": "595562d0b880cf5154b4fda0c98206d1f92e781897f90597d4d95c2128b6c632",
+    "glossary.json": "34018e54b14dc50e008e4691c3b5b54b8f09cec104c72b7cf60c008c9b803633",
+    "README.md": "651548539dd732ffcb478aabfde7eed5fa676698bba3aa40f3a690e502d500a8",
+    "diataxis-vale.json": "5bba340246a7afd995d9e063383dc0ca72bae4bd7bb4f6b23d1c26bfd83b2a09"
+  }
+}

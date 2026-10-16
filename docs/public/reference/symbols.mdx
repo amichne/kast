@@ -4,7 +4,7 @@ description: "Use exact compiler references, locations, and signatures without g
 icon: "braces"
 ---
 
-An exact reference carries an admitted declaration identity into another request. `query_symbols` returns these references with Kotlin declarations. Each symbol keeps the coverage of its producing query.
+An exact reference carries compiler-established declaration identity into another request. Its producing query separately supplies scope and coverage.
 
 ## Public fields
 
@@ -15,24 +15,34 @@ An exact reference carries an admitted declaration identity into another request
 | `signature` | Compiler-established identity and callable or property facts. |
 | `source` | Bounded committed source, when requested. |
 
-`SOURCE` selects committed source context in symbol output. A name, path, or reconstructed token does not establish exact identity. See the [query item schema](/reference/models/query-item) for fields. The [scoped example](/reference/walkthrough#1-find-a-declaration-and-inspect-its-source) includes source output.
+Signature and location distinguish candidates for human selection. The issued `ref` supplies the identity that Kast admits for semantic operations.
+
+`SOURCE` adds bounded committed source context. Anonymous bodies and exact occurrences use the separate anchored `READ_SOURCE` action.
+
+Source positions use UTF-16 code units. Byte offsets and line numbers do not replace the encoded range.
 
 ## Local declarations
 
-Local `val` and `var` declarations use `LOCAL_PROPERTY` signatures. Local named functions use `LOCAL_FUNCTION` signatures. Their addresses keep the exact file and declaration range, plus compiler identity and the containing declaration's range. They also keep bounded ranges for lexical ownership.
+Local properties use `LOCAL_PROPERTY` signatures with type and `VAL` or `VAR` mutability. Local named functions use `LOCAL_FUNCTION` signatures.
 
-Function signatures keep callable facts. Property signatures keep type and `VAL` or `VAR` mutability. Declarations with the same name in different scopes keep distinct identities.
+Their identities keep the file, declaration range, compiler identity, containing declaration range, and bounded lexical ownership ranges.
 
-Exact reads and relations admit the issued reference unchanged. Kast can reacquire a local reference with fresh compiler evidence only while its owning file content stays unchanged. After you edit or move a local declaration, discover it again.
+Equal names in separate scopes identify separate declarations. A local property identity does not establish its assignment flow.
+
+Local reacquisition needs unchanged owning-file content. A local edit or move needs fresh discovery, even when the displayed signature stays the same.
 
 ## Evidence limits
 
-Local variable identity does not establish assignment flow. Local function identity does not establish execution of a deferred body.
+A local function identity does not establish execution of its deferred body. An anonymous body's lexical container does not automatically become its named caller.
+
+[Program tracing](/reference/program-tracing) connects those identities to callback and value-flow evidence. [Staleness](/reference/staleness) defines reuse.
 
 ## Output selection example
 
-This `SYMBOLS` output requests the four descriptive fields. Identity and kind remain necessary fields.
+This output adds descriptive fields to the necessary identity and kind.
 
 ```json
 {"type":"SYMBOLS","fields":["NAME","LOCATION","SIGNATURE","SOURCE"]}
 ```
+
+[The query item schema](/reference/models/query-item) defines encoded rows. [The recorded lookup](/reference/walkthrough#1-find-a-declaration-and-inspect-its-source) illustrates source output.

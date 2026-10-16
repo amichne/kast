@@ -4,7 +4,7 @@ description: "Look up named-edge policies, binding variants, scan states, and ca
 icon: "route"
 ---
 
-These fields qualify `CALLERS` and `CALLEES` evidence. Static observations do not establish runtime activation.
+Callback observations preserve the occurrence, named lexical container, anonymous body, and named-edge policy. Their static facts do not establish runtime activation.
 
 ## Named-edge policy
 
@@ -14,6 +14,8 @@ These fields qualify `CALLERS` and `CALLEES` evidence. Static observations do no
 | `ADMITTED_DIRECT` | A compiler-confirmed immediate invocation admits a named edge while preserving its anonymous body. |
 | `ADMITTED_INLINE` | Inline policy admits a named edge while preserving the anonymous owner. |
 | `UNAVAILABLE` | Ownership remains incomplete. |
+
+An admitted named edge keeps its anonymous owner evidence. An excluded edge keeps the reason and exact excluded occurrence.
 
 ## Binding forms
 
@@ -26,6 +28,10 @@ These fields qualify `CALLERS` and `CALLEES` evidence. Static observations do no
 | `DEFERRED_DEPENDENCY` | Reviewed dependency binaries establish initializer supply without an invocation claim. |
 | `UNAVAILABLE` | The mapping is unavailable. |
 
+`BOUND` records compiler argument-to-parameter mapping. `DEFAULT` preserves the defining formal and default expression rather than an invented argument.
+
+`DIRECT` keeps the actual invocation owner without a receiving formal. `DEFERRED_DEPENDENCY` establishes initializer supply without an invocation site or count.
+
 ## Invocation scan
 
 | Scan | Meaning |
@@ -33,6 +39,20 @@ These fields qualify `CALLERS` and `CALLEES` evidence. Static observations do no
 | `EXHAUSTIVE` | The admitted scan finished. Empty invocations establish no supported invocation sites in that scanned flow. |
 | `INCOMPLETE` | A limit or unsupported flow prevents an absence claim. |
 | `NOT_APPLICABLE` | A directly invoked body has no receiving formal to scan. |
+
+The scan states the extent of formal-invocation enumeration. An exhaustive scan can still need proof that a nested invocation owner executes.
+
+Each parameter invocation keeps `forwardings`, including an empty array. Each hop identifies the source formal, supplied expression, and destination binding.
+
+`owner_bindings` preserves a nested anonymous owner's supply and mapping. `callable_observations` records symbolic formal invocations and source-less compiler targets.
+
+## Declared dependency effects
+
+Calls-in-place evidence keeps `EXACTLY_ONCE`, `AT_MOST_ONCE`, `AT_LEAST_ONCE`, or explicitly declared `UNKNOWN`.
+
+The effect must belong to the compiler-selected formal and reviewed binary identity. Missing, duplicate, or unsupported effects return `DEPENDENCY_CONTRACT_EFFECT_UNPROVEN`.
+
+These kinds describe the declared contract. They do not count runtime invocations or invent dependency body sites.
 
 ## Unresolved obligations
 
@@ -45,18 +65,22 @@ These fields qualify `CALLERS` and `CALLEES` evidence. Static observations do no
 | Unsupported supply | `UNSUPPORTED_CALLBACK_SUPPLY` |
 | Recursive forwarding | `CALLBACK_CYCLE` |
 
+The list groups ownership and transfer failures. Work, time, result, and byte limits keep their separate causes.
+
+`FINALLY_UNSUPPORTED` and `ABRUPT_COMPLETION` preserve unsupported control-flow effects. An empty invocation list cannot erase an incomplete scan or unresolved obligation.
+
 ## Candidate source action
 
-An issued anonymous `candidateSelector` supplies `candidateRef` for the source action:
+The anonymous body's issued `candidateSelector` supplies this action's `candidateRef`.
 
 ```json
 {"request":{"type":"READ_SOURCE","candidateRef":"<issued candidateSelector>"}}
 ```
 
-The selector needs its original read epoch. It does not select the enclosing named function.
+The selector needs its admitted source state. It does not select the enclosing named function.
 
 ## Source owner
 
-[Callback binding documents](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt) own the variants.
+[Callback source owners](/reference/source-map#callback-and-deferred-ownership) define the variants and rejection cases.
 
-[Callback evidence](/reference/callbacks) explains ownership and reviewed dependency models. [Results](/reference/responses) defines evidence presentation.
+[Callback evidence](/reference/callbacks) explains supply and invocation. [Results](/reference/responses) defines their presentation pages.

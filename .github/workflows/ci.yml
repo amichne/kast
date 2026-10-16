@@ -115,6 +115,12 @@ jobs:
         if: steps.reuse.outputs.candidate != 'REUSED'
         run: python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt uv==0.12.9
 
+      - name: Set up documentation parser runtime
+        if: steps.reuse.outputs.candidate != 'REUSED'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.21.0"
+
       - name: Set up Gradle
         if: steps.reuse.outputs.candidate != 'REUSED'
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6

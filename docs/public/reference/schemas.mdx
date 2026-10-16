@@ -4,11 +4,9 @@ description: "Find generated schemas, request samples, and recorded responses fo
 icon: "braces"
 ---
 
-Your installed catalog defines your release's contract. The schemas linked to `main` can describe newer behavior. Compare them with the installed catalog before you use an example.
+Generated schemas define encoded requests and results. The installed catalog governs your release, while links on `main` can describe newer behavior.
 
 ## Raw JSON Schema
-
-Kast generates each tool's input schema and examples from one authored contract. These links expose the current files on `main`:
 
 | Tool | Input schema | Request examples |
 | --- | --- | --- |
@@ -17,25 +15,33 @@ Kast generates each tool's input schema and examples from one authored contract.
 | `add_declaration` | [JSON Schema](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/add_declaration.parameters.json) | [JSON samples](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/add_declaration.examples.json) |
 | `replace_body` | [JSON Schema](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/replace_body.parameters.json) | [JSON samples](https://raw.githubusercontent.com/amichne/kast/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/replace_body.examples.json) |
 
-Direct MCP exposes `health_check`. Hosted App Server exposes `workspace_lifecycle`. The [generated OpenAPI document](https://raw.githubusercontent.com/amichne/kast/main/docs/public/reference/callables.openapi.json) defines their inputs and outputs.
+The authored `tools.schema.json` owns shared input definitions, metadata, and normalization defaults. Tool-specific `parameters.json` files expose its generated projections.
 
-The [authored schema](https://github.com/amichne/kast/blob/main/app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json) owns shared definitions and metadata. To examine tool inputs, use that tool's `parameters.json`. Keep the closed variants and `$ref` links intact.
+Direct MCP exposes `health_check`. Hosted App Server exposes `workspace_lifecycle` for separate project actions.
+
+The [generated OpenAPI document](https://raw.githubusercontent.com/amichne/kast/main/docs/public/reference/callables.openapi.json) connects inputs, operation documents, transport wrappers, and model definitions.
+
+Its `/callables/...` labels identify documentation sections. They are not HTTP endpoints.
 
 <a id="read-a-schema-without-reading-every-definition" />
 
 ## Schema structure and admission
 
-Root properties identify the tool arguments. Tagged variants select action-specific fields. A `RUN` variant contains a source, optional steps, and an output. [Query forms](/reference/api) explains supported combinations.
+Tagged variants select action-specific fields. Required defaults and discriminators remain explicit in encoded output.
 
-Admission supplies defaults. A valid schema establishes the input shape. Current identity, complete coverage, and permission to change source need separate evidence.
+Schema admission establishes shape. Workspace readiness, current identity, semantic completion, and source-change authority need their own admission.
+
+[Query forms](/reference/api) defines supported combinations. [Lifecycles](/reference/lifecycles) identifies each subsequent owner.
 
 ## Samples and observed responses
 
-Generated samples include valid cases and deliberate rejection cases. Their opaque references are placeholders. Get current handles from your workspace before use. These samples do not record native responses.
+Generated samples include valid inputs and deliberate rejection cases. Their references are placeholders rather than live workspace authority.
+
+The examples establish neither native execution nor current compiler results. Recorded responses keep their original source revision and environment.
 
 ## Recorded walkthrough
 
-The [sixteen-call recording](https://raw.githubusercontent.com/amichne/kast/32c31f7f9e298ed678908d45558b1ea1ea2d9c00/docs/public/examples/query-walkthrough.json) supplies the [walkthrough](/reference/walkthrough) and [composition examples](/reference/query-pipelines). Each entry keeps its ID, timestamp, tool, request, and response.
+The [sixteen-call recording](https://raw.githubusercontent.com/amichne/kast/32c31f7f9e298ed678908d45558b1ea1ea2d9c00/docs/public/examples/query-walkthrough.json) supplies the historical walkthrough and composition examples.
 
 | Capture fact | Value |
 | --- | --- |
@@ -56,20 +62,20 @@ The [sixteen-call recording](https://raw.githubusercontent.com/amichne/kast/32c3
 | `12`–`13`: bounded execution and resume | One row with a continuation, then the remaining row with complete coverage. |
 | `14`–`15`: find `exactStage`, walk callers | One function, then one caller record at depth 1 within the two-hop bound. |
 
-The recording replaces only the absolute checkout prefix with `/workspace/kast`. References, offsets, identity, and qualifications stay intact. The capture predates compact output.
+The capture replaces the absolute checkout prefix with `/workspace/kast`. It preserves references, offsets, identities, and qualifications.
 
-To reproduce the example, use the linked source checkout. Send each `request` to `kast-tool-rpc-complete call query_symbols` in order. Substitute newly issued references. During composition, pause builds and source edits. Read the counts and coverage from your own run.
+The capture predates compact output and current complete-only execution. Its semantic continuation behavior is historical rather than a public `RESUME` contract today.
 
-Generated shape guards cover the captured requests and responses. They do not replay the IDEA interaction.
+Current `RESUME` only presents produced output. Current `RUN` owns internal semantic continuation and rejects incomplete proof.
 
-OpenAPI `/callables/…` labels identify documentation sections. [MCP](/reference/mcp-catalog) and [Tool RPC](/reference/rpc-catalog) define the transport interfaces.
-
-[Source map](/reference/source-map#public-requests) identifies the authored contract and admission tests.
+Generated shape guards examine the recorded payloads. They do not replay the original IDEA interaction.
 
 ## Public request example
 
-The action discriminator selects the request variant. This argument object uses the generated `RUN` shape.
+This current argument object selects declaration discovery through `RUN`.
 
 ```json
 {"request":{"type":"RUN","source":{"type":"SEARCH_DECLARATIONS","declarationName":"QueryStepSyntax"}}}
 ```
+
+[The source map](/reference/source-map#public-requests) links contract owners. [MCP](/reference/mcp-catalog) and [Tool RPC](/reference/rpc-catalog) define transport wrappers.

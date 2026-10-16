@@ -1,0 +1,17 @@
+{
+  "name": "kast-documentation-markdown",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "24.21.0" },
+  "scripts": { "check": "tsc --noEmit" },
+  "dependencies": {
+    "mdast-util-from-markdown": "2.0.2",
+    "mdast-util-frontmatter": "2.0.1",
+    "micromark-extension-frontmatter": "2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.0.0",
+    "typescript": "6.0.3"
+  }
+}
