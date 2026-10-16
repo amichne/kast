@@ -905,7 +905,7 @@ def render_public_mdx(glossary: Glossary) -> str:
         'icon: "book-open"',
         "---",
         "",
-        "<!-- Generated from docs/glossary.json. Edit its canonical definitions. -->",
+        "{/* Generated from docs/glossary.json. Edit its canonical definitions. */}",
         "",
         "Use these terms to read a Kast answer. Exact fields and their values keep the spelling from your installed catalog.",
         "",
