@@ -5,6 +5,10 @@
 Kast connects your agent to IntelliJ IDEA so it can find exact declarations,
 trace their connections, inspect diagnostics, and make targeted source changes.
 
+Watch a 54-second native Pi + Kast demo of declaration lookup, callers, a bounded
+trace, source, and diagnostics. The recording uses Kast `0.0.3612` in a synthetic
+workspace, with shortened pauses. Results are static compiler evidence.
+
 When several functions share a name, your agent needs to know which one matters.
 When you change a function, it needs to know who calls it.
 Kast gives it compiler-backed answers from your Kotlin project.
