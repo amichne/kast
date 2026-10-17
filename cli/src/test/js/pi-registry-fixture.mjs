@@ -12,14 +12,25 @@ const file = fileURLToPath(import.meta.url);
 const root = resolve(dirname(file), '../../../..');
 const [mode, ...args] = process.argv.slice(2);
 const target = 'mcp__kast__query_symbols';
+const expectedMethods = calls => ['initialize', 'notifications/initialized', 'tools/list',
+  ...(calls === 1 ? ['tools/call'] : [])];
 
 if (mode === '--server') {
-  const [catalog, log] = args;
+  const [catalog, log, calls] = args;
+  assert.ok(calls === '0' || calls === '1');
+  const expected = expectedMethods(Number(calls));
+  let consumed = 0;
   const tools = JSON.parse(readFileSync(catalog, 'utf8'));
   for await (const line of createInterface({ input: process.stdin })) {
     const request = JSON.parse(line);
     appendFileSync(log, JSON.stringify({ method: request.method, name: request.params?.name }) + '\n');
-    if (request.id === undefined) continue;
+    assert.equal(request.jsonrpc, '2.0');
+    assert.equal(request.method, expected[consumed++], 'Unexpected or excess MCP message');
+    if (request.method === 'notifications/initialized') {
+      assert.equal(request.id, undefined);
+      continue;
+    }
+    assert.ok(typeof request.id === 'number' || typeof request.id === 'string', 'MCP request needs an id');
     let result;
     if (request.method === 'initialize') result = {
       protocolVersion: request.params.protocolVersion, capabilities: { tools: {} },
@@ -27,12 +38,14 @@ if (mode === '--server') {
       instructions: 'Offline registry fixture. No semantic readiness or compiler evidence.',
     };
     else if (request.method === 'tools/list') result = { tools };
-    else if (request.method === 'tools/call') result = {
-      isError: true, content: [{ type: 'text', text: 'FIXTURE_UNSUPPORTED_NO_SEMANTIC_EVIDENCE' }],
-    };
+    else if (request.method === 'tools/call') {
+      assert.equal(request.params.name, 'query_symbols');
+      result = { isError: true, content: [{ type: 'text', text: 'FIXTURE_UNSUPPORTED_NO_SEMANTIC_EVIDENCE' }] };
+    }
     else throw new Error('Unexpected fixture request: ' + request.method);
     process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: request.id, result }) + '\n');
   }
+  assert.equal(consumed, expected.length, 'Unconsumed MCP expectations');
 } else if (mode === '--case') {
   const [packageRoot, variant, home] = args;
   assert.equal(realpathSync(process.env.HOME), home);
@@ -66,7 +79,7 @@ if (mode === '--server') {
   writeFileSync(binary, '#!' + process.execPath + '\n' +
     'import { spawnSync } from "node:child_process";\n' +
     'const r = spawnSync(' + JSON.stringify(process.execPath) + ', ' +
-    JSON.stringify([file, '--server', catalog, log]) + ', { stdio: "inherit" });\n' +
+    JSON.stringify([file, '--server', catalog, log, variant === 'disabled' ? '0' : '1']) + ', { stdio: "inherit" });\n' +
     'process.exit(r.status ?? 1);\n', { mode: 0o700 });
   if (variant === 'deferred') writeFileSync(join(agentDir, 'mcp.json'), JSON.stringify({
     mcpServers: { kast: { command: binary, exposure: 'deferred' } },
@@ -93,6 +106,8 @@ if (mode === '--server') {
   let modelCalls = 0;
   session.agent.streamFunction = () => { modelCalls++; throw new Error('INFERENCE_FORBIDDEN'); };
   const errors = [];
+  const records = () => readFileSync(log, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
+  let receipt;
   try {
     assert.deepEqual(extensionsResult.errors, []);
     await session.bindExtensions({ mode: 'print', onError: error => errors.push(error) });
@@ -109,7 +124,6 @@ if (mode === '--server') {
     assert.ok(prompt.includes('first semantic step when its tools are reachable and support the task'));
     assert.ok(prompt.includes('tasks without a Kotlin semantic question need no Kast call'));
     const active = session.getActiveToolNames();
-    const records = () => readFileSync(log, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
     assert.equal(records().filter(r => r.method === 'tools/call').length, 0, 'Passive setup must not probe semantics');
     let fixtureAssistantCalls = 0;
     if (variant === 'disabled') {
@@ -149,14 +163,17 @@ if (mode === '--server') {
     assert.equal(modelCalls, 0);
     assert.equal(session.messages.filter(m => m.role === 'assistant').length, fixtureAssistantCalls);
     assert.equal(session.messages.filter(m => m.role === 'user').length, 0);
-    console.log(JSON.stringify({ variant, pi: JSON.parse(readFileSync(join(packageRoot, 'package.json'))).version,
+    receipt = { variant, pi: JSON.parse(readFileSync(join(packageRoot, 'package.json'))).version,
       registered: registered.name, exposure: registered.exposure, activeTools: active,
       modelCalls, fixtureAssistantCalls, semanticCalls: 0, fixtureCalls: records().filter(r => r.method === 'tools/call').length,
-      outcome: variant === 'disabled' ? 'REGISTERED_BUT_UNREACHABLE' : 'DISCOVERY_AND_REJECTION_REACHABLE' }));
+      outcome: variant === 'disabled' ? 'REGISTERED_BUT_UNREACHABLE' : 'DISCOVERY_AND_REJECTION_REACHABLE' };
   } finally {
     await session.extensionRunner.emit({ type: 'session_shutdown' });
     session.dispose();
   }
+  // Recheck after shutdown so caught child failures or late traffic cannot manufacture success.
+  assert.deepEqual(records().map(r => r.method), expectedMethods(variant === 'disabled' ? 0 : 1));
+  console.log(JSON.stringify(receipt));
 } else {
   assert.ok(mode && mode.startsWith('/'), 'Supply an absolute Pi package root');
   const temporary = realpathSync(mkdtempSync(join(tmpdir(), 'kast-pi-registry-')));

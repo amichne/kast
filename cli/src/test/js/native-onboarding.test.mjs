@@ -1,12 +1,41 @@
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
+import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 
 const source = readFileSync(new URL('../../../../pi/mcp-extension.ts', import.meta.url), 'utf8');
 const resources = ['onboarding.md', 'query-schema.json', 'query-examples.json'];
+
+test('registry fixture rejects unexpected, duplicate, and unconsumed protocol messages', t => {
+  const directory = mkdtempSync(join(tmpdir(), 'kast registry protocol '));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const catalog = join(directory, 'catalog.json'), log = join(directory, 'requests.jsonl');
+  writeFileSync(catalog, '[]');
+  const script = fileURLToPath(new URL('./pi-registry-fixture.mjs', import.meta.url));
+  const initialize = { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05' } };
+  const initialized = { jsonrpc: '2.0', method: 'notifications/initialized' };
+  const list = { jsonrpc: '2.0', id: 2, method: 'tools/list' };
+  const cases = [
+    ['expected', [initialize, initialized, list], true],
+    ['unknown notification', [initialize, { jsonrpc: '2.0', method: 'notifications/unexpected' }, list], false],
+    ['duplicate notification', [initialize, initialized, initialized, list], false],
+    ['request without id', [initialize, initialized, { jsonrpc: '2.0', method: 'tools/list' }], false],
+    ['unconsumed request', [initialize, initialized], false],
+    ['excess request', [initialize, initialized, list, list], false],
+  ];
+  for (const [name, messages, accepted] of cases) {
+    const result = spawnSync(process.execPath, [script, '--server', catalog, log, '0'], {
+      input: messages.map(m => JSON.stringify(m) + '\n').join(''), encoding: 'utf8', timeout: 5_000,
+    });
+    assert.ifError(result.error);
+    assert.equal(result.signal, null, name);
+    assert.equal(result.status === 0, accepted, name + ': ' + result.stderr);
+  }
+});
 
 async function fixture(t, brief = 'Kast shared context\n') {
   const home = realpathSync(mkdtempSync(join(tmpdir(), 'kast pi $ literal ')));
