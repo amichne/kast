@@ -47,7 +47,11 @@ import kotlinx.serialization.json.Json
 class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
     private val json = Json { encodeDefaults = true }
     private val state = IdeLifecycleState(UUID.randomUUID())
-    private val native = IdeLifecycleNative(state)
+    private val native =
+        IdeLifecycleNative(state) { observation ->
+            Logger.getInstance(IdeLifecycleApplication::class.java)
+                .info("kast_preparation " + json.encodeToString(NativePreparationObservation.serializer(), observation))
+        }
 
     internal suspend fun <Value> withRegisteredPeer(
         expected: ImpactSemanticBasisDocument.Live,
@@ -227,7 +231,7 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
 
     private fun normalizeRoot(command: IdeLifecycleCommand): Refinement<IdeLifecycleCommand, IdeLifecycleFailure> =
         if (command is IdeLifecycleCommand.Open)
-            when (val root = native.canonicalRoot(command.root)) {
+            when (val root = canonicalLifecycleRoot(command.root)) {
                 is Refinement.Refined -> Refinement.Refined(command.copy(root = root.value.value))
                 is Refinement.Rejected -> root
             }
@@ -237,10 +241,11 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
     @Suppress("TooGenericExceptionCaught")
     private fun executeEffect(admitted: IdeLifecycleCommand, request: LifecycleRequest) {
         // Application scope owns native work. Peer cancellation never cancels the operation.
+        val admittedAtNanos = System.nanoTime()
         scope.launch {
             val result =
                 try {
-                    native.execute(admitted)
+                    native.execute(admitted, admittedAtNanos)
                 } catch (_: CancellationException) {
                     IdeLifecycleResult.Blocked(IdeLifecycleFailure.SHUTDOWN)
                 } catch (_: com.intellij.openapi.progress.ProcessCanceledException) {

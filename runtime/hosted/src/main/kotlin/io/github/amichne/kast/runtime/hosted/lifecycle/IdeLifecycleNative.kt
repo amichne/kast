@@ -18,6 +18,7 @@ import io.github.amichne.kast.protocol.contract.IdeProjectDescription
 import io.github.amichne.kast.protocol.contract.IdeProjectOwnership
 import io.github.amichne.kast.protocol.contract.IdeProjectTarget
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
+import io.github.amichne.kast.protocol.contract.WorkspacePreparationDeadline
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshCommand
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure
@@ -38,23 +39,11 @@ import kotlinx.coroutines.withContext
 
 /** Ordinary graphical 262 APIs only. No force closure, global preferences, or implicit trust. */
 @Suppress("LargeClass") // One owner retains the native project and lifecycle effect order.
-internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
+internal class IdeLifecycleNative(
+    private val state: IdeLifecycleState,
+    private val observePreparation: (NativePreparationObservation) -> Unit = {},
+) {
     private val projects = java.util.concurrent.ConcurrentHashMap<UUID, Project>()
-
-    fun canonicalRoot(raw: String): Refinement<CanonicalWorkspaceRoot, IdeLifecycleFailure> =
-        try {
-            val path = Path.of(raw)
-            if (!path.isAbsolute || !Files.isDirectory(path)) Refinement.Rejected(IdeLifecycleFailure.INVALID_REQUEST)
-            else
-                when (val root = CanonicalWorkspaceRoot.fromCanonicalPath(path.toRealPath())) {
-                    is Refinement.Refined -> root
-                    is Refinement.Rejected -> Refinement.Rejected(IdeLifecycleFailure.INVALID_REQUEST)
-                }
-        } catch (_: java.io.IOException) {
-            Refinement.Rejected(IdeLifecycleFailure.INVALID_REQUEST)
-        } catch (_: IllegalArgumentException) {
-            Refinement.Rejected(IdeLifecycleFailure.INVALID_REQUEST)
-        }
 
     fun observeProjects() {
         ProjectManager.getInstance()
@@ -62,7 +51,7 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
             .filterNot { it.isDisposed }
             .forEach { project ->
                 val root =
-                    when (val admitted = canonicalRoot(project.basePath ?: return@forEach)) {
+                    when (val admitted = canonicalLifecycleRoot(project.basePath ?: return@forEach)) {
                         is Refinement.Refined -> admitted.value
                         is Refinement.Rejected -> return@forEach
                     }
@@ -100,11 +89,19 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
     suspend fun <Value> withRegisteredPeer(
         expected: ImpactSemanticBasisDocument.Live,
         action: suspend (Project, CanonicalWorkspaceRoot) -> HostedSemanticReadResult<Value>,
-    ): HostedSemanticReadResult<Value> = readRegisteredPeer(projects, expected, ::canonicalRoot, action)
+    ): HostedSemanticReadResult<Value> = readRegisteredPeer(projects, expected, ::canonicalLifecycleRoot, action)
 
-    suspend fun execute(command: IdeLifecycleCommand): IdeLifecycleResult =
+    suspend fun execute(command: IdeLifecycleCommand, admittedAtNanos: Long = System.nanoTime()): IdeLifecycleResult =
         when (command) {
-            is IdeLifecycleCommand.Open -> open(command)
+            is IdeLifecycleCommand.Open ->
+                prepareNativeWorkspace(
+                    command.requestId,
+                    command.preparationMillis,
+                    admittedAtNanos,
+                    observePreparation,
+                ) {
+                    open(command, it)
+                }
             is IdeLifecycleCommand.Present ->
                 withTarget(command.target) { project ->
                     withContext(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) {
@@ -118,56 +115,75 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
                     }
                 }
             is IdeLifecycleCommand.Sync ->
-                withTarget(command.target) { sync(it, command.target, command.requestId, command.effect) }
+                prepareNativeWorkspace(
+                    command.requestId,
+                    io.github.amichne.kast.protocol.contract.WorkspacePreparationBudget.limit.value,
+                    admittedAtNanos,
+                    observePreparation,
+                ) { operation ->
+                    withTarget(command.target) { sync(it, command.target, operation, command.effect) }
+                }
             is IdeLifecycleCommand.ConfigureSync ->
                 withTarget(command.target) { project ->
                     withContext(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) {
-                        configureSync(project, command.target, command.rule)
+                        configureLifecycleRefresh(project, command.target, command.rule)
                     }
                 }
             is IdeLifecycleCommand.Close -> withTarget(command.target) { close(it, command.target) }
             else -> blocked(IdeLifecycleFailure.INVALID_REQUEST)
         }
 
-    private suspend fun open(command: IdeLifecycleCommand.Open): IdeLifecycleResult {
+    private suspend fun open(
+        command: IdeLifecycleCommand.Open,
+        operation: NativeWorkspacePreparation,
+    ): IdeLifecycleResult {
         val root =
-            when (val admitted = canonicalRoot(command.root)) {
+            when (val admitted = canonicalLifecycleRoot(command.root)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return blocked(admitted.failure)
             }
         val existing = existingProjects(root)
         if (existing.size > 1) return blocked(IdeLifecycleFailure.PROJECT_BUSY)
-        if (existing.size == 1) return openExisting(existing.single(), root, command.requestId)
-        return openNew(root, command.requestId)
+        if (existing.size == 1) return openExisting(existing.single(), root, operation)
+        return openNew(root, operation)
     }
 
     private suspend fun openExisting(
         project: Project,
         root: CanonicalWorkspaceRoot,
-        requestId: String,
+        operation: NativeWorkspacePreparation,
     ): IdeLifecycleResult {
         val target = observe(project, root, IdeProjectOwnership.BORROWED)
         val endpoint = project.getService(HostedEndpointService::class.java)
-        if (!awaitLifecycleCondition { project.isDisposed || endpoint.lifecycleRefreshReady() })
+        if (
+            !awaitLifecycleCondition(operation.deadline, operation.nanoTime) {
+                project.isDisposed || endpoint.lifecycleRefreshReady()
+            }
+        )
             return blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
         if (project.isDisposed) return blocked(IdeLifecycleFailure.DISPOSED)
         lifecycleVfsFailure(endpoint)?.let {
             return blocked(it)
         }
-        return awaitReady(project, target, requestId)
+        return awaitReady(project, target, operation)
     }
 
-    private suspend fun openNew(root: CanonicalWorkspaceRoot, requestId: String): IdeLifecycleResult {
+    private suspend fun openNew(
+        root: CanonicalWorkspaceRoot,
+        operation: NativeWorkspacePreparation,
+    ): IdeLifecycleResult {
+        val requestId = operation.requestId
         if (!TrustedProjects.isProjectTrusted(Path.of(root.value))) return blocked(IdeLifecycleFailure.TRUST_REQUIRED)
         if (!withContext(Dispatchers.EDT) { saveProjectDocuments(root) })
             return blocked(IdeLifecycleFailure.UNSAVED_DOCUMENTS)
         val importScopes = mutableListOf<InitialImportScope>()
         try {
+            if (operation.remaining() is Refinement.Rejected) return blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
             val project = openNative(root, importScopes) ?: return blocked(IdeLifecycleFailure.OPEN_FAILED)
             val target = observe(project, root, IdeProjectOwnership.MANAGED)
             val endpoint = project.getService(HostedEndpointService::class.java)
             if (
-                !awaitLifecycleCondition {
+                !awaitLifecycleCondition(operation.deadline, operation.nanoTime) {
                     project.isDisposed || (project.isInitialized && endpoint.lifecycleRefreshReady())
                 }
             )
@@ -177,8 +193,9 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
                 return blocked(it)
             }
             state.progress(LifecycleRequest(requestId), IdeLifecycleStage.IMPORTING)
-            val initial = requestInitialWorkspaceImport(project, endpoint, root, requestId)
-            return when (val imported = awaitRefresh(endpoint, target, requestId, initial)) {
+            operation.enter(IdeLifecycleStage.IMPORTING)
+            val initial = requestInitialWorkspaceImport(project, endpoint, root, operation)
+            return when (val imported = awaitRefresh(endpoint, target, operation, initial)) {
                 is IdeLifecycleResult.Synced -> {
                     IdeLifecycleResult.Opened(target)
                 }
@@ -191,7 +208,7 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
 
     private fun existingProjects(root: CanonicalWorkspaceRoot): List<Project> =
         ProjectManager.getInstance().openProjects.filter {
-            !it.isDisposed && it.basePath?.let(::canonicalRoot) == Refinement.Refined(root)
+            !it.isDisposed && it.basePath?.let(::canonicalLifecycleRoot) == Refinement.Refined(root)
         }
 
     private suspend fun openNative(
@@ -220,15 +237,16 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
     private suspend fun awaitReady(
         project: Project,
         target: IdeProjectTarget,
-        requestId: String,
+        operation: NativeWorkspacePreparation,
     ): IdeLifecycleResult {
         if (!TrustedProjects.isProjectTrusted(project)) return blocked(IdeLifecycleFailure.TRUST_REQUIRED)
         val root =
-            when (val admitted = canonicalRoot(target.root)) {
+            when (val admitted = canonicalLifecycleRoot(target.root)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return blocked(admitted.failure)
             }
-        state.progress(LifecycleRequest(requestId), IdeLifecycleStage.IMPORTING)
+        state.progress(LifecycleRequest(operation.requestId), IdeLifecycleStage.IMPORTING)
+        operation.enter(IdeLifecycleStage.IMPORTING)
         return IdeLifecycleReadiness(
                 project,
                 target,
@@ -236,71 +254,70 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
                     project.getService(HostedEndpointService::class.java).lifecycleReadiness(root)
                         ?: project.getService(HostedQueryService::class.java).workspaceReadiness(root)
                 },
-            ) {
-                sync(project, target, requestId, WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD)
-            }
+                reloadModel = { sync(project, target, operation, WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD) },
+                operation = operation,
+            )
             .await()
     }
 
     private suspend fun sync(
         project: Project,
         target: IdeProjectTarget,
-        requestId: String,
+        operation: NativeWorkspacePreparation,
         effect: WorkspaceRefreshEffect,
     ): IdeLifecycleResult {
         if (!TrustedProjects.isProjectTrusted(project)) return blocked(IdeLifecycleFailure.TRUST_REQUIRED)
+        val requestId = operation.requestId
+        operation.enter(IdeLifecycleStage.IMPORTING)
         val endpoint = project.getService(HostedEndpointService::class.java)
         return awaitRefresh(
             endpoint,
             target,
-            requestId,
+            operation,
             observeWorkspaceRefresh {
-                endpoint.lifecycleRefresh(WorkspaceRefreshCommand.Request(requestId, effect))
+                when (val remaining = operation.remaining()) {
+                    is Refinement.Rejected ->
+                        WorkspaceRefreshResult.Failed(requestId, WorkspaceRefreshFailure.DEADLINE_EXCEEDED)
+                    is Refinement.Refined ->
+                        endpoint.lifecycleRefresh(
+                            WorkspaceRefreshCommand.Request(requestId, effect, remaining.value.value)
+                        )
+                }
             },
         )
-    }
-
-    private fun configureSync(
-        project: Project,
-        target: IdeProjectTarget,
-        rule: io.github.amichne.kast.protocol.contract.WorkspaceRefreshRule,
-    ): IdeLifecycleResult {
-        if (!TrustedProjects.isProjectTrusted(project)) return blocked(IdeLifecycleFailure.TRUST_REQUIRED)
-        return when (
-            val configured =
-                project
-                    .getService(HostedEndpointService::class.java)
-                    .lifecycleRefresh(WorkspaceRefreshCommand.Configure(rule))
-        ) {
-            is WorkspaceRefreshResult.Configured -> IdeLifecycleResult.Configured(target, configured.rule)
-            is WorkspaceRefreshResult.Rejected -> blocked(configured.reason.lifecycleFailure())
-            else -> blocked(IdeLifecycleFailure.INVALID_REQUEST)
-        }
     }
 
     private suspend fun awaitRefresh(
         endpoint: HostedEndpointService,
         target: IdeProjectTarget,
-        requestId: String,
+        operation: NativeWorkspacePreparation,
         initial: WorkspaceRefreshResult,
     ): IdeLifecycleResult {
         var result = initial
-        val finished = awaitLifecycleCondition {
-            if (result is WorkspaceRefreshResult.Pending) {
-                result = endpoint.lifecycleRefresh(WorkspaceRefreshCommand.Status(requestId))
-                val pending = result as? WorkspaceRefreshResult.Pending
-                state.progress(
-                    LifecycleRequest(requestId),
-                    if (pending?.stage == WorkspaceRefreshStage.ADMISSION) IdeLifecycleStage.ADMISSION
-                    else IdeLifecycleStage.IMPORTING,
-                )
+        val requestId = operation.requestId
+        val finished =
+            awaitLifecycleCondition(operation.deadline, operation.nanoTime) {
+                if (result is WorkspaceRefreshResult.Pending) {
+                    result = endpoint.lifecycleRefresh(WorkspaceRefreshCommand.Status(requestId))
+                    val pending = result as? WorkspaceRefreshResult.Pending
+                    if (pending != null) {
+                        val stage =
+                            if (pending.stage == WorkspaceRefreshStage.ADMISSION) IdeLifecycleStage.ADMISSION
+                            else IdeLifecycleStage.IMPORTING
+                        state.progress(LifecycleRequest(requestId), stage)
+                        operation.enter(stage)
+                    }
+                }
+                result !is WorkspaceRefreshResult.Pending
             }
-            result !is WorkspaceRefreshResult.Pending
-        }
         if (!finished) return blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
         return when (val terminal = result) {
-            is WorkspaceRefreshResult.Complete -> IdeLifecycleResult.Synced(target)
-            is WorkspaceRefreshResult.Failed -> blocked(terminal.reason.lifecycleFailure())
+            is WorkspaceRefreshResult.Complete -> {
+                operation.enter(IdeLifecycleStage.ADMISSION)
+                IdeLifecycleResult.Synced(target)
+            }
+            is WorkspaceRefreshResult.Failed ->
+                IdeLifecycleResult.Blocked(terminal.reason.lifecycleFailure(), terminal.preparation)
             is WorkspaceRefreshResult.Rejected -> blocked(terminal.reason.lifecycleFailure())
             else -> blocked(IdeLifecycleFailure.IMPORT_FAILED)
         }
@@ -308,7 +325,7 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
 
     private suspend fun close(project: Project, target: IdeProjectTarget): IdeLifecycleResult {
         val root =
-            when (val admitted = canonicalRoot(target.root)) {
+            when (val admitted = canonicalLifecycleRoot(target.root)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return blocked(IdeLifecycleFailure.STALE_PROJECT)
             }
@@ -333,7 +350,13 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
                     }
                 }
             if (result !is IdeLifecycleResult.Closed) return result
-            if (!awaitLifecycleCondition { project.isDisposed && endpoint.lifecycleEndpointRetired() })
+            val closeLimit =
+                when (val admitted = io.github.amichne.kast.kernel.ElapsedTimeLimitMillis.parse(120_000)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> error("Invalid close retirement bound")
+                }
+            val closeDeadline = WorkspacePreparationDeadline.start(closeLimit, System.nanoTime())
+            if (!awaitLifecycleCondition(closeDeadline) { project.isDisposed && endpoint.lifecycleEndpointRetired() })
                 return blocked(IdeLifecycleFailure.CLOSE_RETIREMENT_PENDING)
             return result
         } finally {
@@ -353,7 +376,10 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
             }
         val project = projects[id] ?: return blocked(IdeLifecycleFailure.STALE_PROJECT)
         val root =
-            when (val admitted = canonicalRoot(project.basePath ?: return blocked(IdeLifecycleFailure.STALE_PROJECT))) {
+            when (
+                val admitted =
+                    canonicalLifecycleRoot(project.basePath ?: return blocked(IdeLifecycleFailure.STALE_PROJECT))
+            ) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return blocked(IdeLifecycleFailure.STALE_PROJECT)
             }
@@ -363,19 +389,3 @@ internal class IdeLifecycleNative(private val state: IdeLifecycleState) {
 
     private fun blocked(reason: IdeLifecycleFailure) = IdeLifecycleResult.Blocked(reason)
 }
-
-private fun WorkspaceRefreshFailure.lifecycleFailure(): IdeLifecycleFailure =
-    when (this) {
-        WorkspaceRefreshFailure.UNSAVED_DOCUMENTS -> IdeLifecycleFailure.UNSAVED_DOCUMENTS
-        WorkspaceRefreshFailure.UNLINKED_BUILD -> IdeLifecycleFailure.UNLINKED_BUILD
-        WorkspaceRefreshFailure.DISPOSED -> IdeLifecycleFailure.DISPOSED
-        WorkspaceRefreshFailure.CANCELLED -> IdeLifecycleFailure.CANCELLED
-        WorkspaceRefreshFailure.DEADLINE_EXCEEDED -> IdeLifecycleFailure.DEADLINE_EXCEEDED
-        WorkspaceRefreshFailure.CAPACITY -> IdeLifecycleFailure.CAPACITY
-        WorkspaceRefreshFailure.REQUEST_CONFLICT -> IdeLifecycleFailure.REQUEST_CONFLICT
-        WorkspaceRefreshFailure.UNKNOWN_REQUEST -> IdeLifecycleFailure.UNKNOWN_OPERATION
-        WorkspaceRefreshFailure.INVALID_REQUEST -> IdeLifecycleFailure.INVALID_REQUEST
-        WorkspaceRefreshFailure.ADMISSION_REJECTED,
-        WorkspaceRefreshFailure.NEWER_CHANGE -> IdeLifecycleFailure.PROJECT_BUSY
-        WorkspaceRefreshFailure.EFFECT_FAILED -> IdeLifecycleFailure.IMPORT_FAILED
-    }

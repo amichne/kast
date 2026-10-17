@@ -86,7 +86,8 @@ internal class IdeLifecycleState(val host: UUID, private val capacity: Int = 256
         if (shutdown) return existing(IdeLifecycleFailure.SHUTDOWN)
         operations[id]?.let {
             return LifecycleSubmission.Existing(
-                if (it.command == command) it.result else blocked(IdeLifecycleFailure.REQUEST_CONFLICT)
+                if (sameLifecycleOperation(it.command, command)) it.result
+                else blocked(IdeLifecycleFailure.REQUEST_CONFLICT)
             )
         }
         if (operations.size >= capacity) return existing(IdeLifecycleFailure.CAPACITY)
@@ -255,6 +256,12 @@ internal class IdeLifecycleState(val host: UUID, private val capacity: Int = 256
 
     private fun blocked(reason: IdeLifecycleFailure) = IdeLifecycleResult.Blocked(reason)
 }
+
+/** Remaining time is execution context; a replay retains the first operation and cannot extend its allowance. */
+private fun sameLifecycleOperation(first: IdeLifecycleCommand, next: IdeLifecycleCommand): Boolean =
+    if (first is IdeLifecycleCommand.Open && next is IdeLifecycleCommand.Open)
+        first == next.copy(preparationMillis = first.preparationMillis)
+    else first == next
 
 internal sealed interface LifecycleSubmission {
     data class Start(val pending: IdeLifecycleResult.Pending) : LifecycleSubmission

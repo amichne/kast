@@ -20,9 +20,14 @@ private fun uniqueRefreshObject(reader: JsonReader, nestedRuleAllowed: Boolean) 
     reader.beginObject()
     val names = mutableSetOf<String>()
     while (reader.hasNext()) {
-        require(names.add(reader.nextName()))
+        val name = reader.nextName()
+        require(names.add(name))
         when (reader.peek()) {
             JsonToken.STRING -> reader.nextString()
+            JsonToken.NUMBER -> {
+                require(name == "preparationMillis" && nestedRuleAllowed)
+                reader.nextLong()
+            }
             JsonToken.BEGIN_OBJECT -> {
                 require(nestedRuleAllowed)
                 uniqueRefreshObject(reader, nestedRuleAllowed = false)

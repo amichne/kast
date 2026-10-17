@@ -14,7 +14,11 @@ enum class WorkspaceRefreshEffect {
 sealed interface WorkspaceRefreshCommand {
     @Serializable
     @SerialName("request")
-    data class Request(val requestId: String, val effect: WorkspaceRefreshEffect) : WorkspaceRefreshCommand
+    data class Request(
+        val requestId: String,
+        val effect: WorkspaceRefreshEffect,
+        val preparationMillis: Long = WorkspacePreparationBudget.limit.value,
+    ) : WorkspaceRefreshCommand
 
     @Serializable @SerialName("status") data class Status(val requestId: String) : WorkspaceRefreshCommand
 
@@ -43,7 +47,12 @@ sealed interface WorkspaceRefreshResult {
 
     @Serializable
     @SerialName("failed")
-    data class Failed(val requestId: String, val reason: WorkspaceRefreshFailure) : WorkspaceRefreshResult
+    data class Failed(
+        val requestId: String,
+        val reason: WorkspaceRefreshFailure,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        val preparation: WorkspacePreparationTiming? = null,
+    ) : WorkspaceRefreshResult
 
     @Serializable
     @SerialName("rejected")

@@ -1,13 +1,16 @@
 package io.github.amichne.kast.appserver.runtime
 
 import io.github.amichne.kast.appserver.ide.CanonicalRoot
+import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
+import io.github.amichne.kast.protocol.contract.WorkspacePreparationBudget
+import io.github.amichne.kast.protocol.contract.WorkspacePreparationDeadline
+import io.github.amichne.kast.protocol.contract.WorkspacePreparationDeadlineOwner
 import java.util.UUID
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
@@ -22,9 +25,10 @@ internal class WorkspacePreparations(
     private val exchange: suspend (WorkspaceLifecycleRequest) -> IdeLifecycleResult,
     private val observer: WorkspacePreparationObserver = WorkspacePreparationObserver.Disabled,
     private val capacity: Int = 256,
-    private val budget: Duration = 5.minutes,
+    private val budget: Duration = WorkspacePreparationBudget.limit.value.milliseconds,
     private val interval: Duration = 100.milliseconds,
     private val newId: () -> WorkspacePreparationId = WorkspacePreparationId::fresh,
+    private val nanoTime: () -> Long = System::nanoTime,
 ) {
     private val worker = Job(scope.coroutineContext[Job])
     private val work = CoroutineScope(scope.coroutineContext + worker)
@@ -33,7 +37,7 @@ internal class WorkspacePreparations(
     private var closed = false
 
     init {
-        require(capacity > 0 && budget.isPositive() && interval.isPositive())
+        require(capacity > 0 && budget.inWholeMilliseconds > 0 && interval.isPositive())
     }
 
     @Synchronized
@@ -87,13 +91,22 @@ internal class WorkspacePreparations(
                 } ?: return Refinement.Rejected(WorkspacePreparationFailure.CAPACITY_EXCEEDED)
         val id = newId()
         if (id in records) return Refinement.Rejected(WorkspacePreparationFailure.IDENTITY_REJECTED)
-        val entry = WorkspacePreparation(id, root)
+        val limit =
+            when (val admitted = ElapsedTimeLimitMillis.parse(budget.inWholeMilliseconds)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> error("An admitted preparation budget lost its proof")
+            }
+        val entry = WorkspacePreparation(id, root, WorkspacePreparationDeadline.start(limit, nanoTime()))
         val job = work.launch(start = CoroutineStart.LAZY) { run(entry, previous) }
         // Admission precedes retirement; lookup eviction never rewrites the held terminal result.
         if (retired != null) records.remove(retired.id)
         entries[root] = entry
         records[id] = entry
-        observer.observe(entry.activity())
+        observer.observe(
+            entry.activity(
+                entry.deadline.timing(entry.lastStage, WorkspacePreparationDeadlineOwner.PREPARATION_OWNER, nanoTime())
+            )
+        )
         job.start()
         return Refinement.Refined(entry)
     }
@@ -127,15 +140,30 @@ internal class WorkspacePreparations(
 
     private fun publish(entry: WorkspacePreparation, outcome: WorkspacePreparationOutcome) {
         if (entry.mutable.value == outcome) return
+        if (outcome is WorkspacePreparationOutcome.Pending) entry.lastStage = outcome.stage
+        if (outcome is WorkspacePreparationOutcome.Complete)
+            entry.lastStage = io.github.amichne.kast.protocol.contract.IdeLifecycleStage.ADMISSION
         entry.mutable.value = outcome
-        observer.observe(entry.activity())
+        val timing =
+            (outcome as? WorkspacePreparationOutcome.Blocked)?.preparation
+                ?: entry.deadline.timing(
+                    entry.lastStage,
+                    WorkspacePreparationDeadlineOwner.PREPARATION_OWNER,
+                    nanoTime(),
+                )
+        observer.observe(entry.activity(timing))
     }
 
     private suspend fun run(entry: WorkspacePreparation, previous: WorkspacePreparationId?) {
         try {
             val result =
-                withTimeoutOrNull(budget) { prepareNative(entry, previous) }
-                    ?: WorkspacePreparationOutcome.Rejected(WorkspacePreparationFailure.DEADLINE_EXCEEDED)
+                when (val remaining = entry.deadline.remaining(nanoTime())) {
+                    is Refinement.Rejected ->
+                        WorkspacePreparationOutcome.Rejected(WorkspacePreparationFailure.DEADLINE_EXCEEDED)
+                    is Refinement.Refined ->
+                        withTimeoutOrNull(remaining.value.value) { prepareNative(entry, previous) }
+                            ?: WorkspacePreparationOutcome.Rejected(WorkspacePreparationFailure.DEADLINE_EXCEEDED)
+                }
             publish(entry, result)
         } finally {
             if (entry.mutable.value is WorkspacePreparationOutcome.Pending) {
@@ -160,7 +188,13 @@ internal class WorkspacePreparations(
                     is Refinement.Rejected -> return admitted.failure
                 }
         val requestId = entry.id.value.toString()
-        var response = exchange(WorkspaceLifecycleRequest.Open(entry.root.path.toString(), requestId))
+        val remaining =
+            when (val observed = entry.deadline.remaining(nanoTime())) {
+                is Refinement.Refined -> observed.value
+                is Refinement.Rejected ->
+                    return WorkspacePreparationOutcome.Rejected(WorkspacePreparationFailure.DEADLINE_EXCEEDED)
+            }
+        var response = exchange(WorkspaceLifecycleRequest.Open(entry.root.path.toString(), requestId, remaining.value))
         var progress: NativePreparationProgress? = null
         while (response is IdeLifecycleResult.Pending) {
             progress =
@@ -224,7 +258,7 @@ internal class WorkspacePreparations(
                             WorkspacePreparationOutcome.Complete(admitted.value)
                         else WorkspacePreparationOutcome.Rejected(WorkspacePreparationFailure.RESPONSE_REJECTED)
                 }
-            is IdeLifecycleResult.Blocked -> WorkspacePreparationOutcome.Blocked(response.reason)
+            is IdeLifecycleResult.Blocked -> WorkspacePreparationOutcome.Blocked(response.reason, response.preparation)
             else -> WorkspacePreparationOutcome.Rejected(WorkspacePreparationFailure.RESPONSE_REJECTED)
         }
     }

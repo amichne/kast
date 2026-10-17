@@ -164,7 +164,7 @@ internal class WorkspaceAvailabilityRecoveryTest {
         private var unexpected = 0
 
         suspend fun exchange(request: WorkspaceLifecycleRequest): IdeLifecycleResult {
-            if (remaining.isEmpty() || remaining.first().first != request) {
+            if (remaining.isEmpty() || !remaining.first().first.matchesPreparationIdentity(request)) {
                 unexpected++
                 error("Unexpected lifecycle request: $request")
             }

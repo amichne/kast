@@ -50,7 +50,12 @@ class WorkspacePreparationsTest {
         runCurrent()
         assertEquals(listOf("/workspace"), preparations.activeRoots())
         assertEquals(emptySet<UpgradeBlocker>(), preparations.upgradeBlockers())
-        assertEquals(listOf(WorkspaceLifecycleRequest.Open("/workspace", requestId.value.toString())), requests)
+        assertEquals(1, requests.size)
+        assertEquals(
+            true,
+            WorkspaceLifecycleRequest.Open("/workspace", requestId.value.toString())
+                .matchesPreparationIdentity(requests.single()),
+        )
         val completed = first.state.value as WorkspacePreparationOutcome.Complete
         assertEquals(root, completed.workspace.root)
         assertEquals(target, completed.workspace.target)

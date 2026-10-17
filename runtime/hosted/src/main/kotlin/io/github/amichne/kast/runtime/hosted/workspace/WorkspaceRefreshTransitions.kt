@@ -31,7 +31,10 @@ internal class WorkspaceRefreshEntry(
     val started: Long,
     var status: WorkspaceRefreshStatus,
     val complete: (WorkspaceRefreshStatus) -> Unit = {},
-)
+    val allowanceNanos: Long,
+) {
+    var deadlineTiming: io.github.amichne.kast.protocol.contract.WorkspacePreparationTiming? = null
+}
 
 internal fun WorkspaceRefreshWaiter.identity(): WorkspaceRefreshWaiterIdentity =
     when (this) {

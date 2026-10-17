@@ -8,6 +8,7 @@ import io.github.amichne.kast.appserver.runtime.UnavailableDaemonSessions
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparationFailure
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparationState
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparations
+import io.github.amichne.kast.appserver.runtime.matchesPreparationIdentity
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeProjectTarget
 import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
@@ -69,7 +70,11 @@ class DaemonWorkspacePreparationTest {
             assertEquals(first.preparation.requestId, status.preparation.requestId)
             assertEquals(root.toString(), status.preparation.root)
             assertEquals(WorkspacePreparationState.Completed(native), status.preparation.outcome)
-            assertEquals(listOf(WorkspaceLifecycleRequest.Open(root.toString(), first.preparation.requestId)), calls)
+            assertEquals(1, calls.size)
+            assertTrue(
+                WorkspaceLifecycleRequest.Open(root.toString(), first.preparation.requestId)
+                    .matchesPreparationIdentity(calls.single())
+            )
             assertEquals(
                 status,
                 management.exchangeRequest(

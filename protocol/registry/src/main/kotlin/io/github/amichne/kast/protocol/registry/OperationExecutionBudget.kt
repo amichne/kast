@@ -3,6 +3,7 @@ package io.github.amichne.kast.protocol.registry
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
+import io.github.amichne.kast.protocol.contract.WorkspacePreparationBudget
 
 /** Process deadlines, distinct from semantic work-unit budgets and release performance gates. */
 enum class OperationExecutionBudget(operationMillis: Long) {
@@ -15,7 +16,7 @@ enum class OperationExecutionBudget(operationMillis: Long) {
 
     companion object {
         val LOCAL_QUALIFICATION: ElapsedTimeLimitMillis = limit(10_000)
-        val WORKSPACE_READINESS: ElapsedTimeLimitMillis = limit(17 * 60_000)
+        val WORKSPACE_READINESS: ElapsedTimeLimitMillis = WorkspacePreparationBudget.limit
         val PROVIDER_QUALIFICATION: ElapsedTimeLimitMillis = limit(2 * LOCAL_QUALIFICATION.value)
 
         /** Every public operation has one exhaustive process budget authority. */

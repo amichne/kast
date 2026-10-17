@@ -80,7 +80,10 @@ internal class WorkspaceRecoveryNativeFixture {
         suspend fun exchange(request: WorkspaceLifecycleRequest): IdeLifecycleResult {
             assertTrue(remaining.isNotEmpty(), "unexpected lifecycle exchange")
             val step = remaining.removeFirst()
-            assertEquals(step.request, request)
+            assertTrue(
+                step.request.matchesPreparationIdentity(request),
+                "unexpected lifecycle identity or invalid allowance",
+            )
             return step.result()
         }
 
@@ -92,3 +95,11 @@ internal class WorkspaceRecoveryNativeFixture {
 
 internal fun Refinement<WorkspacePreparation, WorkspacePreparationFailure>.recoveryEntry() =
     (this as Refinement.Refined).value
+
+/** State/recovery scripts assert exact identity; deadline tests independently assert the propagated allowance. */
+internal fun WorkspaceLifecycleRequest.matchesPreparationIdentity(actual: WorkspaceLifecycleRequest): Boolean =
+    if (this is WorkspaceLifecycleRequest.Open && actual is WorkspaceLifecycleRequest.Open)
+        actual.preparationMillis in
+            1..io.github.amichne.kast.protocol.contract.WorkspacePreparationBudget.limit.value &&
+            copy(preparationMillis = actual.preparationMillis) == actual
+    else this == actual

@@ -15,6 +15,7 @@ class WorkspaceRefreshCommandAdmissionTest {
         val commands =
             listOf(
                 WorkspaceRefreshCommand.Request("refresh", WorkspaceRefreshEffect.FILE_REFRESH),
+                WorkspaceRefreshCommand.Request("short-parent", WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD, 300),
                 WorkspaceRefreshCommand.Configure(
                     WorkspaceRefreshRule.TaskSuccess(":build", WorkspaceRefreshEffect.FILE_REFRESH)
                 ),

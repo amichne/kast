@@ -29,6 +29,17 @@ class HostedWorkspaceRefreshSchemaTest {
                     listOf(WorkspaceRefreshResult.Failed("fixture-request", it), WorkspaceRefreshResult.Rejected(it))
                 } +
                 listOf(
+                    WorkspaceRefreshResult.Failed(
+                        "expired",
+                        WorkspaceRefreshFailure.DEADLINE_EXCEEDED,
+                        io.github.amichne.kast.protocol.contract.WorkspacePreparationTiming(
+                            io.github.amichne.kast.protocol.contract.IdeLifecycleStage.IMPORTING,
+                            300,
+                            300,
+                            0,
+                            io.github.amichne.kast.protocol.contract.WorkspacePreparationDeadlineOwner.REFRESH_WAITER,
+                        ),
+                    ),
                     WorkspaceRefreshResult.Complete("fixture-request"),
                     WorkspaceRefreshResult.Configured(WorkspaceRefreshRule.Off),
                 )

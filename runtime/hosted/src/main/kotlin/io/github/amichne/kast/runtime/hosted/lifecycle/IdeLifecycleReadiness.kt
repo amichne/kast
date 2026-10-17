@@ -1,6 +1,7 @@
 package io.github.amichne.kast.runtime.hosted.lifecycle
 
 import com.intellij.openapi.project.Project
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeProjectTarget
@@ -14,11 +15,17 @@ internal class IdeLifecycleReadiness(
     private val target: IdeProjectTarget,
     private val observe: () -> WorkspaceCapabilityReadiness,
     private val reloadModel: suspend () -> IdeLifecycleResult,
+    private val operation: NativeWorkspacePreparation,
 ) {
     private val preparation = WorkspaceReadinessPreparation()
 
-    suspend fun await(): IdeLifecycleResult =
-        withTimeoutOrNull(OPERATION_WAIT_MILLIS) {
+    suspend fun await(): IdeLifecycleResult {
+        val remaining =
+            when (val admitted = operation.remaining()) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
+            }
+        return withTimeoutOrNull(remaining.value) {
             while (true) {
                 if (project.isDisposed) return@withTimeoutOrNull blocked(IdeLifecycleFailure.DISPOSED)
                 when (val step = step()) {
@@ -28,10 +35,14 @@ internal class IdeLifecycleReadiness(
             }
             @Suppress("UNREACHABLE_CODE") blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
         } ?: blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
+    }
 
     private suspend fun step(): ReadinessStep =
         when (val action = preparation.observe(observe())) {
-            WorkspacePreparationAction.Ready -> ReadinessStep.Finished(IdeLifecycleResult.Opened(target))
+            WorkspacePreparationAction.Ready -> {
+                operation.enter(io.github.amichne.kast.protocol.contract.IdeLifecycleStage.ADMISSION)
+                ReadinessStep.Finished(IdeLifecycleResult.Opened(target))
+            }
             WorkspacePreparationAction.Wait -> ReadinessStep.Wait
             WorkspacePreparationAction.ReloadModel ->
                 when (val result = reloadModel()) {
@@ -50,7 +61,6 @@ internal class IdeLifecycleReadiness(
     }
 
     private companion object {
-        const val OPERATION_WAIT_MILLIS = 120_000L
         const val POLL_MILLIS = 100L
     }
 }
