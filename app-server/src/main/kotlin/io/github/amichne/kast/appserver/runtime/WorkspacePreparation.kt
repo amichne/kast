@@ -63,8 +63,11 @@ internal sealed interface WorkspacePreparationOutcome {
 
     data class Rejected(val failure: WorkspacePreparationFailure) : WorkspacePreparationOutcome.Terminal
 
-    data class Blocked(val reason: IdeLifecycleFailure, val preparation: WorkspacePreparationTiming? = null) :
-        WorkspacePreparationOutcome.Terminal
+    data class Blocked(
+        val reason: IdeLifecycleFailure,
+        val preparation: WorkspacePreparationTiming? = null,
+        val exchange: io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeFailure? = null,
+    ) : WorkspacePreparationOutcome.Terminal
 }
 
 internal class WorkspacePreparation

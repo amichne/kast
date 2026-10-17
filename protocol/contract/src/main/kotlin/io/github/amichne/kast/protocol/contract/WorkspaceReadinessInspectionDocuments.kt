@@ -124,6 +124,28 @@ sealed interface WorkspaceInspectionEpochRejection {
     data class ObservationFailed(val stage: WorkspaceInspectionEpochStage) : WorkspaceInspectionEpochRejection
 }
 
+/** Current producer evidence is separate from retained historical model evidence. */
+@Serializable
+sealed interface WorkspaceInspectionModelObstruction {
+    @Serializable @SerialName("unobserved") data object Unobserved : WorkspaceInspectionModelObstruction
+
+    @Serializable
+    @SerialName("imported_model_incomplete")
+    data object ImportedModelIncomplete : WorkspaceInspectionModelObstruction
+
+    @Serializable
+    @SerialName("imported_model_unavailable")
+    data object ImportedModelUnavailable : WorkspaceInspectionModelObstruction
+
+    @Serializable
+    @SerialName("pending_inputs")
+    data class PendingInputs(
+        val current: Long,
+        val imported: Long,
+        val latestOwnedImportCovered: Long?,
+    ) : WorkspaceInspectionModelObstruction
+}
+
 @Serializable
 data class WorkspaceInspectionObstruction(
     val reason: WorkspaceInspectionReadinessReason,
@@ -131,6 +153,7 @@ data class WorkspaceInspectionObstruction(
     val retainedModel: WorkspaceInspectionRetainedModel = WorkspaceInspectionRetainedModel.Unknown,
     val activeReads: List<WorkspaceInspectionReadOperation> = emptyList(),
     val epochRejection: WorkspaceInspectionEpochRejection = WorkspaceInspectionEpochRejection.Unobserved,
+    val model: WorkspaceInspectionModelObstruction = WorkspaceInspectionModelObstruction.Unobserved,
 )
 
 /** Each variant reports current native preparation evidence and grants no semantic execution authority. */

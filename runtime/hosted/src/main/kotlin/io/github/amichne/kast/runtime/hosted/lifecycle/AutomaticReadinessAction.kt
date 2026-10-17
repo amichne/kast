@@ -34,7 +34,7 @@ internal class WorkspaceReadinessPreparation {
         when (next) {
             WorkspaceReadinessNextAction.REFRESH_MODEL ->
                 if (requestedReload) {
-                    WorkspacePreparationAction.Blocked(IdeLifecycleFailure.IMPORT_FAILED)
+                    WorkspacePreparationAction.Blocked(IdeLifecycleFailure.MODEL_RELOAD_REQUIRED)
                 } else {
                     requestedReload = true
                     WorkspacePreparationAction.ReloadModel

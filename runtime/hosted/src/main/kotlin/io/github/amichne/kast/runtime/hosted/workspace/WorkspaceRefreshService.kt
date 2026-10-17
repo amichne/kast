@@ -6,7 +6,6 @@ import io.github.amichne.kast.protocol.contract.WorkspacePreparationBudget
 import io.github.amichne.kast.protocol.contract.WorkspacePreparationTiming
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.workspace.contract.WorkspaceCapabilityReadiness
-import io.github.amichne.kast.workspace.contract.WorkspaceReadinessReason
 
 /** Project-owned transitions and one thin native effect boundary, independent of semantic request budgets. */
 internal class WorkspaceRefreshService(
@@ -245,20 +244,14 @@ internal class WorkspaceRefreshService(
         if (disposed || active != null || queue.isNotEmpty()) return
         if (entries.values.none { it.status == WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.ADMISSION) }) return
         // Always reobserve through the native owner after effect settlement. No retained ready flag.
-        when (val observed = port.readiness()) {
-            is WorkspaceCapabilityReadiness.Ready ->
-                entries.values.toList().forEach {
-                    if (it.status == WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.ADMISSION))
-                        it.transition(WorkspaceRefreshStatus.Complete)
-                }
-            is WorkspaceCapabilityReadiness.Blocked ->
-                if (
-                    observed.reason == WorkspaceReadinessReason.PROJECT_DISPOSED ||
-                        observed.reason == WorkspaceReadinessReason.RETIRED_INCARNATION
-                )
-                    dispose()
-            is WorkspaceCapabilityReadiness.Pending,
-            is WorkspaceCapabilityReadiness.Unavailable -> Unit
+        val next = port.readiness().settledAdmissionStatus()
+        if (next is WorkspaceRefreshStatus.Pending) return
+        if (next == WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.DISPOSED)) {
+            dispose()
+            return
+        }
+        entries.values.toList().forEach {
+            if (it.status == WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.ADMISSION)) it.transition(next)
         }
     }
 

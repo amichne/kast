@@ -1,6 +1,5 @@
 package io.github.amichne.kast.runtime.hosted.lifecycle
 
-import com.intellij.openapi.project.Project
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
@@ -11,7 +10,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 /** One bounded existing-project readiness sequence, with at most one Kast-owned model reload. */
 internal class IdeLifecycleReadiness(
-    private val project: Project,
+    private val isDisposed: () -> Boolean,
     private val target: IdeProjectTarget,
     private val observe: () -> WorkspaceCapabilityReadiness,
     private val reloadModel: suspend () -> IdeLifecycleResult,
@@ -27,7 +26,7 @@ internal class IdeLifecycleReadiness(
             }
         return withTimeoutOrNull(remaining.value) {
             while (true) {
-                if (project.isDisposed) return@withTimeoutOrNull blocked(IdeLifecycleFailure.DISPOSED)
+                if (isDisposed()) return@withTimeoutOrNull blocked(IdeLifecycleFailure.DISPOSED)
                 when (val step = step()) {
                     ReadinessStep.Wait -> delay(POLL_MILLIS)
                     is ReadinessStep.Finished -> return@withTimeoutOrNull step.result

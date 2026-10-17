@@ -3,6 +3,8 @@ package io.github.amichne.kast.runtime.hosted.workspace
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.workspace.contract.ProjectReadEpochRelation
 import io.github.amichne.kast.workspace.contract.WorkspaceCapabilityReadiness
+import io.github.amichne.kast.workspace.contract.WorkspaceReadinessNextAction
+import io.github.amichne.kast.workspace.contract.WorkspaceReadinessReason
 
 internal sealed interface WorkspaceRefreshEffectKind {
     data class Explicit(val effect: WorkspaceRefreshEffect) : WorkspaceRefreshEffectKind
@@ -119,3 +121,23 @@ internal fun WorkspaceRefreshEntry.transition(status: WorkspaceRefreshStatus) {
     this.status = status
     if (status !is WorkspaceRefreshStatus.Pending) complete(status)
 }
+
+/** Called only after native settlement and an empty queue; passive waiting cannot discharge REFRESH_MODEL. */
+internal fun WorkspaceCapabilityReadiness.settledAdmissionStatus(): WorkspaceRefreshStatus =
+    when (this) {
+        is WorkspaceCapabilityReadiness.Ready -> WorkspaceRefreshStatus.Complete
+        is WorkspaceCapabilityReadiness.Blocked ->
+            if (
+                reason == WorkspaceReadinessReason.PROJECT_DISPOSED ||
+                    reason == WorkspaceReadinessReason.RETIRED_INCARNATION
+            )
+                WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.DISPOSED)
+            else nextAction.settledAdmissionStatus()
+        is WorkspaceCapabilityReadiness.Pending -> nextAction.settledAdmissionStatus()
+        is WorkspaceCapabilityReadiness.Unavailable -> nextAction.settledAdmissionStatus()
+    }
+
+private fun WorkspaceReadinessNextAction.settledAdmissionStatus(): WorkspaceRefreshStatus =
+    if (this == WorkspaceReadinessNextAction.REFRESH_MODEL)
+        WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.MODEL_RELOAD_REQUIRED)
+    else WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.ADMISSION)

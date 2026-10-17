@@ -78,6 +78,10 @@ Upgrades can change schemas and loaded components. New sessions need the new cat
 
 The sequence opens the project once. It then reads status for the issued operation. Status reads do not repeat the open effect.
 
+Preparation has a 17-minute budget. Opening, import, indexing, and final admission share that budget. Each lifecycle frame has a separate 5-second transport limit. A frame timeout reports `EXCHANGE_DEADLINE_EXCEEDED` with its command, stage, cause, and timing. `HOST_UNAVAILABLE` alone does not prove that IDEA exited. Semantic execution has its own limits after preparation.
+
+After an import settles, a current model observation can still require a reload. The settled refresh then reports `MODEL_RELOAD_REQUIRED`. Preparation can issue one owned recovery reload within its remaining budget. A later input change remains pending until an import covers it. Inspection distinguishes pending input revisions from rejection of the current imported model; retained model evidence describes a previous observation.
+
 A past blocker or rejection does not define readiness forever. A later authorized demand can check the current Host. It can then create a new preparation.
 
 Setup lookup history has a fixed capacity. Retirement keeps final results that are still held. Once an ID is reclaimed, a later lookup returns `UNKNOWN_OPERATION`.

@@ -15,6 +15,8 @@ internal data class WorkspacePreparationActivity(
     val event: String = "workspace-preparation",
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val preparation: WorkspacePreparationTiming? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val exchange: io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeFailure? = null,
 )
 
 /** Bounded stage and terminal evidence; contains no roots, requests, source, or approval payloads. */
@@ -70,4 +72,5 @@ internal fun WorkspacePreparation.activity(timing: WorkspacePreparationTiming? =
             is WorkspacePreparationOutcome.Blocked -> WorkspacePreparationActivityOutcome.Blocked(value.reason)
         },
         preparation = timing,
+        exchange = (state.value as? WorkspacePreparationOutcome.Blocked)?.exchange,
     )

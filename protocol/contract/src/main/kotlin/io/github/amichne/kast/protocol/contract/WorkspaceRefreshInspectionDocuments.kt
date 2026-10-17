@@ -12,6 +12,7 @@ enum class WorkspaceInspectionRefreshEffect {
 
 @Serializable
 enum class WorkspaceInspectionRefreshFailure {
+    MODEL_RELOAD_REQUIRED,
     BUSY,
     UNSAVED_DOCUMENTS,
     UNLINKED_BUILD,

@@ -41,6 +41,18 @@ enum class WorkspaceReadinessNextAction {
 sealed interface WorkspaceReadinessDetail {
     data object NoAdditionalEvidence : WorkspaceReadinessDetail
 
+    /** Current imported-model validation failed, independently of any prior Ready witness. */
+    data object ImportedModelIncomplete : WorkspaceReadinessDetail
+
+    data object ImportedModelUnavailable : WorkspaceReadinessDetail
+
+    /** Only imported revision is discharged; latest coverage alone grants no model authority. */
+    data class PendingModelInputs(
+        val current: Long,
+        val imported: Long,
+        val latestOwnedImportCovered: Long?,
+    ) : WorkspaceReadinessDetail
+
     data class EpochRejected(val failure: ProjectReadEpochObservationFailure) : WorkspaceReadinessDetail
 
     /** Previous native model evidence remains informational while [currentDetail] describes the current rejection. */

@@ -72,6 +72,7 @@ enum class WorkspaceRefreshStage {
 
 @Serializable
 enum class WorkspaceRefreshFailure {
+    MODEL_RELOAD_REQUIRED,
     INVALID_REQUEST,
     UNLINKED_BUILD,
     UNSAVED_DOCUMENTS,

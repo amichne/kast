@@ -5,6 +5,7 @@ import io.github.amichne.kast.protocol.contract.WorkspaceInspectionEpochFailure
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectionEpochRejection
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectionEpochStage
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectionModelIdentity
+import io.github.amichne.kast.protocol.contract.WorkspaceInspectionModelObstruction
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectionNextAction
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectionObstruction
 import io.github.amichne.kast.protocol.contract.WorkspaceInspectionReadOperation
@@ -67,6 +68,7 @@ internal fun inspectionReadinessDocument(
             readiness.retainedDocument(),
             activeReads,
             readiness.detail().epochDocument(),
+            readiness.detail().modelDocument(),
         ),
     )
 }
@@ -100,6 +102,7 @@ private fun obstruction(
                 detail.retainedObservation.retainedDocument(),
                 detail.operations.map { it.document() },
                 detail.retainedObservation.detail().epochDocument(),
+                detail.retainedObservation.detail().modelDocument(),
             )
         is WorkspaceReadinessDetail.PreviouslyObservedModel ->
             WorkspaceInspectionObstruction(
@@ -108,9 +111,13 @@ private fun obstruction(
                 detail.observation.retainedDocument(),
                 detail.currentDetail.readOperations(),
                 detail.currentDetail.epochDocument(),
+                detail.currentDetail.modelDocument(),
             )
-        WorkspaceReadinessDetail.NoAdditionalEvidence ->
-            WorkspaceInspectionObstruction(reason.document(), nextAction.document())
+        WorkspaceReadinessDetail.NoAdditionalEvidence,
+        WorkspaceReadinessDetail.ImportedModelIncomplete,
+        WorkspaceReadinessDetail.ImportedModelUnavailable,
+        is WorkspaceReadinessDetail.PendingModelInputs ->
+            WorkspaceInspectionObstruction(reason.document(), nextAction.document(), model = detail.modelDocument())
         is WorkspaceReadinessDetail.EpochRejected ->
             WorkspaceInspectionObstruction(
                 reason.document(),
@@ -156,6 +163,9 @@ private fun retainedDetailDocument(detail: WorkspaceReadinessDetail): WorkspaceI
         is WorkspaceReadinessDetail.PreviouslyObservedModel -> detail.observation.retainedDocument()
         is WorkspaceReadinessDetail.UnsettledReads -> detail.retainedObservation.retainedDocument()
         WorkspaceReadinessDetail.NoAdditionalEvidence,
+        WorkspaceReadinessDetail.ImportedModelIncomplete,
+        WorkspaceReadinessDetail.ImportedModelUnavailable,
+        is WorkspaceReadinessDetail.PendingModelInputs,
         is WorkspaceReadinessDetail.EpochRejected -> null
     }
 
@@ -164,6 +174,9 @@ private fun WorkspaceReadinessDetail.readOperations(): List<WorkspaceInspectionR
         is WorkspaceReadinessDetail.UnsettledReads -> operations.map { it.document() }
         is WorkspaceReadinessDetail.PreviouslyObservedModel -> currentDetail.readOperations()
         WorkspaceReadinessDetail.NoAdditionalEvidence,
+        WorkspaceReadinessDetail.ImportedModelIncomplete,
+        WorkspaceReadinessDetail.ImportedModelUnavailable,
+        is WorkspaceReadinessDetail.PendingModelInputs,
         is WorkspaceReadinessDetail.EpochRejected -> emptyList()
     }
 
@@ -172,7 +185,23 @@ private fun WorkspaceReadinessDetail.epochDocument(): WorkspaceInspectionEpochRe
         is WorkspaceReadinessDetail.EpochRejected -> failure.document()
         is WorkspaceReadinessDetail.PreviouslyObservedModel -> currentDetail.epochDocument()
         is WorkspaceReadinessDetail.UnsettledReads -> retainedObservation.detail().epochDocument()
-        WorkspaceReadinessDetail.NoAdditionalEvidence -> WorkspaceInspectionEpochRejection.Unobserved
+        WorkspaceReadinessDetail.NoAdditionalEvidence,
+        WorkspaceReadinessDetail.ImportedModelIncomplete,
+        WorkspaceReadinessDetail.ImportedModelUnavailable,
+        is WorkspaceReadinessDetail.PendingModelInputs -> WorkspaceInspectionEpochRejection.Unobserved
+    }
+
+private fun WorkspaceReadinessDetail.modelDocument(): WorkspaceInspectionModelObstruction =
+    when (this) {
+        WorkspaceReadinessDetail.ImportedModelIncomplete -> WorkspaceInspectionModelObstruction.ImportedModelIncomplete
+        WorkspaceReadinessDetail.ImportedModelUnavailable ->
+            WorkspaceInspectionModelObstruction.ImportedModelUnavailable
+        is WorkspaceReadinessDetail.PendingModelInputs ->
+            WorkspaceInspectionModelObstruction.PendingInputs(current, imported, latestOwnedImportCovered)
+        is WorkspaceReadinessDetail.PreviouslyObservedModel -> currentDetail.modelDocument()
+        is WorkspaceReadinessDetail.UnsettledReads -> retainedObservation.detail().modelDocument()
+        WorkspaceReadinessDetail.NoAdditionalEvidence,
+        is WorkspaceReadinessDetail.EpochRejected -> WorkspaceInspectionModelObstruction.Unobserved
     }
 
 private fun ProjectReadEpochObservationFailure.document(): WorkspaceInspectionEpochRejection =

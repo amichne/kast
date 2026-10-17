@@ -31,6 +31,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.isActive
@@ -102,9 +103,10 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
                                 if (!connections.tryAcquire()) client.close()
                                 else
                                     launch(Dispatchers.IO, start = CoroutineStart.ATOMIC) {
+                                        val connection = LifecycleConnectionAttempt()
                                         try {
                                             client.use {
-                                                withTimeout(5_000) {
+                                                withTimeout(LifecycleConnectionAttempt.LIMIT_MILLIS) {
                                                     val result =
                                                         when (
                                                             val frame = runInterruptible {
@@ -115,8 +117,9 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
                                                                 IdeLifecycleResult.Blocked(
                                                                     IdeLifecycleFailure.INVALID_REQUEST
                                                                 )
-                                                            is Refinement.Refined -> parse(frame.value)
+                                                            is Refinement.Refined -> parse(frame.value, connection)
                                                         }
+                                                    connection.enter(LifecycleConnectionStage.WRITE_FRAME)
                                                     runInterruptible {
                                                         HostedFrames.write(
                                                             Channels.newOutputStream(client),
@@ -128,7 +131,16 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
                                                     }
                                                 }
                                             }
-                                        } catch (_: java.io.IOException) {} finally {
+                                        } catch (_: TimeoutCancellationException) {
+                                            observeConnection(
+                                                connection.failure(LifecycleConnectionCause.DEADLINE_EXCEEDED)
+                                            )
+                                        } catch (cancellation: CancellationException) {
+                                            observeConnection(connection.failure(LifecycleConnectionCause.INTERRUPTED))
+                                            throw cancellation
+                                        } catch (_: java.io.IOException) {
+                                            observeConnection(connection.failure(LifecycleConnectionCause.IO_FAILURE))
+                                        } finally {
                                             connections.release()
                                         }
                                     }
@@ -152,9 +164,17 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
             )
     }
 
-    private fun parse(raw: String): IdeLifecycleResult =
+    private fun observeConnection(observation: LifecycleConnectionFailure) {
+        logger.info(
+            "kast_lifecycle_connection " + Json.encodeToString(LifecycleConnectionFailure.serializer(), observation)
+        )
+    }
+
+    private fun parse(raw: String, connection: LifecycleConnectionAttempt): IdeLifecycleResult =
         try {
-            submit(json.decodeFromString<IdeLifecycleCommand>(raw))
+            val command = json.decodeFromString<IdeLifecycleCommand>(raw)
+            connection.dispatch(command)
+            submit(command)
         } catch (_: SerializationException) {
             IdeLifecycleResult.Blocked(IdeLifecycleFailure.INVALID_REQUEST)
         } catch (_: IllegalArgumentException) {

@@ -35,6 +35,7 @@ internal enum class WorkspaceRefreshRejection {
 
 @kotlinx.serialization.Serializable
 internal enum class WorkspaceRefreshFailure {
+    MODEL_RELOAD_REQUIRED,
     BUSY,
     UNSAVED_DOCUMENTS,
     UNLINKED_BUILD,

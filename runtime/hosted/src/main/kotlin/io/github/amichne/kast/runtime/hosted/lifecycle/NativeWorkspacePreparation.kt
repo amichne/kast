@@ -37,10 +37,12 @@ private constructor(
 ) {
     private var stage = IdeLifecycleStage.OPENING
 
-    fun enter(next: IdeLifecycleStage) {
-        if (stage == next) return
-        stage = next
-        record(NativePreparationOutcome.STAGE_CHANGED)
+    fun enter(next: IdeLifecycleStage): IdeLifecycleStage {
+        if (next.ordinal > stage.ordinal) {
+            stage = next
+            record(NativePreparationOutcome.STAGE_CHANGED)
+        }
+        return stage
     }
 
     fun finish(result: IdeLifecycleResult): IdeLifecycleResult {

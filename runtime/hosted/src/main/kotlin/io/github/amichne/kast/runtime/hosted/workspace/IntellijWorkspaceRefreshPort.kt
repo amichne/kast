@@ -226,6 +226,7 @@ internal class IntellijWorkspaceRefreshPort(
                                             PublicFailure.UNSAVED_DOCUMENTS ->
                                                 WorkspaceRefreshEffectResult.UNSAVED_DOCUMENTS
                                             PublicFailure.DISPOSED -> WorkspaceRefreshEffectResult.DISPOSED
+                                            PublicFailure.MODEL_RELOAD_REQUIRED,
                                             PublicFailure.NEWER_CHANGE -> WorkspaceRefreshEffectResult.BUSY
                                             else -> WorkspaceRefreshEffectResult.UNLINKED_BUILD
                                         }
@@ -304,6 +305,7 @@ private fun PublicFailure.startResult(): WorkspaceRefreshEffectResult =
     when (this) {
         PublicFailure.UNSAVED_DOCUMENTS -> WorkspaceRefreshEffectResult.UNSAVED_DOCUMENTS
         PublicFailure.UNLINKED_BUILD -> WorkspaceRefreshEffectResult.UNLINKED_BUILD
+        PublicFailure.MODEL_RELOAD_REQUIRED,
         PublicFailure.NEWER_CHANGE -> WorkspaceRefreshEffectResult.BUSY
         PublicFailure.DISPOSED -> WorkspaceRefreshEffectResult.DISPOSED
         else -> WorkspaceRefreshEffectResult.FAILED

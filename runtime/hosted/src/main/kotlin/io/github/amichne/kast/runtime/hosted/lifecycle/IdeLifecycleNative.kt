@@ -23,7 +23,6 @@ import io.github.amichne.kast.protocol.contract.WorkspaceRefreshCommand
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshResult
-import io.github.amichne.kast.protocol.contract.WorkspaceRefreshStage
 import io.github.amichne.kast.runtime.hosted.HostedEndpointService
 import io.github.amichne.kast.runtime.hosted.saveProjectDocuments
 import io.github.amichne.kast.runtime.hosted.workspace.observeWorkspaceRefresh
@@ -199,6 +198,10 @@ internal class IdeLifecycleNative(
                 is IdeLifecycleResult.Synced -> {
                     IdeLifecycleResult.Opened(target)
                 }
+                is IdeLifecycleResult.Blocked ->
+                    if (imported.reason == IdeLifecycleFailure.MODEL_RELOAD_REQUIRED)
+                        awaitReady(project, target, operation)
+                    else imported
                 else -> imported
             }
         } finally {
@@ -245,16 +248,23 @@ internal class IdeLifecycleNative(
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return blocked(admitted.failure)
             }
-        state.progress(LifecycleRequest(operation.requestId), IdeLifecycleStage.IMPORTING)
-        operation.enter(IdeLifecycleStage.IMPORTING)
+        state.progress(LifecycleRequest(operation.requestId), operation.enter(IdeLifecycleStage.IMPORTING))
         return IdeLifecycleReadiness(
-                project,
+                isDisposed = { project.isDisposed },
                 target,
                 observe = {
                     project.getService(HostedEndpointService::class.java).lifecycleReadiness(root)
                         ?: project.getService(HostedQueryService::class.java).workspaceReadiness(root)
                 },
-                reloadModel = { sync(project, target, operation, WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD) },
+                reloadModel = {
+                    sync(
+                        project,
+                        target,
+                        operation,
+                        WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD,
+                        UUID.randomUUID().toString(),
+                    )
+                },
                 operation = operation,
             )
             .await()
@@ -265,9 +275,10 @@ internal class IdeLifecycleNative(
         target: IdeProjectTarget,
         operation: NativeWorkspacePreparation,
         effect: WorkspaceRefreshEffect,
+        refreshRequestId: String = operation.requestId,
     ): IdeLifecycleResult {
         if (!TrustedProjects.isProjectTrusted(project)) return blocked(IdeLifecycleFailure.TRUST_REQUIRED)
-        val requestId = operation.requestId
+        val requestId = refreshRequestId
         operation.enter(IdeLifecycleStage.IMPORTING)
         val endpoint = project.getService(HostedEndpointService::class.java)
         return awaitRefresh(
@@ -292,36 +303,14 @@ internal class IdeLifecycleNative(
         target: IdeProjectTarget,
         operation: NativeWorkspacePreparation,
         initial: WorkspaceRefreshResult,
-    ): IdeLifecycleResult {
-        var result = initial
-        val requestId = operation.requestId
-        val finished =
-            awaitLifecycleCondition(operation.deadline, operation.nanoTime) {
-                if (result is WorkspaceRefreshResult.Pending) {
-                    result = endpoint.lifecycleRefresh(WorkspaceRefreshCommand.Status(requestId))
-                    val pending = result as? WorkspaceRefreshResult.Pending
-                    if (pending != null) {
-                        val stage =
-                            if (pending.stage == WorkspaceRefreshStage.ADMISSION) IdeLifecycleStage.ADMISSION
-                            else IdeLifecycleStage.IMPORTING
-                        state.progress(LifecycleRequest(requestId), stage)
-                        operation.enter(stage)
-                    }
-                }
-                result !is WorkspaceRefreshResult.Pending
-            }
-        if (!finished) return blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
-        return when (val terminal = result) {
-            is WorkspaceRefreshResult.Complete -> {
-                operation.enter(IdeLifecycleStage.ADMISSION)
-                IdeLifecycleResult.Synced(target)
-            }
-            is WorkspaceRefreshResult.Failed ->
-                IdeLifecycleResult.Blocked(terminal.reason.lifecycleFailure(), terminal.preparation)
-            is WorkspaceRefreshResult.Rejected -> blocked(terminal.reason.lifecycleFailure())
-            else -> blocked(IdeLifecycleFailure.IMPORT_FAILED)
-        }
-    }
+    ): IdeLifecycleResult =
+        awaitLifecycleRefresh(
+            target,
+            operation,
+            initial,
+            status = { endpoint.lifecycleRefresh(WorkspaceRefreshCommand.Status(it)) },
+            progress = { state.progress(LifecycleRequest(operation.requestId), it) },
+        )
 
     private suspend fun close(project: Project, target: IdeProjectTarget): IdeLifecycleResult {
         val root =

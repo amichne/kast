@@ -31,18 +31,16 @@ internal class WorkspaceRefreshModelBoundary(private val revisions: HostedGradle
             )
         else current
 
-    fun readiness(current: WorkspaceCapabilityReadiness): WorkspaceCapabilityReadiness =
-        if (current is WorkspaceCapabilityReadiness.Ready && revisions.pending())
-            WorkspaceCapabilityReadiness.Unavailable(
-                current.identity,
-                WorkspaceReadinessReason.MODEL_INCOMPLETE,
-                WorkspaceReadinessNextAction.REFRESH_MODEL,
-                WorkspaceReadinessDetail.PreviouslyObservedModel(
-                    current,
-                    WorkspaceReadinessDetail.NoAdditionalEvidence,
-                ),
-            )
-        else current
+    fun readiness(current: WorkspaceCapabilityReadiness): WorkspaceCapabilityReadiness {
+        if (current !is WorkspaceCapabilityReadiness.Ready) return current
+        val pending = revisions.pendingEvidence() ?: return current
+        return WorkspaceCapabilityReadiness.Unavailable(
+            current.identity,
+            WorkspaceReadinessReason.MODEL_INCOMPLETE,
+            WorkspaceReadinessNextAction.REFRESH_MODEL,
+            WorkspaceReadinessDetail.PreviouslyObservedModel(current, pending),
+        )
+    }
 }
 
 @Serializable

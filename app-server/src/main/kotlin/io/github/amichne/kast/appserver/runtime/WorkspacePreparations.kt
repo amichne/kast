@@ -229,7 +229,9 @@ internal class WorkspacePreparations(
                             WorkspacePreparationOutcome.Rejected(WorkspacePreparationFailure.RESPONSE_REJECTED)
                         )
                 is IdeLifecycleResult.Blocked ->
-                    return Refinement.Rejected(WorkspacePreparationOutcome.Blocked(inspected.reason))
+                    return Refinement.Rejected(
+                        WorkspacePreparationOutcome.Blocked(inspected.reason, inspected.preparation, inspected.exchange)
+                    )
                 else ->
                     return Refinement.Rejected(
                         WorkspacePreparationOutcome.Rejected(WorkspacePreparationFailure.RESPONSE_REJECTED)
@@ -258,7 +260,8 @@ internal class WorkspacePreparations(
                             WorkspacePreparationOutcome.Complete(admitted.value)
                         else WorkspacePreparationOutcome.Rejected(WorkspacePreparationFailure.RESPONSE_REJECTED)
                 }
-            is IdeLifecycleResult.Blocked -> WorkspacePreparationOutcome.Blocked(response.reason, response.preparation)
+            is IdeLifecycleResult.Blocked ->
+                WorkspacePreparationOutcome.Blocked(response.reason, response.preparation, response.exchange)
             else -> WorkspacePreparationOutcome.Rejected(WorkspacePreparationFailure.RESPONSE_REJECTED)
         }
     }
