@@ -5,6 +5,7 @@ import io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure
 
 internal fun WorkspaceRefreshFailure.lifecycleFailure(): IdeLifecycleFailure =
     when (this) {
+        WorkspaceRefreshFailure.MODEL_RELOAD_REQUIRED -> IdeLifecycleFailure.MODEL_RELOAD_REQUIRED
         WorkspaceRefreshFailure.UNSAVED_DOCUMENTS -> IdeLifecycleFailure.UNSAVED_DOCUMENTS
         WorkspaceRefreshFailure.UNLINKED_BUILD -> IdeLifecycleFailure.UNLINKED_BUILD
         WorkspaceRefreshFailure.DISPOSED -> IdeLifecycleFailure.DISPOSED

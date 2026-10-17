@@ -6,6 +6,8 @@ import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
 import io.github.amichne.kast.protocol.contract.ApprovedProjectCloseInvocation
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCapabilityName
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCommand
+import io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeCause
+import io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeStage
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
@@ -18,7 +20,6 @@ import java.nio.channels.SocketChannel
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
-import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -38,7 +39,18 @@ interface WorkspaceLifecycleClient {
 }
 
 /** Explicit control client. Ordinary semantic clients never call this boundary. */
-class IdeLifecycleClient(private val userHome: Path, private val selectedHome: Path) : WorkspaceLifecycleClient {
+class IdeLifecycleClient
+internal constructor(
+    private val userHome: Path,
+    private val selectedHome: Path,
+    private val exchangeTimer: LifecycleExchangeTimer,
+    private val nanoTime: () -> Long,
+) : WorkspaceLifecycleClient {
+    constructor(
+        userHome: Path,
+        selectedHome: Path,
+    ) : this(userHome, selectedHome, LifecycleExchangeTimer.Native, System::nanoTime)
+
     private val json = Json { encodeDefaults = true }
 
     override fun execute(request: WorkspaceLifecycleRequest, client: String): IdeLifecycleResult =
@@ -175,41 +187,47 @@ class IdeLifecycleClient(private val userHome: Path, private val selectedHome: P
     }
 
     private fun exchange(home: Path, command: IdeLifecycleCommand): IdeLifecycleResult {
+        val attempt = LifecycleExchangeAttempt(command, nanoTime)
         val digest =
             MessageDigest.getInstance("SHA-256").digest(home.toString().toByteArray()).take(16).joinToString("") {
                 "%02x".format(it)
             }
         val directory = userHome.resolve(".kast/ide-lifecycle/$digest")
         val socket = directory.resolve("host.sock")
-        if (!Files.exists(socket)) return blocked(IdeLifecycleFailure.HOST_UNAVAILABLE)
+        if (!Files.exists(socket)) return attempt.reject(IdeLifecycleExchangeCause.SOCKET_MISSING)
         var ancestor: Path? = directory
         while (ancestor != null) {
-            if (Files.isSymbolicLink(ancestor)) return blocked(IdeLifecycleFailure.HOST_UNAVAILABLE)
+            if (Files.isSymbolicLink(ancestor)) return attempt.reject(IdeLifecycleExchangeCause.SYMBOLIC_PATH)
             ancestor = ancestor.parent
         }
-        val timer = Executors.newSingleThreadScheduledExecutor()
         return try {
-            SocketChannel.open(StandardProtocolFamily.UNIX).use { channel ->
-                val timeout = timer.schedule({ channel.close() }, 5, TimeUnit.SECONDS)
-                try {
-                    exchangeFrame(channel, socket, command)
-                } finally {
-                    timeout.cancel(false)
+            val result =
+                SocketChannel.open(StandardProtocolFamily.UNIX).use { channel ->
+                    exchangeTimer
+                        .schedule { attempt.expire { channel.close() } }
+                        .use {
+                            exchangeFrame(channel, socket, command, attempt)
+                        }
                 }
-            }
-        } catch (_: java.io.IOException) {
-            blocked(IdeLifecycleFailure.HOST_UNAVAILABLE)
+            attempt.complete(result)
+        } catch (failure: java.io.IOException) {
+            attempt.reject(failure.exchangeCause())
         } catch (_: SerializationException) {
-            blocked(IdeLifecycleFailure.INVALID_REQUEST)
+            attempt.reject(IdeLifecycleExchangeCause.INVALID_RESPONSE)
         } catch (_: IllegalArgumentException) {
-            blocked(IdeLifecycleFailure.INVALID_REQUEST)
-        } finally {
-            timer.shutdownNow()
+            attempt.reject(IdeLifecycleExchangeCause.INVALID_FRAME)
         }
     }
 
-    private fun exchangeFrame(channel: SocketChannel, socket: Path, command: IdeLifecycleCommand): IdeLifecycleResult {
+    private fun exchangeFrame(
+        channel: SocketChannel,
+        socket: Path,
+        command: IdeLifecycleCommand,
+        attempt: LifecycleExchangeAttempt,
+    ): IdeLifecycleResult {
+        attempt.enter(IdeLifecycleExchangeStage.CONNECT)
         channel.connect(UnixDomainSocketAddress.of(socket))
+        attempt.enter(IdeLifecycleExchangeStage.WRITE_REQUEST)
         val bytes = json.encodeToString(IdeLifecycleCommand.serializer(), command).toByteArray()
         DataOutputStream(Channels.newOutputStream(channel)).apply {
             writeInt(bytes.size)
@@ -217,10 +235,13 @@ class IdeLifecycleClient(private val userHome: Path, private val selectedHome: P
             flush()
         }
         val input = DataInputStream(Channels.newInputStream(channel))
+        attempt.enter(IdeLifecycleExchangeStage.READ_LENGTH)
         val size = input.readInt()
-        if (size !in 1..MAX_FRAME_BYTES) return blocked(IdeLifecycleFailure.INVALID_REQUEST)
+        if (size !in 1..MAX_FRAME_BYTES) return attempt.reject(IdeLifecycleExchangeCause.INVALID_FRAME)
+        attempt.enter(IdeLifecycleExchangeStage.READ_BODY)
         val response = input.readNBytes(size)
-        if (response.size != size) return blocked(IdeLifecycleFailure.HOST_UNAVAILABLE)
+        if (response.size != size) return attempt.reject(IdeLifecycleExchangeCause.TRUNCATED_RESPONSE)
+        attempt.enter(IdeLifecycleExchangeStage.DECODE)
         return json.decodeFromString<IdeLifecycleResult>(response.decodeToString(throwOnInvalidSequence = true))
     }
 
@@ -276,4 +297,13 @@ private fun IdeLaunchFailure.lifecycleFailure(): IdeLifecycleFailure =
         IdeLaunchFailure.AMBIGUOUS_LAUNCHER -> IdeLifecycleFailure.LAUNCHER_AMBIGUOUS
         IdeLaunchFailure.INVALID_LAUNCHER -> IdeLifecycleFailure.LAUNCHER_INVALID
         IdeLaunchFailure.EXECUTABLE_UNAVAILABLE -> IdeLifecycleFailure.LAUNCH_EXECUTABLE_UNAVAILABLE
+    }
+
+private fun java.io.IOException.exchangeCause(): IdeLifecycleExchangeCause =
+    when (this) {
+        is java.nio.channels.ClosedByInterruptException -> IdeLifecycleExchangeCause.INTERRUPTED
+        is java.net.ConnectException -> IdeLifecycleExchangeCause.CONNECTION_FAILED
+        is java.io.EOFException -> IdeLifecycleExchangeCause.TRUNCATED_RESPONSE
+        is java.nio.charset.CharacterCodingException -> IdeLifecycleExchangeCause.INVALID_RESPONSE
+        else -> IdeLifecycleExchangeCause.IO_FAILURE
     }

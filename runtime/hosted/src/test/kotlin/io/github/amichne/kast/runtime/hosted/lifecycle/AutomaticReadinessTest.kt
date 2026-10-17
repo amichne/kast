@@ -50,7 +50,7 @@ class AutomaticReadinessTest {
         val preparation = WorkspaceReadinessPreparation()
         assertEquals(WorkspacePreparationAction.ReloadModel, preparation.observe(missing))
         assertEquals(
-            WorkspacePreparationAction.Blocked(IdeLifecycleFailure.IMPORT_FAILED),
+            WorkspacePreparationAction.Blocked(IdeLifecycleFailure.MODEL_RELOAD_REQUIRED),
             preparation.observe(missing),
         )
         assertEquals(WorkspacePreparationAction.Ready, preparation.observe(facts.ready()))

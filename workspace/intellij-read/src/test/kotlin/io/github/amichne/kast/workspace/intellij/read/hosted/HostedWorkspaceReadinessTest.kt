@@ -75,6 +75,7 @@ class HostedWorkspaceReadinessTest {
                 identity,
                 WorkspaceReadinessReason.MODEL_UNAVAILABLE,
                 WorkspaceReadinessNextAction.REFRESH_MODEL,
+                WorkspaceReadinessDetail.ImportedModelUnavailable,
             ),
             cold,
         )

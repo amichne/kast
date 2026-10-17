@@ -10,7 +10,7 @@ import com.intellij.openapi.vfs.newvfs.events.VFileMoveEvent
 import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent
 import io.github.amichne.kast.runtime.hosted.workspace.WorkspaceRefreshEffectResult
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
-import java.util.concurrent.atomic.AtomicLong
+import io.github.amichne.kast.workspace.contract.WorkspaceReadinessDetail
 import org.jetbrains.plugins.gradle.service.project.GradleAutoImportAware
 
 /** A changed Gradle input is a presemantic blocker until a native import proves a new model. */
@@ -60,21 +60,33 @@ internal fun String.isWithin(root: CanonicalWorkspaceRoot): Boolean = this == ro
 
 /** An import can discharge only the change revision it observed before starting. */
 internal class HostedGradleRevision {
-    private val current = AtomicLong(0)
-    private val imported = AtomicLong(0)
+    private var current = 0L
+    private var imported = 0L
+    private var latestOwnedImportCovered: Long? = null
 
-    fun current(): Long = current.get()
+    @Synchronized fun current(): Long = current
 
-    fun pending(): Boolean = current.get() > imported.get()
+    @Synchronized fun pending(): Boolean = current > imported
 
+    @Synchronized
+    fun pendingEvidence(): WorkspaceReadinessDetail.PendingModelInputs? =
+        if (current > imported) WorkspaceReadinessDetail.PendingModelInputs(current, imported, latestOwnedImportCovered)
+        else null
+
+    @Synchronized
     fun changed() {
-        current.updateAndGet { if (it == Long.MAX_VALUE) it else it + 1 }
+        if (current != Long.MAX_VALUE) current++
     }
 
-    fun beginOwnedImport(): ImportTicket = ImportTicket.capture(this)
+    @Synchronized
+    fun beginOwnedImport(): ImportTicket {
+        latestOwnedImportCovered = current
+        return ImportTicket.capture(this)
+    }
 
+    @Synchronized
     private fun acknowledge(startedAt: Long) {
-        imported.updateAndGet { maxOf(it, startedAt) }
+        imported = maxOf(imported, startedAt)
     }
 
     /** Only this owner can capture coverage; one terminal settlement may discharge only that captured revision. */

@@ -87,7 +87,14 @@ internal fun workspaceReadinessRejected(
             WorkspaceCapabilityReadiness.Pending(identity, reason, WorkspaceReadinessNextAction.OBSERVE_AGAIN)
         WorkspaceReadinessReason.MODEL_UNAVAILABLE,
         WorkspaceReadinessReason.MODEL_INCOMPLETE ->
-            WorkspaceCapabilityReadiness.Unavailable(identity, reason, WorkspaceReadinessNextAction.REFRESH_MODEL)
+            WorkspaceCapabilityReadiness.Unavailable(
+                identity,
+                reason,
+                WorkspaceReadinessNextAction.REFRESH_MODEL,
+                if (reason == WorkspaceReadinessReason.MODEL_INCOMPLETE)
+                    WorkspaceReadinessDetail.ImportedModelIncomplete
+                else WorkspaceReadinessDetail.ImportedModelUnavailable,
+            )
         WorkspaceReadinessReason.COMPILER_UNAVAILABLE,
         WorkspaceReadinessReason.HOST_UNAVAILABLE,
         WorkspaceReadinessReason.HOST_INCOMPATIBLE ->

@@ -141,6 +141,7 @@ internal class HostedWorkspaceRefresh(
                         WorkspaceRefreshResult.Failed(
                             raw,
                             when (status.reason) {
+                                WorkspaceRefreshFailure.MODEL_RELOAD_REQUIRED -> PublicFailure.MODEL_RELOAD_REQUIRED
                                 WorkspaceRefreshFailure.BUSY -> PublicFailure.NEWER_CHANGE
                                 WorkspaceRefreshFailure.UNSAVED_DOCUMENTS -> PublicFailure.UNSAVED_DOCUMENTS
                                 WorkspaceRefreshFailure.UNLINKED_BUILD -> PublicFailure.UNLINKED_BUILD

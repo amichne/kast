@@ -80,7 +80,9 @@ enum class IdeLifecycleStage {
 
 @Serializable
 enum class IdeLifecycleFailure : OperationRejection {
+    MODEL_RELOAD_REQUIRED,
     HOST_UNAVAILABLE,
+    EXCHANGE_DEADLINE_EXCEEDED,
     PLUGIN_UNAVAILABLE,
     SELECTED_IDE_UNAVAILABLE,
     LAUNCH_METADATA_UNAVAILABLE,
@@ -169,6 +171,8 @@ sealed interface IdeLifecycleResult : OperationResult {
         val reason: IdeLifecycleFailure,
         @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
         val preparation: WorkspacePreparationTiming? = null,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        val exchange: IdeLifecycleExchangeFailure? = null,
     ) : IdeLifecycleResult, IdeLifecycleRejection
 }
 

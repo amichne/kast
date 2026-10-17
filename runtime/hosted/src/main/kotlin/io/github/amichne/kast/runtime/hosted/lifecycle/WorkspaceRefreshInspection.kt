@@ -73,6 +73,7 @@ private fun WorkspaceRefreshStatus.document(): WorkspaceInspectionRefreshStatus 
 
 private fun WorkspaceRefreshFailure.document(): WorkspaceInspectionRefreshFailure =
     when (this) {
+        WorkspaceRefreshFailure.MODEL_RELOAD_REQUIRED -> WorkspaceInspectionRefreshFailure.MODEL_RELOAD_REQUIRED
         WorkspaceRefreshFailure.BUSY -> WorkspaceInspectionRefreshFailure.BUSY
         WorkspaceRefreshFailure.UNSAVED_DOCUMENTS -> WorkspaceInspectionRefreshFailure.UNSAVED_DOCUMENTS
         WorkspaceRefreshFailure.UNLINKED_BUILD -> WorkspaceInspectionRefreshFailure.UNLINKED_BUILD

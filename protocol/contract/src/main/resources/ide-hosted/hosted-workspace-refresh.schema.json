@@ -84,7 +84,7 @@
                 "CANCELLED",
                 "DEADLINE_EXCEEDED",
                 "ADMISSION_REJECTED",
-                "NEWER_CHANGE"
+                "MODEL_RELOAD_REQUIRED", "NEWER_CHANGE"
               ]
             },
             "preparation": {
@@ -167,7 +167,7 @@
                 "CANCELLED",
                 "DEADLINE_EXCEEDED",
                 "ADMISSION_REJECTED",
-                "NEWER_CHANGE"
+                "MODEL_RELOAD_REQUIRED", "NEWER_CHANGE"
               ]
             }
           },

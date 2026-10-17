@@ -92,7 +92,7 @@ class WorkspaceReadinessInspectionTest {
                 .jsonObject
         assertEquals("pending", shape.getValue("type").jsonPrimitive.content)
         assertEquals(
-            setOf("reason", "nextAction", "retainedModel", "activeReads", "epochRejection"),
+            setOf("reason", "nextAction", "retainedModel", "activeReads", "epochRejection", "model"),
             shape.getValue("obstruction").jsonObject.keys,
         )
     }
@@ -213,6 +213,43 @@ class WorkspaceReadinessInspectionTest {
             listOf(WorkspaceInspectionReadOperation.Traced(operation.toString())),
             projected.obstruction.activeReads,
         )
+    }
+
+    @Test
+    fun `historical Ready does not conceal the current model obstruction producer`() {
+        val fixture = WorkspaceReadinessFixture(root)
+        val cases =
+            listOf(
+                WorkspaceReadinessDetail.ImportedModelIncomplete to
+                    io.github.amichne.kast.protocol.contract.WorkspaceInspectionModelObstruction
+                        .ImportedModelIncomplete,
+                WorkspaceReadinessDetail.PendingModelInputs(2, 1, 1) to
+                    io.github.amichne.kast.protocol.contract.WorkspaceInspectionModelObstruction.PendingInputs(2, 1, 1),
+            )
+        for ((detail, expected) in cases) {
+            val current =
+                WorkspaceCapabilityReadiness.Unavailable(
+                    fixture.identity,
+                    WorkspaceReadinessReason.MODEL_INCOMPLETE,
+                    WorkspaceReadinessNextAction.REFRESH_MODEL,
+                    WorkspaceReadinessDetail.PreviouslyObservedModel(fixture.ready(), detail),
+                )
+            val projected = current.inspectionDocument() as WorkspaceReadinessInspectionDocument.Unavailable
+            assertEquals(expected, projected.obstruction.model)
+            assertEquals(WorkspaceInspectionReadinessReason.MODEL_INCOMPLETE, projected.obstruction.reason)
+            val shape =
+                Json.parseToJsonElement(
+                        json.encodeToString(WorkspaceReadinessInspectionDocument.serializer(), projected)
+                    )
+                    .jsonObject
+            assertEquals("unavailable", shape.getValue("type").jsonPrimitive.content)
+            val model = shape.getValue("obstruction").jsonObject.getValue("model").jsonObject
+            assertEquals(
+                if (detail is WorkspaceReadinessDetail.PendingModelInputs) "pending_inputs"
+                else "imported_model_incomplete",
+                model.getValue("type").jsonPrimitive.content,
+            )
+        }
     }
 
     private fun runningRefresh() =

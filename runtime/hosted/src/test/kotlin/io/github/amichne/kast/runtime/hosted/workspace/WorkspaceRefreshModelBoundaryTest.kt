@@ -60,6 +60,13 @@ class WorkspaceRefreshModelBoundaryTest {
         val observed = assertInstanceOf(WorkspaceCapabilityReadiness.Unavailable::class.java, port.readiness())
         assertEquals(WorkspaceReadinessReason.MODEL_INCOMPLETE, observed.reason)
         assertEquals(WorkspaceReadinessNextAction.REFRESH_MODEL, observed.nextAction)
+        val evidence =
+            observed.detail
+                as io.github.amichne.kast.workspace.contract.WorkspaceReadinessDetail.PreviouslyObservedModel
+        assertEquals(
+            io.github.amichne.kast.workspace.contract.WorkspaceReadinessDetail.PendingModelInputs(1, 0, null),
+            evidence.currentDetail,
+        )
         assertEquals(WorkspacePreparationAction.ReloadModel, WorkspaceReadinessPreparation().observe(observed))
         repeat(3) { port.readiness() }
         assertTrue(port.models.needsModelReload())
@@ -111,11 +118,21 @@ class WorkspaceRefreshModelBoundaryTest {
         port.changeInput()
         port.finish(WorkspaceRefreshEffectResult.SUCCEEDED)
         assertTrue(port.models.needsModelReload())
-        assertEquals(WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.ADMISSION), service.status(id(1)))
+        val failed = WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.MODEL_RELOAD_REQUIRED)
+        assertEquals(failed, service.status(id(1)))
+        val rejected = port.readiness() as WorkspaceCapabilityReadiness.Unavailable
+        val detail =
+            rejected.detail
+                as io.github.amichne.kast.workspace.contract.WorkspaceReadinessDetail.PreviouslyObservedModel
+        assertEquals(
+            io.github.amichne.kast.workspace.contract.WorkspaceReadinessDetail.PendingModelInputs(2, 1, 1),
+            detail.currentDetail,
+        )
         service.submit(id(2), WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD)
         port.finish(WorkspaceRefreshEffectResult.SUCCEEDED)
         assertEquals(WorkspaceRefreshStatus.Complete, service.status(id(2)))
         assertEquals(false, port.models.needsModelReload())
+        assertEquals(failed, service.status(id(1)))
     }
 
     @Test
@@ -127,9 +144,15 @@ class WorkspaceRefreshModelBoundaryTest {
         service.submit(id(1), WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD)
         port.finish(WorkspaceRefreshEffectResult.SUCCEEDED)
         assertTrue(port.models.needsModelReload())
-        assertEquals(WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.ADMISSION), service.status(id(1)))
+        assertEquals(
+            WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.MODEL_RELOAD_REQUIRED),
+            service.status(id(1)),
+        )
         now = 10
-        assertEquals(WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.DEADLINE_EXCEEDED), service.status(id(1)))
+        assertEquals(
+            WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.MODEL_RELOAD_REQUIRED),
+            service.status(id(1)),
+        )
         port.existingImport = false
         service.submit(id(2), WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD)
         port.finish(WorkspaceRefreshEffectResult.SUCCEEDED)
