@@ -26,6 +26,7 @@ internal class IntellijCallableObservationEmitter(
     private val observation: io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation,
     cache: io.github.amichne.kast.relation.contract.CallbackSummaryCachePort =
         io.github.amichne.kast.relation.contract.CallbackSummaryCachePort.Disabled,
+    private val resultProjection: IntellijCallbackResultProjection,
 ) {
     private val callableContext =
         IntellijCallbackFlowContext(
@@ -48,7 +49,14 @@ internal class IntellijCallableObservationEmitter(
             readmitCallbackSummary(previous, request, projection, scope, collector::admitCallbackWork)
         }
     private val namedReferences =
-        IntellijNamedCallbackObservationEmitter(callableContext, projection, collector, incomplete, summaries)
+        IntellijNamedCallbackObservationEmitter(
+            callableContext,
+            projection,
+            collector,
+            incomplete,
+            summaries,
+            resultProjection,
+        )
     private val supplierReader = IntellijCallbackSupplierInventory(callableContext, summaries)
 
     fun retainFunctionInvocation(
@@ -92,7 +100,7 @@ internal class IntellijCallableObservationEmitter(
         owner: CompilerGroundedSymbolEvidence,
         read: SelectedCallbackSuppliesRead,
     ): Boolean {
-        val target =
+        val selectedTarget =
             when (read) {
                 SelectedCallbackSuppliesRead.NotRequired -> return collector.dismissProviderItem()
                 is SelectedCallbackSuppliesRead.Available -> RelationCallableTarget.CallbackSupplies(read.supplies)
@@ -112,6 +120,11 @@ internal class IntellijCallableObservationEmitter(
                 ?: return incomplete(candidate, RelationLimitation.UNSUPPORTED_ITEM)
         val body =
             callableContext.owner(candidate.call) ?: return incomplete(candidate, RelationLimitation.UNSUPPORTED_ITEM)
+        val target =
+            when (val selected = resultProjection.callable(selectedTarget)) {
+                is CallbackCallableProjectionRead.Kept -> selected.target
+                CallbackCallableProjectionRead.Excluded -> return collector.dismissProviderItem()
+            }
         val value =
             when (
                 val admitted = RelationCallableObservation.fromNativeBoundary(request, occurrence, owner, body, target)
@@ -154,6 +167,9 @@ internal class IntellijCallableObservationEmitter(
                 upstream.formal,
                 supplierReader.read(upstream.formal, upstream.function, upstream.parameter),
                 invocation,
+                io.github.amichne.kast.relation.contract.CallbackResultProjection.Unproven(
+                    io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause.OUTSIDE_DOMAIN
+                ),
             )
         )
     }
@@ -207,6 +223,9 @@ internal class IntellijCallableObservationEmitter(
                 identity,
                 supplierReader.read(identity, resolved.callable, resolved.parameter),
                 invocation,
+                io.github.amichne.kast.relation.contract.CallbackResultProjection.Unproven(
+                    io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause.OUTSIDE_DOMAIN
+                ),
             ),
         )
     }
@@ -235,7 +254,7 @@ internal class IntellijCallableObservationEmitter(
     private fun retainCallable(
         candidate: CalleeProviderItem.Reference,
         site: PsiElement,
-        target: RelationCallableTarget,
+        selectedTarget: RelationCallableTarget,
     ): Boolean {
         val occurrence =
             callableContext.occurrence(site) ?: return incomplete(candidate, RelationLimitation.UNSUPPORTED_ITEM)
@@ -245,6 +264,11 @@ internal class IntellijCallableObservationEmitter(
                 is IntellijRelationDeclarationProjection.Projected -> projected.evidence
                 IntellijRelationDeclarationProjection.Unsupported ->
                     return incomplete(candidate, RelationLimitation.UNSUPPORTED_ITEM)
+            }
+        val target =
+            when (val selected = resultProjection.callable(selectedTarget)) {
+                is CallbackCallableProjectionRead.Kept -> selected.target
+                CallbackCallableProjectionRead.Excluded -> return collector.dismissProviderItem()
             }
         return when (
             val admitted =

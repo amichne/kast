@@ -160,6 +160,11 @@ class CompleteStaticCallbackGraphTest {
                 StaticCallbackGraphFailure.IncompleteScan,
                 CompleteStaticCallbackGraph.admit(observation(incomplete)).failure(),
             )
+        }
+
+    @Test
+    fun `unavailable flow preserves its finite failure`(): Unit =
+        with(fixture) {
             val unavailable =
                 RelationCallbackObservation.fromNativeBoundary(
                         request(),
@@ -172,6 +177,10 @@ class CompleteStaticCallbackGraphTest {
                             occurrence(20, 80),
                         ),
                         CallbackInvocationFlowRead.Unavailable(CallbackInvocationFlowCause.EXTERNAL_CALLABLE),
+                        resultProjection =
+                            io.github.amichne.kast.relation.contract.CallbackResultProjection.Unproven(
+                                io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause.OUTSIDE_DOMAIN
+                            ),
                     )
                     .value()
             assertEquals(
@@ -240,6 +249,10 @@ class CompleteStaticCallbackGraphTest {
                             occurrence(20, 80),
                         ),
                         CallbackInvocationFlowRead.Observed(exhaustive(binding, body, emptyList())),
+                        resultProjection =
+                            io.github.amichne.kast.relation.contract.CallbackResultProjection.Unproven(
+                                io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause.OUTSIDE_DOMAIN
+                            ),
                     )
                     .value()
             assertEquals(
@@ -288,6 +301,10 @@ class CompleteStaticCallbackGraphTest {
                     .value(),
                 policy,
                 CallbackInvocationFlowRead.Observed(flow),
+                resultProjection =
+                    io.github.amichne.kast.relation.contract.CallbackResultProjection.Unproven(
+                        io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause.OUTSIDE_DOMAIN
+                    ),
             )
             .value()
 

@@ -20,6 +20,7 @@ enum class RelationCallbackObservationFailure {
     OCCURRENCE_OUTSIDE_CALLBACK,
     CALLBACK_OUTSIDE_LEXICAL_OWNER,
     FLOW_IDENTITY_MISMATCH,
+    RESULT_PROJECTION_MISMATCH,
 }
 
 enum class CallbackNamedCallUnavailableCause {
@@ -52,6 +53,7 @@ private constructor(
     val callbackBody: RelationOccurrence,
     val policy: CallbackNamedCallPolicy,
     val flow: CallbackInvocationFlowRead,
+    val resultProjection: CallbackResultProjection,
 ) : Comparable<RelationCallbackObservation> {
     val retainedBytes: Long
         get() =
@@ -99,6 +101,7 @@ private constructor(
                 callbackBody.range.toString(),
                 policy.canonicalProjection(),
                 flow.canonicalProjection(),
+                resultProjection.canonicalProjection(),
             )
             .joinToString("\u0000")
 
@@ -112,6 +115,7 @@ private constructor(
             callbackBody: RelationOccurrence,
             policy: CallbackNamedCallPolicy,
             flow: CallbackInvocationFlowRead,
+            resultProjection: CallbackResultProjection,
         ): Refinement<RelationCallbackObservation, RelationCallbackObservationFailure> =
             when {
                 request.meaning != RelationMeaning.Callers && request.meaning != RelationMeaning.Callees ->
@@ -130,6 +134,8 @@ private constructor(
                     Refinement.Rejected(RelationCallbackObservationFailure.CALLBACK_OUTSIDE_LEXICAL_OWNER)
                 !flow.matchesCallback(request, callbackBody) ->
                     Refinement.Rejected(RelationCallbackObservationFailure.FLOW_IDENTITY_MISMATCH)
+                !resultProjection.admitsCallback(request, occurrence, target, flow) ->
+                    Refinement.Rejected(RelationCallbackObservationFailure.RESULT_PROJECTION_MISMATCH)
                 else ->
                     Refinement.Refined(
                         RelationCallbackObservation(
@@ -144,11 +150,32 @@ private constructor(
                             callbackBody,
                             policy,
                             flow,
+                            resultProjection,
                         )
                     )
             }
     }
+
+    fun projectResult(
+        request: RelationRequest,
+        projection: CallbackResultProjection,
+    ): Refinement<RelationCallbackObservation, RelationCallbackObservationFailure> =
+        if (belongsTo(request) && projection.admitsCallback(request, occurrence, target, flow))
+            Refinement.Refined(copy(resultProjection = projection))
+        else Refinement.Rejected(RelationCallbackObservationFailure.RESULT_PROJECTION_MISMATCH)
 }
+
+private fun CallbackResultProjection.admitsCallback(
+    request: RelationRequest,
+    occurrence: RelationOccurrence,
+    target: CompilerGroundedSymbolEvidence,
+    flow: CallbackInvocationFlowRead,
+): Boolean =
+    when (this) {
+        is CallbackResultProjection.Admitted ->
+            membership.belongsTo(request) && membership.supportsCallback(request.meaning, occurrence, target, flow)
+        is CallbackResultProjection.Unproven -> true
+    }
 
 private fun RelationEndpoint.matches(evidence: CompilerGroundedSymbolEvidence): Boolean =
     file == evidence.file && range == evidence.range && compilerIdentity == evidence.compilerIdentity

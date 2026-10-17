@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:76414e13320f13fbb32d0a2a0f5fda57eef19de81990d7e9787e36aceac801fd",
+  "pageVersion": "sha256:51fc593ddb9d9ae427501535a4ebb4087ff117b1e2285a4c13a0d70993a62105",
   "claims": [
     {
       "id": "claim_f1f223d6ff6c46a1a8c1642d015d3929",
@@ -12,7 +12,7 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:35a7245ec94fcdf69ff2df00da917d4d92ea15d2750156d6ddaad4a9f19815a3"
+          "version": "repo-file-v1:sha256:6577f7ea947fc7c1fa31ab5e4d490082a13a6a53e1654b0e7465952e716fb429"
         }
       ]
     },
@@ -22,7 +22,7 @@
       "evidence": [
         {
           "resource": "repo://.github/workflows/openwiki-update.yml",
-          "version": "repo-file-v1:sha256:b32e06710d81e47e54e69aaa6b0dc7d47a27be6d763fe136d8f4baf4b5391de8"
+          "version": "repo-file-v1:sha256:1acd5c3bae46ffe33e524049b44788eb99de1b2328c2722143c8acc39abfb463"
         }
       ]
     },
@@ -39,6 +39,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-16T06:54:44.448Z"
+    "at": "2026-10-16T21:29:39.165Z"
   }
 }

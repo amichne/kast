@@ -31,6 +31,7 @@ internal class IntellijRetainedRelationRead(
     private val observation: IntellijReadObservation,
     private val cancellationCheck: () -> Unit,
     private val inventories: IntellijReferenceInventoryReuse = IntellijReferenceInventoryReuse.Disabled,
+    private val admitsReference: (PsiReference) -> Boolean = { true },
 ) {
     private val locators = IntellijRelationLocators(project, scope, projection, cancellationCheck, observation)
 
@@ -46,7 +47,15 @@ internal class IntellijRetainedRelationRead(
                 request,
                 collector,
                 {
-                    IntellijReferenceInventory(scope, locators, collector, cancellationCheck, limits, observation)
+                    IntellijReferenceInventory(
+                            scope,
+                            locators,
+                            collector,
+                            cancellationCheck,
+                            limits,
+                            observation,
+                            admitsReference,
+                        )
                         .prepare(subject)
                 },
                 { state, locator ->
@@ -95,7 +104,7 @@ internal class IntellijRetainedRelationRead(
 
     fun callees(
         request: RelationRequest,
-        subject: PsiNamedElement,
+        subject: IntellijRelationSubjectLookup.Found,
         collector: IntellijRelationCollector,
         process: (CalleeProviderItem) -> Boolean,
         termination: (ProviderTermination) -> IntellijRelationTermination,
@@ -106,13 +115,20 @@ internal class IntellijRetainedRelationRead(
                 collector,
                 {
                     IntellijCalleeInventory(locators, collector, cancellationCheck, limits, observation)
-                        .prepare(subject)
+                        .prepare(subject.declaration)
                 },
                 { state, locator ->
                     observation.phase(IntellijReadPhase.CALLEE_CONFIRMATION)
                     when (locator) {
                         is RelationProviderLocator.Callee ->
-                            confirm(request, state, locators.restoreCallee(locator), locator, collector, process)
+                            confirm(
+                                request,
+                                state,
+                                locators.restoreCallee(locator, subject),
+                                locator,
+                                collector,
+                                process,
+                            )
                         else -> collector.blockPartition(RelationLimitation.PROVIDER_INCOMPLETE)
                     }
                 },

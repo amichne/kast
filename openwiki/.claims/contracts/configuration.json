@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:01ecab6521f6631ea3e6a2750bc1dd37a65a213650963084a7035fa32dc510bb",
+  "pageVersion": "sha256:7c2ea239208070c53525132362a4537edb6244f565ee2efa55aee96b92cd268c",
   "claims": [
     {
       "id": "claim_91a8a70849534ef1b2462828f3d9c9fb",
@@ -128,7 +128,7 @@
         },
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:53f2705df0ee0365840f2691ceaae7878ce652d41013428d91d90a1713b2977e"
+          "version": "repo-file-v1:sha256:126f31c715881a1cfc91f229be70c920ee5afeee80b8d3c2937c77aeec6617fa"
         },
         {
           "resource": "repo://packaging/install-local.sh",
@@ -153,6 +153,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-16T06:54:44.448Z"
+    "at": "2026-10-16T21:29:39.165Z"
   }
 }

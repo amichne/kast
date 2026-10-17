@@ -36,10 +36,16 @@ class QueryCallableObservationWireTest {
         val value = parameterObservation()
         val wire = value.toWireDocument()
         val encoded = wireJson.encodeToJsonElement(QueryCallableObservationWireDocument.serializer(), wire).jsonObject
-        assertEquals(setOf("occurrence", "lexical_owner", "body", "target"), encoded.keys)
+        assertEquals(setOf("occurrence", "lexical_owner", "body", "target", "basis"), encoded.keys)
         assertEquals(JsonPrimitive("ANONYMOUS"), encoded.getValue("body").jsonObject.getValue("type"))
         val target = encoded.getValue("target").jsonObject
-        assertEquals(setOf("type", "parameter", "suppliers", "invocation"), target.keys)
+        assertEquals(setOf("type", "parameter", "suppliers", "invocation", "result_projection"), target.keys)
+        assertEquals(setOf("type", "cause"), target.getValue("result_projection").jsonObject.keys)
+        assertEquals(JsonPrimitive("UNPROVEN"), target.getValue("result_projection").jsonObject.getValue("type"))
+        assertEquals(
+            JsonPrimitive("PARAMETER_ESCAPES"),
+            target.getValue("result_projection").jsonObject.getValue("cause"),
+        )
         assertEquals(JsonPrimitive("PARAMETER_INVOCATION"), target.getValue("type"))
         assertEquals(setOf("callable", "position", "parameter"), target.getValue("parameter").jsonObject.keys)
         assertEquals(JsonPrimitive(0), target.getValue("parameter").jsonObject.getValue("position"))
@@ -210,7 +216,11 @@ class QueryCallableObservationWireTest {
                         bounded(emptyList()),
                         bounded(emptyList()),
                     ),
+                    io.github.amichne.kast.protocol.contract.QueryCallbackResultProjectionDocument.Unproven(
+                        io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument.PARAMETER_ESCAPES
+                    ),
                 ),
+                fixture.callbackDocument().basis,
             )
             .refined()
     }
@@ -234,6 +244,7 @@ class QueryCallableObservationWireTest {
                     callable,
                     QuerySourceLessCallableDispositionDocument.LIBRARY_POLICY_EXCLUDED,
                 ),
+                fixture.callbackDocument().basis,
             )
             .refined()
     }

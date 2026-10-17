@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:76d104afc62c18661b12ec2893a83dd1f42e1aec3bf73204f1f628e4ec8bb0c3",
+  "pageVersion": "sha256:d6aa7b8154b6568913635f5bfe0a5057ab648db14bad7b374b189b16fef08b58",
   "claims": [
     {
       "id": "claim_d5f49799d6a64a78a95f34b3ba0fa09a",
@@ -246,7 +246,7 @@
       "evidence": [
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackDocumentAdmission.kt",
-          "version": "repo-file-v1:sha256:e71c7528c33b6a46c93abf9771034b5470e871f459184e9e77364d0332fb8bed"
+          "version": "repo-file-v1:sha256:3e0b4b93f63f3c57d4143babbaf0f9feb4f22b3c4e67604d8531af7e4a02972e"
         },
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SymbolProtocolModels.kt",
@@ -375,7 +375,7 @@
       "statement": "Dependency-contract callback output preserves EXACTLY_ONCE, AT_MOST_ONCE, AT_LEAST_ONCE, or UNKNOWN. Legacy deferred execution omission admits Declaration, while new output explicitly encodes execution.",
       "evidence": [
         {
-          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt#L170-L176",
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt#L174-L180",
           "version": "repo-lines-v1:sha256:32133e9c8d9d7d39e4f542d6e6910764c1463bd872cd7e6af655b1365f3c2122:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDViMzdiNWFjMDM1MWM0NTlmMDM1ODUyMDFkZjI2YjYzYzFjNzIzN2U4OWQxZjI1YmRhNDkxNzc0ZTI1ZGRlMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzkyYjY3NDVjMWM1MWMwMDk5MjlhNzVhYThiY2M0N2M1NzM3NzZkZGQ1YjZlMWJkM2ZkMmNmN2FjMmU5MjE2MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjZjNjdlYjliM2NlMWVmYTczNmI2NzNhM2EyOWQzODM4NjNhZjQyZWUyNmJhNzBhOTgzYWIwMjk2Y2U0ZGMwNSJ9"
         },
         {
@@ -387,6 +387,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T19:07:35.337Z"
+    "at": "2026-10-16T21:29:39.165Z"
   }
 }

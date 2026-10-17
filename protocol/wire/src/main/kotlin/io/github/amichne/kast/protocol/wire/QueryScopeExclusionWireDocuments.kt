@@ -143,12 +143,16 @@ internal fun QueryRelationObservationDocument.toWireDocument() =
 internal fun QueryRelationObservationWireDocument.toContract():
     WireDocumentConversion<QueryRelationObservationDocument> =
     ProtocolText.parse(subject.token).toWireDocumentConversion().flatMapConverted { token ->
+        val admittedSubject = QueryReferenceDocument.ExactSymbol(token)
         scopeExclusions.convertEach(QueryScopeExclusionWireDocument::toContract).flatMapConverted { exclusions ->
             callbackObservations.convertEach(QueryCallbackObservationWireDocument::toContract).flatMapConverted {
                 callbacks ->
                 callableObservations.convertEach(QueryCallableObservationWireDocument::toContract).flatMapConverted {
                     callables ->
-                    if (callbacks.any { !it.matchesQuestion(this) } || !admitsCallableObservations(callables))
+                    if (
+                        callbacks.any { !it.matchesQuestion(this, admittedSubject) } ||
+                            !admitsCallableObservations(callables, admittedSubject)
+                    )
                         return@flatMapConverted WireDocumentConversion.Rejected
                     combineConverted(
                         BoundedProtocolList.create(exclusions).toWireDocumentConversion(),
@@ -156,7 +160,7 @@ internal fun QueryRelationObservationWireDocument.toContract():
                         BoundedProtocolList.create(callables).toWireDocumentConversion(),
                     ) { admittedExclusions, admittedCallbacks, admittedCallables ->
                         QueryRelationObservationDocument(
-                            QueryReferenceDocument.ExactSymbol(token),
+                            admittedSubject,
                             relation,
                             provider,
                             requestedDomain,
@@ -174,7 +178,8 @@ internal fun QueryRelationObservationWireDocument.toContract():
     }
 
 private fun QueryRelationObservationWireDocument.admitsCallableObservations(
-    values: List<QueryCallableObservationDocument>
+    values: List<QueryCallableObservationDocument>,
+    subject: QueryReferenceDocument.ExactSymbol,
 ): Boolean =
     when {
         values.isNotEmpty() &&
@@ -184,7 +189,7 @@ private fun QueryRelationObservationWireDocument.admitsCallableObservations(
                     (it.target is QueryCallableTargetDocument.NamedReference ||
                         it.target is QueryCallableTargetDocument.UnavailableReference)
                 }) -> false
-        values.any { !it.admitsDomain(effectiveDomain, domainFingerprint) } -> false
+        values.any { !it.admitsQuestion(subject, relation, effectiveDomain, domainFingerprint) } -> false
         coverage == QueryRelationCoverageDocument.Exhausted && values.any { it.requiresLibrarySource() } -> false
         else -> true
     }
@@ -201,8 +206,12 @@ private fun QueryCallableObservationDocument.requiresLibrarySource(): Boolean =
             value.disposition == QuerySourceLessCallableDispositionDocument.LIBRARY_SOURCE_UNAVAILABLE
     }
 
-private fun QueryCallbackObservationDocument.matchesQuestion(value: QueryRelationObservationWireDocument): Boolean =
-    relation == value.relation &&
+private fun QueryCallbackObservationDocument.matchesQuestion(
+    value: QueryRelationObservationWireDocument,
+    subject: QueryReferenceDocument.ExactSymbol,
+): Boolean =
+    resultProjection.admitsSubject(subject) &&
+        relation == value.relation &&
         requestedDomain == value.requestedDomain &&
         effectiveDomain == value.effectiveDomain &&
         domainFingerprint == value.domainFingerprint

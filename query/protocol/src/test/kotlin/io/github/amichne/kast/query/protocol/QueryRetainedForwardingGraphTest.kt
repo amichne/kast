@@ -185,6 +185,10 @@ internal class QueryRetainedForwardingGraphTest : CompleteOnlyCallbackQueryCase(
                     occurrence(1, 4),
                     CallbackNamedCallPolicy.Excluded(CallbackExclusionReason.NON_INLINE_ARGUMENT, occurrence(1, 4)),
                     CallbackInvocationFlowRead.Observed(flow),
+                    scriptedCallbackProjection(
+                        relation,
+                        io.github.amichne.kast.relation.contract.CallbackResultSite.Target(owner),
+                    ),
                 )
                 .refined()
         val batch =

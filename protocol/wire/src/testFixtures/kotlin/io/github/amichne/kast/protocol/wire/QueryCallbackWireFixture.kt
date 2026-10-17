@@ -25,6 +25,7 @@ import io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDoc
 import io.github.amichne.kast.protocol.contract.QueryDiscoverySourcePolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoverySourceSetsDocument
 import io.github.amichne.kast.protocol.contract.QueryExcludedCompilerTargetDocument
+import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationDomainDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint
 import io.github.amichne.kast.protocol.contract.QueryRelationRequestedDomainDocument
@@ -91,7 +92,9 @@ class QueryCallbackWireFixture {
         return QueryCallbackParameterIdentityWireDocument(bound.callable, bound.position, bound.parameter)
     }
 
-    fun callbackDocument(): QueryCallbackObservationDocument {
+    fun callbackDocument(
+        subject: QueryReferenceDocument.ExactSymbol = QueryReferenceDocument.ExactSymbol(text("exact:seed"))
+    ): QueryCallbackObservationDocument {
         val owner = callable("Seed.kt", 0, 40, "sample.read", emptyList())
         val mapped = callable("Boundary.kt", 0, 30, "sample.nativeBoundary", listOf("kotlin.Function0<kotlin.Unit>"))
         val target = callable("Target.kt", 0, 20, "sample.readPrepared", emptyList())
@@ -120,6 +123,14 @@ class QueryCallbackWireFixture {
                     bounded(emptyList()),
                 ),
                 QueryRelationDomainFingerprint.parse("1".repeat(64)).refined(),
+                io.github.amichne.kast.protocol.contract.QueryCallbackResultProjectionDocument.Admitted(
+                    subject,
+                    flow.basis,
+                    QueryRelationDomainFingerprint.parse("1".repeat(64)).refined(),
+                    RelationKindDocument.CALLEES,
+                    io.github.amichne.kast.protocol.contract.QueryCallbackResultSiteDocument.Target(target),
+                ),
+                flow.basis,
             )
             .refined()
     }

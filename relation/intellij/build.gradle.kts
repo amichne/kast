@@ -199,5 +199,9 @@ registerRelationNativeFixtures("nativeFixtureTest", emptyList())
 
 registerRelationNativeFixtures(
     "semanticCoverageFixtureTest",
-    listOf("*NativeDependencyCallbackTest", "*NativeDeclaredEffectCallbackTest"),
+    listOf(
+        "*NativeDependencyCallbackTest",
+        "*NativeDeclaredEffectCallbackTest",
+        "*NativeCallbackCandidateFilterTest",
+    ),
 )

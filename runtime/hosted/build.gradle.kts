@@ -279,5 +279,8 @@ registerHostedNativeFixtures(
         "*DeclaredEffectTraceOracleTest",
         "*NativeSemanticOwnersTraceTest",
         "*NativeSemanticOwnersOracleTest",
+        "*NativeCrossModuleCallbackTest",
+        "*NativeCrossModuleCallbackRejectionTest",
+        "*NativeCrossModuleCallbackProjectionTest",
     ),
 )

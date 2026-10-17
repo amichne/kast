@@ -2,23 +2,166 @@ package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.QueryCallableObservationDocument
 import io.github.amichne.kast.protocol.contract.QueryCallableTargetDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackBindingDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackBodyDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackReferenceReceiverDocument
+import io.github.amichne.kast.protocol.contract.QueryExpandedFrontierDocument
 import io.github.amichne.kast.protocol.contract.QueryNamedCallbackReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryNamedCallbackReferenceFlowDocument
+import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
+import io.github.amichne.kast.protocol.contract.QueryWalkCallableObservationDocument
+import io.github.amichne.kast.protocol.contract.QueryWalkCoverageDocument
+import io.github.amichne.kast.protocol.contract.QueryWalkObservationDocument
+import io.github.amichne.kast.protocol.contract.RelationKindDocument
+import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
+import io.github.amichne.kast.protocol.contract.TraversalExtentDocument
+import io.github.amichne.kast.protocol.contract.TraversalPartialExpansionDocument
+import io.github.amichne.kast.protocol.contract.TraversalProgressDocument
+import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class QueryNamedCallbackReferenceWireTest {
     private val fixture = QueryCallbackWireFixture()
+
+    @Test
+    fun `unproven membership still binds the available named flow basis`() {
+        val wire = suppliedReference().toWireDocument()
+        val target = wire.target as QueryCallableTargetWireDocument.NamedReference
+        val unproven =
+            wire.copy(
+                target =
+                    target.copy(
+                        resultProjection =
+                            QueryCallbackResultProjectionWireDocument.Unproven(
+                                io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument.OUTSIDE_DOMAIN
+                            )
+                    )
+            )
+        assertTrue(unproven.toContract() is WireDocumentConversion.Converted)
+        val foreign =
+            io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument.Published(
+                fixture.text("/workspace"),
+                (io.github.amichne.kast.protocol.contract.ImpactEvidenceRevisionDocument.parse(2L)
+                        as Refinement.Refined)
+                    .value,
+            )
+        assertEquals(WireDocumentConversion.Rejected, unproven.copy(basis = foreign).toContract())
+    }
+
+    @Test
+    fun `named projection rejects a substituted walk subject`() {
+        val wire = namedReferenceWalk()
+        assertTrue(decodeWalk(wire) is WireDocumentConversion.Converted)
+        val other = QueryReferenceWireDocument.ExactSymbol("exact:other")
+        assertEquals(
+            WireDocumentConversion.Rejected,
+            decodeWalk(
+                wire.copy(
+                    subject = other,
+                    callableObservations = listOf(wire.callableObservations.single().copy(subject = other)),
+                )
+            ),
+        )
+        val entry = wire.callableObservations.single()
+        val target = entry.observation.target as QueryCallableTargetWireDocument.NamedReference
+        val projection = target.resultProjection as QueryCallbackResultProjectionWireDocument.Admitted
+        val foreign =
+            entry.copy(
+                observation =
+                    entry.observation.copy(target = target.copy(resultProjection = projection.copy(subject = other)))
+            )
+        assertEquals(WireDocumentConversion.Rejected, decodeWalk(wire.copy(callableObservations = listOf(foreign))))
+    }
+
+    @Test
+    fun `callee walk rejects a valid caller occurrence projection`() {
+        rejectCallerProjection(invocationSite = false)
+    }
+
+    @Test
+    fun `callee walk rejects a valid caller invocation projection`() {
+        rejectCallerProjection(invocationSite = true)
+    }
+
+    private fun rejectCallerProjection(invocationSite: Boolean) {
+        val walk = namedReferenceWalk()
+        assertTrue(decodeWalk(walk) is WireDocumentConversion.Converted)
+        val entry = walk.callableObservations.single()
+        val target = entry.observation.target as QueryCallableTargetWireDocument.NamedReference
+        val projection = target.resultProjection as QueryCallbackResultProjectionWireDocument.Admitted
+        val flow = target.reference.flow as QueryNamedCallbackReferenceFlowWireDocument.Supplied
+        val site =
+            if (invocationSite) QueryCallbackResultSiteWireDocument.Invocation(flow.invocations.single())
+            else QueryCallbackResultSiteWireDocument.Occurrence(entry.observation.occurrence)
+        val caller =
+            entry.observation.copy(
+                target =
+                    target.copy(
+                        resultProjection = projection.copy(relation = RelationKindDocument.CALLERS, site = site)
+                    )
+            )
+        val admittedCaller = (caller.toContract() as WireDocumentConversion.Converted).value
+        assertTrue(
+            admittedCaller.admitsQuestion(
+                QueryReferenceDocument.ExactSymbol(fixture.text("exact:seed")),
+                RelationKindDocument.CALLERS,
+                entry.effectiveDomain,
+                entry.domainFingerprint,
+            )
+        )
+        assertEquals(
+            WireDocumentConversion.Rejected,
+            decodeWalk(walk.copy(callableObservations = listOf(entry.copy(observation = caller)))),
+        )
+    }
+
+    private fun namedReferenceWalk(): QueryWalkObservationWireDocument {
+        val callback = fixture.callbackDocument()
+        val subject = QueryReferenceDocument.ExactSymbol(fixture.text("exact:seed"))
+        val callable =
+            QueryWalkCallableObservationDocument(
+                subject,
+                TraversalDepthDocument.parse(0).value(),
+                suppliedReference(),
+                callback.requestedDomain,
+                callback.effectiveDomain,
+                callback.domainFingerprint,
+            )
+        return QueryWalkObservationDocument(
+                subject = subject,
+                relation = RelationKindDocument.CALLEES,
+                extent = TraversalExtentDocument.ThroughDepth(ProtocolCount.parse(1).value()),
+                expandedFrontier = QueryExpandedFrontierDocument.parse(1).value(),
+                progress = TraversalProgressDocument(1, 1, 0, 0),
+                strategy = TraversalStrategyDocument.BreadthFirst,
+                partialExpansions = BoundedProtocolList.create(emptyList<TraversalPartialExpansionDocument>()).value(),
+                coverage = QueryWalkCoverageDocument.Complete,
+                requestedDomain = callback.requestedDomain,
+                effectiveDomain = callback.effectiveDomain,
+                domainFingerprint = callback.domainFingerprint,
+                callableObservations = BoundedProtocolList.create(listOf(callable)).value(),
+            )
+            .toWireDocument()
+    }
+
+    private fun decodeWalk(
+        wire: QueryWalkObservationWireDocument
+    ): WireDocumentConversion<QueryWalkObservationDocument> {
+        val raw = wireJson.encodeToString(QueryWalkObservationWireDocument.serializer(), wire)
+        return wireJson.decodeFromString(QueryWalkObservationWireDocument.serializer(), raw).toContract()
+    }
+
+    private fun <V, F> Refinement<V, F>.value(): V = (this as Refinement.Refined).value
 
     @Test
     fun `named callable supply is distinct from invocation and preserves receivers`() {
@@ -75,7 +218,8 @@ class QueryNamedCallbackReferenceWireTest {
                 observation.callbackBody,
                 observation.lexicalOwner,
                 QueryCallbackBodyDocument.Named(observation.lexicalOwner),
-                QueryCallableTargetDocument.NamedReference(reference),
+                QueryCallableTargetDocument.NamedReference(reference, observation.resultProjection),
+                observation.basis,
             ) as Refinement.Refined)
             .value
     }
@@ -103,7 +247,8 @@ class QueryNamedCallbackReferenceWireTest {
                     observation.callbackBody,
                     observation.lexicalOwner,
                     QueryCallbackBodyDocument.Named(observation.lexicalOwner),
-                    QueryCallableTargetDocument.NamedReference(reference),
+                    QueryCallableTargetDocument.NamedReference(reference, observation.resultProjection),
+                    observation.basis,
                 ) as Refinement.Refined)
                 .value
         val raw = value.toWireDocument()

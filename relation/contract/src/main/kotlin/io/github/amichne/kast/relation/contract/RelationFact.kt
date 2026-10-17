@@ -197,6 +197,11 @@ private constructor(
     val range: ExactDeclarationTextRange,
 ) {
     companion object {
+        fun fromSource(
+            file: SymbolDiscoveryFileIdentity,
+            range: ExactDeclarationTextRange,
+        ): RelationOccurrence = RelationOccurrence(file, range)
+
         /**
          * Proof transition: `(SymbolDiscoveryFileIdentity, Int, Int) -> Refinement< RelationOccurrence,
          * RelationOccurrenceFailure>`.

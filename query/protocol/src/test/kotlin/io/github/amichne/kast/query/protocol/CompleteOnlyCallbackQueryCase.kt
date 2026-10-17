@@ -10,6 +10,8 @@ import io.github.amichne.kast.relation.contract.CallbackInvocationFlowRead
 import io.github.amichne.kast.relation.contract.CallbackInvocationScan
 import io.github.amichne.kast.relation.contract.CallbackNamedCallPolicy
 import io.github.amichne.kast.relation.contract.CallbackParameterInvocation
+import io.github.amichne.kast.relation.contract.CallbackResultProjection
+import io.github.amichne.kast.relation.contract.CallbackResultSite
 import io.github.amichne.kast.relation.contract.RelationBatch
 import io.github.amichne.kast.relation.contract.RelationByteCount
 import io.github.amichne.kast.relation.contract.RelationCallableBody
@@ -84,6 +86,12 @@ internal abstract class CompleteOnlyCallbackQueryCase : AutomaticSymbolQueryCase
     protected fun observation(
         supported: Boolean,
         obligations: Set<CallbackInvocationFlowCause> = emptySet(),
+        resultProjection: (RelationRequest) -> CallbackResultProjection = { relation ->
+            scriptedCallbackProjection(
+                relation,
+                CallbackResultSite.Target(CompilerGroundedSymbolEvidence.fromSelector(fixture.selector)),
+            )
+        },
     ): QueryRelationObservation {
         val relation =
             RelationRequest.start(fixture.selector, RelationMeaning.Callees, RelationPagingFixture.published().budget)
@@ -98,6 +106,7 @@ internal abstract class CompleteOnlyCallbackQueryCase : AutomaticSymbolQueryCase
                     CallbackNamedCallPolicy.Excluded(CallbackExclusionReason.NON_INLINE_ARGUMENT, occurrence(1, 4)),
                     if (supported) boundFlow(obligations)
                     else CallbackInvocationFlowRead.Unavailable(CallbackInvocationFlowCause.STORED_CALLBACK),
+                    resultProjection(relation),
                 )
                 .refined()
         val batch =

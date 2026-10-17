@@ -7,23 +7,33 @@ owner with `QueryQuestionDocument.serializer()` and
 `CanonicalQueryCliDocuments.qualificationSerializer`. The result schema reuses
 `installedSemanticResultSchema(QUERY_RUN)`, which composes the actual complete,
 qualified and rejected serializers with existing local output definitions.
-The 2026-10-14 export uses base `9268d6ba79ce5870f0fafa668e3269b41a294167` plus the local change to `QueryCallbackGraphFailureDocument`.
-That document carries the exact callback or callable occurrence. A callback subject also carries its body range.
+The 2026-10-16 export uses source `44d79d4c85bb68f228c048fd149d850ed046979e`.
+
+`result_projection` keeps the exact callback result site, relationship direction, semantic basis, and selected result domain.
+`result_projection.subject` carries the enclosing exact reference.
+Relation and WALK admission reject a reference for another question or frontier.
+Callback and callable observations keep the native semantic basis.
+`ADMITTED.basis` must match that observation basis even when flow evidence is unavailable.
+
 The exporter uses the CLI classpath from this task checkout and the compiled `query/contract` classes.
-Only `query-result.schema.json` changed. It includes typed `authority_mismatch` evidence.
+Only `query-result.schema.json` changed. It includes the typed `ADMITTED` and `UNPROVEN` projection variants.
 The export does no semantic work and supplies no native qualification.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| `query-result.schema.json` | `a88d359cbb870164dbfef5b0b0b3bd3121288f07efd921363aaeb3f55a682e74` |
+| `query-result.schema.json` | `4a5c723d6acfca0451858a88f57076ab7ad83fe223911b174094d3b6333a540c` |
 | `protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt` | `7fad3ba487381dab19a441ff9e31e5871df954bcebbb5e66dd689fb08dff226c` |
-| `query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt` | `2df97bd07c0f07872a5e95d8da74dabf67c98b5bac2c833f34c8bf6d2171a34f` |
+| `protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackResultProjectionDocument.kt` | `713a975eb208568089b8a14e28cc7c6d0dbc9ff2c6b1c8f223568aaeadf5202d` |
+| `protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt` | `da3b8b3ead71dd51a003c90260223ae8c31afbfaecf374c10d29aa95f1f836b3` |
+| `protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallableObservationDocument.kt` | `9ca730ce516d60c5a2929fcab4871c9591579269aafdda7d8376beffd72ca6b5` |
+| `query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt` | `af0a890aa4e5e3019876aeeaaa439d13d0f32fc22acb80565f175b28957606e2` |
 
 `PiQuestionSchemaParityTest` compares all three committed schemas with the current owners.
 Gradle tracks these schemas as inputs.
 
 ```sh
-java -cp "$KAST_RELEASE/lib/*" experiments/host-observation/PiQuestionSchema.java \
+java -cp "cli/build/install/kast/lib/*:query/contract/build/classes/kotlin/main" \
+  experiments/host-observation/PiQuestionSchema.java \
   /tmp/query-question.schema.json /tmp/query-qualification.schema.json \
   /tmp/query-result.schema.json
 ```

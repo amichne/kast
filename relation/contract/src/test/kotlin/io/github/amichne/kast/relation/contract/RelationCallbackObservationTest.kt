@@ -57,6 +57,10 @@ class RelationCallbackObservationTest {
                         CallbackInvocationFlowRead.Unavailable(
                             CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE
                         ),
+                        resultProjection =
+                            io.github.amichne.kast.relation.contract.CallbackResultProjection.Unproven(
+                                io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause.OUTSIDE_DOMAIN
+                            ),
                     )
                     .refined()
             assertEquals(occurrence, exclusion.occurrence)
@@ -74,6 +78,10 @@ class RelationCallbackObservationTest {
                     callback,
                     CallbackNamedCallPolicy.Excluded(CallbackExclusionReason.STORED_CALLBACK, callback),
                     CallbackInvocationFlowRead.Unavailable(CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE),
+                    resultProjection =
+                        io.github.amichne.kast.relation.contract.CallbackResultProjection.Unproven(
+                            io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause.OUTSIDE_DOMAIN
+                        ),
                 ),
             )
             val other = request(RelationMeaning.References)
@@ -102,7 +110,13 @@ class RelationCallbackObservationTest {
                     occurrence,
                     evidence,
                     RelationCallableBody.Named.fromCompiler(evidence).refined(),
-                    RelationCallableTarget.NamedReference(reference),
+                    RelationCallableTarget.NamedReference(
+                        reference,
+                        resultProjection =
+                            io.github.amichne.kast.relation.contract.CallbackResultProjection.Unproven(
+                                io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause.OUTSIDE_DOMAIN
+                            ),
+                    ),
                 )
                 .refined()
         assertEquals(true, observation.belongsTo(read))

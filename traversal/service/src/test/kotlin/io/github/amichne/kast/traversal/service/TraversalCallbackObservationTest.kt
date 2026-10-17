@@ -197,6 +197,10 @@ class TraversalCallbackObservationTest {
                         RelationOccurrence.fromBoundary(subject.file, start + 1, start + 4).refined(),
                     ),
                     CallbackInvocationFlowRead.Unavailable(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING),
+                    resultProjection =
+                        io.github.amichne.kast.relation.contract.CallbackResultProjection.Unproven(
+                            io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause.OUTSIDE_DOMAIN
+                        ),
                 )
                 .refined()
         val facts = fixture.completeRelationResult(request, targets.map { fixture.endpoint(subject, it) }).batch.facts
@@ -231,6 +235,10 @@ class TraversalCallbackObservationTest {
                             RelationOccurrence.fromBoundary(owner.file, 11, 15).refined(),
                         ),
                     CallbackInvocationFlowRead.Unavailable(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING),
+                    resultProjection =
+                        io.github.amichne.kast.relation.contract.CallbackResultProjection.Unproven(
+                            io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause.OUTSIDE_DOMAIN
+                        ),
                 )
                 .refined()
         val facts =

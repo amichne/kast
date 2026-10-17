@@ -34,7 +34,7 @@ internal class IntellijCallbackSupplierInventory(
         function: KtNamedFunction,
         parameter: KtParameter,
     ): CallbackSupplierInventoryEvidence {
-        summaries.findSupplierInventory(root, context.scope.request.scopeFingerprint)?.let {
+        summaries.findSupplierInventory(root, context.scope.fingerprint)?.let {
             return CallbackSupplierInventoryEvidence.Exhaustive(it)
         }
         return when (val result = inventory(root, function, parameter)) {
@@ -87,7 +87,7 @@ internal class IntellijCallbackSupplierInventory(
                 val admitted =
                     CompleteCallbackSupplierInventory.fromCompiler(
                         root,
-                        context.scope.request.scopeFingerprint,
+                        context.scope.fingerprint,
                         partitions.values.toList(),
                     )
             ) {

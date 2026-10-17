@@ -3,7 +3,6 @@ package io.github.amichne.kast.query.protocol
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ProtocolText
-import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationDomainDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint
@@ -23,9 +22,9 @@ internal fun QueryRelationObservation.projectRelationObservation(
     authority: QueryReferenceAuthority
 ): QueryRelationObservationDocument? {
     val subject =
-        when (val issued = authority.issueEndpoint(question.subject)) {
-            is RelationEndpointIssuance.Issued -> QueryReferenceDocument.ExactSymbol(issued.selector)
-            is RelationEndpointIssuance.Rejected -> return null
+        when (val issued = CallbackResultSubject.issue(question.subject, authority)) {
+            is Refinement.Refined -> issued.value
+            is Refinement.Rejected -> return null
         }
     val domain = relationDomainDocument(question.effectiveScope, question.effectiveConstraints) ?: return null
     val projectedCoverage =
@@ -51,7 +50,7 @@ internal fun QueryRelationObservation.projectRelationObservation(
                 )
         }
     return QueryRelationObservationDocument(
-        subject,
+        subject.reference,
         question.meaning.protocolDocument(),
         RelationProviderDocument.valueOf(question.provider.name),
         question.requestedDomain.requestedDomainDocument(),
@@ -60,9 +59,9 @@ internal fun QueryRelationObservation.projectRelationObservation(
         projectedCoverage,
         scopeExclusions.mapProjected { it.projectScopeExclusion(authority) }.boundedProjectedOrNull() ?: return null,
         callbackObservations
-            .mapProjected { it.projectCallbackObservation(authority, question) }
+            .mapProjected { it.projectCallbackObservation(authority, question, subject) }
             .boundedProjectedOrNull() ?: return null,
-        callableObservations.mapProjected { it.projectCallableObservation(authority) }.boundedProjectedOrNull()
+        callableObservations.mapProjected { it.projectCallableObservation(authority, subject) }.boundedProjectedOrNull()
             ?: return null,
     )
 }

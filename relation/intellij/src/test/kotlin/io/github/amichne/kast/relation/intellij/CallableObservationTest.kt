@@ -250,7 +250,14 @@ class CallableObservationTest {
                 occurrence,
                 owner(request),
                 body,
-                RelationCallableTarget.ParameterInvocation(identity, suppliers, invocation),
+                RelationCallableTarget.ParameterInvocation(
+                    identity,
+                    suppliers,
+                    invocation,
+                    io.github.amichne.kast.relation.contract.CallbackResultProjection.Unproven(
+                        io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause.PARAMETER_ESCAPES
+                    ),
+                ),
             )
             .refined()
     }

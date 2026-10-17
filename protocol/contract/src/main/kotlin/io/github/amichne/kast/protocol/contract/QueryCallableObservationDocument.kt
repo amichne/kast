@@ -42,6 +42,7 @@ enum class QueryCallableObservationDocumentFailure {
     INVALID_PARAMETER,
     INVALID_BOUNDARY,
     INVALID_MODULE_NAME,
+    BASIS_MISMATCH,
 }
 
 /** A compiler-resolved source-less target retains its exact signature, origin and module classification. */
@@ -89,6 +90,26 @@ private constructor(
 }
 
 sealed interface QueryCallableTargetDocument {
+    fun admitsBasis(basis: ImpactSemanticBasisDocument): Boolean =
+        when (this) {
+            is DirectInvocations ->
+                invocations.values.all { it.binding.basis == basis && it.value.source.enclosing.basis == basis }
+            is CallbackSupplies ->
+                supplies.values.all {
+                    it.supplier.binding.invocation.callable.basis == basis && it.value.source.enclosing.basis == basis
+                }
+            is NamedReference -> resultProjection.admitsBasis(basis) && reference.flow.admitsBasis(basis)
+            is ParameterInvocation ->
+                resultProjection.admitsBasis(basis) &&
+                    when (val inventory = suppliers) {
+                        is QueryCallbackSupplierInventoryDocument.Exhaustive -> inventory.basis == basis
+                        is QueryCallbackSupplierInventoryDocument.Unavailable -> true
+                    }
+            is UnavailableSupply,
+            is UnavailableReference,
+            is SourceLess -> true
+        }
+
     data class DirectInvocations(val invocations: BoundedProtocolList<QueryImmutableCallbackUseDocument.Direct>) :
         QueryCallableTargetDocument
 
@@ -101,12 +122,16 @@ sealed interface QueryCallableTargetDocument {
 
     data class UnavailableReference(val cause: QueryCallbackFlowCauseDocument) : QueryCallableTargetDocument
 
-    data class NamedReference(val reference: QueryNamedCallbackReferenceDocument) : QueryCallableTargetDocument
+    data class NamedReference(
+        val reference: QueryNamedCallbackReferenceDocument,
+        val resultProjection: QueryCallbackResultProjectionDocument,
+    ) : QueryCallableTargetDocument
 
     data class ParameterInvocation(
         val parameter: QueryCallbackParameterIdentityDocument,
         val suppliers: QueryCallbackSupplierInventoryDocument,
         val invocation: QueryCallbackInvocationDocument,
+        val resultProjection: QueryCallbackResultProjectionDocument,
     ) : QueryCallableTargetDocument
 
     data class SourceLess(
@@ -122,20 +147,38 @@ private constructor(
     val lexicalOwner: QueryCallbackCallableDocument,
     val body: QueryCallbackBodyDocument,
     val target: QueryCallableTargetDocument,
+    val basis: ImpactSemanticBasisDocument,
 ) {
+    fun admitsQuestion(
+        subject: QueryReferenceDocument.ExactSymbol,
+        relation: RelationKindDocument,
+        domain: QueryRelationDomainDocument,
+        fingerprint: QueryRelationDomainFingerprint,
+    ): Boolean =
+        admitsDomain(domain, fingerprint) &&
+            when (val value = target) {
+                is QueryCallableTargetDocument.NamedReference ->
+                    value.resultProjection.admitsSubject(subject) && value.resultProjection.admitsRelation(relation)
+                is QueryCallableTargetDocument.ParameterInvocation ->
+                    value.resultProjection.admitsSubject(subject) && value.resultProjection.admitsRelation(relation)
+                is QueryCallableTargetDocument.DirectInvocations,
+                is QueryCallableTargetDocument.CallbackSupplies,
+                is QueryCallableTargetDocument.UnavailableSupply,
+                is QueryCallableTargetDocument.UnavailableReference,
+                is QueryCallableTargetDocument.SourceLess -> true
+            }
+
     fun admitsDomain(domain: QueryRelationDomainDocument, fingerprint: QueryRelationDomainFingerprint): Boolean =
         target.admitsFactoryPolicy(domain) &&
             when (val value = target) {
                 is QueryCallableTargetDocument.DirectInvocations,
                 is QueryCallableTargetDocument.UnavailableSupply,
                 is QueryCallableTargetDocument.CallbackSupplies,
-                is QueryCallableTargetDocument.UnavailableReference,
-                is QueryCallableTargetDocument.NamedReference -> true
+                is QueryCallableTargetDocument.UnavailableReference -> true
+                is QueryCallableTargetDocument.NamedReference ->
+                    value.resultProjection.admitsReference(fingerprint, occurrence, value.reference)
                 is QueryCallableTargetDocument.ParameterInvocation ->
-                    when (val suppliers = value.suppliers) {
-                        is QueryCallbackSupplierInventoryDocument.Unavailable -> true
-                        is QueryCallbackSupplierInventoryDocument.Exhaustive -> suppliers.domain == fingerprint
-                    }
+                    value.resultProjection.admitsSuppliers(fingerprint, value.suppliers)
                 is QueryCallableTargetDocument.SourceLess ->
                     when (value.disposition) {
                         QuerySourceLessCallableDispositionDocument.BUILTIN_BOUNDARY ->
@@ -155,7 +198,10 @@ private constructor(
             lexicalOwner: QueryCallbackCallableDocument,
             body: QueryCallbackBodyDocument,
             target: QueryCallableTargetDocument,
+            basis: ImpactSemanticBasisDocument,
         ): Refinement<QueryCallableObservationDocument, QueryCallableObservationDocumentFailure> {
+            if (!target.admitsBasis(basis))
+                return Refinement.Rejected(QueryCallableObservationDocumentFailure.BASIS_MISMATCH)
             val owner =
                 when (val admitted = body.admitOwner()) {
                     is Refinement.Refined -> admitted.value
@@ -184,7 +230,7 @@ private constructor(
                     !target.admitsParameter(owner, occurrence, body)
             )
                 return Refinement.Rejected(QueryCallableObservationDocumentFailure.INVALID_PARAMETER)
-            return Refinement.Refined(QueryCallableObservationDocument(occurrence, lexicalOwner, body, target))
+            return Refinement.Refined(QueryCallableObservationDocument(occurrence, lexicalOwner, body, target, basis))
         }
     }
 }

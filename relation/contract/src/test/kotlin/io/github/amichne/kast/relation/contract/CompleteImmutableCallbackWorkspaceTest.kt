@@ -51,6 +51,10 @@ class CompleteImmutableCallbackWorkspaceTest {
                         occurrence(30, 60),
                         CallbackNamedCallPolicy.Excluded(CallbackExclusionReason.RETURNED_CALLBACK, occurrence(20, 80)),
                         CallbackInvocationFlowRead.Immutable(flow),
+                        resultProjection =
+                            io.github.amichne.kast.relation.contract.CallbackResultProjection.Unproven(
+                                io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause.OUTSIDE_DOMAIN
+                            ),
                     )
                     .value()
             assertEquals(

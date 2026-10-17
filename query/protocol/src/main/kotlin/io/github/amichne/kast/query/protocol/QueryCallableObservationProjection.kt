@@ -5,7 +5,6 @@ import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryCallableObservationDocument
 import io.github.amichne.kast.protocol.contract.QueryCallableTargetDocument
-import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint
 import io.github.amichne.kast.protocol.contract.QuerySourceLessCallableDispositionDocument
 import io.github.amichne.kast.protocol.contract.QuerySourceLessCallableDocument
@@ -21,20 +20,26 @@ import io.github.amichne.kast.relation.contract.SourceLessCallableModuleKind
 import io.github.amichne.kast.relation.contract.SourceLessCallableOrigin
 
 internal fun RelationCallableObservation.projectCallableObservation(
-    authority: QueryReferenceAuthority
+    authority: QueryReferenceAuthority,
+    resultSubject: CallbackResultSubject,
 ): QueryCallableObservationDocument? {
+    if (subject != resultSubject.native) return null
     val projection = CallbackProjection(authority, basis)
-    val projectedTarget = target.projectCallableTarget(projection) ?: return null
+    val projectedTarget = target.projectCallableTarget(projection, resultSubject) ?: return null
     return QueryCallableObservationDocument.create(
             projection.occurrence(occurrence) ?: return null,
             projection.callable(lexicalOwner) ?: return null,
             projection.body(body) ?: return null,
             projectedTarget,
+            basis.identity.impactDocument().callableValue() ?: return null,
         )
         .callableValue()
 }
 
-private fun RelationCallableTarget.projectCallableTarget(projection: CallbackProjection): QueryCallableTargetDocument? =
+private fun RelationCallableTarget.projectCallableTarget(
+    projection: CallbackProjection,
+    subject: CallbackResultSubject,
+): QueryCallableTargetDocument? =
     when (this) {
         is RelationCallableTarget.DirectInvocations -> projectDirectInvocations(projection)
         is RelationCallableTarget.UnavailableSupply ->
@@ -51,8 +56,13 @@ private fun RelationCallableTarget.projectCallableTarget(projection: CallbackPro
         is RelationCallableTarget.UnavailableReference ->
             QueryCallableTargetDocument.UnavailableReference(cause.protocolCallbackDocument())
         is RelationCallableTarget.NamedReference ->
-            reference.projectNamedReference(projection)?.let { QueryCallableTargetDocument.NamedReference(it) }
-        is RelationCallableTarget.ParameterInvocation -> projectParameterInvocation(projection)
+            reference.projectNamedReference(projection)?.let {
+                QueryCallableTargetDocument.NamedReference(
+                    it,
+                    resultProjection.projectResultProjection(projection, subject) ?: return null,
+                )
+            }
+        is RelationCallableTarget.ParameterInvocation -> projectParameterInvocation(projection, subject)
         is RelationCallableTarget.SourceLess ->
             callable.protocolDocument()?.let {
                 QueryCallableTargetDocument.SourceLess(it, disposition.protocolDocument())
@@ -124,14 +134,14 @@ internal fun io.github.amichne.kast.traversal.contract.TraversalCallableObservat
     authority: QueryReferenceAuthority
 ): QueryWalkCallableObservationDocument? {
     val subject =
-        when (val issued = authority.issueEndpoint(entry.node.endpoint)) {
-            is RelationEndpointIssuance.Issued -> QueryReferenceDocument.ExactSymbol(issued.selector)
-            is RelationEndpointIssuance.Rejected -> return null
+        when (val issued = CallbackResultSubject.issue(entry.node.endpoint, authority)) {
+            is Refinement.Refined -> issued.value
+            is Refinement.Rejected -> return null
         }
     return QueryWalkCallableObservationDocument(
-        subject,
+        subject.reference,
         TraversalDepthDocument.parse(entry.depth.value).callableValue() ?: return null,
-        observation.projectCallableObservation(authority) ?: return null,
+        observation.projectCallableObservation(authority, subject) ?: return null,
         observation.requestedDomain.requestedDomainDocument(),
         relationDomainDocument(
             observation.requestedDomain.effectiveScope(entry.node.endpoint),
@@ -181,10 +191,16 @@ private fun RelationCallableTarget.DirectInvocations.projectDirectInvocations(
 }
 
 private fun RelationCallableTarget.ParameterInvocation.projectParameterInvocation(
-    projection: CallbackProjection
+    projection: CallbackProjection,
+    subject: CallbackResultSubject,
 ): QueryCallableTargetDocument? {
     val formal = projection.parameter(parameter) ?: return null
     val inventory = suppliers.projectSupplierInventory(projection) ?: return null
     val proof = projection.invocation(invocation) ?: return null
-    return QueryCallableTargetDocument.ParameterInvocation(formal, inventory, proof)
+    return QueryCallableTargetDocument.ParameterInvocation(
+        formal,
+        inventory,
+        proof,
+        resultProjection.projectResultProjection(projection, subject) ?: return null,
+    )
 }

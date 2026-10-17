@@ -18,7 +18,6 @@ import io.github.amichne.kast.protocol.contract.QueryCallbackNamedPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackObservationDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackParameterIdentityDocument
 import io.github.amichne.kast.protocol.contract.QueryExcludedCompilerTargetDocument
-import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint
 import io.github.amichne.kast.protocol.contract.QueryWalkCallbackObservationDocument
 import io.github.amichne.kast.protocol.contract.RelationOccurrenceDocument
@@ -47,56 +46,64 @@ import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 internal fun RelationCallbackObservation.projectCallbackObservation(
     authority: QueryReferenceAuthority,
     question: QueryRelationQuestion,
+    subject: CallbackResultSubject,
 ): QueryCallbackObservationDocument? {
-    return projectCallbackObservation(authority, question.effectiveScope, question.effectiveConstraints)
+    return projectCallbackObservation(authority, question.effectiveScope, question.effectiveConstraints, subject)
 }
 
 private fun RelationCallbackObservation.projectCallbackObservation(
     authority: QueryReferenceAuthority,
     scope: io.github.amichne.kast.symbol.contract.SymbolSearchScope,
     constraints: io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints,
+    resultSubject: CallbackResultSubject,
 ): QueryCallbackObservationDocument? {
+    if (subject != resultSubject.native) return null
     val projection = CallbackProjection(authority, basis)
     return QueryCallbackObservationDocument.create(
             projection.occurrence(occurrence) ?: return null,
             projection.callable(target) ?: return null,
             projection.callable(lexicalOwner) ?: return null,
             projection.occurrence(callbackBody) ?: return null,
-            when (val policy = policy) {
-                is CallbackNamedCallPolicy.Unavailable ->
-                    QueryCallbackNamedPolicyDocument.Unavailable(policy.cause.protocolCallbackDocument())
-                CallbackNamedCallPolicy.AdmittedInline -> QueryCallbackNamedPolicyDocument.AdmittedInline
-                CallbackNamedCallPolicy.AdmittedDirect -> QueryCallbackNamedPolicyDocument.AdmittedDirect
-                is CallbackNamedCallPolicy.Excluded ->
-                    QueryCallbackNamedPolicyDocument.Excluded(
-                        policy.reason.protocolCallbackDocument(),
-                        projection.occurrence(policy.boundary) ?: return null,
-                    )
-            },
+            policy.projectPolicy(projection) ?: return null,
             projection.flow(flow) ?: return null,
             meaning.protocolDocument(),
             requestedDomain.requestedDomainDocument(),
             relationDomainDocument(scope, constraints) ?: return null,
             QueryRelationDomainFingerprint.parse(effectiveDomain.value).callbackValue() ?: return null,
+            resultProjection.projectResultProjection(projection, resultSubject) ?: return null,
+            basis.identity.impactDocument().callbackValue() ?: return null,
         )
         .callbackValue()
 }
+
+private fun CallbackNamedCallPolicy.projectPolicy(projection: CallbackProjection): QueryCallbackNamedPolicyDocument? =
+    when (this) {
+        is CallbackNamedCallPolicy.Unavailable ->
+            QueryCallbackNamedPolicyDocument.Unavailable(cause.protocolCallbackDocument())
+        CallbackNamedCallPolicy.AdmittedInline -> QueryCallbackNamedPolicyDocument.AdmittedInline
+        CallbackNamedCallPolicy.AdmittedDirect -> QueryCallbackNamedPolicyDocument.AdmittedDirect
+        is CallbackNamedCallPolicy.Excluded ->
+            projection.occurrence(boundary)?.let {
+                QueryCallbackNamedPolicyDocument.Excluded(reason.protocolCallbackDocument(), it)
+            }
+    }
 
 internal fun TraversalCallbackObservation.projectCallbackObservation(
     authority: QueryReferenceAuthority
 ): QueryWalkCallbackObservationDocument? {
     val subject =
-        when (val issued = authority.issueEndpoint(entry.node.endpoint)) {
-            is RelationEndpointIssuance.Issued -> QueryReferenceDocument.ExactSymbol(issued.selector)
-            is RelationEndpointIssuance.Rejected -> return null
+        when (val issued = CallbackResultSubject.issue(entry.node.endpoint, authority)) {
+            is Refinement.Refined -> issued.value
+            is Refinement.Rejected -> return null
         }
     return QueryWalkCallbackObservationDocument(
-        subject,
+        subject.reference,
         TraversalDepthDocument.parse(entry.depth.value).callbackValue() ?: return null,
         observation.projectCallbackObservation(
             authority,
             observation.requestedDomain.effectiveScope(entry.node.endpoint),
             observation.requestedDomain.effectiveConstraints(entry.node.endpoint),
+            subject,
         ) ?: return null,
     )
 }
@@ -327,14 +334,18 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
                 )
             is CallbackBindingEvidence.DeferredDependency -> deferredDependency(value.binding)
             is CallbackBindingEvidence.DependencyContract -> dependencyContract(value.binding)
-            is CallbackBindingEvidence.Direct ->
-                QueryCallbackBindingDocument.Direct(
-                    value.binding.basis.impactDocument().callbackValue() ?: return null,
-                    occurrence(value.binding.occurrence) ?: return null,
-                    body(value.binding.owner) ?: return null,
-                )
+            is CallbackBindingEvidence.Direct -> direct(value.binding)
         }
     }
+
+    fun direct(
+        value: io.github.amichne.kast.relation.contract.CallbackDirectInvocationBinding
+    ): QueryCallbackBindingDocument.Direct? =
+        QueryCallbackBindingDocument.Direct(
+            value.basis.impactDocument().callbackValue() ?: return null,
+            occurrence(value.occurrence) ?: return null,
+            body(value.owner) ?: return null,
+        )
 
     private fun dependencyContract(
         value: io.github.amichne.kast.relation.contract.CallbackDependencyContract

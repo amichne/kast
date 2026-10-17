@@ -222,9 +222,7 @@ internal class IntellijCallbackOwnerBindingReader(private val context: IntellijC
                 ?: return Refinement.Rejected(CallbackInvocationFlowCause.EXTERNAL_CALLABLE)
         if (!context.scope.nativeScope.contains(file))
             return Refinement.Rejected(CallbackInvocationFlowCause.OUTSIDE_DOMAIN)
-        return when (
-            context.scope.request.searchConstraints.packageName.admitPackage { function.relationPackageEvidence() }
-        ) {
+        return when (context.scope.constraints.packageName.admitPackage { function.relationPackageEvidence() }) {
             IntellijRelationPackageAdmission.ADMITTED -> Refinement.Refined(Unit)
             IntellijRelationPackageAdmission.OUTSIDE_SCOPE ->
                 Refinement.Rejected(CallbackInvocationFlowCause.OUTSIDE_DOMAIN)

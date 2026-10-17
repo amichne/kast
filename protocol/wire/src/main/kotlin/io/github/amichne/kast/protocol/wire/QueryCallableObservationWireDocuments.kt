@@ -2,6 +2,7 @@
 
 package io.github.amichne.kast.protocol.wire
 
+import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
 import io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint
 import io.github.amichne.kast.protocol.contract.ProtocolStringConstraint
 import io.github.amichne.kast.protocol.contract.ProtocolText
@@ -16,6 +17,7 @@ import io.github.amichne.kast.protocol.contract.QuerySourceLessCallableDocument
 import io.github.amichne.kast.protocol.contract.QuerySourceLessCallableModuleKindDocument
 import io.github.amichne.kast.protocol.contract.QuerySourceLessCallableOriginDocument
 import io.github.amichne.kast.protocol.contract.QueryWalkCallableObservationDocument
+import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -66,7 +68,10 @@ internal sealed interface QueryCallableTargetWireDocument {
 
     @Serializable
     @SerialName("NAMED_REFERENCE")
-    data class NamedReference(val reference: QueryNamedCallbackReferenceWireDocument) : QueryCallableTargetWireDocument
+    data class NamedReference(
+        val reference: QueryNamedCallbackReferenceWireDocument,
+        @SerialName("result_projection") val resultProjection: QueryCallbackResultProjectionWireDocument,
+    ) : QueryCallableTargetWireDocument
 
     @Serializable
     @SerialName("PARAMETER_INVOCATION")
@@ -74,6 +79,7 @@ internal sealed interface QueryCallableTargetWireDocument {
         val parameter: QueryCallbackParameterIdentityWireDocument,
         val suppliers: QueryCallbackSupplierInventoryWireDocument,
         val invocation: QueryCallbackInvocationWireDocument,
+        @SerialName("result_projection") val resultProjection: QueryCallbackResultProjectionWireDocument,
     ) : QueryCallableTargetWireDocument
 
     @Serializable
@@ -90,6 +96,7 @@ internal data class QueryCallableObservationWireDocument(
     @SerialName("lexical_owner") val lexicalOwner: QueryCallbackCallableWireDocument,
     val body: QueryCallbackBodyWireDocument,
     val target: QueryCallableTargetWireDocument,
+    val basis: ImpactSemanticBasisDocument,
 )
 
 internal fun QueryCallableObservationDocument.toWireDocument() =
@@ -121,25 +128,20 @@ internal fun QueryCallableObservationDocument.toWireDocument() =
             is QueryCallableTargetDocument.UnavailableReference ->
                 QueryCallableTargetWireDocument.UnavailableReference(value.cause)
             is QueryCallableTargetDocument.NamedReference ->
-                QueryCallableTargetWireDocument.NamedReference(value.reference.callbackWire())
+                QueryCallableTargetWireDocument.NamedReference(
+                    value.reference.callbackWire(),
+                    value.resultProjection.resultProjectionWire(),
+                )
             is QueryCallableTargetDocument.ParameterInvocation ->
                 QueryCallableTargetWireDocument.ParameterInvocation(
                     value.parameter.callbackWire(),
                     value.suppliers.supplierInventoryWire(),
                     value.invocation.invocationWire(),
+                    value.resultProjection.resultProjectionWire(),
                 )
-            is QueryCallableTargetDocument.SourceLess ->
-                QueryCallableTargetWireDocument.SourceLess(
-                    QuerySourceLessCallableWireDocument(
-                        value.callable.compilerEvidence.toWireDocument(),
-                        value.callable.kind.toWireDocument(),
-                        value.callable.origin,
-                        value.callable.moduleKind,
-                        value.callable.moduleName.value,
-                    ),
-                    value.disposition,
-                )
+            is QueryCallableTargetDocument.SourceLess -> value.sourceLessWire()
         },
+        basis,
     )
 
 internal fun QueryCallableObservationWireDocument.toContract():
@@ -149,7 +151,8 @@ internal fun QueryCallableObservationWireDocument.toContract():
             lexicalOwner,
             body,
             target ->
-            QueryCallableObservationDocument.create(occurrence, lexicalOwner, body, target).toWireDocumentConversion()
+            QueryCallableObservationDocument.create(occurrence, lexicalOwner, body, target, basis)
+                .toWireDocumentConversion()
         }
         .flattenConverted()
 
@@ -176,31 +179,50 @@ private fun QueryCallableTargetWireDocument.toContract(): WireDocumentConversion
         is QueryCallableTargetWireDocument.UnavailableReference ->
             WireDocumentConversion.Converted(QueryCallableTargetDocument.UnavailableReference(cause))
         is QueryCallableTargetWireDocument.NamedReference ->
-            reference.toContract().mapConverted { QueryCallableTargetDocument.NamedReference(it) }
-        is QueryCallableTargetWireDocument.ParameterInvocation ->
-            combineConverted(parameter.toContract(), suppliers.toContract(), invocation.toContract()) {
-                parameter,
-                suppliers,
-                invocation ->
-                QueryCallableTargetDocument.ParameterInvocation(parameter, suppliers, invocation)
+            combineConverted(reference.toContract(), resultProjection.toContract()) { reference, projection ->
+                QueryCallableTargetDocument.NamedReference(reference, projection)
             }
-        is QueryCallableTargetWireDocument.SourceLess ->
+        is QueryCallableTargetWireDocument.ParameterInvocation ->
             combineConverted(
-                    callable.compilerEvidence.toContract(),
-                    ProtocolText.parse(callable.moduleName).toWireDocumentConversion(),
-                ) { evidence, name ->
-                    QuerySourceLessCallableDocument.create(
-                            evidence,
-                            callable.kind.toContract(),
-                            callable.origin,
-                            callable.moduleKind,
-                            name,
-                        )
-                        .toWireDocumentConversion()
-                }
-                .flattenConverted()
-                .mapConverted { QueryCallableTargetDocument.SourceLess(it, disposition) }
+                parameter.toContract(),
+                suppliers.toContract(),
+                invocation.toContract(),
+                resultProjection.toContract(),
+            ) { parameter, suppliers, invocation, projection ->
+                QueryCallableTargetDocument.ParameterInvocation(parameter, suppliers, invocation, projection)
+            }
+        is QueryCallableTargetWireDocument.SourceLess -> sourceLessContract()
     }
+
+private fun QueryCallableTargetDocument.SourceLess.sourceLessWire() =
+    QueryCallableTargetWireDocument.SourceLess(
+        QuerySourceLessCallableWireDocument(
+            this.callable.compilerEvidence.toWireDocument(),
+            this.callable.kind.toWireDocument(),
+            this.callable.origin,
+            this.callable.moduleKind,
+            this.callable.moduleName.value,
+        ),
+        this.disposition,
+    )
+
+private fun QueryCallableTargetWireDocument.SourceLess.sourceLessContract():
+    WireDocumentConversion<QueryCallableTargetDocument> =
+    combineConverted(
+            callable.compilerEvidence.toContract(),
+            ProtocolText.parse(callable.moduleName).toWireDocumentConversion(),
+        ) { evidence, name ->
+            QuerySourceLessCallableDocument.create(
+                    evidence,
+                    callable.kind.toContract(),
+                    callable.origin,
+                    callable.moduleKind,
+                    name,
+                )
+                .toWireDocumentConversion()
+        }
+        .flattenConverted()
+        .mapConverted { QueryCallableTargetDocument.SourceLess(it, disposition) }
 
 @Serializable
 internal data class QueryWalkCallableObservationWireDocument(
@@ -239,7 +261,14 @@ internal fun QueryWalkCallableObservationWireDocument.toContract():
             )
         }
         .flatMapConverted { value ->
-            if (value.observation.admitsDomain(effectiveDomain, domainFingerprint))
+            if (
+                value.observation.admitsQuestion(
+                    value.subject,
+                    RelationKindDocument.CALLEES,
+                    effectiveDomain,
+                    domainFingerprint,
+                )
+            )
                 WireDocumentConversion.Converted(value)
             else WireDocumentConversion.Rejected
         }

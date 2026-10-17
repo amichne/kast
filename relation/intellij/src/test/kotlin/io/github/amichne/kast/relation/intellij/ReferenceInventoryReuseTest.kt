@@ -38,6 +38,47 @@ class ReferenceInventoryReuseTest {
         )
 
     @Test
+    fun `callback evidence cannot enter REFERENCES or another evidence universe`() {
+        val reuse = IntellijReferenceInventoryReuse.Recent(ReadLimits.Default)
+        val callers =
+            RelationRequest.start(original.subject, RelationMeaning.Callers, original.budget, original.boundary)
+        val domain = io.github.amichne.kast.relation.contract.CallbackEvidenceDomain.forRequest(callers).fingerprint
+        val evidence = reuse.callbackEvidence(domain)
+        assertEquals(ReferenceInventoryRetention.RETAINED, evidence.remember(callers, state))
+        assertInstanceOf(
+            ReferenceInventoryLookup.Found::class.java,
+            evidence.find(callers, IntellijRelationCollector(callers, { 0L })),
+        )
+        assertEquals(ReferenceInventoryLookup.Miss, reuse.find(original, IntellijRelationCollector(original, { 0L })))
+        assertEquals(ReferenceInventoryLookup.Miss, reuse.find(callers, IntellijRelationCollector(callers, { 0L })))
+        assertEquals(
+            ReferenceInventoryLookup.Miss,
+            evidence.find(original, IntellijRelationCollector(original, { 0L })),
+        )
+        val foreign = io.github.amichne.kast.relation.contract.RelationScopeFingerprint.parse("f".repeat(64)).refined()
+        assertEquals(
+            ReferenceInventoryLookup.Miss,
+            reuse.callbackEvidence(foreign).find(callers, IntellijRelationCollector(callers, { 0L })),
+        )
+        reuse.remember(original, state)
+        assertEquals(ReferenceInventoryLookup.Miss, evidence.find(callers, IntellijRelationCollector(callers, { 0L })))
+    }
+
+    @Test
+    fun `callback inventory views share the original slot and receiving byte grant`() {
+        val callers =
+            RelationRequest.start(original.subject, RelationMeaning.Callers, original.budget, original.boundary)
+        val domain = io.github.amichne.kast.relation.contract.CallbackEvidenceDomain.forRequest(callers).fingerprint
+        val small = ReadLimits.resolve(mapOf(ReadLimitParameter.QUERY_CHECKPOINT_BYTES.environmentKey to "1")).refined()
+        val bounded = IntellijReferenceInventoryReuse.Recent(small).callbackEvidence(domain)
+        assertEquals(ReferenceInventoryRetention.CAPACITY_EXCEEDED, bounded.remember(callers, state))
+        val reuse = IntellijReferenceInventoryReuse.Recent(ReadLimits.Default).callbackEvidence(domain)
+        assertEquals(ReferenceInventoryRetention.RETAINED, reuse.remember(callers, state))
+        val collector = IntellijRelationCollector(callers, { 0L }, limits = small)
+        assertEquals(ReferenceInventoryLookup.Unavailable, reuse.find(callers, collector))
+    }
+
+    @Test
     fun `references and callers share one prepared inventory but confirm independently`() {
         val reuse = IntellijReferenceInventoryReuse.Recent(ReadLimits.Default)
         val observation = Counts()

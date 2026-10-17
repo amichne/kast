@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:4ea9804d40eac2ee44a5b7a7592ceed12b9eeacc17aeb2cf00abadfe07d778b0",
+  "pageVersion": "sha256:61c1f7a1f3892a405e01831e7538f9d78a4ba709c19325ff964a1dcb58b5ae9b",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -76,7 +76,7 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:35a7245ec94fcdf69ff2df00da917d4d92ea15d2750156d6ddaad4a9f19815a3"
+          "version": "repo-file-v1:sha256:6577f7ea947fc7c1fa31ab5e4d490082a13a6a53e1654b0e7465952e716fb429"
         },
         {
           "resource": "repo://packaging/host-installation.py",
@@ -248,11 +248,11 @@
       "evidence": [
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:53f2705df0ee0365840f2691ceaae7878ce652d41013428d91d90a1713b2977e"
+          "version": "repo-file-v1:sha256:126f31c715881a1cfc91f229be70c920ee5afeee80b8d3c2937c77aeec6617fa"
         },
         {
           "resource": "repo://packaging/test-installer-entrypoint.py",
-          "version": "repo-file-v1:sha256:3d91d3518bccc10f0ac910c42cddb14f191d86a4950943401f7331f6631d20f2"
+          "version": "repo-file-v1:sha256:08ffb3ff790abc83aa7ab5408bb417b6150c434fcf434b5574b3acf28b8ca511"
         }
       ]
     },
@@ -294,29 +294,29 @@
     },
     {
       "id": "claim_447f107d597641368d051439eee9c019",
-      "statement": "Every PR runs product and portable checks and retains one complete versioned candidate; main reuses same-repository PR bytes only after successful producer admission and equality of the complete source trees.",
+      "statement": "The product CI lane retains one complete versioned candidate. Main reuses same-repository PR bytes only after successful producer admission and equality of complete source trees. Documentation-only validation needs no product candidate.",
       "evidence": [
         {
           "resource": "repo://.github/scripts/ci/required_checks.py",
-          "version": "repo-file-v1:sha256:17671041a287674f57740f9150e7bb5e0634cb143d6c46b5b57aa7e3890a5ba9"
+          "version": "repo-file-v1:sha256:6f31412efded5cec8244a5b81a6053f43258630e91226a56230818a27543e90e"
         },
         {
-          "resource": "repo://.github/scripts/release/build_candidate.py#L234-L268",
-          "version": "repo-lines-v1:sha256:a3f1a02609f0f5d8b745c4575d15e5f0581bb6c68d51d2b2e50a71585f40a137:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY5MGJiY2IwNjI5ODM4ZjEyOGM1NzViYWEzYjdkN2QzN2Q4MjZjNWI3Njg3MGQ2Yzk0YmU1ZjQ5NDkzNTUzODciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFjMWE4MjQyNmE4MTA5YzNjMzlkZDg2ZTMzNGViMmFkNTY0ZWFlMDlmNGNiYmIzMTg3MjhkMmQxM2ExMDUzZGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlmNDI0MzM4MTk4NmQwYmZhMzZkNGRhNjEyYzhmNTM4YjhiYjU0MGM1YjRhZTViYmNjZWZlNTRlNzNkZGM3OGMifQ"
+          "resource": "repo://.github/scripts/release/build_candidate.py#L267-L299",
+          "version": "repo-lines-v1:sha256:319d0398c0254f2e7abc30ef7d3d1de9369de0a4ff7d3afda83abe4aa3a81fdf:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY4YTNhMzUyYmNlZGZkMDJiMjk5NmZkM2IzMTFiMjJlOTA1NzBiYmIxZTk1MDhjZTViOGU5N2VlZDQwNzE0MzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI0ZDI0NTM4ZGIxZGE1NjBhMzdkMmFmZDhlODIwYWRjODY3N2Q3MGJhMTkyMzczZTdlNjMxNjkwMmI0MmY2Y2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUxMTEyNTY1NjQ2MTE3NzYzYmFkNzIzZmMyZWUyMTI0MGFkMGIzNGJhYTZiMzA4YTJhYzgwMmM5OTk1ODcxMmIifQ"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:b3c3975177f42b34626a4dfa0e8d2fb3f767f6e07469965a46a6fd093bf3c7d3"
+          "version": "repo-file-v1:sha256:ee55daa96e934ea126a402a3522adc4a3ecc8d3b992b04057ac215fcc5015efa"
         }
       ]
     },
     {
       "id": "claim_d407483e65e045288fecd3b152e7e6a3",
-      "statement": "Successful main CI automatically promotes retained candidate bytes to the developer channel without rebuilding; the publisher verifies producer and digest provenance, requires exact retries, and preserves latest when main has advanced.",
+      "statement": "Successful main product validation promotes retained candidate bytes to the developer channel without another build. The publisher examines producer and digest provenance, admits exact retries, and preserves latest when main advances. Documentation-only validation completes without product publication.",
       "evidence": [
         {
-          "resource": "repo://.github/scripts/release/build_candidate.py#L314-L367",
-          "version": "repo-lines-v1:sha256:6d70a793aae1b804edc31547dab228414aabdbe62a69a01068ac78090f0fdf5e:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY4YWJlZjE4NjBlZWMyMzAzYTAyODg3NzNiZmU5ZGY1MDg3ZGI2MDRmZTJiOTAwZjBkOGU3MjJhYTBhMjFlOTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzNDBlZmU5ZjQyNTdjNzNjZWVkM2NkNTM0NGUyYTgzMTEwY2JhNGZiZTY2ZWZlNzUyNTk3MWZmMDg2ODhjOTUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM5MzY5YmFlMjkzYzNiMGY2YWYzODE4YzJkMzhkMTYwNzc5NTJmN2I2YWQ0MDRhZDQ1ZDFlMzU5NzQ1YmI1YzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRiYTA2MGU2ZDNiMWVjMGU5YWVlZTBiODIzYWU2ZTQ3OWFiNDlmNzBkZTJmMTQ5ZmFlZTAyOWYyZjlmZmQ2ZDYifQ"
+          "resource": "repo://.github/scripts/release/build_candidate.py#L352-L416",
+          "version": "repo-lines-v1:sha256:d4ce5400a6fa8aee476b33a488678d7088541ea64e6ef7d4978ffa5229c5b026:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxNzcxNjJjYTJhMjhhOTA1OGI1ZDhlZjc1YWUxZWFjNDJlZjQ4NTJiZmJmZjA1MTg1NGMyYjgwZWQwZTM2YzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE1YTYxNzMxZGQ2MDcwMjhjZWVjZjZhYTQ1NmQwZDY4N2Y3MTM2N2RjMjRmODQyNWY0YmQ3NTRkYzFjMGE4YTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg4MTY4M2Y0YmVhMjQxYjM1NmRlNzg5NmJiZGMxOTU2ZTFjNDY2NzNkYzUwOWQxYTgwNmU1YjUxZjkyZDIxMDAifQ"
         },
         {
           "resource": "repo://.github/scripts/release/publish-developer.sh",
@@ -324,7 +324,7 @@
         },
         {
           "resource": "repo://.github/workflows/developer-release.yml",
-          "version": "repo-file-v1:sha256:48e57cda0de68acb42da668f96a0e0c4f1879cb55d44cb54cfbe1ebf5a651dee"
+          "version": "repo-file-v1:sha256:2b5a1099e58dfefc1f907439077f028ccddb48435dfe1bb923612c09b10c93e6"
         }
       ]
     },
@@ -337,8 +337,8 @@
           "version": "repo-file-v1:sha256:0a03e166df92557b9de822f5a682334b5bbec1d1582aba64314f694ddf96fe93"
         },
         {
-          "resource": "repo://.github/workflows/ci.yml#L104-L155",
-          "version": "repo-lines-v1:sha256:5086143c149060be774f7a1d1334d3ba851d514644f73648165291f253bb743a:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1OTRjZmRjNjRjMzAyZDQ0MDE1NDE5ZjdiMDJiYmJkYjMxNDk2OTJlNWY1OTBjN2Q3MDU3ZjYzYWMyZjdkOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OGJmMzg0ZmQyMGNkZjkwZGQ5OTVhZWZkZjI2NWRjNDNjZWViY2Q0NjdjYzU5NTlkZDdkMjMxNTkxMTE3NDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRlNGNiZGE4MTE5YjBiNmVmMTI3ZGVhZjlkNjEyODJlODQ0MjEwZTk1MzY1OThjZDc0Y2IwOGJjNTcyNGZmYmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIyZmUzYjc4Y2ZlOWMwYmUzMjFhODNmNzc2MjUwMDdjODJjOTgyNDRhOThkZDNhZGJlYzhlZGE3NTU0ZmM2OTkifQ"
+          "resource": "repo://.github/workflows/ci.yml#L107-L160",
+          "version": "repo-lines-v1:sha256:8221bdffc600c9e78e22a4d63f330dacb29767b84b0af658e423ce89bc892fee:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1OTRjZmRjNjRjMzAyZDQ0MDE1NDE5ZjdiMDJiYmJkYjMxNDk2OTJlNWY1OTBjN2Q3MDU3ZjYzYWMyZjdkOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OGJmMzg0ZmQyMGNkZjkwZGQ5OTVhZWZkZjI2NWRjNDNjZWViY2Q0NjdjYzU5NTlkZDdkMjMxNTkxMTE3NDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRlNGNiZGE4MTE5YjBiNmVmMTI3ZGVhZjlkNjEyODJlODQ0MjEwZTk1MzY1OThjZDc0Y2IwOGJjNTcyNGZmYmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIyZmUzYjc4Y2ZlOWMwYmUzMjFhODNmNzc2MjUwMDdjODJjOTgyNDRhOThkZDNhZGJlYzhlZGE3NTU0ZmM2OTkifQ"
         },
         {
           "resource": "repo://distribution/cli/build.gradle.kts#L60-L69",
@@ -351,12 +351,12 @@
       "statement": "Candidate versions use the CI run number within the installer's 32-bit semantic-version range, while the identity record retains the full run ID and producer attempt.",
       "evidence": [
         {
-          "resource": "repo://.github/scripts/release/build_candidate.py#L121-L163",
+          "resource": "repo://.github/scripts/release/build_candidate.py#L133-L175",
           "version": "repo-lines-v1:sha256:f75d6ff2626eba0dd5d9846c8dfa19e66d0ec80d6e0dc24a341feea8dd15e776:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4ZTg3Nzg1MTlkZTdlMjFjZWFiYzViMjI2ZjMwMDM2NzA3YTNjMDk2ODg4MGE5MjA5MTk0NjVlZDA4MjQ1MzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNjMzA3NGUxNWY1YjM5ZTQ4ZGQxMTVmNjUxN2Q2ZWUzMjY5ZmQxYTllYjA1ZDQxOWRmNmMzNzY5YjI4ZTcwMGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczN2RlNmEwOTU3ZTNmODJkZGUyZTg4YWJlYjc4OWE3NmE2ZWU5MGRkYzFlODFkYWE4MTE4ZDEzMTc1NDU5NDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYzMmNlMjUxNmY2YTkwODZkMjRjZGU0YzY0Yjg4NTBiMzY4MTIyMjc5YzE2OGU3ZDk3Y2ZkM2JjODRjNjk2ZTcifQ"
         },
         {
-          "resource": "repo://.github/workflows/ci.yml#L162-L177",
-          "version": "repo-lines-v1:sha256:dfe9abba222720d275953e15b9941838b072100f1c4ba6134eb91f1e18549c26:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkxNzllOTFhYTVhNWNhNmQzODZkMWYyODY2MDY3MTE5Y2MyOWY1NzkxMDRlZmQ1OTEyODZlZmNhOGZjNWNiOTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiMzJiOTg3MjYzZGYyMTYzZTcyNmQ0OGI5MmY2Zjk2NTE0OGNiNmI2ZDI4MzE3OTE1MTRjOTM5ZjgzN2ExNDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2ZGM0MWU2YzIzZjk2ODY0NDY4MWFmYzE0MTA2MjU2Mzk5NmMwY2MyN2UxMWM2MWY3ZTA4NWE5OWYzOTM4NjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNjNTkxMGRmYzViM2FjNjAwODQ1YTdkMTVmOTRmNWRjZjc2YzY1ZDA5NDNiMWRmZTBkYmQ2NjhjZDlhM2IxMTgifQ"
+          "resource": "repo://.github/workflows/ci.yml#L167-L182",
+          "version": "repo-lines-v1:sha256:2d0f8a7fd33a835be9ddc72604d3abbf02eebc63141cd05c98ee7fe302e929e8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkxNzllOTFhYTVhNWNhNmQzODZkMWYyODY2MDY3MTE5Y2MyOWY1NzkxMDRlZmQ1OTEyODZlZmNhOGZjNWNiOTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiMzJiOTg3MjYzZGYyMTYzZTcyNmQ0OGI5MmY2Zjk2NTE0OGNiNmI2ZDI4MzE3OTE1MTRjOTM5ZjgzN2ExNDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2ZGM0MWU2YzIzZjk2ODY0NDY4MWFmYzE0MTA2MjU2Mzk5NmMwY2MyN2UxMWM2MWY3ZTA4NWE5OWYzOTM4NjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNjNTkxMGRmYzViM2FjNjAwODQ1YTdkMTVmOTRmNWRjZjc2YzY1ZDA5NDNiMWRmZTBkYmQ2NjhjZDlhM2IxMTgifQ"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt#L33-L50",
@@ -383,7 +383,7 @@
           "version": "repo-lines-v1:sha256:a2abdcf6f95bfacb4d7bdec3087b6747dd0c1629a376c46de164697829aa9513:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjNTg1ZjgxMzFkNTg5MGJiMGUzMTNmZDM0YzhlMzViNmU0OWJkMDYzYWNlNmFhMjE5ZGMwYjliM2QzZjI5MmVjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI1MjJjYjVkYjA2NTY4OWFkOGJlNmVlYWY4ZDVjYmY0MjRiN2VlZGMzODY1YTUyYTIwMDVlYTg4YWM4MmViZDFkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJmMjQ4MDUxODRmODZkNGVlZDExOWVkZjNiMTBlZDc0YTNhOGRhMWVhOTg4MzUwMzUwNGFhODk0Zjk2M2I4Y2RhIn0"
         },
         {
-          "resource": "repo://packaging/test-installer-entrypoint.py#L606-L663",
+          "resource": "repo://packaging/test-installer-entrypoint.py#L676-L733",
           "version": "repo-lines-v1:sha256:72ed803b67a7c29c67caad1d8974e873e2c70a76e549ffb5072c33f616d412a9:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxOWUzNzA5ZTg1MTg4MTE5MDBkODEzNWI4MTY1ZjI1MmU4NDUwMGQ2ZmQyYTcxZDRhNGI2ODU4ZGQ3ZDA3OTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhZjM2YzVhNTg1ZGM4YWUwNTlmM2JmNDlkM2JlY2YxNzliYmI4MTU0MDI5ZjQwNWNiMGZiM2FhZDkzYjEzZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZhMWI3NGViNzI0ZjA2YzlhNDRjMTFkZTJiYmUzODYyMzdiMzIxZWJjYmNlMjFlMGJiOGYyMDZhMzk1MDEzZjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjMjgwNDc1ODQzYTA3MTc2NDlkNDdhMzVlNDM1Yzk0OTFiNDI5YzE0ZGQ0N2ExMTQ1ODE1MWNlOTVlMWQ2MTUifQ"
         }
       ]
@@ -409,6 +409,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-16T07:07:29.171Z"
+    "at": "2026-10-16T21:29:39.165Z"
   }
 }

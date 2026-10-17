@@ -32,6 +32,7 @@ class QuerySelectedCallbackWireTest {
         assertEquals(1, selected.formals.size)
         assertEquals(0, selected.supplies.single().invocations.size)
         assertEquals(WireDocumentConversion.Converted(suppliedObservation()), wire.toContract())
+        assertEquals(WireDocumentConversion.Rejected, wire.copy(basis = foreignBasis()).toContract())
         for (invalid in
             listOf(
                 selected.copy(supplies = emptyList()),
@@ -55,6 +56,7 @@ class QuerySelectedCallbackWireTest {
         assertEquals(setOf("type", "invocations"), target.keys)
         assertEquals(JsonPrimitive("DIRECT_INVOCATIONS"), target.getValue("type"))
         assertEquals(WireDocumentConversion.Converted(value), wire.toContract())
+        assertEquals(WireDocumentConversion.Rejected, wire.copy(basis = foreignBasis()).toContract())
         val selected = wire.target as QueryCallableTargetWireDocument.DirectInvocations
         assertEquals(
             WireDocumentConversion.Rejected,
@@ -120,6 +122,7 @@ class QuerySelectedCallbackWireTest {
                 callback.lexicalOwner,
                 binding.invocationOwner,
                 QueryCallableTargetDocument.CallbackSupplies(bounded(listOf(supplied)), bounded(listOf(formal))),
+                flow.basis,
             ) as Refinement.Refined)
             .value
     }
@@ -146,9 +149,17 @@ class QuerySelectedCallbackWireTest {
                 QueryCallableTargetDocument.DirectInvocations(
                     bounded(listOf(QueryImmutableCallbackUseDocument.Direct(source, binding)))
                 ),
+                flow.basis,
             ) as Refinement.Refined)
             .value
     }
+
+    private fun foreignBasis() =
+        io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument.Published(
+            QueryCallbackWireFixture().text("/workspace"),
+            (io.github.amichne.kast.protocol.contract.ImpactEvidenceRevisionDocument.parse(2L) as Refinement.Refined)
+                .value,
+        )
 
     private fun range(start: Int, end: Int) =
         (SourceRangeDocument.create(offset(start), offset(end)) as Refinement.Refined).value

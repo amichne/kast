@@ -120,6 +120,8 @@ internal data class QueryCallbackObservationWireDocument(
     @SerialName("requested_domain") val requestedDomain: QueryRelationRequestedDomainDocument,
     @SerialName("effective_domain") val effectiveDomain: QueryRelationDomainDocument,
     @SerialName("domain_fingerprint") val domainFingerprint: QueryRelationDomainFingerprint,
+    @SerialName("result_projection") val resultProjection: QueryCallbackResultProjectionWireDocument,
+    val basis: ImpactSemanticBasisDocument,
 )
 
 @Serializable
@@ -197,6 +199,8 @@ internal fun QueryCallbackObservationDocument.toWireDocument() =
         requestedDomain,
         effectiveDomain,
         domainFingerprint,
+        resultProjection.resultProjectionWire(),
+        basis,
     )
 
 internal fun QueryWalkCallbackObservationDocument.toWireDocument() =
@@ -297,7 +301,10 @@ internal fun QueryCallbackObservationWireDocument.toContract():
                                     QueryCallbackNamedPolicyDocument.Excluded(policy.reason, it)
                                 }
                         }
-                    combineConverted(policy, flow.toContract()) { policy, flow ->
+                    combineConverted(policy, flow.toContract(), resultProjection.toContract()) {
+                            policy,
+                            flow,
+                            resultProjection ->
                             QueryCallbackObservationDocument.create(
                                     occurrence,
                                     target,
@@ -309,6 +316,8 @@ internal fun QueryCallbackObservationWireDocument.toContract():
                                     requestedDomain,
                                     effectiveDomain,
                                     domainFingerprint,
+                                    resultProjection,
+                                    basis,
                                 )
                                 .toWireDocumentConversion()
                         }
@@ -321,12 +330,16 @@ internal fun QueryCallbackObservationWireDocument.toContract():
 internal fun QueryWalkCallbackObservationWireDocument.toContract():
     WireDocumentConversion<QueryWalkCallbackObservationDocument> =
     combineConverted(
-        ProtocolText.parse(subject.token).toWireDocumentConversion(),
-        TraversalDepthDocument.parse(depth).toWireDocumentConversion(),
-        observation.toContract(),
-    ) { token, depth, observation ->
-        QueryWalkCallbackObservationDocument(QueryReferenceDocument.ExactSymbol(token), depth, observation)
-    }
+            ProtocolText.parse(subject.token).toWireDocumentConversion(),
+            TraversalDepthDocument.parse(depth).toWireDocumentConversion(),
+            observation.toContract(),
+        ) { token, depth, observation ->
+            QueryWalkCallbackObservationDocument(QueryReferenceDocument.ExactSymbol(token), depth, observation)
+        }
+        .flatMapConverted { value ->
+            if (value.observation.resultProjection.admitsSubject(value.subject)) WireDocumentConversion.Converted(value)
+            else WireDocumentConversion.Rejected
+        }
 
 internal fun QueryCallbackInvocationWireDocument.toContract(): WireDocumentConversion<QueryCallbackInvocationDocument> =
     combineConverted(occurrence.toContract(), owner.toContract()) { occurrence, owner ->
