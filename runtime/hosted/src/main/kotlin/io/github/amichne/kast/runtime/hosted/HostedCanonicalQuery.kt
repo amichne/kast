@@ -85,7 +85,7 @@ private suspend fun evaluateHostedQuery(
                     request.request,
                     context.authority,
                     services.budgets.hostedQueryBudget,
-                    hostedSymbolInvocationPolicy(context, services.budgets, callerContext),
+                    hostedSymbolInvocationPolicy(context, callerContext),
                 )
         },
         fit = { outcome -> fitHostedQueryOutcome(outcome, context, publication) },
