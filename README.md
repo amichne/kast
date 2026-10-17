@@ -5,6 +5,8 @@
 Kast connects your agent to IntelliJ IDEA so it can find exact declarations,
 trace their connections, inspect diagnostics, and make targeted source changes.
 
+https://github.com/user-attachments/assets/be6b0e72-4da9-45ce-8311-260da3e42097
+
 Watch a 54-second native Pi + Kast demo of declaration lookup, callers, a bounded
 trace, source, and diagnostics. The recording uses Kast `0.0.3612` in a synthetic
 workspace, with shortened pauses. Results are static compiler evidence.
