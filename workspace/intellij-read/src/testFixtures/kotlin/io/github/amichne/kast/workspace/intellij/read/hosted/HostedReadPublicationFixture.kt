@@ -11,7 +11,7 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijSemanticSourceFile
 import java.nio.file.Path
 
 /** Real detached context and publication owner; fixed original epoch, no platform access or native claim. */
-class HostedReadPublicationFixture {
+class HostedReadPublicationFixture(limits: ReadLimits = ReadLimits.Default) {
     private val owner = HostedReadPublicationOwner()
     private val root = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined()
     private val authority = LiveReadAuthorityFixture.create(root)
@@ -24,7 +24,8 @@ class HostedReadPublicationFixture {
             authority,
             model,
             IntellijSemanticSourceFileAdmission { _, _ -> error("Publication cannot inspect native source files") },
-            timeAllowance = HostedSemanticTimeAllowance.admit(ReadLimits.Default, 1_000).refined(),
+            limits = limits,
+            timeAllowance = HostedSemanticTimeAllowance.admit(limits, 1_000).refined(),
             freshness = HostedReadFreshness(::current, { current() }),
             publicationEffects = owner,
         )

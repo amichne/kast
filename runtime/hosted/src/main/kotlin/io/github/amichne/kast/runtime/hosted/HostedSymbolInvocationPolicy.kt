@@ -1,5 +1,6 @@
 package io.github.amichne.kast.runtime.hosted
 
+import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
@@ -18,7 +19,6 @@ private const val SYMBOL_PREVIEW_BYTES = 32_768L
 /** One admitted read allowance and its caller's cancellation capability govern internal pages. */
 internal fun hostedSymbolInvocationPolicy(
     context: HostedSemanticReadContext,
-    budgets: HostedSemanticBudgets,
     caller: CoroutineContext,
 ): QueryInvocationPolicy =
     QueryInvocationPolicy(
@@ -30,7 +30,10 @@ internal fun hostedSymbolInvocationPolicy(
             provenInvocationBound(
                 QueryByteLimit.parse(minOf(SYMBOL_PREVIEW_BYTES, context.executionBudget.returnedBytes.effective.value))
             ),
-        retainedBytes = budgets.hostedQueryBudget.checkpointBytes,
+        retainedBytes =
+            provenInvocationBound(
+                QueryByteLimit.parse(context.limits[ReadLimitParameter.QUERY_CONTINUATION_BYTES].value.toLong())
+            ),
         previewBytes = CanonicalQueryCliDocuments::previewBytes,
         cancelled = { !caller.isActive },
         inlinePresentation = { outcome ->
