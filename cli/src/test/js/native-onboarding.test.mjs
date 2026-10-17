@@ -8,7 +8,7 @@ import { test } from 'node:test';
 const source = readFileSync(new URL('../../../../pi/mcp-extension.ts', import.meta.url), 'utf8');
 const resources = ['onboarding.md', 'query-schema.json', 'query-examples.json'];
 
-async function fixture(t) {
+async function fixture(t, brief = 'Kast shared context\n') {
   const home = realpathSync(mkdtempSync(join(tmpdir(), 'kast pi $ literal ')));
   t.after(() => rmSync(home, { recursive: true, force: true }));
   const installation = join(home, '.local/share/kast/installation');
@@ -16,7 +16,7 @@ async function fixture(t) {
   const workspace = join(home, 'workspace $ literal');
   mkdirSync(references, { recursive: true });
   mkdirSync(workspace);
-  writeFileSync(join(references, 'onboarding.md'), 'Kast shared context\n');
+  writeFileSync(join(references, 'onboarding.md'), brief);
   writeFileSync(join(references, 'query-schema.json'), '{}\n');
   writeFileSync(join(references, 'query-examples.json'), '[]\n');
 
@@ -34,6 +34,31 @@ async function fixture(t) {
   const ctx = { cwd: workspace, ui: { notify: (...args) => notifications.push(args) } };
   return { handlers, servers, notifications, ctx, references, workspace, installation };
 }
+
+test('Pi delivers the generated semantic routing policy without probing readiness', async t => {
+  const brief = readFileSync(new URL('../../../../agent-tools/references/onboarding.md', import.meta.url), 'utf8');
+  const f = await fixture(t, brief);
+  await f.handlers.get('session_start')({}, f.ctx);
+  const prompt = f.handlers.get('before_agent_start')({ systemPrompt: 'base' }).systemPrompt;
+  assert.ok(prompt.startsWith('base\n\n' + brief.trimEnd()));
+  // These are instruction-delivery checks, not a simulated agent or semantic oracle.
+  for (const clause of [
+    'first semantic step when its tools are reachable and support the task',
+    'tasks without a Kotlin semantic question need no Kast call',
+    'If the needed tool schema is already available, use it directly',
+    'discover the needed Kast tool once',
+    '`codemode` exposure uses `searchTools` and `describeTool`',
+    'deferred exposure uses `tool_search`',
+    'do not add a probe call',
+    'workspace is not ready, or the requested scope is unsupported',
+    'continue with ordinary reading and state the limitation',
+    'Do not repeat discovery or retry the same failed request without new evidence',
+    'Preserve incomplete results and scope qualifications',
+    'For direct callers or references, use the matching relation',
+  ]) assert.ok(prompt.includes(clause), clause);
+  assert.ok(Buffer.byteLength(prompt.slice('base\n\n'.length) + '\n') <= 8192);
+  assert.deepEqual(f.notifications, []);
+});
 
 function assertContinuesWithoutContext(f, reason) {
   assert.equal(f.servers.length, 1, 'Native MCP stays registered');
