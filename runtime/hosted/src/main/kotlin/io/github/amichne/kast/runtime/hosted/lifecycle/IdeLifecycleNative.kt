@@ -1,11 +1,13 @@
 package io.github.amichne.kast.runtime.hosted.lifecycle
 
+import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.ide.trustedProjects.TrustedProjects
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
+import com.intellij.openapi.project.ex.ProjectManagerEx
 import com.intellij.openapi.wm.WindowManager
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCommand
@@ -43,28 +45,13 @@ internal class IdeLifecycleNative(
 ) {
     private val projects = java.util.concurrent.ConcurrentHashMap<UUID, Project>()
 
-    fun canonicalRoot(raw: String): Refinement<CanonicalWorkspaceRoot, IdeLifecycleFailure> =
-        try {
-            val path = Path.of(raw)
-            if (!path.isAbsolute || !Files.isDirectory(path)) Refinement.Rejected(IdeLifecycleFailure.INVALID_REQUEST)
-            else
-                when (val root = CanonicalWorkspaceRoot.fromCanonicalPath(path.toRealPath())) {
-                    is Refinement.Refined -> root
-                    is Refinement.Rejected -> Refinement.Rejected(IdeLifecycleFailure.INVALID_REQUEST)
-                }
-        } catch (_: java.io.IOException) {
-            Refinement.Rejected(IdeLifecycleFailure.INVALID_REQUEST)
-        } catch (_: IllegalArgumentException) {
-            Refinement.Rejected(IdeLifecycleFailure.INVALID_REQUEST)
-        }
-
     fun observeProjects() {
         ProjectManager.getInstance()
             .openProjects
             .filterNot { it.isDisposed }
             .forEach { project ->
                 val root =
-                    when (val admitted = canonicalRoot(project.basePath ?: return@forEach)) {
+                    when (val admitted = canonicalLifecycleRoot(project.basePath ?: return@forEach)) {
                         is Refinement.Refined -> admitted.value
                         is Refinement.Rejected -> return@forEach
                     }
@@ -102,11 +89,19 @@ internal class IdeLifecycleNative(
     suspend fun <Value> withRegisteredPeer(
         expected: ImpactSemanticBasisDocument.Live,
         action: suspend (Project, CanonicalWorkspaceRoot) -> HostedSemanticReadResult<Value>,
-    ): HostedSemanticReadResult<Value> = readRegisteredPeer(projects, expected, ::canonicalRoot, action)
+    ): HostedSemanticReadResult<Value> = readRegisteredPeer(projects, expected, ::canonicalLifecycleRoot, action)
 
-    suspend fun execute(command: IdeLifecycleCommand): IdeLifecycleResult =
+    suspend fun execute(command: IdeLifecycleCommand, admittedAtNanos: Long = System.nanoTime()): IdeLifecycleResult =
         when (command) {
-            is IdeLifecycleCommand.Open -> prepare(command.requestId, command.preparationMillis) { open(command, it) }
+            is IdeLifecycleCommand.Open ->
+                prepareNativeWorkspace(
+                    command.requestId,
+                    command.preparationMillis,
+                    admittedAtNanos,
+                    observePreparation,
+                ) {
+                    open(command, it)
+                }
             is IdeLifecycleCommand.Present ->
                 withTarget(command.target) { project ->
                     withContext(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) {
@@ -120,32 +115,22 @@ internal class IdeLifecycleNative(
                     }
                 }
             is IdeLifecycleCommand.Sync ->
-                prepare(
+                prepareNativeWorkspace(
                     command.requestId,
                     io.github.amichne.kast.protocol.contract.WorkspacePreparationBudget.limit.value,
+                    admittedAtNanos,
+                    observePreparation,
                 ) { operation ->
                     withTarget(command.target) { sync(it, command.target, operation, command.effect) }
                 }
             is IdeLifecycleCommand.ConfigureSync ->
                 withTarget(command.target) { project ->
                     withContext(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) {
-                        configureSync(project, command.target, command.rule)
+                        configureLifecycleRefresh(project, command.target, command.rule)
                     }
                 }
             is IdeLifecycleCommand.Close -> withTarget(command.target) { close(it, command.target) }
             else -> blocked(IdeLifecycleFailure.INVALID_REQUEST)
-        }
-
-    private suspend fun prepare(
-        requestId: String,
-        allowanceMillis: Long,
-        action: suspend (NativeWorkspacePreparation) -> IdeLifecycleResult,
-    ): IdeLifecycleResult =
-        when (
-            val admitted = NativeWorkspacePreparation.admit(requestId, allowanceMillis, observe = observePreparation)
-        ) {
-            is Refinement.Rejected -> blocked(admitted.failure)
-            is Refinement.Refined -> admitted.value.finish(action(admitted.value))
         }
 
     private suspend fun open(
@@ -153,7 +138,7 @@ internal class IdeLifecycleNative(
         operation: NativeWorkspacePreparation,
     ): IdeLifecycleResult {
         val root =
-            when (val admitted = canonicalRoot(command.root)) {
+            when (val admitted = canonicalLifecycleRoot(command.root)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return blocked(admitted.failure)
             }
@@ -194,7 +179,7 @@ internal class IdeLifecycleNative(
         val importScopes = mutableListOf<InitialImportScope>()
         try {
             if (operation.remaining() is Refinement.Rejected) return blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
-            val project = openNativeWorkspace(root, importScopes) ?: return blocked(IdeLifecycleFailure.OPEN_FAILED)
+            val project = openNative(root, importScopes) ?: return blocked(IdeLifecycleFailure.OPEN_FAILED)
             val target = observe(project, root, IdeProjectOwnership.MANAGED)
             val endpoint = project.getService(HostedEndpointService::class.java)
             if (
@@ -223,8 +208,31 @@ internal class IdeLifecycleNative(
 
     private fun existingProjects(root: CanonicalWorkspaceRoot): List<Project> =
         ProjectManager.getInstance().openProjects.filter {
-            !it.isDisposed && it.basePath?.let(::canonicalRoot) == Refinement.Refined(root)
+            !it.isDisposed && it.basePath?.let(::canonicalLifecycleRoot) == Refinement.Refined(root)
         }
+
+    private suspend fun openNative(
+        root: CanonicalWorkspaceRoot,
+        importScopes: MutableList<InitialImportScope>,
+    ): Project? =
+        ProjectManagerEx.getInstanceEx()
+            .openProjectAsync(
+                Path.of(root.value),
+                OpenProjectTask {
+                    forceOpenInNewFrame = true
+                    forceReuseFrame = false
+                    projectToClose = null
+                    showWelcomeScreen = false
+                    runConfigurators = false
+                    runConversionBeforeOpen = false
+                    isNewProject = !Files.exists(Path.of(root.value).resolve(".idea"))
+                    beforeOpen = { opening ->
+                        importScopes.add(InitialImportScope(opening))
+                        true
+                    }
+                    useDefaultProjectAsTemplate = false
+                },
+            )
 
     private suspend fun awaitReady(
         project: Project,
@@ -233,7 +241,7 @@ internal class IdeLifecycleNative(
     ): IdeLifecycleResult {
         if (!TrustedProjects.isProjectTrusted(project)) return blocked(IdeLifecycleFailure.TRUST_REQUIRED)
         val root =
-            when (val admitted = canonicalRoot(target.root)) {
+            when (val admitted = canonicalLifecycleRoot(target.root)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return blocked(admitted.failure)
             }
@@ -279,24 +287,6 @@ internal class IdeLifecycleNative(
         )
     }
 
-    private fun configureSync(
-        project: Project,
-        target: IdeProjectTarget,
-        rule: io.github.amichne.kast.protocol.contract.WorkspaceRefreshRule,
-    ): IdeLifecycleResult {
-        if (!TrustedProjects.isProjectTrusted(project)) return blocked(IdeLifecycleFailure.TRUST_REQUIRED)
-        return when (
-            val configured =
-                project
-                    .getService(HostedEndpointService::class.java)
-                    .lifecycleRefresh(WorkspaceRefreshCommand.Configure(rule))
-        ) {
-            is WorkspaceRefreshResult.Configured -> IdeLifecycleResult.Configured(target, configured.rule)
-            is WorkspaceRefreshResult.Rejected -> blocked(configured.reason.lifecycleFailure())
-            else -> blocked(IdeLifecycleFailure.INVALID_REQUEST)
-        }
-    }
-
     private suspend fun awaitRefresh(
         endpoint: HostedEndpointService,
         target: IdeProjectTarget,
@@ -335,7 +325,7 @@ internal class IdeLifecycleNative(
 
     private suspend fun close(project: Project, target: IdeProjectTarget): IdeLifecycleResult {
         val root =
-            when (val admitted = canonicalRoot(target.root)) {
+            when (val admitted = canonicalLifecycleRoot(target.root)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return blocked(IdeLifecycleFailure.STALE_PROJECT)
             }
@@ -386,7 +376,10 @@ internal class IdeLifecycleNative(
             }
         val project = projects[id] ?: return blocked(IdeLifecycleFailure.STALE_PROJECT)
         val root =
-            when (val admitted = canonicalRoot(project.basePath ?: return blocked(IdeLifecycleFailure.STALE_PROJECT))) {
+            when (
+                val admitted =
+                    canonicalLifecycleRoot(project.basePath ?: return blocked(IdeLifecycleFailure.STALE_PROJECT))
+            ) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return blocked(IdeLifecycleFailure.STALE_PROJECT)
             }

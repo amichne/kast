@@ -73,6 +73,7 @@ private constructor(
             allowanceMillis: Long,
             nanoTime: () -> Long = System::nanoTime,
             observe: (NativePreparationObservation) -> Unit = {},
+            admittedAtNanos: Long = nanoTime(),
         ): Refinement<NativeWorkspacePreparation, IdeLifecycleFailure> =
             when (
                 val limit = ElapsedTimeLimitMillis.parse(minOf(allowanceMillis, WorkspacePreparationBudget.limit.value))
@@ -82,7 +83,7 @@ private constructor(
                     Refinement.Refined(
                         NativeWorkspacePreparation(
                                 requestId,
-                                WorkspacePreparationDeadline.start(limit.value, nanoTime()),
+                                WorkspacePreparationDeadline.start(limit.value, admittedAtNanos),
                                 nanoTime,
                                 observe,
                             )
@@ -91,3 +92,27 @@ private constructor(
             }
     }
 }
+
+/** The application captures admission before dispatch; an expired queued operation cannot start native effects. */
+internal suspend fun prepareNativeWorkspace(
+    requestId: String,
+    allowanceMillis: Long,
+    admittedAtNanos: Long,
+    observe: (NativePreparationObservation) -> Unit = {},
+    nanoTime: () -> Long = System::nanoTime,
+    action: suspend (NativeWorkspacePreparation) -> IdeLifecycleResult,
+): IdeLifecycleResult =
+    when (
+        val admitted = NativeWorkspacePreparation.admit(requestId, allowanceMillis, nanoTime, observe, admittedAtNanos)
+    ) {
+        is Refinement.Rejected -> IdeLifecycleResult.Blocked(admitted.failure)
+        is Refinement.Refined -> {
+            val operation = admitted.value
+            val result =
+                when (operation.remaining()) {
+                    is Refinement.Rejected -> IdeLifecycleResult.Blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
+                    is Refinement.Refined -> action(operation)
+                }
+            operation.finish(result)
+        }
+    }
