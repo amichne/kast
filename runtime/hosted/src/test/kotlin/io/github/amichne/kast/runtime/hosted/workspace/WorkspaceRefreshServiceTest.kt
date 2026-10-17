@@ -8,6 +8,21 @@ import org.junit.jupiter.api.Test
 
 class WorkspaceRefreshServiceTest {
     @Test
+    fun `mandatory import remains pending past two minutes until native settlement and fresh readiness`() {
+        val port = WorkspaceRefreshTestPort()
+        var now = 0L
+        val service = WorkspaceRefreshService(port, { now })
+        service.submit(id(1), WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD)
+        now = 173_200_000_000L
+        assertEquals(WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.EFFECT), service.status(id(1)))
+        port.finish(WorkspaceRefreshEffectResult.SUCCEEDED)
+        assertEquals(WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.ADMISSION), service.status(id(1)))
+        port.ready = true
+        assertEquals(WorkspaceRefreshStatus.Complete, service.status(id(1)))
+        assertEquals(1, port.effects.size)
+    }
+
+    @Test
     fun `production demand joins unresolved equal epoch attempt after waiter timeout and eviction`() {
         for (capacity in listOf(1, 4)) {
             val port = WorkspaceRefreshTestPort().apply { ready = true }
