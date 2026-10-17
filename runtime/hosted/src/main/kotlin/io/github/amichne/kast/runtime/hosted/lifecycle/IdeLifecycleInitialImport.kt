@@ -2,6 +2,7 @@ package io.github.amichne.kast.runtime.hosted.lifecycle
 
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshCommand
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure
@@ -24,7 +25,7 @@ internal suspend fun requestInitialWorkspaceImport(
     project: Project,
     endpoint: HostedEndpointService,
     root: CanonicalWorkspaceRoot,
-    requestId: String,
+    operation: NativeWorkspacePreparation,
 ): WorkspaceRefreshResult {
     val selection =
         withContext(Dispatchers.EDT) {
@@ -37,11 +38,21 @@ internal suspend fun requestInitialWorkspaceImport(
         }
     return observeWorkspaceRefresh {
         when (selection) {
-            InitialImportSelection.INITIAL_LINK -> endpoint.lifecycleInitialImport(requestId)
+            InitialImportSelection.INITIAL_LINK ->
+                endpoint.lifecycleInitialImport(operation.requestId, operation.deadline)
             InitialImportSelection.EXISTING_LINK ->
-                endpoint.lifecycleRefresh(
-                    WorkspaceRefreshCommand.Request(requestId, WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD)
-                )
+                when (val remaining = operation.remaining()) {
+                    is Refinement.Rejected ->
+                        WorkspaceRefreshResult.Failed(operation.requestId, WorkspaceRefreshFailure.DEADLINE_EXCEEDED)
+                    is Refinement.Refined ->
+                        endpoint.lifecycleRefresh(
+                            WorkspaceRefreshCommand.Request(
+                                operation.requestId,
+                                WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD,
+                                remaining.value.value,
+                            )
+                        )
+                }
             InitialImportSelection.MISMATCH -> WorkspaceRefreshResult.Rejected(WorkspaceRefreshFailure.UNLINKED_BUILD)
         }
     }

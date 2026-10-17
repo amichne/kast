@@ -116,10 +116,11 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
         }
 
     internal suspend fun lifecycleInitialImport(
-        requestId: String
+        requestId: String,
+        deadline: io.github.amichne.kast.protocol.contract.WorkspacePreparationDeadline,
     ): io.github.amichne.kast.protocol.contract.WorkspaceRefreshResult =
         when (val owner = refreshOwner.get()) {
-            is RefreshOwner.Available -> owner.value.initialImport(requestId)
+            is RefreshOwner.Available -> owner.value.initialImport(requestId, deadline)
             else ->
                 io.github.amichne.kast.protocol.contract.WorkspaceRefreshResult.Rejected(
                     io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure.ADMISSION_REJECTED

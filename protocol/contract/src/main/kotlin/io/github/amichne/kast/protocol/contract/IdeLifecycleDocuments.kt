@@ -12,7 +12,13 @@ sealed interface IdeLifecycleCommand : OperationRequest {
 
     @Serializable
     @SerialName("open")
-    data class Open(val host: String, val requestId: String, val client: String, val root: String) : IdeLifecycleCommand
+    data class Open(
+        val host: String,
+        val requestId: String,
+        val client: String,
+        val root: String,
+        val preparationMillis: Long = WorkspacePreparationBudget.limit.value,
+    ) : IdeLifecycleCommand
 
     @Serializable
     @SerialName("present")
@@ -159,7 +165,11 @@ sealed interface IdeLifecycleResult : OperationResult {
 
     @Serializable
     @SerialName("blocked")
-    data class Blocked(val reason: IdeLifecycleFailure) : IdeLifecycleResult, IdeLifecycleRejection
+    data class Blocked(
+        val reason: IdeLifecycleFailure,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        val preparation: WorkspacePreparationTiming? = null,
+    ) : IdeLifecycleResult, IdeLifecycleRejection
 }
 
 @Serializable

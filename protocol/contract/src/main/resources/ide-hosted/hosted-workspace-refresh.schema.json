@@ -86,6 +86,58 @@
                 "ADMISSION_REJECTED",
                 "NEWER_CHANGE"
               ]
+            },
+            "preparation": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "stage": {
+                  "type": "string",
+                  "enum": [
+                    "OPENING",
+                    "IMPORTING",
+                    "ADMISSION",
+                    "PRESENTING",
+                    "CLOSING"
+                  ]
+                },
+                "elapsedMillis": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "limitMillis": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "remainingMillis": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "limitingOwner": {
+                  "type": "string",
+                  "enum": [
+                    "PREPARATION_OWNER",
+                    "NATIVE_PREPARATION",
+                    "REFRESH_WAITER"
+                  ]
+                }
+              },
+              "required": [
+                "stage",
+                "elapsedMillis",
+                "limitMillis",
+                "remainingMillis",
+                "limitingOwner"
+              ],
+              "examples": [
+                {
+                  "stage": "IMPORTING",
+                  "elapsedMillis": 300,
+                  "limitMillis": 300,
+                  "remainingMillis": 0,
+                  "limitingOwner": "REFRESH_WAITER"
+                }
+              ]
             }
           },
           "required": [

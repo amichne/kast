@@ -10,7 +10,11 @@ sealed interface WorkspaceLifecycleRequest : OperationRequest {
 
     @Serializable
     @SerialName("open")
-    data class Open(val root: String, val requestId: String) : WorkspaceLifecycleRequest
+    data class Open(
+        val root: String,
+        val requestId: String,
+        val preparationMillis: Long = WorkspacePreparationBudget.limit.value,
+    ) : WorkspaceLifecycleRequest
 
     @Serializable
     @SerialName("present")

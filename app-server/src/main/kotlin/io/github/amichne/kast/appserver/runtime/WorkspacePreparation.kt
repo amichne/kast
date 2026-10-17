@@ -6,6 +6,9 @@ import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeLifecycleStage
 import io.github.amichne.kast.protocol.contract.IdeProjectTarget
+import io.github.amichne.kast.protocol.contract.WorkspacePreparationBudget
+import io.github.amichne.kast.protocol.contract.WorkspacePreparationDeadline
+import io.github.amichne.kast.protocol.contract.WorkspacePreparationTiming
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -60,10 +63,18 @@ internal sealed interface WorkspacePreparationOutcome {
 
     data class Rejected(val failure: WorkspacePreparationFailure) : WorkspacePreparationOutcome.Terminal
 
-    data class Blocked(val reason: IdeLifecycleFailure) : WorkspacePreparationOutcome.Terminal
+    data class Blocked(val reason: IdeLifecycleFailure, val preparation: WorkspacePreparationTiming? = null) :
+        WorkspacePreparationOutcome.Terminal
 }
 
-internal class WorkspacePreparation internal constructor(val id: WorkspacePreparationId, val root: CanonicalRoot) {
+internal class WorkspacePreparation
+internal constructor(
+    val id: WorkspacePreparationId,
+    val root: CanonicalRoot,
+    internal val deadline: WorkspacePreparationDeadline =
+        WorkspacePreparationDeadline.start(WorkspacePreparationBudget.limit, 0),
+) {
+    internal var lastStage = IdeLifecycleStage.OPENING
     internal val mutable =
         MutableStateFlow<WorkspacePreparationOutcome>(WorkspacePreparationOutcome.Pending(IdeLifecycleStage.OPENING))
     val state: StateFlow<WorkspacePreparationOutcome>

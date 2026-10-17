@@ -47,7 +47,11 @@ import kotlinx.serialization.json.Json
 class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
     private val json = Json { encodeDefaults = true }
     private val state = IdeLifecycleState(UUID.randomUUID())
-    private val native = IdeLifecycleNative(state)
+    private val native =
+        IdeLifecycleNative(state) { observation ->
+            Logger.getInstance(IdeLifecycleApplication::class.java)
+                .info("kast_preparation " + json.encodeToString(NativePreparationObservation.serializer(), observation))
+        }
 
     internal suspend fun <Value> withRegisteredPeer(
         expected: ImpactSemanticBasisDocument.Live,

@@ -2,6 +2,7 @@ package io.github.amichne.kast.appserver.runtime
 
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleStage
+import io.github.amichne.kast.protocol.contract.WorkspacePreparationTiming
 import java.io.PrintStream
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -12,6 +13,8 @@ internal data class WorkspacePreparationActivity(
     val requestId: String,
     val outcome: WorkspacePreparationActivityOutcome,
     val event: String = "workspace-preparation",
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val preparation: WorkspacePreparationTiming? = null,
 )
 
 /** Bounded stage and terminal evidence; contains no roots, requests, source, or approval payloads. */
@@ -57,7 +60,7 @@ internal class JsonLineWorkspacePreparationObserver(private val output: PrintStr
     }
 }
 
-internal fun WorkspacePreparation.activity(): WorkspacePreparationActivity =
+internal fun WorkspacePreparation.activity(timing: WorkspacePreparationTiming? = null): WorkspacePreparationActivity =
     WorkspacePreparationActivity(
         id.value.toString(),
         when (val value = state.value) {
@@ -66,4 +69,5 @@ internal fun WorkspacePreparation.activity(): WorkspacePreparationActivity =
             is WorkspacePreparationOutcome.Rejected -> WorkspacePreparationActivityOutcome.Rejected(value.failure)
             is WorkspacePreparationOutcome.Blocked -> WorkspacePreparationActivityOutcome.Blocked(value.reason)
         },
+        preparation = timing,
     )

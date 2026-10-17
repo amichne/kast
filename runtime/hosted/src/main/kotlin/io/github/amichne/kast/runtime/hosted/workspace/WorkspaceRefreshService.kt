@@ -1,6 +1,9 @@
 package io.github.amichne.kast.runtime.hosted.workspace
 
+import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.WorkspacePreparationBudget
+import io.github.amichne.kast.protocol.contract.WorkspacePreparationTiming
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.workspace.contract.WorkspaceCapabilityReadiness
 import io.github.amichne.kast.workspace.contract.WorkspaceReadinessReason
@@ -9,8 +12,9 @@ import io.github.amichne.kast.workspace.contract.WorkspaceReadinessReason
 internal class WorkspaceRefreshService(
     private val port: WorkspaceRefreshPort,
     private val nanoTime: () -> Long = System::nanoTime,
-    private val pendingTimeoutNanos: Long = 120_000_000_000L,
+    private val pendingTimeoutNanos: Long = WorkspacePreparationBudget.limit.value * NANOS_PER_MILLI,
     private val capacity: Int = 64,
+    private val observeDeadline: (WorkspaceRefreshDeadlineObservation) -> Unit = {},
 ) {
     init {
         require(pendingTimeoutNanos > 0)
@@ -25,7 +29,11 @@ internal class WorkspaceRefreshService(
     private var latestAttempt = 0L
 
     @Synchronized
-    fun submit(id: WorkspaceRefreshRequestId, effect: WorkspaceRefreshEffect): WorkspaceRefreshStatus {
+    fun submit(
+        id: WorkspaceRefreshRequestId,
+        effect: WorkspaceRefreshEffect,
+        allowance: ElapsedTimeLimitMillis = WorkspacePreparationBudget.limit,
+    ): WorkspaceRefreshStatus {
         entries[WorkspaceRefreshWaiter.Explicit(id)]?.let {
             return submit(id, effect, it.attempt.work.stamp)
         }
@@ -49,10 +57,27 @@ internal class WorkspaceRefreshService(
                 stamp = equivalent.work.stamp,
                 observation = observed,
                 selectedAttempt = equivalent,
+                allowanceNanos =
+                    minOf(
+                        pendingTimeoutNanos,
+                        allowance.value.coerceAtMost(WorkspacePreparationBudget.limit.value) * NANOS_PER_MILLI,
+                    ),
             )
         else
             when (val stamp = nextStamp()) {
-                is Refinement.Refined -> submit(id, effect, stamp.value, observed)
+                is Refinement.Refined ->
+                    submitSelected(
+                        id,
+                        effect,
+                        stamp.value,
+                        observed,
+                        selectedAttempt = null,
+                        allowanceNanos =
+                            minOf(
+                                pendingTimeoutNanos,
+                                allowance.value.coerceAtMost(WorkspacePreparationBudget.limit.value) * NANOS_PER_MILLI,
+                            ),
+                    )
                 is Refinement.Rejected -> WorkspaceRefreshStatus.Rejected(stamp.failure)
             }
     }
@@ -72,6 +97,7 @@ internal class WorkspaceRefreshService(
         stamp: WorkspaceRefreshStamp,
         observation: WorkspaceCapabilityReadiness.Ready?,
         selectedAttempt: WorkspaceRefreshAttempt?,
+        allowanceNanos: Long = pendingTimeoutNanos,
     ): WorkspaceRefreshStatus {
         if (disposed) return WorkspaceRefreshStatus.Rejected(WorkspaceRefreshRejection.DISPOSED)
         val work = WorkspaceRefreshWork(WorkspaceRefreshEffectKind.Explicit(effect), stamp)
@@ -86,7 +112,16 @@ internal class WorkspaceRefreshService(
         if (!entries.reclaimTerminalWaiters(capacity))
             return WorkspaceRefreshStatus.Rejected(WorkspaceRefreshRejection.CAPACITY)
         latestStamp = maxOf(latestStamp, stamp.value)
-        when (val added = add(waiter, work, observation = observation, selectedAttempt = selectedAttempt)) {
+        when (
+            val added =
+                add(
+                    waiter,
+                    work,
+                    observation = observation,
+                    selectedAttempt = selectedAttempt,
+                    allowanceNanos = allowanceNanos,
+                )
+        ) {
             is Refinement.Rejected -> return WorkspaceRefreshStatus.Rejected(added.failure)
             is Refinement.Refined -> Unit
         }
@@ -146,6 +181,7 @@ internal class WorkspaceRefreshService(
         complete: (WorkspaceRefreshStatus) -> Unit = {},
         observation: WorkspaceCapabilityReadiness.Ready? = null,
         selectedAttempt: WorkspaceRefreshAttempt? = null,
+        allowanceNanos: Long = pendingTimeoutNanos,
     ): Refinement<Unit, WorkspaceRefreshRejection> {
         val equivalent =
             entries.values.firstOrNull {
@@ -174,6 +210,7 @@ internal class WorkspaceRefreshService(
                         if (retainedActive != null) WorkspaceRefreshStage.EFFECT else WorkspaceRefreshStage.QUEUED
                     ),
                 complete,
+                allowanceNanos,
             )
         return Refinement.Refined(Unit)
     }
@@ -229,6 +266,10 @@ internal class WorkspaceRefreshService(
     fun contains(id: WorkspaceRefreshRequestId): Boolean = entries.containsKey(WorkspaceRefreshWaiter.Explicit(id))
 
     @Synchronized
+    fun deadlineTiming(id: WorkspaceRefreshRequestId): WorkspacePreparationTiming? =
+        entries[WorkspaceRefreshWaiter.Explicit(id)]?.deadlineTiming
+
+    @Synchronized
     fun hasWork(): Boolean =
         active != null || queue.isNotEmpty() || entries.values.any { it.status is WorkspaceRefreshStatus.Pending }
 
@@ -244,10 +285,7 @@ internal class WorkspaceRefreshService(
 
     private fun expire() {
         val now = nanoTime()
-        entries.values.toList().forEach {
-            if (it.status is WorkspaceRefreshStatus.Pending && now - it.started >= pendingTimeoutNanos)
-                it.transition(WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.DEADLINE_EXCEEDED))
-        }
+        entries.toList().forEach { (waiter, entry) -> entry.expire(waiter, now, observeDeadline) }
         pruneQueue()
         // The native attempt remains active even after every waiting deadline expires.
     }
@@ -291,3 +329,5 @@ internal class WorkspaceRefreshService(
         }
     }
 }
+
+private const val NANOS_PER_MILLI = 1_000_000L

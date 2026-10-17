@@ -107,7 +107,7 @@ internal class WorkspaceAvailabilityRecoveryFailureTest {
                     retryId.value.toString(),
                     WorkspacePreparationActivityOutcome.Blocked(reason),
                 ),
-                events.last(),
+                events.last().copy(preparation = null),
             )
             assertEquals(
                 listOf(WorkspacePreparationActivityOutcome.CheckingHost(firstId.value.toString())),
@@ -244,7 +244,7 @@ internal class WorkspaceAvailabilityRecoveryFailureTest {
             private set
 
         fun exchange(request: WorkspaceLifecycleRequest): IdeLifecycleResult {
-            if (remaining.isEmpty() || remaining.first().first != request) {
+            if (remaining.isEmpty() || !remaining.first().first.matchesPreparationIdentity(request)) {
                 unexpected++
                 error("Unexpected lifecycle request: $request")
             }

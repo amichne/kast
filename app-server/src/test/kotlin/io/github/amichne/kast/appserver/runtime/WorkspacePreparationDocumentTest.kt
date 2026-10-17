@@ -12,6 +12,35 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 
 class WorkspacePreparationDocumentTest {
+    @Test
+    fun `deadline activity retains stage elapsed limit and limiting owner in encoded output`() {
+        val timing =
+            io.github.amichne.kast.protocol.contract.WorkspacePreparationTiming(
+                io.github.amichne.kast.protocol.contract.IdeLifecycleStage.IMPORTING,
+                1000,
+                1000,
+                0,
+                io.github.amichne.kast.protocol.contract.WorkspacePreparationDeadlineOwner.NATIVE_PREPARATION,
+            )
+        val activity =
+            WorkspacePreparationActivity(
+                requestId,
+                WorkspacePreparationActivityOutcome.Blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED),
+                preparation = timing,
+            )
+        val encoded = json.encodeToJsonElement(WorkspacePreparationActivity.serializer(), activity).jsonObject
+        val preparation = encoded.getValue("preparation").jsonObject
+        assertEquals(
+            setOf("stage", "elapsedMillis", "limitMillis", "remainingMillis", "limitingOwner"),
+            preparation.keys,
+        )
+        assertEquals("IMPORTING", preparation.getValue("stage").jsonPrimitive.content)
+        assertEquals("1000", preparation.getValue("elapsedMillis").jsonPrimitive.content)
+        assertEquals("1000", preparation.getValue("limitMillis").jsonPrimitive.content)
+        assertEquals("0", preparation.getValue("remainingMillis").jsonPrimitive.content)
+        assertEquals("NATIVE_PREPARATION", preparation.getValue("limitingOwner").jsonPrimitive.content)
+    }
+
     private val requestId = "00000000-0000-0000-0000-000000000001"
     private val json = Json { encodeDefaults = true }
 

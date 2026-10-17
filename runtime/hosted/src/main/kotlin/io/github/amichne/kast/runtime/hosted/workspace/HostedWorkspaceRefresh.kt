@@ -5,6 +5,7 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.WorkspacePreparationDeadline
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshCommand
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure as PublicFailure
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshResponse
@@ -35,7 +36,17 @@ internal class HostedWorkspaceRefresh(
     private val modelChanges = HostedGradleChangeTracker(project, root)
     private val modelInputs = WorkspaceRefreshModelBoundary(modelChanges.revision)
     private val port = IntellijWorkspaceRefreshPort(project, root, query, modelInputs)
-    private val service = WorkspaceRefreshService(port)
+    private val service =
+        WorkspaceRefreshService(
+            port,
+            observeDeadline = { observation ->
+                Logger.getInstance(HostedWorkspaceRefresh::class.java)
+                    .info(
+                        "kast_refresh_deadline " +
+                            Json.encodeToString(WorkspaceRefreshDeadlineObservation.serializer(), observation)
+                    )
+            },
+        )
     private val triggers = WorkspaceRefreshTaskTrigger(project, root, scope) { command -> execute(command) }
 
     fun refreshForRead(complete: (HostedVfsRefreshOutcome) -> Unit): () -> Unit = service.refreshForRead { status ->
@@ -56,16 +67,21 @@ internal class HostedWorkspaceRefresh(
         )
     }
 
-    suspend fun initialImport(requestId: String): WorkspaceRefreshResult =
+    suspend fun initialImport(requestId: String, deadline: WorkspacePreparationDeadline): WorkspaceRefreshResult =
         when (val prepared = withContext(Dispatchers.EDT) { port.prepareInitialLink() }) {
             is Refinement.Rejected -> WorkspaceRefreshResult.Rejected(prepared.failure)
             is Refinement.Refined ->
-                admittedRequest(
-                    WorkspaceRefreshCommand.Request(
-                        requestId,
-                        io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD,
-                    )
-                )
+                when (val remaining = deadline.remaining(System.nanoTime())) {
+                    is Refinement.Rejected -> WorkspaceRefreshResult.Failed(requestId, PublicFailure.DEADLINE_EXCEEDED)
+                    is Refinement.Refined ->
+                        admittedRequest(
+                            WorkspaceRefreshCommand.Request(
+                                requestId,
+                                io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD,
+                                remaining.value.value,
+                            )
+                        )
+                }
         }
 
     fun execute(command: WorkspaceRefreshCommand): WorkspaceRefreshResponse {
@@ -90,7 +106,18 @@ internal class HostedWorkspaceRefresh(
 
     private fun admittedRequest(command: WorkspaceRefreshCommand.Request): WorkspaceRefreshResult =
         // Native admission or observation of an existing import occurs when the effect reaches its turn.
-        withId(command.requestId) { service.submit(it, command.effect) }
+        when (
+            val allowance =
+                io.github.amichne.kast.kernel.ElapsedTimeLimitMillis.parse(
+                    minOf(
+                        command.preparationMillis,
+                        io.github.amichne.kast.protocol.contract.WorkspacePreparationBudget.limit.value,
+                    )
+                )
+        ) {
+            is Refinement.Rejected -> WorkspaceRefreshResult.Failed(command.requestId, PublicFailure.DEADLINE_EXCEEDED)
+            is Refinement.Refined -> withId(command.requestId) { service.submit(it, command.effect, allowance.value) }
+        }
 
     private fun withId(
         raw: String,
@@ -123,6 +150,7 @@ internal class HostedWorkspaceRefresh(
                                 WorkspaceRefreshFailure.DISPOSED -> PublicFailure.DISPOSED
                                 WorkspaceRefreshFailure.DEADLINE_EXCEEDED -> PublicFailure.DEADLINE_EXCEEDED
                             },
+                            service.deadlineTiming(id.value),
                         )
                     is WorkspaceRefreshStatus.Rejected ->
                         WorkspaceRefreshResult.Rejected(

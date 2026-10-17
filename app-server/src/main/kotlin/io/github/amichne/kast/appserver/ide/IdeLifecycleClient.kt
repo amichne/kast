@@ -44,7 +44,8 @@ class IdeLifecycleClient(private val userHome: Path, private val selectedHome: P
     override fun execute(request: WorkspaceLifecycleRequest, client: String): IdeLifecycleResult =
         when (request) {
             WorkspaceLifecycleRequest.Inspect -> execute(IdeLifecycleCommand.Inspect)
-            is WorkspaceLifecycleRequest.Open -> open(request.root, request.requestId, client)
+            is WorkspaceLifecycleRequest.Open ->
+                open(request.root, request.requestId, client, request.preparationMillis)
             is WorkspaceLifecycleRequest.Present ->
                 execute(IdeLifecycleCommand.Present(request.requestId, client, request.target))
             is WorkspaceLifecycleRequest.Release ->
@@ -95,14 +96,36 @@ class IdeLifecycleClient(private val userHome: Path, private val selectedHome: P
     }
 
     /** Cold launch is available only to an explicit open; the returned host is live-handshake evidence. */
-    fun open(root: String, requestId: String, client: String): IdeLifecycleResult {
+    fun open(
+        root: String,
+        requestId: String,
+        client: String,
+        preparationMillis: Long = io.github.amichne.kast.protocol.contract.WorkspacePreparationBudget.limit.value,
+    ): IdeLifecycleResult {
+        val limit =
+            when (val admitted = io.github.amichne.kast.kernel.ElapsedTimeLimitMillis.parse(preparationMillis)) {
+                is io.github.amichne.kast.kernel.Refinement.Refined -> admitted.value
+                is io.github.amichne.kast.kernel.Refinement.Rejected ->
+                    return blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
+            }
+        val deadline =
+            io.github.amichne.kast.protocol.contract.WorkspacePreparationDeadline.start(limit, System.nanoTime())
         val inspected = execute(IdeLifecycleCommand.Inspect)
         val host =
             if (inspected is IdeLifecycleResult.Blocked && inspected.reason == IdeLifecycleFailure.HOST_UNAVAILABLE)
                 coldHost()
             else inspected
         return when (host) {
-            is IdeLifecycleResult.Inspected -> execute(IdeLifecycleCommand.Open(host.host, requestId, client, root))
+            is IdeLifecycleResult.Inspected ->
+                when (val remaining = deadline.remaining(System.nanoTime())) {
+                    is io.github.amichne.kast.kernel.Refinement.Refined ->
+                        exchange(
+                            Path.of(host.home),
+                            IdeLifecycleCommand.Open(host.host, requestId, client, root, remaining.value.value),
+                        )
+                    is io.github.amichne.kast.kernel.Refinement.Rejected ->
+                        blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
+                }
             else -> host
         }
     }

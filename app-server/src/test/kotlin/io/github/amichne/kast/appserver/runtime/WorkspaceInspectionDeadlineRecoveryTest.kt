@@ -112,14 +112,16 @@ class WorkspaceInspectionDeadlineRecoveryTest {
             assertEquals(1, semantics, "uncertain semantic execution cannot be replayed automatically")
             assertEquals(1, inspections)
             assertEquals(4, requests.size)
-            assertEquals(
+            val expectedCalls =
                 listOf(
                     fixture.open(1),
                     WorkspaceLifecycleRequest.Inspect,
                     WorkspaceLifecycleRequest.Inspect,
                     fixture.open(3),
-                ),
-                requests,
+                )
+            assertEquals(
+                true,
+                expectedCalls.zip(requests).all { (expected, actual) -> expected.matchesPreparationIdentity(actual) },
             )
             assertEquals(0, ids.size)
             script.assertDrained()

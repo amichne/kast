@@ -33,6 +33,7 @@ internal enum class WorkspaceRefreshRejection {
     DISPOSED,
 }
 
+@kotlinx.serialization.Serializable
 internal enum class WorkspaceRefreshFailure {
     BUSY,
     UNSAVED_DOCUMENTS,
@@ -81,3 +82,10 @@ internal interface WorkspaceRefreshPort {
 
     fun readiness(): WorkspaceCapabilityReadiness
 }
+
+@kotlinx.serialization.Serializable
+internal data class WorkspaceRefreshDeadlineObservation(
+    val requestId: String?,
+    val preparation: io.github.amichne.kast.protocol.contract.WorkspacePreparationTiming,
+    val reason: WorkspaceRefreshFailure = WorkspaceRefreshFailure.DEADLINE_EXCEEDED,
+)
