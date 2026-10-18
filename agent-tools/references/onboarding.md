@@ -5,8 +5,8 @@ Use `query_symbols` for declaration identity, callers, references, implementatio
 Read files for task context, implementation details, and to interpret the returned evidence.
 For source reads, reuse paths from returned evidence or file listings.
 If a needed path is unknown, find it within the known scope before reading.
-Batch independent source reads with bounded output that retains the evidence needed for the answer.
-In Pi `codemode`, filter large metadata before `store()`; keep only small identifiers or summaries.
+Batch independent source reads with bounded output that keeps the evidence needed for the answer.
+In Pi `codemode`, filter large metadata before `store()`. Keep only small identifiers or summaries.
 Documentation, configuration, shell work, and other tasks without a Kotlin semantic question need no Kast call.
 
 If the needed tool schema is already available, use it directly.
