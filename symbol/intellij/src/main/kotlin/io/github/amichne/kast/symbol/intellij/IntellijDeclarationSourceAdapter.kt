@@ -42,6 +42,7 @@ private constructor(
     private val plan: IntellijDirectoryDiscoveryPlan.Prepared? = null,
     private val consume: () -> Boolean = { true },
     private val partitions: IntellijDeclarationPartitionFiles = NativeIntellijDeclarationPartitionFiles,
+    private val includeSource: (VirtualFile) -> Boolean = { true },
 ) {
     constructor(
         project: Project,
@@ -70,6 +71,7 @@ private constructor(
         observation: IntellijReadObservation,
         consume: () -> Boolean,
         partitions: IntellijDeclarationPartitionFiles,
+        includeSource: (VirtualFile) -> Boolean = { true },
     ) : this(
         project,
         plan.selection.scope,
@@ -80,6 +82,7 @@ private constructor(
         plan,
         consume,
         partitions,
+        includeSource,
     )
 
     private val admission = IntellijDeclarationSourceAdmission(scope, request, plan)
@@ -188,13 +191,17 @@ private constructor(
         val children = observation.call(IntellijReadCall.VFS_CHILDREN) { partitions.children(native) }
         val detached = mutableListOf<SemanticFilePartition>()
         var bytes = PARTITION_OBSERVATION_BINDING_BYTES
-        for (child in children) {
-            if (expired()) return timeLimit()
+        val eligible =
+            children
+                .asSequence()
+                .takeWhile { !expired() }
+                .onEach { observation.count(IntellijReadCounter.DISCOVERY_DIRECTORY_CHILD_ENTRIES) }
+                .filter { it.isDirectory || includeSource(it) }
+        for (child in eligible) {
             if (!consume())
                 return IntellijDeclarationPartitionObservation.Rejected(
                     SymbolDiscoveryBlockCause.INSUFFICIENT_EXECUTION_GRANT
                 )
-            observation.count(IntellijReadCounter.DISCOVERY_DIRECTORY_CHILD_ENTRIES)
             val partition = admission.detach(child) ?: continue
             if (detached.size >= limits[ReadLimitParameter.DISCOVERY_FILES].value)
                 return rejected(
@@ -207,7 +214,8 @@ private constructor(
             detached += partition
             bytes += added
         }
-        return IntellijDeclarationPartitionObservation.Directory(detached.sortedBy { it.orderingPath })
+        return if (expired()) timeLimit()
+        else IntellijDeclarationPartitionObservation.Directory(detached.sortedBy { it.orderingPath })
     }
 
     private fun file(native: VirtualFile): IntellijDeclarationPartitionObservation {
@@ -218,6 +226,7 @@ private constructor(
             )
         if (native.fileType != KotlinFileType.INSTANCE || !scope.nativeScope.contains(native))
             return IntellijDeclarationPartitionObservation.OutsideUniverse
+        if (!includeSource(native)) return IntellijDeclarationPartitionObservation.OutsideUniverse
         val file =
             observation.call(IntellijReadCall.PSI_FIND_FILE) { PsiManager.getInstance(project).findFile(native) }
                 as? KtFile

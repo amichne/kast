@@ -63,7 +63,7 @@ class DiscoveryDirectoryNativeTest : HeavyPlatformTestCase() {
         val fixture = prepare()
         for (containment in SymbolDiscoveryContainment.entries) {
             val result = discover(fixture, containment)
-            assertBounded(result)
+            assertBounded(result, SymbolDiscoveryMatch.FUZZY)
             val expected =
                 if (containment == SymbolDiscoveryContainment.DIRECT) listOf("Target")
                 else listOf("Target", "TargetChild")
@@ -90,6 +90,7 @@ class DiscoveryDirectoryNativeTest : HeavyPlatformTestCase() {
                     containment = traversal,
                     match = SymbolDiscoveryMatch.EXACT_NAME,
                 )
+            assertBounded(result, SymbolDiscoveryMatch.EXACT_NAME)
             assertEquals(listOf("Target"), result.batch.candidates.map { it.name.value })
             assertCompilerIdentities(result, listOf("Target"), fixture.request.scope.lease)
             result.observation.assertFinished()
@@ -100,9 +101,15 @@ class DiscoveryDirectoryNativeTest : HeavyPlatformTestCase() {
         }
     }
 
-    private fun assertBounded(result: Result) {
+    private fun assertBounded(result: Result, match: SymbolDiscoveryMatch) {
         assertEquals(0, result.observation.calls[IntellijReadCall.NAMED_DECLARATION_INDEX] ?: 0)
-        assertEquals(0, result.observation.calls[IntellijReadCall.SCOPED_FILE_INDEX] ?: 0)
+        assertEquals(
+            when (match) {
+                SymbolDiscoveryMatch.EXACT_NAME -> 1
+                SymbolDiscoveryMatch.FUZZY -> 0
+            },
+            result.observation.calls[IntellijReadCall.SCOPED_FILE_INDEX] ?: 0,
+        )
         assertEquals(0, result.observation.calls[IntellijReadCall.EXACT_PACKAGE_INDEX] ?: 0)
     }
 
@@ -151,7 +158,7 @@ class DiscoveryDirectoryNativeTest : HeavyPlatformTestCase() {
                 pattern = "Absent",
                 match = SymbolDiscoveryMatch.EXACT_NAME,
             )
-        assertBounded(result)
+        assertBounded(result, SymbolDiscoveryMatch.EXACT_NAME)
         assertTrue(result.batch.candidates.isEmpty())
         assertEquals(2, result.observation.calls[IntellijReadCall.VFS_CHILDREN])
         result.observation.assertFinished()
@@ -173,7 +180,7 @@ class DiscoveryDirectoryNativeTest : HeavyPlatformTestCase() {
             }
         }
         val result = discover(fixture, SymbolDiscoveryContainment.DESCENDANTS, directory = "src/selected/rejected")
-        assertBounded(result)
+        assertBounded(result, SymbolDiscoveryMatch.FUZZY)
         assertTrue(result.batch.candidates.isEmpty())
         assertEquals(0, result.observation.calls[IntellijReadCall.DISCOVERY_SCOPE_SOURCE_MEMBERSHIP] ?: 0)
         assertEquals(1, result.observation.counters[IntellijReadCounter.DISCOVERY_SCOPE_FILES_EXCLUDED])

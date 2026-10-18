@@ -17,9 +17,6 @@ code_sources:
 - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/AutomaticReadinessAction.kt
 - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedVfsRefreshTest.kt
 - path: runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedGradleRevisionTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-594b73dd64e36b813f7ed5b2
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleState.kt
@@ -30,6 +27,9 @@ sources:
   - id: openwiki-source-c3d765f6a0f5ed9757d16a3a
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshService.kt
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-18T02:29:42.742Z
 ---
 
 # IDEA lifecycle and explicit refresh

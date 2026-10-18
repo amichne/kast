@@ -30,26 +30,26 @@ import org.junit.jupiter.api.io.TempDir
 /** The immutable specification tree serves the actual provider requests at each unrelated-file size. */
 class DiscoveryDirectoryTreeWorkTest {
     @Test
-    fun `direct tree excludes unrelated growth and duplicate names before supply`(@TempDir home: Path) =
+    fun `direct Unicode tree excludes unrelated growth and duplicate names before supply`(@TempDir home: Path) =
         withParser(home) { project ->
             val source =
                 fixture(
                     project,
                     home.resolve("repo"),
-                    DirectoryDiscoveryTree.sources,
+                    DirectoryDiscoveryTree.sources.mapValues { (_, text) -> text.replace("Target", "Tárget") },
                     sourceRootDirectory = DirectoryDiscoveryTree.MAIN,
                 )
             compare(project, source, SymbolDiscoveryContainment.DIRECT)
         }
 
     @Test
-    fun `descendant tree excludes unrelated growth and duplicate names before supply`(@TempDir home: Path) =
+    fun `descendant Unicode tree excludes unrelated growth and duplicate names before supply`(@TempDir home: Path) =
         withParser(home) { project ->
             val source =
                 fixture(
                     project,
                     home.resolve("repo"),
-                    DirectoryDiscoveryTree.sources,
+                    DirectoryDiscoveryTree.sources.mapValues { (_, text) -> text.replace("Target", "Tárget") },
                     sourceRootDirectory = DirectoryDiscoveryTree.MAIN,
                 )
             compare(project, source, SymbolDiscoveryContainment.DESCENDANTS)
@@ -66,7 +66,7 @@ class DiscoveryDirectoryTreeWorkTest {
                 base.scope,
                 SymbolDiscoveryTarget.Name(
                     SymbolNameDiscoveryKind.CLASS,
-                    SymbolDiscoveryPattern.parse("Target").refined(),
+                    SymbolDiscoveryPattern.parse("Tárget").refined(),
                     SymbolDiscoveryMatch.EXACT_NAME,
                 ),
                 base.budget,
@@ -109,7 +109,7 @@ class DiscoveryDirectoryTreeWorkTest {
         val result = query.discoverNative(project, scope, request, indexes = indexes).outcome()
         assertTrue(result is SymbolDiscoveryOutcome.Complete)
         val candidates = result.batch().candidates
-        assertEquals(listOf("Target"), candidates.map { it.name.value })
+        assertEquals(listOf("Tárget"), candidates.map { it.name.value })
         assertEquals(
             source.scope.lease.workspaceRoot.value + "/${DirectoryDiscoveryTree.SELECTED}/Target.kt",
             candidates.single().location.file.stableValue,
@@ -177,6 +177,12 @@ class DiscoveryDirectoryTreeWorkTest {
         private val source: IntellijDeclarationDiscoveryTestFixture.Fixture,
         private val noise: Int,
     ) : IntellijDeclarationIndexes {
+        override fun candidateFiles(
+            name: IntellijIndexedDeclarationName,
+            scope: GlobalSearchScope,
+            accept: (VirtualFile) -> Boolean,
+        ): Boolean = throw AssertionError("Unexpected word index")
+
         var providers = 0
         var outside = 0
         private val selected =

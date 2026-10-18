@@ -94,7 +94,7 @@ class DiscoveryScopeGrantNativeTest : HeavyPlatformTestCase() {
             assertEquals(original.namedCallbacks, enlarged.namedCallbacks)
         }
         assertEquals(
-            0,
+            1,
             vectors.getValue(Selection.DIRECTORY to ORIGINAL).calls[IntellijReadCall.SCOPED_FILE_INDEX] ?: 0,
         )
         assertEquals(1, vectors.getValue(Selection.PACKAGE to ORIGINAL).calls[IntellijReadCall.EXACT_PACKAGE_INDEX])
