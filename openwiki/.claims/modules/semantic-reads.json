@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:d0e0ade5ab152f4a8a81b980efe000a173774de194a284e3bcca78fb0dd0e35b",
+  "pageVersion": "sha256:4e1c5197eba054d067c716ffb7e77af3e937f16237828212900f2c62a5dd23dc",
   "claims": [
     {
       "id": "claim_009e763fdd49491b8ddc72813e392412",
@@ -307,10 +307,36 @@
           "version": "repo-file-v1:sha256:e341fe3ac4e96726601896449855bb7c5d58cdb4e8997cbf7f390aacd756d7f6"
         }
       ]
+    },
+    {
+      "id": "claim_0eb3efe0f4b042379427116acb9b3e17",
+      "statement": "Eligible exact directory searches use completed word-index candidate evidence before bounded VFS supply and PSI. Unsupported identifier forms and implicit Companion keep exhaustive discovery. Oversized sources keep the original PSI path, and both stages share work, cancellation, and retained-byte limits.",
+      "evidence": [
+        {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationSourceAdapter.kt#L190-L242",
+          "version": "repo-lines-v1:sha256:ed7c4ae57456f813a5d15eb5b5063f3e80ed0d9a4a22abda5e52070fd3b55195:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmOTViMTk4ZWUxYWRlNTY2YzYwNzVjZTk1MzAwOTQwZjAyYzM4NTQwNWRiYzgyNzIxZDhmMzEyMjk1YTE4ZjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxNTJlNmRlMTY5MTM1OTFlZGFmYTJjZjU0Nzg0Y2UyYTMwNDdiZTM3ODA2OGYwNTkyNDE3Zjg3MWQyNWYzMmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY1ZTUzZWU2Yjg1NzVlNzJlY2FjNzE2OTdhN2MwOTRiNjg0YzExMzRjYTg2MGM5ZGEwYzc5NzkyM2I2NjE3MzAifQ"
+        },
+        {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactNameCandidateFiles.kt#L115-L141",
+          "version": "repo-lines-v1:sha256:e107651f8f1f005314cc9529aec0548460601ac7f3150e5db089ccce8c829740:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNlYjU3YjVmOTdmNThmNDc1ZDFlMjhjNDliNjVkMjdkMjY5ZDIxMDM4NzYxM2Q2ZGE0ZGZhMTk2N2M5M2RlYjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5YzE2ZTZjNmFmNzVkYmViMDcwZTYwMjA0MzBlZTIxY2I2NWVkZmEyNTA0ODEwZTk5NzU2MmMwOWYyMTBlMjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRiZWJkNDE1ZDZlNTNiYTVhZWZjZDVmZWE2NjZjZmI0MTg4ODI3NmFjZTEwY2MxYTNmNjQ2YWJlNzdjNzQ5ZmIifQ"
+        },
+        {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactNameCandidateFiles.kt#L22-L60",
+          "version": "repo-lines-v1:sha256:02a683ea48da973f13b18c4dab9b4c74c62f8c30ed8e895e21d98bbbdcf36f5e:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2NGVjMmE1Mzg1NDNlN2Q2ZDMyY2Q0ZmM1NjFjMjU5NjI4OWEzNzgzMDA1YzY3YzJkYjAyYTgyOWMwOWI3NjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRjMjlmYmZlNTFlNTJiYzJkMTY1YmY1NjZmNzM1OTlmMjdlYTRlYmU4YTg5OTM0M2NkOWVhMDNkZjRhN2UyY2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNjMWFhM2UyMjcwOGJiZmE4YTA4Mjc4NGU1ODhjZjZiNGE2MzY2YjgxYWU0MDkxZGQ4YWQ2OTFkMDZjZmM3NzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc3OGEyODRjNzVlNDNhNTEyNDdhYTUxZTNhNGU1NjcyY2EwZDBlZDM4MzE2ZTQwOTFkMjA5NjYxZTk4NmI4YWQifQ"
+        },
+        {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIndexedDeclarationName.kt#L7-L22",
+          "version": "repo-lines-v1:sha256:faa3a7a989dd5da813f04cfcd034c4b8015e0c3085990d1429d3537adb7a9a96:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4Y2RjYzI1M2IyYTM1OTZhNTk4MDhmNTQzNWU1MjlhYzIyMGQyNThhMmU0ZTQ5OWFjNWJjMmNkODIwOGNmZDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjExNGEzYWUyMjQzMTc0ZTExN2Y1NmVlZTg0NTgxYmQ5MzQ3YjMwZDNhNjc1OWVlZDU4ZGM1MDQwMjA4NjNiYTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkwZmI5ZDIzM2E0NTRlZGExNmQxZWQ1N2JkMGYxNWI2MDZhNjA3OTUwNjc2MzE0MDY4ZDE5NzRiZDU3ZjdkYmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijExactNameIndexes.kt#L24-L46",
+          "version": "repo-lines-v1:sha256:4d754177c93c5d89c895f0c9d628b9d69d5cffe75755f5fb044bc2c814c4bc71:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1ZWQyYjc3ZGM2NTZkMjgxZjExMjM1YTA0MmMzNTE3YTIyNDE0NDY4NWI4NGNiZmVkZjdmNmYxMDBhMWI3NjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI0MThhNWVmOGJmNTA5YTExZGI2MWM3YzcwMDJlYmViMjFiYWUxOTM0MWY0ZWJmNGQ5ZDdhMjUwMTdlZWE0N2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUwMzc4ZDgxMzJhMDExMjJjZmUxMjk5YTRkMDZkODBlNTViMDhlNDU3ODMwOWZiZGRjNTk5YzczMzg0MmZlOTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI2ZTg2NWQxZmExZjA3OGM4NjZiNDliMTFiOTdhZDIwYzBlNDMzZWE1ZmY3NTg5ZGI4ZDA1OWJiZjliMmNhMDYifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T00:33:05.932Z"
+    "at": "2026-10-18T02:29:42.742Z"
   }
 }

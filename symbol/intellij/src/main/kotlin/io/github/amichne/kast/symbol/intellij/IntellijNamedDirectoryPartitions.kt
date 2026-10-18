@@ -20,6 +20,8 @@ internal fun collectDirectoryKotlinDeclarations(
     allowance: IntellijDeclarationDiscoveryAllowance,
     callbacks: ScopedDeclarationCallbacks,
     partitions: IntellijDeclarationPartitionFiles,
+    includeSource: (com.intellij.openapi.vfs.VirtualFile) -> Boolean = { true },
+    retainedBytes: Long = 0L,
 ): Boolean {
     val prepared =
         when (
@@ -30,6 +32,7 @@ internal fun collectDirectoryKotlinDeclarations(
                         callbacks.consume,
                         callbacks.observation,
                         limits,
+                        retainedBytes,
                     )
                 }
         ) {
@@ -45,6 +48,7 @@ internal fun collectDirectoryKotlinDeclarations(
             callbacks.observation,
             callbacks.consume,
             partitions,
+            includeSource,
         )
     val inventory = adapter.initialPartitions()
     val initial =
@@ -53,7 +57,8 @@ internal fun collectDirectoryKotlinDeclarations(
             is IntellijDeclarationInitialInventory.Rejected -> return callbacks.reject(inventory.cause)
             IntellijDeclarationInitialInventory.TimeLimit -> return callbacks.rejectTime()
         }
-    val collection = NamedDirectoryPartitionCollection(initial, prepared.chargedBytes, limits, callbacks)
+    val collection =
+        NamedDirectoryPartitionCollection(initial, prepared.chargedBytes + retainedBytes, limits, callbacks)
     if (!collection.drain(adapter)) return false
     val visitor =
         ScopedKotlinDeclarationVisitor(

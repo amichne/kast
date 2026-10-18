@@ -2,7 +2,9 @@ package io.github.amichne.kast.symbol.intellij
 
 import com.intellij.psi.search.GlobalSearchScope
 import io.github.amichne.kast.kernel.EvidenceGeneration
+import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBlockCause
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBudget
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
@@ -20,7 +22,15 @@ import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSearchScopeRequest
 import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.ImportedWorkspaceModelState
+import io.github.amichne.kast.workspace.contract.ModelOwnedSourceRoot
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
+import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
+import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -76,13 +86,64 @@ class DiscoveryDirectoryPlanTest {
         }
     }
 
-    private fun plan(traversal: SymbolDiscoveryContainment): IntellijDirectoryDiscoveryPlan {
+    @Test
+    fun `retained candidate bytes reject preparation before source roots consume work`() {
+        val request = request(SymbolDiscoveryContainment.DESCENDANTS)
+        val model =
+            WorkspaceSearchScopeModel.compile(
+                workspaceRoot = request.scope.lease.workspaceRoot,
+                modelState = ImportedWorkspaceModelState.COMPLETE,
+                boundaries =
+                    listOf(
+                        WorkspaceSourceRootBoundary(
+                            ideaModuleName = "fixture",
+                            linkedBuildRoot = Path.of("/repo"),
+                            gradleProjectPath = ":app",
+                            sourceSetName = "main",
+                            sourceRoot = Path.of("/repo/${DirectoryDiscoveryTree.MAIN}"),
+                            sourceKind = WorkspaceSourceRootKind.PRODUCTION,
+                            provenance = WorkspaceSourceRootProvenance.AUTHORED,
+                        )
+                    ),
+            ) as WorkspaceSearchScopeModelCompilation.Compiled
+        val plan = plan(SymbolDiscoveryContainment.DESCENDANTS, model.model.sourceRoots)
+        val limits = ReadLimits.resolve(environment = mapOf("KAST_READ_QUERY_CHECKPOINT_BYTES" to "4096")).refined()
+        for (retained in listOf(0L, 4096L)) {
+            var consumed = 0
+            val observation = RecordingDiscoveryObservation { 0L }
+            val result =
+                IntellijDirectoryDiscoveryPlan.Prepared.prepare(
+                    selection = plan,
+                    consume = {
+                        consumed++
+                        true
+                    },
+                    observation = observation,
+                    limits = limits,
+                    retainedBytes = retained,
+                )
+            if (retained == 0L) {
+                assertTrue(result is Refinement.Refined)
+                assertEquals(2, consumed)
+                assertEquals(2, observation.counters[IntellijReadCounter.DISCOVERY_ROOT_PATH_CONVERSIONS])
+            } else {
+                assertEquals(Refinement.Rejected(SymbolDiscoveryBlockCause.RETENTION_LIMIT), result)
+                assertEquals(0, consumed)
+                assertEquals(0, observation.counters[IntellijReadCounter.DISCOVERY_ROOT_PATH_CONVERSIONS] ?: 0)
+            }
+        }
+    }
+
+    private fun plan(
+        traversal: SymbolDiscoveryContainment,
+        roots: List<ModelOwnedSourceRoot> = emptyList(),
+    ): IntellijDirectoryDiscoveryPlan {
         val request = request(traversal)
         val scope =
             CompiledIntellijSearchScope(
                 request.scope.lease,
                 request.scope.scope,
-                emptyList(),
+                roots,
                 GlobalSearchScope.EMPTY_SCOPE,
             )
         return (IntellijDirectoryDiscoveryPlan.select(scope, request) as IntellijDirectoryDiscoveryRoute.Selected).plan

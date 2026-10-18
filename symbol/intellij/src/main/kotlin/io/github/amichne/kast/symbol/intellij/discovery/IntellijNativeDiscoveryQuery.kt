@@ -254,6 +254,16 @@ internal class IntellijNativeDiscoveryQuery(
         plan: IntellijDirectoryDiscoveryPlan,
         allowance: IntellijDeclarationDiscoveryAllowance,
         partitions: IntellijDeclarationPartitionFiles,
+    ): IntellijNativeDiscoveryExecution =
+        discoverScopedDeclarations(plan.scope, plan.request, allowance) { callbacks ->
+            collectDirectoryKotlinDeclarations(project, plan, limits, allowance, callbacks, partitions)
+        }
+
+    internal fun discoverScopedDeclarations(
+        scope: CompiledIntellijSearchScope,
+        request: SymbolDiscoveryRequest,
+        allowance: IntellijDeclarationDiscoveryAllowance,
+        supply: (ScopedDeclarationCallbacks) -> Boolean,
     ): IntellijNativeDiscoveryExecution {
         when (environmentState()) {
             IntellijDiscoveryEnvironmentState.DUMB ->
@@ -262,16 +272,12 @@ internal class IntellijNativeDiscoveryQuery(
                 return IntellijNativeDiscoveryExecution.Rejected(IntellijNativeDiscoveryRejection.PROJECT_DISPOSED)
             IntellijDiscoveryEnvironmentState.READY -> Unit
         }
-        val collector = collector(plan.scope, plan.request, allowance)
+        val collector = collector(scope, request, allowance)
         collector.contributor = IntellijReadContributor.SCOPED_DECLARATIONS
-        val admission = IntellijIndexedDiscoveryAdmission(collector, plan.request, limits, observation)
+        val admission = IntellijIndexedDiscoveryAdmission(collector, request, limits, observation)
         try {
             admission.collect { observe, qualify, accept ->
-                collectDirectoryKotlinDeclarations(
-                    project,
-                    plan,
-                    limits,
-                    allowance,
+                supply(
                     ScopedDeclarationCallbacks(
                         observe,
                         qualify,
@@ -279,8 +285,7 @@ internal class IntellijNativeDiscoveryQuery(
                         observation,
                         collector::consumeWork,
                         collector::block,
-                    ),
-                    partitions,
+                    )
                 )
             }
         } catch (cancelled: ProcessCanceledException) {

@@ -7,6 +7,7 @@ import com.intellij.testFramework.LightVirtualFile
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryMatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import io.github.amichne.kast.symbol.intellij.IntellijDeclarationDiscoveryTestFixture.batch
@@ -21,14 +22,16 @@ import org.junit.jupiter.api.io.TempDir
 
 class DiscoveryDirectoryEnumerationWorkTest {
     @Test
-    fun `directory dispatcher never requests broad providers as unrelated files grow`(@TempDir home: Path) =
+    fun `fuzzy directory dispatcher never requests broad providers as unrelated files grow`(@TempDir home: Path) =
         withParser(home) { project ->
             val fixture = ScopedDiscoveryDispatcherFixture(project, home.resolve("source"))
             val base = fixture.request
             val request =
                 SymbolDiscoveryRequest(
                     base.scope,
-                    base.target as io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget.Name,
+                    (base.target as io.github.amichne.kast.symbol.contract.SymbolDiscoveryTarget.Name).copy(
+                        match = SymbolDiscoveryMatch.FUZZY
+                    ),
                     base.budget.copy(
                         resources =
                             base.budget.resources.copy(
@@ -45,6 +48,12 @@ class DiscoveryDirectoryEnumerationWorkTest {
                 var fileCalls = 0
                 val indexes =
                     object : IntellijDeclarationIndexes {
+                        override fun candidateFiles(
+                            name: IntellijIndexedDeclarationName,
+                            scope: GlobalSearchScope,
+                            accept: (VirtualFile) -> Boolean,
+                        ): Boolean = throw AssertionError("Unexpected word index")
+
                         override fun named(
                             index: IntellijNamedDeclarationIndex,
                             name: String,

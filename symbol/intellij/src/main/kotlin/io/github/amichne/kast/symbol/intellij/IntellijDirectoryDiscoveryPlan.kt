@@ -19,6 +19,7 @@ internal class IntellijDirectoryDiscoveryPlan
 private constructor(
     val scope: CompiledIntellijSearchScope,
     val request: SymbolDiscoveryRequest,
+    val target: SymbolDiscoveryTarget.Name,
     val directory: Path,
     val traversal: SymbolDiscoveryContainment,
 ) {
@@ -53,9 +54,12 @@ private constructor(
                 consume: () -> Boolean,
                 observation: IntellijReadObservation,
                 limits: ReadLimits,
+                retainedBytes: Long = 0L,
             ): Refinement<Prepared, SymbolDiscoveryBlockCause> {
+                if (retainedBytes > limits[ReadLimitParameter.QUERY_CHECKPOINT_BYTES].value - PLAN_BINDING_BYTES)
+                    return Refinement.Rejected(SymbolDiscoveryBlockCause.RETENTION_LIMIT)
                 observation.count(IntellijReadCounter.DISCOVERY_BYTES_CHARGED, amount = PLAN_BINDING_BYTES.toInt())
-                val preparation = DirectoryPlanPreparation(consume, observation, limits)
+                val preparation = DirectoryPlanPreparation(consume, observation, limits, retainedBytes)
                 val selected =
                     when (val result = preparation.collect(selection.scope.sourceRoots)) {
                         is Refinement.Refined -> result.value
@@ -66,7 +70,7 @@ private constructor(
                         is Refinement.Refined -> result.value
                         is Refinement.Rejected -> return result
                     }
-                return Refinement.Refined(Prepared(selection, selected, owners, preparation.bytes))
+                return Refinement.Refined(Prepared(selection, selected, owners, preparation.bytes - retainedBytes))
             }
         }
     }
@@ -87,6 +91,7 @@ private constructor(
                     IntellijDirectoryDiscoveryPlan(
                         scope,
                         request,
+                        target,
                         Path.of(scope.lease.workspaceRoot.value).resolve(restriction.directory.value).normalize(),
                         restriction.containment,
                     )
@@ -108,8 +113,9 @@ private class DirectoryPlanPreparation(
     private val consume: () -> Boolean,
     private val observation: IntellijReadObservation,
     private val limits: ReadLimits,
+    retainedBytes: Long,
 ) {
-    var bytes = PLAN_BINDING_BYTES
+    var bytes = PLAN_BINDING_BYTES + retainedBytes
         private set
 
     fun collect(roots: List<ModelOwnedSourceRoot>): Refinement<Set<Path>, SymbolDiscoveryBlockCause> {
