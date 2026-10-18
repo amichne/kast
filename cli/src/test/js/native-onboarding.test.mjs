@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
+import { runInNewContext } from 'node:vm';
 
 const source = readFileSync(new URL('../../../../pi/mcp-extension.ts', import.meta.url), 'utf8');
 const resources = ['onboarding.md', 'query-schema.json', 'query-examples.json'];
@@ -73,6 +74,7 @@ test('Pi delivers the generated semantic routing policy without probing readines
   // These are instruction-delivery checks, not a simulated agent or semantic oracle.
   for (const clause of [
     'first semantic step when its tools are reachable and support the task',
+    'Preparation can save editor buffers and refresh the imported project',
     'tasks without a Kotlin semantic question need no Kast call',
     'If the needed tool schema is already available, use it directly',
     'discover the needed Kast tool once',
@@ -84,13 +86,41 @@ test('Pi delivers the generated semantic routing policy without probing readines
     'Do not repeat discovery or retry the same failed request without new evidence',
     'Preserve incomplete results and scope qualifications',
     'For direct callers or references, use the matching relation',
-    'reuse paths from returned evidence or file listings',
+    'Copy its issued `ref` unchanged',
+    'For scoped path checks and source reads, reuse paths from returned evidence or file listings',
     'If a needed path is unknown, find it within the known scope before reading',
     'Batch independent source reads with bounded output that keeps the evidence needed for the answer',
-    'filter large metadata before `store()`. Keep only small identifiers or summaries',
+    'filter large structured results before `text()` or `store()`',
+    'Keep original source line numbers and evidence qualifications',
   ]) assert.ok(prompt.includes(clause), clause);
   assert.ok(Buffer.byteLength(prompt.slice('base\n\n'.length) + '\n') <= 8192);
   assert.deepEqual(f.notifications, []);
+});
+
+test('Pi inventory example projects a large structured Bash result before display', () => {
+  const brief = readFileSync(new URL('../../../../agent-tools/references/onboarding.md', import.meta.url), 'utf8');
+  const example = brief.match(/```javascript\n([\s\S]*?)\n```/);
+  assert.ok(example, 'missing executable inventory projection example');
+  const directoryPrefix = 'selected/src/main/';
+  const selected = Array.from({ length: 21 }, (_, i) => directoryPrefix + 'File' + i + '.kt');
+  const unrelated = Array.from({ length: 8000 }, (_, i) => 'unrelated/module' + i + '/src/main/Noise.kt');
+  const cases = [
+    { name: 'exact paths', matches: [selected[0], selected[1]], expectedPaths: [selected[0], selected[1]], truncated: false, exit_code: 0 },
+    { name: 'no matching paths', matches: [], expectedPaths: [], truncated: false, exit_code: 0 },
+    { name: 'bounded paths keep count', matches: selected, expectedPaths: selected.slice(0, 20), truncated: false, exit_code: 0 },
+    { name: 'partial inventory stays qualified', matches: [selected[0]], expectedPaths: [selected[0]], truncated: true, exit_code: 0 },
+    { name: 'failed Bash stays failed', matches: [], expectedPaths: [], truncated: false, exit_code: 1 },
+  ];
+  for (const c of cases) {
+    // This is the structured value of an already-completed Bash call, not a model simulation.
+    const result = { output: [...unrelated, ...c.matches].join('\n'), truncated: c.truncated, exit_code: c.exit_code };
+    assert.ok(Buffer.byteLength(result.output) > 262144);
+    const displayed = [];
+    runInNewContext(example[1], { result, directoryPrefix, text: value => displayed.push(JSON.stringify(value)) }, { timeout: 1000 });
+    assert.deepEqual(displayed, [JSON.stringify({
+      exit_code: c.exit_code, truncated: c.truncated, matchCount: c.matches.length, paths: c.expectedPaths,
+    })], c.name);
+  }
 });
 
 function assertContinuesWithoutContext(f, reason) {
