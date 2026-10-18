@@ -1,0 +1,33 @@
+{
+  "kast_main": "877cf9a4d27a2202892dec31a92c53e333669b20",
+  "kast_candidate": "7e43fc5bbbdfcc43398a775e0d1b9397bb49442d",
+  "slopsentral_source": "97b294bab33037cb58cf426728351743cda7ce7b",
+  "dotfiles_source": "8da93dc24aa3a32865acbb01bdbc1101bfe900a0",
+  "artifacts": {
+    "node": {
+      "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.xz",
+      "sha256": "fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6",
+      "directory": "node-v24.21.0-linux-x64"
+    },
+    "uv": {
+      "url": "https://github.com/astral-sh/uv/releases/download/0.12.19/uv-x86_64-unknown-linux-gnu.tar.gz",
+      "sha256": "23bf5552d220e0842b65c862097b2ebaeba0064b74eda5e565e77fd25969d8c8",
+      "directory": "uv-x86_64-unknown-linux-gnu"
+    },
+    "jdk": {
+      "url": "https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.4%2B7/OpenJDK25U-jdk_x64_linux_hotspot_25.0.4_7.tar.gz",
+      "sha256": "e58fcdcd637b25c03ca84cbbcefc70d11efb8f4b4cbd05decc9f661769d77f94",
+      "directory": "jdk-25.0.4+7"
+    },
+    "idea": {
+      "url": "https://download.jetbrains.com/idea/idea-2026.2.3.tar.gz",
+      "sha256": "68751c8ae4d49407251cd197df795fbed91b6fdc85d10c73c4649a99e496ab37",
+      "directory": "idea"
+    },
+    "slopsentral": {
+      "url": "https://github.com/amichne/slopsentral/releases/download/pi-v0.1.220/slopsentral-pi-0.1.220.tgz",
+      "sha256": "aea6b7741d70e7d17d37e66e5e2b07da110b829f68721098d02fc00d02258de4",
+      "directory": "slopsentral"
+    }
+  }
+}
