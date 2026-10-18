@@ -5,7 +5,10 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.PsiSearchHelper
+import com.intellij.psi.search.UsageSearchContext
 import com.intellij.psi.stubs.StubIndex
+import com.intellij.util.Processor
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.kotlin.idea.stubindex.KotlinClassShortNameIndex
@@ -17,6 +20,12 @@ import org.jetbrains.kotlin.psi.KtFile
 
 /** Native supply only. The dispatcher owns index selection, admission, capacity and projection order. */
 internal interface IntellijDeclarationIndexes {
+    fun candidateFiles(
+        name: IntellijIndexedDeclarationName,
+        scope: GlobalSearchScope,
+        accept: (VirtualFile) -> Boolean,
+    ): Boolean
+
     fun named(
         index: IntellijNamedDeclarationIndex,
         name: String,
@@ -37,6 +46,14 @@ internal enum class IntellijNamedDeclarationIndex(val kind: CompilerSymbolKind) 
 }
 
 internal class NativeIntellijDeclarationIndexes(private val project: Project) : IntellijDeclarationIndexes {
+    override fun candidateFiles(
+        name: IntellijIndexedDeclarationName,
+        scope: GlobalSearchScope,
+        accept: (VirtualFile) -> Boolean,
+    ): Boolean =
+        PsiSearchHelper.getInstance(project)
+            .processCandidateFilesForText(scope, UsageSearchContext.IN_CODE, true, name.word.value, Processor(accept))
+
     override fun named(
         index: IntellijNamedDeclarationIndex,
         name: String,

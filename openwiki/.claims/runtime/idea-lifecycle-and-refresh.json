@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:41e57e4524ce05262919ec5472db7557873401facf4b74dda13f50f8bc923268",
+  "pageVersion": "sha256:201dea19ed5c649e446891bbacb69e356a1fcbec945310ef679037a443c1ba71",
   "claims": [
     {
       "id": "claim_06e2aac3fd894966a82caf7cfced11b7",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleState.kt",
-          "version": "repo-file-v1:sha256:3f2d1aaafa56677c5552e5075420236bac7bc3b670d0c5f1ed0371174728c961"
+          "version": "repo-file-v1:sha256:c60d21c3c571d8bd3a48431af4f88f0367e98efbe53362581452f89f9cf35673"
         }
       ]
     },
@@ -18,7 +18,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/HostedWorkspaceRefresh.kt",
-          "version": "repo-file-v1:sha256:5f61b96dda295ac25c1ed988fd39c94049b061b9a34fba63df28f0cac2a1674a"
+          "version": "repo-file-v1:sha256:1b2d5f98b7e96e19312c3d85863e613c904254062270601e4f50e2cac0e2c540"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshImportCompletion.kt",
@@ -26,7 +26,7 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshService.kt",
-          "version": "repo-file-v1:sha256:78c2c5f48d338f7ab2d38e1c9f444203a23ebd84f3ea2ccd0d4dba2b30aa8f22"
+          "version": "repo-file-v1:sha256:819372826ce26c2bcb1e64203cfb06dad6273c417ac453949a3653c82adc948e"
         }
       ]
     },
@@ -36,13 +36,13 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/HostedWorkspaceRefresh.kt",
-          "version": "repo-file-v1:sha256:5f61b96dda295ac25c1ed988fd39c94049b061b9a34fba63df28f0cac2a1674a"
+          "version": "repo-file-v1:sha256:1b2d5f98b7e96e19312c3d85863e613c904254062270601e4f50e2cac0e2c540"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-15T00:33:05.932Z"
+    "at": "2026-10-18T02:29:42.742Z"
   }
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:ffcfd412a874c5d7559cc59da0898643dca27925cfbc6ecd1fa82eccb0bf5751",
+  "pageVersion": "sha256:80a17734c8bde4c273f7fcea5ddc4090aad804f6fb644d03e35416db32932322",
   "claims": [
     {
       "id": "claim_a5aabd0ac08b46be89a2eef490220d68",
@@ -88,7 +88,7 @@
       "evidence": [
         {
           "resource": "repo://agent-tools/onboarding.template.md",
-          "version": "repo-file-v1:sha256:d5ade8982cf231a4001832fa60a4b7888c29fc261bdc3dbe1325a444734871cb"
+          "version": "repo-file-v1:sha256:4fea298e1ef256ded03b9937bb10d0d9e0e85e6ff57532e3d9253d60e8464964"
         },
         {
           "resource": "repo://packaging/generate-public-query.py",
@@ -99,6 +99,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-16T07:07:29.171Z"
+    "at": "2026-10-18T02:29:42.742Z"
   }
 }

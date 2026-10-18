@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:9b7607b07f86db135645811024a547dc7c5e259248ba54bdab163ee9fb787ad2",
+  "pageVersion": "sha256:112185b59df6a9d03036b4bcc0bb2d5cc842e35a98fac5a468ad684604ea135d",
   "claims": [
     {
       "id": "claim_33df4f539870445aaef2d593695dca1b",
@@ -88,7 +88,7 @@
       "evidence": [
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt",
-          "version": "repo-file-v1:sha256:244fd15f7aa1c402ee94c792d83f370b37092c82736b76271aad9d565869cdd1"
+          "version": "repo-file-v1:sha256:da3b8b3ead71dd51a003c90260223ae8c31afbfaecf374c10d29aa95f1f836b3"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackEnumProjection.kt",
@@ -119,7 +119,7 @@
       "statement": "Deferred dependency documents preserve a supplier, formal position, six binary digests, and declaration, accessor, initializer, or ordered direct-invocation execution proof. Incomplete scans and invented invocations reject.",
       "evidence": [
         {
-          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackDocumentAdmission.kt#L290-L317",
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackDocumentAdmission.kt#L303-L330",
           "version": "repo-lines-v1:sha256:15f58843b7c13dd886630b43beec65c4022a06b94f65581469f834914208b091:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFhZTNhZjRiY2QwOTJkNDUzYTg5MDA5NGU0ZWNjM2MxNzY1MzdmYjExNjY3Y2Y2MmE0NDg3NzM0ZjAwZjYwNmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2ODdjMDY0ZTI5NGYxMmVjZTkxZTMzZjVkNTdmZTljNmZjNGQ0OGU2ZDRjNjM4YTcwYWQ5ODliYTc3OTc0MjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFmOTg4NDRmODczYmU5MWQ3OTFmYzI3YjM0ZTRkMzYxN2Y4OGJkMWM5NTE4YThlNzc2YzVlMjczMzY1YzJlNzkifQ"
         },
         {
@@ -133,7 +133,7 @@
       "statement": "Dependency-contract callback bindings preserve the four declared Kotlin invocation kinds through the public DTO and exhaustive query projection.",
       "evidence": [
         {
-          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt#L174-L180",
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt#L178-L184",
           "version": "repo-lines-v1:sha256:32133e9c8d9d7d39e4f542d6e6910764c1463bd872cd7e6af655b1365f3c2122:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDViMzdiNWFjMDM1MWM0NTlmMDM1ODUyMDFkZjI2YjYzYzFjNzIzN2U4OWQxZjI1YmRhNDkxNzc0ZTI1ZGRlMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzkyYjY3NDVjMWM1MWMwMDk5MjlhNzVhYThiY2M0N2M1NzM3NzZkZGQ1YjZlMWJkM2ZkMmNmN2FjMmU5MjE2MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjZjNjdlYjliM2NlMWVmYTczNmI2NzNhM2EyOWQzODM4NjNhZjQyZWUyNmJhNzBhOTgzYWIwMjk2Y2U0ZGMwNSJ9"
         },
         {
@@ -145,6 +145,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-16T21:29:39.165Z"
+    "at": "2026-10-18T02:29:42.742Z"
   }
 }

@@ -231,6 +231,14 @@ sources:
     resource: repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/SourceLocalOwnerCallableIdentityObservation.kt
   - id: openwiki-source-d16ec0b0b90b8cd04743a4f3
     resource: repo://source/service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt
+  - id: openwiki-source-fbe41c1f8b4559776a6e1bbd
+    resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijExactNameIndexes.kt
+  - id: openwiki-source-94dfbda21a8b333b3d3a905f
+    resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationSourceAdapter.kt
+  - id: openwiki-source-d681a34840e8a5d442cc3f25
+    resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactNameCandidateFiles.kt
+  - id: openwiki-source-259d0f6fb9af98f74fd1bf60
+    resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIndexedDeclarationName.kt
   - id: openwiki-source-2ac0113cfae0e2e0d35800d0
     resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIndexedDiscoveryAdmission.kt
   - id: openwiki-source-1efdb151b89a7379b20e3aca
@@ -253,10 +261,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-8d15fa1e67cdc054e05e2796
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedValueFlowDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+generated: { by: "codex", at: "2026-10-18T02:29:42.742Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
+    at: 2026-10-18T02:29:42.742Z
 ---
 
 # Semantic read domains
@@ -436,12 +444,25 @@ retention without consuming semantic row capacity. Generated primary-constructor
 Search planning applies cheap scope and declaration-family constraints before
 expensive work. Project-only fuzzy declarations retain ranked scoped Kotlin-file enumeration;
 `ALL` uses the detached partition producer. Mixed declaration families use one
-symbol discovery request. Exact
-searches invoke only the short-name indexes for requested families. Kind exclusion
+symbol discovery request. Exact searches outside the directory-partition route
+use the short-name indexes for requested families. Kind exclusion
 precedes package PSI in candidate admission, and scoped enumeration selects kinds
 before candidate capacity. File-index callbacks end before package inspection;
 excluded class containers remain traversable for eligible members. Qualified
 coverage continues through compiler refinement and final projection.
+
+Eligible exact directory searches first collect conservative candidate files from
+the native word index. Only a completed index read permits ordinary noncandidate
+files to bypass partition capacity and PSI acquisition. The bounded VFS inventory
+still supplies sources and counts every examined child. Declaration traversal and
+K2 refinement preserve local declarations and compiler identity.
+
+The indexed route accepts ASCII identifiers with at most 100 characters, except
+`Companion`. Unicode names, spaced backtick names, longer names, and implicit
+companion names keep exhaustive discovery. Oversized files keep the original PSI
+path because the word index can omit them. Index collection and directory
+preparation share work, cancellation, and retained-byte limits. Incomplete index
+reads preserve qualification rather than establish absence.
 
 Fuzzy discovery ranks exact, case-insensitive, single-edit, and subsequence name evidence before compiler refinement. A bounded lexical queue retains the best admitted candidates across the selected source files. Exact package selection uses `KotlinExactPackagesIndex`; directory and source-set membership constrain file enumeration before capacity. `DISCOVERY_FILES` bounds lexical file retention independently of semantic work, and lexical retain/replace/drop counters distinguish ranking from compiler refinement. The synthetic 200-module fixture covers deletion and transposition with excluded-directory, package, and test-source noise.
 

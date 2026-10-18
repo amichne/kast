@@ -23,8 +23,28 @@ internal fun IntellijNativeDiscoveryQuery.discoverNative(
 ): IntellijNativeDiscoveryExecution {
     if (scope.population == IntellijScopePopulation.KNOWN_EMPTY) return discover(scope, request, emptyList())
     when (val route = IntellijDirectoryDiscoveryPlan.select(scope, request)) {
-        is IntellijDirectoryDiscoveryRoute.Selected ->
+        is IntellijDirectoryDiscoveryRoute.Selected -> {
+            val target = route.plan.target
+            if (target.match == SymbolDiscoveryMatch.EXACT_NAME) {
+                when (val indexed = IntellijIndexedDeclarationName.parse(target.pattern.value)) {
+                    is io.github.amichne.kast.kernel.Refinement.Refined ->
+                        return discoverScopedDeclarations(scope, request, allowance) { callbacks ->
+                            collectExactNameCandidateDeclarations(
+                                project,
+                                route.plan,
+                                indexed.value,
+                                indexes,
+                                limits,
+                                callbacks,
+                                allowance,
+                                partitions,
+                            )
+                        }
+                    is io.github.amichne.kast.kernel.Refinement.Rejected -> Unit
+                }
+            }
             return discoverDirectory(project, route.plan, allowance, partitions)
+        }
         IntellijDirectoryDiscoveryRoute.Rejected ->
             return IntellijNativeDiscoveryExecution.Rejected(IntellijNativeDiscoveryRejection.INTERNAL_INVARIANT)
         IntellijDirectoryDiscoveryRoute.Existing -> Unit

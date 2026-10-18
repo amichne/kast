@@ -22,9 +22,6 @@ code_sources:
 - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparationsTest.kt
 - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparationWaitRecoveryTest.kt
 - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecutionBudgetTest.kt
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T00:33:05.932Z
 sources:
   - id: openwiki-source-775e1d6befa87f41b21c6f0b
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceDemand.kt
@@ -35,6 +32,9 @@ sources:
   - id: openwiki-source-63714f19f4c87d1962b654ac
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+verified:
+  - by: openwiki/0.6.1
+    at: 2026-10-18T02:29:42.742Z
 ---
 
 # Coordinator and workspace preparation
