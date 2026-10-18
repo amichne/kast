@@ -2,6 +2,7 @@ import java.security.MessageDigest
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import support.tasks.idea.selectedIdeaProductInfo
 
 plugins {
     `java-test-fixtures`
@@ -22,7 +23,9 @@ private val ideHostBuild =
     if (hostedIdeaHome.isPresent) {
         val metadata =
             providers
-                .fileContents(layout.projectDirectory.file(hostedIdeaHome.get() + "/Resources/product-info.json"))
+                .fileContents(
+                    layout.projectDirectory.file(selectedIdeaProductInfo(file(hostedIdeaHome.get())).absolutePath)
+                )
                 .asText
                 .get()
         checkNotNull((groovy.json.JsonSlurper().parseText(metadata) as Map<*, *>)["buildNumber"]) as String

@@ -15,6 +15,8 @@ plan = json.loads(args.plan.read_text())
 repository = Path(__file__).resolve().parents[2]
 workspace = Path(plan["workspaceRoot"]).resolve()
 output = Path(plan["outputRoot"]).resolve()
+if args.plan.resolve().is_relative_to(workspace):
+    raise SystemExit("Keep the evaluation plan outside participant context")
 if workspace == repository or repository in workspace.parents:
     raise SystemExit("Use an independent fixture/source-only workspace")
 if output == workspace or workspace in output.parents:
@@ -25,7 +27,7 @@ for name in ("authPath", "modelsStorePath"):
         raise SystemExit("Keep authentication and model storage outside participant context")
 if args.execute:
     if platform.system() == "Linux":
-        raise SystemExit("NATIVE_RUNTIME_UNAVAILABLE: current Kast installer/selected-IDE admission requires macOS; Linux execution is unqualified")
+        raise SystemExit("NATIVE_RUNTIME_UNQUALIFIED: Linux source support still requires real imported-model and semantic query qualification before provider evaluation")
     if not Path(plan["authPath"]).is_file():
         raise SystemExit("APPROVED_AUTHENTICATION_UNAVAILABLE: supply the supported cloud credential path; never copy Mac OAuth")
     # The worker performs exact native tools and provider admission. This wrapper

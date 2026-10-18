@@ -278,23 +278,31 @@ validate_version() {
 
 canonical_idea_home() {
   local requested="$1"
-  local candidate physical release major architecture
+  local candidate physical release major architecture build_file bundled_java
   case "$requested" in
     *.app) candidate="$requested/Contents" ;;
     *) candidate="$requested" ;;
   esac
   [[ -d "$candidate" ]] || return 1
   physical="$(CDPATH='' cd -- "$candidate" && pwd -P)" || return 1
-  [[ -f "$physical/Resources/build.txt" ]] || return 1
-  [[ "$(cat "$physical/Resources/build.txt")" =~ ^(IU-|IC-)?262\. ]] || return 1
+  case "$control_platform" in
+    macos-aarch64) build_file="$physical/Resources/build.txt"; bundled_java="$physical/jbr/Contents/Home" ;;
+    linux-x86_64) build_file="$physical/build.txt"; bundled_java="$physical/jbr" ;;
+    *) return 1 ;;
+  esac
+  [[ -f "$build_file" ]] || return 1
+  [[ "$(cat "$build_file")" =~ ^(IU-|IC-)?262\. ]] || return 1
   [[ -d "$physical/plugins/Kotlin" ]] || return 1
-  [[ -x "$physical/jbr/Contents/Home/bin/java" ]] || return 1
-  release="$physical/jbr/Contents/Home/release"
+  [[ -x "$bundled_java/bin/java" ]] || return 1
+  release="$bundled_java/release"
   [[ -f "$release" ]] || return 1
   major="$(sed -nE 's/^JAVA_VERSION="([0-9]+).*/\1/p' "$release" | awk 'NR == 1 { print; exit }')"
   architecture="$(sed -nE 's/^OS_ARCH="([^"]+)".*/\1/p' "$release" | awk 'NR == 1 { print; exit }')"
   [[ "$major" =~ ^[0-9]+$ ]] && (( major >= 25 )) || return 1
-  case "$architecture" in arm64|aarch64) ;; *) return 1 ;; esac
+  case "$control_platform:$architecture" in
+    macos-aarch64:arm64|macos-aarch64:aarch64|linux-x86_64:amd64|linux-x86_64:x86_64) ;;
+    *) return 1 ;;
+  esac
   printf '%s\n' "$physical"
 }
 
@@ -452,7 +460,11 @@ PYTHON
 }
 
 read_idea_identity() {
-  local metadata="$1/Resources/product-info.json"
+  local metadata
+  case "$control_platform" in
+    macos-aarch64) metadata="$1/Resources/product-info.json" ;;
+    linux-x86_64) metadata="$1/product-info.json" ;;
+  esac
   [[ -f "$metadata" && ! -L "$metadata" ]] || fail "IDEA product metadata is unavailable"
   python3 - "$metadata" <<'PYTHON'
 import json
@@ -616,6 +628,7 @@ require_absolute_path "install root" "$install_root"
 require_absolute_path "binary directory" "$bin_directory"
 
 if [[ "$action" == uninstall ]]; then
+  [[ "$(uname -s)" != Linux ]] || fail "Linux uninstall is not qualified; this profile supports fresh local installation only"
   require_command python3
   if [[ -e "$install_root" || -L "$install_root" ]]; then
     [[ -d "$install_root" && ! -L "$install_root" ]] || fail "install root ownership is unproven: $install_root"
@@ -746,11 +759,23 @@ PYTHON
 fi
 
 for command in curl shasum awk sed find python3 cp mktemp uname; do require_command "$command"; done
-[[ "$(uname -s)" == Darwin ]] || fail "only macOS is supported"
-case "$(uname -m)" in arm64|aarch64) ;; *) fail "only macOS on Apple silicon is supported" ;; esac
+case "$(uname -s):$(uname -m)" in
+  Darwin:arm64|Darwin:aarch64) control_platform=macos-aarch64 ;;
+  Linux:x86_64|Linux:amd64)
+    control_platform=linux-x86_64
+    [[ -n "$idea_home" ]] || fail "Linux installation requires --idea-home"
+    [[ -n "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]] || fail "Linux Control releases are not published; provide verified local assets"
+    [[ "$force" == 0 && "$stage_only" == 0 && "$developer_latest" == 0 ]] ||
+      fail "Linux supports fresh local installation; reset and developer-channel recovery are not qualified"
+    [[ ! -e "$install_root" && ! -L "$install_root" ]] || fail "Linux requires an absent installation root; replacement is not qualified"
+    [[ "$component" != control ]] || fail "--control-only upgrades require a prior running Host; use a fresh paired local installation on Linux"
+    [[ -z "${XDG_DATA_HOME:-}" || "$XDG_DATA_HOME" == "$HOME/.local/share" ]] ||
+      fail "Linux installation requires the default per-user XDG data directory" ;;
+  *) fail "supported platforms are macOS Apple silicon and Linux x86_64 local builds" ;;
+esac
 
 print_banner
-note "checking this Mac and the selected IntelliJ installation"
+note "checking the selected IntelliJ installation"
 
 if [[ -n "$idea_home" ]]; then
   require_absolute_path "IDEA home" "$idea_home"
@@ -773,12 +798,15 @@ PYTHON
   fi
   [[ -n "$idea_home" ]] || idea_home="$(discover_idea_home)"
 fi
-java_home="$idea_home/jbr/Contents/Home"
+case "$control_platform" in
+  macos-aarch64) java_home="$idea_home/jbr/Contents/Home"; idea_profile_base="$HOME/Library/Application Support/JetBrains" ;;
+  linux-x86_64) java_home="$idea_home/jbr"; idea_profile_base="$HOME/.local/share/JetBrains" ;;
+esac
 IFS=$'\t' read -r idea_version idea_build idea_data_directory < <(read_idea_identity "$idea_home")
 [[ -n "$idea_version" && -n "$idea_build" && -n "$idea_data_directory" ]] || fail "IDEA product identity is unavailable"
 success "found IntelliJ IDEA $idea_version (build $idea_build)"
 info "The IntelliJ plugin gives Kast compiler-grounded access to projects opened in this exact IDEA release line."
-idea_plugin_root="$HOME/Library/Application Support/JetBrains/$idea_data_directory/plugins"
+idea_plugin_root="$idea_profile_base/$idea_data_directory/plugins"
 
 if [[ "$codex_plugin_choice" == unspecified ]]; then
   codex_plugin_choice=register
@@ -821,7 +849,7 @@ if [[ "$component" != control ]]; then validate_version "$host_version"; fi
 base_release_url="${KAST_RELEASE_BASE_URL:-https://github.com/$REPOSITORY/releases/download}"
 release_url="${KAST_RELEASE_BASE_URL:-https://github.com/$REPOSITORY/releases/download}"
 release_url="${release_url%/}/$release"
-control_name="kast-control-v$version-macos-aarch64.tar.gz"
+control_name="kast-control-v$version-$control_platform.tar.gz"
 plugin_name="kast-ide-hosted-v${host_version:-unused}-idea-${idea_build%%.*}.zip"
 temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-install.XXXXXX")"
 temporary_root="$(CDPATH='' cd -- "$temporary_root" && pwd -P)"

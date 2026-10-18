@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { discoveryFailures } from './smoke-acceptance.mjs';
 
 const root = fs.realpathSync(process.env.PI_EVAL_ROOT ?? '');
 if (!fs.existsSync(path.join(root, '.pi-eval-owned'))) throw Error('Owned runtime required');
@@ -25,15 +26,20 @@ const runtime = await ModelRuntime.create({ authPath: path.join(agentDir, 'auth.
   refreshOnCreate: process.argv.includes('--refresh-catalog') });
 const registry = new ModelRegistry(runtime);
 const model = registry.find('openai-codex', 'gpt-6.1-sol');
+const servers = loader.getExtensions().runtime.mcpServers.list();
+const failures = discoveryFailures({ errors, model, servers, adapter });
 const report = { mode: 'NO_INFERENCE', piVersion: JSON.parse(fs.readFileSync(path.join(sdkRoot, 'package.json'))).version,
   child: { node: process.execPath, cwd: workspace, agentDir },
   slopsentralExtensionErrors: errors.map(error => ({ path: error.path, error: String(error.error) })),
   extensions: loader.getExtensions().extensions.map(extension => ({ path: extension.path,
     toolNames: [...extension.tools.keys()] })),
   kastAdapter: adapter, kastNativeQuery: 'NOT_RUN',
+  mcpRegistrations: servers.map(server => ({ name: server.name, extensionPath: server.extensionPath,
+    command: server.config.command })),
+  failures,
   catalogModels: registry.getAll().length,
   requestedModel: { provider: 'openai-codex', id: 'gpt-6.1-sol', discovered: Boolean(model),
     configuredAuth: model ? registry.hasConfiguredAuth(model) : false },
   qualification: 'Catalog and extension loading do not prove native Kast query readiness or model access' };
 console.log(JSON.stringify(report, null, 2));
-if (errors.length) process.exitCode = 1;
+if (failures.length) process.exitCode = 1;

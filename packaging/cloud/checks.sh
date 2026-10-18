@@ -7,4 +7,5 @@ repo=$(CDPATH='' cd -- "$profile/../.." && pwd -P)
 node "$profile/smoke.mjs" --refresh-catalog
 cd "$repo"
 node --test experiments/host-observation/pi_evaluation*.test.mjs
+node --test packaging/cloud/smoke-acceptance.test.mjs
 python3 packaging/run-portable-tests.py

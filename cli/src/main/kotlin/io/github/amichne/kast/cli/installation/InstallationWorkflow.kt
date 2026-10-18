@@ -19,6 +19,7 @@ import io.github.amichne.kast.distribution.managed.InstallationRecoveryPreparati
 import io.github.amichne.kast.distribution.managed.InstallationReplacementWrite
 import io.github.amichne.kast.distribution.managed.InstallationSnapshot
 import io.github.amichne.kast.distribution.managed.InstallationSnapshotKind
+import io.github.amichne.kast.distribution.managed.SelectedIdeLayout
 import io.github.amichne.kast.distribution.managed.admitInstallationRecovery
 import io.github.amichne.kast.distribution.managed.copyInstallationSnapshot
 import io.github.amichne.kast.distribution.managed.endpoint.InstalledUpstreamDirectories
@@ -115,13 +116,16 @@ internal object InstallationWorkflow {
 
         val idea = request.ideaHome.value
         val java = request.javaHome.value
+        val layouts =
+            SelectedIdeLayout.entries.filter {
+                regularFile(idea.resolve(it.buildIdentity)) && idea.resolve(it.javaHome).normalize() == java
+            }
         if (
             !physicalDirectory(idea) ||
                 !physicalDirectory(java) ||
                 !regularExecutable(java.resolve("bin/java")) ||
-                !regularFile(idea.resolve("Resources/build.txt")) ||
-                !physicalDirectory(idea.resolve("plugins/Kotlin")) ||
-                idea.resolve("jbr/Contents/Home").normalize() != java
+                layouts.size != 1 ||
+                !physicalDirectory(idea.resolve("plugins/Kotlin"))
         )
             return PlanVerification.Rejected(InstallationFailure.IDEA_REJECTED)
 
@@ -156,6 +160,12 @@ internal object InstallationWorkflow {
             lock.use activation@{
                 if (Files.isSymbolicLink(lockPath) || !secureActivationLock(lockPath))
                     return InstallationOutcome.Rejected(InstallationFailure.ACTIVATION_LOCK_REJECTED)
+                if (
+                    Files.isRegularFile(
+                        plan.request.ideaHome.value.resolve(SelectedIdeLayout.LINUX_DIRECTORY.metadata)
+                    ) && Files.exists(plan.targetRoot, LinkOption.NOFOLLOW_LINKS)
+                )
+                    return InstallationOutcome.Rejected(InstallationFailure.PRIOR_SELECTION_REJECTED)
                 when (observePendingInstallationReplacement(plan.request.installRoot.value)) {
                     PendingInstallationReplacement.Absent -> Unit
                     PendingInstallationReplacement.RecoveryRequired ->

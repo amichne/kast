@@ -22,6 +22,45 @@ class SelectedIdeInstallationTest {
     @Serializable
     private data class Launch(val os: String = "macOS", val arch: String = "aarch64", val launcherPath: String)
 
+    @Test
+    fun `Linux launch JBR and plugin profile use the exact standalone vendor layout`(@TempDir root: Path) {
+        val home = Files.createDirectory(root.resolve("idea")).toRealPath()
+        Files.createDirectory(home.resolve("bin"))
+        Files.writeString(home.resolve("bin/idea"), "")
+        home.resolve("bin/idea").toFile().setExecutable(true)
+        Files.writeString(
+            home.resolve("product-info.json"),
+            Json { encodeDefaults = true }
+                .encodeToString(Product("262.1234.99", listOf(Launch("Linux", "amd64", "bin/idea")))),
+        )
+        val launch = assertInstanceOf(SelectedIdeLaunch.Resolved::class.java, SelectedIdeInstallation.resolve(home))
+        assertEquals(home.toString(), launch.bundle)
+        assertEquals(home.resolve("bin/idea").toString(), launch.executable)
+        assertEquals(home.resolve("jbr"), launch.bundledJavaHome)
+        assertEquals(SelectedIdeLayout.LINUX_DIRECTORY, launch.layout)
+        val user = Files.createDirectory(root.resolve("user")).toRealPath()
+        val profile =
+            org.junit.jupiter.api
+                .assertInstanceOf<Refinement.Refined<SelectedIdePluginRoot>>(
+                    SelectedIdeInstallation.pluginRoot(launch, user)
+                )
+                .value
+        assertEquals(user.resolve(".local/share/JetBrains/IntelliJIdea2026.2/plugins"), profile.value)
+        org.junit.jupiter.api.assertInstanceOf<Refinement.Refined<InstalledHostPluginTarget>>(
+            SelectedIdeInstallation.admitPluginTarget(profile.value.toString(), user)
+        )
+        val encoded = Json.encodeToString<SelectedIdeLaunch>(launch)
+        val restored = Json.decodeFromString<SelectedIdeLaunch>(encoded)
+        assertEquals(launch, restored)
+        assertEquals(SelectedIdeLayout.LINUX_DIRECTORY, (restored as SelectedIdeLaunch.Resolved).layout)
+        Files.createDirectory(home.resolve("Resources"))
+        Files.writeString(home.resolve("Resources/product-info.json"), "ambiguous")
+        assertEquals(
+            SelectedIdeLaunch.Unavailable(IdeLaunchFailure.INVALID_METADATA),
+            SelectedIdeInstallation.resolve(home),
+        )
+    }
+
     private fun fixture(root: Path, build: String, launchers: List<String>): Path {
         val home = Files.createDirectories(root.resolve("Selected.app/Contents")).toRealPath()
         Files.createDirectories(home.resolve("Resources"))

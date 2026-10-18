@@ -1139,6 +1139,52 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
             self.assertIn(str(selected), result.stderr)
             self.assertFalse(ignored.exists())
 
+    def linux_installer_fixture(self, directory):
+        idea, assets, environment = self.installer_fixture(directory)
+        root = Path(directory)
+        linux = root / 'Linux IDEA with spaces'
+        idea.rename(linux)
+        (linux / 'Resources/build.txt').rename(linux / 'build.txt')
+        (linux / 'Resources/product-info.json').rename(linux / 'product-info.json')
+        (linux / 'Resources').rmdir()
+        (linux / 'jbr/Contents/Home/bin').rename(linux / 'jbr/bin')
+        (linux / 'jbr/Contents/Home/release').rename(linux / 'jbr/release')
+        (linux / 'jbr/Contents/Home').rmdir()
+        (linux / 'jbr/Contents').rmdir()
+        (linux / 'jbr/release').write_text('JAVA_VERSION="25.0.1"\nOS_ARCH="amd64"\n')
+        (root / 'bin/uname').write_text('#!/bin/sh\ncase "$1" in -s) echo Linux ;; -m) echo x86_64 ;; *) exit 1 ;; esac\n')
+        for archive in assets.glob('*-macos-aarch64.tar.gz'):
+            selected = archive.with_name(archive.name.replace('macos-aarch64', 'linux-x86_64'))
+            archive.rename(selected)
+            selected.with_name(selected.name + '.sha256').write_text(hashlib.sha256(selected.read_bytes()).hexdigest() + '  ' + selected.name + '\n')
+        environment['XDG_DATA_HOME'] = str(Path(environment['HOME']) / '.local/share')
+        return linux, assets, environment
+
+    def test_linux_fresh_local_plan_selects_vendor_jbr_profile_and_archive(self):
+        with tempfile.TemporaryDirectory(prefix='kast-installer-linux-') as directory:
+            idea, _, environment = self.linux_installer_fixture(directory)
+            result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea), '--dry-run'],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10)
+            self.assertEqual(0, result.returncode, result.stderr)
+            expected = Path(environment['HOME']) / '.local/share/JetBrains/IntelliJIdea2026.2/plugins'
+            self.assertIn('plugin-root=' + str(expected), result.stderr)
+            self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
+
+    def test_linux_replacement_control_upgrade_and_nondefault_profile_reject_before_assets(self):
+        for mode in ('existing', 'control-only', 'xdg'):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory(prefix='kast-linux-reject-') as directory:
+                idea, assets, environment = self.linux_installer_fixture(directory)
+                if mode == 'existing':
+                    Path(environment['KAST_INSTALL_ROOT']).mkdir(parents=True)
+                elif mode == 'xdg':
+                    environment['XDG_DATA_HOME'] = str(Path(directory) / 'alternate')
+                arguments = ['--control-only'] if mode == 'control-only' else []
+                shutil.rmtree(assets)
+                result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea), '--dry-run', *arguments],
+                    cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10)
+                self.assertNotEqual(0, result.returncode)
+                self.assertNotIn('downloading', result.stderr)
+
     def test_unsupported_os_is_rejected_before_installation(self):
         with tempfile.TemporaryDirectory(prefix="kast-installer-os-") as directory:
             idea, _, environment = self.installer_fixture(directory)
@@ -1150,7 +1196,7 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
                 cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
             )
             self.assertNotEqual(0, result.returncode)
-            self.assertIn('only macOS is supported', result.stderr)
+            self.assertIn('supported platforms are macOS Apple silicon and Linux x86_64 local builds', result.stderr)
             self.assertFalse((Path(directory) / 'install').exists())
 
     def test_install_prepares_the_managed_payload_without_prompting(self):
@@ -1377,8 +1423,13 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
             control = selected / "share/kast/installation-lifecycle.py"
             control.parent.mkdir(parents=True)
             control.write_text("import json,sys\nprint(json.dumps(sys.argv[1:]))\n")
+            tools = root / "tools"
+            tools.mkdir()
+            uname = tools / "uname"
+            uname.write_text('#!/bin/sh\necho Darwin\n')
+            uname.chmod(0o755)
             environment = {
-                "HOME": str(root), "PATH": TOOL_PATH, "NO_COLOR": "1",
+                "HOME": str(root), "PATH": str(tools) + os.pathsep + TOOL_PATH, "NO_COLOR": "1",
                 "XDG_DATA_HOME": str(root / "ignored-data"),
             }
             result = subprocess.run(

@@ -26,10 +26,13 @@ The wrapper owns the Gradle distribution checksum. The generated activation file
 configures only the owned Gradle directory through the current approved proxy.
 Set `PI_EVAL_JAVA_TRUSTSTORE` if the platform provides a different Java certificate store.
 
-The Kast public installer currently supports macOS only. Its selected-IDE
-admission requires macOS metadata and its lifecycle uses `launchd`. The Host's
-application lifecycle also skips headless mode. A provisioned Linux IDE therefore
-does not establish an installed, ready Kast product or end-to-end evaluation.
+The Linux source path admits the standalone vendor layout, bundled JBR and exact
+per-user plugin profile. Control archives carry a Linux platform name. Fresh
+paired installation requires explicit `--idea-home`, verified local assets, an
+absent canonical installation root, and the default XDG data directory. Replacement,
+reset, uninstall and the legacy broker service remain unqualified on Linux.
+Direct MCP uses its own client process. A virtual display is required for graphical
+lifecycle launch; a process start never establishes Host readiness.
 
 The authoritative shell configuration source is `amichne/dotfiles`; the legacy shell-config
 repository is not part of this profile. Portable Pi resources must be selected
@@ -53,9 +56,9 @@ startup, language-server paths, credentials, models, and package settings.
 | Gradle and Control | Use the checked wrapper and optional GraalVM. Linux native compilation also needs a C/C++ toolchain and `zlib` headers. |
 | Slopsentral | The released adapter and source revision are pinned separately. Source checks and native Pi loader tests prove different boundaries. |
 | Portable resources | Only the named public Pi files enter the owned agent directory. The full shell gate has separate OS dependencies. |
-| Kast Host/Control installation | Public installation and selected-IDE admission currently require macOS on Apple silicon. Linux provisioning cannot pass these contracts. |
+| Kast Host/Control installation | Linux supports a fresh local pair at the canonical per-user installation. Actual product installation and imported-model readiness require separate qualification. |
 | True headless semantics | Native indexed fixture tests use headless platform APIs. The product Host lifecycle skips headless startup. These are separate execution modes. |
-| Virtual display | `Xvfb` supplies an X11 display for a graphical IDE. It does not enable the current product's Linux lifecycle or grant semantic authority. |
+| Virtual display | `Xvfb` supplies an X11 display for a graphical IDE. The Linux launcher preserves the real IDE and waits for the correlated Host handshake. Startup alone grants no semantic authority. |
 | Model runs | Need an approved cloud authentication mechanism, working native queries in the exact child environment, and the bounded evaluation plan. |
 
 ## Source checks and clean fixtures
@@ -93,7 +96,8 @@ excludes evaluation reports, prior answers, and oracle files. The plan command
 performs no inference. Keep plan, output, authentication, and model storage outside
 the participant workspace. The exact eleven-sample evaluation plan is a separate
 input; this setup does not invent or replace it. `--execute` remains rejected on
-Linux under the current product contracts. Never copy personal `OAuth` files from a Mac.
+Linux until imported-model and native-query qualification is complete. Never copy
+personal `OAuth` files from a Mac.
 
 Before model work, preserve the real registry report, the exact native declaration,
 callers and qualified TRACE replies, imported-model readiness, and artifact identities.
@@ -108,6 +112,15 @@ node experiments/host-observation/pi_evaluation_sdk_check.mjs \
 That check doubles provider transports and uses synthetic credentials. It proves
 SDK compatibility only. It performs no native semantic query or model inference.
 Any failure blocks claims about that boundary.
+The authored RPC extension requires the actual canonical installed command before
+loading. Session-admission failures must be reported before policy assertions;
+an extension-load failure does not establish an SDK budget defect.
+
+Build a Linux Control archive with `assembleKastControlDist` and an explicit numeric
+`-PcontrolVersion`. Build the matching Host release with `generateHostReleaseRecord`
+and `-PhostedIdeaHome` pointing to the pinned IDE. Semantic modules still resolve
+their pinned Platform SDK dependencies. Keep official SDK access and Host artifacts
+as explicit prerequisites; do not substitute an unrelated release or mock plugin.
 
 ## Disposable Linux prerequisites
 
@@ -128,6 +141,19 @@ A later graphical IDEA experiment can use `xvfb-run -a -s "-screen 0 1280x720x24
 Label that a graphical session under a virtual display. License, privacy, and trust
 choices still require their normal approvals; this setup accepts none of them.
 A successful graphical startup alone does not prove import or Kast readiness.
+
+Use the bounded vendor launcher probe in an owned directory outside the checkout:
+
+```sh
+python3 packaging/cloud/probe-idea.py --idea-home "$PI_EVAL_ROOT/idea-2026.2.2" \
+  --root /workspace/evidence/idea-headless --mode headless
+python3 packaging/cloud/probe-idea.py --idea-home "$PI_EVAL_ROOT/idea-2026.2.2" \
+  --root /workspace/evidence/idea-graphical --mode virtual-display
+```
+
+Use `docker run --init` when the probe runs as the container entry point, so the
+runtime reaps orphaned IDE and Xvfb children. The probe accepts no first-run choices,
+installs no plugin, and records startup costs plus logs. A timeout or clean exit is a probe outcome, never semantic readiness.
 
 Record bootstrap CPU, peak RAM, disk, and import cost separately from native query
 work and provider latency. Compare correctness and work counts across machines;

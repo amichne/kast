@@ -16,6 +16,8 @@ parser.add_argument("--destination", required=True, type=Path)
 parser.add_argument("--receipt", required=True, type=Path)
 args = parser.parse_args()
 destination = args.destination.resolve()
+if args.receipt.resolve().is_relative_to(destination):
+    raise SystemExit("Keep the fixture receipt outside participant context")
 if destination.exists() or args.receipt.exists():
     raise SystemExit("Use new fixture and receipt paths")
 revision = subprocess.check_output(["git", "-C", str(args.repository), "rev-parse", args.revision + "^{commit}"], text=True).strip()

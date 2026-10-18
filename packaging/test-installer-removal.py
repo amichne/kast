@@ -15,6 +15,10 @@ class InstallerRemovalTest(unittest.TestCase):
         self.fixture = InstallerFixture(admitted_tools())
         self.fixture.__enter__()
         self.env = self.fixture.environment.copy()
+        uname = Path(self.env['PATH']) / 'uname'
+        uname.unlink()
+        uname.write_text('#!/bin/sh\ncase "$1" in -s) echo Darwin ;; -m) echo arm64 ;; *) exit 1 ;; esac\n')
+        uname.chmod(0o755)
         for key in tuple(self.env):
             if key.startswith('XDG_') or key in {'KAST_RUNTIME_STORE', 'KAST_RUNTIME_DIRECTORY', 'KAST_CACHE_ROOT'}:
                 self.env.pop(key)
@@ -86,6 +90,13 @@ class InstallerRemovalTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.strip(), json.dumps(['--installation', str(self.product), 'remove', '--control-only', '--json']),
                          'entry point must invoke bounded lifecycle removal, never broad rm')
+
+    def test_linux_uninstall_is_explicitly_unqualified_before_dispatch(self):
+        (Path(self.env['PATH']) / 'uname').write_text('#!/bin/sh\necho Linux\n')
+        result = self.uninstall('--managed-registrations', '--verbose')
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn('Linux uninstall is not qualified', result.stderr)
+        self.assertTrue((self.product / 'installation.json').is_file())
 
     def test_manifestless_installation_is_rejected(self):
         (self.product / 'installation.json').unlink()

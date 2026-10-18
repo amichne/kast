@@ -24,6 +24,15 @@ def run(*argv: str, **kwargs: object) -> None:
     subprocess.run(argv, check=True, **kwargs)
 
 
+def verify_source(destination: Path, revision: str) -> None:
+    observed = subprocess.check_output(["git", "-C", str(destination), "rev-parse", "HEAD"], text=True).strip()
+    if observed != revision:
+        raise SystemExit(f"Refusing unpinned source checkout: {destination.name}")
+    status = subprocess.check_output(["git", "-C", str(destination), "status", "--porcelain", "--untracked-files=all"], text=True)
+    if status:
+        raise SystemExit(f"Refusing modified source checkout: {destination.name}")
+
+
 def verify_idea(target: Path, build: str) -> None:
     product = json.loads((target / "product-info.json").read_text())
     if product["buildNumber"] != build:
@@ -102,9 +111,7 @@ def provision(root: Path, with_idea: bool, with_fixture: bool, with_control: boo
             run("git", "-C", str(destination), "remote", "add", "origin", "https://github.com/amichne/" + repository + ".git")
             run("git", "-C", str(destination), "fetch", "--depth=1", "origin", revision)
             run("git", "-C", str(destination), "checkout", "--detach", "FETCH_HEAD")
-        observed = subprocess.check_output(["git", "-C", str(destination), "rev-parse", "HEAD"], text=True).strip()
-        if observed != revision:
-            raise SystemExit(f"Refusing unpinned source checkout: {repository}")
+        verify_source(destination, revision)
     npm = root / "npm"
     npm.mkdir(exist_ok=True)
     for name in ("package.json", "package-lock.json"):

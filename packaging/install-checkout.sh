@@ -39,9 +39,20 @@ while [[ $# -gt 0 ]]; do
 done
 
 case "$idea_home" in *.app) idea_home="$idea_home/Contents" ;; esac
-[[ -n "$idea_home" && -f "$idea_home/Resources/product-info.json" ]] || fail 'an admitted IDEA home is required'
+[[ -n "$idea_home" ]] || fail 'an admitted IDEA home is required'
 idea_home="$(CDPATH='' cd -- "$idea_home" && pwd -P)"
-java_home="$idea_home/jbr/Contents/Home"
+case "$(uname -s):$(uname -m)" in
+  Darwin:arm64|Darwin:aarch64)
+    metadata="$idea_home/Resources/product-info.json"
+    java_home="$idea_home/jbr/Contents/Home"
+    control_platform=macos-aarch64 ;;
+  Linux:x86_64|Linux:amd64)
+    metadata="$idea_home/product-info.json"
+    java_home="$idea_home/jbr"
+    control_platform=linux-x86_64 ;;
+  *) fail 'unsupported checkout build platform' ;;
+esac
+[[ -f "$metadata" ]] || fail 'an admitted IDEA home is required'
 [[ -x "$java_home/bin/java" && -f "$java_home/release" ]] ||
   fail 'selected IDEA has no bundled JBR; repair the IDEA installation before building Kast'
 java_feature="$(/usr/bin/awk '
@@ -59,7 +70,7 @@ java_feature="$(/usr/bin/awk '
   fail 'selected IDEA bundled JBR requires Java 25 or newer; select a supported IDEA installation'
 # Scope the runtime choice to this installer and its children, before Gradle starts.
 export JAVA_HOME="$java_home" JAVA="$java_home/bin/java" KAST_INSTALL_JAVA_HOME="$java_home"
-idea_build=$(python3 - "$idea_home/Resources/product-info.json" <<'PYTHON'
+idea_build=$(python3 - "$metadata" <<'PYTHON'
 import json, re, sys
 value = json.load(open(sys.argv[1])).get("buildNumber")
 if not isinstance(value, str) or re.fullmatch(r"[0-9]+(?:\.[0-9]+)+", value) is None:
@@ -90,7 +101,7 @@ case "$component" in
 esac
 "$checkout/gradlew" --console=plain "${build_options[@]}" "${build_tasks[@]}" >&2
 if [[ "$component" != host ]]; then
-  name="kast-control-v$version-macos-aarch64.tar.gz"
+  name="kast-control-v$version-$control_platform.tar.gz"
   cp "$checkout/build/distributions/$name" "$scratch/$name"
   (cd "$scratch" && shasum -a 256 "$name" > "$name.sha256")
 fi
