@@ -8,11 +8,13 @@ import subprocess
 from urllib.parse import urlparse
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--docker-config", required=True, type=Path, help="New isolated Docker configuration directory")
-args = parser.parse_args()
-args.docker_config.mkdir(parents=True, exist_ok=True, mode=0o700)
-env = {**os.environ, "DOCKER_CONFIG": str(args.docker_config.resolve())}
-command = ["docker", "build"]
+parser.parse_args()
+# Select the managed daemon without changing registry configuration or credentials.
+selectors = {"DOCKER_HOST", "DOCKER_CONTEXT", "DOCKER_TLS", "DOCKER_TLS_VERIFY", "DOCKER_CERT_PATH"}
+env = {name: value for name, value in os.environ.items() if name not in selectors}
+docker = ["docker", "--host=unix:///var/run/docker.sock"]
+subprocess.run([*docker, "info"], env=env, stdout=subprocess.DEVNULL, check=True)
+command = [*docker, "build"]
 for lower, upper in (("http_proxy", "HTTP_PROXY"), ("https_proxy", "HTTPS_PROXY")):
     value = os.environ.get(upper) or os.environ.get(lower)
     if value:

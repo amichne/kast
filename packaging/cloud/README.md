@@ -125,14 +125,15 @@ as explicit prerequisites; do not substitute an unrelated release or mock plugin
 ## Disposable Linux prerequisites
 
 ```sh
-python3 packaging/cloud/container.py --docker-config /workspace/pi-eval-docker
+python3 packaging/cloud/container.py
 ```
 
 The `Dockerfile` pins its Debian base by digest and installs graphical, shell, and
 native build prerequisites. OS packages follow Debian's repository; keep the
 resulting image digest and package inventory. The helper uses the approved proxy
-and its resolved host name mapping for build children. It creates no grants or
-registry credentials. Supply the platform's public CA through a read-only mount
+and its resolved host name mapping for build children. It selects the managed local
+Docker daemon and preserves inherited registry configuration and credentials.
+Supply the platform's public CA through a read-only mount
 when running a new container; pass only required proxy and certificate settings.
 Never mount personal HOME, `OAuth` files, or the Docker socket into a test container.
 

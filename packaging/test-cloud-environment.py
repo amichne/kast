@@ -1,6 +1,7 @@
 """Offline cloud boundaries: refuse changed sources and participant-context receipts."""
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -14,6 +15,31 @@ spec.loader.exec_module(bootstrap)
 
 
 class CloudEnvironmentTest(unittest.TestCase):
+    def test_container_builder_uses_local_socket_and_preserves_registry_configuration(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            docker = root / "docker"
+            receipt = root / "calls.jsonl"
+            docker.write_text("#!" + sys.executable + "\n" +
+                "import json, os, sys\n" +
+                "with open(os.environ['CLOUD_DOCKER_RECEIPT'], 'a') as output:\n" +
+                " output.write(json.dumps({'argv':sys.argv[1:], 'config':os.environ.get('DOCKER_CONFIG'), 'selectors':[key for key in ('DOCKER_HOST','DOCKER_CONTEXT','DOCKER_TLS','DOCKER_TLS_VERIFY','DOCKER_CERT_PATH') if key in os.environ]})+'\\n')\n")
+            docker.chmod(0o755)
+            config = root / "existing-registry-config"
+            environment = {**os.environ, "PATH": str(root) + os.pathsep + os.defpath,
+                "DOCKER_CONFIG": str(config), "DOCKER_HOST": "tcp://unrelated.invalid:2376",
+                "DOCKER_CONTEXT": "unrelated", "DOCKER_TLS": "1", "DOCKER_TLS_VERIFY": "1",
+                "DOCKER_CERT_PATH": "/unrelated", "CLOUD_DOCKER_RECEIPT": str(receipt)}
+            for key in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
+                environment.pop(key, None)
+            subprocess.run([sys.executable, str(CLOUD / "container.py")], env=environment, check=True)
+            calls = [json.loads(line) for line in receipt.read_text().splitlines()]
+            self.assertEqual(2, len(calls))
+            self.assertEqual(["--host=unix:///var/run/docker.sock", "info"], calls[0]["argv"])
+            self.assertEqual(["--host=unix:///var/run/docker.sock", "build"], calls[1]["argv"][:2])
+            self.assertTrue(all(call["config"] == str(config) and not call["selectors"] for call in calls))
+            self.assertFalse(config.exists(), "The helper must not create or replace registry configuration")
+
     def test_source_pin_rejects_tracked_changes_and_untracked_execution_inputs(self):
         with tempfile.TemporaryDirectory() as temporary:
             repository = Path(temporary)
