@@ -88,6 +88,7 @@ test('Pi delivers the generated semantic routing policy without probing readines
     'For direct callers or references, use the matching relation',
     'Copy its issued `ref` unchanged',
     'For scoped path checks and source reads, reuse paths from returned evidence or file listings',
+    'If evidence supplies exact paths, examine those paths directly instead of enumerating the repository',
     'If a needed path is unknown, find it within the known scope before reading',
     'Batch independent source reads with bounded output that keeps the evidence needed for the answer',
     'filter large structured results before `text()` or `store()`',
@@ -107,18 +108,19 @@ test('Pi inventory example projects a large structured Bash result before displa
   const cases = [
     { name: 'exact paths', matches: [selected[0], selected[1]], expectedPaths: [selected[0], selected[1]], truncated: false, exit_code: 0 },
     { name: 'no matching paths', matches: [], expectedPaths: [], truncated: false, exit_code: 0 },
-    { name: 'bounded paths keep count', matches: selected, expectedPaths: selected.slice(0, 20), truncated: false, exit_code: 0 },
+    { name: 'bounded paths keep count', matches: selected, expectedPaths: selected.slice(0, 20), omittedCount: 1, truncated: false, exit_code: 0 },
+    { name: 'sibling prefix excluded', matches: [selected[0]], extraPaths: ['selected/src/main-sibling/Other.kt'], expectedPaths: [selected[0]], truncated: false, exit_code: 0 },
     { name: 'partial inventory stays qualified', matches: [selected[0]], expectedPaths: [selected[0]], truncated: true, exit_code: 0 },
     { name: 'failed Bash stays failed', matches: [], expectedPaths: [], truncated: false, exit_code: 1 },
   ];
   for (const c of cases) {
     // This is the structured value of an already-completed Bash call, not a model simulation.
-    const result = { output: [...unrelated, ...c.matches].join('\n'), truncated: c.truncated, exit_code: c.exit_code };
+    const result = { output: [...unrelated, ...c.matches, ...(c.extraPaths ?? [])].join('\n'), truncated: c.truncated, exit_code: c.exit_code };
     assert.ok(Buffer.byteLength(result.output) > 262144);
     const displayed = [];
     runInNewContext(example[1], { result, directoryPrefix, text: value => displayed.push(JSON.stringify(value)) }, { timeout: 1000 });
     assert.deepEqual(displayed, [JSON.stringify({
-      exit_code: c.exit_code, truncated: c.truncated, matchCount: c.matches.length, paths: c.expectedPaths,
+      exit_code: c.exit_code, truncated: c.truncated, matchCount: c.matches.length, omittedCount: c.omittedCount ?? 0, paths: c.expectedPaths,
     })], c.name);
   }
 });
