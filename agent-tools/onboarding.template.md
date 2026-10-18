@@ -3,7 +3,29 @@
 For Kotlin code understanding in this exact workspace, use Kast as the first semantic step when its tools are reachable and support the task.
 Use `query_symbols` for declaration identity, callers, references, implementations, and affected uses; use `check_diagnostics` for compiler diagnostics.
 Read files for task context, implementation details, and to interpret the returned evidence.
+When you read or examine source files, reuse paths from returned evidence or file listings.
+If evidence supplies exact paths, examine those paths directly.
+Do not enumerate the repository for supplied paths.
+If a needed path is unknown, find it within the known scope before you read it.
+Batch independent source reads with bounded output that keeps the evidence needed for the answer.
+In Pi `codemode`, filter large structured results before `text()` or `store()`. Keep only needed identifiers or summaries.
+Keep original source line numbers and evidence qualifications.
 Documentation, configuration, shell work, and other tasks without a Kotlin semantic question need no Kast call.
+
+For an existing Bash inventory, `directoryPrefix` must end with `/`:
+
+```javascript
+const { exit_code, truncated } = result;
+if (exit_code !== 0 || truncated !== false) {
+  text({ exit_code, truncated, counts: "UNAVAILABLE" });
+} else {
+  const matches = result.output.split("\n").filter(path => path.startsWith(directoryPrefix));
+  const paths = matches.slice(0, 20);
+  text({ exit_code, truncated, matchCount: matches.length, omittedCount: matches.length - paths.length, paths });
+}
+```
+
+Counts cover only supplied output. Failed or truncated inventories have no path or count claims.
 
 If the needed tool schema is already available, use it directly.
 Otherwise, discover the needed Kast tool once through the host's enabled tool discovery surface and obey its installed schema.
