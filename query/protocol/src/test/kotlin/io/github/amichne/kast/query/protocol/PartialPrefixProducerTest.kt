@@ -308,7 +308,10 @@ class PartialPrefixProducerTest {
         issued: QueryResultIssuance.Issued,
     ): String {
         val interpretation = payload.interpretation as QueryResultInterpretationDocument.EvidenceOnly
-        val cause = (completionProof(retained) as Refinement.Rejected).failure.protocolCompletionCause()
+        val cause =
+            (completionProof(retained, QueryCallbackCompletion.INVOCATION_GRAPH) as Refinement.Rejected)
+                .failure
+                .protocolCompletionCause()
         assertEquals(cause, interpretation.cause)
         val rejected =
             QueryRunRejection.CompletionUnproven(

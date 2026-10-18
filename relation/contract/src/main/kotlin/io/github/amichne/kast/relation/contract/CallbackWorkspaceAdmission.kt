@@ -18,7 +18,8 @@ private class CallbackWorkspaceFiles {
     private val files = linkedSetOf<SymbolDiscoveryFileIdentity>()
 
     fun admit(root: CanonicalWorkspaceRoot): Refinement<Unit, StaticCallbackGraphFailure> {
-        if (files.any { !it.inside(root) }) return Refinement.Rejected(StaticCallbackGraphFailure.OutsideWorkspace)
+        if (files.any { !it.insideCallbackWorkspace(root) })
+            return Refinement.Rejected(StaticCallbackGraphFailure.OutsideWorkspace)
         return Refinement.Refined(Unit)
     }
 
@@ -120,6 +121,6 @@ private class CallbackWorkspaceFiles {
     }
 }
 
-private fun SymbolDiscoveryFileIdentity.inside(root: CanonicalWorkspaceRoot): Boolean =
+internal fun SymbolDiscoveryFileIdentity.insideCallbackWorkspace(root: CanonicalWorkspaceRoot): Boolean =
     this is SymbolDiscoveryFileIdentity.Workspace &&
         CanonicalWorkspaceFilePath.fromCanonicalPath(root, Path.of(path.value)) is Refinement.Refined

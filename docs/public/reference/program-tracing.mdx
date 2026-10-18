@@ -94,7 +94,9 @@ The retained witness lists producers, models, native reads, read rejections, and
 
 Every public `RUN` uses `COMPILER_RESOLVED_STATIC_V1` with `COMPLETE_ONLY`. To complete, a run must finish its work and meet its proof rules.
 
-A run cannot complete when flow is mutable or not supported, source is missing, owners remain unresolved, or grants run out. A rejection keeps proved evidence when retention admits it.
+`TRACE` from source symbols separates source completeness from callback execution. Nested callbacks and missing library effects remain explicit evidence gaps under `SOURCE_RELATIONSHIPS`. Kast does not infer an invocation from lexical containment or supply.
+
+Invocation queries still need complete callback graphs. Unresolved source identity, missing result membership, and exhausted grants reject both interpretations. A rejection keeps proved evidence when retention admits it. [Results](/reference/responses#run-completion) defines the rule for composed queries.
 
 The model proves source relationships resolved by the compiler. It does not prove that code ran, that a branch can run, or how often code runs. It does not prove project behavior after an edit.
 

@@ -20,6 +20,34 @@ import org.junit.jupiter.api.Test
 
 class LiveReadOutputSchemaTest {
     @Test
+    fun `source trace interpretation preserves required effect evidence in installed schemas`() {
+        val steps = BoundedProtocolList.create(listOf<QueryStepDocument>(QueryStepDocument.Trace())).refined()
+        val result =
+            QueryRunResult(
+                question = fixtureQueryQuestion().copy(steps = steps),
+                items = empty(),
+                failures = empty(),
+                interpretation = QueryResultInterpretationDocument.SourceRelationships(),
+            )
+        for (detail in ToolOutputDetail.entries) {
+            val document =
+                CanonicalQueryCliDocuments.project(complete(CanonicalOperation.QUERY_RUN, live, result))
+                    .document(detail)
+            assertAdmits(CanonicalOperation.QUERY_RUN, document)
+            val interpretation = document.getValue("interpretation").jsonObject
+            assertEquals(JsonPrimitive("EVIDENCE_ONLY"), interpretation["callbackEffects"])
+            assertRejects(
+                CanonicalOperation.QUERY_RUN,
+                document.with("interpretation", interpretation.with("callbackEffects", JsonPrimitive("COMPLETE"))),
+            )
+            assertRejects(
+                CanonicalOperation.QUERY_RUN,
+                document.with("interpretation", interpretation.with("callbackEffects", JsonNull)),
+            )
+        }
+    }
+
+    @Test
     fun `every finite query reference rejection satisfies its installed schema`() {
         for (reason in QueryReferenceRejectionReason.entries) {
             val document =

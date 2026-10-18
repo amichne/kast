@@ -45,7 +45,10 @@ internal sealed interface QueryCompletionFailure {
 }
 
 /** Cheap finite failures precede construction of every context-sensitive callback graph. */
-internal fun completionProof(execution: QueryExecutionResult): Refinement<Unit, QueryCompletionFailure> =
+internal fun completionProof(
+    execution: QueryExecutionResult,
+    callbacks: QueryCallbackCompletion,
+): Refinement<Unit, QueryCompletionFailure> =
     when (execution) {
         is QueryExecutionResult.Rejection -> Refinement.Rejected(QueryCompletionFailure.Incomplete)
         is QueryExecutionResult.Qualified ->
@@ -53,28 +56,34 @@ internal fun completionProof(execution: QueryExecutionResult): Refinement<Unit, 
                 is Refinement.Rejected -> proof
                 is Refinement.Refined -> Refinement.Rejected(QueryCompletionFailure.Incomplete)
             }
-        is QueryExecutionResult.Complete -> completionProof(execution.result)
+        is QueryExecutionResult.Complete -> completionProof(execution.result, callbacks)
     }
 
-internal fun completionProof(result: QueryResult): Refinement<Unit, QueryCompletionFailure> =
+internal fun completionProof(
+    result: QueryResult,
+    callbacks: QueryCallbackCompletion,
+): Refinement<Unit, QueryCompletionFailure> =
     when {
         result.failures.isNotEmpty() -> Refinement.Rejected(QueryCompletionFailure.Item)
         result.omissions.isNotEmpty() -> Refinement.Rejected(QueryCompletionFailure.Omitted)
         else ->
             when (val proof = investigationProof(result.rows)) {
                 is Refinement.Rejected -> proof
-                is Refinement.Refined -> callbackProof(result.relationObservations, result.walkObservations)
+                is Refinement.Refined -> callbackProof(result.relationObservations, result.walkObservations, callbacks)
             }
     }
 
-internal fun completionProof(result: QueryRetainedResult): Refinement<Unit, QueryCompletionFailure> =
+internal fun completionProof(
+    result: QueryRetainedResult,
+    callbacks: QueryCallbackCompletion,
+): Refinement<Unit, QueryCompletionFailure> =
     when {
         result is QueryRetainedResult.ValuePaths && investigationProof(result.rows) is Refinement.Rejected ->
             investigationProof(result.rows)
         result.coverage is QueryCoverage.Qualified -> Refinement.Rejected(QueryCompletionFailure.Incomplete)
         result.failures.isNotEmpty() -> Refinement.Rejected(QueryCompletionFailure.Item)
         result.omissions.isNotEmpty() -> Refinement.Rejected(QueryCompletionFailure.Omitted)
-        else -> callbackProof(result.relationObservations, result.walkObservations)
+        else -> callbackProof(result.relationObservations, result.walkObservations, callbacks)
     }
 
 internal fun QueryCompletionFailure.protocolCompletionCause(): QueryCompletionCauseDocument =

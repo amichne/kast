@@ -4,9 +4,10 @@ title: "Kast query"
 description: "Owns query plans, semantic execution, strict completion, and retained output under the original read authority."
 resource: "repo://query"
 tags: [kast, navigation]
-timestamp: "2026-10-14T23:25:10Z"
-source_revision: e014a489bfd7e69cbf2c4b61140ee771d857a03e
+timestamp: "2026-10-18T22:46:32Z"
+source_revision: e37b2d25a75abc47a4d8487e579f97ec36ca8cad
 code_sources:
+  - path: query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackCompletion.kt
   - path: query/contract/build.gradle.kts
   - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt
   - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryInvestigationCompletion.kt
@@ -68,6 +69,8 @@ Owns query plans, semantic execution, strict completion, and retained output und
 
 - Trace a public `RUN` through `CanonicalQueryProtocol` into `QueryService` and its domain operations.
 - Every public run uses `COMPLETE_ONLY` under `COMPILER_RESOLVED_STATIC_V1`. Unproved completion remains a typed rejection.
+- `QueryCallbackCompletion` selects source completeness for terminal `TRACE` from source symbols with only filters or deduplication before it. Callback effects remain explicit evidence.
+- Explicit relation operations, traversal, composition, retained sources, and impact sources keep callback graph completeness. Retained presentation uses the original question's interpretation.
 - `RESUME` presents produced output. `READ_RESULT` presents immutable rows and evidence. Neither operation restarts semantic execution.
 - Keep output cursors, exact references, result references, and internal execution checkpoints distinct.
 - For public syntax, read the app-server query guide. Its schema owns defaults and generated syntax.
