@@ -1,3 +1,4 @@
+import support.tasks.idea.selectedIdeaProductInfo
 import conventions.registerJsonContractVerification
 import conventions.jsoncontracts.JsonContractScanRequest
 import org.gradle.api.tasks.bundling.Compression
@@ -142,13 +143,21 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     from(listOf("packaging/installation-lifecycle.py", "packaging/installation-recovery.py", "packaging/prune-prior-installations.py", "packaging/codex-mcp-registration.py", "packaging/host-installation.py")) { into("share/kast") }
 }
 
+val controlArchivePlatform = providers.systemProperty("os.name").zip(providers.systemProperty("os.arch")) { os, arch ->
+    when {
+        os.startsWith("Mac") && arch in setOf("aarch64", "arm64") -> "macos-aarch64"
+        os == "Linux" && arch in setOf("amd64", "x86_64") -> "linux-x86_64"
+        else -> throw GradleException("Control archive requires macOS Apple silicon or Linux x86_64")
+    }
+}
+
 val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
     group = "distribution"
     description = "Builds the private service, lifecycle, schema, broker, and wire-control archive."
     dependsOn(stageKastControlProduct)
     from(controlProductDirectory)
     destinationDirectory.set(layout.buildDirectory.dir("distributions"))
-    archiveFileName.set("kast-control-v${controlVersion.get()}-macos-aarch64.tar.gz")
+    archiveFileName.set(controlArchivePlatform.map { "kast-control-v${controlVersion.get()}-$it.tar.gz" })
     compression = Compression.GZIP
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
@@ -207,7 +216,7 @@ tasks.register<GenerateComponentReleaseTask>("generateHostReleaseRecord") {
     hostedContractFile.set(contractFile)
     val metadataBaseDirectory = layout.projectDirectory.asFile
     ideaReleaseLine.set(providers.gradleProperty("hostedIdeaHome").map { home ->
-        val metadataPath = java.io.File(home, "Resources/product-info.json")
+        val metadataPath = selectedIdeaProductInfo(java.io.File(home))
         val metadataFile = if (metadataPath.isAbsolute) metadataPath else java.io.File(metadataBaseDirectory, metadataPath.path)
         val metadata = groovy.json.JsonSlurper().parse(metadataFile) as Map<*, *>
         (metadata["buildNumber"] as String).substringBefore('.')
@@ -243,7 +252,7 @@ val localJavaHome = providers.systemProperty("java.home").map { configuredHome -
 val localJavaExecutable = localJavaHome.map { home -> home.resolve("bin/java") }
 
 val localHostedIdeaBuild = providers.gradleProperty("hostedIdeaHome").map { home ->
-    val metadata = providers.fileContents(layout.projectDirectory.file("$home/Resources/product-info.json")).asText.get()
+    val metadata = providers.fileContents(layout.projectDirectory.file(selectedIdeaProductInfo(file(home)).absolutePath)).asText.get()
     (groovy.json.JsonSlurper().parseText(metadata) as Map<*, *>)["buildNumber"] as String
 }.orElse(libs.versions.ide.host.build)
 val localHostedPluginArchive = localHostedIdeaBuild.map { build ->

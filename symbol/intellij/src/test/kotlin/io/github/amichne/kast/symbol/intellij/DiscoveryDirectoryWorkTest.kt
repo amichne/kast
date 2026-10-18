@@ -104,6 +104,12 @@ class DiscoveryDirectoryWorkTest {
             var fileCalls = 0
             val indexes =
                 object : IntellijDeclarationIndexes {
+                    override fun candidateFiles(
+                        name: IntellijIndexedDeclarationName,
+                        scope: GlobalSearchScope,
+                        accept: (VirtualFile) -> Boolean,
+                    ): Boolean = throw AssertionError("Unexpected word index")
+
                     override fun named(
                         index: IntellijNamedDeclarationIndex,
                         name: String,

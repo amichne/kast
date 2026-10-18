@@ -35,7 +35,7 @@ sources:
 generated: { by: "codex", at: "2026-10-15T00:57:31.735Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-15T00:57:31.735Z
+    at: 2026-10-18T02:29:42.742Z
 ---
 
 # Hosted endpoint composition and publication

@@ -133,6 +133,12 @@ internal class ScopedDiscoveryDispatcherFixture(private val project: Project, re
         private val fileSupply: (GlobalSearchScope, (VirtualFile) -> Boolean) -> Boolean,
         private val completeNamed: Boolean = true,
     ) : IntellijDeclarationIndexes {
+        override fun candidateFiles(
+            name: IntellijIndexedDeclarationName,
+            scope: GlobalSearchScope,
+            accept: (VirtualFile) -> Boolean,
+        ): Boolean = throw AssertionError("Unexpected word index")
+
         val effects = mutableListOf<String>()
         private var namedCalls = 0
         private var fileCalls = 0

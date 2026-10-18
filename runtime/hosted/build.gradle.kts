@@ -1,4 +1,5 @@
 import java.security.MessageDigest
+import support.tasks.idea.selectedIdeaProductInfo
 import support.tasks.nativefixtures.NativeFixtureJvmArguments
 
 plugins {
@@ -32,7 +33,9 @@ val ideBuild =
     if (hostedIdeaHome.isPresent) {
         val metadata =
             providers
-                .fileContents(layout.projectDirectory.file(hostedIdeaHome.get() + "/Resources/product-info.json"))
+                .fileContents(
+                    layout.projectDirectory.file(selectedIdeaProductInfo(file(hostedIdeaHome.get())).absolutePath)
+                )
                 .asText
                 .get()
         (groovy.json.JsonSlurper().parseText(metadata) as Map<*, *>)["buildNumber"] as String

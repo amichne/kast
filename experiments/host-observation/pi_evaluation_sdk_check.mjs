@@ -99,7 +99,7 @@ try {
     const captured=[],policy=makeCasePolicy({maximumProviderPayloadBytes:1000}),records=[],fetchBefore=fetchCalls,sendsBefore=socketSends;
     await privateStage(`${name}-preflight`,sourceFile,async manager=>{
       const created=await createEvaluationSession({sdk:observingSdk(captured),plan,directory,modelRuntime:runtime,policy,record:e=>records.push(e),manager});
-      if(created.type==='failure')return created;
+      assert.equal(created.type,'session',JSON.stringify(created));
       activeSession=created.session;
       try {await action(activeSession,manager);} finally {activeSession.dispose();activeSession=undefined;cleanupSocket(manager.getSessionId());}
     });
@@ -134,7 +134,7 @@ try {
 
   const startup=await privateStage('fresh-admitted',undefined,async manager=>{
     const created=await createEvaluationSession({sdk,plan,directory,modelRuntime:runtime,policy,record:e=>records.push(e),manager});
-    if(created.type==='failure')return created;
+    assert.equal(created.type,'session',JSON.stringify(created));
     activeSession=created.session;
     const startup={transport:created.settingsManager.getTransport(),cacheWarming:created.settingsManager.getCacheWarmingMode(),provider:activeSession.model.provider,model:activeSession.model.id,thinking:activeSession.thinkingLevel,tools:activeSession.getActiveToolNames()};
     assert.equal(startup.transport,'sse');assert.equal(startup.cacheWarming,'off');
@@ -178,7 +178,7 @@ try {
 
   await privateStage('restored-admitted',saved.sourceFile,async manager=>{
     const created=await createEvaluationSession({sdk,plan,directory,modelRuntime:runtime,policy:savedPolicy,record:e=>savedRecords.push(e),manager});
-    if(created.type==='failure')return created;
+    assert.equal(created.type,'session',JSON.stringify(created));
     activeSession=created.session;
     expectedFetchHashes.push(savedPreflight.calibration.payloadSha256);
     await resume(activeSession,manager);activeSession=undefined;cleanupSocket(manager.getSessionId());
@@ -250,7 +250,7 @@ try {
   const fetchBeforeDynamic=fetchCalls;
   await privateStage('fresh-dynamic-no-calibration',undefined,async manager=>{
     const created=await createEvaluationSession({sdk:dynamicSdk,plan,directory,modelRuntime:runtime,policy:dynamicPolicy,record:event=>dynamicRecords.push(event),manager});
-    if(created.type==='failure')return created;
+    assert.equal(created.type,'session',JSON.stringify(created));
     activeSession=created.session;
     const callId=`synthetic-new-call-${fetchCalls+1}`;
     const item={id:'synthetic-new-function-id',type:'function_call',call_id:callId,name:'query_symbols',arguments:JSON.stringify({request:{type:'RUN',source:{type:'SYMBOL_REFS',symbolRefs:['exact:v2:synthetic-negative']}}}),status:'completed'};

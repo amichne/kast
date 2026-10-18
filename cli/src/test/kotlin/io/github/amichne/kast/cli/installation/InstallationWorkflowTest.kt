@@ -20,6 +20,47 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class InstallationWorkflowTest {
+    @Serializable private data class LinuxProduct(val buildNumber: String, val launch: List<LinuxLaunch>)
+
+    @Serializable private data class LinuxLaunch(val os: String, val arch: String, val launcherPath: String)
+
+    @Test
+    fun `Linux JBR installs at the canonical root and locked replacement fails closed`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath()
+        val home = Files.createDirectory(root.resolve("home"))
+        val installation = home.resolve(".local/share/kast")
+        val request =
+            releaseRequest(
+                fixture = root,
+                installation = installation,
+                commands = home.resolve(".local/bin"),
+                home = home,
+                codexHome = Files.createDirectory(root.resolve("codex-home")),
+                version = "1.2.3",
+                environmentOverrides =
+                    mapOf(InstallationEnvironment.JAVA_HOME.key to root.resolve("idea/jbr").toString()),
+            )
+        val idea = request.ideaHome.value
+        Files.writeString(idea.resolve("build.txt"), "IU-262.1")
+        Files.writeString(
+            idea.resolve("product-info.json"),
+            Json.encodeToString(LinuxProduct("262.1", listOf(LinuxLaunch("Linux", "amd64", "bin/idea")))),
+        )
+        val launcher = Files.createDirectories(idea.resolve("bin")).resolve("idea")
+        Files.writeString(launcher, "#!/bin/sh\nexit 0\n")
+        Files.setPosixFilePermissions(launcher, PosixFilePermissions.fromString("rwxr-xr-x"))
+        Files.createDirectories(idea.resolve("jbr/bin"))
+        Files.copy(idea.resolve("jbr/Contents/Home/bin/java"), idea.resolve("jbr/bin/java"))
+        Files.writeString(idea.resolve("jbr/release"), "JAVA_VERSION=\"25.0.1\"\n")
+        val complete = assertInstanceOf(InstallationOutcome.Complete::class.java, executeFixtureInstallation(request))
+        assertEquals(installation.resolve("installation").toString(), complete.report.installation)
+        assertFreshInstallationOwnership(installation, installation.resolve("installation"))
+        assertEquals(
+            InstallationOutcome.Rejected(InstallationFailure.PRIOR_SELECTION_REJECTED),
+            executeFixtureInstallation(request),
+        )
+    }
+
     @Test
     fun `installation child logs bounded success and rejection outcomes`() {
         val observations = mutableListOf<InstallationChildObservation>()

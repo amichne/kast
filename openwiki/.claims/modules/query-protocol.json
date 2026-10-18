@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:c13dbb52adb65216a41fd34a635947161c97cc4a548896e615ec0731e59a808b",
+  "pageVersion": "sha256:828fc4b3e2d3563317606be2af839796fc08a155189b8afc829e1043b27debdb",
   "claims": [
     {
       "id": "claim_b9727187adfc4e2c9be8e3a620b37051",
@@ -116,7 +116,7 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt",
-          "version": "repo-file-v1:sha256:d6d3ac7ab79b42feb47ce80e8b326672ef711170ef11212ff14f76efe9cb1785"
+          "version": "repo-file-v1:sha256:497d22bd86e098909883a3ad292fbc638090d3179b698b49c623e74065d3c62a"
         }
       ]
     },
@@ -294,7 +294,7 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackObservationProjection.kt",
-          "version": "repo-file-v1:sha256:ea8b1791087a76f043364bb4935df0fc2ab1d905314b93d7d58b621ace120d0d"
+          "version": "repo-file-v1:sha256:a1d2e3d300ce7181c60339cbeadcc0242d829dc51c1c06f350d08d3589b0ad15"
         },
         {
           "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackBindingCanonical.kt",
@@ -373,6 +373,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-10-16T21:29:39.165Z"
+    "at": "2026-10-18T02:29:42.742Z"
   }
 }

@@ -99,6 +99,12 @@ internal object ClasslikeAstDispatcherFixture {
         private val pattern: String,
         private val controls: Controls,
     ) : IntellijDeclarationIndexes {
+        override fun candidateFiles(
+            name: IntellijIndexedDeclarationName,
+            scope: GlobalSearchScope,
+            accept: (VirtualFile) -> Boolean,
+        ): Boolean = throw AssertionError("Unexpected word index")
+
         private var named = 0
         private var files = 0
 

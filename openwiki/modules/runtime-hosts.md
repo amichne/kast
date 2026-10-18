@@ -278,7 +278,7 @@ sources:
 generated: { by: "codex", at: "2026-10-15T03:39:16.872Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-16T06:54:44.448Z
+    at: 2026-10-18T02:29:42.742Z
 ---
 
 # Runtime and process hosts

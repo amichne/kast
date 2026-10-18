@@ -107,6 +107,9 @@ class IsolatedInstallerTest(unittest.TestCase):
 class CheckoutInstallTest(IsolatedInstallerTest):
     def setUp(self):
         super().setUp()
+        uname = Path(self.env["PATH"]) / "uname"
+        uname.unlink()
+        self.write_script(uname, '#!/bin/sh\ncase "$1" in -s) echo Darwin ;; -m) echo arm64 ;; *) exit 1 ;; esac\n')
         self.checkout = self.root / "checkout"
         self.checkout.mkdir()
         (self.checkout / "packaging").mkdir()

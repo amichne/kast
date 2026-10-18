@@ -70,7 +70,7 @@ class DiscoveryDirectoryPartitionsTest {
         val scope = case.scope(request, observation)
         val supply = StrictPartitions(case, expected)
         val outcome =
-            case.query(observation).discoverNative(case.project, scope, request, partitions = supply).outcome()
+            case.query(observation).discoverPartitions(case.project, scope, request, partitions = supply).outcome()
         supply.assertConsumed()
         assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
         assertEquals(listOf(row.name), outcome.batch().candidates.map { it.name.value })
@@ -120,7 +120,8 @@ class DiscoveryDirectoryPartitionsTest {
                         "children:$nested/reincluded",
                     ),
                 )
-            val outcome = case.query(observation).discoverNative(project, scope, request, partitions = supply).outcome()
+            val outcome =
+                case.query(observation).discoverPartitions(project, scope, request, partitions = supply).outcome()
             supply.assertConsumed()
             assertTrue(outcome is SymbolDiscoveryOutcome.Complete)
             assertEquals(listOf("Target"), outcome.batch().candidates.map { it.name.value })
@@ -158,7 +159,7 @@ class DiscoveryDirectoryPartitionsTest {
                 val result =
                     case
                         .query(observation)
-                        .discoverNative(project, case.scope(request, observation), request, partitions = supply)
+                        .discoverPartitions(project, case.scope(request, observation), request, partitions = supply)
                         .outcome()
                 supply.assertConsumed()
                 assertTrue(result is SymbolDiscoveryOutcome.Complete)
@@ -204,7 +205,7 @@ class DiscoveryDirectoryPartitionsTest {
                         observation = observation,
                         limits = ReadLimits.resolve(environment = environment).refined(),
                     )
-                val result = query.discoverNative(project, case.scope(request, observation), request).outcome()
+                val result = query.discoverPartitions(project, case.scope(request, observation), request).outcome()
                 assertTrue(result is SymbolDiscoveryOutcome.Qualified)
                 assertTrue(expected in (result as SymbolDiscoveryOutcome.Qualified).qualifications.values)
                 assertTrue(result.batch().examinedWorkUnits.value <= work)
@@ -231,7 +232,7 @@ class DiscoveryDirectoryPartitionsTest {
             val result =
                 case
                     .query(observation)
-                    .discoverNative(project, case.scope(base, observation), base, partitions = missing)
+                    .discoverPartitions(project, case.scope(base, observation), base, partitions = missing)
                     .outcome()
             assertEquals(1, lookups)
             assertTrue(result is SymbolDiscoveryOutcome.Qualified)
@@ -273,7 +274,7 @@ class DiscoveryDirectoryPartitionsTest {
                 val result =
                     case
                         .query(observation)
-                        .discoverNative(project, case.scope(request, observation), request, partitions = supply)
+                        .discoverPartitions(project, case.scope(request, observation), request, partitions = supply)
                         .outcome()
                 supply.assertConsumed()
                 assertEquals(
@@ -315,7 +316,7 @@ class DiscoveryDirectoryPartitionsTest {
                         clock = IntellijReadNanoClock { 0L },
                         observation = observation,
                     )
-                    .discoverNative(project, source.scope, request)
+                    .discoverPartitions(project, source.scope, request)
                     .outcome()
             assertEquals(listOf("Target"), outcome.batch().candidates.map { it.name.value })
             assertEquals(1, observation.counters[IntellijReadCounter.LEXICAL_CANDIDATES_REPLACED])
@@ -352,7 +353,7 @@ class DiscoveryDirectoryPartitionsTest {
                         clock = IntellijReadNanoClock { 0L },
                         observation = observation,
                     )
-                    .discoverNative(project, source.scope, request)
+                    .discoverPartitions(project, source.scope, request)
                     .outcome()
             assertTrue(result is SymbolDiscoveryOutcome.Complete)
             assertEquals(listOf("Target"), result.batch().candidates.map { it.name.value })
@@ -492,3 +493,21 @@ class DiscoveryDirectoryPartitionsTest {
             }
     }
 }
+
+private fun IntellijNativeDiscoveryQuery.discoverPartitions(
+    project: Project,
+    scope: CompiledIntellijSearchScope,
+    request: SymbolDiscoveryRequest,
+    partitions: IntellijDeclarationPartitionFiles = NativeIntellijDeclarationPartitionFiles,
+): IntellijNativeDiscoveryExecution =
+    when (val route = IntellijDirectoryDiscoveryPlan.select(scope, request)) {
+        is IntellijDirectoryDiscoveryRoute.Selected ->
+            discoverDirectory(
+                project = project,
+                plan = route.plan,
+                allowance = IntellijDeclarationDiscoveryAllowance(request, IntellijReadNanoClock { 0L }),
+                partitions = partitions,
+            )
+        IntellijDirectoryDiscoveryRoute.Existing,
+        IntellijDirectoryDiscoveryRoute.Rejected -> throw AssertionError("A partition case needs a directory plan")
+    }
