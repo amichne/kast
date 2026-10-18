@@ -51,7 +51,12 @@ installer="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)/install.sh"
 assets="$(mktemp -d "${TMPDIR:-/tmp}/kast-local-assets.XXXXXX")"
 cleanup() { rm -rf -- "$assets"; }
 trap cleanup EXIT
-control_name="kast-control-v${version}-macos-aarch64.tar.gz"
+case "$(uname -s):$(uname -m)" in
+  Darwin:arm64|Darwin:aarch64) control_platform=macos-aarch64 ;;
+  Linux:x86_64|Linux:amd64) control_platform=linux-x86_64 ;;
+  *) fail 'unsupported local build platform' ;;
+esac
+control_name="kast-control-v${version}-$control_platform.tar.gz"
 # Name the admitted top-level payloads explicitly; archiving `.` creates a root
 # member that the release installer's traversal-safe extractor correctly rejects.
 tar -czf "$assets/$control_name" -C "$control_product" bin lib share

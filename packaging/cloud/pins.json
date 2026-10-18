@@ -1,0 +1,51 @@
+{
+  "kast_main": "877cf9a4d27a2202892dec31a92c53e333669b20",
+  "kast_candidate": "7e43fc5bbbdfcc43398a775e0d1b9397bb49442d",
+  "slopsentral_source": "97b294bab33037cb58cf426728351743cda7ce7b",
+  "dotfiles_source": "8da93dc24aa3a32865acbb01bdbc1101bfe900a0",
+  "artifacts": {
+    "vale": {
+      "url": "https://github.com/vale-cli/vale/releases/download/v3.24.0/vale_3.24.0_Linux_64-bit.tar.gz",
+      "sha256": "867534ddb678abca7f214bc4706ead0922bd5252ffe8035fc227013f66c8b214",
+      "directory": "vale",
+      "flat": true
+    },
+    "graalvm": {
+      "url": "https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-25.0.2/graalvm-community-jdk-25.0.2_linux-x64_bin.tar.gz",
+      "sha256": "e0be791c8fda4d03b6b0a0cb824fef3149736170057b3a515252b44419606af0",
+      "directory": "graalvm-25.0.2"
+    },
+    "node": {
+      "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.xz",
+      "sha256": "fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6",
+      "directory": "node-v24.21.0-linux-x64"
+    },
+    "uv": {
+      "url": "https://github.com/astral-sh/uv/releases/download/0.12.19/uv-x86_64-unknown-linux-gnu.tar.gz",
+      "sha256": "23bf5552d220e0842b65c862097b2ebaeba0064b74eda5e565e77fd25969d8c8",
+      "directory": "uv-x86_64-unknown-linux-gnu"
+    },
+    "jdk": {
+      "url": "https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.4%2B7/OpenJDK25U-jdk_x64_linux_hotspot_25.0.4_7.tar.gz",
+      "sha256": "e58fcdcd637b25c03ca84cbbcefc70d11efb8f4b4cbd05decc9f661769d77f94",
+      "directory": "jdk-25.0.4+7"
+    },
+    "idea": {
+      "url": "https://download.jetbrains.com/idea/idea-2026.2.2.tar.gz",
+      "sha256": "f1cc5329a7adf3ab3bd8886744103f7d3bcf1ca12e699762ecd9bffe57335f8b",
+      "directory": "idea-2026.2.2",
+      "build": "262.10315.125"
+    },
+    "fixture_idea": {
+      "url": "https://download.jetbrains.com/idea/idea-2026.2.1.tar.gz",
+      "sha256": "dac2021204c8bf3bd8d66567a1ae36a341da0050b6006c32d42006c6577eb29a",
+      "directory": "idea-2026.2.1",
+      "build": "262.9437.185"
+    },
+    "slopsentral": {
+      "url": "https://github.com/amichne/slopsentral/releases/download/pi-v0.1.220/slopsentral-pi-0.1.220.tgz",
+      "sha256": "aea6b7741d70e7d17d37e66e5e2b07da110b829f68721098d02fc00d02258de4",
+      "directory": "slopsentral"
+    }
+  }
+}
