@@ -110,8 +110,8 @@ test('Pi inventory example projects a large structured Bash result before displa
     { name: 'no matching paths', matches: [], expectedPaths: [], truncated: false, exit_code: 0 },
     { name: 'bounded paths keep count', matches: selected, expectedPaths: selected.slice(0, 20), omittedCount: 1, truncated: false, exit_code: 0 },
     { name: 'sibling prefix excluded', matches: [selected[0]], extraPaths: ['selected/src/main-sibling/Other.kt'], expectedPaths: [selected[0]], truncated: false, exit_code: 0 },
-    { name: 'partial inventory stays qualified', matches: [selected[0]], expectedPaths: [selected[0]], truncated: true, exit_code: 0 },
-    { name: 'failed Bash stays failed', matches: [], expectedPaths: [], truncated: false, exit_code: 1 },
+    { name: 'partial inventory withholds claims', matches: [selected[0]], unavailable: true, truncated: true, exit_code: 0 },
+    { name: 'failed Bash withholds matching-looking paths', matches: [selected[0]], unavailable: true, truncated: false, exit_code: 1 },
   ];
   for (const c of cases) {
     // This is the structured value of an already-completed Bash call, not a model simulation.
@@ -119,10 +119,41 @@ test('Pi inventory example projects a large structured Bash result before displa
     assert.ok(Buffer.byteLength(result.output) > 262144);
     const displayed = [];
     runInNewContext(example[1], { result, directoryPrefix, text: value => displayed.push(JSON.stringify(value)) }, { timeout: 1000 });
-    assert.deepEqual(displayed, [JSON.stringify({
-      exit_code: c.exit_code, truncated: c.truncated, matchCount: c.matches.length, omittedCount: c.omittedCount ?? 0, paths: c.expectedPaths,
-    })], c.name);
+    const expected = c.unavailable
+      ? { exit_code: c.exit_code, truncated: c.truncated, counts: 'UNAVAILABLE' }
+      : { exit_code: c.exit_code, truncated: c.truncated, matchCount: c.matches.length, omittedCount: c.omittedCount ?? 0, paths: c.expectedPaths };
+    assert.deepEqual(displayed, [JSON.stringify(expected)], c.name);
   }
+});
+
+test('Pi inventory example withholds paths cut by upstream byte clipping', () => {
+  const brief = readFileSync(new URL('../../../../agent-tools/references/onboarding.md', import.meta.url), 'utf8');
+  const example = brief.match(/```javascript\n([\s\S]*?)\n```/);
+  assert.ok(example);
+  const directoryPrefix = 'selected/src/main/';
+  const exactPath = directoryPrefix + 'BoundaryCrossingName.kt';
+  const partialPath = directoryPrefix + 'Bound';
+  const halfBytes = 524288;
+  const noise = 'unrelated/module/src/main/Noise.kt\n';
+  const beforeLength = halfBytes - Buffer.byteLength(partialPath);
+  const remainder = beforeLength % noise.length;
+  const before = noise.repeat(Math.floor(beforeLength / noise.length)) +
+    (remainder === 0 ? '' : 'x'.repeat(remainder - 1) + '\n');
+  const inventory = before + exactPath + '\n' + noise.repeat(40000);
+  const bytes = Buffer.from(inventory);
+  assert.ok(bytes.length > 2 * halfBytes);
+  assert.ok(inventory.split('\n').every(line => line.length < 100));
+  assert.ok(inventory.split('\n').includes(exactPath));
+  assert.ok(!inventory.split('\n').includes(partialPath));
+  // Pi keeps the first/last 512 KiB of oversized Bash output. ASCII preserves exact byte cuts here.
+  const output = bytes.subarray(0, halfBytes).toString() +
+    '\n\n[... ' + (bytes.length - 2 * halfBytes) + ' bytes omitted ...]\n\n' +
+    bytes.subarray(bytes.length - halfBytes).toString();
+  assert.ok(output.split('\n').includes(partialPath), 'the clipped record resembles a different path');
+  const result = { output, truncated: true, exit_code: 0 };
+  const displayed = [];
+  runInNewContext(example[1], { result, directoryPrefix, text: value => displayed.push(JSON.stringify(value)) }, { timeout: 1000 });
+  assert.deepEqual(displayed, [JSON.stringify({ exit_code: 0, truncated: true, counts: 'UNAVAILABLE' })]);
 });
 
 function assertContinuesWithoutContext(f, reason) {

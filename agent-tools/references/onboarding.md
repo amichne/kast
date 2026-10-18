@@ -11,15 +11,20 @@ In Pi `codemode`, filter large structured results before `text()` or `store()`. 
 Keep original source line numbers and evidence qualifications.
 Documentation, configuration, shell work, and other tasks without a Kotlin semantic question need no Kast call.
 
-For an existing Bash inventory in `result.output`, use a known `directoryPrefix` that ends with `/`:
+For an existing Bash inventory, `directoryPrefix` must end with `/`:
 
 ```javascript
-const matches = result.output.split("\n").filter(path => path.startsWith(directoryPrefix));
-const paths = matches.slice(0, 20);
-text({ exit_code: result.exit_code, truncated: result.truncated, matchCount: matches.length, omittedCount: matches.length - paths.length, paths });
+const { exit_code, truncated } = result;
+if (exit_code !== 0 || truncated !== false) {
+  text({ exit_code, truncated, counts: "UNAVAILABLE" });
+} else {
+  const matches = result.output.split("\n").filter(path => path.startsWith(directoryPrefix));
+  const paths = matches.slice(0, 20);
+  text({ exit_code, truncated, matchCount: matches.length, omittedCount: matches.length - paths.length, paths });
+}
 ```
 
-Counts cover only the supplied inventory.
+Counts cover only supplied output. Failed or truncated inventories have no path or count claims.
 
 If the needed tool schema is already available, use it directly.
 Otherwise, discover the needed Kast tool once through the host's enabled tool discovery surface and obey its installed schema.
