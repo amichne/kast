@@ -120,13 +120,9 @@ internal object InstallationWorkflow {
             SelectedIdeLayout.entries.filter {
                 regularFile(idea.resolve(it.buildIdentity)) && idea.resolve(it.javaHome).normalize() == java
             }
-        if (
-            !physicalDirectory(idea) ||
-                !physicalDirectory(java) ||
-                !regularExecutable(java.resolve("bin/java")) ||
-                layouts.size != 1 ||
-                !physicalDirectory(idea.resolve("plugins/Kotlin"))
-        )
+        if (!physicalDirectory(idea) || !physicalDirectory(java) || !regularExecutable(java.resolve("bin/java")))
+            return PlanVerification.Rejected(InstallationFailure.IDEA_REJECTED)
+        if (layouts.size != 1 || !physicalDirectory(idea.resolve("plugins/Kotlin")))
             return PlanVerification.Rejected(InstallationFailure.IDEA_REJECTED)
 
         val payload = request.controlDigest
