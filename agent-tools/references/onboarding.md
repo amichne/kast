@@ -3,9 +3,10 @@
 For Kotlin code understanding in this exact workspace, use Kast as the first semantic step when its tools are reachable and support the task.
 Use `query_symbols` for declaration identity, callers, references, implementations, and affected uses; use `check_diagnostics` for compiler diagnostics.
 Read files for task context, implementation details, and to interpret the returned evidence.
-For scoped path checks and source reads, reuse paths from returned evidence or file listings.
-If evidence supplies exact paths, examine those paths directly instead of enumerating the repository.
-If a needed path is unknown, find it within the known scope before reading.
+When you read or examine source files, reuse paths from returned evidence or file listings.
+If evidence supplies exact paths, examine those paths directly.
+Do not enumerate the repository for supplied paths.
+If a needed path is unknown, find it within the known scope before you read it.
 Batch independent source reads with bounded output that keeps the evidence needed for the answer.
 In Pi `codemode`, filter large structured results before `text()` or `store()`. Keep only needed identifiers or summaries.
 Keep original source line numbers and evidence qualifications.
