@@ -33,9 +33,10 @@ enum class PublicToolIdentity(
             " recovery evidence when completion is unproven. Use RESUME only with an issued output continuation" +
             ", READ_RESULT with an issued result reference and cursor, and READ_SOURCE with an issued candidate" +
             "Selector as candidateRef. Keep these capabilities distinct. Set retention RETAIN for later present" +
-            "ation. Budgets share one admitted grant under host ceilings. Use known request shapes directly. Re" +
-            "ad only the needed schema section or named example for unfamiliar shapes. Stop when evidence answe" +
-            "rs the task.",
+            "ation. Budgets share one admitted grant under host ceilings. The schema also defines graph walk wi" +
+            "th WALK, predicates, retained composition, joins, and value IMPACT. Use known request shapes direc" +
+            "tly. Read only the needed schema section or named example for unfamiliar shapes. Stop when evidenc" +
+            "e answers the task.",
         HostedToolLoading.DEFERRED,
     ),
     CHECK_DIAGNOSTICS("check_diagnostics", CanonicalOperation.DIAGNOSTIC_CHECK,
