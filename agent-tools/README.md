@@ -21,7 +21,7 @@ kast plugin codex
 ```
 
 Restart Codex after installation. Review and trust the plugin hook in Codex.
-Codex skips untrusted hooks. Installation alone does not prove context delivery.
+Codex skips hooks without trust. Installation alone does not prove context delivery.
 The hook also restores the brief after compaction.
 
 For this checkout's marketplace, use:
@@ -67,10 +67,69 @@ An invalid event, absent resource, or oversized brief rejects without partial co
 The host decides whether a hook failure stops the session.
 
 `onboarding.template.md` owns the prose.
-`packaging/generate-public-query.py` derives enum lists, the query schema, and the named example array from `tools.schema.json`.
+`packaging/generate-public-query.py` derives `enum` lists, the query schema, and the named example array from `tools.schema.json`.
 The brief explains that interfaces use `declarationKinds:["CLASS"]`.
 It distinguishes relative directory paths, Kotlin packages, exact source-set names, and issued references.
 The complete schema and examples stay on disk until the agent needs them.
+
+## Shared workflow and delivery
+
+Apply known scope and source-set constraints before discovery or source-read batches.
+Remove duplicate paths and reuse unchanged source reads within the task.
+In hosts with tool composition, chain exact selection and reference expansion inside code.
+Keep successful intermediate results inside that call.
+Return the requested findings with their scope, completion, omissions, and recovery facts.
+Ambiguous or incomplete evidence needs a qualified stop.
+
+The shared brief distinguishes compact rows from canonical rows.
+It preserves tool discovery and result shapes under each host's installed contract.
+It also preserves source inspection for unresolved imports, companion qualifiers, and unmatched source sites.
+A complete relation proves its declared semantics and scope.
+
+| Integration | Shipped guidance source |
+|---|---|
+| Codex plugin | Generated brief through the context hook, plus the MCP tool description |
+| Copilot plugin | Generated brief through the context hook, plus the MCP tool description |
+| Pi native MCP | Generated brief through `pi/mcp-extension.ts`, plus the MCP tool description |
+| Other MCP clients | Tool description from the generated public catalog |
+| Copilot and Pi RPC extensions | The same catalog description, plus shared query-delivery guidance |
+| Codex App Server | Tool description from the generated public registry |
+| Responses tool definitions | Tool description in generated `tools.responses.json` |
+
+`tools.schema.json` owns the common tool descriptions.
+The public-query generator projects them into the registry and provider definitions.
+The existing adapters consume that catalog without separate workflow rules.
+The tool identities, schemas, exposure policies, and approval policies stay unchanged.
+
+The [reference experiments](https://github.com/amichne/kast/blob/main/experiments/host-observation/AGENT_EFFICIENCY_REFERENCES.md) support these workflow changes on two Pi tasks.
+The shipped brief adapts those patterns and has no direct agent benchmark.
+They do not establish the same token gain on other hosts.
+Guidance does not enforce private output, and the experiments still expose intermediate seed references.
+Provider rates and other worker time remain separate experiment measurements.
+This source update does not change installed integrations until a normal installation or upgrade delivers it.
+
+## Pi inventory example
+
+Read the tool's declared result shape before field access.
+Inside Pi code, `tools.read({path})` returns a string for text files.
+`tools.bash({command})` returns `output`, `exit_code`, and `truncated`.
+Filter large results before `text()` or `store()`.
+For an existing Bash inventory, `directoryPrefix` must end with `/`:
+
+```javascript
+const { exit_code, truncated } = result;
+if (exit_code !== 0 || truncated !== false) {
+  text({ exit_code, truncated, counts: "UNAVAILABLE" });
+} else {
+  const matches = result.output.split("\n").filter(path => path.startsWith(directoryPrefix));
+  const paths = matches.slice(0, 20);
+  text({ exit_code, truncated, matchCount: matches.length, omittedCount: matches.length - paths.length, paths });
+}
+```
+
+Counts cover only supplied output.
+Failed or truncated inventories grant no path or count claims.
+The example stays outside the startup brief and receives separate executable assertions.
 
 The source plugin version is `0.0.0`. Release assembly supplies the Control version.
 Tool failures keep their canonical rejection and recovery evidence.

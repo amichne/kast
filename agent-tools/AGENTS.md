@@ -4,14 +4,16 @@ title: "Kast agent onboarding"
 description: "Defines the shared brief, generated references, and passive host adapters."
 resource: "repo://agent-tools"
 tags: [kast, agents, plugins]
-timestamp: "2026-10-16T06:50:12Z"
-source_revision: c63215981504766de0d3b861c801414e05768f57
+timestamp: "2026-10-19T14:21:11Z"
+source_revision: 02adf9c3dda16bcaa86f3e33557ba3763f73a6db
 code_sources:
   - path: agent-tools/onboarding.template.md
+  - path: agent-tools/README.md
   - path: agent-tools/hooks/session_start.py
   - path: packaging/generate-public-query.py
   - path: build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt
   - path: pi/mcp-extension.ts
+  - path: cli/src/test/js/native-onboarding.test.mjs
 ---
 
 # Agent onboarding
@@ -20,6 +22,9 @@ code_sources:
 `packaging/generate-public-query.py` owns `references/onboarding.md`, `references/query-schema.json`, and `references/query-examples.json`.
 Change the template or the authored public schema before regeneration.
 Do not add a discoverable `SKILL.md` or a standalone skill archive.
+
+`README.md` owns the on-demand Pi inventory example.
+Its executable assertions stay in `cli/src/test/js/native-onboarding.test.mjs`.
 
 `hooks/session_start.py` owns context assembly and host envelopes.
 Keep its runtime passive, bounded, offline, and free of semantic calls or workspace writes.

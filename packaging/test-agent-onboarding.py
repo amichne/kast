@@ -54,6 +54,17 @@ class AgentOnboardingTest(unittest.TestCase):
                 texts.append(text)
                 self.assertLessEqual(len(text.encode()), 8192)
                 self.assertIn("Use `CLASS` for interfaces", text)
+                for clause in (
+                    "Apply the task's source-set and path exclusions before each read batch",
+                    "Remove duplicate paths and reuse unchanged source reads",
+                    "Keep successful intermediate results inside that call",
+                    "Do not omit requested matches or hide failures to reduce tokens",
+                    "Read only the needed schema section or named example for unfamiliar shapes",
+                    "Preserve incomplete results and scope qualifications",
+                ):
+                    self.assertIn(clause, text, host)
+                brief = (PLUGIN / "references/onboarding.md").read_text().rstrip()
+                self.assertTrue(text.startswith(brief + "\nWorkspace: "), host)
                 self.assertIn(json.dumps(str(PLUGIN / "references/query-examples.json")), text)
                 self.assertIn(json.dumps(str(workspace)), text)
             self.assertEqual(texts[0], texts[1])
