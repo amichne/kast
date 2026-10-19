@@ -14,7 +14,7 @@ Developers use Kast with a coding agent in a Kotlin Gradle repository or worktre
 
 The approved structure of 16 October 2026 uses three tabs: Guides, Architecture, and Reference. It replaces the earlier single sidebar.
 
-Guides lead from Overview through Install, Connect your agent, and the first-result exercise. Task and recovery guides follow. Architecture has five topics: authority, query lifecycle, retention and invalidation, topology and ownership, and change lifecycle. Reference owns exact interface facts and generated schemas. Keep normal navigation to two levels. Keep detailed generated schemas collapsed.
+Guides lead from Overview through Install, Connect your agent, and the first-result exercise. Task and recovery guides follow. Architecture covers authority, query lifecycle, query reuse, retention and invalidation, topology and ownership, and change lifecycle. Reference owns exact interface facts and generated schemas. Keep normal navigation to two levels. Keep detailed generated schemas collapsed.
 
 Keep useful routes when directory names reflect an earlier structure. Give each fact one canonical home. Link the other tracks to that home. Keep prerequisites, warnings, and recovery visible.
 
@@ -38,6 +38,6 @@ Historical counts, offsets, tokens, and failures describe their pinned revision.
 
 ## Diagrams
 
-Keep authored Mermaid source. Use the pinned Beautiful Mermaid renderer to make light and dark SVG. Use short labels and rounded nodes. Keep spacing consistent. Each diagram has alternative text and a numbered text guide. Links open the full-size asset and source.
+Use native Mintlify Mermaid blocks for architecture diagrams. The user requested native components for this site review. Keep labels short and describe the mechanism in nearby prose. Native controls support zoom and pan. Keep existing SVG assets at their routes for earlier links.
 
 Use the site blue for authority, green for proven evidence, amber for limits, and red for rejection where supported. Text explains each distinction without relying on color. Keep dense source details off the overview.

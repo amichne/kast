@@ -42,7 +42,7 @@ The [reference guidance](https://diataxis.fr/reference/) favors neutral facts an
 
 Some old `/reference/...` URLs teach a task or explain how it works. Their track and Vale rules match that reader need.
 
-The Architecture track has five main topics. They cover authority boundaries, query lifecycle, retention and invalidation, topology and ownership, and change lifecycle. `/explanation` remains its overview route; `/architecture` redirects there. New pages use `/architecture/topology` and `/architecture/change-lifecycle`.
+The Architecture track covers authority, query lifecycle, query reuse, retention and invalidation, topology and ownership, and change lifecycle. `/explanation` remains its overview route; `/architecture` redirects there. New pages use `/architecture/topology` and `/architecture/change-lifecycle`.
 
 Do not move a page just to match a directory name. Keep its routes and heading anchors when their meaning stays the same.
 

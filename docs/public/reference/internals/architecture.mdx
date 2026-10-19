@@ -23,18 +23,22 @@ IDEA supplies the imported Gradle model. It also supplies the bundled Kotlin com
 
 Each domain owns exact checks for declarations and relationships. The query protocol runs those reads. It keeps their stated limits.
 
-<img
-  className="block dark:hidden"
-  alt="Kast checks the exact project and uses compiler facts. It returns an answer with proof and stated limits."
-  src="/images/architecture/authority.light.svg"
-/>
-<img
-  className="hidden dark:block"
-  alt="Kast checks the exact project and uses compiler facts. It returns an answer with proof and stated limits."
-  src="/images/architecture/authority.dark.svg"
-/>
+| Evidence | Proves | Does not prove |
+| --- | --- | --- |
+| Index candidate | A declaration or file merits examination. | Exact declaration identity. |
+| Compiler identity | The admitted declaration or relationship. | Complete discovery of every requested use. |
+| Completion proof | The declared question meets its model's rules. | Runtime execution. |
+| Retained output | The original answer and its qualifications. | Current authority after source state changes. |
 
-[Open full-size diagram](/images/architecture/authority.light.svg) · [Mermaid source](https://github.com/amichne/kast/blob/761022b936d8e12a49666e84b8ba2edfddabbc26/docs/public/images/architecture/authority.mmd)
+```mermaid
+%%{init: {"flowchart": {"rankSpacing": 25, "nodeSpacing": 20, "padding": 10}}}%%
+flowchart TD
+  A["Agent chooses the question"] --> T["Transport carries the request"]
+  T --> H["IDEA admits the exact workspace"]
+  H --> D["Domains establish compiler facts"]
+  D --> Q["Query preserves completion and limits"]
+  Q --> O["Agent receives scoped evidence"]
+```
 
 1. The agent chooses the question; the transport carries it.
 2. IDEA admits the exact workspace and current read state.
@@ -64,6 +68,12 @@ Workspace admission records the exact root, Host, read epoch, and committed sour
 An exact reference can get fresh authority under its identity policy. Retained evidence needs its original state and lifetime.
 
 Saved records keep source identities and how facts were derived. They hold no live PSI or compiler objects. Their stored form cannot replace current native authority.
+
+An exact-name file index can safely exclude work only after its read completes. A failed prefix cannot prove that another file lacks the name.
+
+Likewise, reuse of a completed semantic fact needs a dependency proof and current endpoint admission. A matching cache key alone cannot prove freshness.
+
+[Query reuse](/architecture/query-reuse) explains the first mechanism. [Incremental facts](/reference/staleness#incremental-facts-need-new-authority) explains the second.
 
 <span id="tracing-within-and-between-functions" />
 

@@ -61,6 +61,7 @@ By default, discovery searches the workspace and its subdirectories in `main` an
 
 Those seed limits do not restrict the destinations of later relationship reads. `expansionScope` controls that distinct domain.
 
+<Accordion title="Source-specific admission rules">
 `SEARCH_DECLARATIONS` uses exact case-sensitive names by default. Explicit fuzzy matching changes which names it selects. It does not prove a unique identity.
 
 `SEARCH_TEXT` accepts one ASCII identifier word. It starts with a letter or underscore. Kast rejects phrases, substrings, qualified literals, and regular expressions.
@@ -68,6 +69,7 @@ Those seed limits do not restrict the destinations of later relationship reads. 
 `ALL_DECLARATIONS` includes supported nested Kotlin declarations. It does not scan libraries directly. It keeps the admitted limits on declaration families.
 
 `AT_LOCATION` selects the nearest containing named declaration. An offset on a call expression selects its container rather than its target.
+</Accordion>
 
 <a id="apply-only-the-steps-you-need" />
 
@@ -117,11 +119,13 @@ If scope is omitted or `null`, Kast uses the action's default. Explicit expansio
 
 `SOURCE_DOMAIN` needs `sourcePolicy` and `generatedSources`. Its `includeSubdirectories` default is `true`.
 
+<Accordion title="Traversal extent and completion">
 An omitted or null `WALK.maximumDepth` requests the reachable graph and defaults to workspace expansion. Its evidence records `EXHAUSTIVE` extent.
 
 An explicit depth includes nodes at that depth. It does not expand from those nodes. The evidence records `THROUGH_DEPTH` and `maximum_depth`.
 
 A complete traversal needs complete one-hop reads at each required node. If resources run out, Kast cannot silently reduce the requested extent.
+</Accordion>
 
 <a id="choose-the-result-you-need" />
 
@@ -159,6 +163,7 @@ Native reads prove call and site identity. Supplied models prove what a represen
 
 `IMPACT` accepts no transformation steps. `VALUE_PATHS` shows paths. `IMPACT_WITNESS` shows a section after the original investigation completes.
 
+<Accordion title="Kotlin transfer qualifications">
 Under normal completion, a final try or catch value can supply its try expression. The compiler proves that transfer. Catch fallback values keep their own producers.
 
 Non-final expressions do not supply that result. Returns keep return transfers. Throws do not supply normal branch values.
@@ -166,11 +171,13 @@ Non-final expressions do not supply that result. Returns keep return transfers. 
 A transfer across `finally` keeps `FINALLY_UNSUPPORTED`. Mutable or cyclic flow keeps proof still needed. So does flow that is not supported.
 
 Strict completion needs all original paths. It needs all proof rules from the original ledger to be met. Selected preview paths cannot replace that ledger.
+</Accordion>
 
 <a id="read-retained-witnesses" />
 
 ### Retained witness sections
 
+<Accordion title="Witness sections and requested-site states">
 `READ_RESULT` supports `PRODUCERS`, `MODELS`, `NATIVE_READS`, `READ_REJECTIONS`, `FINDINGS`, and `SITE_ACCOUNTING`.
 
 `FINDINGS` shows one compact row for each original path. It keeps producer, destination, representation, model provenance, terminal, and proof still needed.
@@ -186,6 +193,7 @@ Strict completion needs all original paths. It needs all proof rules from the or
 A requested-site identity alone does not prove a producer relationship. If its state is `RELATIONSHIP_UNPROVEN`, the run cannot reach semantic completion.
 
 Before the ledger is final, witness reads return `RESULT_FIELD_UNAVAILABLE`. Rejection evidence uses `EVIDENCE_ONLY`. It grants no semantic replay.
+</Accordion>
 
 ## Defaults and limits
 
