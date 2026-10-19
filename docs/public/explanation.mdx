@@ -1,24 +1,37 @@
 ---
 title: "Where an answer comes from"
 sidebarTitle: "Architecture overview"
-description: "Understand compiler authority, completion, callback ownership, query execution, and IDEA preparation."
+description: "Follow a Kotlin question through compiler authority, query execution, safe reuse, and controlled source changes."
 icon: "workflow"
 ---
 
-A symbol identity, a complete search, delivered output, and runtime behavior are distinct facts. Each answers a different question.
+Kast turns a question about Kotlin source into scoped compiler evidence. The agent chooses the question and interprets the answer.
 
-| Question | Architecture topic |
-| --- | --- |
-| Who proves a program fact? | [Authority boundaries](/reference/internals/architecture). |
-| How does a question become an answer? | [Query lifecycle](/explanation/query-lifecycle). |
-| When can evidence be reused? | [Retention and invalidation](/reference/staleness). |
-| Where do the components run? | [Topology and ownership](/architecture/topology). |
-| What happens during a source change? | [Change lifecycle](/architecture/change-lifecycle). |
+Start with the query lifecycle for the whole path. Use the other pages to examine one owner or proof rule.
 
-For a first result, follow [Install Kast](/start) and [the controlled exercise](/tutorials/first-query).
+<Columns cols={2}>
+  <Card title="How a query runs" icon="workflow" href="/explanation/query-lifecycle">
+    Follow admission, semantic work, completion, and output delivery.
+  </Card>
+  <Card title="Who proves a fact" icon="shield-check" href="/reference/internals/architecture">
+    Separate index candidates, compiler identity, and scoped completion.
+  </Card>
+  <Card title="How query work is reused" icon="repeat" href="/architecture/query-reuse">
+    Compare file exclusion, TRACE grouping, reference inventories, and IMPACT reads.
+  </Card>
+  <Card title="When evidence expires" icon="history" href="/reference/staleness">
+    Distinguish fresh declaration identity, retained answers, and reusable semantic facts.
+  </Card>
+  <Card title="Where state lives" icon="network" href="/architecture/topology">
+    Find the adapters, IDEA Host, and owners of temporary and stored state.
+  </Card>
+  <Card title="How source changes work" icon="file-pen-line" href="/architecture/change-lifecycle">
+    Follow an exact target through a plan, source effect, receipt, and recovery.
+  </Card>
+</Columns>
 
-A complete call meets the proof rules of the fixed compiler-static model. Those rules apply to its source scope.
+<Info>
+  A complete answer meets the compiler-static proof rules for its declared scope. It does not prove runtime execution.
+</Info>
 
-A retained result keeps the original answer. Reading more pages cannot make an incomplete answer complete.
-
-[Reference](/reference) defines fields and result kinds. [Guides](/how-to) shows how to use this evidence.
+For hands-on use, start with [the first-query exercise](/tutorials/first-query). [Reference](/reference) defines the exact fields and result kinds.

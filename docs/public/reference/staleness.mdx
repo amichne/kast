@@ -33,17 +33,17 @@ To reacquire an exact reference, Kast keeps a locator for the original declarati
 
 The compiler proves the declaration under current authority. Kast checks that authority again before it issues the fresh reference.
 
-<div role="region" aria-label="Architecture diagram; scroll horizontally on narrow screens" tabIndex={0} className="overflow-x-auto">
-  <div style={{minWidth: "500px"}}>
-    <img className="block dark:hidden" alt="An old exact reference needs fresh workspace and compiler checks. A state or identity mismatch blocks reuse." src="/images/architecture/retention.light.svg" />
-
-    <img className="hidden dark:block" alt="An old exact reference needs fresh workspace and compiler checks. A state or identity mismatch blocks reuse." src="/images/architecture/retention.dark.svg" />
-  </div>
-</div>
-
-On a narrow screen, scroll the diagram horizontally or use the numbered explanation below.
-
-[Open full-size diagram](/images/architecture/retention.light.svg) · [Mermaid source](https://github.com/amichne/kast/blob/761022b936d8e12a49666e84b8ba2edfddabbc26/docs/public/images/architecture/retention.mmd)
+```mermaid
+%%{init: {"flowchart": {"rankSpacing": 25, "nodeSpacing": 20, "padding": 10}}}%%
+flowchart TD
+  E["Earlier exact reference"] --> A["Admit current workspace and owner"]
+  A --> C["Compiler revalidates declaration"]
+  C --> S["Reexamine current source state"]
+  S --> R["Issue fresh exact reference"]
+  A -->|Mismatch| X["Reject reacquisition"]
+  C -->|Changed identity| X
+  S -->|State moved| X
+```
 
 1. Admit the current workspace and IDEA owner.
 2. Revalidate the original declaration with the compiler.
@@ -73,7 +73,7 @@ Expiry, eviction, or owner retirement can block reuse. So can identity that does
 
 `FRESHNESS_REJECTED` means that the needed read state was not proved. Its stage and specific reason show whether the model admission or a later content check failed.
 
-The returned action ca call for a fresh read or new authority checks. The client keeps that cause and uses newly issued handles.
+The returned action can call for a fresh read or new authority checks. The client keeps that cause and uses newly issued handles.
 
 A new `RUN` produces a new answer. It cannot restore the exact output from a retired result.
 
@@ -81,6 +81,50 @@ For writes, staleness also protects the source state in the plan. If a response 
 
 [Results](/reference/responses#saved-state-and-identity) defines handle use. [Troubleshooting](/reference/troubleshooting) gives recovery procedures.
 
+## Incremental facts need new authority
+
+Some completed semantic facts can survive a source-state change. They follow a different rule from retained query answers.
+
+`SemanticCallbackFactStore` keeps bounded, detached callback summaries, supplier inventories, and named-relation facts under the project owner.
+
+Its dependency snapshot records source inventories and resolution inputs. Equal paths, SDK names, or modification counters cannot prove equal content.
+
+```mermaid
+%%{init: {"flowchart": {"rankSpacing": 25, "nodeSpacing": 20, "padding": 10}}}%%
+flowchart TD
+  O["Stored completed fact and old snapshot"] --> C{"Current snapshot proves unchanged dependencies?"}
+  N["Current source and resolution inventories"] --> C
+  C -->|No| I["Invalidate entry with a finite cause"]
+  I --> F["Fresh native computation"]
+  C -->|Yes| P["Reuse proof from old to current snapshot"]
+  P --> A["Admit every endpoint and binding under current authority"]
+  A --> R["Current semantic fact"]
+```
+
+The comparison needs continuity of the live environment. It also needs matching resolution inputs, dependency domain, and source content.
+
+Even with that proof, old endpoints remain stale until current admission succeeds. The reuse proof never renews an old lease or continuation.
+
+<Accordion title="Changes that reject incremental reuse">
+  - A source inventory changes or its dependency domain differs.
+  - The SDK, compiler configuration, or `classpath` changes.
+  - The live environment loses continuity or its project owner retires.
+  - A saved fact refers to source outside the admitted inventory.
+
+  A rejected comparison invalidates the stored entry. Fresh computation still needs complete, admitted evidence before optional publication.
+</Accordion>
+
+An unchanged dependency set can permit fact reuse while an old query-result handle still rejects. Those objects have different validity rules.
+
+[Query reuse](/architecture/query-reuse) covers shorter lifetimes within one invocation. [Topology](/architecture/topology#state-owners-and-lifetimes) compares their owners.
+
 ## Source evidence
 
 [The source map](/reference/source-map#staleness-and-reacquisition) links the code and tests for epoch signals. It also covers freshness checks and how Kast gets fresh compiler identity.
+
+<Accordion title="Incremental reuse owners and tests at 23828e1536">
+  - [`SemanticDependencySnapshot`](https://github.com/amichne/kast/blob/23828e1536835b5cae785b30254ac68059705926/topology/contract/src/main/kotlin/io/github/amichne/kast/topology/contract/SemanticDependencySnapshot.kt) owns snapshot comparison and its finite failures.
+  - [`SemanticCallbackFactStore`](https://github.com/amichne/kast/blob/23828e1536835b5cae785b30254ac68059705926/topology/build/src/main/kotlin/io/github/amichne/kast/topology/build/SemanticCallbackFactStore.kt) owns bounded publication, lookup, and invalidation.
+  - [`SemanticCallbackFactRead`](https://github.com/amichne/kast/blob/23828e1536835b5cae785b30254ac68059705926/topology/build/src/main/kotlin/io/github/amichne/kast/topology/build/SemanticCallbackFactRead.kt) distinguishes a current fact from a fact that still needs admission.
+  - [`SemanticDependencySnapshotTest`](https://github.com/amichne/kast/blob/23828e1536835b5cae785b30254ac68059705926/topology/contract/src/test/kotlin/io/github/amichne/kast/topology/contract/SemanticDependencySnapshotTest.kt) covers changed sources, SDK, `classpath`, compiler settings, and owner continuity.
+</Accordion>

@@ -41,17 +41,15 @@ The compiler maps the supplied lambda to `submit.block`. Immutable value evidenc
 
 Forwarding evidence connects that formal to `forward.next`. The call of `next()` keeps its actual owner, and the anonymous body keeps `charge()`.
 
-<div role="region" aria-label="Architecture diagram; scroll horizontally on narrow screens" tabIndex={0} className="overflow-x-auto">
-  <div style={{minWidth: "440px"}}>
-    <img className="block dark:hidden" alt="A lambda is supplied to submit.block, kept through the action alias, and forwarded to forward.next. Its call keeps the anonymous body and charge occurrence." src="/images/architecture/callback-route.light.svg" />
-
-    <img className="hidden dark:block" alt="A lambda is supplied to submit.block, kept through the action alias, and forwarded to forward.next. Its call keeps the anonymous body and charge occurrence." src="/images/architecture/callback-route.dark.svg" />
-  </div>
-</div>
-
-On a narrow screen, scroll the diagram or read the steps below.
-
-[Open full-size diagram](/images/architecture/callback-route.light.svg) · [Mermaid source](https://github.com/amichne/kast/blob/761022b936d8e12a49666e84b8ba2edfddabbc26/docs/public/images/architecture/callback-route.mmd)
+```mermaid
+%%{init: {"flowchart": {"rankSpacing": 25, "nodeSpacing": 20, "padding": 10}}}%%
+flowchart TD
+  L["Lambda containing charge()"] --> S["Supply to submit.block"]
+  S --> A["Immutable alias: action"]
+  A --> F["Forward to forward.next"]
+  F --> I["Invocation site: next()"]
+  I --> B["Anonymous body and charge() occurrence"]
+```
 
 1. The lambda body contains the call to charge.
 2. The caller supplies that lambda to submit.block.

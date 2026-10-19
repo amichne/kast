@@ -1,13 +1,26 @@
 ---
 title: "Query execution and evidence delivery"
 sidebarTitle: "Query lifecycle"
-description: "Understand why completion, previews, retained rows, and output continuations report different facts."
+description: "Follow a question through admission, bounded execution, completion proof, atomic publication, and evidence delivery."
 icon: "workflow"
 ---
 
-A semantic query answers a source question. Output delivery shows its evidence. The response has its own size limit.
+A public `RUN` answers one fixed source question. Its output can span several replies without more semantic work.
 
-These actions stay distinct because a preview cannot change the question or strengthen its proof.
+Execution and delivery have distinct limits because a complete answer can exceed one response's byte allowance.
+
+```mermaid
+%%{init: {"flowchart": {"rankSpacing": 25, "nodeSpacing": 20, "padding": 10}}}%%
+flowchart TD
+  Q["Question and current workspace authority"] --> S["Source and ordered stages"]
+  S --> P{"Proof met?"}
+  P -->|Yes| A["Complete answer"]
+  P -->|No| R["Typed rejection and available evidence"]
+  A --> D["Fit and publish output"]
+  R --> D
+```
+
+Preparation proves readiness for the exact root. Each semantic read still needs current authority. [Topology](/architecture/topology) locates these owners.
 
 ## One question and one execution grant
 
@@ -17,7 +30,11 @@ The runner drains internal semantic pages under that grant. An empty page can st
 
 Every public run uses `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`. To complete, the run must finish its work and meet all proof rules.
 
-The run cannot complete if an item fails, evidence is omitted, or callback proof is missing. An investigation must also meet its proof rules.
+Item failures, omitted evidence, and unmet proof rules prevent completion. Each investigation uses its declared interpretation of callback evidence.
+
+For source-symbol `TRACE`, `SOURCE_RELATIONSHIPS` keeps callback execution gaps as evidence. Invocation queries need the stricter callback graph proof.
+
+[RUN completion](/reference/responses#run-completion) defines which composed queries need that stricter proof.
 
 ## A preview describes delivery
 
@@ -25,26 +42,31 @@ A complete investigation can produce more evidence than fits in one reply. The p
 
 The row count does not count semantic work left to do. A small result also does not prove that the run had enough work or storage capacity.
 
-<div role="region" aria-label="Architecture diagram; scroll horizontally on narrow screens" tabIndex={0} className="overflow-x-auto">
-  <div style={{minWidth: "440px"}}>
-    <img className="block dark:hidden" alt="Workspace admission precedes symbol and relation resolution. Completion proof yields an answer or typed rejection; retained evidence supports presentation only." src="/images/architecture/query-lifecycle.light.svg" />
-
-    <img className="hidden dark:block" alt="Workspace admission precedes symbol and relation resolution. Completion proof yields an answer or typed rejection; retained evidence supports presentation only." src="/images/architecture/query-lifecycle.dark.svg" />
-  </div>
-</div>
-
-On a narrow screen, scroll the diagram horizontally or use the numbered explanation below.
-
-[Open full-size diagram](/images/architecture/query-lifecycle.light.svg) · [Mermaid source](https://github.com/amichne/kast/blob/761022b936d8e12a49666e84b8ba2edfddabbc26/docs/public/images/architecture/query-lifecycle.mmd)
-
-1. Admit the question, workspace, and current read state before semantic work.
-2. Resolve the supported symbols and relationships within one execution grant.
-3. Prove completion or keep the rejection and available evidence.
-4. Present retained rows without replaying the semantic query.
-
-<Warning>
+<Info>
   A rejected or incomplete query does not prove that a caller is absent.
-</Warning>
+</Info>
+
+## Publish a page and its successor together
+
+`QueryStateStore` owns detached checkpoints, retained results, output suffixes, and publication claims under shared entry, byte, and lifetime limits.
+
+Before a producer advances, acquisition reserves replay space and claims its token. A concurrent acquisition of that unfinished token reports `InUse`.
+
+```mermaid
+stateDiagram-v2
+  Ready --> Running: Acquire claim and reserve space
+  Running --> PrivatePage: Produce page and staged successor
+  PrivatePage --> Published: Commit page and reachable successor
+  Published --> Published: Replay immutable page
+  Running --> Ready: Cancel and release owned allocations
+  PrivatePage --> Ready: Reject publication and release claim
+```
+
+The page and its reachable successor become visible in one store transition. A later read of a published page replays its immutable output.
+
+Cancellation or rejected publication releases only allocations owned by that try. It does not revoke an existing public page that the try reused.
+
+This diagram shows internal publication. It does not expose producer checkpoints as public semantic `RESUME` inputs.
 
 <span id="retention-preserves-the-original-answer" />
 
@@ -52,9 +74,10 @@ On a narrow screen, scroll the diagram horizontally or use the numbered explanat
 
 A retained result keeps rows that cannot change. It also keeps their identity, stated limits, and original producer progress. Its reference names that stored result.
 
-`READ_RESULT` presents those rows and evidence. Its row cursor and evidence cursor each move on their own.
-
-`RESUME` uses an issued output continuation. It shows the produced output that is left. It does no new semantic work.
+| Action | Reads | Position |
+| --- | --- | --- |
+| `READ_RESULT` | Immutable retained rows and evidence | Independent row and evidence cursors. |
+| `RESUME` | Already-produced output | An issued output continuation. |
 
 Neither action grants a stronger answer. A rejection can include a historical execution checkpoint. That checkpoint does not authorize another strict run.
 
@@ -70,8 +93,11 @@ If that state is not available, start a new query. It produces a new answer. It 
 
 ## Source evidence
 
-[`CanonicalQueryProtocol`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt) owns action dispatch.
+<Accordion title="Dispatch, publication, and proof at 23828e1536">
+  - [`CanonicalQueryProtocol`](https://github.com/amichne/kast/blob/23828e1536835b5cae785b30254ac68059705926/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt) owns public action dispatch.
+  - [`QueryStateStore`](https://github.com/amichne/kast/blob/23828e1536835b5cae785b30254ac68059705926/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt) owns publication and release.
+  - [`QueryStateAcquisition`](https://github.com/amichne/kast/blob/23828e1536835b5cae785b30254ac68059705926/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateAcquisition.kt) owns token acquisition and replay capacity.
+  - [`QueryCheckpointPublicationTest`](https://github.com/amichne/kast/blob/23828e1536835b5cae785b30254ac68059705926/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointPublicationTest.kt) covers replay, concurrent acquisition, cancellation, and private result visibility.
 
-[`CompleteOnlyQueryTest`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CompleteOnlyQueryTest.kt) covers completion behavior.
-
-[OpenWiki's semantic-query concept](https://github.com/amichne/kast/blob/main/openwiki/flows/semantic-query.md) connects these owners to retained input and execution.
+  [OpenWiki's semantic-query concept](https://github.com/amichne/kast/blob/main/openwiki/flows/semantic-query.md) connects these owners to the interpreter.
+</Accordion>

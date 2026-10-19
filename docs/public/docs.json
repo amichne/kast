@@ -78,6 +78,7 @@
               "explanation",
               "reference/internals/architecture",
               "explanation/query-lifecycle",
+              "architecture/query-reuse",
               "reference/staleness",
               "architecture/topology",
               "architecture/change-lifecycle"

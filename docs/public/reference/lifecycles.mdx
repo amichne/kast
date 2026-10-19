@@ -23,17 +23,19 @@ A ready project does not prove a declaration identity. A live socket does not pr
 
 The direct Tool RPC path supplies a concrete example. Its caller starts in the intended repository directory.
 
-<div role="region" aria-label="Architecture diagram; scroll horizontally on narrow screens" tabIndex={0} className="overflow-x-auto">
-  <div style={{minWidth: "440px"}}>
-    <img className="block dark:hidden" alt="Tool RPC checks the project and runs one request. Both a result and a rejection get checked before the reply." src="/images/architecture/request-lifecycle.light.svg" />
-
-    <img className="hidden dark:block" alt="Tool RPC checks the project and runs one request. Both a result and a rejection get checked before the reply." src="/images/architecture/request-lifecycle.dark.svg" />
-  </div>
-</div>
-
-On a narrow screen, scroll the diagram or read the steps below.
-
-[Open full-size diagram](/images/architecture/request-lifecycle.light.svg) · [Mermaid source](https://github.com/amichne/kast/blob/761022b936d8e12a49666e84b8ba2edfddabbc26/docs/public/images/architecture/request-lifecycle.mmd)
+```mermaid
+%%{init: {"flowchart": {"rankSpacing": 25, "nodeSpacing": 20, "padding": 10}}}%%
+flowchart TD
+  I["Decode and admit tool arguments"] --> R["Discover exact Gradle root"]
+  R --> P["Prepare selected IDEA project"]
+  P --> H["Admit Host contract and current read state"]
+  H --> Q["Evaluate canonical operation"]
+  Q --> C{"Completion proof"}
+  C -->|Established| O["Operation document and bounded output"]
+  C -->|Unproven| E["Typed rejection and available evidence"]
+  O --> T["Admit result schema and encode transport reply"]
+  E --> T
+```
 
 1. Tool RPC admits the input and finds the exact Gradle root.
 2. Kast prepares the selected IDEA project and checks the Host contract and current read state.
@@ -78,9 +80,14 @@ Upgrades can change schemas and loaded components. New sessions need the new cat
 
 The sequence opens the project once. It then reads status for the issued operation. Status reads do not repeat the open effect.
 
+<AccordionGroup>
+  <Accordion title="Preparation and transport deadlines">
 Preparation has a 17-minute budget. Opening, import, indexing, and final admission share that budget. Each lifecycle frame has a separate 5-second transport limit. A frame timeout reports `EXCHANGE_DEADLINE_EXCEEDED` with its command, stage, cause, and timing. `HOST_UNAVAILABLE` alone does not prove that IDEA exited. Semantic execution has its own limits after preparation.
-
+  </Accordion>
+  <Accordion title="Recovery after a settled import">
 After an import settles, a current model observation can still require a reload. The settled refresh then reports `MODEL_RELOAD_REQUIRED`. Preparation can issue one owned recovery reload within its remaining budget. A later input change remains pending until an import covers it. Inspection distinguishes pending input revisions from rejection of the current imported model; retained model evidence describes a previous observation.
+  </Accordion>
+</AccordionGroup>
 
 A past blocker or rejection does not define readiness forever. A later authorized demand can check the current Host. It can then create a new preparation.
 
