@@ -6,7 +6,7 @@ The 5× target remains unmet.
 The smaller brief does not qualify for promotion.
 
 A later negative control exposes an incomplete oracle for the bound-reference repair.
-A hardcoded result passes that earlier oracle.
+A constant result passes that earlier oracle.
 The repair counts in this report describe the original assertions, without a claim of full correctness.
 The later installation audit resolves the producer revision as `83f4d987a73c07d61250d25ec50a50ceb1826c03`.
 Only documentation differs between that producer and the pinned POC source.

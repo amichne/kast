@@ -24,6 +24,7 @@ The 5× target remains aspirational and unmet.
 
 The result covers one repository and ten source questions.
 It does not establish broad Kotlin accuracy or population-level gains.
+The [later reference experiment](AGENT_EFFICIENCY_REFERENCES.md) isolates two tasks and records provider timing.
 
 ## Matched measurements
 

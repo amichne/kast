@@ -1,6 +1,7 @@
 # Paired Pi agent experiments
 
 Use [the token POC](AGENT_EFFICIENCY_TOKEN_POC.md) for the current ten-task comparison and token report.
+Use [the reference experiment](AGENT_EFFICIENCY_REFERENCES.md) for later chain instructions and provider timing.
 The remaining sections describe the earlier experiment and its legacy acceptance criteria.
 
 This local experiment compares native Pi sessions with and without Kast.
