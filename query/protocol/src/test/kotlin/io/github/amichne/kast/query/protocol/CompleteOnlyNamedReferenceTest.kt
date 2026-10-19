@@ -35,6 +35,34 @@ import org.junit.jupiter.api.Test
 
 internal class CompleteOnlyNamedReferenceTest : CompleteOnlyCallbackQueryCase() {
     @Test
+    fun `trace preserves a named source reference with unknown execution`() = runTest {
+        val script =
+            Script(
+                listOf(emptyList()),
+                resultForPage = { rows, _ ->
+                    QueryResult(
+                        QueryRows.Symbols.of(rows),
+                        emptyList(),
+                        relationObservations = listOf(namedObservation(false)),
+                    )
+                },
+            )
+        val protocol = CanonicalQueryProtocol(script.operations, fixture.references)
+        val request =
+            strict.copy(steps = bounded(listOf(io.github.amichne.kast.protocol.contract.QueryStepDocument.Trace())))
+        val result = protocol.execute(request, fixture.authority, budget, policy())
+        assertTrue(result is OperationOutcome.Complete)
+        val payload = (result as OperationOutcome.Complete).evidence.payload
+        assertTrue(payload.items.values.isEmpty())
+        assertEquals(1, payload.relationObservations.values.single().callableObservations.values.size)
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument.SourceRelationships(),
+            payload.interpretation,
+        )
+        script.assertDrained()
+    }
+
+    @Test
     fun `complete named reference proof is retained without creating a named row`() = runTest {
         val script =
             Script(

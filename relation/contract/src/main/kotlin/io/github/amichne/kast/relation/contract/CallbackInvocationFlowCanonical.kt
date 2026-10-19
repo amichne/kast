@@ -10,7 +10,7 @@ fun CallbackInvocationFlowRead.canonicalProjection(): String =
         is CallbackInvocationFlowRead.Observed -> "OBSERVED:${flow.canonicalProjection()}"
     }
 
-internal fun CallbackInvocationFlow.canonicalProjection(): String = buildString {
+internal fun CallbackInvocationFlow.canonicalProjection(includeOwnerExecution: Boolean = true): String = buildString {
     field(basis.workspaceRoot.value)
     field(basis.revisionKey.value)
     body(body)
@@ -30,11 +30,13 @@ internal fun CallbackInvocationFlow.canonicalProjection(): String = buildString 
     field(invocations.size.toString())
     invocations.forEach { invocation(it) }
     field(ownerBindings.size.toString())
-    ownerBindings.forEach { ownerBinding(it) }
+    ownerBindings.forEach { ownerBinding(it, includeOwnerExecution) }
     obligations(obligations)
 }
 
-internal fun CallbackBodyBinding.canonicalProjection(): String = buildString { ownerBinding(this@canonicalProjection) }
+internal fun CallbackBodyBinding.canonicalProjection(includeOwnerExecution: Boolean = true): String = buildString {
+    ownerBinding(this@canonicalProjection, includeOwnerExecution)
+}
 
 internal fun CallbackParameterInvocation.canonicalProjection(): String = buildString {
     invocation(this@canonicalProjection)
@@ -100,7 +102,7 @@ private fun StringBuilder.transferEvidence(evidence: ValueTransferEvidence) {
     }
 }
 
-private fun StringBuilder.ownerBinding(owner: CallbackBodyBinding) {
+private fun StringBuilder.ownerBinding(owner: CallbackBodyBinding, includeOwnerExecution: Boolean) {
     body(owner.body)
     when (val supply = owner.supply) {
         is CallbackBodySupply.Invocation -> {
@@ -124,6 +126,18 @@ private fun StringBuilder.ownerBinding(owner: CallbackBodyBinding) {
     }
     binding(owner.binding)
     obligations(owner.obligations)
+    when (val execution = owner.execution) {
+        CallbackOwnerExecution.Unproven -> field("UNPROVEN")
+        is CallbackOwnerExecution.Observed -> {
+            field("OBSERVED")
+            if (includeOwnerExecution) field(execution.flow.canonicalProjection())
+        }
+        is CallbackOwnerExecution.Immutable -> {
+            field("IMMUTABLE")
+            body(execution.owner)
+            if (includeOwnerExecution) field(execution.flow.canonicalProjection())
+        }
+    }
 }
 
 private fun StringBuilder.obligations(obligations: Set<CallbackInvocationFlowCause>) {
@@ -231,6 +245,8 @@ internal fun ImmutableCallbackInvocationFlow.canonicalProjection(): String = bui
     obligations(obligations)
     field(uses.size.toString())
     uses.forEach { immutableUse(it) }
+    field(ownerBindings.size.toString())
+    ownerBindings.forEach { ownerBinding(it, true) }
 }
 
 internal fun CallbackParameterSupplier.canonicalProjection(): String = buildString {
@@ -331,6 +347,10 @@ private fun StringBuilder.immutableUse(use: ImmutableCallbackInvocationUse) {
             formal(use.summary.formal)
             field(use.summary.invocations.size.toString())
             use.summary.invocations.forEach { invocation(it) }
+            field(use.summary.ownerBindings.size.toString())
+            use.summary.ownerBindings.forEach { ownerBinding(it, true) }
+            obligations(use.summary.obligations)
+            field(use.summary.scan.name)
             when (val selection = use.supplier.selection) {
                 is CallbackSupplierSelection.Explicit -> {
                     field("EXPLICIT")

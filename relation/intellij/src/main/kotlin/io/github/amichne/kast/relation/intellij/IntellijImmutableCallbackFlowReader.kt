@@ -4,7 +4,6 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.CallbackArgumentOmission
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowFailure
-import io.github.amichne.kast.relation.contract.CallbackInvocationScan
 import io.github.amichne.kast.relation.contract.CallbackParameterSupplier
 import io.github.amichne.kast.relation.contract.CallbackSupplierSelection
 import io.github.amichne.kast.relation.contract.ImmutableCallbackInvocationFlow
@@ -12,6 +11,7 @@ import io.github.amichne.kast.relation.contract.ImmutableCallbackInvocationFlowF
 import io.github.amichne.kast.relation.contract.ImmutableCallbackInvocationUse
 import io.github.amichne.kast.relation.contract.ImmutableCallbackValue
 import io.github.amichne.kast.relation.contract.ImmutableCallbackValueOrigin
+import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueTransfer
@@ -50,29 +50,10 @@ internal class IntellijImmutableCallbackFlowReader(
                     is Refinement.Rejected ->
                         return Refinement.Rejected(CallbackInvocationFlowFailure.BODY_OUTSIDE_ARGUMENT)
                 }
-        val read =
-            when (val selected = defaultUses(prepared, declared, value)) {
-                is Refinement.Refined -> selected.value
-                is Refinement.Rejected -> return selected
-            }
-        return when (
-            val admitted =
-                ImmutableCallbackInvocationFlow.fromCompiler(
-                    origin,
-                    source,
-                    read.uses,
-                    read.obligations,
-                    if (read.obligations.isEmpty()) CallbackInvocationScan.EXHAUSTIVE
-                    else CallbackInvocationScan.INCOMPLETE,
-                )
-        ) {
-            is Refinement.Refined -> {
-                admitted.value.uses.filterIsInstance<ImmutableCallbackInvocationUse.Supplied>().forEach {
-                    summaries.used(it.summary)
-                }
-                admitted
-            }
-            is Refinement.Rejected -> Refinement.Rejected(admitted.failure.callbackFailure())
+        val enumeration = ImmutableCallbackEnumeration(context, summaries, origin, source)
+        return when (val selected = defaultUses(prepared, declared, value, enumeration)) {
+            is Refinement.Refined -> enumeration.complete()
+            is Refinement.Rejected -> selected
         }
     }
 
@@ -80,7 +61,8 @@ internal class IntellijImmutableCallbackFlowReader(
         prepared: PreparedCallbackFlow,
         declared: PreparedCallbackOrigin.Default,
         value: ImmutableCallbackValue,
-    ): Refinement<ImmutableDefaultUses, CallbackInvocationFlowFailure> {
+        enumeration: ImmutableCallbackEnumeration,
+    ): Refinement<Unit, CallbackInvocationFlowFailure> {
         val selected =
             when (
                 val read =
@@ -88,16 +70,18 @@ internal class IntellijImmutableCallbackFlowReader(
                         .read(prepared.function, prepared.parameter, declared.binding.parameter)
             ) {
                 is Refinement.Refined -> read.value.filter { it.selection == NativeCallbackSupplierSelection.DEFAULT }
-                is Refinement.Rejected ->
-                    return Refinement.Refined(ImmutableDefaultUses(emptyList(), setOf(read.failure)))
+                is Refinement.Rejected -> return enumeration.obligation(read.failure)
             }
         // Exclude explicit overrides before value resolution and formal-body work.
-        if (selected.isEmpty()) return Refinement.Refined(ImmutableDefaultUses(emptyList(), emptySet()))
+        if (selected.isEmpty()) return Refinement.Refined(Unit)
         return when (val read = IntellijCallbackParameterSummaryReader(context, summaries).read(prepared)) {
-            is CallbackParameterSummaryRead.Unavailable ->
-                Refinement.Refined(ImmutableDefaultUses(emptyList(), read.additional + read.cause))
+            is CallbackParameterSummaryRead.Unavailable -> {
+                enumeration.obligations += read.additional
+                enumeration.obligation(read.cause)
+            }
             is CallbackParameterSummaryRead.ContractRejected -> Refinement.Rejected(read.cause)
-            is CallbackParameterSummaryRead.Available -> retainDefaults(selected, declared, value, read.summary)
+            is CallbackParameterSummaryRead.Available ->
+                retainDefaults(selected, declared, value, read.summary, enumeration)
         }
     }
 
@@ -106,9 +90,17 @@ internal class IntellijImmutableCallbackFlowReader(
         declared: PreparedCallbackOrigin.Default,
         value: ImmutableCallbackValue,
         summary: io.github.amichne.kast.relation.contract.CallbackParameterSummary,
-    ): Refinement<ImmutableDefaultUses, CallbackInvocationFlowFailure> {
-        val uses = mutableListOf<ImmutableCallbackInvocationUse>()
+        enumeration: ImmutableCallbackEnumeration,
+    ): Refinement<Unit, CallbackInvocationFlowFailure> {
+        enumeration.obligations += summary.obligations
         for (call in selected) {
+            val enclosing =
+                call.binding.invocation.enclosing as? RelationEndpoint.Resolved
+                    ?: return enumeration.obligation(CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE)
+            when (val admitted = enumeration.readOwner(call.call, call.binding.invocationOwner, enclosing)) {
+                is Refinement.Refined -> if (enumeration.stopped) return Refinement.Refined(Unit)
+                is Refinement.Rejected -> return admitted
+            }
             val selection =
                 CallbackSupplierSelection.Default(CallbackArgumentOmission.fromCompiler(call.binding), declared.binding)
             val supplier =
@@ -118,11 +110,11 @@ internal class IntellijImmutableCallbackFlowReader(
                         return Refinement.Rejected(CallbackInvocationFlowFailure.CALLABLE_TRANSFER_BINDING_MISMATCH)
                 }
             when (val retained = summaries.retention.admit(supplier.retainedBytes)) {
-                is Refinement.Refined -> uses += ImmutableCallbackInvocationUse.Supplied(supplier, summary)
-                is Refinement.Rejected -> return Refinement.Refined(ImmutableDefaultUses(uses, setOf(retained.failure)))
+                is Refinement.Refined -> enumeration.uses += ImmutableCallbackInvocationUse.Supplied(supplier, summary)
+                is Refinement.Rejected -> return enumeration.obligation(retained.failure)
             }
         }
-        return Refinement.Refined(ImmutableDefaultUses(uses, emptySet()))
+        return Refinement.Refined(Unit)
     }
 
     fun read(
@@ -148,11 +140,6 @@ internal class IntellijImmutableCallbackFlowReader(
         return ImmutableCallbackEnumeration(context, summaries, origin, source).read(expression, initial)
     }
 }
-
-private data class ImmutableDefaultUses(
-    val uses: List<ImmutableCallbackInvocationUse>,
-    val obligations: Set<CallbackInvocationFlowCause>,
-)
 
 internal fun transport(
     value: ImmutableCallbackValue,
@@ -182,6 +169,11 @@ internal fun ImmutableCallbackInvocationFlowFailure.callbackFailure(): CallbackI
         ImmutableCallbackInvocationFlowFailure.DESTINATION_MISMATCH ->
             CallbackInvocationFlowFailure.CALLABLE_TRANSFER_BINDING_MISMATCH
         ImmutableCallbackInvocationFlowFailure.DUPLICATE_USE -> CallbackInvocationFlowFailure.DUPLICATE_INVOCATION
+        ImmutableCallbackInvocationFlowFailure.MISSING_OBLIGATION -> CallbackInvocationFlowFailure.MISSING_OBLIGATION
+        ImmutableCallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH ->
+            CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH
+        ImmutableCallbackInvocationFlowFailure.DUPLICATE_OWNER_BINDING ->
+            CallbackInvocationFlowFailure.DUPLICATE_OWNER_BINDING
         ImmutableCallbackInvocationFlowFailure.FORMAL_MISMATCH -> CallbackInvocationFlowFailure.UNBOUND_INVOCATION
         ImmutableCallbackInvocationFlowFailure.INCOMPLETE_SUMMARY,
         ImmutableCallbackInvocationFlowFailure.INVALID_SCAN -> CallbackInvocationFlowFailure.INVALID_SCAN_PROOF

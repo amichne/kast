@@ -203,5 +203,7 @@ registerRelationNativeFixtures(
         "*NativeDependencyCallbackTest",
         "*NativeDeclaredEffectCallbackTest",
         "*NativeCallbackCandidateFilterTest",
+        "*NativeNestedCallbackCompositionTest",
+        "*NativeCallbackSupplierCompositionTest",
     ),
 )

@@ -155,30 +155,32 @@ internal fun QueryCallbackBodyDocument.callbackWire(): QueryCallbackBodyWireDocu
         is QueryCallbackBodyDocument.Anonymous -> callbackWire()
     }
 
-private fun QueryCallbackFlowDocument.callbackWire(): QueryCallbackFlowWireDocument =
+internal fun QueryCallbackFlowDocument.callbackWire(): QueryCallbackFlowWireDocument =
     when (this) {
         is QueryCallbackFlowDocument.Immutable -> QueryCallbackFlowWireDocument.Immutable(flow.immutableFlowWire())
-        is QueryCallbackFlowDocument.Observed ->
-            QueryCallbackFlowWireDocument.Observed(
-                basis,
-                body.callbackWire(),
-                binding.callbackWire(),
-                invocations.values.map {
-                    QueryCallbackInvocationWireDocument(
-                        it.occurrence.callbackWire(),
-                        it.owner.callbackWire(),
-                        it.callableTransfers.values,
-                        it.forwardings.values.map { forwarding -> forwarding.callbackWire() },
-                    )
-                },
-                obligations.values,
-                ownerBindings.values.map { it.callbackWire() },
-                scan,
-                forwarding.callbackWire(),
-            )
+        is QueryCallbackFlowDocument.Observed -> observedCallbackWire()
         is QueryCallbackFlowDocument.Unavailable -> QueryCallbackFlowWireDocument.Unavailable(cause)
         is QueryCallbackFlowDocument.ContractRejected -> QueryCallbackFlowWireDocument.ContractRejected(cause)
     }
+
+internal fun QueryCallbackFlowDocument.Observed.observedCallbackWire(): QueryCallbackFlowWireDocument.Observed =
+    QueryCallbackFlowWireDocument.Observed(
+        basis,
+        body.callbackWire(),
+        binding.callbackWire(),
+        invocations.values.map {
+            QueryCallbackInvocationWireDocument(
+                it.occurrence.callbackWire(),
+                it.owner.callbackWire(),
+                it.callableTransfers.values,
+                it.forwardings.values.map { forwarding -> forwarding.callbackWire() },
+            )
+        },
+        obligations.values,
+        ownerBindings.values.map { it.callbackWire() },
+        scan,
+        forwarding.callbackWire(),
+    )
 
 internal fun QueryCallbackObservationDocument.toWireDocument() =
     QueryCallbackObservationWireDocument(
@@ -238,7 +240,7 @@ internal fun QueryCallbackBodyWireDocument.toContract(): WireDocumentConversion<
         is QueryCallbackBodyWireDocument.Anonymous -> toContract().mapConverted { it }
     }
 
-private fun QueryCallbackFlowWireDocument.toContract(): WireDocumentConversion<QueryCallbackFlowDocument> =
+internal fun QueryCallbackFlowWireDocument.toContract(): WireDocumentConversion<QueryCallbackFlowDocument> =
     when (this) {
         is QueryCallbackFlowWireDocument.Immutable ->
             flow.toContract().mapConverted { QueryCallbackFlowDocument.Immutable(it) }

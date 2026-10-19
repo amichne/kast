@@ -28,7 +28,13 @@ Complete coverage means that the scan finished within the declared supported dom
 
 The query response uses `kast.query.run.v8`. Host and Control must agree on that contract.
 
-Every public run uses `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`. To succeed, the work has to finish. No item can fail, no evidence can be omitted, and callback graphs need complete proof.
+Every public run uses `COMPLETE_ONLY` within `COMPILER_RESOLVED_STATIC_V1`. The work must finish without item failures or omitted evidence.
+
+`TRACE` from source symbols reports `SOURCE_RELATIONSHIPS` with `callbackEffects: EVIDENCE_ONLY`. Exact source relationships remain usable when callback execution has explicit gaps. The result keeps each gap with its callback evidence. Retained pages preserve that interpretation, including pages without callback evidence.
+
+This interpretation permits source filters and deduplication before `TRACE`. An explicit relation operation, traversal, composition, retained source, or impact source keeps the stricter callback graph proof.
+
+Unresolved compiler mappings, missing source membership, stale dependency evidence, and exhausted grants still prevent completion.
 
 Impact investigations also keep their original ledgers intact and meet all proof rules. The model does not prove that code ran or that a path can run.
 

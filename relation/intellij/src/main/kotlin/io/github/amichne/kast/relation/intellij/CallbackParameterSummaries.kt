@@ -39,7 +39,8 @@ internal class CallbackParameterSummaries(
         },
 ) {
     val retention = CallbackFlowRetention(budget, observation)
-    private val summaries = linkedMapOf<CallbackParameterIdentity, CallbackParameterSummary>()
+    val bodyReads = CallbackBodyReads()
+    private val summaries = linkedMapOf<CallbackParameterIdentity, RequestCallbackSummary>()
 
     private val pendingProjectUse = mutableSetOf<CallbackParameterIdentity>()
     private val supplierInventories =
@@ -99,7 +100,7 @@ internal class CallbackParameterSummaries(
 
     fun find(formal: CallbackParameterIdentity): CallbackParameterSummary? {
         summaries[formal]?.let {
-            return it
+            return it.summary
         }
         return when (val cached = cache.find(formal, readmit)) {
             io.github.amichne.kast.relation.contract.CallbackSummaryCacheLookup.Miss -> null
@@ -107,7 +108,7 @@ internal class CallbackParameterSummaries(
                 when (retention.admitSummary(cached.summary)) {
                     is Refinement.Refined ->
                         cached.summary.also {
-                            summaries[formal] = it
+                            summaries[formal] = RequestCallbackSummary.Published(it)
                             pendingProjectUse += formal
                         }
                     is Refinement.Rejected -> {
@@ -122,14 +123,40 @@ internal class CallbackParameterSummaries(
     }
 
     fun retain(summary: CallbackParameterSummary): Refinement<Unit, CallbackInvocationFlowCause> {
-        if (summary.formal in summaries) return Refinement.Refined(Unit)
+        return when (val previous = summaries[summary.formal]) {
+            is RequestCallbackSummary.Published -> Refinement.Refined(Unit)
+            is RequestCallbackSummary.Staged -> {
+                summaries[summary.formal] = RequestCallbackSummary.Published(previous.summary)
+                cache.retain(previous.summary)
+                Refinement.Refined(Unit)
+            }
+            null ->
+                when (val admitted = stage(summary)) {
+                    is Refinement.Refined -> retain(admitted.value)
+                    is Refinement.Rejected -> admitted
+                }
+        }
+    }
+
+    /** Formal facts can serve another supplier before either supplier authorizes project publication. */
+    fun stage(summary: CallbackParameterSummary): Refinement<CallbackParameterSummary, CallbackInvocationFlowCause> {
+        summaries[summary.formal]?.let {
+            return Refinement.Refined(it.summary)
+        }
         return when (val admitted = retention.admitSummary(summary)) {
             is Refinement.Refined -> {
-                summaries[summary.formal] = summary
-                cache.retain(summary)
-                admitted
+                summaries[summary.formal] = RequestCallbackSummary.Staged(summary)
+                Refinement.Refined(summary)
             }
             is Refinement.Rejected -> admitted
         }
     }
+}
+
+private sealed interface RequestCallbackSummary {
+    val summary: CallbackParameterSummary
+
+    data class Staged(override val summary: CallbackParameterSummary) : RequestCallbackSummary
+
+    data class Published(override val summary: CallbackParameterSummary) : RequestCallbackSummary
 }

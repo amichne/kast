@@ -593,11 +593,13 @@ val semanticInventoryGate = tasks.register<Exec>("verifyKotlinSemanticInventory"
 val semanticTraceGate = tasks.register<Exec>("verifyKotlinSemanticCoverage") {
     group = "verification"
     description = "Requires the exact semantic case population and successful assertion results."
-    dependsOn(":relation:intellij:semanticCoverageFixtureTest", ":runtime:hosted:semanticCoverageFixtureTest")
+    dependsOn(":relation:intellij:semanticCoverageFixtureTest", ":runtime:hosted:semanticCoverageFixtureTest",
+        ":symbol:intellij:semanticCoverageFixtureTest")
     workingDir(semanticCoverageDirectory.dir("tooling"))
     commandLine("uv", "run", "--locked", "--script", "inventory.py", "execution",
         "--required-cases", semanticCoverageDirectory.file("cases.tsv"),
         "--junit", layout.projectDirectory.dir("relation/intellij/build/test-results/semanticCoverageFixtureTest"),
-        "--junit", layout.projectDirectory.dir("runtime/hosted/build/test-results/semanticCoverageFixtureTest"))
+        "--junit", layout.projectDirectory.dir("runtime/hosted/build/test-results/semanticCoverageFixtureTest"),
+        "--junit", layout.projectDirectory.dir("symbol/intellij/build/test-results/semanticCoverageFixtureTest"))
 }
 tasks.named("check") { dependsOn(semanticInputGate, semanticInventoryGate, semanticTraceGate) }

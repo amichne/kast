@@ -15,6 +15,7 @@ internal fun readDirectCallbackFlow(
     prepared: CallbackBindingPreparation.Direct,
     body: RelationCallableBody.Anonymous,
     lexicalOwner: CompilerGroundedSymbolEvidence,
+    summaries: CallbackParameterSummaries,
 ): CallbackInvocationFlowRead {
     val owner = prepared.binding.owner
     val obligations =
@@ -22,11 +23,11 @@ internal fun readDirectCallbackFlow(
         else emptySet()
     fun observed(additional: Set<CallbackInvocationFlowCause> = emptySet()) =
         context.observed(
-            body,
-            CallbackBindingEvidence.Direct(prepared.binding),
-            emptyList(),
-            obligations + additional,
-            CallbackInvocationScan.NOT_APPLICABLE,
+            body = body,
+            binding = CallbackBindingEvidence.Direct(prepared.binding),
+            invocations = emptyList(),
+            obligations = obligations + additional,
+            scan = CallbackInvocationScan.NOT_APPLICABLE,
         )
     if (owner !is RelationCallableBody.Anonymous) return observed()
     val literal =
@@ -36,16 +37,13 @@ internal fun readDirectCallbackFlow(
         context.endpoint(lexicalOwner)
             ?: return observed(setOf(CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE))
     val binding =
-        when (val read = IntellijCallbackOwnerBindingReader(context).read(literal, owner, enclosing)) {
+        when (val read = IntellijCallbackOwnerBindingReader(context, summaries).read(literal, owner, enclosing)) {
             is Refinement.Refined -> read.value
             is Refinement.Rejected -> return CallbackInvocationFlowRead.ContractRejected(read.failure)
         }
-    when (
-        val permitted =
-            CallbackFlowRetention(context.scope.request.budget, context.observation).admit(binding.retainedBytes)
-    ) {
+    when (val permitted = summaries.retention.admitOwner(binding)) {
         is Refinement.Refined -> Unit
-        is Refinement.Rejected -> return observed(setOf(permitted.failure))
+        is Refinement.Rejected -> return observed(binding.obligations + permitted.failure)
     }
     return when (val read = observed(binding.obligations)) {
         is CallbackInvocationFlowRead.Observed ->

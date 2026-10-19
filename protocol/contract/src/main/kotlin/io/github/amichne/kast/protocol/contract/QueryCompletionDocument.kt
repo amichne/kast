@@ -157,6 +157,16 @@ sealed interface QueryCompletionPolicyProgressDocument {
 sealed interface QueryResultInterpretationDocument {
     @Serializable @SerialName("QUERY_RESULT") data object QueryResult : QueryResultInterpretationDocument
 
+    /** Complete source relationships preserve callback effects as evidence with explicit unresolved causes. */
+    @Serializable
+    @SerialName("SOURCE_RELATIONSHIPS")
+    data class SourceRelationships(
+        @kotlinx.serialization.Required
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.ALWAYS)
+        val callbackEffects: QueryCallbackEffectInterpretationDocument =
+            QueryCallbackEffectInterpretationDocument.EVIDENCE_ONLY
+    ) : QueryResultInterpretationDocument
+
     @Serializable
     @SerialName("POLICY_REJECTED_EVIDENCE")
     data class EvidenceOnly(
@@ -170,6 +180,11 @@ sealed interface QueryResultInterpretationDocument {
         val callbackGraphFailure
             get() = (cause as? QueryCompletionCauseDocument.CallbackGraphUnproven)?.graphFailure
     }
+}
+
+@Serializable
+enum class QueryCallbackEffectInterpretationDocument {
+    EVIDENCE_ONLY
 }
 
 @Serializable

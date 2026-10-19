@@ -150,14 +150,18 @@ dependencies {
     )
 }
 
-val nativeFixtureTest =
-    tasks.register<Test>("nativeFixtureTest") {
+fun registerSymbolNativeFixtures(taskName: String, selectedClasses: List<String>) =
+    tasks.register<Test>(taskName) {
         description = "Runs headless indexed Kotlin fixtures in the pinned IntelliJ Platform."
         group = "verification"
         testClassesDirs = nativeTest.output.classesDirs
         classpath = nativeTest.runtimeClasspath
         dependsOn("detektNativeTest")
         if (!nativeFixtureIdeaHome.isPresent) dependsOn(extractNativeTestIdea)
+        if (selectedClasses.isNotEmpty()) {
+            dependsOn(":verifyKotlinSemanticInputs")
+            filter { selectedClasses.forEach(::includeTestsMatching) }
+        }
         maxParallelForks = 1
         jvmArgumentProviders.add(
             objects.newInstance<NativeFixtureJvmArguments>().apply {
@@ -177,3 +181,7 @@ val nativeFixtureTest =
         systemProperty("idea.force.use.core.classloader", "true")
         systemProperty("kotlin.plugin.mode", "K2")
     }
+
+registerSymbolNativeFixtures("nativeFixtureTest", emptyList())
+
+registerSymbolNativeFixtures("semanticCoverageFixtureTest", listOf("*LocalDeclarationOwnerNativeTest"))

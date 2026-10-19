@@ -20,4 +20,14 @@ data class QueryCallbackBodyBindingDocument(
     val supply: QueryCallbackBodySupplyDocument,
     val binding: QueryCallbackBindingDocument,
     val obligations: BoundedProtocolList<QueryCallbackFlowCauseDocument>,
+    val execution: QueryCallbackOwnerExecutionDocument = QueryCallbackOwnerExecutionDocument.Unproven,
 )
+
+sealed interface QueryCallbackOwnerExecutionDocument {
+    data object Unproven : QueryCallbackOwnerExecutionDocument
+
+    data class Observed(val flow: QueryCallbackFlowDocument.Observed) : QueryCallbackOwnerExecutionDocument
+
+    data class Immutable(val flow: QueryImmutableCallbackFlowDocument, val owner: QueryCallbackBodyDocument.Named) :
+        QueryCallbackOwnerExecutionDocument
+}

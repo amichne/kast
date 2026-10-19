@@ -35,9 +35,11 @@ internal class IntellijCallbackParameterSummaryReader(
                 is Refinement.Refined -> read.value
                 is Refinement.Rejected -> return CallbackParameterSummaryRead.ContractRejected(read.failure)
             }
-        snapshot.obligations.firstOrNull()?.let {
-            return CallbackParameterSummaryRead.Unavailable(it, snapshot.obligations)
-        }
+        snapshot.obligations
+            .firstOrNull { it != CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION }
+            ?.let {
+                return CallbackParameterSummaryRead.Unavailable(it, snapshot.obligations)
+            }
         return when (
             val admitted =
                 CallbackParameterSummary.fromCompiler(

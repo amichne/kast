@@ -14,11 +14,16 @@ fun ImmutableCallbackInvocationFlow.admitCallbackWorkspace(
     root: CanonicalWorkspaceRoot
 ): Refinement<Unit, StaticCallbackGraphFailure> = CallbackWorkspaceFiles().also { it.flow(this) }.admit(root)
 
+fun CallbackInvocationFlow.admitCallbackWorkspace(
+    root: CanonicalWorkspaceRoot
+): Refinement<Unit, StaticCallbackGraphFailure> = CallbackWorkspaceFiles().also { it.flow(this) }.admit(root)
+
 private class CallbackWorkspaceFiles {
     private val files = linkedSetOf<SymbolDiscoveryFileIdentity>()
 
     fun admit(root: CanonicalWorkspaceRoot): Refinement<Unit, StaticCallbackGraphFailure> {
-        if (files.any { !it.inside(root) }) return Refinement.Rejected(StaticCallbackGraphFailure.OutsideWorkspace)
+        if (files.any { !it.insideCallbackWorkspace(root) })
+            return Refinement.Rejected(StaticCallbackGraphFailure.OutsideWorkspace)
         return Refinement.Refined(Unit)
     }
 
@@ -30,12 +35,7 @@ private class CallbackWorkspaceFiles {
             is RelationCallableTarget.ParameterInvocation -> {
                 files += target.parameter.callable.file
                 files += target.parameter.parameter.file
-                files += target.invocation.occurrence.file
-                files += target.invocation.owner.file
-                target.invocation.callableTransfers.forEach {
-                    files += it.source.enclosing.file
-                    files += it.target.enclosing.file
-                }
+                invocation(target.invocation)
                 val proof = target.suppliers
                 if (proof is CallbackSupplierInventoryEvidence.Exhaustive)
                     files += proof.inventory.requiredSourceFiles()
@@ -47,13 +47,14 @@ private class CallbackWorkspaceFiles {
     }
 
     fun flow(flow: ImmutableCallbackInvocationFlow) {
-        files += flow.source.enclosing.file
+        site(flow.source)
+        flow.ownerBindings.forEach(::owner)
         files += flow.origin.requiredSourceFiles()
         flow.uses.forEach { use ->
             when (use) {
                 is ImmutableCallbackInvocationUse.Supplied -> {
                     supplier(use.supplier)
-                    files += use.summary.requiredSourceFiles()
+                    summary(use.summary)
                 }
                 is ImmutableCallbackInvocationUse.Direct -> direct(use)
                 is ImmutableCallbackInvocationUse.Unused -> files += use.value.requiredSourceFiles()
@@ -63,14 +64,125 @@ private class CallbackWorkspaceFiles {
 
     private fun supplied(value: CompleteCallbackSupply) {
         supplier(value.supplier)
-        files += value.summary.requiredSourceFiles()
+        summary(value.summary)
+    }
+
+    fun flow(value: CallbackInvocationFlow) {
+        files += value.body.file
+        binding(value.binding)
+        value.invocations.forEach(::invocation)
+        value.ownerBindings.forEach(::owner)
+        forwarding(value.forwarding)
+    }
+
+    private fun summary(value: CallbackParameterSummary) {
+        files += value.formal.callable.file
+        files += value.formal.parameter.file
+        value.invocations.forEach(::invocation)
+        value.ownerBindings.forEach(::owner)
+        forwarding(value.forwarding)
+    }
+
+    private fun owner(value: CallbackBodyBinding) {
+        files += value.body.file
+        when (val supply = value.supply) {
+            is CallbackBodySupply.Invocation -> files += supply.occurrence.file
+            is CallbackBodySupply.DirectInvocation -> files += supply.occurrence.file
+            is CallbackBodySupply.DefaultParameter -> files += supply.parameter.file
+            is CallbackBodySupply.Returned -> files += supply.occurrence.file
+            CallbackBodySupply.Stored,
+            CallbackBodySupply.Unsupported -> Unit
+        }
+        binding(value.binding)
+        when (val execution = value.execution) {
+            CallbackOwnerExecution.Unproven -> Unit
+            is CallbackOwnerExecution.Observed -> flow(execution.flow)
+            is CallbackOwnerExecution.Immutable -> {
+                files += execution.owner.file
+                flow(execution.flow)
+            }
+        }
+    }
+
+    private fun binding(value: CallbackBindingEvidence) {
+        when (value) {
+            is CallbackBindingEvidence.Bound -> argument(value.binding)
+            is CallbackBindingEvidence.Default -> {
+                files += value.binding.parameter.callable.file
+                files += value.binding.parameter.parameter.file
+                files += value.binding.defaultValue.file
+            }
+            is CallbackBindingEvidence.Direct -> {
+                files += value.binding.occurrence.file
+                files += value.binding.owner.file
+            }
+            is CallbackBindingEvidence.DeferredDependency -> {
+                files += value.binding.occurrence.file
+                files += value.binding.owner.file
+            }
+            is CallbackBindingEvidence.DependencyContract -> {
+                files += value.binding.occurrence.file
+                files += value.binding.owner.file
+            }
+            is CallbackBindingEvidence.Unavailable -> Unit
+        }
+    }
+
+    private fun invocation(value: CallbackParameterInvocation) {
+        files += value.occurrence.file
+        files += value.owner.file
+        value.callableTransfers.forEach(::transfer)
+        value.forwardings.forEach(::edge)
+    }
+
+    private fun edge(value: CallbackParameterForwarding) {
+        files += value.source.callable.file
+        files += value.source.parameter.file
+        files += value.argument.file
+        argument(value.target)
+        value.callableTransfers.forEach(::transfer)
+    }
+
+    private fun transfer(value: ValueTransfer) {
+        site(value.source)
+        site(value.target)
+    }
+
+    private fun site(value: ValueSite) {
+        files += value.enclosing.file
+        when (val role = value.role) {
+            is ValueRole.Argument -> {
+                files += role.call.enclosing.file
+                files += role.call.callable.file
+            }
+            ValueRole.ExpressionResult,
+            ValueRole.LocalBinding,
+            ValueRole.LocalRead,
+            ValueRole.Return,
+            ValueRole.PropertyAssignment -> Unit
+        }
+    }
+
+    private fun forwarding(value: CallbackForwardingEvidence) {
+        when (value) {
+            CallbackForwardingEvidence.InvocationRoutes -> Unit
+            is CallbackForwardingEvidence.ExhaustedGraph -> {
+                files += value.graph.root.callable.file
+                files += value.graph.root.parameter.file
+                value.graph.formals.forEach {
+                    files += it.callable.file
+                    files += it.parameter.file
+                }
+                value.graph.forwardings.forEach(::edge)
+            }
+        }
     }
 
     private fun supplier(value: CallbackParameterSupplier) {
         files += value.value.requiredSourceFiles()
         argument(value.binding)
         when (val selection = value.selection) {
-            is CallbackSupplierSelection.Explicit -> files += selection.argument.enclosing.file
+            is CallbackSupplierSelection.Explicit -> site(selection.argument)
             is CallbackSupplierSelection.Default -> {
                 files += selection.declaration.defaultValue.file
                 files += selection.declaration.parameter.parameter.file
@@ -100,7 +212,7 @@ private class CallbackWorkspaceFiles {
             is NamedCallbackReferenceFlow.Immutable -> flow(proof.flow)
             is NamedCallbackReferenceFlow.Supplied -> {
                 argument(proof.binding)
-                files += proof.summary.requiredSourceFiles()
+                summary(proof.summary)
             }
             is NamedCallbackReferenceFlow.Direct -> {
                 files += proof.binding.occurrence.file
@@ -120,6 +232,6 @@ private class CallbackWorkspaceFiles {
     }
 }
 
-private fun SymbolDiscoveryFileIdentity.inside(root: CanonicalWorkspaceRoot): Boolean =
+internal fun SymbolDiscoveryFileIdentity.insideCallbackWorkspace(root: CanonicalWorkspaceRoot): Boolean =
     this is SymbolDiscoveryFileIdentity.Workspace &&
         CanonicalWorkspaceFilePath.fromCanonicalPath(root, Path.of(path.value)) is Refinement.Refined

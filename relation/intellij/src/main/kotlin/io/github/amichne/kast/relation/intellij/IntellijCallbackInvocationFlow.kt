@@ -2,6 +2,7 @@ package io.github.amichne.kast.relation.intellij
 
 import com.intellij.psi.PsiElement
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.CallbackBindingEvidence
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowRead
 import io.github.amichne.kast.relation.contract.ImmutableCallbackValueOrigin
@@ -22,7 +23,14 @@ internal fun readCallbackInvocationFlow(
     summaries: CallbackParameterSummaries,
     callbackExpiry: () -> CallbackExpiryAdmission,
 ): CallbackInvocationFlowRead {
-    val context = IntellijCallbackFlowContext(scope, projection, admitWork, summaries.observation, callbackExpiry)
+    val context =
+        IntellijCallbackFlowContext(
+            scope = scope,
+            projection = projection,
+            admitWork = admitWork,
+            observation = summaries.observation,
+            callbackExpiry = callbackExpiry,
+        )
     when (val allowed = context.permit()) {
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> return CallbackInvocationFlowRead.Unavailable(allowed.failure)
@@ -33,22 +41,59 @@ internal fun readCallbackInvocationFlow(
     val body =
         context.anonymous(literal)
             ?: return CallbackInvocationFlowRead.Unavailable(CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE)
-    return NativeCallbackInvocationFlow(context, lexicalOwner, summaries, literal, body).read()
+    return NativeCallbackInvocationFlow(
+            context = context,
+            lexicalOwner = lexicalOwner,
+            summaries = summaries,
+            literal = literal,
+            body = body,
+        )
+        .read()
 }
 
-private class NativeCallbackInvocationFlow(
+internal class NativeCallbackInvocationFlow(
     private val context: IntellijCallbackFlowContext,
     private val lexicalOwner: CompilerGroundedSymbolEvidence,
     private val summaries: CallbackParameterSummaries,
     private val literal: KtFunction,
     private val body: RelationCallableBody.Anonymous,
 ) {
-    fun read(): CallbackInvocationFlowRead =
-        when (val prepared = IntellijCallbackBindingReader(context, lexicalOwner).prepare(literal)) {
+    fun read(): CallbackInvocationFlowRead {
+        val prepared = IntellijCallbackBindingReader(context, lexicalOwner).prepare(literal)
+        val binding =
+            when (prepared) {
+                is CallbackBindingPreparation.Prepared -> prepared.value.binding
+                is CallbackBindingPreparation.Direct -> CallbackBindingEvidence.Direct(prepared.binding)
+                is CallbackBindingPreparation.DeferredDependency ->
+                    CallbackBindingEvidence.DeferredDependency(prepared.binding)
+                is CallbackBindingPreparation.DependencyContract ->
+                    CallbackBindingEvidence.DependencyContract(prepared.binding)
+                is CallbackBindingPreparation.Unavailable -> CallbackBindingEvidence.Unavailable(prepared.cause)
+                is CallbackBindingPreparation.ContractRejected ->
+                    return CallbackInvocationFlowRead.ContractRejected(prepared.cause)
+            }
+        return summaries.bodyReads.read(
+            body = body,
+            binding = binding,
+            basis = context.scope.request.subject.lease.identity,
+        ) {
+            readPrepared(prepared)
+        }
+    }
+
+    private fun readPrepared(prepared: CallbackBindingPreparation): CallbackInvocationFlowRead =
+        when (prepared) {
             is CallbackBindingPreparation.Unavailable -> unavailable(prepared.cause)
             is CallbackBindingPreparation.ContractRejected ->
                 CallbackInvocationFlowRead.ContractRejected(prepared.cause)
-            is CallbackBindingPreparation.Direct -> readDirectCallbackFlow(context, prepared, body, lexicalOwner)
+            is CallbackBindingPreparation.Direct ->
+                readDirectCallbackFlow(
+                    context = context,
+                    prepared = prepared,
+                    body = body,
+                    lexicalOwner = lexicalOwner,
+                    summaries = summaries,
+                )
             is CallbackBindingPreparation.DeferredDependency ->
                 context.observed(
                     body = body,
@@ -60,20 +105,58 @@ private class NativeCallbackInvocationFlow(
                     obligations = emptySet(),
                     scan = io.github.amichne.kast.relation.contract.CallbackInvocationScan.EXHAUSTIVE,
                 )
-            is CallbackBindingPreparation.DependencyContract ->
-                context.observed(
-                    body,
-                    io.github.amichne.kast.relation.contract.CallbackBindingEvidence.DependencyContract(
-                        prepared.binding
-                    ),
-                    emptyList(),
-                    if (prepared.binding.owner is RelationCallableBody.Anonymous)
-                        setOf(CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION)
-                    else emptySet(),
-                    io.github.amichne.kast.relation.contract.CallbackInvocationScan.EXHAUSTIVE,
-                )
+            is CallbackBindingPreparation.DependencyContract -> dependency(prepared.binding)
             is CallbackBindingPreparation.Prepared -> prepared(prepared.value)
         }
+
+    private fun dependency(
+        binding: io.github.amichne.kast.relation.contract.CallbackDependencyContract
+    ): CallbackInvocationFlowRead {
+        val owner = binding.owner
+        val obligations =
+            if (owner is RelationCallableBody.Anonymous) setOf(CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION)
+            else emptySet()
+        fun observed() =
+            context.observed(
+                body = body,
+                binding = CallbackBindingEvidence.DependencyContract(binding),
+                invocations = emptyList(),
+                obligations = obligations,
+                scan = io.github.amichne.kast.relation.contract.CallbackInvocationScan.EXHAUSTIVE,
+            )
+        if (owner !is RelationCallableBody.Anonymous) return observed()
+        val ownerLiteral =
+            (literal.parent.nearestDeclaration() as? ContainingDeclaration.Deferred)?.boundary as? KtFunction
+                ?: return CallbackInvocationFlowRead.Unavailable(
+                    CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE
+                )
+        val enclosing =
+            context.endpoint(lexicalOwner)
+                ?: return CallbackInvocationFlowRead.Unavailable(
+                    CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE
+                )
+        val ownerBinding =
+            when (
+                val read = IntellijCallbackOwnerBindingReader(context, summaries).read(ownerLiteral, owner, enclosing)
+            ) {
+                is Refinement.Refined -> read.value
+                is Refinement.Rejected -> return CallbackInvocationFlowRead.ContractRejected(read.failure)
+            }
+        when (val allowed = summaries.retention.admitOwner(ownerBinding)) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return CallbackInvocationFlowRead.Unavailable(allowed.failure)
+        }
+        return when (val read = observed()) {
+            is CallbackInvocationFlowRead.Observed ->
+                when (val admitted = read.flow.withOwnerBindings(listOf(ownerBinding))) {
+                    is Refinement.Refined -> CallbackInvocationFlowRead.Observed(admitted.value)
+                    is Refinement.Rejected -> CallbackInvocationFlowRead.ContractRejected(admitted.failure)
+                }
+            is CallbackInvocationFlowRead.Immutable,
+            is CallbackInvocationFlowRead.Unavailable,
+            is CallbackInvocationFlowRead.ContractRejected -> read
+        }
+    }
 
     private fun unavailable(cause: CallbackInvocationFlowCause): CallbackInvocationFlowRead {
         if (
@@ -84,8 +167,22 @@ private class NativeCallbackInvocationFlow(
                     CallbackInvocationFlowCause.RETURNED_CALLBACK,
                 )
         )
-            return unavailableCallbackSupply(context, literal, body, lexicalOwner, cause)
-        val expression = expression() ?: return unavailableCallbackSupply(context, literal, body, lexicalOwner, cause)
+            return context.unavailableCallbackSupply(
+                literal = literal,
+                body = body,
+                lexicalOwner = lexicalOwner,
+                cause = cause,
+                summaries = summaries,
+            )
+        val expression =
+            expression()
+                ?: return context.unavailableCallbackSupply(
+                    literal = literal,
+                    body = body,
+                    lexicalOwner = lexicalOwner,
+                    cause = cause,
+                    summaries = summaries,
+                )
         return immutable(expression)
     }
 
@@ -101,7 +198,8 @@ private class NativeCallbackInvocationFlow(
             }
         }
         if (!returnsCallable(value.function, context.observation))
-            return IntellijCallbackFlowRead(context, value, body, summaries).read()
+            return IntellijCallbackFlowRead(context = context, prepared = value, body = body, summaries = summaries)
+                .read()
         val expression =
             expression()
                 ?: return CallbackInvocationFlowRead.Unavailable(

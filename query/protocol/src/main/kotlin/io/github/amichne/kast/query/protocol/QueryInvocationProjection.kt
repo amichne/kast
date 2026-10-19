@@ -137,7 +137,10 @@ internal class QueryInvocationProjection(
         }
 
         private fun admitCompletion(): Refinement<Unit, QueryPublishedPage> {
-            return when (val proof = completionProof(execution)) {
+            return when (
+                val proof =
+                    completionProof(execution, QueryCallbackCompletion.from(QueryQuestionDocument.from(request)))
+            ) {
                 is Refinement.Refined -> proof
                 is Refinement.Rejected ->
                     Refinement.Rejected(rejectCompletion(proof.failure, accumulated, ::completionEvidence))

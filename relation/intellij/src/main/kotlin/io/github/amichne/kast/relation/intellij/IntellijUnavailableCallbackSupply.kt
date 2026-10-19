@@ -8,14 +8,14 @@ import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import org.jetbrains.kotlin.psi.KtFunction
 
 /** Unsupported formal mappings can still preserve exact syntactic supply facts, without claiming activation. */
-internal fun unavailableCallbackSupply(
-    context: IntellijCallbackFlowContext,
+internal fun IntellijCallbackFlowContext.unavailableCallbackSupply(
     literal: KtFunction,
     body: RelationCallableBody.Anonymous,
     lexicalOwner: CompilerGroundedSymbolEvidence,
     cause: CallbackInvocationFlowCause,
+    summaries: CallbackParameterSummaries,
 ): CallbackInvocationFlowRead {
-    val unbound = context.unavailable(body, cause)
+    val unbound = unavailable(body, cause)
     if (
         cause !in
             setOf(
@@ -25,19 +25,16 @@ internal fun unavailableCallbackSupply(
             )
     )
         return unbound
-    val enclosing = context.endpoint(lexicalOwner) ?: return unbound
+    if (endpoint(lexicalOwner) == null) return unbound
     val owner =
-        when (val read = IntellijCallbackOwnerBindingReader(context).read(literal, body, enclosing)) {
+        when (val read = IntellijCallbackOwnerBindingReader(this, summaries).readUnavailable(literal, body, cause)) {
             is Refinement.Refined -> read.value
             is Refinement.Rejected -> return CallbackInvocationFlowRead.ContractRejected(read.failure)
         }
-    when (
-        val retained =
-            CallbackFlowRetention(context.scope.request.budget, context.observation).admit(owner.retainedBytes)
-    ) {
+    when (val retained = summaries.retention.admitOwner(owner)) {
         is Refinement.Refined -> Unit
         is Refinement.Rejected ->
-            return context.observed(
+            return observed(
                 body = body,
                 binding = io.github.amichne.kast.relation.contract.CallbackBindingEvidence.Unavailable(cause),
                 invocations = emptyList(),

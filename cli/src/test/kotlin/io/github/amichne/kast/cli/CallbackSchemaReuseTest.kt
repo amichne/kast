@@ -27,7 +27,7 @@ class CallbackSchemaReuseTest {
                 "callableObservation" to CanonicalQueryCliDocuments.callableObservationSerializer,
                 "localDeclarationAddress" to LocalDeclarationAddressCliDocument.serializer(),
             )) {
-            assertEquivalent(generatedRequestSchema(serializer), definitions.getValue(name), definitions)
+            assertEquivalent(generatedOutputSchema(serializer), definitions.getValue(name), definitions)
         }
     }
 
@@ -44,6 +44,10 @@ class CallbackSchemaReuseTest {
     }
 
     private fun assertEquivalent(expected: JsonElement, actual: JsonElement, definitions: JsonObject) {
+        if (expected is JsonObject && "\$ref" in expected) {
+            assertEquals(expected, actual)
+            return
+        }
         if (actual is JsonObject && "\$ref" in actual) {
             assertEquals(setOf("\$ref"), actual.keys)
             val reference = actual.getValue("\$ref").jsonPrimitive.content

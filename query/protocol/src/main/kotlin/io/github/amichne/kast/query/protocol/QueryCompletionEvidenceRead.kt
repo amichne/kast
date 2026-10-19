@@ -5,6 +5,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
 import io.github.amichne.kast.protocol.contract.QueryLimitationDocument
 import io.github.amichne.kast.protocol.contract.QueryQualifiedProgressDocument
+import io.github.amichne.kast.protocol.contract.QueryQuestionDocument
 import io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
@@ -19,8 +20,9 @@ internal fun completionEvidenceRead(
     original: QueryRetainedResult,
     state: QueryStateStore,
 ): QueryPublishedPage {
+    val callbacks = QueryCallbackCompletion.from(QueryQuestionDocument.from(request))
     val failure =
-        when (val proof = completionProof(original)) {
+        when (val proof = completionProof(original, callbacks)) {
             is Refinement.Refined -> return page
             is Refinement.Rejected -> proof.failure
         }

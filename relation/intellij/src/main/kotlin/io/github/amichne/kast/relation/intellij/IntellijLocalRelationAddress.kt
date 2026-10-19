@@ -17,15 +17,13 @@ import io.github.amichne.kast.symbol.contract.LocalDeclarationKind
 import io.github.amichne.kast.symbol.contract.LocalDeclarationProjectionFailure
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.symbol.contract.fromCanonicalSignature
+import io.github.amichne.kast.workspace.intellij.read.namedLocalCompilerOwner
 import org.jetbrains.kotlin.analysis.api.KaSession
-import org.jetbrains.kotlin.analysis.api.components.containingSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaAnonymousObjectSymbol
-import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaLocalVariableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolLocation
-import org.jetbrains.kotlin.psi.KtNamedDeclaration
 
 internal fun KaSymbol.localRelationDeclarationAddress(
     session: KaSession,
@@ -55,7 +53,7 @@ private fun KaSymbol.localRelationOwner(
     declaration: PsiElement,
 ): Refinement<LocalRelationOwner, LocalDeclarationProjectionFailure> {
     val owner =
-        when (val selected = namedLocalRelationOwner(session)) {
+        when (val selected = namedLocalCompilerOwner(session)) {
             is Refinement.Refined -> selected.value
             is Refinement.Rejected -> return selected
         }
@@ -72,21 +70,6 @@ private fun KaSymbol.localRelationOwner(
     }
     return Refinement.Refined(LocalRelationOwner(owner, ownerPsi))
 }
-
-private fun KaSymbol.namedLocalRelationOwner(
-    session: KaSession
-): Refinement<KaSymbol, LocalDeclarationProjectionFailure> =
-    with(session) {
-        var owner = containingSymbol
-        var traversed = 0
-        while (owner != null && !owner.isLocalDeclarationOwner()) {
-            if (++traversed > LocalDeclarationAddress.MAX_OWNER_DEPTH)
-                return Refinement.Rejected(LocalDeclarationProjectionFailure.OwnerDepthExceeded)
-            owner = owner.containingSymbol
-        }
-        return if (owner == null) Refinement.Rejected(LocalDeclarationProjectionFailure.OwnerUnavailable)
-        else Refinement.Refined(owner)
-    }
 
 private fun KaSymbol.createLocalRelationAddress(
     file: SymbolDiscoveryFileIdentity,
@@ -145,6 +128,3 @@ private fun Refinement<LocalDeclarationAddress, LocalDeclarationAddressFailure>.
                 else LocalDeclarationProjectionFailure.InvalidAddress(failure)
             )
     }
-
-private fun KaSymbol.isLocalDeclarationOwner(): Boolean =
-    this is KaConstructorSymbol || this is KaAnonymousObjectSymbol || (psi as? KtNamedDeclaration)?.name != null

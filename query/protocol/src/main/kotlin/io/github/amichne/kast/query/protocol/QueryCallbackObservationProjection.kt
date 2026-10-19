@@ -226,7 +226,7 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
             is CallbackInvocationFlowRead.Observed -> observedFlow(value.flow)
         }
 
-    private fun observedFlow(flow: CallbackInvocationFlow): QueryCallbackFlowDocument? {
+    fun observedFlow(flow: CallbackInvocationFlow): QueryCallbackFlowDocument.Observed? {
         return QueryCallbackFlowDocument.Observed(
             flow.basis.impactDocument().callbackValue() ?: return null,
             anonymous(flow.body) ?: return null,
@@ -278,7 +278,7 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
         )
     }
 
-    private fun ownerBinding(value: CallbackBodyBinding): QueryCallbackBodyBindingDocument? {
+    fun ownerBinding(value: CallbackBodyBinding): QueryCallbackBodyBindingDocument? {
         return QueryCallbackBodyBindingDocument(
             anonymous(value.body) ?: return null,
             when (val supply = value.supply) {
@@ -296,6 +296,7 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
             binding(value.binding) ?: return null,
             BoundedProtocolList.create(value.obligations.sortedBy { it.ordinal }.map { it.protocolCallbackDocument() })
                 .callbackValue() ?: return null,
+            value.execution.projectOwnerExecution(this) ?: return null,
         )
     }
 

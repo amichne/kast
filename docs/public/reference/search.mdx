@@ -105,7 +105,9 @@ If walk depth is omitted or null, the request covers the reachable graph with wo
 
 Check completion, searched domain, and occurrence evidence before a conclusion. A qualified result with no rows does not prove absence.
 
-Every public run uses `COMPLETE_ONLY`. If execution or callback proof is incomplete, the result returns `COMPLETION_UNPROVEN`. It keeps available evidence.
+Every public run uses `COMPLETE_ONLY`. Unfinished source enumeration returns `COMPLETION_UNPROVEN` with available evidence.
+
+`TRACE` from source symbols reports complete source relationships with explicit callback-effect gaps. A missing library execution contract does not erase a resolved source relationship. An earlier relation operation or traversal keeps the stricter callback graph proof. [Results](/reference/responses#run-completion) defines the complete rule.
 
 Use its issued `nextQuery` to inspect retained rejection evidence. That read does not resume the unfinished semantic work.
 

@@ -5,6 +5,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowFailure
 import io.github.amichne.kast.relation.contract.ImmutableCallbackInvocationUse
+import io.github.amichne.kast.relation.contract.RelationCallableBody
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueTransferKind
@@ -92,12 +93,20 @@ internal fun ImmutableCallbackEnumeration.localReference(
         }
         LocalBindingReferenceConfirmation.EXACT_BINDING -> Unit
     }
-    if (context.owner(read)?.compilerIdentity != endpoint.compilerIdentity)
-        obligations += CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION
-    else {
-        val site = context.site(read, endpoint, ValueRole.LocalRead)
-        if (site == null) obligations += CallbackInvocationFlowCause.UNRESOLVED_PARAMETER_REFERENCE
-        else schedule(item, read, site, ValueTransferKind.LOCAL_READ)
+    when (val owner = context.owner(read)) {
+        is RelationCallableBody.Named ->
+            if (owner.compilerIdentity != endpoint.compilerIdentity) {
+                obligation(CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION)
+                return LocalBindingReferenceConfirmation.EXACT_BINDING
+            }
+        is RelationCallableBody.Anonymous -> obligations += CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION
+        null -> {
+            obligations += CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE
+            return LocalBindingReferenceConfirmation.EXACT_BINDING
+        }
     }
+    val site = context.site(read, endpoint, ValueRole.LocalRead)
+    if (site == null) obligations += CallbackInvocationFlowCause.UNRESOLVED_PARAMETER_REFERENCE
+    else schedule(item = item, next = read, target = site, kind = ValueTransferKind.LOCAL_READ)
     return LocalBindingReferenceConfirmation.EXACT_BINDING
 }

@@ -22,6 +22,7 @@ internal fun QueryReferenceAuthority.resultEnvelope(
         lease.evidenceBasis(),
         QueryRunResult(
             question = question,
+            interpretation = QueryCallbackCompletion.from(question).interpretation,
             impactAccounting = evidence.impactAccounting,
             items = presented.items,
             failures = evidence.failures,

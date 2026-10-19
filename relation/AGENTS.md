@@ -4,9 +4,11 @@ title: "Kast relation"
 description: "Defines one-hop semantic relationships, callback evidence, and value-flow facts with compiler-backed IntelliJ adapters."
 resource: "repo://relation"
 tags: [kast, navigation]
-timestamp: "2026-10-14T23:25:10Z"
-source_revision: e014a489bfd7e69cbf2c4b61140ee771d857a03e
+timestamp: "2026-10-18T22:46:32Z"
+source_revision: e37b2d25a75abc47a4d8487e579f97ec36ca8cad
 code_sources:
+  - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteCallbackSourceRelation.kt
+  - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteNamedCallbackSourceReference.kt
   - path: relation/contract/build.gradle.kts
   - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraph.kt
   - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationCallbackObservation.kt
@@ -38,6 +40,8 @@ Defines one-hop semantic relationships, callback evidence, and value-flow facts 
 - [RelationReferenceOccurrence.kt](contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationReferenceOccurrence.kt) - target identity and declaration or file ownership.
 - [RelationCallbackObservation.kt](contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationCallbackObservation.kt) - callback observations separate from named caller edges.
 - [CompleteStaticCallbackGraph.kt](contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraph.kt) - complete callback graph admission.
+- [CompleteCallbackSourceRelation.kt](contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteCallbackSourceRelation.kt) - exact source relationships with explicit callback-effect gaps.
+- [CompleteNamedCallbackSourceReference.kt](contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteNamedCallbackSourceReference.kt) - exact callable references independent of execution completeness.
 - [ValueFlow.kt](contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlow.kt) - bounded one-hop transfers and unresolved obligations.
 - [RepresentationModel.kt](contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationModel.kt) - reviewed representation models.
 - [RelationService.kt](service/src/main/kotlin/io/github/amichne/kast/relation/service/RelationService.kt) - authority admission before and after compiler work.

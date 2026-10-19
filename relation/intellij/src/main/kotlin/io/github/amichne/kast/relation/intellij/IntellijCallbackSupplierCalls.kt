@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParameter
 
 internal data class NativeCallbackSupplierCall(
+    val call: KtCallElement,
     val binding: CallbackArgumentBinding,
     val value: KtExpression,
     val selection: NativeCallbackSupplierSelection,
@@ -165,7 +166,9 @@ internal class IntellijCallbackSupplierCalls(
                     return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
             }
         return Refinement.Refined(
-            NativeSupplierMapping.Mapped(NativeCallbackSupplierCall(binding, argument.value, argument.selection, owner))
+            NativeSupplierMapping.Mapped(
+                NativeCallbackSupplierCall(call, binding, argument.value, argument.selection, owner)
+            )
         )
     }
 }

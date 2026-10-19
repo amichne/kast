@@ -73,53 +73,64 @@ internal class IntellijCallbackFlowRead(
                 is Refinement.Rejected -> return CallbackInvocationFlowRead.Unavailable(admitted.failure)
             }
         val staged =
-            when (
-                val admitted =
-                    observeCallbackCoverage(
-                        context.observation,
-                        CallbackCoverageStage.FORMAL,
-                        { scanned ->
-                            when (scanned) {
-                                is Refinement.Refined -> Refinement.Refined(scanned.value.evidence)
-                                is Refinement.Rejected -> scanned
-                            }
-                        },
-                    ) {
-                        formalScan(formal)
-                    }
-            ) {
+            when (val admitted = formalScan(formal)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return CallbackInvocationFlowRead.ContractRejected(admitted.failure)
             }
         val evidence =
-            observeCallbackSupplierCoverage(context.observation) {
-                observeSupplier(staged.evidence)
+            when (
+                val supplied =
+                    observeCallbackCoverage(
+                        context.observation,
+                        CallbackCoverageStage.SUPPLIER,
+                        { it },
+                    ) {
+                        when (val read = observeSupplier(staged.evidence)) {
+                            is Refinement.Refined -> Refinement.Refined(read.value.withSupplierQualification())
+                            is Refinement.Rejected -> read
+                        }
+                    }
+            ) {
+                is Refinement.Refined -> supplied.value
+                is Refinement.Rejected -> return CallbackInvocationFlowRead.ContractRejected(supplied.failure)
             }
         val result =
             context.observed(
-                body,
-                prepared.binding,
-                evidence.invocations,
-                evidence.obligations,
-                evidence.scan,
-                evidence.forwarding,
+                body = body,
+                binding = prepared.binding,
+                invocations = evidence.invocations,
+                obligations = evidence.obligations,
+                scan = evidence.scan,
+                forwarding = evidence.forwarding,
             )
         return reuse.publish(result, evidence.owners, staged.candidate)
     }
 
     private fun formalScan(
         formal: CallbackParameterIdentity
-    ): Refinement<CallbackSummaryScan, CallbackInvocationFlowFailure> {
-        return when (val restored = reuse.restore(formal, body, prepared.binding)) {
-            is Refinement.Rejected -> restored
-            is Refinement.Refined ->
-                when (val value = restored.value) {
-                    is CallbackSummaryRestore.Reused ->
-                        Refinement.Refined(CallbackSummaryScan(value.flow.snapshot(), CallbackSummaryCandidate.None))
-                    CallbackSummaryRestore.Missing -> capture(formal)
+    ): Refinement<CallbackSummaryScan, CallbackInvocationFlowFailure> =
+        observeCallbackCoverage(
+            context.observation,
+            CallbackCoverageStage.FORMAL,
+            { scanned ->
+                when (scanned) {
+                    is Refinement.Refined -> Refinement.Refined(scanned.value.evidence)
+                    is Refinement.Rejected -> scanned
                 }
+            },
+        ) {
+            when (val restored = reuse.restore(formal, body, prepared.binding)) {
+                is Refinement.Rejected -> restored
+                is Refinement.Refined ->
+                    when (val value = restored.value) {
+                        is CallbackSummaryRestore.Reused ->
+                            Refinement.Refined(
+                                CallbackSummaryScan(value.flow.snapshot(), CallbackSummaryCandidate.None)
+                            )
+                        CallbackSummaryRestore.Missing -> capture(formal)
+                    }
+            }
         }
-    }
 
     private fun capture(
         formal: CallbackParameterIdentity
@@ -145,9 +156,11 @@ internal class IntellijCallbackFlowRead(
         }
     }
 
-    private fun observeSupplier(evidence: CallbackFormalScanSnapshot): CallbackFormalScanSnapshot {
+    private fun observeSupplier(
+        evidence: CallbackFormalScanSnapshot
+    ): Refinement<CallbackFormalScanSnapshot, CallbackInvocationFlowFailure> {
         return when (val origin = prepared.origin) {
-            is PreparedCallbackOrigin.Default -> evidence
+            is PreparedCallbackOrigin.Default -> Refinement.Refined(evidence)
             is PreparedCallbackOrigin.Argument -> {
                 val owner = origin.binding.invocationOwner
                 val named =
@@ -156,10 +169,11 @@ internal class IntellijCallbackFlowRead(
                 val supplied =
                     if (named) evidence
                     else evidence.withSupplier(setOf(CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION))
-                if (owner !is RelationCallableBody.Anonymous || evidence.owners.any { it.body == owner }) supplied
+                if (owner !is RelationCallableBody.Anonymous || evidence.owners.any { it.body == owner })
+                    Refinement.Refined(supplied)
                 else
                     when (supplied.supplierActivation()) {
-                        CallbackSupplierActivation.CAPACITY_EXHAUSTED -> supplied
+                        CallbackSupplierActivation.CAPACITY_EXHAUSTED -> Refinement.Refined(supplied)
                         CallbackSupplierActivation.AVAILABLE -> observeAnonymousSupplier(origin, owner, supplied)
                     }
             }
@@ -170,20 +184,24 @@ internal class IntellijCallbackFlowRead(
         origin: PreparedCallbackOrigin.Argument,
         owner: RelationCallableBody.Anonymous,
         evidence: CallbackFormalScanSnapshot,
-    ): CallbackFormalScanSnapshot {
+    ): Refinement<CallbackFormalScanSnapshot, CallbackInvocationFlowFailure> {
         val literal =
             (origin.call.nearestDeclaration() as? ContainingDeclaration.Deferred)?.boundary as? KtFunction
-                ?: return evidence.withSupplier(setOf(CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE))
+                ?: return Refinement.Refined(
+                    evidence.withSupplier(setOf(CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE))
+                )
         return when (
             val read =
-                IntellijCallbackOwnerBindingReader(context).read(literal, owner, origin.binding.invocation.enclosing)
+                IntellijCallbackOwnerBindingReader(context, summaries)
+                    .read(literal, owner, origin.binding.invocation.enclosing)
         ) {
-            is Refinement.Rejected ->
-                evidence.withSupplier(setOf(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING))
+            is Refinement.Rejected -> read
             is Refinement.Refined ->
                 when (val allowed = summaries.retention.admitOwner(read.value)) {
-                    is Refinement.Rejected -> evidence.withSupplier(setOf(allowed.failure))
-                    is Refinement.Refined -> evidence.withSupplier(read.value.obligations, listOf(read.value))
+                    is Refinement.Rejected ->
+                        Refinement.Refined(evidence.withSupplier(read.value.obligations + allowed.failure))
+                    is Refinement.Refined ->
+                        Refinement.Refined(evidence.withSupplier(read.value.obligations, listOf(read.value)))
                 }
         }
     }

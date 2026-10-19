@@ -1,7 +1,9 @@
 package io.github.amichne.kast.protocol.contract
 
 internal fun QueryImmutableCallbackFlowDocument.admitsFactoryPolicy(domain: QueryRelationDomainDocument): Boolean =
-    sourceValue.admitsFactoryPolicy(domain) && uses.values.all { it.value.admitsFactoryPolicy(domain) }
+    sourceValue.admitsFactoryPolicy(domain) &&
+        uses.values.all { it.value.admitsFactoryPolicy(domain) } &&
+        executionOwnerBindings().admitsOwnerFactoryPolicy(domain)
 
 internal fun QueryImmutableCallbackValueDocument.admitsFactoryPolicy(domain: QueryRelationDomainDocument): Boolean {
     val pending = ArrayDeque<QueryImmutableCallbackValueDocument>()
@@ -55,3 +57,29 @@ private fun QueryCallbackFactoryBodyCallsDocument.admitsFactoryPolicy(domain: Qu
                     domain.libraries == QueryDiscoveryInclusionPolicyDocument.EXCLUDE
             }
     }
+
+internal fun QueryCallbackFlowDocument.Observed.admitsFactoryPolicy(domain: QueryRelationDomainDocument): Boolean =
+    ownerBindings.values.admitsOwnerFactoryPolicy(domain)
+
+private fun List<QueryCallbackBodyBindingDocument>.admitsOwnerFactoryPolicy(
+    domain: QueryRelationDomainDocument
+): Boolean {
+    val pending = ArrayDeque<QueryCallbackBodyBindingDocument>()
+    pending.addAll(this)
+    while (pending.isNotEmpty()) {
+        when (val execution = pending.removeFirst().execution) {
+            QueryCallbackOwnerExecutionDocument.Unproven -> Unit
+            is QueryCallbackOwnerExecutionDocument.Observed -> pending.addAll(execution.flow.ownerBindings.values)
+            is QueryCallbackOwnerExecutionDocument.Immutable -> {
+                val flow = execution.flow
+                if (
+                    !flow.sourceValue.admitsFactoryPolicy(domain) ||
+                        !flow.uses.values.all { it.value.admitsFactoryPolicy(domain) }
+                )
+                    return false
+                pending.addAll(flow.executionOwnerBindings())
+            }
+        }
+    }
+    return true
+}

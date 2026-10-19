@@ -49,9 +49,11 @@ internal fun admitCallbackScan(
         when (binding) {
             is CallbackBindingEvidence.Bound,
             is CallbackBindingEvidence.Default -> scan != CallbackInvocationScan.NOT_APPLICABLE
-            is CallbackBindingEvidence.DeferredDependency,
-            is CallbackBindingEvidence.DependencyContract -> scan == CallbackInvocationScan.EXHAUSTIVE
-            is CallbackBindingEvidence.Direct -> scan == CallbackInvocationScan.NOT_APPLICABLE
+            is CallbackBindingEvidence.DeferredDependency -> scan == CallbackInvocationScan.EXHAUSTIVE
+            is CallbackBindingEvidence.DependencyContract ->
+                scan == CallbackInvocationScan.EXHAUSTIVE || scan.admitsOwnerGap(obligations)
+            is CallbackBindingEvidence.Direct ->
+                scan == CallbackInvocationScan.NOT_APPLICABLE || scan.admitsOwnerGap(obligations)
             is CallbackBindingEvidence.Unavailable -> scan == CallbackInvocationScan.INCOMPLETE
         }
     if (!valid) return Refinement.Rejected(CallbackInvocationFlowFailure.INVALID_SCAN_PROOF)
@@ -59,6 +61,11 @@ internal fun admitCallbackScan(
         return Refinement.Rejected(CallbackInvocationFlowFailure.MISSING_OBLIGATION)
     return Refinement.Refined(Unit)
 }
+
+private fun CallbackInvocationScan.admitsOwnerGap(obligations: Set<CallbackInvocationFlowCause>): Boolean =
+    this == CallbackInvocationScan.INCOMPLETE &&
+        CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION in obligations &&
+        obligations.any { it != CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION }
 
 /** Binding and invocation factories already preserve their own exact shape and local ownership proofs. */
 internal fun admitBoundCallbackFlow(

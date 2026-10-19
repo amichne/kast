@@ -10,6 +10,8 @@ import io.github.amichne.kast.protocol.contract.QueryCallbackObservationOrigin
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.query.contract.QueryRelationObservation
 import io.github.amichne.kast.query.contract.QueryWalkObservation
+import io.github.amichne.kast.relation.contract.CompleteCallbackSourceRelation
+import io.github.amichne.kast.relation.contract.CompleteNamedCallbackSourceReference
 import io.github.amichne.kast.relation.contract.CompleteStaticCallbackGraph
 import io.github.amichne.kast.relation.contract.RelationCallbackObservation
 import io.github.amichne.kast.relation.contract.RelationOccurrence
@@ -18,6 +20,7 @@ import io.github.amichne.kast.relation.contract.admitCallbackWorkspace
 internal fun callbackProof(
     relations: List<QueryRelationObservation>,
     walks: List<QueryWalkObservation>,
+    completion: QueryCallbackCompletion,
 ): Refinement<Unit, QueryCompletionFailure> {
     relations.forEachIndexed { group, relation ->
         when (
@@ -27,6 +30,7 @@ internal fun callbackProof(
                     relation.callableObservations,
                     QueryCallbackObservationOrigin.RELATION,
                     group,
+                    completion,
                 )
         ) {
             is Refinement.Refined -> Unit
@@ -41,6 +45,7 @@ internal fun callbackProof(
                     walk.callableObservations.map { it.observation },
                     QueryCallbackObservationOrigin.WALK,
                     group,
+                    completion,
                 )
         ) {
             is Refinement.Refined -> Unit
@@ -55,9 +60,10 @@ private fun callbackGroupProof(
     callables: List<io.github.amichne.kast.relation.contract.RelationCallableObservation>,
     origin: QueryCallbackObservationOrigin,
     group: Int,
+    completion: QueryCallbackCompletion,
 ): Refinement<Unit, QueryCompletionFailure> {
     callables.forEachIndexed { position, value ->
-        when (val proof = value.callableProof()) {
+        when (val proof = value.callableProof(completion)) {
             is Refinement.Refined -> Unit
             is Refinement.Rejected ->
                 return callbackRejected(
@@ -70,7 +76,12 @@ private fun callbackGroupProof(
         }
     }
     callbacks.forEachIndexed { position, observation ->
-        when (val admitted = CompleteStaticCallbackGraph.admit(observation)) {
+        val source =
+            when (completion) {
+                QueryCallbackCompletion.INVOCATION_GRAPH -> CompleteStaticCallbackGraph.admit(observation)
+                QueryCallbackCompletion.SOURCE_RELATIONSHIPS -> CompleteCallbackSourceRelation.admit(observation)
+            }
+        when (val admitted = source) {
             is Refinement.Refined -> Unit
             is Refinement.Rejected ->
                 return when (val projected = admitted.failure.protocolGraphCause()) {
@@ -209,7 +220,37 @@ private fun io.github.amichne.kast.relation.contract.ImmutableCallbackInvocation
     else Refinement.Rejected(QueryCallbackGraphCauseDocument.IncompleteScan)
 }
 
-private fun io.github.amichne.kast.relation.contract.RelationCallableObservation.callableProof():
+private fun io.github.amichne.kast.relation.contract.RelationCallableObservation.callableProof(
+    completion: QueryCallbackCompletion
+): Refinement<Unit, QueryCallbackGraphCauseDocument> =
+    when (completion) {
+        QueryCallbackCompletion.INVOCATION_GRAPH -> callableInvocationProof()
+        QueryCallbackCompletion.SOURCE_RELATIONSHIPS ->
+            when (target) {
+                is io.github.amichne.kast.relation.contract.RelationCallableTarget.NamedReference -> namedSourceProof()
+                is io.github.amichne.kast.relation.contract.RelationCallableTarget.DirectInvocations,
+                is io.github.amichne.kast.relation.contract.RelationCallableTarget.CallbackSupplies,
+                is io.github.amichne.kast.relation.contract.RelationCallableTarget.UnavailableSupply,
+                is io.github.amichne.kast.relation.contract.RelationCallableTarget.UnavailableReference,
+                is io.github.amichne.kast.relation.contract.RelationCallableTarget.ParameterInvocation,
+                is io.github.amichne.kast.relation.contract.RelationCallableTarget.SourceLess ->
+                    callableInvocationProof()
+            }
+    }
+
+private fun io.github.amichne.kast.relation.contract.RelationCallableObservation.namedSourceProof():
+    Refinement<Unit, QueryCallbackGraphCauseDocument> =
+    when (val admitted = CompleteNamedCallbackSourceReference.admit(this)) {
+        is Refinement.Refined -> Refinement.Refined(Unit)
+        is Refinement.Rejected ->
+            when (val projected = admitted.failure.protocolGraphCause()) {
+                is Refinement.Refined -> Refinement.Rejected(projected.value)
+                is Refinement.Rejected ->
+                    Refinement.Rejected(QueryCallbackGraphCauseDocument.InvalidGraphFailure(projected.failure))
+            }
+    }
+
+private fun io.github.amichne.kast.relation.contract.RelationCallableObservation.callableInvocationProof():
     Refinement<Unit, QueryCallbackGraphCauseDocument> {
     when (val complete = target.callableProof()) {
         is Refinement.Rejected -> return complete

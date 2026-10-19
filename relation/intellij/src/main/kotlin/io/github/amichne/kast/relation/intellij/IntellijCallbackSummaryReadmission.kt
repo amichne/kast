@@ -25,7 +25,14 @@ internal fun readmitCallbackSummary(
 ): CallbackReadmission<CallbackParameterSummary> =
     when (
         val admitted =
-            readmitCallbackEndpoints(previous.requiredEndpoints(), request, projection, scope, admitWork = admitWork)
+            readmitCallbackEndpoints(
+                required = previous.requiredEndpoints(),
+                request = request,
+                projection = projection,
+                scope = scope,
+                requiredDeclarations = previous.requiredCompilerDeclarations().toList(),
+                admitWork = admitWork,
+            )
     ) {
         is Refinement.Refined -> admitted.value.readmit(previous)
         is Refinement.Rejected -> admitted

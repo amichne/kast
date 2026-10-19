@@ -27,7 +27,7 @@ internal sealed interface CallbackSummaryCandidate {
     data class Admitted(val summary: CallbackParameterSummary) : CallbackSummaryCandidate
 }
 
-/** Detached formal facts precede supplier activation. Storage is optional after final flow admission. */
+/** Request storage preserves formal facts before supplier activation; project publication follows flow admission. */
 internal class CallbackSummaryReuse(private val summaries: CallbackParameterSummaries) {
     fun restore(
         formal: CallbackParameterIdentity,
@@ -65,7 +65,14 @@ internal class CallbackSummaryReuse(private val summaries: CallbackParameterSumm
             val captured =
                 CallbackParameterSummary.fromCompiler(formal, invocations, obligations, owners, scan, forwarding)
         ) {
-            is Refinement.Refined -> Refinement.Refined(CallbackSummaryCandidate.Admitted(captured.value))
+            is Refinement.Refined ->
+                when (val staged = summaries.stage(captured.value)) {
+                    is Refinement.Refined -> Refinement.Refined(CallbackSummaryCandidate.Admitted(staged.value))
+                    is Refinement.Rejected -> {
+                        summaries.observation.count(IntellijReadCounter.CALLBACK_SUMMARY_RETENTION_REJECTIONS)
+                        Refinement.Refined(CallbackSummaryCandidate.None)
+                    }
+                }
             is Refinement.Rejected -> captured
         }
     }

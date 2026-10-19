@@ -4,14 +4,15 @@ title: "Kast symbol"
 description: "Defines declaration discovery and exact identity, with domain services and Kotlin compiler adapters for IntelliJ IDEA."
 resource: "repo://symbol"
 tags: [kast, navigation]
-timestamp: "2026-10-14T23:25:10Z"
-source_revision: e014a489bfd7e69cbf2c4b61140ee771d857a03e
+timestamp: "2026-10-19T00:37:44Z"
+source_revision: 50f064f1779433c49f3d513919b3474b7cc3ed0e
 code_sources:
   - path: symbol/contract/build.gradle.kts
   - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt
   - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/LocalDeclarationAddress.kt
   - path: symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/discovery/SymbolDiscoveryRequest.kt
   - path: symbol/intellij/build.gradle.kts
+  - path: symbol/intellij/src/nativeTest/kotlin/io/github/amichne/kast/symbol/intellij/LocalDeclarationOwnerNativeTest.kt
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIncrementalDeclarationDiscovery.kt
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijPsiExactDeclarationLookup.kt
   - path: symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt
@@ -51,6 +52,7 @@ Defines declaration discovery and exact identity, with domain services and Kotli
 ## Entry Points
 
 - Gradle projects: `:symbol:contract`, `:symbol:service`, and `:symbol:intellij`.
+- `:symbol:intellij:semanticCoverageFixtureTest` proves local compiler owners through the pinned IntelliJ fixtures. The root `verifyKotlinSemanticCoverage` gate admits its exact case population.
 
 ## Navigation Hints
 
@@ -62,4 +64,4 @@ Defines declaration discovery and exact identity, with domain services and Kotli
 
 - [IntellijPsiExactDeclarationLookup.kt](intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijPsiExactDeclarationLookup.kt) owns file-bounded declaration ancestry. `PsiNamedElement` also includes files and directories: stop before `PsiFileSystemItem`, never treat these containers as declarations, and never request their parents. Continue checking all in-file ancestors; a first match must not erase ambiguity, stale PSI, or unsupported matching declarations. File validity and scope remain admission checks in `findLive`.
 - [IntellijExactDeclarationFileBoundaryTest.kt](intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactDeclarationFileBoundaryTest.kt) proves traversal limits, retained evidence, and closed rejection behavior with strict PSI observations. [IntellijExactDeclarationPhysicalPsiTest.kt](intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactDeclarationPhysicalPsiTest.kt) exercises the production lookup with real file-backed Kotlin and Java PSI and actual containing directories. Standalone doubles or in-memory files alone cannot prove filesystem-boundary behavior.
-- Start validation with `./gradlew :symbol:intellij:test --tests '*IntellijExactDeclaration*'`, then the owning module and affected consumers. These tests establish PSI lookup behavior, not K2 identity availability or installed-host qualification; retain those separate proofs.
+- Start validation with `./gradlew :symbol:intellij:test --tests '*IntellijExactDeclaration*'`, then the owning module and affected consumers. These tests establish PSI lookup behavior, not K2 identity availability or installed-host qualification; keep those separate proofs.

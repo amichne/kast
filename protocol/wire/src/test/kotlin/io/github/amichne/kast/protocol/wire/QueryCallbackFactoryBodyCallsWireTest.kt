@@ -169,8 +169,36 @@ class QueryCallbackFactoryBodyCallsWireTest {
     }
 
     @Test
-    fun `included libraries reject an excluded boundary nested in a returned callback`() {
+    fun `included libraries reject an excluded boundary in returned and owner callbacks`() {
         val callback = fixture.callbackDocument()
+        val flow = excludedFactoryFlow()
+        for (execution in
+            listOf(
+                io.github.amichne.kast.protocol.contract.QueryCallbackFlowDocument.Immutable(flow),
+                ownerFlow(callback, flow),
+            )) {
+            assertInstanceOf(
+                Refinement.Refined::class.java,
+                observed(
+                    callback,
+                    io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
+                    execution,
+                ),
+            )
+            assertEquals(
+                Refinement.Rejected(
+                    io.github.amichne.kast.protocol.contract.QueryCallbackDocumentFailure.INVALID_SCAN_PROOF
+                ),
+                observed(
+                    callback,
+                    io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument.INCLUDE,
+                    execution,
+                ),
+            )
+        }
+    }
+
+    private fun excludedFactoryFlow(): io.github.amichne.kast.protocol.contract.QueryImmutableCallbackFlowDocument {
         val root = QueryCallbackFactoryWireTest().fixture().immutableCallbackWire()
         val factory = root.factories.single()
         val body = factory.bodyCalls as QueryCallbackFactoryBodyCallsWireDocument.Exhaustive
@@ -192,40 +220,75 @@ class QueryCallbackFactoryBodyCallsWireTest {
                 .value
         val returned =
             value.origin as io.github.amichne.kast.protocol.contract.QueryImmutableCallbackValueOriginDocument.Returned
-        val flow =
-            io.github.amichne.kast.protocol.contract.QueryImmutableCallbackFlowDocument.create(
-                    returned.factory.returnedValue,
-                    bounded(
-                        listOf(io.github.amichne.kast.protocol.contract.QueryImmutableCallbackUseDocument.Unused(value))
-                    ),
-                    bounded(emptyList()),
-                    io.github.amichne.kast.protocol.contract.QueryCallbackInvocationScanDocument.EXHAUSTIVE,
-                )
-                .refined()
-        fun observed(libraries: io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument) =
-            io.github.amichne.kast.protocol.contract.QueryCallbackObservationDocument.create(
-                callback.occurrence,
-                callback.target,
-                callback.lexicalOwner,
-                callback.callbackBody,
-                callback.namedPolicy,
-                io.github.amichne.kast.protocol.contract.QueryCallbackFlowDocument.Immutable(flow),
-                callback.relation,
-                callback.requestedDomain,
-                callback.effectiveDomain.copy(libraries = libraries),
-                callback.domainFingerprint,
-                callback.resultProjection,
-                callback.basis,
+        return io.github.amichne.kast.protocol.contract.QueryImmutableCallbackFlowDocument.create(
+                returned.factory.returnedValue,
+                bounded(
+                    listOf(io.github.amichne.kast.protocol.contract.QueryImmutableCallbackUseDocument.Unused(value))
+                ),
+                bounded(emptyList()),
+                io.github.amichne.kast.protocol.contract.QueryCallbackInvocationScanDocument.EXHAUSTIVE,
             )
-        assertInstanceOf(
-            Refinement.Refined::class.java,
-            observed(io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument.EXCLUDE),
+            .refined()
+    }
+
+    private fun observed(
+        callback: io.github.amichne.kast.protocol.contract.QueryCallbackObservationDocument,
+        libraries: io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument,
+        execution: io.github.amichne.kast.protocol.contract.QueryCallbackFlowDocument,
+    ) =
+        io.github.amichne.kast.protocol.contract.QueryCallbackObservationDocument.create(
+            if (execution is io.github.amichne.kast.protocol.contract.QueryCallbackFlowDocument.Observed)
+                fixture.occurrence("Seed.kt", 10, 12)
+            else callback.occurrence,
+            callback.target,
+            callback.lexicalOwner,
+            if (execution is io.github.amichne.kast.protocol.contract.QueryCallbackFlowDocument.Observed)
+                execution.body.occurrence
+            else callback.callbackBody,
+            callback.namedPolicy,
+            execution,
+            callback.relation,
+            callback.requestedDomain,
+            callback.effectiveDomain.copy(libraries = libraries),
+            callback.domainFingerprint,
+            callback.resultProjection,
+            callback.basis,
         )
-        assertEquals(
-            Refinement.Rejected(
-                io.github.amichne.kast.protocol.contract.QueryCallbackDocumentFailure.INVALID_SCAN_PROOF
-            ),
-            observed(io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument.INCLUDE),
+
+    private fun ownerFlow(
+        callback: io.github.amichne.kast.protocol.contract.QueryCallbackObservationDocument,
+        immutable: io.github.amichne.kast.protocol.contract.QueryImmutableCallbackFlowDocument,
+    ): io.github.amichne.kast.protocol.contract.QueryCallbackFlowDocument.Observed {
+        val observed = callback.flow as io.github.amichne.kast.protocol.contract.QueryCallbackFlowDocument.Observed
+        val owner =
+            io.github.amichne.kast.protocol.contract.QueryCallbackBodyBindingDocument(
+                observed.body,
+                io.github.amichne.kast.protocol.contract.QueryCallbackBodySupplyDocument.Stored,
+                io.github.amichne.kast.protocol.contract.QueryCallbackBindingDocument.Unavailable(
+                    io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument.STORED_CALLBACK
+                ),
+                bounded(emptyList()),
+                io.github.amichne.kast.protocol.contract.QueryCallbackOwnerExecutionDocument.Immutable(
+                    immutable,
+                    io.github.amichne.kast.protocol.contract.QueryCallbackBodyDocument.Named(callback.lexicalOwner),
+                ),
+            )
+        val inner =
+            io.github.amichne.kast.protocol.contract.QueryCallbackBodyDocument.Anonymous(
+                fixture.occurrence("Seed.kt", 9, 13),
+                fixture.signature("anonymous@Seed.kt#9:13", emptyList()),
+            )
+        return observed.copy(
+            body = inner,
+            binding =
+                io.github.amichne.kast.protocol.contract.QueryCallbackBindingDocument.Direct(
+                    observed.basis,
+                    fixture.occurrence("Seed.kt", 8, 14),
+                    observed.body,
+                ),
+            invocations = bounded(emptyList()),
+            scan = io.github.amichne.kast.protocol.contract.QueryCallbackInvocationScanDocument.NOT_APPLICABLE,
+            ownerBindings = bounded(listOf(owner)),
         )
     }
 

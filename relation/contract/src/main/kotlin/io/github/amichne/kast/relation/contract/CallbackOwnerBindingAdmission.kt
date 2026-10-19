@@ -42,14 +42,21 @@ internal fun admitCallbackOwnerBindings(
         return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
     if (
         bindings.any {
-            when (val binding = it.binding) {
-                is CallbackBindingEvidence.Bound -> binding.binding.invocation.basis != basis
-                is CallbackBindingEvidence.Default -> binding.binding.parameter.callable.lease.identity != basis
-                is CallbackBindingEvidence.DeferredDependency -> binding.binding.basis != basis
-                is CallbackBindingEvidence.DependencyContract -> binding.binding.basis != basis
-                is CallbackBindingEvidence.Direct -> binding.binding.basis != basis
-                is CallbackBindingEvidence.Unavailable -> false
-            }
+            val bindingMismatch =
+                when (val binding = it.binding) {
+                    is CallbackBindingEvidence.Bound -> binding.binding.invocation.basis != basis
+                    is CallbackBindingEvidence.Default -> binding.binding.parameter.callable.lease.identity != basis
+                    is CallbackBindingEvidence.DeferredDependency -> binding.binding.basis != basis
+                    is CallbackBindingEvidence.DependencyContract -> binding.binding.basis != basis
+                    is CallbackBindingEvidence.Direct -> binding.binding.basis != basis
+                    is CallbackBindingEvidence.Unavailable -> false
+                }
+            bindingMismatch ||
+                when (val execution = it.execution) {
+                    CallbackOwnerExecution.Unproven -> false
+                    is CallbackOwnerExecution.Observed -> execution.flow.basis != basis
+                    is CallbackOwnerExecution.Immutable -> execution.flow.basis != basis
+                }
         }
     )
         return Refinement.Rejected(CallbackInvocationFlowFailure.BASIS_MISMATCH)

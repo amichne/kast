@@ -30,6 +30,65 @@ internal class CallbackSupplierReadmission(private val endpoints: CallbackEndpoi
             }
         }
 
+    fun flow(previous: ImmutableCallbackInvocationFlow): CallbackReadmission<ImmutableCallbackInvocationFlow> =
+        origin(previous.origin).then { origin ->
+            evidence.site(previous.source).then { source ->
+                readmitEach(previous.uses, ::use).then { uses ->
+                    readmitEach(previous.ownerBindings, evidence::ownerBinding).then { owners ->
+                        admitFlow(previous, origin, source, uses, owners)
+                    }
+                }
+            }
+        }
+
+    private fun admitFlow(
+        previous: ImmutableCallbackInvocationFlow,
+        origin: ImmutableCallbackValueOrigin,
+        source: ValueSite,
+        uses: List<ImmutableCallbackInvocationUse>,
+        owners: List<CallbackBodyBinding>,
+    ): CallbackReadmission<ImmutableCallbackInvocationFlow> {
+        val inherited =
+            previous.obligations +
+                owners.flatMap { it.obligations } +
+                uses.filterIsInstance<ImmutableCallbackInvocationUse.Supplied>().flatMap { it.summary.obligations }
+        val obligations =
+            if (uses.any { it.executionOwner() is RelationCallableBody.Anonymous })
+                inherited + CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION
+            else inherited
+        return ImmutableCallbackInvocationFlow.fromCompiler(origin, source, uses, obligations, previous.scan, owners)
+            .readmittedFlow()
+            .then { it.withOwnerBindings(emptyList()).readmittedFlow() }
+    }
+
+    private fun use(previous: ImmutableCallbackInvocationUse): CallbackReadmission<ImmutableCallbackInvocationUse> =
+        when (previous) {
+            is ImmutableCallbackInvocationUse.Supplied ->
+                supplier(previous.supplier).then { supplier ->
+                    evidence.summary(previous.summary).then { summary ->
+                        Refinement.Refined(ImmutableCallbackInvocationUse.Supplied(supplier, summary))
+                    }
+                }
+            is ImmutableCallbackInvocationUse.Direct ->
+                value(previous.value).then { value ->
+                    when (
+                        val admitted =
+                            CallbackDirectInvocationBinding.fromCompiler(
+                                endpoints.authority.identity,
+                                previous.binding.occurrence,
+                                previous.binding.owner,
+                            )
+                    ) {
+                        is Refinement.Refined ->
+                            Refinement.Refined(ImmutableCallbackInvocationUse.Direct(value, admitted.value))
+                        is Refinement.Rejected ->
+                            Refinement.Rejected(CallbackSummaryReadmissionFailure.Callback(admitted.failure))
+                    }
+                }
+            is ImmutableCallbackInvocationUse.Unused ->
+                value(previous.value).then { Refinement.Refined(ImmutableCallbackInvocationUse.Unused(it)) }
+        }
+
     private fun supplier(previous: CallbackParameterSupplier): CallbackReadmission<CallbackParameterSupplier> =
         evidence.argument(previous.binding).then { binding ->
             selection(previous.selection, binding).then { selected ->
@@ -176,4 +235,10 @@ private fun <T> Refinement<T, CallbackSupplierFailure>.supplier(): CallbackReadm
     when (this) {
         is Refinement.Refined -> this
         is Refinement.Rejected -> Refinement.Rejected(CallbackSummaryReadmissionFailure.Supplier(failure))
+    }
+
+private fun <T> Refinement<T, ImmutableCallbackInvocationFlowFailure>.readmittedFlow(): CallbackReadmission<T> =
+    when (this) {
+        is Refinement.Refined -> this
+        is Refinement.Rejected -> Refinement.Rejected(CallbackSummaryReadmissionFailure.ImmutableFlow(failure))
     }

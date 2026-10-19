@@ -68,7 +68,9 @@ An admitted graph keeps proof for each hop. If a transfer is not supported or th
 
 Kast keeps five roles distinct: the named lexical container, anonymous body, supplying callable, receiving formal, and actual call owner.
 
-An unused default keeps its formal and expression without an invented call. A nested body needs evidence for its own activation route.
+An unused default keeps its formal and expression without an invented call. A nested body needs evidence for its own invocation route.
+
+Kast composes anonymous owners through exact supplier bindings, source summaries, direct calls, and admitted library contracts. Each owner keeps its own proof. Lexical containment alone does not complete a route.
 
 Reviewed calls-in-place contracts keep their declared call kind. Missing effects or effects that conflict cannot become `UNKNOWN`. That value cannot stand in for missing proof.
 
@@ -94,7 +96,9 @@ The retained witness lists producers, models, native reads, read rejections, and
 
 Every public `RUN` uses `COMPILER_RESOLVED_STATIC_V1` with `COMPLETE_ONLY`. To complete, a run must finish its work and meet its proof rules.
 
-A run cannot complete when flow is mutable or not supported, source is missing, owners remain unresolved, or grants run out. A rejection keeps proved evidence when retention admits it.
+`TRACE` from source symbols separates source completeness from callback execution. Proven nested routes compose without a nesting gap. Unproved owner routes and missing library effects remain explicit evidence gaps under `SOURCE_RELATIONSHIPS`. Kast does not infer an invocation from lexical containment or supply.
+
+Invocation queries still need complete callback graphs. Unresolved source identity, missing result membership, and exhausted grants reject both interpretations. A rejection keeps proved evidence when retention admits it. [Results](/reference/responses#run-completion) defines the rule for composed queries.
 
 The model proves source relationships resolved by the compiler. It does not prove that code ran, that a branch can run, or how often code runs. It does not prove project behavior after an edit.
 

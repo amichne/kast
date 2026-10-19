@@ -59,6 +59,10 @@ private constructor(
             val nodes = edges.nodes()
             if (nodes.any { !it.insideWorkspace(observation.basis.workspaceRoot) })
                 return Refinement.Rejected(StaticCallbackGraphFailure.OutsideWorkspace)
+            when (val admitted = flow.admitCallbackWorkspace(observation.basis.workspaceRoot)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return admitted
+            }
             return Refinement.Refined(
                 CompleteStaticCallbackGraph(
                     observation,
@@ -72,10 +76,6 @@ private constructor(
             observation: RelationCallbackObservation,
             flow: ImmutableCallbackInvocationFlow,
         ): Refinement<CompleteStaticCallbackGraph, StaticCallbackGraphFailure> {
-            if (flow.obligations.isNotEmpty())
-                return Refinement.Rejected(StaticCallbackGraphFailure.ImmutableUnresolved(flow))
-            if (flow.scan != CallbackInvocationScan.EXHAUSTIVE)
-                return Refinement.Rejected(StaticCallbackGraphFailure.IncompleteScan)
             if (observation.policy is CallbackNamedCallPolicy.Unavailable)
                 return Refinement.Rejected(StaticCallbackGraphFailure.UnprovenPolicy(observation.policy))
             val origin =
@@ -86,8 +86,11 @@ private constructor(
                     is Refinement.Refined -> result.value
                     is Refinement.Rejected -> return Refinement.Rejected(StaticCallbackGraphFailure.MissingNamedOwner)
                 }
-            if (!flow.source.enclosing.matches(owner))
-                return Refinement.Rejected(StaticCallbackGraphFailure.SupplierIdentityMismatch)
+            val composition =
+                when (val admitted = CompleteCallbackFlowGraph.admit(flow, owner)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return admitted
+                }
             val target =
                 when (val result = RelationCallableBody.Named.fromCompiler(observation.target)) {
                     is Refinement.Refined -> result.value
@@ -95,15 +98,15 @@ private constructor(
                 }
             val body = StaticCallbackNode.Anonymous(origin.body)
             val edges =
-                listOf<StaticCallbackEdge>(
-                    StaticCallbackEdge.ImmutableUses(StaticCallbackNode.Named(owner), body, flow),
-                    StaticCallbackEdge.BodyTarget(
-                        body,
-                        StaticCallbackNode.Named(target),
-                        observation.occurrence,
-                        observation.policy,
-                    ),
-                )
+                composition.edges +
+                    listOf(
+                        StaticCallbackEdge.BodyTarget(
+                            body,
+                            StaticCallbackNode.Named(target),
+                            observation.occurrence,
+                            observation.policy,
+                        )
+                    )
             val nodes = edges.nodes()
             if (
                 nodes.any { !it.insideWorkspace(observation.basis.workspaceRoot) } ||
@@ -128,22 +131,14 @@ private class StaticCallbackGraphAdmission(
     private val body = StaticCallbackNode.Anonymous(flow.body)
 
     fun edges(): Refinement<List<StaticCallbackEdge>, StaticCallbackGraphFailure> {
-        val result =
-            when (val binding = flow.binding) {
-                is CallbackBindingEvidence.Bound -> bound(binding.binding)
-                is CallbackBindingEvidence.Direct -> direct(binding.binding)
-                is CallbackBindingEvidence.DeferredDependency -> deferredDependency(binding.binding)
-                is CallbackBindingEvidence.DependencyContract -> dependencyContract(binding.binding)
-                is CallbackBindingEvidence.Default ->
-                    Refinement.Rejected(StaticCallbackGraphFailure.UnsupportedDefaultSupply)
-                is CallbackBindingEvidence.Unavailable ->
-                    Refinement.Rejected(StaticCallbackGraphFailure.Unavailable(binding.cause))
+        val composition =
+            when (val admitted = CompleteCallbackFlowGraph.admit(flow)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
             }
-        val edges =
-            when (result) {
-                is Refinement.Refined -> result.value
-                is Refinement.Rejected -> return result
-            }
+        if (composition.root != observation.lexicalOwner)
+            return Refinement.Rejected(StaticCallbackGraphFailure.SupplierIdentityMismatch)
+        val edges = composition.edges
         val targetEdge =
             when (val admitted = bodyTarget()) {
                 is Refinement.Refined -> admitted.value
@@ -187,140 +182,7 @@ private class StaticCallbackGraphAdmission(
             is io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature.AnonymousObject ->
                 Refinement.Rejected(StaticCallbackGraphFailure.NonCallableTarget)
         }
-
-    private fun bound(
-        binding: CallbackArgumentBinding
-    ): Refinement<List<StaticCallbackEdge>, StaticCallbackGraphFailure> {
-        if (flow.scan != CallbackInvocationScan.EXHAUSTIVE)
-            return Refinement.Rejected(StaticCallbackGraphFailure.IncompleteScan)
-        val owner =
-            binding.invocationOwner as? RelationCallableBody.Named
-                ?: return Refinement.Rejected(StaticCallbackGraphFailure.MissingNamedOwner)
-        if (owner.evidence != observation.lexicalOwner || !binding.invocation.enclosing.matches(owner))
-            return Refinement.Rejected(StaticCallbackGraphFailure.SupplierIdentityMismatch)
-        val formal =
-            when (val admitted = binding.formal()) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return admitted
-            }
-        val origin = StaticCallbackNode.Formal(formal, binding)
-        val edges =
-            mutableListOf<StaticCallbackEdge>(
-                StaticCallbackEdge.Supply(
-                    StaticCallbackNode.Named(owner),
-                    origin,
-                    body,
-                    binding,
-                )
-            )
-        when (val graph = admitStaticCallbackForwardingGraph(binding, flow.forwarding)) {
-            is Refinement.Refined -> edges += graph.value
-            is Refinement.Rejected -> return graph
-        }
-        for (invocation in flow.invocations) {
-            when (val route = route(origin, binding, invocation)) {
-                is Refinement.Refined -> edges += route.value
-                is Refinement.Rejected -> return route
-            }
-        }
-        return Refinement.Refined(edges)
-    }
-
-    private fun route(
-        origin: StaticCallbackNode.Formal,
-        binding: CallbackArgumentBinding,
-        invocation: CallbackParameterInvocation,
-    ): Refinement<List<StaticCallbackEdge>, StaticCallbackGraphFailure> {
-        val edges = mutableListOf<StaticCallbackEdge>()
-        var source = origin
-        val seen = mutableSetOf(origin)
-        for (forward in invocation.forwardings) {
-            val forwardingOwner =
-                forward.target.invocationOwner as? RelationCallableBody.Named
-                    ?: return Refinement.Rejected(StaticCallbackGraphFailure.MissingNamedOwner)
-            if (!source.parameter.callable.matches(forwardingOwner))
-                return Refinement.Rejected(StaticCallbackGraphFailure.SupplierIdentityMismatch)
-            val target =
-                when (val admitted = forward.target.formal()) {
-                    is Refinement.Refined -> StaticCallbackNode.Formal(admitted.value, binding)
-                    is Refinement.Rejected -> return admitted
-                }
-            if (!seen.add(target) && flow.forwarding == CallbackForwardingEvidence.InvocationRoutes)
-                return Refinement.Rejected(StaticCallbackGraphFailure.CyclicRoute)
-            edges += StaticCallbackEdge.Forward(source, target, forward)
-            source = target
-        }
-        val invokingOwner =
-            invocation.owner as? RelationCallableBody.Named
-                ?: return Refinement.Rejected(StaticCallbackGraphFailure.MissingNamedOwner)
-        if (!source.parameter.callable.matches(invokingOwner))
-            return Refinement.Rejected(StaticCallbackGraphFailure.SupplierIdentityMismatch)
-        edges += StaticCallbackEdge.Invoke(source, body, StaticCallbackNode.Named(invokingOwner), invocation)
-        return Refinement.Refined(edges)
-    }
-
-    private fun deferredDependency(
-        binding: CallbackDeferredDependency
-    ): Refinement<List<StaticCallbackEdge>, StaticCallbackGraphFailure> {
-        if (flow.scan != CallbackInvocationScan.EXHAUSTIVE)
-            return Refinement.Rejected(StaticCallbackGraphFailure.IncompleteScan)
-        val owner = binding.owner
-        if (owner.evidence != observation.lexicalOwner)
-            return Refinement.Rejected(StaticCallbackGraphFailure.SupplierIdentityMismatch)
-        return Refinement.Refined(
-            deferredExecutionEdges(owner.execution) +
-                listOf(
-                    StaticCallbackEdge.DependencyDeferredSupply(
-                        StaticCallbackNode.DeferredSupplier(owner),
-                        body,
-                        binding,
-                    )
-                )
-        )
-    }
-
-    private fun dependencyContract(
-        binding: CallbackDependencyContract
-    ): Refinement<List<StaticCallbackEdge>, StaticCallbackGraphFailure> {
-        if (flow.scan != CallbackInvocationScan.EXHAUSTIVE)
-            return Refinement.Rejected(StaticCallbackGraphFailure.IncompleteScan)
-        val owner =
-            binding.owner as? RelationCallableBody.Named
-                ?: return Refinement.Rejected(StaticCallbackGraphFailure.MissingNamedOwner)
-        if (owner.evidence != observation.lexicalOwner)
-            return Refinement.Rejected(StaticCallbackGraphFailure.SupplierIdentityMismatch)
-        return Refinement.Refined(
-            listOf(StaticCallbackEdge.DependencyContractInvoke(StaticCallbackNode.Named(owner), body, binding))
-        )
-    }
-
-    private fun direct(
-        binding: CallbackDirectInvocationBinding
-    ): Refinement<List<StaticCallbackEdge>, StaticCallbackGraphFailure> {
-        if (flow.scan != CallbackInvocationScan.NOT_APPLICABLE)
-            return Refinement.Rejected(StaticCallbackGraphFailure.IncompleteScan)
-        val owner =
-            binding.owner as? RelationCallableBody.Named
-                ?: return Refinement.Rejected(StaticCallbackGraphFailure.MissingNamedOwner)
-        if (owner.evidence != observation.lexicalOwner)
-            return Refinement.Rejected(StaticCallbackGraphFailure.SupplierIdentityMismatch)
-        return Refinement.Refined(
-            listOf(StaticCallbackEdge.DirectInvoke(StaticCallbackNode.Named(owner), body, binding))
-        )
-    }
 }
-
-private fun CallbackArgumentBinding.formal(): Refinement<CallbackParameterIdentity, StaticCallbackGraphFailure> =
-    when (val admitted = CallbackParameterIdentity.fromCompiler(invocation.callable, position, parameter)) {
-        is Refinement.Refined -> admitted
-        is Refinement.Rejected ->
-            Refinement.Rejected(
-                StaticCallbackGraphFailure.InvalidFlow(CallbackInvocationFlowFailure.INVALID_FORWARDING_PATH)
-            )
-    }
-
-private fun RelationEndpoint.matches(owner: RelationCallableBody.Named): Boolean =
-    file == owner.file && range == owner.range && compilerIdentity == owner.compilerIdentity
 
 private fun StaticCallbackNode.insideWorkspace(root: CanonicalWorkspaceRoot): Boolean {
     val file =
@@ -339,7 +201,7 @@ private fun List<StaticCallbackEdge>.nodes(): Set<StaticCallbackNode> = flatMap 
     listOf(edge.source, edge.target) +
         when (edge) {
             is StaticCallbackEdge.ImmutableUses ->
-                edge.evidence.uses.flatMap { use ->
+                listOf(edge.use).flatMap { use ->
                     when (use) {
                         is ImmutableCallbackInvocationUse.Supplied ->
                             listOf(StaticCallbackNode.Formal(use.summary.formal, use.supplier.binding)) +
@@ -347,7 +209,12 @@ private fun List<StaticCallbackEdge>.nodes(): Set<StaticCallbackNode> = flatMap 
                                     (it.owner as? RelationCallableBody.Named)?.let(StaticCallbackNode::Named)
                                 }
                         is ImmutableCallbackInvocationUse.Direct ->
-                            listOf(StaticCallbackNode.Named(use.binding.owner as RelationCallableBody.Named))
+                            listOf(
+                                when (val owner = use.binding.owner) {
+                                    is RelationCallableBody.Named -> StaticCallbackNode.Named(owner)
+                                    is RelationCallableBody.Anonymous -> StaticCallbackNode.Anonymous(owner)
+                                }
+                            )
                         is ImmutableCallbackInvocationUse.Unused -> emptyList()
                     }
                 }

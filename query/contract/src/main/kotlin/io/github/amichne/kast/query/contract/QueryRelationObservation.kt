@@ -45,18 +45,31 @@ private constructor(
 ) {
     val retainedBytes: Long
         get() =
-            4096L +
-                2L *
-                    (question.subject.file.stableValue.length +
-                        question.subject.name.value.length +
-                        question.subject.signature.canonicalEncoding().value.length) +
-                question.effectiveConstraints.fingerprintFields().sumOf { it.length * 2L } +
-                SymbolSearchScope.snapshot(question.effectiveScope).toString().length * 2L +
-                callbackObservations.sumOf { it.retainedBytes } +
-                callableObservations.sumOf { it.retainedBytes } +
-                scopeExclusions.sumOf { it.canonicalProjection().length * 2L }
+            4096L
+                .saturatedAdd(question.subject.file.stableValue.length.toLong().saturatedMultiply(2))
+                .saturatedAdd(question.subject.name.value.length.toLong().saturatedMultiply(2))
+                .saturatedAdd(question.subject.signature.canonicalEncoding().value.length.toLong().saturatedMultiply(2))
+                .saturatedAdd(
+                    question.effectiveConstraints.fingerprintFields().fold(0L) { bytes, field ->
+                        bytes.saturatedAdd(field.length.toLong().saturatedMultiply(2))
+                    }
+                )
+                .saturatedAdd(
+                    SymbolSearchScope.snapshot(question.effectiveScope).toString().length.toLong().saturatedMultiply(2)
+                )
+                .saturatedAdd(
+                    callbackObservations.fold(0L) { bytes, callback -> bytes.saturatedAdd(callback.retainedBytes) }
+                )
+                .saturatedAdd(
+                    callableObservations.fold(0L) { bytes, callable -> bytes.saturatedAdd(callable.retainedBytes) }
+                )
+                .saturatedAdd(
+                    scopeExclusions.fold(0L) { bytes, exclusion ->
+                        bytes.saturatedAdd(exclusion.canonicalProjection().length.toLong().saturatedMultiply(2))
+                    }
+                )
 
-    fun projectedUtf8Size(): Long = DOCUMENT_OVERHEAD_BYTES + retainedBytes * UTF8_EXPANSION_FACTOR
+    fun projectedUtf8Size(): Long = projectedRelationObservationBytes(retainedBytes)
 
     fun evidenceUnits(): List<QueryRelationObservation> =
         if (scopeExclusions.size + callbackObservations.size + callableObservations.size <= 1) listOf(this)
@@ -123,6 +136,9 @@ private constructor(
             )
     }
 }
+
+internal fun projectedRelationObservationBytes(retainedBytes: Long): Long =
+    DOCUMENT_OVERHEAD_BYTES.saturatedAdd(retainedBytes.saturatedMultiply(UTF8_EXPANSION_FACTOR))
 
 private const val DOCUMENT_OVERHEAD_BYTES = 4096L
 private const val UTF8_EXPANSION_FACTOR = 3L

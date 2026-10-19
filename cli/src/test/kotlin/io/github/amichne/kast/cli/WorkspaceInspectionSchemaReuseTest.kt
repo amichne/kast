@@ -92,7 +92,7 @@ class WorkspaceInspectionSchemaReuseTest {
         for ((name, serializer) in CanonicalCallbackSchemaDocuments.serializers) {
             assertions.assertDefinitionEquivalent(
                 name,
-                generatedOutputSchema(serializer, CanonicalSchemaReferences.None),
+                generatedOutputSchema(serializer),
             )
         }
         assertTrue(referenceCount(querySchema, "compilerSymbolEvidence") > 1)
@@ -202,7 +202,10 @@ private class LocalSchemaAssertions(private val schema: JsonObject) {
                     val name = referenceName(element)
                     if (name == null) element.values.forEach(::visit)
                     else if (name !in visited) {
-                        assertTrue(visiting.add(name), "Cyclic local definition: $name")
+                        if (!visiting.add(name)) {
+                            assertTrue(name in setOf("callbackObservedFlow", "immutableCallbackFlow"), name)
+                            return
+                        }
                         visit(definitions.getValue(name))
                         visiting.remove(name)
                         visited.add(name)
@@ -215,6 +218,10 @@ private class LocalSchemaAssertions(private val schema: JsonObject) {
     }
 
     private fun compare(expected: JsonElement, actual: JsonElement, path: String, allowDefinitions: Boolean = false) {
+        if (expected is JsonObject && "\$ref" in expected) {
+            assertEquals(expected, actual, "Reference at $path")
+            return
+        }
         val name = (actual as? JsonObject)?.let(::referenceName)
         if (name != null) {
             compare(expected, definitions.getValue(name), path)

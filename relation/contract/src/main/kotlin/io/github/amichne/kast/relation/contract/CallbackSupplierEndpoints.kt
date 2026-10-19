@@ -24,6 +24,12 @@ fun ImmutableCallbackValue.requiredCompilerDeclarations(): Set<CompilerGroundedS
 fun ImmutableCallbackValueOrigin.requiredSourceFiles(): Set<SymbolDiscoveryFileIdentity> =
     CallbackSupplierEndpoints(this).files.toSet()
 
+internal fun ImmutableCallbackValueOrigin.requiredEndpoints(): List<RelationEndpoint> =
+    CallbackSupplierEndpoints(this).endpoints.toList()
+
+internal fun ImmutableCallbackValueOrigin.requiredCompilerDeclarations(): Set<CompilerGroundedSymbolEvidence> =
+    CallbackSupplierEndpoints(this).declarations.toSet()
+
 /** Detached ownership includes occurrences, bodies, and implicit receivers without authority-bearing endpoints. */
 private class CallbackSupplierEndpoints {
     val endpoints = linkedSetOf<RelationEndpoint>()

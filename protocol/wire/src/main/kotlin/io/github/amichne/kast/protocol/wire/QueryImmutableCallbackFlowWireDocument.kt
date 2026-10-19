@@ -9,6 +9,8 @@ import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationScanDocument
 import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackFlowDocument
 import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackUseDocument
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
@@ -22,6 +24,16 @@ internal sealed interface QueryImmutableCallbackUseWireDocument {
         val supplier: QueryCallbackParameterSupplierWireDocument,
         @ProtocolCollectionConstraint(maximumItems = 1000) val invocations: List<QueryCallbackInvocationWireDocument>,
         val forwarding: QueryCallbackForwardingEvidenceWireDocument,
+        @Required
+        @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+        @SerialName("summary_owner_bindings")
+        @ProtocolCollectionConstraint(maximumItems = 1000)
+        val summaryOwnerBindings: List<QueryCallbackBodyBindingWireDocument> = emptyList(),
+        @Required
+        @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+        @SerialName("summary_obligations")
+        @ProtocolCollectionConstraint(maximumItems = 1000)
+        val summaryObligations: List<QueryCallbackFlowCauseDocument> = emptyList(),
     ) : QueryImmutableCallbackUseWireDocument
 
     @Serializable
@@ -42,9 +54,14 @@ internal data class QueryImmutableCallbackFlowWireDocument(
     @ProtocolCollectionConstraint(maximumItems = 1000) val uses: List<QueryImmutableCallbackUseWireDocument>,
     @ProtocolCollectionConstraint(maximumItems = 1000) val obligations: List<QueryCallbackFlowCauseDocument>,
     val scan: QueryCallbackInvocationScanDocument,
+    @Required
+    @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+    @SerialName("owner_bindings")
+    @ProtocolCollectionConstraint(maximumItems = 1000)
+    val ownerBindings: List<QueryCallbackBodyBindingWireDocument> = emptyList(),
 )
 
-internal fun QueryImmutableCallbackFlowDocument.immutableFlowWire() =
+internal fun QueryImmutableCallbackFlowDocument.immutableFlowWire(): QueryImmutableCallbackFlowWireDocument =
     QueryImmutableCallbackFlowWireDocument(
         sourceValue.immutableCallbackWire(),
         uses.values.map { use ->
@@ -56,23 +73,12 @@ internal fun QueryImmutableCallbackFlowDocument.immutableFlowWire() =
                         use.value.immutableCallbackWire(),
                         use.binding.callbackWire(),
                     )
-                is QueryImmutableCallbackUseDocument.Supplied ->
-                    QueryImmutableCallbackUseWireDocument.Supplied(
-                        use.supplier.callbackSupplierWire(),
-                        use.invocations.values.map {
-                            QueryCallbackInvocationWireDocument(
-                                it.occurrence.callbackWire(),
-                                it.owner.callbackWire(),
-                                it.callableTransfers.values,
-                                it.forwardings.values.map { edge -> edge.callbackWire() },
-                            )
-                        },
-                        use.forwarding.callbackWire(),
-                    )
+                is QueryImmutableCallbackUseDocument.Supplied -> use.suppliedWire()
             }
         },
         obligations.values,
         scan,
+        ownerBindings.values.map { it.callbackWire() },
     )
 
 internal fun QueryImmutableCallbackFlowWireDocument.toContract():
@@ -84,7 +90,14 @@ internal fun QueryImmutableCallbackFlowWireDocument.toContract():
                 .flatMapConverted { BoundedProtocolList.create(it).toWireDocumentConversion() },
             BoundedProtocolList.create(obligations).toWireDocumentConversion(),
         ) { source, uses, causes ->
-            QueryImmutableCallbackFlowDocument.create(source, uses, causes, scan).toWireDocumentConversion()
+            ownerBindings
+                .convertEach { it.toContract() }
+                .flatMapConverted { owners ->
+                    BoundedProtocolList.create(owners).toWireDocumentConversion().flatMapConverted { owners ->
+                        QueryImmutableCallbackFlowDocument.create(source, uses, causes, scan, owners)
+                            .toWireDocumentConversion()
+                    }
+                }
         }
         .flattenConverted()
 
@@ -102,17 +115,33 @@ internal fun QueryImmutableCallbackUseWireDocument.toContract():
                 .flattenConverted()
         is QueryImmutableCallbackUseWireDocument.Supplied ->
             combineConverted(
-                supplier.toContract(),
-                invocations
-                    .convertEach { it.toContract() }
-                    .flatMapConverted { BoundedProtocolList.create(it).toWireDocumentConversion() },
-                forwarding.toContract(),
-            ) { supplier, invocations, forwarding ->
-                QueryImmutableCallbackUseDocument.Supplied(supplier, invocations, forwarding)
-            }
+                    supplier.toContract(),
+                    invocations
+                        .convertEach { it.toContract() }
+                        .flatMapConverted { BoundedProtocolList.create(it).toWireDocumentConversion() },
+                    forwarding.toContract(),
+                ) { supplier, invocations, forwarding ->
+                    summaryOwnerBindings
+                        .convertEach { it.toContract() }
+                        .flatMapConverted { owners ->
+                            combineConverted(
+                                BoundedProtocolList.create(owners).toWireDocumentConversion(),
+                                BoundedProtocolList.create(summaryObligations).toWireDocumentConversion(),
+                            ) { owners, causes ->
+                                QueryImmutableCallbackUseDocument.Supplied(
+                                    supplier,
+                                    invocations,
+                                    forwarding,
+                                    owners,
+                                    causes,
+                                )
+                            }
+                        }
+                }
+                .flattenConverted()
     }
 
-internal fun QueryImmutableCallbackUseDocument.Supplied.suppliedWire() =
+internal fun QueryImmutableCallbackUseDocument.Supplied.suppliedWire(): QueryImmutableCallbackUseWireDocument.Supplied =
     QueryImmutableCallbackUseWireDocument.Supplied(
         supplier.callbackSupplierWire(),
         invocations.values.map {
@@ -124,4 +153,6 @@ internal fun QueryImmutableCallbackUseDocument.Supplied.suppliedWire() =
             )
         },
         forwarding.callbackWire(),
+        summaryOwnerBindings.values.map { it.callbackWire() },
+        summaryObligations.values,
     )
