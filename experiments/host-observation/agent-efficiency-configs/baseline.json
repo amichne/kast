@@ -1,0 +1,13 @@
+{
+  "exposure": "codemode",
+  "hypothesis": "Current native Pi exposure and canonical onboarding define the initial champion.",
+  "maximum_output_tokens": 6000,
+  "maximum_payload_bytes": 1048576,
+  "maximum_reported_tokens": 150000,
+  "maximum_requests": 20,
+  "maximum_tools": 40,
+  "name": "baseline",
+  "onboarding": "canonical",
+  "skills": [],
+  "wall_seconds": 180
+}

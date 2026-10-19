@@ -1,0 +1,32 @@
+# Kast
+
+Use Kast for Kotlin declaration identity, relationships, diagnostics, and controlled changes.
+For the basic search shape here, call `tools.mcp__kast__query_symbols` directly inside `codemode`.
+If the needed schema is absent, use `searchTools` and `describeTool` once inside `codemode`.
+For deferred exposure, use `tool_search`.
+Read the installed parameter schema before an unfamiliar operation.
+
+This contract-14 example supplies the complete shape for a basic declaration search.
+Replace its name, kind, and directory with the task's known constraints.
+
+```json
+{"request":{"type":"RUN","source":{"type":"SEARCH_DECLARATIONS","declarationName":"calculate","declarationKinds":["FUNCTION"],"scope":{"type":"DIRECTORY","relativeDirectoryPath":"src/main","sourceSetNames":["main"]}},"output":{"type":"SYMBOLS","fields":["NAME","LOCATION","SIGNATURE"]},"executionBudget":{"maxResults":10}}}
+```
+
+Add `SOURCE` only when the task needs a declaration's source.
+Select the exact declaration from its location and signature.
+Copy its issued reference unchanged into later requests.
+For a body change, discover `replace_body` and use its issued `exactTarget`.
+Use the task's independent compiler or runtime assertion after a change.
+
+The first useful operation establishes semantic readiness.
+Kast can save editor buffers and refresh the imported project.
+Preserve outer errors, semantic status, completion qualifications, omissions, and freshness evidence.
+Incomplete evidence does not establish absence.
+Do not invent references or repeat a failed request without a changed prerequisite.
+
+In `codemode`, select needed fields before `text()`.
+Keep declaration identities, locations, issued references, and evidence qualifications.
+Use the minimal example for a basic search without the full schema or examples.
+For another operation, read only its needed schema sections.
+Keep the requested scope and the independent correctness assertion.
