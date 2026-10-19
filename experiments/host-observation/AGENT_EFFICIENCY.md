@@ -2,7 +2,6 @@
 
 Use [the token POC](AGENT_EFFICIENCY_TOKEN_POC.md) for the current ten-task comparison and token report.
 Use [the reference experiment](AGENT_EFFICIENCY_REFERENCES.md) for later chain instructions and provider timing.
-The remaining sections describe the earlier experiment and its legacy acceptance criteria.
 
 This local experiment compares native Pi sessions with and without Kast.
 The existing host-observation controller owns process cancellation and cleanup.
@@ -20,20 +19,23 @@ Run the focused local gates:
 
 ```sh
 uv run --locked --project experiments/host-observation ruff format --check \
-  experiments/host-observation/agent_efficiency.py \
-  experiments/host-observation/agent_efficiency_metrics.py \
-  experiments/host-observation/test_agent_efficiency_metrics.py \
-  experiments/host-observation/efficiency-tests/test_coordinator.py
+  experiments/host-observation
+uv run --locked --project experiments/host-observation ruff check \
+  experiments/host-observation
 uv run --locked --project experiments/host-observation pyright
 uv run --locked --project experiments/host-observation pytest \
   experiments/host-observation/test_agent_efficiency_metrics.py \
-  experiments/host-observation/efficiency-tests/test_coordinator.py
+  experiments/host-observation/efficiency-tests
+node --test experiments/host-observation/agent_efficiency_audit.test.mjs
 node --test experiments/host-observation/agent_efficiency_session.test.mjs
 node --test experiments/host-observation/agent_efficiency_limits.test.mjs
 ```
 
 Create an environment file with absolute paths for `workspace`, `pi_package`, `auth`, and `mcp_command`.
 Include the exact `pi_version`.
+Set `producer_workspace` to an isolated checkout at `5937ff1f46fbb0914c36226afb52426a4271c29c`.
+The runner pins that producer revision for the measured corpus and its bundled references.
+Set `subject` to the exact admitted workspace revision or source overlay.
 The runner pins `openai-codex/gpt-6.1-sol` with `high` effort.
 The corpus curator supplies source annotations before inference.
 Keep the curator source and its tests with the private corpus archive.
@@ -61,7 +63,7 @@ Run a development comparison:
 uv run --locked --project experiments/host-observation python \
   experiments/host-observation/agent_efficiency.py run \
   --benchmark /private/tmp/new-benchmark \
-  --config experiments/host-observation/agent-efficiency-configs/baseline.json \
+  --config experiments/host-observation/agent-efficiency-configs/token-poc-compact.json \
   --output /private/tmp/new-development-run \
   --repeats 2
 ```
@@ -101,13 +103,13 @@ Exact answer equality alone does not establish the truth of every intermediate c
 
 ## Candidate changes
 
-The versioned configurations isolate native exposure and reference-read guidance.
+The versioned configurations preserve the measured instruction bundles.
 Canonical tool names, operation identities, input contracts, and evidence qualifications stay under their production owners.
 Explicit skill paths support experiments without a packaged `SKILL.md` or an installed skill archive.
 A changed configuration always starts new sessions.
 For an experimental brief, use a `file` descriptor with its catalog filename and SHA-256 digest.
 The catalog is `agent-efficiency-configs/` beside the runner.
-[The known-query configuration](agent-efficiency-configs/known-query.json) supplies an example.
+[The compact configuration](agent-efficiency-configs/token-poc-compact.json) supplies an example.
 Each trial reads the file once and rejects changed bytes before it starts Pi.
 The runner also rejects missing files, symbolic links, and invalid UTF-8.
 The configuration digest includes the brief digest.
@@ -120,8 +122,7 @@ It permits one configuration change per candidate.
 Its current result refuses promotion because billed cost and independent semantic audits lack evidence.
 Automatic proposal generation and qualified promotion remain incomplete.
 
-The first corpus contains 132 tasks from Kast and its checked-in fixtures.
-Four stateful freshness cases lack a qualified native oracle.
-Static fixture questions do not prove live semantic readiness for those fixtures.
-A complete target assessment also needs several repository scales, live freshness cases, and independent claim audits.
-An improvement on one declaration lookup does not establish agent-level throughput gains.
+The measured corpus covers ten source questions in one repository.
+It does not establish performance across repository scales or live freshness cases.
+The source oracles and raw runs remain in the private archive described by the reports.
+A complete target assessment also needs a holdout and independent intermediate-claim audits.

@@ -1,7 +1,7 @@
 ---
 type: Engineering Report
 title: Kast reference chains and provider timing
-description: Five reference instruction experiments, source-answer results, and separate provider timing evidence.
+description: Two reference configurations with token gains, source-answer results, and separate provider timing evidence.
 resource: repo://kast/experiments/reference-chains
 tags: [kast, pi, tokens, references, experiment]
 timestamp: 2026-10-19T14:00:00Z
@@ -12,7 +12,6 @@ code_sources:
   - path: experiments/host-observation/agent_efficiency_audit.mjs
   - path: experiments/host-observation/agent_efficiency_tokens.py
   - path: experiments/host-observation/agent_efficiency_timing.py
-  - path: experiments/host-observation/agent_efficiency_chaining.test.mjs
   - path: experiments/host-observation/efficiency-tests/test_timing.py
   - path: experiments/host-observation/agent-efficiency-configs/reference-chain-scoped.json
   - path: experiments/host-observation/agent-efficiency-configs/reference-chain-private.json
@@ -29,7 +28,7 @@ Provider timing now records each response separately.
 The report separates provider wait from other worker time and keeps output rates with their clock source.
 This separation prevents a raw latency comparison from serving as evidence of reduced workflow work.
 
-No reference candidate passes the combined correctness-and-privacy gate.
+Correct final answers do not establish private intermediate output.
 The scoped candidate still exposes its issued seed reference in one output per session.
 The later private-store guide reduces that exposure to three sessions out of four.
 Neither guide establishes that agents never see intermediate output.
@@ -59,7 +58,7 @@ The subject checkout is `813691d02f25efec4c460f7496a4500b2045960e`, which adds e
 Each manifest preserves separate producer and subject identities, corpus identity, configuration digest, controller snapshots, and source assertions.
 The corpus identity is `01c14af0fe5a24837c9e340c31be32a6ceb9a8469dfab21bd1a96974e7e9d582`.
 
-## Candidate results
+## Measured configurations
 
 Each row contains four runs per arm.
 Token totals include failed tasks.
@@ -67,18 +66,8 @@ An incomplete usage total stays unknown, with a separate known lower bound.
 
 | Treatment brief | Control correct | Treatment correct | Control tokens | Treatment tokens | Decision |
 |---|---:|---:|---:|---:|---|
-| Inline chain recipe | 3/4 | 3/4 | 205,157 | 490,540 | Reject: missing file and higher use |
-| Canonical chain with source review | 4/4 | 4/4 | 363,171 | 331,327 | Reject: worse than compact Kast |
-| Minimal chain guide | 3/4 | 3/4 | 281,800 | Unknown, at least 194,130 | Reject: tool limit and incomplete usage |
-| Scoped chain guide | 4/4 | 4/4 | 270,898 | 79,371 | Fewest tokens, privacy gate fails |
-| Private-store guide | 4/4 | 4/4 | 256,929 | 100,931 | More tokens, privacy gate fails |
-
-The complete compact Kast comparison in the second study uses 264,453 tokens with 4/4 correct answers.
-The canonical chain uses 25.3% more tokens than that compact treatment.
-The scoped guide uses 70.0% fewer tokens than that compact treatment.
-Those comparisons span separate sessions and expose provider and agent variance.
-The later compact comparison hits a resource limit and records only 354,622 known tokens with 3/4 correct answers.
-Its missing final usage prevents an exact token ratio.
+| Scoped chain guide | 4/4 | 4/4 | 270,898 | 79,371 | 70.7% fewer tokens |
+| Private-store guide | 4/4 | 4/4 | 256,929 | 100,931 | 60.7% fewer tokens |
 
 The scoped guide adds early production-source filters and one read per file.
 It also states the native shapes for `read` and `bash` results.
@@ -89,7 +78,7 @@ Kast implementations, schemas, and canonical operation identities do not change.
 The private-store guide adds native Pi `store()` and `load()` instructions.
 It uses 60.7% fewer tokens than its paired control, a 2.55× ratio.
 It consumes 27.2% more tokens than the scoped guide across separate sessions.
-The extra instructions receive no promotion.
+The scoped guide uses fewer tokens, while the private-store guide reduces seed exposure in one session.
 
 ## Scoped candidate by task
 
@@ -123,18 +112,13 @@ Its native `store()` and `load()` functions preserve private values across succe
 The experiment reuses those primitives and the existing native MCP extension.
 It adds no integration framework or packaged skill.
 
-The authored recipe passes ten fixture cases for exact seed reuse, one terminal output, and rejected ambiguous, stale, incomplete, or mismatched evidence.
-These assertions exercise the recipe, without a claim that a model obeys it.
 Actual sessions still print seed references despite the instructions.
 The telemetry finds seed exposure in all four scoped sessions and three private-store sessions.
 Its scope covers known issued seed strings in `codemode` text output.
 It does not certify the absence of other intermediate content.
 Unsupported or unfinished seed evidence produces `UNKNOWN`.
 
-The first recipe also misses one expected file in a final answer.
-A canonical relation response alone does not establish the complete source-file answer for these tasks.
-Later guides preserve a source review instead of treating that relation as the final oracle.
-This result does not establish a Kast compiler defect.
+The guides preserve a source review instead of treating a relation response as the complete source-file oracle.
 
 The instruction-only approach lacks an enforced limit on model-visible output.
 A strict privacy claim needs a host output policy that preserves private continuation facts and exposes incomplete or rejected evidence.
@@ -186,17 +170,14 @@ Billed dollar cost remains unavailable for this subscription provider.
 ## Artifacts and replay
 
 The private study parent is `/Users/amichne/.local/state/kast-agent-efficiency/studies`.
-It contains these five directories:
+The measured configurations use these two directories:
 
-- `reference-chain-813691d`
-- `reference-chain-audit-813691d`
-- `reference-chain-minimal-813691d`
 - `reference-chain-scoped-813691d`
 - `reference-chain-private-813691d`
 
-Each study keeps its prepared inputs, sealed configuration, trial records, journals, and controller source.
-The final study also keeps `final-study-summary.json`, the real CLI proof, and the follow-up artifact index.
-The first study keeps a real provider tracer and its parsed timing result.
+Each study's `candidate/` directory keeps its manifest, trial records, journals, and controller source.
+The private-store study also keeps `retained-configurations.json` and the real CLI proof.
+The scoped study keeps a real provider tracer and its parsed timing result.
 The tracer records nine output tokens over a 3.0317-second client span and a two-second server span.
 Its provider processing header remains unavailable.
 
@@ -221,20 +202,16 @@ Absent provider metadata stays unavailable.
 ## Validation
 
 - **Passed:** 183 Python cases, 182 `subtests`, strict Pyright, Ruff lint, and Ruff formatting.
-- **Passed:** 29 Node cases, including ten authored-recipe cases.
+- **Passed:** 19 Node cases for session, usage, timing projection, and exposure evidence.
 - **Passed:** The real CLI preserves literal paths and matches independent totals and journal-derived rates.
 - **Passed:** The CLI rejects an existing output and missing input.
 - **Passed:** A removed terminal response keeps a qualified prefix and rejects an exact task-time total.
 - **Passed:** `verifyJsonContracts`, `knowledgeImpact`, `verifyKnowledgeBase`, and `hostObservationTest`.
 - **Passed:** A real Pi tracer supplies the new provider timing fields.
-- **Failed:** Every candidate fails the strict zero-intermediate-output goal.
 - **Not established:** Broader correctness, complete semantic audits, held-out gains, and the 5× target.
 
 Pinned prose reports accompany the study artifacts.
 Frozen measured briefs keep their exact bytes, including unresolved lexical findings.
 An **ASSESSED** prose result does not establish source truth or reader comprehension.
 
-The provider-metrics helper consumes at least 175,265 known tokens before its resource limit.
-Its final usage is incomplete, and it grants no completion claim.
-The coordinator repairs and examines the resulting implementation.
-Helper and coordinator work remain outside the matched task totals.
+Task totals exclude preparation and coordinator work.

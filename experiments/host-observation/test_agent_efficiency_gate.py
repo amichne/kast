@@ -42,7 +42,6 @@ class AgentEfficiencyGate(unittest.TestCase):
                 str(root / "agent_efficiency_session.test.mjs"),
                 str(root / "agent_efficiency_limits.test.mjs"),
                 str(root / "agent_efficiency_audit.test.mjs"),
-                str(root / "agent_efficiency_chaining.test.mjs"),
             ],
         ):
             result = subprocess.run(

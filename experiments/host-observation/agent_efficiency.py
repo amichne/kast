@@ -218,7 +218,7 @@ def _read_brief(folder: Path, descriptor: FileOnboarding) -> _LoadedBrief | _Bri
 class Configuration(Record):
     name: str = Field(pattern=r"^[a-z0-9-]+$")
     exposure: Literal["codemode", "deferred", "direct"]
-    onboarding: Literal["canonical", "selective", "semantic", "eligible", "none"] | FileOnboarding
+    onboarding: Literal["canonical", "none"] | FileOnboarding
     skills: tuple[str, ...] = ()
     hypothesis: str
     maximum_requests: int = Field(default=20, ge=1, le=100)
@@ -548,11 +548,7 @@ def onboarding(producer: Path, config: Configuration, workspace: Path | None = N
                 case _BriefRejected(reason):
                     # Invalid experimental input stops before the provider call.
                     raise ValueError(reason)
-        case "semantic":
-            brief = (HERE / "agent-efficiency-configs/semantic-onboarding.md").read_text()
-        case "eligible":
-            brief = (HERE / "agent-efficiency-configs/eligible-body-onboarding.md").read_text()
-        case "canonical" | "selective":
+        case "canonical":
             brief = (references / "onboarding.md").read_text()
     brief += (
         f"\nWorkspace: {json.dumps(str(workspace if workspace is not None else producer))}"
@@ -560,13 +556,6 @@ def onboarding(producer: Path, config: Configuration, workspace: Path | None = N
         f"{json.dumps(str(references / 'query-schema.json'))}\nQuery examples: "
         f"{json.dumps(str(references / 'query-examples.json'))}"
     )
-    if config.onboarding == "selective":
-        brief += (
-            "\nFor a declaration lookup, use the minimal query first. "
-            "Discover the needed tool before reading reference files. "
-            "Read only the needed schema definitions when the installed schema lacks detail. "
-            "Do not read the full schema or example array for a basic lookup."
-        )
     return brief
 
 

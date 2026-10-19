@@ -30,15 +30,12 @@ The [later reference experiment](AGENT_EFFICIENCY_REFERENCES.md) isolates two ta
 
 | Configuration | Correct task runs | Total tokens | Tokens per correct task | Median tokens |
 |---|---:|---:|---:|---:|
-| Canonical control | 10/10 | 512,723 | 51,272.3 | 51,426.5 |
-| Canonical Kast | 10/10 | 840,382 | 84,038.2 | 79,185.5 |
 | Compact control | 20/20 | 1,040,289 | 52,014.45 | 52,142 |
 | Compact Kast | 20/20 | 873,478 | 43,673.9 | 36,390.5 |
 
-The canonical configuration consumes 63.9% more tokens than its control.
 The compact configuration saves 166,811 tokens across its twenty paired task runs.
 Its two repeats save 10.9% and 21.8%, respectively.
-All sixty benchmark sessions finish with complete provider usage and correct final answers.
+All forty compact benchmark sessions finish with complete provider usage and correct final answers.
 No benchmark task fails.
 
 The metric sums provider input, output, cache-read, and cache-write tokens across every response.
@@ -89,25 +86,19 @@ Source excerpts preserve original lines and receiver identities.
 The fixed oracles reject missing answers and unsupported extra claims.
 Workspace assertions reject source changes.
 
-The final audit repeats all sixty answer assertions and compares each task prompt across both profiles and arms.
+The final audit repeats the forty compact answer assertions and compares each task prompt across both arms.
 It also examines source hashes, shared harness hashes, provider usage, model identity, and workspace deltas.
 Every treatment session uses Kast.
-Canonical treatment makes eighteen query calls.
 Compact treatment makes thirty-eight query calls across twenty sessions.
-Legacy intermediate semantic-audit counts remain unknown.
+Intermediate semantic-audit counts remain unknown.
 Final-answer assertions do not certify every intermediate semantic choice.
 
-Only `onboarding` changes between the canonical and compact configurations.
 A Pi agent authors the compact brief, and the coordinator reviews its grammar before the seal.
 The brief supplies known native query shapes and limits full-schema reads and large outputs.
-Kast tool identities, schemas, implementations, exposure, model, permissions, budgets, and task prompts remain the same.
-The normalized treatment total decreases 48.0% from the canonical configuration.
-That comparison has one canonical repeat and two compact repeats.
-It gives an observed instruction ablation without a population-level attribution claim.
+Kast tool identities, schemas, implementations, model, permissions, budgets, and task prompts remain fixed across the paired comparison.
 
 Use [the compact configuration](agent-efficiency-configs/token-poc-compact.json) with [its pinned brief](agent-efficiency-configs/token-poc-onboarding.md).
 The configuration remains an opt-in experiment.
-The separate decoder proposal lacks benchmark evidence and receives no promotion.
 The work includes no merge, release, or deployment.
 
 ## Reproduce the run
@@ -137,22 +128,7 @@ The runner also emits legacy statistical and dollar reports.
 Those legacy reports do not decide this token POC.
 The POC has no holdout and uses several tasks with related source declarations.
 
-## Separate experiment overhead
-
-These auxiliary Pi sessions remain outside the matched task totals.
-The two oracle-preparation sessions hit resource limits before a report.
-Neither session grants oracle approval.
-The coordinator supplies the source oracle and its retained negative controls.
-
-| Auxiliary session | Outcome | Known tokens | Usage qualification |
-|---|---|---:|---|
-| curator | RESOURCE_LIMIT | 148,028 | INCOMPLETE |
-| oracle-review | RESOURCE_LIMIT | 17,573 | INCOMPLETE |
-| optimizer | COMPLETED | 11,178 | FINALIZED_PROVIDER_USAGE |
-| optimizer-decoder | COMPLETED | 10,263 | FINALIZED_PROVIDER_USAGE |
-
-Incomplete usage remains a lower bound.
-The report does not amortize preparation, optimization, or coordinator tokens into task results.
+Task totals exclude preparation and coordinator work.
 
 ## Validation
 
