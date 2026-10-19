@@ -1,0 +1,17 @@
+{
+  "exposure": "codemode",
+  "hypothesis": "Native private store/load removes model-visible intermediate reference handoffs without rediscovery, while preserving the scoped chain token gain and exact source answers.",
+  "maximum_output_tokens": 6000,
+  "maximum_payload_bytes": 1048576,
+  "maximum_reported_tokens": 150000,
+  "maximum_requests": 20,
+  "maximum_tools": 40,
+  "name": "reference-chain-private",
+  "onboarding": {
+    "kind": "file",
+    "name": "reference-chain-private-onboarding.md",
+    "sha256": "689b958303fea2a711835c3e94769ece251475d11c1ca12fd88a764bfb83f060"
+  },
+  "skills": [],
+  "wall_seconds": 180
+}

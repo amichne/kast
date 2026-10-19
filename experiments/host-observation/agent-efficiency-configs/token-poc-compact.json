@@ -1,0 +1,17 @@
+{
+  "exposure": "codemode",
+  "hypothesis": "Compact treatment onboarding will reduce total finalized provider tokens relative to control while preserving independently exact source-correct answers across the ten read-only Kotlin tasks.",
+  "maximum_output_tokens": 6000,
+  "maximum_payload_bytes": 1048576,
+  "maximum_reported_tokens": 150000,
+  "maximum_requests": 20,
+  "maximum_tools": 40,
+  "name": "token-poc-compact",
+  "onboarding": {
+    "kind": "file",
+    "name": "token-poc-onboarding.md",
+    "sha256": "29a14c90f747b79ea702343d4038b2b0e506f01f48d791bce7e52aa4f8d6c9a1"
+  },
+  "skills": [],
+  "wall_seconds": 180
+}

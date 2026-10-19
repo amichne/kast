@@ -75,33 +75,39 @@ test('Pi delivers the generated semantic routing policy without probing readines
   for (const clause of [
     'first semantic step when its tools are reachable and support the task',
     'Preparation can save editor buffers and refresh the imported project',
-    'tasks without a Kotlin semantic question need no Kast call',
+    'Tasks without a Kotlin semantic question need no Kast call',
     'If the needed tool schema is already available, use it directly',
     'discover the needed Kast tool once',
-    '`codemode` exposure uses `searchTools` and `describeTool`',
-    'deferred exposure uses `tool_search`',
-    'do not add a probe call',
-    'workspace is not ready, or the requested scope is unsupported',
-    'continue with ordinary reading and state the limitation',
-    'Do not repeat discovery or retry the same failed request without new evidence',
+    'For `codemode` exposure, use `searchTools` and `describeTool`',
+    'For deferred exposure, use `tool_search`',
+    'Let the first useful operation establish readiness without a probe call',
+    'If tools, readiness, or scope prevent a query, use ordinary reads and state the limitation',
+    'Do not repeat discovery or failed requests without new evidence',
     'Preserve incomplete results and scope qualifications',
     'For direct callers or references, use the matching relation',
     'Copy its issued `ref` unchanged',
-    'When you read or examine source files, reuse paths from returned evidence or file listings',
-    'If evidence supplies exact paths, examine those paths directly',
+    'Reuse paths from returned evidence or file listings',
     'Do not enumerate the repository for supplied paths',
-    'If a needed path is unknown, find it within the known scope before you read it',
-    'Batch independent source reads with bounded output that keeps the evidence needed for the answer',
+    'Find unknown paths within the known scope before reads',
+    'Batch independent reads with bounded output and the needed evidence',
     'filter large structured results before `text()` or `store()`',
     'Keep original source line numbers and evidence qualifications',
+    'chain discovery, exact selection, and reference expansion in one code call',
+    'Keep successful intermediate results inside that call',
+    'Expose task findings with scope, completion, omissions, and recovery facts',
+    'Do not omit requested matches or hide failures to reduce tokens',
+    'Remove duplicate paths and reuse unchanged source reads',
+    'Discard cached source evidence after a source change or freshness rejection',
+    'Read only the needed schema section or named example for unfamiliar shapes',
+    'Compact rows and canonical rows can differ',
   ]) assert.ok(prompt.includes(clause), clause);
   assert.ok(Buffer.byteLength(prompt.slice('base\n\n'.length) + '\n') <= 8192);
   assert.deepEqual(f.notifications, []);
 });
 
-test('Pi inventory example projects a large structured Bash result before display', () => {
-  const brief = readFileSync(new URL('../../../../agent-tools/references/onboarding.md', import.meta.url), 'utf8');
-  const example = brief.match(/```javascript\n([\s\S]*?)\n```/);
+test('Pi inventory reference projects a large structured Bash result before display', () => {
+  const reference = readFileSync(new URL('../../../../agent-tools/README.md', import.meta.url), 'utf8');
+  const example = reference.match(/```javascript\n([\s\S]*?)\n```/);
   assert.ok(example, 'missing executable inventory projection example');
   const directoryPrefix = 'selected/src/main/';
   const selected = Array.from({ length: 21 }, (_, i) => directoryPrefix + 'File' + i + '.kt');
@@ -127,9 +133,9 @@ test('Pi inventory example projects a large structured Bash result before displa
   }
 });
 
-test('Pi inventory example withholds paths cut by upstream byte clipping', () => {
-  const brief = readFileSync(new URL('../../../../agent-tools/references/onboarding.md', import.meta.url), 'utf8');
-  const example = brief.match(/```javascript\n([\s\S]*?)\n```/);
+test('Pi inventory reference withholds paths cut by upstream byte clipping', () => {
+  const reference = readFileSync(new URL('../../../../agent-tools/README.md', import.meta.url), 'utf8');
+  const example = reference.match(/```javascript\n([\s\S]*?)\n```/);
   assert.ok(example);
   const directoryPrefix = 'selected/src/main/';
   const exactPath = directoryPrefix + 'BoundaryCrossingName.kt';

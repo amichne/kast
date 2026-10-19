@@ -2,40 +2,56 @@
 
 For Kotlin code understanding in this exact workspace, use Kast as the first semantic step when its tools are reachable and support the task.
 Use `query_symbols` for declaration identity, callers, references, implementations, and affected uses; use `check_diagnostics` for compiler diagnostics.
-Read files for task context, implementation details, and to interpret the returned evidence.
-When you read or examine source files, reuse paths from returned evidence or file listings.
-If evidence supplies exact paths, examine those paths directly.
+Read source to interpret evidence and answer unresolved questions.
+Reuse paths from returned evidence or file listings.
+
 Do not enumerate the repository for supplied paths.
-If a needed path is unknown, find it within the known scope before you read it.
-Batch independent source reads with bounded output that keeps the evidence needed for the answer.
-In Pi `codemode`, filter large structured results before `text()` or `store()`. Keep only needed identifiers or summaries.
+Find unknown paths within the known scope before reads.
+Apply the task's source-set and path exclusions before each read batch.
+Remove duplicate paths and reuse unchanged source reads.
+Discard cached source evidence after a source change or freshness rejection.
+
+Batch independent reads with bounded output and the needed evidence.
+Keep the read batch within the remaining tool allowance.
 Keep original source line numbers and evidence qualifications.
-Documentation, configuration, shell work, and other tasks without a Kotlin semantic question need no Kast call.
+Tasks without a Kotlin semantic question need no Kast call.
 
-For an existing Bash inventory, `directoryPrefix` must end with `/`:
+In a supported host, chain discovery, exact selection, and reference expansion in one code call.
+Keep successful intermediate results inside that call.
+Expose task findings with scope, completion, omissions, and recovery facts.
+Do not omit requested matches or hide failures to reduce tokens.
+Ambiguous selection needs a qualified stop, never the first overload.
+Stop when evidence answers the task.
 
-```javascript
-const { exit_code, truncated } = result;
-if (exit_code !== 0 || truncated !== false) {
-  text({ exit_code, truncated, counts: "UNAVAILABLE" });
-} else {
-  const matches = result.output.split("\n").filter(path => path.startsWith(directoryPrefix));
-  const paths = matches.slice(0, 20);
-  text({ exit_code, truncated, matchCount: matches.length, omittedCount: matches.length - paths.length, paths });
-}
-```
+In Pi `codemode`, filter large structured results before `text()` or `store()`.
+Use local variables for one chain and `store()`/`load()` for bounded reuse across calls.
+Keep needed issued references with their identity, freshness, and completion evidence.
 
-Counts cover only supplied output. Failed or truncated inventories have no path or count claims.
+Read the host's declared result shape before field access.
+Compact rows and canonical rows can differ.
+Use `verbose:true` when code needs canonical rows.
+Failed or truncated inventories grant no path or count claims.
+
+A complete relation answers its declared semantics and scope.
+Source-use questions can also need inspection of imports, companion qualifiers, and unmatched source sites.
+Resolve those sites before a complete source-use answer.
 
 If the needed tool schema is already available, use it directly.
-Otherwise, discover the needed Kast tool once through the host's enabled tool discovery surface and obey its installed schema.
-In Pi, follow the `mcp_servers` section: `codemode` exposure uses `searchTools` and `describeTool` inside `codemode`; deferred exposure uses `tool_search`.
-Registration alone does not make a tool reachable when those host extensions are disabled.
-Kast prepares the existing IntelliJ IDEA project. Preparation can save editor buffers and refresh the imported project.
-Tool registration and schema admission do not prove semantic readiness.
-Let the first useful operation establish readiness; do not add a probe call solely to satisfy this guidance.
-If tools are unavailable, the workspace is not ready, or the requested scope is unsupported, continue with ordinary reading and state the limitation.
-Do not repeat discovery or retry the same failed request without new evidence or a changed prerequisite.
+Otherwise, discover the needed Kast tool once through the host's enabled discovery surface.
+Obey its installed schema.
+Read only the needed schema section or named example for unfamiliar shapes.
+
+In Pi, obey the `mcp_servers` section.
+For `codemode` exposure, use `searchTools` and `describeTool` inside `codemode`.
+For deferred exposure, use `tool_search`.
+Disabled host extensions can prevent tool access.
+
+Preparation can save editor buffers and refresh the imported project.
+Registration and schema admission do not prove semantic readiness.
+Let the first useful operation establish readiness without a probe call.
+If tools, readiness, or scope prevent a query, use ordinary reads and state the limitation.
+
+Do not repeat discovery or failed requests without new evidence or a changed prerequisite.
 Preserve incomplete results and scope qualifications; they do not prove that no callers or references exist.
 Public tool contract: `{{CONTRACT_VERSION}}`. If schemas differ, use the installed tool schema.
 
@@ -45,24 +61,23 @@ Minimal interface query:
 {{INTERFACE_QUERY}}
 ```
 
-- Start with `request.type=RUN` and `request.source.type=SEARCH_DECLARATIONS`.
-- `declarationName` is a simple name, such as `OrderRepository`. `nameMatch` is an `enum`: `{{NAME_MATCH}}`. Omission means case-sensitive `EXACT`.
-- `declarationKinds` is an array of `{{DECLARATION_KINDS}}`. Use `CLASS` for interfaces, classes, objects, `enum` classes, and annotation classes. `INTERFACE` is invalid.
-- Prefer `scope.type=DIRECTORY` for a known module or source directory. `relativeDirectoryPath` is workspace-relative. Use `.` for the root.
-- Prefer `scope.type=PACKAGE` for a known Kotlin package. `packageName` uses dots, such as `com.example.orders`. A package is independent of its directory.
-- Directory paths cannot be absolute paths, files, globs, or parent traversal. `includeSubdirectories` and `includeSubpackages` are booleans with default `true`.
-- `sourceSetNames` is an array of exact imported Gradle names, such as `main`, `test`, or `commonMain`. Omission selects `main` and `test`.
-- Apply known name, kind, scope, and source-set constraints before discovery. Empty and duplicate kind or source-set arrays reject.
-- `output.type=SYMBOLS` accepts `fields` from `{{SYMBOL_FIELDS}}`. Fields select returned content, not eligible declarations.
-- Select the declaration by location and signature. Copy its issued `ref` unchanged into `source.type=SYMBOL_REFS`, with `symbolRefs:[ref]`.
+- `declarationName` is a simple name. `nameMatch` accepts `{{NAME_MATCH}}`. Omission means case-sensitive `EXACT`.
+- `declarationKinds` accepts `{{DECLARATION_KINDS}}`. Use `CLASS` for interfaces, objects, `enum` classes, annotation classes, and other classes. `INTERFACE` is invalid.
+- For a known directory, use `scope.type=DIRECTORY` with workspace-relative `relativeDirectoryPath`. Use `.` for the root.
+- For a known package, use `scope.type=PACKAGE` with dotted `packageName`, independent of its directory.
+- Directory paths exclude absolute paths, files, globs, and parent traversal. Descendant inclusion defaults to `true`.
+- `sourceSetNames` accepts exact imported Gradle names, such as `main`, `test`, or `commonMain`. Omission selects `main` and `test`.
+- Apply known name, kind, scope, and source-set constraints before discovery. Empty or duplicate kind and source-set arrays reject.
+- For `SYMBOLS`, `fields` selects `{{SYMBOL_FIELDS}}` without filtering eligible declarations.
+- Select the exact owner, receiver, location, and signature. Copy its issued `ref` unchanged into `source.type=SYMBOL_REFS`, with `symbolRefs:[ref]`.
 - For direct callers or references, use the matching relation. Use terminal `TRACE` when the task needs wider affected uses, including implementations and another caller layer.
-- Keep expansion within the task's needed scope. `expansionScope.type=WORKSPACE` includes clients across modules. Discovery scope only selects seeds.
+- Discovery scope selects seeds. Expansion scope selects destinations. `expansionScope.type=WORKSPACE` includes clients across modules.
 - Relation enums are `{{RELATIONS}}`. Read the schema before other steps or output variants.
-- `executionBudget` uses numeric limits. The host can reduce the grant. Preserve `COMPLETE_ONLY` rejection and recovery evidence.
-- `retention=RETAIN` keeps result evidence for later reads. `READ_RESULT` uses an issued result reference and cursors.
+- The host can reduce the numeric `executionBudget` grant. Preserve `COMPLETE_ONLY` rejection and recovery evidence.
+- `retention=RETAIN` keeps evidence for `READ_RESULT` with an issued result reference and cursors.
 - `RESUME` only presents produced output with an issued `query-output:v1` token. `READ_SOURCE` needs an issued candidate selector.
 - Never invent references, exchange token families, or resubmit a query to recover lost output.
-- `check_diagnostics.relativePath` is a workspace-relative file or directory. Changes need the user's request and an issued `exactTarget`.
+- Diagnostic paths are workspace-relative. Changes need the user's request and an issued `exactTarget`.
 
-Read the absolute reference paths supplied with this brief for the full schema and a JSON array of named examples.
-Examples teach argument shapes. Placeholder references do not grant source access or semantic authority.
+The supplied paths name the schema and examples for on-demand reads.
+Placeholder references grant no source access or semantic authority.

@@ -50,6 +50,25 @@ class PublicQueryGenerationTest(unittest.TestCase):
         for relative in ("copilot/extension.mjs", "pi/extension.ts"):
             self.assertIn("const PUBLIC_TOOL_CONTRACT_VERSION = 37;", generated[ROOT / relative])
 
+    def test_workflow_description_projects_to_registry_and_provider_catalogs(self):
+        # Mutate metadata independently of parameter and response schemas.
+        tool = self.authority["tools"][0]
+        description = 'Workflow "scope" \\ unchanged identities and qualified stops.'
+        tool["description"] = description
+        generated = generator.render_tools(self.authority)
+        registry = generated[ROOT / "protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt"]
+        self.assertIn(generator.kotlin_description_literals(description), registry)
+        app_server = json.loads(generated[generator.RESOURCES / "tools.app-server.json"])
+        projected = next(item for item in app_server["tools"] if item["name"] == tool["name"])
+        self.assertEqual(description, projected["description"])
+        responses = json.loads(generated[generator.RESOURCES / "tools.responses.json"])
+        projected = next(item for item in responses if item["name"] == "kast_" + tool["name"])
+        self.assertEqual(description, projected["description"])
+        self.assertEqual(
+            json.loads((generator.RESOURCES / "query_symbols.parameters.json").read_text()),
+            json.loads(generated[generator.RESOURCES / "query_symbols.parameters.json"]),
+        )
+
     def test_query_parameters_share_impact_identity_and_range_schemas(self):
         generated = generator.render_tools(self.authority)
         parameters = json.loads(generated[generator.RESOURCES / "query_symbols.parameters.json"])

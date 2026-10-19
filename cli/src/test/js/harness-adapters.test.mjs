@@ -240,6 +240,7 @@ for (const harness of ['copilot', 'pi']) {
     for (const tool of loaded.registered) {
       const original = catalog.catalog.tools.find(t => t.name === tool.name);
       assert.deepEqual(JSON.parse(JSON.stringify(tool.parameters)), original.inputSchema);
+      assert.ok(tool.description.startsWith(original.description), `${tool.name} keeps the source-owned description`);
       if (harness === 'copilot') assert.equal(tool.skipPermission, undefined, `${original.effect} ${tool.name} must retain host permission policy`);
     }
     const query = loaded.registered.find(t => t.name === 'query_symbols');
