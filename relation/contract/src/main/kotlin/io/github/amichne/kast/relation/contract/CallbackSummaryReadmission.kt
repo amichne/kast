@@ -32,6 +32,8 @@ sealed interface CallbackSummaryReadmissionFailure {
 
     data class ImmutableValue(val cause: ImmutableCallbackValueFailure) : CallbackSummaryReadmissionFailure
 
+    data class ImmutableFlow(val cause: ImmutableCallbackInvocationFlowFailure) : CallbackSummaryReadmissionFailure
+
     data class Factory(val cause: CallbackFactoryReturnFailure) : CallbackSummaryReadmissionFailure
 
     data class FactoryBody(val cause: CallbackFactoryBodyFailure) : CallbackSummaryReadmissionFailure

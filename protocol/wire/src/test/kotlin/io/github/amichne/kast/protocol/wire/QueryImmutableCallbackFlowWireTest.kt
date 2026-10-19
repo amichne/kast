@@ -22,7 +22,7 @@ class QueryImmutableCallbackFlowWireTest {
         val direct = (admitted.uses.values.last() as QueryImmutableCallbackUseDocument.Direct).binding
         val wire = admitted.immutableFlowWire()
         val encoded = wireJson.encodeToJsonElement(QueryImmutableCallbackFlowWireDocument.serializer(), wire).jsonObject
-        assertEquals(setOf("source_value", "uses", "obligations", "scan"), encoded.keys)
+        assertEquals(setOf("source_value", "uses", "obligations", "scan", "owner_bindings"), encoded.keys)
         assertEquals(
             listOf(JsonPrimitive("UNUSED"), JsonPrimitive("DIRECT")),
             encoded.getValue("uses").jsonArray.map { it.jsonObject.getValue("type") },

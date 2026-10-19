@@ -13,6 +13,9 @@ internal class CallbackRetainedRecords<V>(
 
     fun owns(value: V): Boolean = records.containsKey(value)
 
+    fun <Reference : Any> ownsReference(reference: Reference, select: (V) -> Reference?): Boolean =
+        records.keys.any { select(it) === reference }
+
     fun admit(value: V): Refinement<Unit, CallbackInvocationFlowCause> =
         when (val admitted = retention.admit(footprint(value))) {
             is Refinement.Refined -> {

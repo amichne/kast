@@ -46,7 +46,9 @@ The scan states how far it searched the formal for call sites. A full scan can s
 
 Each parameter call keeps `forwardings`, even if the array is empty. Each hop names the source formal, supplied expression, and destination binding.
 
-`owner_bindings` keeps the supply and mapping of a nested anonymous owner. `callable_observations` records symbolic formal calls. It also records compiler targets without source.
+`owner_bindings` keeps the supply and mapping of a nested anonymous owner. Its `execution` field carries a recursive flow proof or an explicit unproved state. A complete owner route can discharge `NESTED_CALLBACK_EXECUTION`. Unknown effects, escapes, and exhausted grants remain explicit.
+
+`callable_observations` records symbolic formal calls. It also records compiler targets without source.
 
 ## Declared dependency effects
 
@@ -60,7 +62,7 @@ These kinds describe the declared contract. They do not count calls at runtime. 
 
 | Evidence | Limit |
 | --- | --- |
-| Nested callable owner | `NESTED_CALLBACK_EXECUTION` |
+| Unproved route for a nested callable owner | `NESTED_CALLBACK_EXECUTION` |
 | Library mapping | `EXTERNAL_CALLABLE` and `OUTSIDE_DOMAIN` |
 | Local initializer | `STORED_CALLBACK` |
 | Returned literal | `RETURNED_CALLBACK` |

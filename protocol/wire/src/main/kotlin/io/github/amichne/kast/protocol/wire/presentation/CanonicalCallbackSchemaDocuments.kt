@@ -7,6 +7,7 @@ import io.github.amichne.kast.protocol.wire.QueryCallbackFactoryBodyCallWireDocu
 import io.github.amichne.kast.protocol.wire.QueryCallbackFactoryBodyCallsWireDocument
 import io.github.amichne.kast.protocol.wire.QueryCallbackFactoryCaptureWireDocument
 import io.github.amichne.kast.protocol.wire.QueryCallbackFactoryWireDocument
+import io.github.amichne.kast.protocol.wire.QueryCallbackFlowWireDocument
 import io.github.amichne.kast.protocol.wire.QueryCallbackForwardingEvidenceWireDocument
 import io.github.amichne.kast.protocol.wire.QueryCallbackInvocationWireDocument
 import io.github.amichne.kast.protocol.wire.QueryCallbackParameterIdentityWireDocument
@@ -40,6 +41,7 @@ object CanonicalCallbackSchemaDocuments {
                 "callbackBody" to QueryCallbackBodyWireDocument.serializer(),
                 "callbackCallable" to QueryCallbackCallableWireDocument.serializer(),
                 "callbackBinding" to QueryCallbackBindingWireDocument.serializer(),
+                "callbackObservedFlow" to QueryCallbackFlowWireDocument.Observed.serializer(),
                 "callbackCompilerTarget" to
                     io.github.amichne.kast.protocol.wire.QueryExcludedCompilerTargetWireDocument.serializer(),
                 "callbackInvocation" to QueryCallbackInvocationWireDocument.serializer(),

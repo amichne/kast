@@ -263,6 +263,7 @@ private fun QueryImmutableCallbackUseDocument.Supplied.admitsSelectedSupply(
     body: QueryCallbackBodyDocument,
 ): Boolean {
     val binding = supplier.binding
+    if (summaryOwnerBindings.values.isNotEmpty() || summaryObligations.values.isNotEmpty()) return false
     if (binding.invocationOwner !is QueryCallbackBodyDocument.Named || binding.invocationOwner != body) return false
     if (!binding.invocationOccurrence.sameSite(occurrence)) return false
     return CallbackInvocationRouteProof(value.source.enclosing.basis, invocations.values, emptyList(), forwarding)

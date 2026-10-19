@@ -3,7 +3,15 @@ package io.github.amichne.kast.protocol.contract
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.DetachedVirtualFileUrl
 
-internal fun QueryCallbackFlowDocument.Observed.admitOwnerBindings(): Refinement<Unit, QueryCallbackDocumentFailure> {
+internal fun QueryCallbackFlowDocument.Observed.admitOwnerBindings(
+    depth: Int
+): Refinement<Unit, QueryCallbackDocumentFailure> {
+    if (depth == 0) {
+        when (val inventory = admitExecutionInventory()) {
+            is Refinement.Rejected -> return inventory
+            is Refinement.Refined -> Unit
+        }
+    }
     val owners =
         listOf(body) +
             invocations.values.map { it.owner } +
@@ -18,13 +26,22 @@ internal fun QueryCallbackFlowDocument.Observed.admitOwnerBindings(): Refinement
                 is QueryCallbackForwardingEvidenceDocument.ExhaustedGraph ->
                     forwarding.forwardings.values.map { it.target.invocationOwner }
             }
-    if (ownerBindings.values.map { it.body }.distinct().size != ownerBindings.values.size)
+    return ownerBindings.values.admitOwnerBindings(owners, obligations.values, basis, depth)
+}
+
+internal fun List<QueryCallbackBodyBindingDocument>.admitOwnerBindings(
+    owners: List<QueryCallbackBodyDocument>,
+    obligations: List<QueryCallbackFlowCauseDocument>,
+    basis: ImpactSemanticBasisDocument,
+    depth: Int,
+): Refinement<Unit, QueryCallbackDocumentFailure> {
+    if (map { it.body }.distinct().size != size)
         return Refinement.Rejected(QueryCallbackDocumentFailure.DUPLICATE_OWNER_BINDING)
-    for (owner in ownerBindings.values) {
+    for (owner in this) {
         if (owner.body !in owners) return Refinement.Rejected(QueryCallbackDocumentFailure.OWNER_BINDING_MISMATCH)
-        if (!obligations.values.containsAll(owner.obligations.values))
+        if (!obligations.containsAll(owner.obligations.values))
             return Refinement.Rejected(QueryCallbackDocumentFailure.MISSING_OBLIGATION)
-        when (val admitted = owner.admitOwnerBinding(basis)) {
+        when (val admitted = owner.admitOwnerBinding(basis, depth)) {
             is Refinement.Rejected -> return admitted
             is Refinement.Refined -> Unit
         }
@@ -33,17 +50,27 @@ internal fun QueryCallbackFlowDocument.Observed.admitOwnerBindings(): Refinement
 }
 
 private fun QueryCallbackBodyBindingDocument.admitOwnerBinding(
-    basis: ImpactSemanticBasisDocument
+    basis: ImpactSemanticBasisDocument,
+    depth: Int,
 ): Refinement<Unit, QueryCallbackDocumentFailure> {
     if (!body.validBody()) return Refinement.Rejected(QueryCallbackDocumentFailure.ANONYMOUS_IDENTITY_MISMATCH)
     if (
         obligations.values.distinct().size != obligations.values.size ||
-            QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION !in obligations.values
+            execution == QueryCallbackOwnerExecutionDocument.Unproven &&
+                QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION !in obligations.values
     )
         return Refinement.Rejected(QueryCallbackDocumentFailure.MISSING_OBLIGATION)
-    if (binding is QueryCallbackBindingDocument.Unavailable && binding.cause !in obligations.values)
+    if (
+        binding is QueryCallbackBindingDocument.Unavailable &&
+            binding.cause !in obligations.values &&
+            !execution.dischargesSupplyCause(binding.cause)
+    )
         return Refinement.Rejected(QueryCallbackDocumentFailure.MISSING_OBLIGATION)
-    return admitSupply(basis)
+    when (val supplied = admitSupply(basis)) {
+        is Refinement.Rejected -> return supplied
+        is Refinement.Refined -> Unit
+    }
+    return admitExecution(basis, depth)
 }
 
 private fun QueryCallbackBodyBindingDocument.admitSupply(

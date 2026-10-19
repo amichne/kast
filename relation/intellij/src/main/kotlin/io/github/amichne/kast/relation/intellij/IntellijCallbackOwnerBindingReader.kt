@@ -1,246 +1,123 @@
-@file:OptIn(org.jetbrains.kotlin.analysis.api.KaExperimentalApi::class)
-
 package io.github.amichne.kast.relation.intellij
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.relation.contract.CallbackArgumentBinding
 import io.github.amichne.kast.relation.contract.CallbackBindingEvidence
 import io.github.amichne.kast.relation.contract.CallbackBodyBinding
 import io.github.amichne.kast.relation.contract.CallbackBodySupply
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowFailure
+import io.github.amichne.kast.relation.contract.CallbackInvocationFlowRead
 import io.github.amichne.kast.relation.contract.RelationCallableBody
 import io.github.amichne.kast.relation.contract.RelationEndpoint
-import io.github.amichne.kast.relation.contract.ValueInvocation
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
-import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
-import org.jetbrains.kotlin.analysis.api.types.KaFunctionType
-import org.jetbrains.kotlin.psi.KtCallElement
-import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFunction
-import org.jetbrains.kotlin.psi.KtNamedFunction
 
-/** Maps a nested body's direct supply without enumerating or activating the receiving body. */
-internal class IntellijCallbackOwnerBindingReader(private val context: IntellijCallbackFlowContext) {
+/** Owner evidence uses the ordinary binding and flow readers under the original request allowances. */
+internal class IntellijCallbackOwnerBindingReader(
+    private val context: IntellijCallbackFlowContext,
+    private val summaries: CallbackParameterSummaries,
+) {
     fun read(
         literal: KtFunction,
         body: RelationCallableBody.Anonymous,
         enclosing: RelationEndpoint,
     ): Refinement<CallbackBodyBinding, CallbackInvocationFlowFailure> {
-        val obligations = linkedSetOf(CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION)
-        return when (val supply = classifyCallbackFunctionSupply(literal)) {
-            is IntellijCallbackLambdaSupply.Argument -> readArgument(supply, body, enclosing, obligations)
-            is IntellijCallbackLambdaSupply.DefaultParameter ->
-                readDeclared(
-                    body,
-                    CallbackBodySupply.DefaultParameter(
-                        context.occurrence(supply.parameter)
-                            ?: return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
-                    ),
-                    IntellijCallbackDeclaredSupplyReader(context).prepareDefault(supply),
-                    obligations,
-                )
-            is IntellijCallbackLambdaSupply.Invocation ->
-                readDeclared(
-                    body,
-                    CallbackBodySupply.DirectInvocation(
-                        context.occurrence(supply.call.valueInvocationExpression())
-                            ?: return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
-                    ),
-                    IntellijCallbackDeclaredSupplyReader(context).prepareDirect(supply),
-                    obligations,
-                )
-            is IntellijCallbackLambdaSupply.Returned -> unavailableSource(body, supply, obligations)
-            IntellijCallbackLambdaSupply.Stored ->
-                unavailable(body, CallbackBodySupply.Stored, CallbackInvocationFlowCause.STORED_CALLBACK, obligations)
-            IntellijCallbackLambdaSupply.Unsupported ->
-                unavailable(
-                    body,
-                    CallbackBodySupply.Unsupported,
-                    CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY,
-                    obligations,
-                )
-        }
-    }
-
-    private fun readDeclared(
-        body: RelationCallableBody.Anonymous,
-        supply: CallbackBodySupply,
-        read: CallbackBindingPreparation,
-        obligations: Set<CallbackInvocationFlowCause>,
-    ): Refinement<CallbackBodyBinding, CallbackInvocationFlowFailure> =
-        when (read) {
-            is CallbackBindingPreparation.DeferredDependency ->
-                CallbackBodyBinding.fromCompiler(
-                    body = body,
-                    supply = supply,
-                    binding = CallbackBindingEvidence.DeferredDependency(read.binding),
-                    obligations = obligations,
-                )
-            is CallbackBindingPreparation.DependencyContract ->
-                CallbackBodyBinding.fromCompiler(
-                    body,
-                    supply,
-                    CallbackBindingEvidence.DependencyContract(read.binding),
-                    obligations,
-                )
-            is CallbackBindingPreparation.Direct ->
-                CallbackBodyBinding.fromCompiler(
-                    body,
-                    supply,
-                    CallbackBindingEvidence.Direct(read.binding),
-                    obligations,
-                )
-            is CallbackBindingPreparation.Prepared ->
-                CallbackBodyBinding.fromCompiler(body, supply, read.value.binding, obligations)
-            is CallbackBindingPreparation.ContractRejected -> Refinement.Rejected(read.cause)
-            is CallbackBindingPreparation.Unavailable -> unavailable(body, supply, read.cause, obligations)
-        }
-
-    private fun readArgument(
-        argument: IntellijCallbackLambdaSupply.Argument,
-        body: RelationCallableBody.Anonymous,
-        enclosing: RelationEndpoint,
-        obligations: MutableSet<CallbackInvocationFlowCause>,
-    ): Refinement<CallbackBodyBinding, CallbackInvocationFlowFailure> {
-        val call =
-            supplyingCallbackCall(argument.argument)
-                ?: return unavailable(
-                    body,
-                    CallbackBodySupply.Unsupported,
-                    CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY,
-                    obligations,
-                )
-        val occurrence =
-            context.occurrence(call.valueInvocationExpression())
+        val lexicalOwner =
+            (enclosing as? RelationEndpoint.Resolved)?.evidence
                 ?: return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
-        val supply = CallbackBodySupply.Invocation(occurrence)
-        val bound =
-            when (val permitted = context.permit()) {
-                is Refinement.Rejected -> Refinement.Rejected(permitted.failure)
-                is Refinement.Refined -> binding(call, argument.expression, enclosing, obligations)
-            }
-        return when (bound) {
-            is Refinement.Refined ->
-                CallbackBodyBinding.fromCompiler(body, supply, CallbackBindingEvidence.Bound(bound.value), obligations)
-            is Refinement.Rejected -> unavailable(body, supply, bound.failure, obligations)
-        }
-    }
-
-    private fun unavailableSource(
-        body: RelationCallableBody.Anonymous,
-        supply: IntellijCallbackLambdaSupply.Returned,
-        obligations: Set<CallbackInvocationFlowCause>,
-    ): Refinement<CallbackBodyBinding, CallbackInvocationFlowFailure> {
-        val occurrence =
-            context.occurrence(supply.occurrence)
-                ?: return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
-        return unavailable(
-            body,
-            CallbackBodySupply.Returned(occurrence),
-            CallbackInvocationFlowCause.RETURNED_CALLBACK,
-            obligations,
-        )
-    }
-
-    private fun binding(
-        call: KtCallElement,
-        expression: KtExpression,
-        enclosing: RelationEndpoint,
-        obligations: MutableSet<CallbackInvocationFlowCause>,
-    ): Refinement<CallbackArgumentBinding, CallbackInvocationFlowCause> {
-        val mapped =
-            when (val result = nativeArgumentBinding(call, expression, context.observation)) {
-                is Refinement.Refined -> result.value
-                is Refinement.Rejected -> return Refinement.Rejected(result.failure.flowCause())
-            }
-        val function =
-            mapped.declaration as? KtNamedFunction
-                ?: return Refinement.Rejected(CallbackInvocationFlowCause.EXTERNAL_CALLABLE)
-        when (val admitted = admission(function)) {
-            is Refinement.Refined -> Unit
-            is Refinement.Rejected -> obligations += admitted.failure
-        }
-        val target =
-            when (val result = context.bindingTarget(function)) {
-                is Refinement.Refined -> result.value
-                is Refinement.Rejected -> return result
-            }
-        if (target.file !is SymbolDiscoveryFileIdentity.Workspace)
-            return Refinement.Rejected(CallbackInvocationFlowCause.EXTERNAL_CALLABLE)
-        return detachBinding(call, enclosing, target, mapped)
-    }
-
-    private fun detachBinding(
-        call: KtCallElement,
-        enclosing: RelationEndpoint,
-        target: RelationEndpoint,
-        mapped: NativeArgument,
-    ): Refinement<CallbackArgumentBinding, CallbackInvocationFlowCause> {
-        val function = mapped.declaration as KtNamedFunction
-        val nativeParameter =
-            function.valueParameters.getOrNull(mapped.position.value)
-                ?: return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
-        if (
-            !context.observation.observedAnalyze(nativeParameter) {
-                nativeParameter.symbol.returnType is KaFunctionType
-            }
-        )
-            return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
-        val parameter =
-            context.occurrence(nativeParameter)
-                ?: return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
-        val owner =
-            context.owner(call)
-                ?: return Refinement.Rejected(CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE)
-        val range =
-            context.range(call.valueInvocationExpression())
-                ?: return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
-        val invocation =
-            when (val result = ValueInvocation.fromCompiler(enclosing, range, target)) {
-                is Refinement.Refined -> result.value
-                is Refinement.Rejected ->
-                    return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
-            }
+        val supply = supply(literal) ?: return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
         return when (
-            val result =
-                CallbackArgumentBinding.fromCompiler(
-                    invocation = invocation,
-                    invocationOwner = owner,
-                    position = mapped.position,
-                    parameter = parameter,
-                )
+            val read =
+                NativeCallbackInvocationFlow(
+                        context = context,
+                        lexicalOwner = lexicalOwner,
+                        summaries = summaries,
+                        literal = literal,
+                        body = body,
+                    )
+                    .read()
         ) {
-            is Refinement.Refined -> result
-            is Refinement.Rejected -> Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+            is CallbackInvocationFlowRead.Observed -> {
+                val binding =
+                    when (
+                        val admitted =
+                            CallbackBodyBinding.fromCompiler(
+                                body = body,
+                                supply = supply,
+                                binding = read.flow.binding,
+                                obligations =
+                                    read.flow.obligations + CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION,
+                            )
+                    ) {
+                        is Refinement.Refined -> admitted.value
+                        is Refinement.Rejected -> return admitted
+                    }
+                binding.withExecution(read.flow)
+            }
+            is CallbackInvocationFlowRead.Unavailable -> unavailable(body, supply, read.cause)
+            is CallbackInvocationFlowRead.ContractRejected -> Refinement.Rejected(read.cause)
+            is CallbackInvocationFlowRead.Immutable -> {
+                val owner =
+                    when (val admitted = RelationCallableBody.Named.fromCompiler(lexicalOwner)) {
+                        is Refinement.Refined -> admitted.value
+                        is Refinement.Rejected ->
+                            return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
+                    }
+                val cause = unavailableCause(supply, CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY)
+                when (val admitted = unavailable(body, supply, cause)) {
+                    is Refinement.Refined -> admitted.value.withExecution(read.flow, owner)
+                    is Refinement.Rejected -> admitted
+                }
+            }
         }
     }
 
-    private fun admission(function: KtNamedFunction): Refinement<Unit, CallbackInvocationFlowCause> {
-        val file =
-            function.containingFile.virtualFile
-                ?: return Refinement.Rejected(CallbackInvocationFlowCause.EXTERNAL_CALLABLE)
-        if (!context.scope.nativeScope.contains(file))
-            return Refinement.Rejected(CallbackInvocationFlowCause.OUTSIDE_DOMAIN)
-        return when (context.scope.constraints.packageName.admitPackage { function.relationPackageEvidence() }) {
-            IntellijRelationPackageAdmission.ADMITTED -> Refinement.Refined(Unit)
-            IntellijRelationPackageAdmission.OUTSIDE_SCOPE ->
-                Refinement.Rejected(CallbackInvocationFlowCause.OUTSIDE_DOMAIN)
-            IntellijRelationPackageAdmission.UNSUPPORTED ->
-                Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
-        }
+    fun readUnavailable(
+        literal: KtFunction,
+        body: RelationCallableBody.Anonymous,
+        cause: CallbackInvocationFlowCause,
+    ): Refinement<CallbackBodyBinding, CallbackInvocationFlowFailure> {
+        val supply = supply(literal) ?: return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
+        return unavailable(body, supply, cause)
     }
+
+    private fun supply(literal: KtFunction): CallbackBodySupply? =
+        when (val supply = classifyCallbackFunctionSupply(literal)) {
+            is IntellijCallbackLambdaSupply.Argument ->
+                supplyingCallbackCall(supply.argument)
+                    ?.valueInvocationExpression()
+                    ?.let(context::occurrence)
+                    ?.let(CallbackBodySupply::Invocation)
+            is IntellijCallbackLambdaSupply.DefaultParameter ->
+                context.occurrence(supply.parameter)?.let(CallbackBodySupply::DefaultParameter)
+            is IntellijCallbackLambdaSupply.Invocation ->
+                context.occurrence(supply.call.valueInvocationExpression())?.let(CallbackBodySupply::DirectInvocation)
+            is IntellijCallbackLambdaSupply.Returned ->
+                context.occurrence(supply.occurrence)?.let(CallbackBodySupply::Returned)
+            IntellijCallbackLambdaSupply.Stored -> CallbackBodySupply.Stored
+            IntellijCallbackLambdaSupply.Unsupported -> CallbackBodySupply.Unsupported
+        }
 
     private fun unavailable(
         body: RelationCallableBody.Anonymous,
         supply: CallbackBodySupply,
         cause: CallbackInvocationFlowCause,
-        obligations: Set<CallbackInvocationFlowCause>,
-    ) = CallbackBodyBinding.fromCompiler(body, supply, CallbackBindingEvidence.Unavailable(cause), obligations + cause)
+    ): Refinement<CallbackBodyBinding, CallbackInvocationFlowFailure> {
+        val bindingCause = unavailableCause(supply, cause)
+        return CallbackBodyBinding.fromCompiler(
+            body = body,
+            supply = supply,
+            binding = CallbackBindingEvidence.Unavailable(bindingCause),
+            obligations = setOf(cause, bindingCause, CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION),
+        )
+    }
 
-    private fun NativeArgumentBindingFailure.flowCause(): CallbackInvocationFlowCause =
-        when (this) {
-            NativeArgumentBindingFailure.EXTERNAL_CALL -> CallbackInvocationFlowCause.EXTERNAL_CALLABLE
-            NativeArgumentBindingFailure.UNRESOLVED_REFERENCE -> CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING
+    private fun unavailableCause(supply: CallbackBodySupply, cause: CallbackInvocationFlowCause) =
+        when (supply) {
+            CallbackBodySupply.Stored -> CallbackInvocationFlowCause.STORED_CALLBACK
+            is CallbackBodySupply.Returned -> CallbackInvocationFlowCause.RETURNED_CALLBACK
+            CallbackBodySupply.Unsupported -> CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY
+            is CallbackBodySupply.DefaultParameter,
+            is CallbackBodySupply.DirectInvocation,
+            is CallbackBodySupply.Invocation -> cause
         }
 }

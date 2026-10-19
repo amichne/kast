@@ -31,8 +31,16 @@ internal fun ImmutableCallbackInvocationFlow.projectImmutableFlow(
             is Refinement.Refined -> result.value
             is Refinement.Rejected -> return null
         }
+    val owners =
+        when (
+            val result = BoundedProtocolList.create(ownerBindings.map { projection.ownerBinding(it) ?: return null })
+        ) {
+            is Refinement.Refined -> result.value
+            is Refinement.Rejected -> return null
+        }
     return when (
-        val result = QueryImmutableCallbackFlowDocument.create(root, projected, causes, scan.protocolCallbackDocument())
+        val result =
+            QueryImmutableCallbackFlowDocument.create(root, projected, causes, scan.protocolCallbackDocument(), owners)
     ) {
         is Refinement.Refined -> result.value
         is Refinement.Rejected -> null
@@ -57,6 +65,24 @@ internal fun ImmutableCallbackInvocationUse.projectUse(
                     is Refinement.Rejected -> return null
                 },
                 projection.forwardingEvidence(summary.forwarding) ?: return null,
+                when (
+                    val result =
+                        BoundedProtocolList.create(
+                            summary.ownerBindings.map { projection.ownerBinding(it) ?: return null }
+                        )
+                ) {
+                    is Refinement.Refined -> result.value
+                    is Refinement.Rejected -> return null
+                },
+                when (
+                    val result =
+                        BoundedProtocolList.create(
+                            summary.obligations.sortedBy { it.ordinal }.map { it.protocolCallbackDocument() }
+                        )
+                ) {
+                    is Refinement.Refined -> result.value
+                    is Refinement.Rejected -> return null
+                },
             )
     }
 }

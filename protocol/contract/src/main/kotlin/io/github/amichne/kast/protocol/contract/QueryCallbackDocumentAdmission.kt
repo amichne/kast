@@ -47,17 +47,25 @@ private fun QueryCallbackObservationDocument.admitImmutableDomain(
 
 private fun QueryCallbackObservationDocument.admitFlow(
     flow: QueryCallbackFlowDocument.Observed
-): Refinement<Unit, QueryCallbackDocumentFailure> =
-    when (val owners = flow.admitOwnerBindings()) {
-        is Refinement.Rejected -> owners
-        is Refinement.Refined -> admitObservedFlow(flow)
-    }
-
-private fun QueryCallbackObservationDocument.admitObservedFlow(
-    flow: QueryCallbackFlowDocument.Observed
 ): Refinement<Unit, QueryCallbackDocumentFailure> {
-    if (!flow.body.validBody()) return rejected(QueryCallbackDocumentFailure.ANONYMOUS_IDENTITY_MISMATCH)
     if (!flow.body.occurrence.sameSite(callbackBody)) return rejected(QueryCallbackDocumentFailure.FLOW_BODY_MISMATCH)
+    when (val admitted = flow.admitObservedFlow(0)) {
+        is Refinement.Rejected -> return admitted
+        is Refinement.Refined -> Unit
+    }
+    if (!flow.admitsFactoryPolicy(effectiveDomain)) return rejected(QueryCallbackDocumentFailure.INVALID_SCAN_PROOF)
+    return flow.admitLexicalSupplier(lexicalOwner)
+}
+
+internal fun QueryCallbackFlowDocument.Observed.admitObservedFlow(
+    depth: Int
+): Refinement<Unit, QueryCallbackDocumentFailure> {
+    val flow = this
+    if (!flow.body.validBody()) return rejected(QueryCallbackDocumentFailure.ANONYMOUS_IDENTITY_MISMATCH)
+    when (val owners = flow.admitOwnerBindings(depth)) {
+        is Refinement.Rejected -> return owners
+        is Refinement.Refined -> Unit
+    }
     when (val inventory = flow.admitInvocationInventory()) {
         is Refinement.Rejected -> return inventory
         is Refinement.Refined -> Unit
@@ -148,26 +156,26 @@ private fun QueryCallbackBindingDocument.Unavailable.admitUnavailable(
         rejected(QueryCallbackDocumentFailure.MISSING_OBLIGATION)
     else Refinement.Refined(Unit)
 
-private fun QueryCallbackObservationDocument.admitBinding(
+private fun admitBinding(
     flow: QueryCallbackFlowDocument.Observed,
     bound: QueryCallbackBindingDocument.Bound,
 ): Refinement<Unit, QueryCallbackDocumentFailure> {
-    if (
-        !bound.invocationOwner.isReceivingCallable(lexicalOwner) &&
-            QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION !in flow.obligations.values
-    )
-        return rejected(QueryCallbackDocumentFailure.MISSING_OBLIGATION)
     val supplyingOwner =
         when (val owner = bound.invocationOwner.admitOwner()) {
             is Refinement.Rejected -> return owner
             is Refinement.Refined -> owner.value
         }
-    if (!supplyingOwner.contains(bound.invocationOccurrence) || !lexicalOwner.declaration.contains(supplyingOwner))
+    if (!supplyingOwner.contains(bound.invocationOccurrence))
         return rejected(QueryCallbackDocumentFailure.INVOCATION_OWNER_MISMATCH)
+    if (
+        bound.invocationOwner is QueryCallbackBodyDocument.Anonymous &&
+            !flow.admitsExecutionOwner(bound.invocationOwner)
+    )
+        return rejected(QueryCallbackDocumentFailure.MISSING_OBLIGATION)
     val signature =
         bound.callable.compilerTarget.compilerEvidence.signature as? CompilerCallableSignatureDocument
             ?: return rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
-    if (!bound.validCallableMapping(flow.basis) || !validBindingSites(bound))
+    if (!bound.validCallableMapping(flow.basis) || !flow.validBindingSites(bound))
         return rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
     if (bound.position.value !in signature.valueParameters.values.indices)
         return rejected(QueryCallbackDocumentFailure.PARAMETER_POSITION_MISMATCH)
@@ -185,11 +193,10 @@ internal fun QueryCallbackBindingDocument.Bound.validCallableMapping(basis: Impa
         invocationCallable.range.end == target.range.endExclusive
 }
 
-private fun QueryCallbackObservationDocument.validBindingSites(bound: QueryCallbackBindingDocument.Bound): Boolean =
+private fun QueryCallbackFlowDocument.Observed.validBindingSites(bound: QueryCallbackBindingDocument.Bound): Boolean =
     bound.invocation.range.start == bound.invocationOccurrence.range.startInclusive &&
         bound.invocation.range.end == bound.invocationOccurrence.range.endExclusive &&
-        bound.invocationOccurrence.contains(callbackBody) &&
-        lexicalOwner.declaration.contains(bound.invocationOccurrence) &&
+        bound.invocationOccurrence.contains(body.occurrence) &&
         bound.callable.declaration.contains(bound.parameter)
 
 internal fun QueryCallbackBodyDocument.admitOwner():
@@ -225,7 +232,7 @@ private fun admitDefaultFlow(
     return flow.admitParameterInvocations(binding.parameter, binding.parameter.callable.reference(flow.basis))
 }
 
-private fun QueryCallbackObservationDocument.admitDirectFlow(
+private fun admitDirectFlow(
     flow: QueryCallbackFlowDocument.Observed,
     binding: QueryCallbackBindingDocument.Direct,
 ): Refinement<Unit, QueryCallbackDocumentFailure> {
@@ -236,14 +243,13 @@ private fun QueryCallbackObservationDocument.admitDirectFlow(
         }
     if (binding.basis != flow.basis || !binding.occurrence.contains(flow.body.occurrence))
         return rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
-    if (!owner.contains(binding.occurrence) || !lexicalOwner.declaration.contains(owner))
-        return rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
-    if (flow.scan != QueryCallbackInvocationScanDocument.NOT_APPLICABLE || flow.invocations.values.isNotEmpty())
-        return rejected(QueryCallbackDocumentFailure.INVALID_SCAN_PROOF)
+    if (!owner.contains(binding.occurrence)) return rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
     if (
-        binding.owner is QueryCallbackBodyDocument.Anonymous &&
-            QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION !in flow.obligations.values
+        !flow.admitsOwnerExecutionScan(QueryCallbackInvocationScanDocument.NOT_APPLICABLE) ||
+            flow.invocations.values.isNotEmpty()
     )
+        return rejected(QueryCallbackDocumentFailure.INVALID_SCAN_PROOF)
+    if (binding.owner is QueryCallbackBodyDocument.Anonymous && !flow.admitsExecutionOwner(binding.owner))
         return rejected(QueryCallbackDocumentFailure.MISSING_OBLIGATION)
     return Refinement.Refined(Unit)
 }
@@ -305,7 +311,7 @@ private fun QueryCallbackObservationDocument.admitImmutableFlow(
     else Refinement.Refined(Unit)
 }
 
-private fun QueryCallbackObservationDocument.admitDeferredDependencyFlow(
+private fun admitDeferredDependencyFlow(
     flow: QueryCallbackFlowDocument.Observed,
     binding: QueryCallbackBindingDocument.DeferredDependency,
 ): Refinement<Unit, QueryCallbackDocumentFailure> {
@@ -321,14 +327,13 @@ private fun QueryCallbackObservationDocument.admitDeferredDependencyFlow(
             !owner.contains(binding.occurrence)
     )
         return rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
-    if (!lexicalOwner.declaration.contains(owner) || !binding.validDeferredDependencyTarget())
-        return rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
+    if (!binding.validDeferredDependencyTarget()) return rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
     if (flow.scan != QueryCallbackInvocationScanDocument.EXHAUSTIVE || flow.invocations.values.isNotEmpty())
         return rejected(QueryCallbackDocumentFailure.INVALID_SCAN_PROOF)
     return Refinement.Refined(Unit)
 }
 
-private fun QueryCallbackObservationDocument.admitDependencyContractFlow(
+private fun admitDependencyContractFlow(
     flow: QueryCallbackFlowDocument.Observed,
     binding: QueryCallbackBindingDocument.DependencyContract,
 ): Refinement<Unit, QueryCallbackDocumentFailure> {
@@ -343,14 +348,13 @@ private fun QueryCallbackObservationDocument.admitDependencyContractFlow(
             !owner.contains(binding.occurrence)
     )
         return rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
-    if (!lexicalOwner.declaration.contains(owner) || !binding.validDependencyContractTarget())
-        return rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
-    if (flow.scan != QueryCallbackInvocationScanDocument.EXHAUSTIVE || flow.invocations.values.isNotEmpty())
-        return rejected(QueryCallbackDocumentFailure.INVALID_SCAN_PROOF)
+    if (!binding.validDependencyContractTarget()) return rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
     if (
-        binding.owner is QueryCallbackBodyDocument.Anonymous &&
-            QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION !in flow.obligations.values
+        !flow.admitsOwnerExecutionScan(QueryCallbackInvocationScanDocument.EXHAUSTIVE) ||
+            flow.invocations.values.isNotEmpty()
     )
+        return rejected(QueryCallbackDocumentFailure.INVALID_SCAN_PROOF)
+    if (binding.owner is QueryCallbackBodyDocument.Anonymous && !flow.admitsExecutionOwner(binding.owner))
         return rejected(QueryCallbackDocumentFailure.MISSING_OBLIGATION)
     return Refinement.Refined(Unit)
 }

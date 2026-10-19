@@ -109,7 +109,8 @@ internal constructor(
     private val model: WorkspaceSearchScopeModelCompilation,
 ) {
     internal suspend fun read(
-        meaning: io.github.amichne.kast.relation.contract.RelationMeaning
+        meaning: io.github.amichne.kast.relation.contract.RelationMeaning,
+        observation: IntellijReadObservation = IntellijReadObservation.None,
     ): io.github.amichne.kast.relation.contract.RelationCompilation {
         val selected =
             com.intellij.openapi.application.readAction {
@@ -117,7 +118,7 @@ internal constructor(
                 val evidence = (projection.project(target) as IntellijRelationDeclarationProjection.Projected).evidence
                 reissuedNativeRelationRequest(request, evidence, meaning)
             }
-        return IntellijRelationCompilerQuery()
+        return IntellijRelationCompilerQuery(observation = observation)
             .read(
                 project = project,
                 currentLease = selected.subject.lease,

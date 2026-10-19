@@ -71,9 +71,56 @@ internal class CallbackEvidenceReadmission(private val endpoints: CallbackEndpoi
                 }
         }
 
-    private fun ownerBinding(previous: CallbackBodyBinding): CallbackReadmission<CallbackBodyBinding> =
+    fun ownerBinding(previous: CallbackBodyBinding): CallbackReadmission<CallbackBodyBinding> =
         binding(previous.binding).then { binding ->
-            CallbackBodyBinding.fromCompiler(previous.body, previous.supply, binding, previous.obligations).callback()
+            CallbackBodyBinding.fromCompiler(
+                    previous.body,
+                    previous.supply,
+                    binding,
+                    previous.obligations +
+                        CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION +
+                        listOfNotNull((binding as? CallbackBindingEvidence.Unavailable)?.cause),
+                )
+                .callback()
+                .then { owner ->
+                    when (val execution = previous.execution) {
+                        CallbackOwnerExecution.Unproven -> Refinement.Refined(owner)
+                        is CallbackOwnerExecution.Observed ->
+                            flow(execution.flow).then { owner.withExecution(it).callback() }
+                        is CallbackOwnerExecution.Immutable ->
+                            CallbackSupplierReadmission(endpoints).flow(execution.flow).then {
+                                owner.withExecution(it, execution.owner).callback()
+                            }
+                    }
+                }
+        }
+
+    private fun flow(previous: CallbackInvocationFlow): CallbackReadmission<CallbackInvocationFlow> =
+        binding(previous.binding).then { binding ->
+            readmitEach(previous.invocations, ::invocation).then { invocations ->
+                readmitEach(previous.ownerBindings, ::ownerBinding).then { owners ->
+                    forwarding(previous.forwarding).then { forwarding ->
+                        val obligations =
+                            if (
+                                callbackExecutionNeedsQualification(binding, invocations) ||
+                                    forwarding.needsQualification()
+                            )
+                                previous.obligations + CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION
+                            else previous.obligations
+                        CallbackInvocationFlow.fromCompiler(
+                                endpoints.authority.identity,
+                                previous.body,
+                                binding,
+                                invocations,
+                                obligations,
+                                previous.scan,
+                                forwarding,
+                            )
+                            .callback()
+                            .then { it.withOwnerBindings(owners).callback() }
+                    }
+                }
+            }
         }
 
     private fun binding(previous: CallbackBindingEvidence): CallbackReadmission<CallbackBindingEvidence> =

@@ -2,6 +2,7 @@ package io.github.amichne.kast.relation.intellij
 
 import com.intellij.psi.PsiElement
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.CallbackBodyBinding
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowFailure
 import io.github.amichne.kast.relation.contract.CallbackInvocationScan
@@ -45,11 +46,13 @@ internal class ImmutableCallbackEnumeration(
 ) {
     val pending = ArrayDeque<ImmutableCallbackPending>()
     val uses = mutableListOf<ImmutableCallbackInvocationUse>()
+    val owners = mutableListOf<CallbackBodyBinding>()
     val obligations = linkedSetOf<CallbackInvocationFlowCause>()
     var stopped = false
+    private var scan = CallbackInvocationScan.EXHAUSTIVE
 
     fun retain(use: ImmutableCallbackInvocationUse) {
-        when (val retained = summaries.retention.admit(use.value.retainedBytes)) {
+        when (val retained = summaries.retention.admitImmutableValue(use.value)) {
             is Refinement.Refined -> uses += use
             is Refinement.Rejected -> {
                 obligations += retained.failure
@@ -65,9 +68,9 @@ internal class ImmutableCallbackEnumeration(
         kind: ValueTransferKind,
         evidence: ValueTransferEvidence = ValueTransferEvidence.Direct,
     ) {
-        when (val transported = transport(item.value, target, kind, evidence)) {
+        when (val transported = transport(value = item.value, destination = target, kind = kind, evidence = evidence)) {
             is Refinement.Refined ->
-                when (val retained = summaries.retention.admit(transported.value.retainedBytes)) {
+                when (val retained = summaries.retention.admitImmutableValue(transported.value)) {
                     is Refinement.Refined ->
                         pending.add(ImmutableCallbackPending(next, transported.value, item.visited + item.expression))
                     is Refinement.Rejected -> {
@@ -121,29 +124,62 @@ internal class ImmutableCallbackEnumeration(
 
     fun obligation(cause: CallbackInvocationFlowCause): Refinement<Unit, CallbackInvocationFlowFailure> {
         obligations += cause
+        scan = CallbackInvocationScan.INCOMPLETE
         return Refinement.Refined(Unit)
     }
 
-    private fun complete(): Refinement<ImmutableCallbackInvocationFlow, CallbackInvocationFlowFailure> {
+    fun include(flow: ImmutableCallbackInvocationFlow) {
+        flow.uses.forEach(::retain)
+        obligations += flow.obligations
+        obligations +=
+            flow.uses.filterIsInstance<ImmutableCallbackInvocationUse.Supplied>().flatMap { it.summary.obligations }
+        if (
+            flow.uses.any {
+                it.executionOwner() is io.github.amichne.kast.relation.contract.RelationCallableBody.Anonymous
+            }
+        )
+            obligations += CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION
+        flow.ownerBindings.forEach { if (it !in owners) owners += it }
+        if (flow.scan != CallbackInvocationScan.EXHAUSTIVE) scan = CallbackInvocationScan.INCOMPLETE
+    }
+
+    fun complete(): Refinement<ImmutableCallbackInvocationFlow, CallbackInvocationFlowFailure> {
         val flow =
             ImmutableCallbackInvocationFlow.fromCompiler(
-                origin,
-                source,
-                uses.distinct(),
-                obligations,
-                if (obligations.isEmpty()) CallbackInvocationScan.EXHAUSTIVE else CallbackInvocationScan.INCOMPLETE,
+                origin = origin,
+                source = source,
+                uses = uses.distinct(),
+                obligations = obligations,
+                scan =
+                    if (
+                        scan == CallbackInvocationScan.EXHAUSTIVE &&
+                            obligations.all { it == CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION }
+                    )
+                        CallbackInvocationScan.EXHAUSTIVE
+                    else CallbackInvocationScan.INCOMPLETE,
+                ownerBindings = owners.filter { owner -> uses.any { it.executionOwner() == owner.body } },
             )
         return when (flow) {
             is Refinement.Refined -> {
                 flow.value.uses.filterIsInstance<ImmutableCallbackInvocationUse.Supplied>().forEach {
                     summaries.used(it.summary)
                 }
-                flow
+                when (val normalized = flow.value.withOwnerBindings(emptyList())) {
+                    is Refinement.Refined -> normalized
+                    is Refinement.Rejected -> Refinement.Rejected(normalized.failure.callbackFailure())
+                }
             }
             is Refinement.Rejected -> Refinement.Rejected(flow.failure.callbackFailure())
         }
     }
 }
+
+private fun ImmutableCallbackInvocationUse.executionOwner() =
+    when (this) {
+        is ImmutableCallbackInvocationUse.Direct -> binding.owner
+        is ImmutableCallbackInvocationUse.Supplied -> supplier.binding.invocationOwner
+        is ImmutableCallbackInvocationUse.Unused -> null
+    }
 
 internal fun ImmutableCallbackEnumeration.visitParent(
     item: ImmutableCallbackPending,
@@ -246,8 +282,7 @@ internal fun ImmutableCallbackEnumeration.default(
                         .readDefault(binding.value, item.value.origin, item.value)
             ) {
                 is Refinement.Refined -> {
-                    flow.value.uses.forEach(::retain)
-                    obligations += flow.value.obligations
+                    include(flow.value)
                 }
                 is Refinement.Rejected -> return flow
             }

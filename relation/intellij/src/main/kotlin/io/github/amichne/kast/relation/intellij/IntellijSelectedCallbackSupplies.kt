@@ -172,7 +172,7 @@ internal class IntellijSelectedCallbackSupplies(
             }
         val selection =
             if (argument.default) NativeCallbackSupplierSelection.DEFAULT else NativeCallbackSupplierSelection.EXPLICIT
-        val selected = NativeCallbackSupplierCall(binding, argument.expression, selection, lexicalOwner)
+        val selected = NativeCallbackSupplierCall(call, binding, argument.expression, selection, lexicalOwner)
         val values =
             when (val read = IntellijCallbackSupplierValues(context, summaries).read(selected, formal)) {
                 is Refinement.Refined -> read.value

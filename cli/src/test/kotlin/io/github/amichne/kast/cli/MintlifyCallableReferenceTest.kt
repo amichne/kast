@@ -3,6 +3,8 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.protocol.registry.HostedOperationProjection
 import io.github.amichne.kast.protocol.registry.SupportToolHost
 import io.github.amichne.kast.protocol.registry.SupportToolIdentity
+import java.util.Collections
+import java.util.IdentityHashMap
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -12,6 +14,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -280,6 +283,18 @@ class MintlifyCallableReferenceTest {
         )
     }
 
+    @Test
+    fun `recursive schema comparison still rejects changed callback constraints`() {
+        val reference = mintlifyCallableReference().value
+        val changed = reference.replaceFirst("\"NESTED_CALLBACK_EXECUTION\"", "\"INVALID_EXECUTION\"")
+        assertFalse(reference == changed)
+        val expected = Json.parseToJsonElement(reference)
+        val actual = Json.parseToJsonElement(changed)
+        assertThrows(org.opentest4j.AssertionFailedError::class.java) {
+            assertResolvedSchemaEquals(expected, actual, expected, actual)
+        }
+    }
+
     private fun JsonObject.reference(): String = getValue("\$ref").jsonPrimitive.content.substringAfterLast('/')
 
     private fun JsonElement.localReferences(): List<String> =
@@ -299,22 +314,25 @@ private fun assertResolvedSchemaEquals(
     actual: JsonElement,
     expectedRoot: JsonElement,
     actualRoot: JsonElement,
+    compared: IdentityHashMap<JsonElement, MutableSet<JsonElement>> = IdentityHashMap(),
 ) {
     val left = expected.resolveSchema(expectedRoot)
     val right = actual.resolveSchema(actualRoot)
+    val partners = compared.getOrPut(left) { Collections.newSetFromMap(IdentityHashMap()) }
+    if (!partners.add(right)) return
     when (left) {
         is JsonObject -> {
             val expectedFields = left.filterKeys { it != "\$defs" && it != "title" }
             val actualFields = right.jsonObject.filterKeys { it != "\$defs" && it != "title" }
             assertEquals(expectedFields.keys, actualFields.keys)
             expectedFields.forEach { (name, value) ->
-                assertResolvedSchemaEquals(value, actualFields.getValue(name), expectedRoot, actualRoot)
+                assertResolvedSchemaEquals(value, actualFields.getValue(name), expectedRoot, actualRoot, compared)
             }
         }
         is JsonArray -> {
             assertEquals(left.size, right.jsonArray.size)
             left.indices.forEach { index ->
-                assertResolvedSchemaEquals(left[index], right.jsonArray[index], expectedRoot, actualRoot)
+                assertResolvedSchemaEquals(left[index], right.jsonArray[index], expectedRoot, actualRoot, compared)
             }
         }
         else -> assertEquals(left, right)

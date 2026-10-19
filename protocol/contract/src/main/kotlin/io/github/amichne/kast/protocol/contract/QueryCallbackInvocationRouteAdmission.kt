@@ -12,7 +12,7 @@ internal fun QueryCallbackFlowDocument.Observed.admitParameterInvocations(
     initial: QueryCallbackParameterIdentityDocument,
     initialReference: ImpactDeclarationReferenceDocument,
 ): Refinement<Unit, QueryCallbackDocumentFailure> =
-    CallbackInvocationRouteProof(basis, invocations.values, obligations.values, forwarding)
+    CallbackInvocationRouteProof(basis, invocations.values, obligations.values, forwarding, ownerBindings.values)
         .admitParameterInvocations(initial, initialReference)
 
 internal class CallbackInvocationRouteProof(
@@ -20,6 +20,7 @@ internal class CallbackInvocationRouteProof(
     val invocations: List<QueryCallbackInvocationDocument>,
     val obligations: List<QueryCallbackFlowCauseDocument>,
     val forwarding: QueryCallbackForwardingEvidenceDocument,
+    val ownerBindings: List<QueryCallbackBodyBindingDocument> = emptyList(),
 )
 
 internal fun CallbackInvocationRouteProof.admitParameterInvocations(
@@ -37,7 +38,7 @@ internal fun CallbackInvocationRouteProof.admitParameterInvocations(
                 is Refinement.Rejected -> return route
                 is Refinement.Refined -> route.value
             }
-        when (val admitted = invocation.admitReceivingOwner(terminal, obligations)) {
+        when (val admitted = invocation.admitReceivingOwner(terminal, obligations, ownerBindings)) {
             is Refinement.Rejected -> return admitted
             is Refinement.Refined -> Unit
         }
@@ -112,6 +113,7 @@ private fun CallbackInvocationRouteProof.admitGraphForwardings(
                     CallbackInvocationReceiver(edge.source, edge.source.callable.reference(basis)),
                     basis,
                     obligations,
+                    ownerBindings,
                 )
         ) {
             is Refinement.Rejected -> return admitted
@@ -165,7 +167,7 @@ private fun CallbackInvocationRouteProof.admitForwardings(
 ): Refinement<CallbackInvocationReceiver, QueryCallbackDocumentFailure> {
     var receiver = initial
     for (forwarding in invocation.forwardings.values) {
-        when (val admitted = forwarding.admitForwarding(receiver, basis, obligations)) {
+        when (val admitted = forwarding.admitForwarding(receiver, basis, obligations, ownerBindings)) {
             is Refinement.Rejected -> return admitted
             is Refinement.Refined -> receiver = admitted.value
         }
@@ -177,6 +179,7 @@ private fun QueryCallbackForwardingDocument.admitForwarding(
     receiver: CallbackInvocationReceiver,
     basis: ImpactSemanticBasisDocument,
     obligations: List<QueryCallbackFlowCauseDocument>,
+    ownerBindings: List<QueryCallbackBodyBindingDocument> = emptyList(),
 ): Refinement<CallbackInvocationReceiver, QueryCallbackDocumentFailure> {
     val owner =
         when (val admitted = target.invocationOwner.admitOwner()) {
@@ -192,7 +195,8 @@ private fun QueryCallbackForwardingDocument.admitForwarding(
         return rejected(QueryCallbackDocumentFailure.TRANSFER_PROOF_MISMATCH)
     if (
         !target.invocationOwner.isReceivingCallable(source.callable) &&
-            QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION !in obligations
+            QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION !in obligations &&
+            !ownerBindings.admitsExecutionOwner(target.invocationOwner, source.callable)
     )
         return rejected(QueryCallbackDocumentFailure.MISSING_OBLIGATION)
     return Refinement.Refined(CallbackInvocationReceiver(target.parameterIdentity(), target.invocation.callable))
@@ -217,6 +221,7 @@ private fun QueryCallbackBindingDocument.Bound.validForwardingMapping(basis: Imp
 private fun QueryCallbackInvocationDocument.admitReceivingOwner(
     receiver: CallbackInvocationReceiver,
     obligations: List<QueryCallbackFlowCauseDocument>,
+    ownerBindings: List<QueryCallbackBodyBindingDocument> = emptyList(),
 ): Refinement<Unit, QueryCallbackDocumentFailure> {
     val owner =
         when (val admitted = this.owner.admitOwner()) {
@@ -225,7 +230,8 @@ private fun QueryCallbackInvocationDocument.admitReceivingOwner(
         }
     if (
         !this.owner.isReceivingCallable(receiver.parameter.callable) &&
-            QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION !in obligations
+            QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION !in obligations &&
+            !ownerBindings.admitsExecutionOwner(this.owner, receiver.parameter.callable)
     )
         return rejected(QueryCallbackDocumentFailure.MISSING_OBLIGATION)
     if (!validReceivingSites(receiver.parameter.callable, owner))

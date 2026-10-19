@@ -47,7 +47,7 @@ class CompleteStaticCallbackGraphTest {
             assertEquals(binding, supply.binding)
             assertEquals(supply.target, invoke.source)
             assertEquals(body, invoke.target.body)
-            assertEquals(target.evidence, invoke.owner.callable.evidence)
+            assertEquals(target.evidence, (invoke.owner as StaticCallbackNode.Named).callable.evidence)
             assertEquals(body, bodyTarget.source.body)
             assertEquals(observation.target, bodyTarget.target.callable.evidence)
             assertEquals(observation.policy, bodyTarget.namedCallPolicy)

@@ -1,11 +1,8 @@
 package io.github.amichne.kast.cli
 
 import com.networknt.schema.InputFormat
-import com.networknt.schema.SchemaRegistry
-import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.wire.QueryCallbackWireFixture
-import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
@@ -20,7 +17,7 @@ class CallbackForwardingGraphSchemaTest {
     fun `generated forwarding evidence requires finite closed alternatives and bounds the graph inventory`() {
         val observed = observedCallbackSchema()
         assertTrue(observed.getValue("required").jsonArray.any { it.jsonPrimitive.content == "forwarding" })
-        val evidence = observed.getValue("properties").jsonObject.getValue("forwarding").jsonObject
+        val evidence = CallbackSchemaFixture().definition("callbackForwardingEvidence")
         assertEquals(
             "type",
             evidence.getValue("discriminator").jsonObject.getValue("propertyName").jsonPrimitive.content,
@@ -61,9 +58,7 @@ class CallbackForwardingGraphSchemaTest {
 
     @Test
     fun `forwarding schema admits serializer examples and rejects missing unknown or extra graph facts`() {
-        val evidence = observedCallbackSchema().getValue("properties").jsonObject.getValue("forwarding").jsonObject
-        val validator =
-            SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12).getSchema(evidence.toString())
+        val validator = CallbackSchemaFixture().validator("callbackForwardingEvidence")
         val fixture = QueryCallbackWireFixture()
         for (raw in fixture.forwardingEvidenceExamples()) {
             assertTrue(validator.validate(raw, InputFormat.JSON).isEmpty(), raw)
@@ -76,7 +71,8 @@ class CallbackForwardingGraphSchemaTest {
     }
 
     private fun observedCallbackSchema(): JsonObject =
-        generatedRequestSchema(CanonicalQueryCliDocuments.callbackObservationSerializer)
+        CallbackSchemaFixture()
+            .definition("callbackObservation")
             .getValue("properties")
             .jsonObject
             .getValue("flow")

@@ -6,9 +6,11 @@ import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 
 /** Graph nodes retain compiler identities and exact supplier context; formals from different calls never merge. */
 sealed interface StaticCallbackNode {
-    data class Named internal constructor(val callable: RelationCallableBody.Named) : StaticCallbackNode
+    sealed interface Callable : StaticCallbackNode
 
-    data class Anonymous internal constructor(val body: RelationCallableBody.Anonymous) : StaticCallbackNode
+    data class Named internal constructor(val callable: RelationCallableBody.Named) : Callable
+
+    data class Anonymous internal constructor(val body: RelationCallableBody.Anonymous) : Callable
 
     data class DeferredSupplier internal constructor(val owner: CallbackDeferredSupplier) : StaticCallbackNode
 
@@ -39,14 +41,15 @@ sealed interface StaticCallbackEdge {
 
     data class ImmutableUses
     internal constructor(
-        override val source: StaticCallbackNode.Named,
+        override val source: StaticCallbackNode.Callable,
         override val target: StaticCallbackNode.Anonymous,
         val evidence: ImmutableCallbackInvocationFlow,
+        val use: ImmutableCallbackInvocationUse,
     ) : StaticCallbackEdge
 
     data class Supply
     internal constructor(
-        override val source: StaticCallbackNode.Named,
+        override val source: StaticCallbackNode.Callable,
         override val target: StaticCallbackNode.Formal,
         val body: StaticCallbackNode.Anonymous,
         val binding: CallbackArgumentBinding,
@@ -63,13 +66,13 @@ sealed interface StaticCallbackEdge {
     internal constructor(
         override val source: StaticCallbackNode.Formal,
         override val target: StaticCallbackNode.Anonymous,
-        val owner: StaticCallbackNode.Named,
+        val owner: StaticCallbackNode.Callable,
         val evidence: CallbackParameterInvocation,
     ) : StaticCallbackEdge
 
     data class DirectInvoke
     internal constructor(
-        override val source: StaticCallbackNode.Named,
+        override val source: StaticCallbackNode.Callable,
         override val target: StaticCallbackNode.Anonymous,
         val evidence: CallbackDirectInvocationBinding,
     ) : StaticCallbackEdge
@@ -83,7 +86,7 @@ sealed interface StaticCallbackEdge {
 
     data class DependencyContractInvoke
     internal constructor(
-        override val source: StaticCallbackNode.Named,
+        override val source: StaticCallbackNode.Callable,
         override val target: StaticCallbackNode.Anonymous,
         val evidence: CallbackDependencyContract,
     ) : StaticCallbackEdge

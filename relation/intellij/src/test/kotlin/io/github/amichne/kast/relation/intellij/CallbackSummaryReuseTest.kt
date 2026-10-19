@@ -1,5 +1,6 @@
 package io.github.amichne.kast.relation.intellij
 
+import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.CallbackArgumentBinding
 import io.github.amichne.kast.relation.contract.CallbackBindingEvidence
@@ -9,6 +10,10 @@ import io.github.amichne.kast.relation.contract.CallbackInvocationFlowFailure
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowRead
 import io.github.amichne.kast.relation.contract.CallbackInvocationScan
 import io.github.amichne.kast.relation.contract.CallbackParameterIdentity
+import io.github.amichne.kast.relation.contract.CallbackParameterSummary
+import io.github.amichne.kast.relation.contract.CallbackReadmission
+import io.github.amichne.kast.relation.contract.CallbackSummaryCacheLookup
+import io.github.amichne.kast.relation.contract.CallbackSummaryCachePort
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.relation.contract.RelationCallableBody
@@ -18,11 +23,13 @@ import io.github.amichne.kast.relation.contract.RelationOccurrence
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 
 /** Detached publication/storage facts, without native compiler or PSI execution. */
@@ -37,6 +44,66 @@ class CallbackSummaryReuseTest {
                 RelationOccurrence.fromBoundary(target.file, 72, 73).refined(),
             )
             .refined()
+
+    @Test
+    fun `captured formal facts are reusable only under their exact request basis before supplier activation`() {
+        val summaries = CallbackParameterSummaries(request.budget)
+        val reuse = CallbackSummaryReuse(summaries)
+        val captured =
+            reuse.capture(formal, emptyList(), emptySet(), emptyList(), CallbackInvocationScan.EXHAUSTIVE).refined()
+                as CallbackSummaryCandidate.Admitted
+        assertSame(captured.summary, summaries.find(formal))
+        val other =
+            RelationEndpoint.resolve(
+                    SemanticReadLease(request.subject.lease.workspaceRoot, EvidenceGeneration.parse(999L).refined()),
+                    request.subject.scope,
+                    target.evidence,
+                )
+                .refined()
+        val differentBasis = CallbackParameterIdentity.fromCompiler(other, formal.position, formal.parameter).refined()
+        assertNull(summaries.find(differentBasis))
+    }
+
+    @Test
+    fun `a rejected supplier keeps local formal facts without publishing them`() {
+        val cache = PublicationCache()
+        val summaries = CallbackParameterSummaries(request.budget, cache = cache)
+        val reuse = CallbackSummaryReuse(summaries)
+        val captured =
+            reuse.capture(formal, emptyList(), emptySet(), emptyList(), CallbackInvocationScan.EXHAUSTIVE).refined()
+                as CallbackSummaryCandidate.Admitted
+        val rejected = CallbackInvocationFlowRead.ContractRejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
+        assertSame(rejected, reuse.publish(rejected, emptyList(), captured))
+        assertSame(captured.summary, summaries.find(formal))
+        summaries.used(captured.summary)
+        assertEquals(emptyList<CallbackParameterSummary>(), cache.published)
+        assertEquals(0, cache.admitted)
+    }
+
+    @Test
+    fun `successful supplier publication promotes staged facts without a second storage charge`() {
+        val sizing =
+            CallbackSummaryReuse(CallbackParameterSummaries(request.budget))
+                .capture(formal, emptyList(), emptySet(), emptyList(), CallbackInvocationScan.EXHAUSTIVE)
+                .refined() as CallbackSummaryCandidate.Admitted
+        val cache = PublicationCache()
+        val summaries =
+            CallbackParameterSummaries(
+                request.budget.copy(returnedBytes = RelationByteLimit.parse(sizing.summary.retainedBytes).refined()),
+                cache = cache,
+            )
+        val reuse = CallbackSummaryReuse(summaries)
+        val captured =
+            reuse.capture(formal, emptyList(), emptySet(), emptyList(), CallbackInvocationScan.EXHAUSTIVE).refined()
+                as CallbackSummaryCandidate.Admitted
+        assertSame(captured.summary, summaries.find(formal))
+        assertEquals(emptyList<CallbackParameterSummary>(), cache.published)
+        val supplied = CallbackInvocationFlowRead.Observed(supplierFlow())
+        assertEquals(supplied, reuse.publish(supplied, emptyList(), captured))
+        assertEquals(listOf(captured.summary), cache.published)
+        assertEquals(Refinement.Rejected(CallbackInvocationFlowCause.BYTE_LIMIT_REACHED), summaries.retention.admit(1L))
+        assertEquals(0, cache.admitted)
+    }
 
     @Test
     fun `project summary rejected by supplier proof is not observed as reused`() {
@@ -206,6 +273,24 @@ class CallbackSummaryReuseTest {
                 setOf(CallbackInvocationFlowCause.STORED_CALLBACK),
             )
             .refined()
+    }
+}
+
+private class PublicationCache : CallbackSummaryCachePort {
+    val published = mutableListOf<CallbackParameterSummary>()
+    var admitted = 0
+
+    override fun find(
+        formal: CallbackParameterIdentity,
+        readmit: (CallbackParameterSummary) -> CallbackReadmission<CallbackParameterSummary>,
+    ) = CallbackSummaryCacheLookup.Miss
+
+    override fun retain(summary: CallbackParameterSummary) {
+        published += summary
+    }
+
+    override fun admitted(summary: CallbackParameterSummary) {
+        admitted++
     }
 }
 

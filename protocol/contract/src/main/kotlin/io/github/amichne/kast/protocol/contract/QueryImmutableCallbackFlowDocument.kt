@@ -9,6 +9,10 @@ sealed interface QueryImmutableCallbackUseDocument {
         val supplier: QueryCallbackParameterSupplierDocument,
         val invocations: BoundedProtocolList<QueryCallbackInvocationDocument>,
         val forwarding: QueryCallbackForwardingEvidenceDocument,
+        val summaryOwnerBindings: BoundedProtocolList<QueryCallbackBodyBindingDocument> =
+            (BoundedProtocolList.create(emptyList<QueryCallbackBodyBindingDocument>()) as Refinement.Refined).value,
+        val summaryObligations: BoundedProtocolList<QueryCallbackFlowCauseDocument> =
+            (BoundedProtocolList.create(emptyList<QueryCallbackFlowCauseDocument>()) as Refinement.Refined).value,
     ) : QueryImmutableCallbackUseDocument {
         override val value: QueryImmutableCallbackValueDocument
             get() = supplier.value
@@ -29,6 +33,7 @@ private constructor(
     val uses: BoundedProtocolList<QueryImmutableCallbackUseDocument>,
     val obligations: BoundedProtocolList<QueryCallbackFlowCauseDocument>,
     val scan: QueryCallbackInvocationScanDocument,
+    val ownerBindings: BoundedProtocolList<QueryCallbackBodyBindingDocument>,
 ) {
     companion object {
         fun create(
@@ -36,28 +41,35 @@ private constructor(
             uses: BoundedProtocolList<QueryImmutableCallbackUseDocument>,
             obligations: BoundedProtocolList<QueryCallbackFlowCauseDocument>,
             scan: QueryCallbackInvocationScanDocument,
+            ownerBindings: BoundedProtocolList<QueryCallbackBodyBindingDocument> =
+                (BoundedProtocolList.create(emptyList<QueryCallbackBodyBindingDocument>()) as Refinement.Refined).value,
         ): Refinement<QueryImmutableCallbackFlowDocument, QueryCallbackDocumentFailure> {
             if (sourceValue.source != sourceValue.destination || sourceValue.transfers.values.isNotEmpty())
                 return Refinement.Rejected(QueryCallbackDocumentFailure.TRANSFER_PROOF_MISMATCH)
-            if (
-                scan == QueryCallbackInvocationScanDocument.NOT_APPLICABLE ||
-                    (scan == QueryCallbackInvocationScanDocument.EXHAUSTIVE) != obligations.values.isEmpty()
-            )
+            if (!scan.admitsImmutable(obligations.values))
                 return Refinement.Rejected(QueryCallbackDocumentFailure.INVALID_SCAN_PROOF)
             if (
                 uses.values.distinct().size != uses.values.size ||
                     obligations.values != obligations.values.distinct().sortedBy { it.ordinal }
             )
                 return Refinement.Rejected(QueryCallbackDocumentFailure.INVALID_SCAN_PROOF)
+            val flow = QueryImmutableCallbackFlowDocument(sourceValue, uses, obligations, scan, ownerBindings)
+            when (val owners = flow.admitOwnerBindings()) {
+                is Refinement.Rejected -> return owners
+                is Refinement.Refined -> Unit
+            }
             for (use in uses.values) {
                 if (!use.value.tracesSource(sourceValue))
                     return Refinement.Rejected(QueryCallbackDocumentFailure.TRANSFER_PROOF_MISMATCH)
-                when (val admitted = use.admit(sourceValue.source.enclosing.basis)) {
+                when (
+                    val admitted =
+                        use.admit(sourceValue.source.enclosing.basis, ownerBindings.values, obligations.values)
+                ) {
                     is Refinement.Refined -> Unit
                     is Refinement.Rejected -> return admitted
                 }
             }
-            return Refinement.Refined(QueryImmutableCallbackFlowDocument(sourceValue, uses, obligations, scan))
+            return Refinement.Refined(flow)
         }
     }
 }
@@ -75,36 +87,58 @@ private fun QueryImmutableCallbackValueDocument.tracesSource(
 }
 
 private fun QueryImmutableCallbackUseDocument.admit(
-    basis: ImpactSemanticBasisDocument
+    basis: ImpactSemanticBasisDocument,
+    ownerBindings: List<QueryCallbackBodyBindingDocument>,
+    obligations: List<QueryCallbackFlowCauseDocument>,
 ): Refinement<Unit, QueryCallbackDocumentFailure> =
     when (this) {
         is QueryImmutableCallbackUseDocument.Unused -> Refinement.Refined(Unit)
-        is QueryImmutableCallbackUseDocument.Direct -> admitDirect(basis)
+        is QueryImmutableCallbackUseDocument.Direct -> admitDirect(basis, ownerBindings, obligations)
         is QueryImmutableCallbackUseDocument.Supplied -> {
             val binding = supplier.binding
-            if (binding.invocationOwner !is QueryCallbackBodyDocument.Named)
+            if (!supplier.admitsImmutableOwner(ownerBindings, obligations))
                 Refinement.Rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
+            else if (summaryObligations.values.any { it != QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION })
+                Refinement.Rejected(QueryCallbackDocumentFailure.MISSING_OBLIGATION)
             else
-                CallbackInvocationRouteProof(basis, invocations.values, emptyList(), forwarding)
-                    .admitParameterInvocations(binding.parameterIdentity(), binding.invocation.callable)
+                when (val admitted = admitSummaryOwners(basis)) {
+                    is Refinement.Rejected -> admitted
+                    is Refinement.Refined ->
+                        CallbackInvocationRouteProof(
+                                basis,
+                                invocations.values,
+                                summaryObligations.values.filter {
+                                    it != QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION || it in obligations
+                                },
+                                forwarding,
+                                summaryOwnerBindings.values,
+                            )
+                            .admitParameterInvocations(binding.parameterIdentity(), binding.invocation.callable)
+                }
         }
     }
 
 internal fun QueryImmutableCallbackUseDocument.Direct.admitDirect(
-    basis: ImpactSemanticBasisDocument
+    basis: ImpactSemanticBasisDocument,
+    ownerBindings: List<QueryCallbackBodyBindingDocument> = emptyList(),
+    obligations: List<QueryCallbackFlowCauseDocument> = emptyList(),
 ): Refinement<Unit, QueryCallbackDocumentFailure> {
-    val owner =
-        binding.owner as? QueryCallbackBodyDocument.Named
-            ?: return Refinement.Rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
     val destination = value.destination
     if (
         destination.role != ImpactValueRoleDocument.ExpressionResult &&
             destination.role != ImpactValueRoleDocument.LocalRead
     )
         return Refinement.Rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
-    if (binding.basis != basis || owner.callable.reference(binding.basis) != destination.enclosing)
+    if (
+        binding.basis != basis || !ownerBindings.admitsImmutableOwner(binding.owner, destination.enclosing, obligations)
+    )
         return Refinement.Rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
-    if (!binding.occurrence.containsImmutableSite(destination))
+    val owner =
+        when (val admitted = binding.owner.admitOwner()) {
+            is Refinement.Rejected -> return admitted
+            is Refinement.Refined -> admitted.value
+        }
+    if (!owner.contains(binding.occurrence) || !binding.occurrence.containsImmutableSite(destination))
         return Refinement.Rejected(QueryCallbackDocumentFailure.BINDING_MISMATCH)
     return Refinement.Refined(Unit)
 }
@@ -127,4 +161,14 @@ private fun QueryCallbackFactoryCaptureDocument.invokedSources(): List<QueryImmu
         QueryCallbackFactoryCaptureContentDocument.Scalar -> emptyList()
         is QueryCallbackFactoryCaptureContentDocument.Callable ->
             if (content.invocations.values.isEmpty()) emptyList() else content.values.values
+    }
+
+private fun QueryCallbackInvocationScanDocument.admitsImmutable(
+    obligations: List<QueryCallbackFlowCauseDocument>
+): Boolean =
+    when (this) {
+        QueryCallbackInvocationScanDocument.NOT_APPLICABLE -> false
+        QueryCallbackInvocationScanDocument.EXHAUSTIVE ->
+            obligations.all { it == QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION }
+        QueryCallbackInvocationScanDocument.INCOMPLETE -> obligations.isNotEmpty()
     }

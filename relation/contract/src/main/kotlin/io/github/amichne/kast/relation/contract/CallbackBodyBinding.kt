@@ -18,6 +18,26 @@ sealed interface CallbackBodySupply {
     data object Unsupported : CallbackBodySupply
 }
 
+sealed interface CallbackOwnerExecution {
+    val retainedBytes: Long
+        get() =
+            when (this) {
+                Unproven -> 0L
+                is Observed -> flow.retainedBytes
+                is Immutable -> flow.retainedBytes
+            }
+
+    data object Unproven : CallbackOwnerExecution
+
+    data class Observed internal constructor(val flow: CallbackInvocationFlow) : CallbackOwnerExecution
+
+    data class Immutable
+    internal constructor(
+        val flow: ImmutableCallbackInvocationFlow,
+        val owner: RelationCallableBody.Named,
+    ) : CallbackOwnerExecution
+}
+
 /** Exact nested-body supply and formal mapping; supplying a body does not establish its activation. */
 @ConsistentCopyVisibility
 data class CallbackBodyBinding
@@ -26,9 +46,77 @@ private constructor(
     val supply: CallbackBodySupply,
     val binding: CallbackBindingEvidence,
     val obligations: Set<CallbackInvocationFlowCause>,
+    val execution: CallbackOwnerExecution = CallbackOwnerExecution.Unproven,
 ) {
-    val retainedBytes: Long
-        get() = 4096L + canonicalProjection().toByteArray(Charsets.UTF_8).size * 4L
+    val retainedBytes: Long =
+        4096L
+            .addBytes(
+                canonicalProjection(includeOwnerExecution = false)
+                    .toByteArray(Charsets.UTF_8)
+                    .size
+                    .toLong()
+                    .multiplyBytes(4)
+            )
+            .addBytes(execution.retainedBytes)
+
+    /** Attaches an exact owner read; only a complete route discharges the nested execution obligation. */
+    fun withExecution(flow: CallbackInvocationFlow): Refinement<CallbackBodyBinding, CallbackInvocationFlowFailure> {
+        if (flow.body != body || flow.binding != binding)
+            return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
+        val normalized =
+            when (val admitted = flow.withOwnerBindings(emptyList())) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
+        val combined = obligations + normalized.obligations
+        val remaining =
+            when (CompleteCallbackFlowGraph.admit(normalized)) {
+                is Refinement.Refined -> combined - CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION
+                is Refinement.Rejected -> combined
+            }
+        return Refinement.Refined(
+            CallbackBodyBinding(
+                body,
+                supply,
+                binding,
+                Collections.unmodifiableSet(remaining.toSet()),
+                CallbackOwnerExecution.Observed(normalized),
+            )
+        )
+    }
+
+    fun withExecution(
+        flow: ImmutableCallbackInvocationFlow,
+        owner: RelationCallableBody.Named,
+    ): Refinement<CallbackBodyBinding, CallbackInvocationFlowFailure> {
+        val unavailable =
+            binding as? CallbackBindingEvidence.Unavailable
+                ?: return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
+        if (unavailable.cause !in immutableSupplyCauses || flow.origin != ImmutableCallbackValueOrigin.Anonymous(body))
+            return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
+        if (
+            flow.source.enclosing.file != owner.file ||
+                flow.source.enclosing.range != owner.range ||
+                flow.source.enclosing.compilerIdentity != owner.compilerIdentity
+        )
+            return Refinement.Rejected(CallbackInvocationFlowFailure.OWNER_BINDING_MISMATCH)
+        val combined = obligations + flow.obligations
+        val remaining =
+            when (CompleteCallbackFlowGraph.admit(flow, owner)) {
+                is Refinement.Refined ->
+                    combined - unavailable.cause - CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION
+                is Refinement.Rejected -> combined
+            }
+        return Refinement.Refined(
+            CallbackBodyBinding(
+                body,
+                supply,
+                binding,
+                Collections.unmodifiableSet(remaining.toSet()),
+                CallbackOwnerExecution.Immutable(flow, owner),
+            )
+        )
+    }
 
     companion object {
         fun fromCompiler(
@@ -49,6 +137,13 @@ private constructor(
         }
     }
 }
+
+private val immutableSupplyCauses =
+    setOf(
+        CallbackInvocationFlowCause.STORED_CALLBACK,
+        CallbackInvocationFlowCause.RETURNED_CALLBACK,
+        CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY,
+    )
 
 private fun admitBodySupply(
     body: RelationCallableBody.Anonymous,

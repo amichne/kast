@@ -63,9 +63,11 @@ internal fun observeCallbackSupplierCoverage(
     read: () -> CallbackFormalScanSnapshot,
 ): CallbackFormalScanSnapshot {
     return observeCallbackCoverage(observation, CallbackCoverageStage.SUPPLIER, { Refinement.Refined(it) }) {
-        val evidence = read()
-        if (evidence.invocations.isEmpty() && evidence.scan == CallbackInvocationScan.INCOMPLETE)
-            evidence.withSupplier(setOf(CallbackInvocationFlowCause.NO_INVOCATION_PROVEN))
-        else evidence
+        read().withSupplierQualification()
     }
 }
+
+internal fun CallbackFormalScanSnapshot.withSupplierQualification(): CallbackFormalScanSnapshot =
+    if (invocations.isEmpty() && scan == CallbackInvocationScan.INCOMPLETE)
+        withSupplier(setOf(CallbackInvocationFlowCause.NO_INVOCATION_PROVEN))
+    else this

@@ -21,14 +21,20 @@ internal fun ImmutableCallbackEnumeration.binding(
     endpoint: RelationEndpoint.Resolved,
 ): Refinement<Unit, CallbackInvocationFlowFailure> {
     when (val binding = IntellijCallbackBindingReader(context, endpoint.evidence).prepareExpression(value)) {
-        is CallbackBindingPreparation.Unavailable -> obligations += binding.cause
+        is CallbackBindingPreparation.Unavailable -> obligation(binding.cause)
         is CallbackBindingPreparation.ContractRejected -> return Refinement.Rejected(binding.cause)
         is CallbackBindingPreparation.DeferredDependency,
         is CallbackBindingPreparation.DependencyContract ->
             obligations += CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY
-        is CallbackBindingPreparation.Direct ->
-            retain(ImmutableCallbackInvocationUse.Direct(item.value, binding.binding))
-        is CallbackBindingPreparation.Prepared -> return prepared(item, value, endpoint, binding.value)
+        is CallbackBindingPreparation.Direct -> {
+            when (val admitted = readOwner(binding.call, binding.binding.owner, endpoint)) {
+                is Refinement.Refined ->
+                    if (!stopped) retain(ImmutableCallbackInvocationUse.Direct(item.value, binding.binding))
+                is Refinement.Rejected -> return admitted
+            }
+        }
+        is CallbackBindingPreparation.Prepared ->
+            return prepared(item = item, value = value, endpoint = endpoint, prepared = binding.value)
     }
     return Refinement.Refined(Unit)
 }
@@ -43,16 +49,16 @@ internal fun ImmutableCallbackEnumeration.prepared(
         prepared.origin as? PreparedCallbackOrigin.Argument
             ?: return obligation(CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY)
     if (returnsCallable(prepared.function, context.observation)) return factoryArgument(item, argument, endpoint)
+    when (val admitted = readOwner(argument.call, argument.binding.invocationOwner, endpoint)) {
+        is Refinement.Refined -> if (stopped) return Refinement.Refined(Unit)
+        is Refinement.Rejected -> return admitted
+    }
     val site =
         context.site(
             value,
             endpoint,
             ValueRole.Argument(argument.binding.invocation, argument.binding.position),
-        )
-    if (site == null) {
-        obligations += CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING
-        return Refinement.Refined(Unit)
-    }
+        ) ?: return obligation(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
     val transported =
         when (val result = transport(item.value, site, ValueTransferKind.ARGUMENT)) {
             is Refinement.Refined -> result.value
@@ -74,10 +80,12 @@ internal fun ImmutableCallbackEnumeration.prepared(
             is Refinement.Rejected -> return Refinement.Rejected(CallbackInvocationFlowFailure.UNBOUND_INVOCATION)
         }
     when (val summary = IntellijCallbackParameterSummaryReader(context, summaries).read(prepared)) {
-        is CallbackParameterSummaryRead.Available ->
+        is CallbackParameterSummaryRead.Available -> {
+            obligations += summary.summary.obligations
             retain(ImmutableCallbackInvocationUse.Supplied(supplier, summary.summary))
+        }
         is CallbackParameterSummaryRead.Unavailable -> {
-            obligations += summary.cause
+            obligation(summary.cause)
             obligations += summary.additional
         }
         is CallbackParameterSummaryRead.ContractRejected -> return Refinement.Rejected(summary.cause)

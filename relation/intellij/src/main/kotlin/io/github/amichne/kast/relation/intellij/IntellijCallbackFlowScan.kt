@@ -325,7 +325,7 @@ internal class IntellijCallbackFlowScan(
             obligations += CallbackInvocationFlowCause.ANONYMOUS_IDENTITY_UNAVAILABLE
             return
         }
-        when (val read = IntellijCallbackOwnerBindingReader(context).read(literal, owner, enclosing)) {
+        when (val read = IntellijCallbackOwnerBindingReader(context, summaries).read(literal, owner, enclosing)) {
             is Refinement.Rejected -> obligations += CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING
             is Refinement.Refined ->
                 when (val permitted = retention.admitOwner(read.value)) {
@@ -333,7 +333,10 @@ internal class IntellijCallbackFlowScan(
                         ownerBindings[owner] = read.value
                         obligations += read.value.obligations
                     }
-                    is Refinement.Rejected -> stopCapacity(permitted.failure)
+                    is Refinement.Rejected -> {
+                        obligations += read.value.obligations
+                        stopCapacity(permitted.failure)
+                    }
                 }
         }
     }

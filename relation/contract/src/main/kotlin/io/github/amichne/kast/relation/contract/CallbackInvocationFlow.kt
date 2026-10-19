@@ -60,7 +60,16 @@ private constructor(
     /** Conservative detached proof storage; wire presentation retains its independent encoded byte guard. */
     val retainedBytes: Long =
         4096L
-            .addBytes(canonicalProjection().toByteArray(Charsets.UTF_8).size.toLong().multiplyBytes(4))
+            .addBytes(
+                canonicalProjection(includeOwnerExecution = false)
+                    .toByteArray(Charsets.UTF_8)
+                    .size
+                    .toLong()
+                    .multiplyBytes(4)
+            )
+            .let { bytes ->
+                ownerBindings.fold(bytes) { total, owner -> total.addBytes(owner.execution.retainedBytes) }
+            }
             .addBytes(
                 when (binding) {
                     is CallbackBindingEvidence.Bound -> valueSiteStorageBytes(binding.binding.invocation.resultSite())
@@ -78,28 +87,67 @@ private constructor(
                 }
             }
 
-    /** Refines actual anonymous-owner facts without discarding an existing binding or activation obligation. */
+    /** Refines owner facts and discharges nesting only when the shared composer proves every owner route. */
     fun withOwnerBindings(
         additional: List<CallbackBodyBinding>
     ): Refinement<CallbackInvocationFlow, CallbackInvocationFlowFailure> {
         val combined = ownerBindings + additional
-        when (val admitted = admitCallbackOwnerBindings(this, combined)) {
+        val causes = obligations + combined.flatMap { it.obligations }
+        if (
+            scan == CallbackInvocationScan.EXHAUSTIVE &&
+                CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION !in obligations &&
+                !admitsExhaustiveCallbackScan(causes)
+        )
+            return Refinement.Rejected(CallbackInvocationFlowFailure.INVALID_SCAN_PROOF)
+        val refined =
+            copy(
+                obligations = Collections.unmodifiableSet(causes),
+                ownerBindings = Collections.unmodifiableList(combined.toList()),
+                scan = if (admitsExhaustiveCallbackScan(causes)) scan else CallbackInvocationScan.INCOMPLETE,
+            )
+        when (val admitted = admitCallbackOwnerBindings(refined, combined)) {
             is Refinement.Rejected -> return admitted
             is Refinement.Refined -> Unit
         }
-        return Refinement.Refined(
-            CallbackInvocationFlow(
-                basis = basis,
-                body = body,
-                binding = binding,
-                invocations = invocations,
-                obligations = Collections.unmodifiableSet(obligations + combined.flatMap { it.obligations }),
-                ownerBindings = Collections.unmodifiableList(combined.toList()),
-                scan = scan,
-                forwarding = forwarding,
+        return when (val graph = CompleteCallbackFlowGraph.admit(refined)) {
+            is Refinement.Refined ->
+                Refinement.Refined(
+                    refined.copy(
+                        obligations =
+                            Collections.unmodifiableSet(
+                                refined.obligations - CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION
+                            )
+                    )
+                )
+            is Refinement.Rejected -> refined.withCompositionFailure(graph.failure)
+        }
+    }
+
+    private fun withCompositionFailure(
+        failure: StaticCallbackGraphFailure
+    ): Refinement<CallbackInvocationFlow, CallbackInvocationFlowFailure> =
+        when (failure) {
+            is StaticCallbackGraphFailure.InvalidFlow -> Refinement.Rejected(failure.cause)
+            is StaticCallbackGraphFailure.Unavailable -> withCompositionCause(failure.cause)
+            StaticCallbackGraphFailure.CyclicRoute -> withCompositionCause(CallbackInvocationFlowCause.CALLBACK_CYCLE)
+            is StaticCallbackGraphFailure.ImmutableUnresolved,
+            is StaticCallbackGraphFailure.Unresolved,
+            is StaticCallbackGraphFailure.UnprovenPolicy,
+            StaticCallbackGraphFailure.IncompleteScan,
+            StaticCallbackGraphFailure.UnsupportedDefaultSupply,
+            StaticCallbackGraphFailure.MissingNamedOwner,
+            StaticCallbackGraphFailure.SupplierIdentityMismatch,
+            StaticCallbackGraphFailure.OutsideWorkspace,
+            StaticCallbackGraphFailure.NonCallableTarget -> Refinement.Refined(this)
+        }
+
+    private fun withCompositionCause(cause: CallbackInvocationFlowCause) =
+        Refinement.Refined(
+            copy(
+                obligations = Collections.unmodifiableSet(obligations + cause),
+                scan = CallbackInvocationScan.INCOMPLETE,
             )
         )
-    }
 
     companion object {
         fun fromCompiler(

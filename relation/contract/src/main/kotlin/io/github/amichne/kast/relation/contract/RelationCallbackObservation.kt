@@ -55,16 +55,23 @@ private constructor(
     val flow: CallbackInvocationFlowRead,
     val resultProjection: CallbackResultProjection,
 ) : Comparable<RelationCallbackObservation> {
-    val retainedBytes: Long
-        get() =
-            4096L +
-                canonicalProjection().length * 4L +
+    val retainedBytes: Long =
+        4096L
+            .addBytes(
+                canonicalProjection(flow.localCanonicalProjection())
+                    .toByteArray(Charsets.UTF_8)
+                    .size
+                    .toLong()
+                    .multiplyBytes(4)
+            )
+            .addBytes(
                 when (val observed = flow) {
                     is CallbackInvocationFlowRead.Observed -> observed.flow.retainedBytes
                     is CallbackInvocationFlowRead.Immutable -> observed.flow.retainedBytes
                     is CallbackInvocationFlowRead.Unavailable,
                     is CallbackInvocationFlowRead.ContractRejected -> 256L
                 }
+            )
 
     fun belongsTo(request: RelationRequest): Boolean =
         subject == request.subject.fingerprint &&
@@ -85,7 +92,9 @@ private constructor(
     override fun compareTo(other: RelationCallbackObservation): Int =
         canonicalProjection().compareTo(other.canonicalProjection())
 
-    fun canonicalProjection(): String =
+    fun canonicalProjection(): String = canonicalProjection(flow.canonicalProjection())
+
+    private fun canonicalProjection(flowProjection: String): String =
         listOf(
                 subject.value,
                 effectiveDomain.value,
@@ -100,7 +109,7 @@ private constructor(
                 lexicalOwner.compilerIdentity.value,
                 callbackBody.range.toString(),
                 policy.canonicalProjection(),
-                flow.canonicalProjection(),
+                flowProjection,
                 resultProjection.canonicalProjection(),
             )
             .joinToString("\u0000")
@@ -204,4 +213,12 @@ private fun CallbackNamedCallPolicy.canonicalProjection(): String =
         CallbackNamedCallPolicy.AdmittedInline -> "ADMITTED_INLINE"
         is CallbackNamedCallPolicy.Excluded -> "EXCLUDED:${reason.name}:${boundary.file.stableValue}:${boundary.range}"
         is CallbackNamedCallPolicy.Unavailable -> "UNAVAILABLE:${cause.name}"
+    }
+
+private fun CallbackInvocationFlowRead.localCanonicalProjection(): String =
+    when (this) {
+        is CallbackInvocationFlowRead.Observed -> "OBSERVED"
+        is CallbackInvocationFlowRead.Immutable -> "IMMUTABLE"
+        is CallbackInvocationFlowRead.Unavailable -> "UNAVAILABLE:${cause.name}"
+        is CallbackInvocationFlowRead.ContractRejected -> "CONTRACT_REJECTED:${cause.name}"
     }

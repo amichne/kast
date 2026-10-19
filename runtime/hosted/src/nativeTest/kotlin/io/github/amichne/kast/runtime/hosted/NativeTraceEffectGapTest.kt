@@ -13,7 +13,9 @@ import com.intellij.testFramework.IndexingTestUtil
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.ReturnedByteLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
 import io.github.amichne.kast.protocol.contract.ExecutionBudgetDocument
+import io.github.amichne.kast.protocol.contract.LocalPropertyMutabilityDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowDocument
@@ -37,8 +39,10 @@ import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.QueryScopeDocument
 import io.github.amichne.kast.protocol.contract.QueryStepDocument
 import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
+import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.SymbolDiscoveryMatchDocument
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.protocol.QueryInvocationPolicy
@@ -52,31 +56,85 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import java.nio.file.Path
 import kotlinx.coroutines.runBlocking
 
-/** Real K2 source relationships remain usable when callback execution lacks proof. */
+/** Real K2 owner composition and explicit effect gaps reach the public query result. */
 class NativeTraceEffectGapTest : NativeSmartModeFixtureTest() {
     override fun getModuleType() = JavaModuleType.getModuleType()
 
     fun testNestedSourceCallbacksKeepSourceRelationships() =
         assertTrace(
             "scope { scope { proof.target() } }",
-            setOf(QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION),
+            emptySet(),
         )
 
     fun testNestedSourceAndLibraryCallbacksKeepSourceRelationships() =
         assertTrace(
             "kotlin.with(Unit) { scope { proof.target() } }",
-            setOf(
-                QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION,
-                QueryCallbackFlowCauseDocument.OUTSIDE_DOMAIN,
-                QueryCallbackFlowCauseDocument.EXTERNAL_CALLABLE,
-            ),
+            emptySet(),
         )
 
     fun testNestedLibraryCallbacksKeepSourceRelationships() =
         assertTrace(
             "kotlin.with(Unit) { Unit.also { proof.target() } }",
-            setOf(QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION),
+            emptySet(),
         )
+
+    fun testStoredOuterCallbackKeepsItsComposedProof() =
+        assertTrace(
+            expression = "val outer = { scope { proof.target() } }; outer()",
+            causes = emptySet(),
+            localDeclaration = "val outer = { scope { proof.target() } }",
+            expectedFunctions = setOf("proof.target"),
+        )
+
+    fun testStoredCallbackInsideAnonymousOwnerKeepsItsComposedProof() =
+        assertTrace(
+            expression = "scope { val outer = { scope { proof.target() } }; outer() }",
+            causes = emptySet(),
+            localDeclaration = "val outer = { scope { proof.target() } }",
+            expectedFunctions = setOf("proof.target"),
+        )
+
+    fun testOpaqueOuterKeepsItsEffectGapAroundContractedInner() {
+        DeclaredEffectArchive.compile().use { archive ->
+            assertTrace(
+                "effects.absent(block = { kotlin.with(Unit) { proof.target() } }, marker = 1)",
+                setOf(
+                    QueryCallbackFlowCauseDocument.NESTED_CALLBACK_EXECUTION,
+                    QueryCallbackFlowCauseDocument.DEPENDENCY_CONTRACT_EFFECT_UNPROVEN,
+                ),
+                listOf(archive.jar),
+            )
+        }
+    }
+
+    fun testStrictCallerQueryAdmitsComposedGraphWithoutInventingNamedCaller() = runBlocking {
+        val fixture =
+            prepare(
+                "package consumer\nfun scope(block: () -> Unit) { block() }\n" +
+                    "fun client() { scope { scope { proof.target() } } }\n",
+                emptyList(),
+            )
+        val outcome =
+            fixture
+                .protocol()
+                .execute(
+                    request =
+                        request.copy(
+                            steps = gapBounded(listOf(QueryStepDocument.Related(RelationKindDocument.CALLERS, domain)))
+                        ),
+                    lease = fixture.lease,
+                    budget = budget,
+                    policy = policy,
+                )
+        assertTrue("Expected complete invocation graph, received $outcome", outcome is OperationOutcome.Complete)
+        val result = (outcome as OperationOutcome.Complete).evidence.payload
+        assertEquals(QueryResultInterpretationDocument.QueryResult, result.interpretation)
+        assertTrue(result.items.values.isEmpty())
+        val callback = result.relationObservations.values.flatMap { it.callbackObservations.values }.single()
+        val flow = callback.flow as QueryCallbackFlowDocument.Observed
+        assertTrue(flow.obligations.values.isEmpty())
+        assertEquals(1, flow.ownerBindings.values.size)
+    }
 
     fun testAbsentBinaryEffectKeepsSourceRelationships() {
         DeclaredEffectArchive.compile().use { archive ->
@@ -92,6 +150,8 @@ class NativeTraceEffectGapTest : NativeSmartModeFixtureTest() {
         expression: String,
         causes: Set<QueryCallbackFlowCauseDocument>,
         libraries: List<Path> = emptyList(),
+        localDeclaration: String? = null,
+        expectedFunctions: Set<String> = setOf("proof.target", "consumer.client", "consumer.entry"),
     ) = runBlocking {
         val source =
             "package consumer\nfun scope(block: () -> Unit) { block() }\n" +
@@ -100,23 +160,44 @@ class NativeTraceEffectGapTest : NativeSmartModeFixtureTest() {
         val outcome =
             fixture.protocol().execute(request = request, lease = fixture.lease, budget = budget, policy = policy)
         assertTrue(
-            "Expected complete source TRACE, received ${outcome::class.simpleName}",
+            "Expected complete source TRACE, received $outcome",
             outcome is OperationOutcome.Complete,
         )
         val result = (outcome as OperationOutcome.Complete).evidence.payload
-        assertSourceRelationships(result, source, causes)
+        val encoded = CanonicalQueryCliDocuments.project(outcome) as ProjectedOperationOutcome.Complete
+        val encodedBytes = encoded.document.value.toByteArray(Charsets.UTF_8).size
+        assertTrue(
+            "Encoded source TRACE exceeds its byte grant: $encodedBytes",
+            encodedBytes <= budget.returnedBytes.value,
+        )
+        assertSourceRelationships(
+            result = result,
+            source = source,
+            causes = causes,
+            localDeclaration = localDeclaration,
+            expectedFunctions = expectedFunctions,
+        )
     }
 
     private fun assertSourceRelationships(
         result: QueryRunResult,
         source: String,
         causes: Set<QueryCallbackFlowCauseDocument>,
+        localDeclaration: String?,
+        expectedFunctions: Set<String>,
     ) {
         assertEquals(QueryResultInterpretationDocument.SourceRelationships(), result.interpretation)
         val symbols = result.items.values.map { it as QueryResultItemDocument.ExactSymbol }
+        val locals = symbols.filter { it.signature is CompilerSignatureDocument.LocalProperty }
         assertEquals(
-            setOf("proof.target", "consumer.client", "consumer.entry"),
-            symbols.map { declaredIdentity(checkNotNull(it.signature)) }.toSet(),
+            "Unexpected source rows: ${symbols.map { it.signature }}",
+            if (localDeclaration == null) 0 else 1,
+            locals.size,
+        )
+        assertLocalDeclaration(locals, source, localDeclaration)
+        assertEquals(
+            expectedFunctions,
+            (symbols - locals.toSet()).map { declaredIdentity(checkNotNull(it.signature)) }.toSet(),
         )
         assertTrue(result.failures.values.isEmpty())
         assertTrue(result.omissions.values.isEmpty())
@@ -133,6 +214,25 @@ class NativeTraceEffectGapTest : NativeSmartModeFixtureTest() {
         val flow = callback.flow as QueryCallbackFlowDocument.Observed
         assertEquals(causes, flow.obligations.values.toSet())
         println("Native source TRACE gaps=${flow.obligations.values} symbols=${symbols.size}")
+    }
+
+    private fun assertLocalDeclaration(
+        locals: List<QueryResultItemDocument.ExactSymbol>,
+        source: String,
+        declaration: String?,
+    ) {
+        if (declaration == null) {
+            assertTrue("Unexpected local source relationships: $locals", locals.isEmpty())
+            return
+        }
+        val local = locals.single()
+        val signature = local.signature as CompilerSignatureDocument.LocalProperty
+        assertEquals("outer", local.name?.value)
+        assertEquals(LocalPropertyMutabilityDocument.VAL, signature.mutability)
+        val start = source.indexOf(declaration)
+        assertEquals(start, signature.address.range.startInclusive.value)
+        assertEquals(start + declaration.length, signature.address.range.endExclusive.value)
+        assertEquals(signature.address.range, checkNotNull(local.location).range)
     }
 
     private fun prepare(source: String, libraries: List<Path>): NativeScopedTraceFixture {

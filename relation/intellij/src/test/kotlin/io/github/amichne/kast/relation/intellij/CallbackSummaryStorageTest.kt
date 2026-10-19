@@ -228,7 +228,7 @@ class CallbackSummaryStorageTest {
     }
 }
 
-private class SummaryStorageFixture {
+internal class SummaryStorageFixture {
     private val request = RelationReadTest().request(RelationMeaning.Callees)
     private val lease = request.subject.lease
     private val forwardingFile = file("forwarding/src/main/kotlin/fixture/staticcallbacks/forwarding/Forwarding.kt")
