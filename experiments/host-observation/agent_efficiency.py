@@ -886,7 +886,8 @@ def execute(
         "agent_efficiency_subject.py",
         "agent_efficiency_metrics.py",
         "agent_efficiency_integrity.py",
-        "agent_efficiency_subject.py",
+        "agent_efficiency_tokens.py",
+        "agent_efficiency_timing.py",
         "pi_evaluation_controller.mjs",
     ):
         saved = controller_source / name

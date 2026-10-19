@@ -47,6 +47,8 @@ export function projectCall(event){
     return typeof target==='string'&&target.length?{...out,variant:'supported',request:{exactTargetHash:hash(target),...body}}:{...out,variant:'invalid'};
   }
   if(event.toolName!=='mcp__kast__query_symbols')return out;
+  if(event.input.verbose!==undefined&&typeof event.input.verbose!=='boolean')return {...out,variant:'invalid'};
+  out.presentation=event.input.verbose===true?'CANONICAL':'COMPACT_DEFAULT';
   const value=event.input.request;
   if(!object(value))return {...out,variant:'invalid'};
   if(!requestTypes.has(value.type)||value.type!=='RUN')return out;
@@ -138,4 +140,49 @@ export function projectResult(event){
   else return {...out,result};
   const omittedRows=Math.max(0,value.items.length-MAX_ROWS);
   return {...out,variant:omittedRows?'truncated':'supported',omittedRows,result};
+}
+
+// Session-local telemetry counts issued seed references in model-facing text.
+// It grants no semantic correctness or completeness claim.
+export function createReferenceExposureAudit() {
+  const pending=new Set(),refs=new Set();
+  let results=0,unknown=false;
+  return {
+    call(event) {
+      const projected=projectCall(event);
+      if(projected?.variant==='supported'&&projected.request?.source?.type==='SEARCH_DECLARATIONS')
+        pending.add(event.toolCallId);
+    },
+    result(event) {
+      if(!pending.delete(event.toolCallId))return;
+      results++;
+      const projected=projectResult(event);
+      if(projected?.variant!=='supported'){unknown=true;return;}
+      if(projected.result.status==='rejected')return;
+      const envelope=event.structuredContent;
+      const value=object(envelope)&&Array.isArray(envelope.content)&&object(envelope.structuredContent)
+        ?envelope.structuredContent:envelope;
+      for(const item of value.items){
+        if(refs.size===MAX_ROWS&&!refs.has(item.ref)){unknown=true;continue;}
+        refs.add(item.ref);
+      }
+    },
+    modelOutput(result) {
+      const content=result?.content;
+      const known=Array.isArray(content)&&content.every(block=>block.type==='text'&&typeof block.text==='string');
+      const exposed=known?[...refs].filter(ref=>content.some(block=>block.text.includes(ref))).length:null;
+      return {qualification:unknown||pending.size||!known?'UNKNOWN':'TEXT_CONTENT_ONLY',
+        observedSeedResults:results,observedSeedReferences:refs.size,seedReferencesInOutput:exposed};
+    },
+  };
+}
+
+// Whitelist scalar timing metadata. Headers, source text and response bodies stay private.
+export function projectProviderTiming(headers, response) {
+  const scalar=value=>typeof value==='number'&&Number.isFinite(value)&&value>=0?value:null;
+  const raw=object(headers)?Object.entries(headers).find(([name])=>name.toLowerCase()==='openai-processing-ms')?.[1]:undefined;
+  const processing=typeof raw==='string'&&/^[0-9]+(?:\.[0-9]+)?$/.test(raw)?scalar(Number(raw)):null;
+  return {providerProcessingMillis:processing,
+    serverCreatedAtSeconds:scalar(response?.created_at),
+    serverCompletedAtSeconds:scalar(response?.completed_at)};
 }

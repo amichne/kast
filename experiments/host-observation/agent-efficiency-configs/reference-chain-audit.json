@@ -1,0 +1,17 @@
+{
+  "exposure": "codemode",
+  "hypothesis": "A compact chain brief keeps intermediate results inside codemode, uses canonical rows for programmatic projection, and preserves full source-use correctness through internal source-scope review.",
+  "maximum_output_tokens": 6000,
+  "maximum_payload_bytes": 1048576,
+  "maximum_reported_tokens": 150000,
+  "maximum_requests": 20,
+  "maximum_tools": 40,
+  "name": "reference-chain-audit",
+  "onboarding": {
+    "kind": "file",
+    "name": "reference-chain-audit-onboarding.md",
+    "sha256": "38baf44f0cac40d9ffef7b67939aa31234f9fb9224d9b86e71610ea81a824c99"
+  },
+  "skills": [],
+  "wall_seconds": 180
+}

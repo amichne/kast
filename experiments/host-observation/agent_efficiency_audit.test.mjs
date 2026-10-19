@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {projectCall,projectResult} from './agent_efficiency_audit.mjs';
+import {projectCall,projectResult,createReferenceExposureAudit,projectProviderTiming} from './agent_efficiency_audit.mjs';
 
 const hash = s=>createHash('sha256').update(s).digest('hex');
 const event = (tool,extra)=>({toolName:`mcp__kast__${tool}`,toolCallId:'parent/1',parentToolCallId:'parent',...extra});
@@ -22,6 +22,8 @@ test('actual nested request shape keeps scope, identity, and correlation',()=>{
   assert.equal(p.toolCallId,'parent/1');
   assert.equal(p.parentToolCallId,'parent');
   assert.deepEqual(p.request,query.request);
+  assert.equal(p.presentation,'COMPACT_DEFAULT');
+  assert.equal(projectCall(event('query_symbols',{input:{...query,verbose:true}})).presentation,'CANONICAL');
 });
 test('canonical result signature stays qualified without source content',()=>{
   const p=projectResult(event('query_symbols',{isError:false,structuredContent:result()}));
@@ -74,4 +76,35 @@ test('bounded projections report omissions, and do not parse text as structured 
   assert.equal(p.omittedRows,8);
   const absent=projectResult(event('query_symbols',{isError:false,content:[{type:'text',text:JSON.stringify(result())}]}));
   assert.equal(absent.variant,'unsupported');
+});
+
+test('reference exposure telemetry counts text exposure without recording references',()=>{
+  const audit=createReferenceExposureAudit();
+  audit.call(event('query_symbols',{input:query}));
+  audit.result(event('query_symbols',{isError:false,structuredContent:{content:[],structuredContent:result()}}));
+  const terminal=audit.modelOutput({content:[{type:'text',text:'{"files":["/subject/Use.kt"]}'}]});
+  assert.deepEqual(terminal,{qualification:'TEXT_CONTENT_ONLY',observedSeedResults:1,
+    observedSeedReferences:1,seedReferencesInOutput:0});
+  const exposed=audit.modelOutput({content:[{type:'text',text:'ref: issued-reference'}]});
+  assert.equal(exposed.seedReferencesInOutput,1);
+  assert.equal(JSON.stringify(exposed).includes('issued-reference'),false);
+});
+test('unsupported or unfinished seed results cannot certify zero reference exposure',()=>{
+  const audit=createReferenceExposureAudit();
+  audit.call(event('query_symbols',{input:query}));
+  assert.equal(audit.modelOutput({content:[]}).qualification,'UNKNOWN');
+  audit.result(event('query_symbols',{structuredContent:{unknown:true}}));
+  assert.equal(audit.modelOutput({content:[]}).qualification,'UNKNOWN');
+  assert.equal(audit.modelOutput({}).seedReferencesInOutput,null);
+});
+
+test('provider timing keeps only finite explicitly supplied scalar fields',()=>{
+  assert.deepEqual(projectProviderTiming({'OpenAI-Processing-Ms':'250.5',authorization:'SECRET'},
+    {created_at:100,completed_at:102,output:'PRIVATE_SOURCE'}),
+    {providerProcessingMillis:250.5,serverCreatedAtSeconds:100,serverCompletedAtSeconds:102});
+  assert.deepEqual(projectProviderTiming({},{}),
+    {providerProcessingMillis:null,serverCreatedAtSeconds:null,serverCompletedAtSeconds:null});
+  assert.deepEqual(projectProviderTiming({'openai-processing-ms':'Infinity'},
+    {created_at:-1,completed_at:NaN}),
+    {providerProcessingMillis:null,serverCreatedAtSeconds:null,serverCompletedAtSeconds:null});
 });

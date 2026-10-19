@@ -9,10 +9,17 @@ import statistics
 from pathlib import Path
 from typing import Literal
 
-from pydantic import JsonValue, TypeAdapter
+from pydantic import Field, JsonValue, TypeAdapter
 
 from agent_efficiency import Record, SessionReport, save
 from agent_efficiency_metrics import InvalidInput, parse_trial
+from agent_efficiency_timing import (
+    TaskTiming,
+    TimingAggregate,
+    aggregate_timing,
+    no_journal,
+    read_timing,
+)
 
 
 class Row(Record):
@@ -24,6 +31,7 @@ class Row(Record):
     total_tokens: int | None
     requests: int
     tools: int
+    timing: TaskTiming = Field(default_factory=no_journal)
 
 
 class ArmSummary(Record):
@@ -35,6 +43,7 @@ class ArmSummary(Record):
     total_tokens: int | None
     median_tokens: float | None
     tokens_per_correct_completion: float | None
+    timing: TimingAggregate
 
 
 class Pair(Record):
@@ -55,7 +64,15 @@ class Report(Record):
     correctness_scope: str = (
         "Independent fixed source answers and unchanged workspace; no population accuracy claim"
     )
+    timing_basis: str = (
+        "Client request-to-finalized-response spans, including transport and observation overhead; "
+        "output includes reasoning, not pure decode speed. Optional server timestamps and "
+        "processing metadata remain distinct evidence. "
+        "Server timestamps keep their supplied precision. "
+        "Unavailable tasks retain qualified completed-response evidence, including failed tasks."
+    )
     manifest_sha256: str
+    tasks: tuple[Row, ...]
     control: ArmSummary
     treatment: ArmSummary
     pairs: tuple[Pair, ...]
@@ -89,6 +106,7 @@ def summary(rows: tuple[Row, ...]) -> ArmSummary:
         if not incomplete
         else None,
         tokens_per_correct_completion=ratio(total, correct),
+        timing=aggregate_timing(tuple(r.timing for r in rows)),
     )
 
 
@@ -131,6 +149,12 @@ def analyze(run: Path) -> Report:
                     else None,
                     requests=report.requests,
                     tools=report.toolCalls,
+                    timing=read_timing(
+                        owned / "session/journal.jsonl",
+                        wall_seconds=report.wallSeconds,
+                        requests=report.requests,
+                        output_tokens=report.outputTokens,
+                    ),
                 )
                 current.append(row)
                 rows.append(row)
@@ -161,6 +185,7 @@ def analyze(run: Path) -> Report:
     total_ratio = ratio(control.total_tokens, treatment.total_tokens)
     return Report(
         manifest_sha256=hashlib.sha256(manifest_bytes).hexdigest(),
+        tasks=tuple(rows),
         control=control,
         treatment=treatment,
         pairs=tuple(pairs),

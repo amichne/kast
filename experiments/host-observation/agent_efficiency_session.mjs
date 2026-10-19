@@ -6,7 +6,7 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { runOwnedWorker, WorkerDeadlineEnvironmentKey } from './pi_evaluation_controller.mjs';
 import { admitProviderRequest } from './agent_efficiency_limits.mjs';
-import { projectCall, projectResult } from './agent_efficiency_audit.mjs';
+import { projectCall, projectResult, createReferenceExposureAudit, projectProviderTiming } from './agent_efficiency_audit.mjs';
 
 const fields = ['version','workspaceRoot','outputRoot','piPackageRoot','piVersion','authPath',
   'provider','model','effort','arm','exposure','mcpCommand','onboarding','skills','prompt',
@@ -65,6 +65,11 @@ async function runSession(plan) {
     if(projection!==null)fs.appendFileSync(audit,JSON.stringify(projection)+'\n');
   };
   const events=[],usage=[],toolTimes=new Map();
+  const referenceExposure=createReferenceExposureAudit();
+  const emptyProviderTiming=()=>({sdkDurationMillis:null,headersReceivedMillis:null,
+    firstObservableDeltaMillis:null,serverCreatedAtSeconds:null,serverCompletedAtSeconds:null,
+    providerProcessingMillis:null});
+  let providerTiming=emptyProviderTiming();
   let session,setupMillis,reason='COMPLETED',requests=0,toolCalls=0,totalTokens=0;
   let payloadBytes=0,toolOutputBytes=0,retries=0,compactions=0;
   const write=(name,value)=>fs.writeFileSync(path.join(plan.outputRoot,name),JSON.stringify(value,null,2)+'\n',{mode:0o600,flag:'wx'});
@@ -96,16 +101,29 @@ async function runSession(plan) {
       if(reason!=='COMPLETED'){ctx.abort();return eventData.payload;}
       const admission=admitProviderRequest(eventData.payload,{requests,totalTokens},plan,
         {record:event,stop:fail,abort:()=>ctx.abort()});
-      if(admission.type==='admitted'){requests++;payloadBytes+=admission.bytes;}
+      if(admission.type==='admitted'){requests++;payloadBytes+=admission.bytes;providerTiming=emptyProviderTiming();}
       return admission.payload;
+    });
+    pi.on('after_provider_response',response=>{
+      providerTiming.headersReceivedMillis=performance.now()-started;
+      providerTiming.providerProcessingMillis=projectProviderTiming(response.headers,null).providerProcessingMillis;
+    });
+    pi.on('provider_stream_event',stream=>{
+      const value=stream.data;
+      if(['response.done','response.completed','response.incomplete'].includes(value?.type)){
+        const timing=projectProviderTiming(null,value.response);
+        providerTiming.serverCreatedAtSeconds=timing.serverCreatedAtSeconds;
+        providerTiming.serverCompletedAtSeconds=timing.serverCompletedAtSeconds;
+      }
     });
     pi.on('tool_call',(call,ctx)=>{
       if(toolCalls>=plan.maximumTools){fail('RESOURCE_LIMIT');ctx.abort();return {block:true,reason:'Experiment tool allowance exhausted'};}
+      referenceExposure.call(call);
       recordAudit(projectCall(call));
       toolCalls++;event({type:'tool_call',toolName:call.toolName,toolCallId:call.toolCallId,inputBytes:Buffer.byteLength(JSON.stringify(call.input)),
         inputSha256:hash(JSON.stringify(call.input))});
     });
-    pi.on('tool_result',result=>{recordAudit(projectResult(result));});
+    pi.on('tool_result',result=>{referenceExposure.result(result);recordAudit(projectResult(result));});
   };
   const factories=[sdk.createCodemodeExtension({mode:'on'}),sdk.createToolSearchExtension(),guard];
   if(plan.arm==='treatment')factories.push(sdk.createMcpExtension({
@@ -128,12 +146,17 @@ async function runSession(plan) {
   try {
     if(created.modelFallbackMessage||session.model?.id!==plan.model||session.thinkingLevel!==plan.effort)throw Error('MODEL_CHANGED');
     session.subscribe(data=>{
+      if(data.type==='message_update'&&providerTiming.firstObservableDeltaMillis===null
+        &&['text_delta','thinking_delta','toolcall_delta'].includes(data.assistantMessageEvent?.type))
+        providerTiming.firstObservableDeltaMillis=performance.now()-started;
       if(data.type==='message_end'&&data.message.role==='assistant') {
         const observed=finalizedUsage(data.message.usage);
         usage.push(observed);
         if(observed.type==='rejected')fail('USAGE_UNAVAILABLE');
         else totalTokens+=observed.totalTokens;
-        event({type:'assistant_end',stopReason:data.message.stopReason,usage:observed});
+        const duration=data.message.durationMs;
+        providerTiming.sdkDurationMillis=typeof duration==='number'&&Number.isFinite(duration)&&duration>=0?duration:null;
+        event({type:'assistant_end',stopReason:data.message.stopReason,usage:observed,providerTiming:{...providerTiming}});
         fs.writeFileSync(path.join(plan.outputRoot,'last-assistant.json'),JSON.stringify(data.message),{mode:0o600});
         if(data.message.stopReason==='error')fail('PROVIDER_FAILURE');
       }
@@ -141,7 +164,8 @@ async function runSession(plan) {
       if(data.type==='tool_execution_end') {
         const bytes=Buffer.byteLength(JSON.stringify(data.result??null));toolOutputBytes+=bytes;
         event({type:'tool_end',toolName:data.toolName,toolCallId:data.toolCallId,isError:data.isError,outputBytes:bytes,
-          durationMillis:performance.now()-(toolTimes.get(data.toolCallId)??performance.now())});
+          durationMillis:performance.now()-(toolTimes.get(data.toolCallId)??performance.now()),
+          ...(data.toolName==='codemode'?{referenceExposure:referenceExposure.modelOutput(data.result)}:{})});
       }
       if(data.type==='auto_retry_start')retries++;
       if(data.type==='compaction_start')compactions++;

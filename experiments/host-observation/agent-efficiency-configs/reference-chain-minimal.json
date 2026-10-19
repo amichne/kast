@@ -1,0 +1,17 @@
+{
+  "exposure": "codemode",
+  "hypothesis": "A reference-only brief reduces instruction and intermediate context while preserving exact source-use answers and zero observed seed-reference exposure.",
+  "maximum_output_tokens": 6000,
+  "maximum_payload_bytes": 1048576,
+  "maximum_reported_tokens": 150000,
+  "maximum_requests": 20,
+  "maximum_tools": 40,
+  "name": "reference-chain-minimal",
+  "onboarding": {
+    "kind": "file",
+    "name": "reference-chain-minimal-onboarding.md",
+    "sha256": "c045195b350e102e1c4c573c2efae6c04b322adc7d80abd001c40b6d1a893102"
+  },
+  "skills": [],
+  "wall_seconds": 180
+}
