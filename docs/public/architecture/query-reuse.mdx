@@ -24,16 +24,43 @@ An exact declaration name can permit a native word-index search. Only a complete
 Kast then walks the bounded VFS inventory. It skips expensive source work for ordinary files outside that candidate set.
 
 ```mermaid
-%%{init: {"flowchart": {"rankSpacing": 25, "nodeSpacing": 20, "padding": 10}}}%%
+%%{init: {"flowchart": {"rankSpacing": 28, "nodeSpacing": 16, "padding": 12, "curve": "basis"}}}%%
 flowchart TD
-  I["Word-index read"] --> C{"Completed?"}
-  C -->|No| R["Typed stop"]
-  C -->|Yes| P["Candidate-file set"]
-  P --> V["Keep candidates and protected files"]
-  V --> X["Source admission and compiler refinement"]
+  I["Native word-index read"] --> C{"Completed?"}
+  C -->|No| R["Typed stop<br/>no exclusion evidence"]
+  C -->|Yes| P["Immutable candidate paths"]
+  P --> V["Bounded VFS inventory"]
+  V --> E{"Candidate or<br/>protected file?"}
+  E -->|Yes| X["Source admission<br/>PSI and declaration AST"]
+  E -->|No| S["Skip declaration work"]
+  X --> K(["Compiler confirms<br/>exact identity"])
+  classDef default fill:#f1f3f5,stroke:#929dab,color:#243242
+  classDef proof fill:#eaf0ff,stroke:#607bdb,color:#182a57
+  classDef stop fill:#fae8e5,stroke:#bc6258,color:#622e28
+  classDef result fill:#e5f5ee,stroke:#278160,color:#123d30
+  class P proof
+  class R stop
+  class K result
 ```
 
-The set proves where exclusion is safe. It does not prove that a candidate contains the requested declaration.
+The set proves where exclusion is safe. The VFS inventory still examines excluded children. The compiler must prove that a candidate contains the requested declaration.
+
+<Accordion title="Recorded work reduction and its limits">
+  A matched native fixture compared exhaustive discovery with candidate-file exclusion under the same 999,999-unit allowance.
+
+  | Measurement | Exhaustive discovery | Candidate-file exclusion |
+  | --- | ---: | ---: |
+  | Discovery work units | 999,999, exhausted | 26,874, complete |
+  | Declaration scans | 232 | 5 |
+  | AST nodes visited | 497,173 | 12,813 |
+  | VFS children examined | 2,364 | 2,364 |
+
+  The [recorded experiment](https://github.com/amichne/kast/blob/7e43fc5bbbdfcc43398a775e0d1b9397bb49442d/docs/reviews/exact-name-discovery-work.md) fixes the source digest, input, oracle, and fixture environment.
+
+  These historical counts show less declaration work with unchanged VFS visits. They do not establish a completed-query speedup or a workspace `TRACE` benchmark.
+
+  The separate installed replay used 27,086 discovery units. It used a different environment and does not belong in the matched comparison.
+</Accordion>
 
 <Accordion title="Exceptions and rejection rules">
   Invalid files and files too large for code intelligence keep the original admission path. They cannot silently disappear from coverage.
@@ -54,14 +81,20 @@ For a type seed, direct callable members also enter as seeds. This membership do
 Several routes can reach the same callable. Kast groups matching callable arrivals before one downstream `CALLERS` read.
 
 ```mermaid
-%%{init: {"flowchart": {"rankSpacing": 25, "nodeSpacing": 20, "padding": 10}}}%%
+%%{init: {"flowchart": {"rankSpacing": 28, "nodeSpacing": 16, "padding": 12, "curve": "basis"}}}%%
 flowchart TD
   S["Seed"] --> I["Implementations or overrides"]
-  S --> A["Reference and caller arrivals"]
-  I --> A
-  A --> G["Group matching exact callable capabilities"]
-  G --> C["One further CALLERS read per group"]
-  C --> O["Final declarations and all arrival evidence"]
+  S --> A["Direct-use arrivals"]
+  I --> B["Implementation-use arrivals"]
+  A --> G["Group matching exact<br/>callable capabilities"]
+  B --> G
+  G --> C["One further CALLERS<br/>read per group"]
+  C --> O(["Final declarations<br/>all arrival evidence"])
+  classDef default fill:#f1f3f5,stroke:#929dab,color:#243242
+  classDef proof fill:#eaf0ff,stroke:#607bdb,color:#182a57
+  classDef result fill:#e5f5ee,stroke:#278160,color:#123d30
+  class G proof
+  class O result
 ```
 
 The group keeps independent reference, caller, and implementation-use evidence. It shares expansion because the exact capability matches, while each arrival keeps its evidence.
@@ -73,6 +106,25 @@ This path stops after its fixed caller layer. Use `WALK` for a different travers
 `REFERENCES` and `CALLERS` can need the same native reference inventory. Their semantic questions still differ.
 
 The invocation owns one recent inventory slot. Its key includes current authority, subject, scope, and evidence purpose.
+
+```mermaid
+%%{init: {"flowchart": {"rankSpacing": 28, "nodeSpacing": 16, "padding": 12, "curve": "basis"}}}%%
+flowchart TD
+  P["Prepared detached inventory"] --> K{"Same authority, subject,<br/>scope, and purpose?"}
+  K -->|No| M["Prepare a new inventory"]
+  K -->|Yes| C["Admit receiving capacity"]
+  C -->|Rejected| U["Unavailable"]
+  C -->|Admitted| R(["Confirm the<br/>receiving relation"])
+  classDef default fill:#f1f3f5,stroke:#929dab,color:#243242
+  classDef proof fill:#eaf0ff,stroke:#607bdb,color:#182a57
+  classDef stop fill:#fae8e5,stroke:#bc6258,color:#622e28
+  classDef result fill:#e5f5ee,stroke:#278160,color:#123d30
+  class P proof
+  class U stop
+  class R result
+```
+
+A matching key permits capacity admission. It does not supply a completed semantic answer. The receiving relation still confirms its own meaning.
 
 <AccordionGroup>
   <Accordion title="What enters the slot">
@@ -93,6 +145,24 @@ Two routes can reach the same exact value site. Kast can reuse a settled one-hop
 
 Each route still keeps its own producer and ordered history. The interpreter expands the reused transfers separately for those routes.
 
+```mermaid
+%%{init: {"flowchart": {"rankSpacing": 28, "nodeSpacing": 20, "padding": 12, "curve": "basis"}}}%%
+flowchart TD
+  A["Route A arrives"] --> R["Shared settled read<br/>one exact value site"]
+  B["Route B arrives"] --> R
+  R --> H["Expand route A<br/>keep history A"]
+  R --> J["Expand route B<br/>keep history B"]
+  H --> L(["Investigation ledger<br/>every route and obligation"])
+  J --> L
+  classDef default fill:#f1f3f5,stroke:#929dab,color:#243242
+  classDef proof fill:#eaf0ff,stroke:#607bdb,color:#182a57
+  classDef result fill:#e5f5ee,stroke:#278160,color:#123d30
+  class R proof
+  class L result
+```
+
+The shared read can include finite rejection evidence. A rejection never becomes an empty successful transfer set.
+
 If part of a read remains unfinished, Kast continues that read under the existing grant. A saved prefix alone does not establish a settled read.
 
 The original ledger keeps branches, terminals, models, and unresolved obligations. Completion needs that whole ledger, even when a preview shows one path.
@@ -105,9 +175,9 @@ For reuse across source states, continue with [retention and invalidation](/refe
 
 ## Source evidence
 
-<Accordion title="Owners and focused tests at 23828e1536">
-  - [Exact-name exclusion](https://github.com/amichne/kast/blob/23828e1536835b5cae785b30254ac68059705926/symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactNameCandidateFiles.kt) owns the completed candidate set. [Its tests](https://github.com/amichne/kast/blob/23828e1536835b5cae785b30254ac68059705926/symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ExactNameCandidateFilesTest.kt) cover failed reads and exhausted capacity.
-  - [TRACE tasks](https://github.com/amichne/kast/blob/23828e1536835b5cae785b30254ac68059705926/query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryTraceTasks.kt) own the fixed phases and grouped arrivals.
-  - [Reference inventory reuse](https://github.com/amichne/kast/blob/23828e1536835b5cae785b30254ac68059705926/relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijReferenceInventoryReuse.kt) owns the slot and its key. [Its tests](https://github.com/amichne/kast/blob/23828e1536835b5cae785b30254ac68059705926/relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/ReferenceInventoryReuseTest.kt) cover reuse and rejection.
-  - [IMPACT tasks](https://github.com/amichne/kast/blob/23828e1536835b5cae785b30254ac68059705926/query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt) own read reuse, remainders, and route expansion.
+<Accordion title="Owners and focused tests at 722ae03fc1">
+  - [Exact-name exclusion](https://github.com/amichne/kast/blob/722ae03fc19193f233d380ee95c221c527178767/symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactNameCandidateFiles.kt) owns the completed candidate set. [Its tests](https://github.com/amichne/kast/blob/722ae03fc19193f233d380ee95c221c527178767/symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ExactNameCandidateFilesTest.kt) cover failed reads and exhausted capacity.
+  - [TRACE tasks](https://github.com/amichne/kast/blob/722ae03fc19193f233d380ee95c221c527178767/query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryTraceTasks.kt) own the fixed phases and grouped arrivals.
+  - [Reference inventory reuse](https://github.com/amichne/kast/blob/722ae03fc19193f233d380ee95c221c527178767/relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijReferenceInventoryReuse.kt) owns the slot and its key. [Its tests](https://github.com/amichne/kast/blob/722ae03fc19193f233d380ee95c221c527178767/relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/ReferenceInventoryReuseTest.kt) cover reuse and rejection.
+  - [IMPACT tasks](https://github.com/amichne/kast/blob/722ae03fc19193f233d380ee95c221c527178767/query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt) own read reuse, remainders, and route expansion.
 </Accordion>

@@ -1,0 +1,4 @@
+/* Keep native Mermaid diagrams centered without changing their zoom container. */
+.mermaid > svg {
+  margin-inline: auto;
+}
