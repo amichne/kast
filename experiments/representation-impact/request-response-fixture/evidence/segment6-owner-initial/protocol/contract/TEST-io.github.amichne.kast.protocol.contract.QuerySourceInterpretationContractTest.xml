@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.QuerySourceInterpretationContractTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:20.823Z" hostname="Austins-MacBook-Pro.local" time="0.005">
+  <properties/>
+  <testcase name="source interpretation rejects missing null and unknown callback effect claims()" classname="io.github.amichne.kast.protocol.contract.QuerySourceInterpretationContractTest" time="0.004"/>
+  <testcase name="source interpretation always encodes its exact effect evidence contract()" classname="io.github.amichne.kast.protocol.contract.QuerySourceInterpretationContractTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

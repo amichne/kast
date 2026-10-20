@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueReceiverCallbackOracleTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T03:55:56.252Z" hostname="Austins-MacBook-Pro.local" time="0.004">
+  <properties/>
+  <testcase name="ordinary argument one cannot substitute for the anonymous extension receiver()" classname="io.github.amichne.kast.relation.contract.ValueReceiverCallbackOracleTest" time="0.002"/>
+  <testcase name="builtin argument one enters ordinary parameter zero after the receiver slot()" classname="io.github.amichne.kast.relation.contract.ValueReceiverCallbackOracleTest" time="0.001"/>
+  <testcase name="builtin argument zero enters the anonymous extension receiver()" classname="io.github.amichne.kast.relation.contract.ValueReceiverCallbackOracleTest" time="0.001"/>
+  <testcase name="receiver argument zero cannot substitute for ordinary parameter zero()" classname="io.github.amichne.kast.relation.contract.ValueReceiverCallbackOracleTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

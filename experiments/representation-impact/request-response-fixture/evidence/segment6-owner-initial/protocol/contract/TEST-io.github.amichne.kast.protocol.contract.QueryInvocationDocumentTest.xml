@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.QueryInvocationDocumentTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:20.779Z" hostname="Austins-MacBook-Pro.local" time="0.022">
+  <properties/>
+  <testcase name="malformed and contradictory raw invocation metadata is rejected before domain construction()" classname="io.github.amichne.kast.protocol.contract.QueryInvocationDocumentTest" time="0.016"/>
+  <testcase name="every finite stop encodes its owning case and exact failure()" classname="io.github.amichne.kast.protocol.contract.QueryInvocationDocumentTest" time="0.003"/>
+  <testcase name="complete retained prefix encodes coverage independent preview and required discriminators()" classname="io.github.amichne.kast.protocol.contract.QueryInvocationDocumentTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

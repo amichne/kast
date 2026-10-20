@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest" tests="6" skipped="0" failures="2" errors="0" timestamp="2026-10-20T05:59:52.896Z" hostname="Austins-MacBook-Pro.local" time="0.292">
+  <properties/>
+  <testcase name="initial invocation keeps original paths when no path row fits its execution page()" classname="io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest" time="0.199">
+    <failure message="org.opentest4j.AssertionFailedError: receipts=[CaptureStarted, Captured, Issuance(outcome=ISSUED), PreviewRowIdentityRejected(itemCount=QueryCount(value=0), identityCount=QueryCount(value=3))] ==&gt; Unexpected type, expected: &lt;io.github.amichne.kast.protocol.contract.QueryRunRejection.CompletionUnproven&gt; but was: &lt;io.github.amichne.kast.protocol.contract.QueryRunRejection.ExecutionRejected&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: receipts=[CaptureStarted, Captured, Issuance(outcome=ISSUED), PreviewRowIdentityRejected(itemCount=QueryCount(value=0), identityCount=QueryCount(value=3))] ==&gt; Unexpected type, expected: &lt;io.github.amichne.kast.protocol.contract.QueryRunRejection.CompletionUnproven&gt; but was: &lt;io.github.amichne.kast.protocol.contract.QueryRunRejection.ExecutionRejected&gt;
+	at org.junit.jupiter.api.Assertions.assertInstanceOf(Assertions.java:3717)
+	at io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest.assertInvocationSelection(OriginalImpactRetentionTest.kt:92)
+	at io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest.access$assertInvocationSelection(OriginalImpactRetentionTest.kt:70)
+	at io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest$initial invocation keeps original paths when no path row fits its execution page$1.invokeSuspend(OriginalImpactRetentionTest.kt:75)
+	at io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest$initial invocation keeps original paths when no path row fits its execution page$1.invoke(OriginalImpactRetentionTest.kt)
+	at io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest$initial invocation keeps original paths when no path row fits its execution page$1.invoke(OriginalImpactRetentionTest.kt)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt$runTest$2$1$1.invokeSuspend(TestBuilders.kt:317)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.test.TestDispatcher.processEvent$kotlinx_coroutines_test(TestDispatcher.kt:24)
+	at kotlinx.coroutines.test.TestCoroutineScheduler.tryRunNextTaskUnless$kotlinx_coroutines_test(TestCoroutineScheduler.kt:98)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt$runTest$2$1$workRunner$1.invokeSuspend(TestBuilders.kt:326)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:256)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:54)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlockingImpl(Builders.kt:30)
+	at kotlinx.coroutines.BuildersKt.runBlockingImpl(Unknown Source)
+	at kotlinx.coroutines.BuildersKt__Builders_concurrentKt.runBlockingK(Builders.concurrent.kt:172)
+	at kotlinx.coroutines.BuildersKt.runBlockingK(Unknown Source)
+	at kotlinx.coroutines.BuildersKt__Builders_concurrentKt.runBlockingK$default(Builders.concurrent.kt:157)
+	at kotlinx.coroutines.BuildersKt.runBlockingK$default(Unknown Source)
+	at kotlinx.coroutines.test.TestBuildersJvmKt.createTestResult(TestBuildersJvm.kt:10)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:309)
+	at kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:1)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:167)
+	at kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:1)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0$default(TestBuilders.kt:159)
+	at kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0$default(TestBuilders.kt:1)
+	at io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest.initial invocation keeps original paths when no path row fits its execution page(OriginalImpactRetentionTest.kt:74)
+</failure>
+  </testcase>
+  <testcase name="original investigated paths remain readable even when execution emitted no rows()" classname="io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest" time="0.043"/>
+  <testcase name="initial invocation gives a non-prefix selection its original row identity()" classname="io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest" time="0.004">
+    <failure message="org.opentest4j.AssertionFailedError: receipts=[CaptureStarted, Captured, Issuance(outcome=ISSUED), PreviewRowIdentityRejected(itemCount=QueryCount(value=1), identityCount=QueryCount(value=3))] ==&gt; Unexpected type, expected: &lt;io.github.amichne.kast.protocol.contract.QueryRunRejection.CompletionUnproven&gt; but was: &lt;io.github.amichne.kast.protocol.contract.QueryRunRejection.ExecutionRejected&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: receipts=[CaptureStarted, Captured, Issuance(outcome=ISSUED), PreviewRowIdentityRejected(itemCount=QueryCount(value=1), identityCount=QueryCount(value=3))] ==&gt; Unexpected type, expected: &lt;io.github.amichne.kast.protocol.contract.QueryRunRejection.CompletionUnproven&gt; but was: &lt;io.github.amichne.kast.protocol.contract.QueryRunRejection.ExecutionRejected&gt;
+	at org.junit.jupiter.api.Assertions.assertInstanceOf(Assertions.java:3717)
+	at io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest.assertInvocationSelection(OriginalImpactRetentionTest.kt:92)
+	at io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest.access$assertInvocationSelection(OriginalImpactRetentionTest.kt:70)
+	at io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest$initial invocation gives a non-prefix selection its original row identity$1.invokeSuspend(OriginalImpactRetentionTest.kt:80)
+	at io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest$initial invocation gives a non-prefix selection its original row identity$1.invoke(OriginalImpactRetentionTest.kt)
+	at io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest$initial invocation gives a non-prefix selection its original row identity$1.invoke(OriginalImpactRetentionTest.kt)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt$runTest$2$1$1.invokeSuspend(TestBuilders.kt:317)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.test.TestDispatcher.processEvent$kotlinx_coroutines_test(TestDispatcher.kt:24)
+	at kotlinx.coroutines.test.TestCoroutineScheduler.tryRunNextTaskUnless$kotlinx_coroutines_test(TestCoroutineScheduler.kt:98)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt$runTest$2$1$workRunner$1.invokeSuspend(TestBuilders.kt:326)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:256)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:54)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlockingImpl(Builders.kt:30)
+	at kotlinx.coroutines.BuildersKt.runBlockingImpl(Unknown Source)
+	at kotlinx.coroutines.BuildersKt__Builders_concurrentKt.runBlockingK(Builders.concurrent.kt:172)
+	at kotlinx.coroutines.BuildersKt.runBlockingK(Unknown Source)
+	at kotlinx.coroutines.BuildersKt__Builders_concurrentKt.runBlockingK$default(Builders.concurrent.kt:157)
+	at kotlinx.coroutines.BuildersKt.runBlockingK$default(Unknown Source)
+	at kotlinx.coroutines.test.TestBuildersJvmKt.createTestResult(TestBuildersJvm.kt:10)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:309)
+	at kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:1)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:167)
+	at kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:1)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0$default(TestBuilders.kt:159)
+	at kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0$default(TestBuilders.kt:1)
+	at io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest.initial invocation gives a non-prefix selection its original row identity(OriginalImpactRetentionTest.kt:79)
+</failure>
+  </testcase>
+  <testcase name="initial invocation keeps complete row identity order()" classname="io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest" time="0.025"/>
+  <testcase name="original row identities survive repeated reads and cursor selection()" classname="io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest" time="0.007"/>
+  <testcase name="generic selected result capture preserves only the explicit selection()" classname="io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

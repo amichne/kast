@@ -35,6 +35,7 @@ import io.github.amichne.kast.relation.contract.RepresentationRule
 import io.github.amichne.kast.relation.contract.RepresentationUnknownReason
 import io.github.amichne.kast.relation.contract.RevalidatedValueSite
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
+import io.github.amichne.kast.relation.contract.ValueProducerOrigin
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueSiteRevalidationRequest
@@ -182,7 +183,10 @@ class QueryImpactPeerBoundaryExecutionTest {
         val rule =
             RepresentationRule.Origin.admit(
                     ModelRuleReference(identity, id("origin")),
-                    f.bind(f.producer.invocation.callable, ModelValuePosition.Result),
+                    f.bind(
+                        (f.producer.origin as ValueProducerOrigin.Declared).invocation.callable,
+                        ModelValuePosition.Result,
+                    ),
                     vocabulary.state(id("ENCRYPTED")).value(),
                 )
                 .value()

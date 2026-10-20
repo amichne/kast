@@ -1,8 +1,18 @@
 package io.github.amichne.kast.protocol.wire
 
+import io.github.amichne.kast.protocol.contract.QueryCallbackBindingWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBodyBindingWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBodySupplyWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBodyWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackDependencyContractProvenanceDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackDependencyInvocationKindDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackFlowWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationScanDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackOwnerExecutionWireDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.callbackWire
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test

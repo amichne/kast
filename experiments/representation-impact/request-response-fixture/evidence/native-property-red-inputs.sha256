@@ -1,0 +1,8 @@
+75defdcdc8cb7cca72dd1991f5797ab71d8deb35acd76316813b165b5fec57a6  experiments/representation-impact/request-response-fixture/src/main/kotlin/fixture/variants/v0/V0.kt
+9b2f6915750e4281c7bc64b36fb30dcebf6bc9e09021043f0e98c2a207e644d6  runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketQueryCapture.kt
+ce51107e99be3f559c0649ee8741b4a0e736a6d572f9b6bb995f80bc74a90c56  runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketQueryFixture.kt
+d080a7b454cec52670aa2d9467dc70ed3c11c5fe180aa43718120c17439e5e7a  runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketQueryOracle.kt
+ece38f1f5edc8328ed4e54ceb7fec041be8271f3b60ac0bb164c22e6a18db40b  runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketQueryServices.kt
+e8ef8cde8b69ee6bfa2d10c95eb1bc14e2bbe2c95dc8d0798cfe49805d6e2661  runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketQuerySource.kt
+8d59a7e88a003a8812d3fb850fb192c6a3dece65afa8ef0d74edf0875bef9d52  runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketQueryTest.kt
+f585da0b5ef2f85e57d1986eed83f8aa94fa002805ef1a7ef909816656b504fa  symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/exact/IntellijKotlinCompilerSymbolLookup.kt

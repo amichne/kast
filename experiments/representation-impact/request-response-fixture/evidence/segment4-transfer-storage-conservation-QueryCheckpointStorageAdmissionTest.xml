@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryCheckpointStorageAdmissionTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T06:52:35.978Z" hostname="Austins-MacBook-Pro.local" time="0.021">
+  <properties/>
+  <testcase name="storage sums saturate and exceed the default checkpoint allowance()" classname="io.github.amichne.kast.query.contract.QueryCheckpointStorageAdmissionTest" time="0.012"/>
+  <testcase name="estimate preserves each accounting owner and admits equality at the boundary()" classname="io.github.amichne.kast.query.contract.QueryCheckpointStorageAdmissionTest" time="0.002"/>
+  <testcase name="negative storage is a finite rejection and empty storage remains valid()" classname="io.github.amichne.kast.query.contract.QueryCheckpointStorageAdmissionTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

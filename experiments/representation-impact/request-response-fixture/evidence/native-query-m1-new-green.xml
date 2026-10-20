@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.runtime.hosted.NativePacketQueryVariantTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T03:26:06.212Z" hostname="Austins-MacBook-Pro.local" time="11.17">
+  <properties/>
+  <testcase name="testV2OutgoingPreservesReceiverHelperFieldsAndMatchedReturn" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryVariantTest" time="7.853"/>
+  <testcase name="testV3NestedConstructorOutgoingReachesTheExactTransportArgument" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryVariantTest" time="0.927"/>
+  <testcase name="testV3NestedSendIncomingReachesTheExactFeatureReturn" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryVariantTest" time="0.723"/>
+  <testcase name="testV8DestinationIndexOneReachesSendIndexZero" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryVariantTest" time="0.58"/>
+  <testcase name="testV2IncomingPreservesReceiverHelperFieldsAndMatchedReturn" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryVariantTest" time="0.586"/>
+  <testcase name="testV8IncomingReachesTheExactFeatureReturn" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryVariantTest" time="0.491"/>
+  <system-out><![CDATA[PACKET_QUERY_CAPTURE outgoing=true nativeFlowReads=16 retainedReadDelta=0 paths=1
+PACKET_QUERY_CAPTURE outgoing=true nativeFlowReads=8 retainedReadDelta=0 paths=1
+PACKET_QUERY_CAPTURE outgoing=false nativeFlowReads=10 retainedReadDelta=0 paths=1
+PACKET_QUERY_CAPTURE outgoing=true nativeFlowReads=12 retainedReadDelta=0 paths=1
+PACKET_QUERY_CAPTURE outgoing=false nativeFlowReads=18 retainedReadDelta=0 paths=1
+PACKET_QUERY_CAPTURE outgoing=false nativeFlowReads=14 retainedReadDelta=0 paths=1
+]]></system-out>
+  <system-err><![CDATA[[   1153]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1153]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

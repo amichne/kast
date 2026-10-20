@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ExecutionBudgetDocumentTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:19.961Z" hostname="Austins-MacBook-Pro.local" time="0.051">
+  <properties/>
+  <testcase name="nonpositive overflowing and unknown controls fail before semantic admission()" classname="io.github.amichne.kast.protocol.contract.ExecutionBudgetDocumentTest" time="0.049"/>
+  <testcase name="encoded budget uses four positive controls and preserves typed requests()" classname="io.github.amichne.kast.protocol.contract.ExecutionBudgetDocumentTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

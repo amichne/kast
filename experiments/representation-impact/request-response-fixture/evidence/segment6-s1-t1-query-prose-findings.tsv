@@ -1,0 +1,2 @@
+rule	location	status	reason
+Slopsentral.Grade	results/s1-t1-query-oracle-stage.md:1	ASSESSED_ADVISORY_REMAINS	Grade10.62 preserves exact identifiers and source/model distinctions. Comprehension NOT_ASSESSED.

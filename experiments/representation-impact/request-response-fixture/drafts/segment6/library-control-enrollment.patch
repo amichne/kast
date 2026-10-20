@@ -1,0 +1,20 @@
+--- a/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketValueFixture.kt
++++ b/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketValueFixture.kt
+@@ -375,6 +375,7 @@
+                 "derived-sources.sha256",
+                 "segment4-controls.sha256",
+                 "segment4-return-controls.sha256",
++                "segment6-library-controls.sha256",
+             )
+             .flatMap { manifest -> Files.readAllLines(root.resolve(manifest)) }
+             .single { it.endsWith("  $path") }
+--- a/experiments/representation-impact/request-response-fixture/runtime/kotlin/fixture/runtime/RuntimeAssertions.kt
++++ b/experiments/representation-impact/request-response-fixture/runtime/kotlin/fixture/runtime/RuntimeAssertions.kt
+@@ -131,6 +131,7 @@
+         "derived-sources.sha256",
+         "segment4-controls.sha256",
+         "segment4-return-controls.sha256",
++        "segment6-library-controls.sha256",
+     )
+     for (manifest in manifests) {
+         for (line in Files.readAllLines(Path.of(manifest))) {

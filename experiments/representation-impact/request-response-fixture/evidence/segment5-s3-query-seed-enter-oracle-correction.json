@@ -1,0 +1,82 @@
+{
+  "kind": "ORACLE_REPRESENTATION_CORRECTION",
+  "before": {
+    "path": "experiments/representation-impact/request-response-fixture/evidence/segment5-s3-query-callback-before-seed-enter.kt.txt",
+    "sha256": "c9b8744c17051578e033478500c9101ae4d152594e995cf4bddcaa67a366f24e",
+    "callbackOperation": "Enter"
+  },
+  "after": {
+    "path": "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketS3QueryCallbackOracle.kt",
+    "sha256": "013d4aac630fae6ac10234e3db34850b7658ab7a171066cb820ff0d37c7e5c8d",
+    "callbackOperation": "SeedCallbackEnter"
+  },
+  "preserved": {
+    "seedRange": [
+      761,
+      768
+    ],
+    "expectedPropertyRange": [
+      594,
+      642
+    ],
+    "functionArgumentRange": [
+      793,
+      799
+    ],
+    "functionInvokeRange": [
+      789,
+      800
+    ],
+    "anonymousBodyRange": [
+      925,
+      943
+    ],
+    "sourceStack": [],
+    "destinationStack": [
+      "source_supplier_execute769:954",
+      "actual_log_callback789:800"
+    ],
+    "formal": {
+      "origin": "Implicit",
+      "name": "it",
+      "index": 0,
+      "bodyRange": [
+        925,
+        943
+      ]
+    },
+    "helperOperation": "Enter",
+    "productionChanges": false,
+    "requestedSitesChanged": false,
+    "resourceGrantsChanged": false
+  },
+  "priorReports": [
+    {
+      "path": "experiments/representation-impact/request-response-fixture/evidence/segment5-original-after-seed-entry-io.github.amichne.kast.runtime.hosted.NativePacketCompositeQueryTest.xml",
+      "sha256": "5646dbcbc6fdac3a975199714642c0b75546260acbf52936e63c8e0d2dcf35ba",
+      "tests": "10",
+      "failures": "3",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "path": "experiments/representation-impact/request-response-fixture/evidence/segment5-original-after-seed-entry-io.github.amichne.kast.runtime.hosted.NativePacketS3QueryTest.xml",
+      "sha256": "f38b258daff7a157402fd9e05ff68262ef34101313ae2d75ca8506cc75ddfd85",
+      "tests": "4",
+      "failures": "2",
+      "errors": "0",
+      "skipped": "0"
+    }
+  ],
+  "correctedAssertions": "NOT_RUN_BY_FIXTURE_OWNER",
+  "newS1T1Assertions": "NOT_RUN_BY_FIXTURE_OWNER",
+  "formatter": "PASSED",
+  "gradle": "NOT_RUN_BY_FIXTURE_OWNER",
+  "knownUnmet": [
+    "C1.5 reviewed string derivation and Pair/map value association",
+    "T1 exact reviewed listOf insertion under original library EXCLUDE",
+    "source-known empty satisfiability and complete NO_OFFER continuation",
+    "C3 typed string derivation and reviewed Logger terminal interpretation",
+    "M2 and M3 full acceptance"
+  ]
+}

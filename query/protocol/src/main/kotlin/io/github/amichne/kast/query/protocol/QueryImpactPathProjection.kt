@@ -24,47 +24,55 @@ import io.github.amichne.kast.relation.contract.ConsumerRepresentationEvidence
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
 
 /** Pure evidence projection. It cannot introduce rows, connect sites or determine query completion. */
-internal fun QueryImpactPath.impactDocument(): ImpactProjected<ImpactPathDocument> =
+internal fun QueryImpactPath.impactDocument(references: QueryReferenceAuthority): ImpactProjected<ImpactPathDocument> =
     producer
-        .impactDocument()
-        .impactZip(steps.impactEach { it.impactDocument() })
+        .impactDocument(references)
+        .impactZip(steps.impactEach { it.impactDocument(references) })
         .impactZip(
             when (val representation = representation) {
                 QueryImpactRepresentation.NotModeled ->
                     Refinement.Refined(ImpactRepresentationEvidenceDocument.NotModeled)
-                is QueryImpactRepresentation.Present -> representation.evidence.impactDocument()
+                is QueryImpactRepresentation.Present -> representation.evidence.impactDocument(references)
             }
         )
-        .impactZip(terminal.impactDocument())
+        .impactZip(terminal.impactDocument(references))
         .impactMap { (path, terminal) ->
             ImpactPathDocument(path.first.first, path.first.second, path.second, terminal)
         }
 
-internal fun QueryImpactStep.impactDocument(): ImpactProjected<ImpactPathStepDocument> =
+internal fun QueryImpactStep.impactDocument(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactPathStepDocument> =
     when (this) {
-        is QueryImpactStep.Compiler -> transfer.impactDocument().impactMap(ImpactPathStepDocument::Compiler)
+        is QueryImpactStep.Compiler -> transfer.impactDocument(references).impactMap(ImpactPathStepDocument::Compiler)
         is QueryImpactStep.ModeledRepresentation ->
-            application.impactDocument().impactMap(ImpactPathStepDocument::ModeledRepresentation)
+            application.impactDocument(references).impactMap(ImpactPathStepDocument::ModeledRepresentation)
+        is QueryImpactStep.ModeledValue ->
+            application.impactDocument(references).impactMap(ImpactPathStepDocument::ModeledValue)
         is QueryImpactStep.ModeledBoundary ->
-            connection.impactDocument().impactMap(ImpactPathStepDocument::ModeledBoundary)
+            connection.impactDocument(references).impactMap(ImpactPathStepDocument::ModeledBoundary)
     }
 
-private fun QueryImpactTerminal.impactDocument(): ImpactProjected<ImpactPathTerminalDocument> =
+private fun QueryImpactTerminal.impactDocument(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactPathTerminalDocument> =
     when (this) {
-        is QueryImpactTerminal.Consumer -> projectConsumer()
-        is QueryImpactTerminal.ModeledTerminal -> projectModeledTerminal()
-        is QueryImpactTerminal.Unresolved.PeerContinuation -> projectPeerTerminal()
-        is QueryImpactTerminal.Unresolved.Flow -> projectFlow()
-        is QueryImpactTerminal.Unresolved.ExecutionStop -> projectExecutionStop()
-        is QueryImpactTerminal.Unresolved.ReadRejected -> projectReadRejected()
-        is QueryImpactTerminal.Unresolved.Boundary -> projectBoundary()
-        is QueryImpactTerminal.SupportedDomainEnd -> projectSupportedDomainEnd()
-        is QueryImpactTerminal.ExplicitScopeExclusion -> projectExplicitScopeExclusion()
+        is QueryImpactTerminal.Consumer -> projectConsumer(references)
+        is QueryImpactTerminal.ModeledTerminal -> projectModeledTerminal(references)
+        is QueryImpactTerminal.Unresolved.PeerContinuation -> projectPeerTerminal(references)
+        is QueryImpactTerminal.Unresolved.Flow -> projectFlow(references)
+        is QueryImpactTerminal.Unresolved.ExecutionStop -> projectExecutionStop(references)
+        is QueryImpactTerminal.Unresolved.ReadRejected -> projectReadRejected(references)
+        is QueryImpactTerminal.Unresolved.Boundary -> projectBoundary(references)
+        is QueryImpactTerminal.SupportedDomainEnd -> projectSupportedDomainEnd(references)
+        is QueryImpactTerminal.ExplicitScopeExclusion -> projectExplicitScopeExclusion(references)
     }
 
-private fun QueryImpactTerminal.Consumer.projectConsumer(): ImpactProjected<ImpactPathTerminalDocument> =
+private fun QueryImpactTerminal.Consumer.projectConsumer(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactPathTerminalDocument> =
     site
-        .impactDocument()
+        .impactDocument(references)
         .impactZip(evidence.reference.impactDocument())
         .impactZip(evidence.rule.impactDocument())
         .impactMap { (consumer, rule) ->
@@ -80,11 +88,13 @@ private fun QueryImpactTerminal.Consumer.projectConsumer(): ImpactProjected<Impa
             )
         }
 
-private fun QueryImpactTerminal.ModeledTerminal.projectModeledTerminal(): ImpactProjected<ImpactPathTerminalDocument> =
+private fun QueryImpactTerminal.ModeledTerminal.projectModeledTerminal(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactPathTerminalDocument> =
     boundary.model.reference
         .impactDocument()
-        .impactZip(boundary.model.impactDocument())
-        .impactZip(boundary.obligations.impactEach { it.impactDocument() })
+        .impactZip(boundary.model.impactDocument(references))
+        .impactZip(boundary.obligations.impactEach { it.impactDocument(references) })
         .impactMap { (model, obligations) ->
             ImpactPathTerminalDocument.ModeledTerminal(
                 model.first,
@@ -93,24 +103,35 @@ private fun QueryImpactTerminal.ModeledTerminal.projectModeledTerminal(): Impact
             )
         }
 
-private fun QueryImpactTerminal.Unresolved.Flow.projectFlow(): ImpactProjected<ImpactPathTerminalDocument> =
-    site.impactDocument().impactMap {
-        ImpactPathTerminalDocument.UnresolvedFlow(
-            it,
-            obligation.cause.impactDocument(),
-        )
-    }
+private fun QueryImpactTerminal.Unresolved.Flow.projectFlow(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactPathTerminalDocument> =
+    site
+        .impactDocument(references)
+        .impactZip(obligation.evidence.impactDocument(references, obligation.site.enclosing.lease))
+        .impactMap { (site, evidence) ->
+            ImpactPathTerminalDocument.UnresolvedFlow(
+                site,
+                obligation.cause.impactDocument(),
+                evidence,
+            )
+        }
 
-private fun QueryImpactTerminal.Unresolved.ExecutionStop.projectExecutionStop():
-    ImpactProjected<ImpactPathTerminalDocument> =
-    stop.impactDocument().impactMap(ImpactPathTerminalDocument::ExecutionStop)
+private fun QueryImpactTerminal.Unresolved.ExecutionStop.projectExecutionStop(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactPathTerminalDocument> =
+    stop.impactDocument(references).impactMap(ImpactPathTerminalDocument::ExecutionStop)
 
-private fun QueryImpactTerminal.Unresolved.ReadRejected.projectReadRejected():
-    ImpactProjected<ImpactPathTerminalDocument> =
-    rejection.impactDocument().impactMap(ImpactPathTerminalDocument::UnresolvedRead)
+private fun QueryImpactTerminal.Unresolved.ReadRejected.projectReadRejected(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactPathTerminalDocument> =
+    rejection.impactDocument(references).impactMap(ImpactPathTerminalDocument::UnresolvedRead)
 
-private fun QueryImpactTerminal.Unresolved.Boundary.projectBoundary(): ImpactProjected<ImpactPathTerminalDocument> =
-    boundary.source.impactDocument().impactZip(boundary.obligation.impactDocument()).impactMap { (source, obligation) ->
+private fun QueryImpactTerminal.Unresolved.Boundary.projectBoundary(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactPathTerminalDocument> =
+    boundary.source.impactDocument(references).impactZip(boundary.obligation.impactDocument(references)).impactMap {
+        (source, obligation) ->
         ImpactPathTerminalDocument.UnresolvedBoundary(
             source,
             when (boundary.reason) {
@@ -123,10 +144,11 @@ private fun QueryImpactTerminal.Unresolved.Boundary.projectBoundary(): ImpactPro
         )
     }
 
-private fun QueryImpactTerminal.SupportedDomainEnd.projectSupportedDomainEnd():
-    ImpactProjected<ImpactPathTerminalDocument> =
+private fun QueryImpactTerminal.SupportedDomainEnd.projectSupportedDomainEnd(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactPathTerminalDocument> =
     observation.source
-        .impactDocument()
+        .impactDocument(references)
         .impactZip(observation.domain.impactDocument())
         .impactZip(
             QueryDiscoveryCountDocument.parse(observation.examinedWorkUnits.value)
@@ -148,9 +170,10 @@ private fun QueryImpactTerminal.SupportedDomainEnd.projectSupportedDomainEnd():
             )
         }
 
-private fun QueryImpactTerminal.ExplicitScopeExclusion.projectExplicitScopeExclusion():
-    ImpactProjected<ImpactPathTerminalDocument> =
-    site.impactDocument().impactThen { site ->
+private fun QueryImpactTerminal.ExplicitScopeExclusion.projectExplicitScopeExclusion(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactPathTerminalDocument> =
+    site.impactDocument(references).impactThen { site ->
         val domain =
             relationDomainDocument(
                 exclusion.domain.scope,

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueFlowPhysicalStorageTest" tests="6" skipped="0" failures="6" errors="0" timestamp="2026-10-20T07:07:00.938Z" hostname="Austins-MacBook-Pro.local" time="0.083">
+  <properties/>
+  <testcase name="a new target keeps its header and references to four shared payloads()" classname="io.github.amichne.kast.relation.contract.ValueFlowPhysicalStorageTest" time="0.06">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;4128&gt; but was: &lt;4702&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;4128&gt; but was: &lt;4702&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+	at io.github.amichne.kast.relation.contract.ValueFlowPhysicalStorageTest.a new target keeps its header and references to four shared payloads(ValueFlowPhysicalStorageTest.kt:24)
+</failure>
+  </testcase>
+  <testcase name="a detached equal source keeps its distinct header with shared payload references()" classname="io.github.amichne.kast.relation.contract.ValueFlowPhysicalStorageTest" time="0.004">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;2080&gt; but was: &lt;2654&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;2080&gt; but was: &lt;2654&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+	at io.github.amichne.kast.relation.contract.ValueFlowPhysicalStorageTest.a detached equal source keeps its distinct header with shared payload references(ValueFlowPhysicalStorageTest.kt:37)
+</failure>
+  </testcase>
+  <testcase name="equal distinct direct frames keep their records while shared frames cost a reference()" classname="io.github.amichne.kast.relation.contract.ValueFlowPhysicalStorageTest" time="0.004">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;4088&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;4088&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+	at io.github.amichne.kast.relation.contract.ValueFlowPhysicalStorageTest.equal distinct direct frames keep their records while shared frames cost a reference(ValueFlowPhysicalStorageTest.kt:81)
+</failure>
+  </testcase>
+  <testcase name="equal distinct predicates keep their record and reference to the exact tested value()" classname="io.github.amichne.kast.relation.contract.ValueFlowPhysicalStorageTest" time="0.003">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;2048&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;2048&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+	at io.github.amichne.kast.relation.contract.ValueFlowPhysicalStorageTest.equal distinct predicates keep their record and reference to the exact tested value(ValueFlowPhysicalStorageTest.kt:97)
+</failure>
+  </testcase>
+  <testcase name="equal distinct path segments keep their records while shared segments cost a reference()" classname="io.github.amichne.kast.relation.contract.ValueFlowPhysicalStorageTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;2040&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;2040&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+	at io.github.amichne.kast.relation.contract.ValueFlowPhysicalStorageTest.equal distinct path segments keep their records while shared segments cost a reference(ValueFlowPhysicalStorageTest.kt:66)
+</failure>
+  </testcase>
+  <testcase name="equal distinct endpoints keep the full endpoint allowance()" classname="io.github.amichne.kast.relation.contract.ValueFlowPhysicalStorageTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;2646&gt; but was: &lt;0&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;2646&gt; but was: &lt;0&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+	at io.github.amichne.kast.relation.contract.ValueFlowPhysicalStorageTest.equal distinct endpoints keep the full endpoint allowance(ValueFlowPhysicalStorageTest.kt:49)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

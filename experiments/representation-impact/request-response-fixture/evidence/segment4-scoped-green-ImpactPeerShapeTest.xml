@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactPeerShapeTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T06:17:51.228Z" hostname="Austins-MacBook-Pro.local" time="0.018">
+  <properties/>
+  <testcase name="path and compact finding preserve full independent peer receipt and required unresolved reason()" classname="io.github.amichne.kast.protocol.contract.ImpactPeerShapeTest" time="0.004"/>
+  <testcase name="missing peer receipt reason or unknown finite cause fails raw decoding()" classname="io.github.amichne.kast.protocol.contract.ImpactPeerShapeTest" time="0.001"/>
+  <testcase name="unused reviewed peer model retains its completed native target receipt in models witness()" classname="io.github.amichne.kast.protocol.contract.ImpactPeerShapeTest" time="0.001"/>
+  <testcase name="every finite peer proof failure preserves cause position and explicit recovery()" classname="io.github.amichne.kast.protocol.contract.ImpactPeerShapeTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

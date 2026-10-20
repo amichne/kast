@@ -181,12 +181,14 @@ private fun ImpactWitnessDocument.section(): ImpactWitnessSectionDocument =
         is ImpactWitnessDocument.SiteAccounting -> ImpactWitnessSectionDocument.SITE_ACCOUNTING
         is ImpactWitnessDocument.Finding -> ImpactWitnessSectionDocument.FINDINGS
         is ImpactWitnessDocument.Producer,
+        is ImpactWitnessDocument.ProducerSourceFunction,
         is ImpactWitnessDocument.ProducerSiteOnly -> ImpactWitnessSectionDocument.PRODUCERS
         is ImpactWitnessDocument.RepresentationModel,
         is ImpactWitnessDocument.BoundaryModel,
         is ImpactWitnessDocument.PeerBoundaryModel -> ImpactWitnessSectionDocument.MODELS
         is ImpactWitnessDocument.NativeRead,
         is ImpactWitnessDocument.CompilerTransfer,
+        is ImpactWitnessDocument.ValueModelApplication,
         is ImpactWitnessDocument.FlowObligation -> ImpactWitnessSectionDocument.NATIVE_READS
         is ImpactWitnessDocument.ReadRejection -> ImpactWitnessSectionDocument.READ_REJECTIONS
     }

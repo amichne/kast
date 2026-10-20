@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryImpactExecutionOwnerRetentionTest" tests="2" skipped="0" failures="2" errors="0" timestamp="2026-10-20T02:04:34.417Z" hostname="Austins-MacBook-Pro.local" time="0.083">
+  <properties/>
+  <testcase name="default sites and calls share their exact admitted endpoint declaration owner()" classname="io.github.amichne.kast.query.contract.QueryImpactExecutionOwnerRetentionTest" time="0.073">
+    <failure message="org.opentest4j.AssertionFailedError: defaultBytes=3373952 explicitSharedBytes=2105664 sites=150 ==&gt; expected: io.github.amichne.kast.relation.contract.ValueExecutionOwner@60baef24&lt;io.github.amichne.kast.relation.contract.ValueExecutionOwner@d6709e78&gt; but was: io.github.amichne.kast.relation.contract.ValueExecutionOwner@5bf61e67&lt;io.github.amichne.kast.relation.contract.ValueExecutionOwner@d6709e78&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: defaultBytes=3373952 explicitSharedBytes=2105664 sites=150 ==&gt; expected: io.github.amichne.kast.relation.contract.ValueExecutionOwner@60baef24&lt;io.github.amichne.kast.relation.contract.ValueExecutionOwner@d6709e78&gt; but was: io.github.amichne.kast.relation.contract.ValueExecutionOwner@5bf61e67&lt;io.github.amichne.kast.relation.contract.ValueExecutionOwner@d6709e78&gt;
+	at org.junit.jupiter.api.Assertions.assertSame(Assertions.java:2975)
+	at io.github.amichne.kast.query.contract.QueryImpactExecutionOwnerRetentionTest.default sites and calls share their exact admitted endpoint declaration owner(QueryImpactExecutionOwnerRetentionTest.kt:40)
+</failure>
+  </testcase>
+  <testcase name="equal distinct admitted endpoints keep separate declaration owner objects()" classname="io.github.amichne.kast.query.contract.QueryImpactExecutionOwnerRetentionTest" time="0.005">
+    <failure message="org.opentest4j.AssertionFailedError: expected: io.github.amichne.kast.relation.contract.ValueExecutionOwner@7a24eb3&lt;io.github.amichne.kast.relation.contract.ValueExecutionOwner@d6709e78&gt; but was: io.github.amichne.kast.relation.contract.ValueExecutionOwner@6c37bd27&lt;io.github.amichne.kast.relation.contract.ValueExecutionOwner@d6709e78&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: io.github.amichne.kast.relation.contract.ValueExecutionOwner@7a24eb3&lt;io.github.amichne.kast.relation.contract.ValueExecutionOwner@d6709e78&gt; but was: io.github.amichne.kast.relation.contract.ValueExecutionOwner@6c37bd27&lt;io.github.amichne.kast.relation.contract.ValueExecutionOwner@d6709e78&gt;
+	at org.junit.jupiter.api.Assertions.assertSame(Assertions.java:2962)
+	at io.github.amichne.kast.query.contract.QueryImpactExecutionOwnerRetentionTest.equal distinct admitted endpoints keep separate declaration owner objects(QueryImpactExecutionOwnerRetentionTest.kt:63)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

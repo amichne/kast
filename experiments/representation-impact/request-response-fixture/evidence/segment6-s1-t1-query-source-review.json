@@ -1,0 +1,27 @@
+{
+  "type": "FIXTURE_SOURCE_STAGE",
+  "status": "SOURCE_REVIEWED_NOT_COMPILED",
+  "selectors": 5,
+  "originalSeed": "S1 ClientRequest707:792 inside original sequential owner",
+  "fixtureInputs": "ORIGINAL_SOURCES_UNCHANGED",
+  "sourceManifests": "TEN_UNCHANGED",
+  "captureOwner": "NativePacketQueryCapture",
+  "servicesOwner": "NativePacketQueryServices",
+  "retentionOwner": "CanonicalQueryProtocol/QueryStateStore",
+  "ownerPatchStatus": "GIT_APPLY_CHECK_PASSED_ONLY",
+  "format": "CACHED_KTFMT_0_64_MAXWIDTH_120_PASSED",
+  "gradle": "NOT_RUN",
+  "assertions": "NOT_RUN",
+  "scopeGuides": [
+    "experiments/representation-impact/request-response-fixture/AGENTS.md",
+    "runtime/AGENTS.md"
+  ],
+  "guideUpdate": "NOT_NEEDED_DRAFT_ONLY_COMMANDS_OWNERSHIP_RULES_UNCHANGED",
+  "missingSemanticContracts": [
+    "reviewed exact single-element listOf argument admission and insertion",
+    "reviewed template derivation",
+    "reviewed Pair value assembly",
+    "reviewed key-specific map value association"
+  ],
+  "existingDiagnosticFilesChanged": false
+}

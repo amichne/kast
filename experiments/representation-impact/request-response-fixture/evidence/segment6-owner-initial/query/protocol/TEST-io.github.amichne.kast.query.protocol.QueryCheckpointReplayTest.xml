@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryCheckpointReplayTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.278Z" hostname="Austins-MacBook-Pro.local" time="0.007">
+  <properties/>
+  <testcase name="retired result store cannot be repopulated through an escaped reference()" classname="io.github.amichne.kast.query.protocol.QueryCheckpointReplayTest" time="0.0"/>
+  <testcase name="result references share bounded expiry and reject a different semantic basis()" classname="io.github.amichne.kast.query.protocol.QueryCheckpointReplayTest" time="0.001"/>
+  <testcase name="checkpoint retains the admitted query plan and rejects another basis()" classname="io.github.amichne.kast.query.protocol.QueryCheckpointReplayTest" time="0.002"/>
+  <testcase name="live checkpoints bind workspace host lifetime and epoch independently()" classname="io.github.amichne.kast.query.protocol.QueryCheckpointReplayTest" time="0.001"/>
+  <testcase name="checkpoint replay retains token and expiry without consuming capacity()" classname="io.github.amichne.kast.query.protocol.QueryCheckpointReplayTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

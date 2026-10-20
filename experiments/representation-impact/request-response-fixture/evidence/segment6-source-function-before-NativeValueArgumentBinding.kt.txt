@@ -1,0 +1,132 @@
+@file:OptIn(org.jetbrains.kotlin.analysis.api.KaExperimentalApi::class)
+
+package io.github.amichne.kast.relation.intellij
+
+import com.intellij.psi.PsiNamedElement
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.SourceLessCallable
+import io.github.amichne.kast.relation.contract.ValueArgumentPosition
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
+import org.jetbrains.kotlin.analysis.api.KaSession
+import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
+import org.jetbrains.kotlin.psi.KtCallElement
+import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtParameter
+
+internal data class NativeArgument(
+    val declaration: PsiNamedElement,
+    val position: ValueArgumentPosition,
+    val origin: KaSymbolOrigin,
+)
+
+internal sealed interface NativeMappedArgument {
+    data class Declared(val argument: NativeArgument) : NativeMappedArgument
+
+    data class Function(val callable: SourceLessCallable, val position: ValueArgumentPosition) : NativeMappedArgument
+}
+
+internal enum class NativeArgumentBindingFailure {
+    UNRESOLVED_REFERENCE,
+    EXTERNAL_CALL,
+}
+
+/** Existing named callback suppliers consume the same mapping and keep their source-declaration requirement. */
+internal fun nativeArgumentBinding(
+    call: KtCallElement,
+    expression: KtExpression,
+    observation: IntellijReadObservation,
+): Refinement<NativeArgument, NativeArgumentBindingFailure> =
+    when (val value = nativeMappedArgumentBinding(call, expression, observation)) {
+        is Refinement.Rejected -> value
+        is Refinement.Refined ->
+            when (val mapped = value.value) {
+                is NativeMappedArgument.Declared -> Refinement.Refined(mapped.argument)
+                is NativeMappedArgument.Function -> Refinement.Rejected(NativeArgumentBindingFailure.EXTERNAL_CALL)
+            }
+    }
+
+/** K2 owns the actual-to-formal position for both declared calls and genuine builtin function invocations. */
+internal fun nativeMappedArgumentBinding(
+    call: KtCallElement,
+    expression: KtExpression,
+    observation: IntellijReadObservation,
+): Refinement<NativeMappedArgument, NativeArgumentBindingFailure> =
+    observation.observedAnalyze(call) {
+        val resolved =
+            call.resolveCall()
+                ?: return@observedAnalyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
+        val callable =
+            when (val candidate = resolved.signature.symbol) {
+                is KaNamedFunctionSymbol -> candidate
+                is KaConstructorSymbol -> candidate
+                else -> return@observedAnalyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
+            }
+        val parameter =
+            resolved.valueArgumentMapping[expression]?.symbol
+                ?: return@observedAnalyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
+        val position =
+            when (val value = ValueArgumentPosition.parse(callable.valueParameters.indexOf(parameter))) {
+                is Refinement.Refined -> value.value
+                is Refinement.Rejected ->
+                    return@observedAnalyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
+            }
+        if (callable is KaNamedFunctionSymbol && confirmsBuiltinFunctionInvoke(callable)) {
+            return@observedAnalyze when (val builtin = nativeBuiltinCallable(callable)) {
+                is Refinement.Refined -> Refinement.Refined(NativeMappedArgument.Function(builtin.value, position))
+                is Refinement.Rejected -> builtin
+            }
+        }
+        val declaration =
+            callable.psi as? PsiNamedElement
+                ?: return@observedAnalyze Refinement.Rejected(NativeArgumentBindingFailure.EXTERNAL_CALL)
+        Refinement.Refined(NativeMappedArgument.Declared(NativeArgument(declaration, position, callable.origin)))
+    }
+
+/** Return admission shares the same compiler builtin and module proof without inventing an actual argument. */
+internal fun nativeBuiltinCallable(
+    call: KtCallElement,
+    observation: IntellijReadObservation,
+): Refinement<SourceLessCallable, NativeArgumentBindingFailure> =
+    observation.observedAnalyze(call) {
+        val symbol =
+            call.resolveCall()?.signature?.symbol as? KaNamedFunctionSymbol
+                ?: return@observedAnalyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
+        nativeBuiltinCallable(symbol)
+    }
+
+private fun KaSession.nativeBuiltinCallable(
+    symbol: KaNamedFunctionSymbol
+): Refinement<SourceLessCallable, NativeArgumentBindingFailure> {
+    if (!confirmsBuiltinFunctionInvoke(symbol))
+        return Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
+    return when (val builtin = sourceLessCallable(symbol)) {
+        is IntellijK2ResolvedDeclaration.SourceLess -> Refinement.Refined(builtin.callable)
+        is IntellijK2ResolvedDeclaration.Found,
+        is IntellijK2ResolvedDeclaration.ParameterInvocation,
+        is IntellijK2ResolvedDeclaration.FunctionInvocation,
+        IntellijK2ResolvedDeclaration.InvokeReceiver,
+        is IntellijK2ResolvedDeclaration.Unsupported,
+        IntellijK2ResolvedDeclaration.Unresolved ->
+            Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
+    }
+}
+
+/** A known callback formal selects only its compiler-mapped explicit supply at this exact call. */
+internal fun nativeSuppliedArgument(
+    call: KtCallElement,
+    parameter: KtParameter,
+    observation: IntellijReadObservation,
+): Refinement<KtExpression, NativeArgumentBindingFailure> =
+    observation.observedAnalyze(call) {
+        val resolved =
+            call.resolveCall()
+                ?: return@observedAnalyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
+        val expression =
+            resolved.valueArgumentMapping.entries
+                .singleOrNull { (_, formal) -> formal.symbol.psi?.originalElement == parameter.originalElement }
+                ?.key ?: return@observedAnalyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
+        Refinement.Refined(expression)
+    }

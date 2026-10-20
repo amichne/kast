@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueExecutionOwnerContractTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T11:39:42.251Z" hostname="Austins-MacBook-Pro.local" time="0.011">
+  <properties/>
+  <testcase name="anonymous execution rejects a different host file basis or body range()" classname="io.github.amichne.kast.relation.contract.ValueExecutionOwnerContractTest" time="0.005"/>
+  <testcase name="qualified selector proof preserves one canonical invocation and rejects another selected range()" classname="io.github.amichne.kast.relation.contract.ValueExecutionOwnerContractTest" time="0.002"/>
+  <testcase name="value positions reject another execution body or lexical host()" classname="io.github.amichne.kast.relation.contract.ValueExecutionOwnerContractTest" time="0.001"/>
+  <testcase name="anonymous execution preserves the selected host and the exact receiver identity()" classname="io.github.amichne.kast.relation.contract.ValueExecutionOwnerContractTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

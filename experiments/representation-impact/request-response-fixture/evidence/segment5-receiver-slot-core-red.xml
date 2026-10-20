@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueReceiverSlotContractTest" tests="5" skipped="0" failures="2" errors="0" timestamp="2026-10-20T11:38:54.216Z" hostname="Austins-MacBook-Pro.local" time="0.072">
+  <properties/>
+  <testcase name="fresh receiver admission keeps a matching claimed slot()" classname="io.github.amichne.kast.relation.contract.ValueReceiverSlotContractTest" time="0.049"/>
+  <testcase name="fresh receiver admission rejects a different claimed slot()" classname="io.github.amichne.kast.relation.contract.ValueReceiverSlotContractTest" time="0.009">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=RECEIVER_KIND_MISMATCH)&gt; but was: &lt;Refined(value=io.github.amichne.kast.relation.contract.RevalidatedValueSite@d2387c8)&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=RECEIVER_KIND_MISMATCH)&gt; but was: &lt;Refined(value=io.github.amichne.kast.relation.contract.RevalidatedValueSite@d2387c8)&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.relation.contract.ValueReceiverSlotContractTest.fresh receiver admission rejects a different claimed slot(ValueReceiverSlotContractTest.kt:66)
+</failure>
+  </testcase>
+  <testcase name="two receiver slots at one call have distinct value identities()" classname="io.github.amichne.kast.relation.contract.ValueReceiverSlotContractTest" time="0.002"/>
+  <testcase name="a receiver cannot enter the other slot at the same exact call()" classname="io.github.amichne.kast.relation.contract.ValueReceiverSlotContractTest" time="0.005">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=EVIDENCE_MISMATCH)&gt; but was: &lt;Refined(value=io.github.amichne.kast.relation.contract.ValueTransfer@3c8e1d4d)&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=EVIDENCE_MISMATCH)&gt; but was: &lt;Refined(value=io.github.amichne.kast.relation.contract.ValueTransfer@3c8e1d4d)&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.relation.contract.ValueReceiverSlotContractTest.a receiver cannot enter the other slot at the same exact call(ValueReceiverSlotContractTest.kt:44)
+</failure>
+  </testcase>
+  <testcase name="each receiver slot enters only its own formal without a new call()" classname="io.github.amichne.kast.relation.contract.ValueReceiverSlotContractTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

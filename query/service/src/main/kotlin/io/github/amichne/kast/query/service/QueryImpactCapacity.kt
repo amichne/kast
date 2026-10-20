@@ -29,18 +29,47 @@ internal fun requiredImpactExpansionBytes(
         )
     var required = current
     for (transfer in observation.transfers) {
-        val step = QueryImpactStep.Compiler(transfer)
-        var next =
+        required =
             saturatedAdd(
-                route.retainedBytes(graph),
-                saturatedAdd(graph.site(transfer.target), saturatedAdd(8192L, futureImpactRouteStorageBytes(route))),
+                required,
+                impactArrivalStorageBytes(
+                    route = route,
+                    step = QueryImpactStep.Compiler(transfer),
+                    branches = branches,
+                    graph = graph,
+                ),
             )
-        repeat(branches + 2) { next = saturatedAdd(next, graph.step(step)) }
-        required = saturatedAdd(required, next)
+    }
+    for (application in observation.applications) {
+        required =
+            saturatedAdd(
+                required,
+                impactArrivalStorageBytes(
+                    route = route,
+                    step = QueryImpactStep.ModeledValue(application),
+                    branches = branches,
+                    graph = graph,
+                ),
+            )
     }
     for (obligation in observation.obligations) required = saturatedAdd(required, terminalReserve)
     required = saturatedAdd(required, reviewedImpactExpansionBytes(route, source, terminalReserve, branches, graph))
     return saturatedAdd(required, terminalReserve)
+}
+
+private fun impactArrivalStorageBytes(
+    route: QueryImpactRoute,
+    step: QueryImpactStep,
+    branches: Int,
+    graph: QueryImpactRetainedGraph,
+): Long {
+    var next =
+        saturatedAdd(
+            route.retainedBytes(graph),
+            saturatedAdd(graph.site(step.target), saturatedAdd(8192L, futureImpactRouteStorageBytes(route))),
+        )
+    repeat(branches + 2) { next = saturatedAdd(next, graph.step(step)) }
+    return next
 }
 
 internal fun ExactModelCallablePosition.matches(argument: ValueRole.Argument): Boolean =
@@ -81,7 +110,8 @@ private fun reviewedImpactExpansionBytes(
 /**
  * The next route allocates its wrapper and a new prefix list, not copies of the immutable prefix witnesses.
  * Representation propagation additionally allocates Present/evidence/branch-set wrappers and, per branch, a new branch,
- * history list and history entry. Shared current states and transfer payloads stay in the ownership visitor.
+ * history list, history entry, and possibly an Unknown current state. Shared proof payloads stay in the ownership
+ * visitor.
  */
 private fun futureImpactRouteStorageBytes(route: QueryImpactRoute): Long {
     var bytes = saturatedAdd(IMPACT_NODE_STORAGE_BYTES, impactListStorageBytes(route.steps.size.toLong() + 1L))
@@ -100,7 +130,7 @@ private fun futureImpactRouteStorageBytes(route: QueryImpactRoute): Long {
                 saturatedAdd(
                     bytes,
                     saturatedAdd(
-                        IMPACT_NODE_STORAGE_BYTES * 2L,
+                        IMPACT_NODE_STORAGE_BYTES * IMPACT_BRANCH_WRAPPERS,
                         impactListStorageBytes(branch.history.size.toLong() + 1L),
                     ),
                 )
@@ -117,3 +147,4 @@ private const val IMPACT_CELL_STORAGE_BYTES = 8L
 private const val IMPACT_STORAGE_MULTIPLIER = 8L
 
 private const val IMPACT_REPRESENTATION_WRAPPERS = 3L
+private const val IMPACT_BRANCH_WRAPPERS = 3L

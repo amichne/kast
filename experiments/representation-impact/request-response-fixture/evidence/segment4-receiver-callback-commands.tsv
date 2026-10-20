@@ -1,0 +1,4 @@
+stage	result	log	command
+RED	4 tests 3 failures 0 errors 0 skips	segment4-receiver-callback-red.log	mise exec -- ./gradlew --no-daemon --max-workers=1 :relation:contract:spotlessApply :relation:contract:test --tests '*ValueReceiverCallbackOracleTest' --console=plain
+GREEN	4 tests 0 failures 0 errors 0 skips	segment4-receiver-callback-green.log	mise exec -- ./gradlew --no-daemon --max-workers=1 :relation:contract:spotlessApply :relation:contract:test --tests '*ValueReceiverCallbackOracleTest' --console=plain
+owning	PASSED {'tests': 260, 'failures': 0, 'errors': 0, 'skipped': 0}	segment4-receiver-contract-check.log	mise exec -- ./gradlew --no-daemon --max-workers=1 :relation:contract:check --console=plain

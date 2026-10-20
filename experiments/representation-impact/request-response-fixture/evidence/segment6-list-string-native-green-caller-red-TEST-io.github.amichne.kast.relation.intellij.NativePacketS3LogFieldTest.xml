@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketS3LogFieldTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T19:18:47.920Z" hostname="Austins-MacBook-Pro.local" time="4.993">
+  <properties/>
+  <testcase name="testTheOriginalWhenSubjectCannotJumpToTheWhenResultOrEitherTemplate" classname="io.github.amichne.kast.relation.intellij.NativePacketS3LogFieldTest" time="1.123"/>
+  <testcase name="testOriginalErrorCodeContributesOnlyToItsActualCodeTemplate" classname="io.github.amichne.kast.relation.intellij.NativePacketS3LogFieldTest" time="0.87"/>
+  <testcase name="testOriginalStatusCodeContributesOnlyToItsActualStatusTemplate" classname="io.github.amichne.kast.relation.intellij.NativePacketS3LogFieldTest" time="0.782"/>
+  <testcase name="testOriginalSourceHelperProjectsBothFieldsWithExactScopedSubtypeSubjects" classname="io.github.amichne.kast.relation.intellij.NativePacketS3LogFieldTest" time="0.768"/>
+  <testcase name="testOriginalLogHelperHasActualBranchFieldsAndImmediateScalarTemplateEntries" classname="io.github.amichne.kast.relation.intellij.NativePacketS3LogFieldTest" time="0.713"/>
+  <testcase name="testAnOriginalScalarCannotReachTheSiblingTemplateOrAConstantEntry" classname="io.github.amichne.kast.relation.intellij.NativePacketS3LogFieldTest" time="0.737"/>
+  <system-out><![CDATA[S3_LOG_FIELD_K2 subject=ExactDeclarationTextRange(startInclusive=1656, endExclusive=1660) helper=ExactDeclarationTextRange(startInclusive=1573, endExclusive=1765) success=ExactDeclarationTextRange(startInclusive=1700, endExclusive=1716):kotlin.Int error=ExactDeclarationTextRange(startInclusive=1751, endExclusive=1761):kotlin.String subjectReceiver=EXACT_SOURCE_EXTENSION templateResult=kotlin.String
+S3_PREFIX_K2 seed=761:768 property=594:642 builtin=Function0.invoke source_alias=ACTUAL_RESULT_LOCAL
+S3_LOG_SUBJECT direct_subject_to_result=NO_EMITTED_WITNESS completion=NOT_ASSERTED
+S3_LOG_FIELD_K2 subject=ExactDeclarationTextRange(startInclusive=1656, endExclusive=1660) helper=ExactDeclarationTextRange(startInclusive=1573, endExclusive=1765) success=ExactDeclarationTextRange(startInclusive=1700, endExclusive=1716):kotlin.Int error=ExactDeclarationTextRange(startInclusive=1751, endExclusive=1761):kotlin.String subjectReceiver=EXACT_SOURCE_EXTENSION templateResult=kotlin.String
+S3_PREFIX_K2 seed=761:768 property=594:642 builtin=Function0.invoke source_alias=ACTUAL_RESULT_LOCAL
+S3_LOG_DERIVATION immediate_scalar_to_template=ASSERTED later_logger_route=NOT_RUN
+S3_LOG_FIELD_K2 subject=ExactDeclarationTextRange(startInclusive=1656, endExclusive=1660) helper=ExactDeclarationTextRange(startInclusive=1573, endExclusive=1765) success=ExactDeclarationTextRange(startInclusive=1700, endExclusive=1716):kotlin.Int error=ExactDeclarationTextRange(startInclusive=1751, endExclusive=1761):kotlin.String subjectReceiver=EXACT_SOURCE_EXTENSION templateResult=kotlin.String
+S3_PREFIX_K2 seed=761:768 property=594:642 builtin=Function0.invoke source_alias=ACTUAL_RESULT_LOCAL
+S3_LOG_DERIVATION immediate_scalar_to_template=ASSERTED later_logger_route=NOT_RUN
+S3_LOG_FIELD_K2 subject=ExactDeclarationTextRange(startInclusive=1656, endExclusive=1660) helper=ExactDeclarationTextRange(startInclusive=1573, endExclusive=1765) success=ExactDeclarationTextRange(startInclusive=1700, endExclusive=1716):kotlin.Int error=ExactDeclarationTextRange(startInclusive=1751, endExclusive=1761):kotlin.String subjectReceiver=EXACT_SOURCE_EXTENSION templateResult=kotlin.String
+S3_PREFIX_K2 seed=761:768 property=594:642 builtin=Function0.invoke source_alias=ACTUAL_RESULT_LOCAL
+S3_LOG_SCOPED_FIELDS fields_and_predicates=ASSERTED derivation=NOT_RUN
+S3_LOG_FIELD_K2 subject=ExactDeclarationTextRange(startInclusive=1656, endExclusive=1660) helper=ExactDeclarationTextRange(startInclusive=1573, endExclusive=1765) success=ExactDeclarationTextRange(startInclusive=1700, endExclusive=1716):kotlin.Int error=ExactDeclarationTextRange(startInclusive=1751, endExclusive=1761):kotlin.String subjectReceiver=EXACT_SOURCE_EXTENSION templateResult=kotlin.String
+S3_LOG_FIELD_TYPES k2=ASSERTED derivation=NOT_RUN
+S3_LOG_FIELD_K2 subject=ExactDeclarationTextRange(startInclusive=1656, endExclusive=1660) helper=ExactDeclarationTextRange(startInclusive=1573, endExclusive=1765) success=ExactDeclarationTextRange(startInclusive=1700, endExclusive=1716):kotlin.Int error=ExactDeclarationTextRange(startInclusive=1751, endExclusive=1761):kotlin.String subjectReceiver=EXACT_SOURCE_EXTENSION templateResult=kotlin.String
+S3_PREFIX_K2 seed=761:768 property=594:642 builtin=Function0.invoke source_alias=ACTUAL_RESULT_LOCAL
+S3_LOG_UNRELATED sibling_and_literal=NO_EMITTED_WITNESS completion=NOT_ASSERTED
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

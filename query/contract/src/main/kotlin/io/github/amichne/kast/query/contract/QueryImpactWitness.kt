@@ -57,6 +57,12 @@ sealed interface QueryImpactWitnessEntry {
         val transfer: ValueTransfer,
     ) : QueryImpactWitnessEntry
 
+    data class ValueModelApplication(
+        val observationOrdinal: QueryImpactWitnessOrdinal,
+        val applicationOrdinal: QueryImpactWitnessOrdinal,
+        val application: io.github.amichne.kast.relation.contract.ValueModelApplication,
+    ) : QueryImpactWitnessEntry
+
     data class FlowObligation(
         val observationOrdinal: QueryImpactWitnessOrdinal,
         val obligationOrdinal: QueryImpactWitnessOrdinal,
@@ -136,7 +142,9 @@ private constructor(
                     QueryImpactWitnessSection.MODELS ->
                         ledger.representationModels.size.toLong() + ledger.boundaryModels.size
                     QueryImpactWitnessSection.NATIVE_READS ->
-                        ledger.observations.sumOf { 1L + it.transfers.size + it.obligations.size }
+                        ledger.observations.sumOf {
+                            1L + it.transfers.size + it.obligations.size + it.applications.size
+                        }
                     QueryImpactWitnessSection.READ_REJECTIONS -> ledger.readRejections.size.toLong()
                 }
             return if (total > Int.MAX_VALUE) Refinement.Rejected(QueryImpactWitnessFailure.SECTION_TOO_LARGE)
@@ -248,7 +256,18 @@ private fun observationEntries(
             is Refinement.Rejected -> return collected
         }
     return Refinement.Refined(
-        listOf(QueryImpactWitnessEntry.NativeRead(ordinal, observation)) + transfers + obligations
+        listOf(QueryImpactWitnessEntry.NativeRead(ordinal, observation)) +
+            transfers +
+            obligations +
+            when (
+                val collected =
+                    observation.applications.withWitnessOrdinals { position, application ->
+                        QueryImpactWitnessEntry.ValueModelApplication(ordinal, position, application)
+                    }
+            ) {
+                is Refinement.Refined -> collected.value
+                is Refinement.Rejected -> return collected
+            }
     )
 }
 

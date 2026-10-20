@@ -1,0 +1,8 @@
+51baff35b80812d9b4a4d2c8423247a89dd28f1e85c4eae76324a0eb5da0ef05  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationFact.kt
+e1ce9abff6c0c64dcfd34f8b14e91bf1014d4788a31697dc0669527ec13ad712  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueSourceTransfer.kt
+7f3dbc1d823846953564048bbd02d06fa66436308c631d41a587587767e7273e  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlowObligation.kt
+5c0b98a1b556fe62066dccdaef9118b4640c6f906e80a8affc8b6110082c91fb  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueStateEvidence.kt
+35355ae7f9c8a0370b8c441a2266802d3aee6e7dfbba9e289d08df8d959b2cce  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlowFootprint.kt
+8da3832e7fb01462eee9128161d3382bf4c91a1a05290132be407399c272f1bf  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackValueProofLimits.kt
+0f9fc31bd1c984a9c69e8e76f930ad50680eb383226b35b0208289bb2166da31  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueSeedCallbackEntryTest.kt
+ce95b4607c4433e69e6e4c86af0184428a7c868062febadf600ca1ff637eb845  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueSeedCallbackQuestionTest.kt

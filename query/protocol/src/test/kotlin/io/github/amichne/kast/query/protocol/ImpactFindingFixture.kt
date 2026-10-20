@@ -61,6 +61,8 @@ import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 
 internal class ImpactFindingFixture(withRequestedSites: Boolean = false) {
+    private val projectionReferences = CanonicalQueryReferences()
+
     val symbols = RelationPagingFixture.published()
     val budget =
         QueryBudget(
@@ -245,7 +247,7 @@ internal class ImpactFindingFixture(withRequestedSites: Boolean = false) {
                     QueryExpansionScopeDocument.Workspace,
                     QueryImpactFlowDocument.KOTLIN_FORWARD_V1,
                     bounded(emptyList()),
-                    bounded(requestedSites.map { it.site.impactDocument().value() }),
+                    bounded(requestedSites.map { it.site.impactDocument(references = projectionReferences).value() }),
                 )
             ),
             bounded(emptyList()),

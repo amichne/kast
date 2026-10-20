@@ -34,7 +34,7 @@ private fun CallbackFactoryCapture.projectFactoryCapture(
         when (val selected = selection) {
             is CallbackFactoryCaptureSelection.Explicit ->
                 QueryCallbackSupplierSelectionDocument.Explicit(
-                    selected.value.impactDocument().factoryValue() ?: return null
+                    selected.value.impactDocument(projection.authority).factoryValue() ?: return null
                 )
             is CallbackFactoryCaptureSelection.Default ->
                 QueryCallbackSupplierSelectionDocument.Default(

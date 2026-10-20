@@ -13,6 +13,7 @@ import io.github.amichne.kast.relation.contract.RepresentationHistory
 import io.github.amichne.kast.relation.contract.RepresentationModelApplication
 import io.github.amichne.kast.relation.contract.RepresentationRule
 import io.github.amichne.kast.relation.contract.RepresentationState
+import io.github.amichne.kast.relation.contract.ValueModelApplication
 
 private fun ContractModelIdentity.storageBytes(g: QueryImpactRetainedGraph): Long =
     g.node(this) {
@@ -125,6 +126,7 @@ internal fun BoundaryArrival.storageBytes(g: QueryImpactRetainedGraph): Long =
 
 internal fun RepresentationHistory.storageBytes(g: QueryImpactRetainedGraph): Long =
     if (this is RepresentationModelApplication) storageBytes(g)
+    else if (this is ValueModelApplication) storageBytes(g)
     else
         g.node(this) {
             when (this) {
@@ -134,7 +136,8 @@ internal fun RepresentationHistory.storageBytes(g: QueryImpactRetainedGraph): Lo
                 is RepresentationHistory.Unmodeled -> source.storageBytes(g).saturatedAdd(target.storageBytes(g))
                 is RepresentationHistory.BoundaryModel ->
                     reference.storageBytes(g).saturatedAdd(source.storageBytes(g)).saturatedAdd(target.storageBytes(g))
-                is RepresentationModelApplication -> 0L
+                is RepresentationModelApplication,
+                is ValueModelApplication -> 0L
             }
         }
 

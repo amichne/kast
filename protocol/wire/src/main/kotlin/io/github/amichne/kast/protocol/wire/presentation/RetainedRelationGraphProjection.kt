@@ -5,6 +5,8 @@ import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
+import io.github.amichne.kast.protocol.contract.node
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import io.github.amichne.kast.protocol.wire.RelationFactWireDocument
 import io.github.amichne.kast.protocol.wire.RelationReferenceOccurrenceWireDocument
 import io.github.amichne.kast.protocol.wire.RelationReferenceOwnershipWireDocument

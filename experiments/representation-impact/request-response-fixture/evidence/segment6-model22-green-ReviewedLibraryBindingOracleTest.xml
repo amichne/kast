@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ReviewedLibraryBindingOracleTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-20T12:49:47.583Z" hostname="Austins-MacBook-Pro.local" time="0.092">
+  <properties/>
+  <testcase name="a workspace declaration cannot borrow a library artifact flag()" classname="io.github.amichne.kast.relation.contract.ReviewedLibraryBindingOracleTest" time="0.064"/>
+  <testcase name="the iterable overload cannot borrow the list overload review()" classname="io.github.amichne.kast.relation.contract.ReviewedLibraryBindingOracleTest" time="0.004"/>
+  <testcase name="source origin cannot borrow the reviewed library rule()" classname="io.github.amichne.kast.relation.contract.ReviewedLibraryBindingOracleTest" time="0.001"/>
+  <testcase name="a declaration outside the observed virtual artifact root cannot bind()" classname="io.github.amichne.kast.relation.contract.ReviewedLibraryBindingOracleTest" time="0.001"/>
+  <testcase name="artifact basis must match the exact invocation basis()" classname="io.github.amichne.kast.relation.contract.ReviewedLibraryBindingOracleTest" time="0.002"/>
+  <testcase name="the same binary digest does not erase a changed artifact version()" classname="io.github.amichne.kast.relation.contract.ReviewedLibraryBindingOracleTest" time="0.002"/>
+  <testcase name="fresh equivalent admissions keep semantic equality without shared object identity()" classname="io.github.amichne.kast.relation.contract.ReviewedLibraryBindingOracleTest" time="0.001"/>
+  <testcase name="reviewed model pins the independently supplied binary source version and overload()" classname="io.github.amichne.kast.relation.contract.ReviewedLibraryBindingOracleTest" time="0.0"/>
+  <testcase name="exact library binding keeps the issued invocation and observed artifact()" classname="io.github.amichne.kast.relation.contract.ReviewedLibraryBindingOracleTest" time="0.002"/>
+  <testcase name="unsupported origin cannot borrow the reviewed library rule()" classname="io.github.amichne.kast.relation.contract.ReviewedLibraryBindingOracleTest" time="0.001"/>
+  <testcase name="another valid binary digest does not identify the reviewed bytes()" classname="io.github.amichne.kast.relation.contract.ReviewedLibraryBindingOracleTest" time="0.001"/>
+  <testcase name="a changed actual module name keeps its distinct compiler artifact evidence()" classname="io.github.amichne.kast.relation.contract.ReviewedLibraryBindingOracleTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

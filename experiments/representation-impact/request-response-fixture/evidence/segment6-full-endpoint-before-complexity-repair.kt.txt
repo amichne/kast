@@ -1,0 +1,276 @@
+package io.github.amichne.kast.relation.contract
+
+import java.util.IdentityHashMap
+
+/** Physical endpoint sharing preserves every proof field and keeps direct frames coherent with source operations. */
+internal class ValueEndpointEvidenceSharing(previous: Collection<ValueFlowStep>) {
+    private val endpoints = linkedMapOf<FullEndpointProof, RelationEndpoint>()
+    private val sites = IdentityHashMap<ValueSite, ValueSite>()
+    private val retained = IdentityHashMap<ValueSite, Unit>()
+    private val calls = IdentityHashMap<ValueInvocation, ValueInvocation>()
+    private val parameters = IdentityHashMap<ValueFormalParameter, ValueFormalParameter>()
+    private val frames = IdentityHashMap<ValueCallFrame, ValueCallFrame>()
+    private val stacks = IdentityHashMap<ValueCallStack, ValueCallStack>()
+
+    init {
+        previous.forEach { step ->
+            endpoint(step.domain.subject)
+            retain(step.source)
+            step.transfers.forEach { retain(it.target) }
+            step.obligations.forEach { retain(it.site) }
+            step.applications.forEach {
+                retain(it.source)
+                retain(it.target)
+            }
+        }
+    }
+
+    fun site(original: ValueSite): ValueSite = sites.getOrPut(original) { sharedSite(original) }
+
+    fun evidence(original: ValueTransferEvidence): ValueTransferEvidence =
+        when (original) {
+            ValueTransferEvidence.Direct,
+            is ValueTransferEvidence.NormalBranchResult -> original
+            is ValueTransferEvidence.Guarded -> {
+                val delegate = evidence(original.delegate)
+                val added = predicates(original.added)
+                if (delegate === original.delegate && added === original.added) original
+                else ValueTransferEvidence.Guarded.fromCompiler(delegate, added).sharedProof()
+            }
+            is ValueSourceTransfer -> {
+                val operation = operation(original.operation)
+                if (operation === original.operation) original else ValueSourceTransfer.fromCompiler(operation)
+            }
+        }
+
+    private fun operation(original: ValueSourceOperation): ValueSourceOperation =
+        when (original) {
+            is ValueSourceOperation.Enter -> {
+                val frame = frame(original.frame)
+                val position = position(original.position)
+                if (frame === original.frame && position === original.position) original
+                else ValueSourceOperation.Enter(frame, position)
+            }
+            is ValueSourceOperation.SeedCallbackEnter -> original
+            is ValueSourceOperation.Return ->
+                frame(original.frame).let { if (it === original.frame) original else ValueSourceOperation.Return(it) }
+            is ValueSourceOperation.SeedReturn ->
+                frame(original.frame).let {
+                    if (it === original.frame) original else ValueSourceOperation.SeedReturn(it)
+                }
+            is ValueSourceOperation.ReadField,
+            is ValueSourceOperation.ConstructField -> original
+        }
+
+    private fun position(original: ValueFormalPosition): ValueFormalPosition =
+        when (original) {
+            is ValueFormalPosition.Receiver -> original
+            is ValueFormalPosition.Parameter -> {
+                val parameter = parameter(original.parameter)
+                if (parameter === original.parameter) original else ValueFormalPosition.Parameter(parameter)
+            }
+        }
+
+    private fun frame(original: ValueCallFrame): ValueCallFrame =
+        frames.getOrPut(original) {
+            when (original.target) {
+                ValueCallTarget.Direct -> {
+                    val invocation = invocation(original.invocation as ValueInvocation)
+                    val callee = execution(original.callee)
+                    if (invocation === original.invocation && callee === original.callee) original
+                    else ValueCallFrame.direct(invocation, callee).sharedProof()
+                }
+                is ValueCallbackTarget,
+                is ValueCallTarget.Implementation,
+                is ValueReviewedCallbackTarget -> original
+            }
+        }
+
+    private fun stack(original: ValueCallStack): ValueCallStack =
+        stacks.getOrPut(original) {
+            val shared = original.frames.map(::frame)
+            if (shared.zip(original.frames).all { (a, b) -> a === b }) original
+            else shared.fold(ValueCallStack.Empty) { result, frame -> result.enter(frame).sharedProof() }
+        }
+
+    private fun sharedSite(original: ValueSite): ValueSite {
+        val owner = endpoint(original.enclosing)
+        val execution = execution(original.executionOwner)
+        val role = role(original.role)
+        val path = path(original.valuePath)
+        val predicates = predicates(original.predicates)
+        val stack = stack(original.callStack)
+        val ownerUnchanged =
+            owner === original.enclosing && execution === original.executionOwner && role === original.role
+        val stateUnchanged =
+            path === original.valuePath && predicates === original.predicates && stack === original.callStack
+        if (ownerUnchanged && stateUnchanged) return original
+        return ValueSite.fromCompiler(
+                enclosing = owner,
+                range = original.range,
+                role = role,
+                executionOwner = execution,
+                valuePath = path,
+                callStack = stack,
+                predicates = predicates,
+            )
+            .sharedProof()
+    }
+
+    private fun endpoint(original: RelationEndpoint): RelationEndpoint =
+        endpoints.getOrPut(FullEndpointProof(original)) { original }
+
+    private fun execution(original: ValueExecutionOwner): ValueExecutionOwner {
+        val owner = endpoint(original.enclosing)
+        if (owner === original.enclosing) return original
+        return when (val body = original.body) {
+            ValueExecutionBody.Declaration -> ValueExecutionOwner.declaration(owner)
+            is ValueExecutionBody.Anonymous ->
+                ValueExecutionOwner.fromCompiler(owner, body.callable, original.basis).sharedProof()
+        }
+    }
+
+    private fun invocation(original: ValueInvocation): ValueInvocation =
+        calls.getOrPut(original) {
+            val owner = endpoint(original.enclosing)
+            val callable = endpoint(original.callable)
+            val execution = execution(original.executionOwner)
+            if (owner === original.enclosing && callable === original.callable && execution === original.executionOwner)
+                original
+            else
+                ValueInvocation.fromCompiler(
+                        enclosing = owner,
+                        range = original.range,
+                        callable = callable,
+                        executionOwner = execution,
+                    )
+                    .sharedProof()
+        }
+
+    private fun function(original: ValueFunctionInvocation): ValueFunctionInvocation {
+        val owner = endpoint(original.enclosing)
+        val execution = execution(original.executionOwner)
+        if (owner === original.enclosing && execution === original.executionOwner) return original
+        return ValueFunctionInvocation.fromCompiler(
+                enclosing = owner,
+                range = original.range,
+                callable = original.callable,
+                executionOwner = execution,
+            )
+            .sharedProof()
+    }
+
+    private fun parameter(original: ValueFormalParameter): ValueFormalParameter =
+        parameters.getOrPut(original) {
+            val callable = endpoint(original.callable)
+            val execution = execution(original.executionOwner)
+            if (callable === original.callable && execution === original.executionOwner) original
+            else
+                when (original.origin) {
+                    is ValueFormalOrigin.Declared ->
+                        ValueFormalParameter.fromCompiler(
+                                callable = callable,
+                                position = original.position,
+                                name = original.name,
+                                range = original.range,
+                                executionOwner = execution,
+                            )
+                            .sharedProof()
+                    ValueFormalOrigin.Implicit ->
+                        ValueFormalParameter.fromCompilerImplicit(execution, original.position, original.name)
+                            .sharedProof()
+                }
+        }
+
+    private fun role(original: ValueRole): ValueRole =
+        when (original) {
+            is ValueRole.Argument -> argument(original)
+            is ValueRole.Receiver -> receiver(original)
+            is ValueRole.FunctionArgument -> functionArgument(original)
+            is ValueRole.Formal -> formal(original)
+            ValueRole.ExpressionResult,
+            ValueRole.LocalBinding,
+            ValueRole.LocalRead,
+            ValueRole.Return,
+            ValueRole.PropertyAssignment -> original
+        }
+
+    private fun argument(original: ValueRole.Argument): ValueRole.Argument {
+        val call = invocation(original.call)
+        return if (call === original.call) original else ValueRole.Argument(call, original.position)
+    }
+
+    private fun receiver(original: ValueRole.Receiver): ValueRole.Receiver {
+        val call = invocation(original.call)
+        return if (call === original.call) original else ValueRole.Receiver(call, original.kind)
+    }
+
+    private fun functionArgument(original: ValueRole.FunctionArgument): ValueRole.FunctionArgument {
+        val call = function(original.call)
+        return if (call === original.call) original else ValueRole.FunctionArgument(call, original.position)
+    }
+
+    private fun formal(original: ValueRole.Formal): ValueRole.Formal =
+        when (val position = original.position) {
+            is ValueFormalPosition.Receiver -> original
+            is ValueFormalPosition.Parameter -> {
+                val parameter = parameter(position.parameter)
+                if (parameter === position.parameter) original
+                else ValueRole.Formal(ValueFormalPosition.Parameter(parameter))
+            }
+        }
+
+    private fun path(original: ValueAccessPath): ValueAccessPath {
+        val segments =
+            original.segments.map { segment ->
+                if (segment is ValuePathSegment.Field) {
+                    val declaration = endpoint(segment.field.declaration)
+                    if (declaration === segment.field.declaration) segment
+                    else ValuePathSegment.Field(ValueField.fromCompiler(declaration).sharedProof())
+                } else segment
+            }
+        return if (segments.zip(original.segments).all { (a, b) -> a === b }) original
+        else ValueAccessPath.fromSegments(segments).sharedProof()
+    }
+
+    private fun predicates(original: ValuePredicates): ValuePredicates {
+        val entries = original.entries.map(::predicate)
+        return if (entries.zip(original.entries).all { (a, b) -> a === b }) original
+        else ValuePredicates.fromCompiler(entries).sharedProof()
+    }
+
+    private fun predicate(original: ValuePredicate): ValuePredicate {
+        val subject = original.subject.shareEndpointEvidence(this)
+        val shared =
+            when (original) {
+                is ValuePredicate.NonNull ->
+                    if (subject === original.subject) original else ValuePredicate.NonNull.fromCompiler(subject)
+                is ValuePredicate.Subtype -> {
+                    val type = endpoint(original.resolvedType)
+                    if (subject === original.subject && type === original.resolvedType) original
+                    else ValuePredicate.Subtype.fromCompiler(subject, type).sharedProof()
+                }
+            }
+        // A Subject in a subtype set keeps its original selector identity when equality needs that identity.
+        return if (shared == original) shared else original
+    }
+
+    private fun retain(site: ValueSite) {
+        if (retained.put(site, Unit) != null) return
+        endpoint(site.enclosing)
+        endpoint(site.executionOwner.enclosing)
+        site.stateEndpoints().forEach(::endpoint)
+        site.predicates.entries.forEach { retain(it.subject.occurrence) }
+    }
+}
+
+/** Fingerprints index the lookup. Full proof equality decides sharing, including the representation variant. */
+private class FullEndpointProof(private val endpoint: RelationEndpoint) {
+    override fun equals(other: Any?): Boolean =
+        other is FullEndpointProof &&
+            endpoint::class == other.endpoint::class &&
+            endpoint.fingerprint == other.endpoint.fingerprint &&
+            endpoint.hasSameProofAs(other.endpoint)
+
+    override fun hashCode(): Int = 31 * endpoint.javaClass.hashCode() + endpoint.fingerprint.hashCode()
+}

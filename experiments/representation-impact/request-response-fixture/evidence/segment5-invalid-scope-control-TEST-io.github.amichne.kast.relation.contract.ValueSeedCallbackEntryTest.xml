@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueSeedCallbackEntryTest" tests="8" skipped="0" failures="2" errors="0" timestamp="2026-10-20T17:48:51.538Z" hostname="Austins-MacBook-Pro.local" time="0.022">
+  <properties/>
+  <testcase name="ordinary entry still rejects a missing active supplier()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackEntryTest" time="0.004"/>
+  <testcase name="an empty seed stack enters its actual supplier and selected callback()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackEntryTest" time="0.002"/>
+  <testcase name="a seed transition cannot omit the actual supplying frame()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackEntryTest" time="0.001"/>
+  <testcase name="another real supply cannot replace the selected supplier()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackEntryTest" time="0.001"/>
+  <testcase name="the same callback identity under another full owner scope cannot replace the target()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackEntryTest" time="0.007">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=EVIDENCE_MISMATCH)&gt; but was: &lt;Refined(value=io.github.amichne.kast.relation.contract.ValueTransfer@6c1d5ab1)&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=EVIDENCE_MISMATCH)&gt; but was: &lt;Refined(value=io.github.amichne.kast.relation.contract.ValueTransfer@6c1d5ab1)&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.relation.contract.ValueSeedCallbackEntryTest.rejected(ValueSeedCallbackEntryTest.kt:127)
+	at io.github.amichne.kast.relation.contract.ValueSeedCallbackEntryTest.the same callback identity under another full owner scope cannot replace the target(ValueSeedCallbackEntryTest.kt:98)
+</failure>
+  </testcase>
+  <testcase name="a seed transition cannot replace an active context()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackEntryTest" time="0.001"/>
+  <testcase name="the same invoke identity under another full owner scope cannot enter the callback()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackEntryTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=EVIDENCE_MISMATCH)&gt; but was: &lt;Refined(value=io.github.amichne.kast.relation.contract.ValueTransfer@6c1d5ab1)&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=EVIDENCE_MISMATCH)&gt; but was: &lt;Refined(value=io.github.amichne.kast.relation.contract.ValueTransfer@6c1d5ab1)&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.relation.contract.ValueSeedCallbackEntryTest.rejected(ValueSeedCallbackEntryTest.kt:127)
+	at io.github.amichne.kast.relation.contract.ValueSeedCallbackEntryTest.the same invoke identity under another full owner scope cannot enter the callback(ValueSeedCallbackEntryTest.kt:80)
+</failure>
+  </testcase>
+  <testcase name="a seeded callback return leaves its actual supplier active()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackEntryTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

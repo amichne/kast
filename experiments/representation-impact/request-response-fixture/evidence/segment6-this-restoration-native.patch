@@ -1,0 +1,27 @@
+--- experiments/representation-impact/request-response-fixture/evidence/segment6-this-restoration-before-IntellijValueFlowCompilerAdapter.kt.txt
++++ relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowCompilerAdapter.kt
+@@ -40,6 +40,7 @@
+ import org.jetbrains.kotlin.psi.KtExpression
+ import org.jetbrains.kotlin.psi.KtNamedDeclaration
+ import org.jetbrains.kotlin.psi.KtProperty
++import org.jetbrains.kotlin.psi.KtThisExpression
+ 
+ sealed interface ValueSiteResolution {
+     data class Found(val site: ValueSite) : ValueSiteResolution
+@@ -335,6 +336,16 @@
+         .firstOrNull {
+             it.textRange.startOffset == range.startInclusive && it.textRange.endOffset == range.endExclusive
+         }
++        ?.let { expression ->
++            val semantic = expression.parent as? KtThisExpression
++            if (
++                semantic != null &&
++                    semantic.instanceReference === expression &&
++                    semantic.textRange == expression.textRange
++            )
++                semantic
++            else expression
++        }
+ 
+ private fun flowWorkCount(count: Long): RelationWorkCount =
+     when (val refined = RelationWorkCount.parse(count)) {

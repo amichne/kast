@@ -1,0 +1,109 @@
+Compiled from "KaResolver.kt"
+public interface org.jetbrains.kotlin.analysis.api.components.KaResolver extends org.jetbrains.kotlin.analysis.api.components.KaSessionComponent {
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaSymbolResolutionAttempt tryResolveSymbols(org.jetbrains.kotlin.resolution.KtResolvable);
+  public abstract java.util.Collection<org.jetbrains.kotlin.analysis.api.symbols.KaSymbol> resolveSymbols(org.jetbrains.kotlin.resolution.KtResolvable);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaSymbol resolveSymbol(org.jetbrains.kotlin.resolution.KtResolvable);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol resolveSymbol(org.jetbrains.kotlin.psi.KtAnnotationEntry);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol resolveSymbol(org.jetbrains.kotlin.psi.KtSuperTypeCallEntry);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol resolveSymbol(org.jetbrains.kotlin.psi.KtConstructorDelegationCall);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol resolveSymbol(org.jetbrains.kotlin.psi.KtConstructorDelegationReferenceExpression);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol resolveSymbol(org.jetbrains.kotlin.psi.KtCallElement);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol resolveSymbol(org.jetbrains.kotlin.psi.KtCallableReferenceExpression);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol resolveSymbol(org.jetbrains.kotlin.psi.KtArrayAccessExpression);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol resolveSymbol(org.jetbrains.kotlin.psi.KtCollectionLiteralExpression);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol resolveSymbol(org.jetbrains.kotlin.psi.KtEnumEntrySuperclassReferenceExpression);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaDeclarationSymbol resolveSymbol(org.jetbrains.kotlin.psi.KtLabelReferenceExpression);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol resolveSymbol(org.jetbrains.kotlin.psi.KtReturnExpression);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol resolveSymbol(org.jetbrains.kotlin.psi.KtWhenConditionInRange);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol resolveSymbol(org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol resolveSymbol(org.jetbrains.kotlin.psi.KtQualifiedExpression);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol resolveSymbol(org.jetbrains.kotlin.psi.KtConstructorCalleeExpression);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaDeclarationSymbol resolveSymbol(org.jetbrains.kotlin.psi.KtInstanceExpressionWithLabel);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaClassifierSymbol resolveSymbol(org.jetbrains.kotlin.psi.KtNullableType);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol resolveSymbol(org.jetbrains.kotlin.psi.KtFunctionType);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaClassifierSymbol resolveSymbol(org.jetbrains.kotlin.psi.KtTypeReference);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaClassifierSymbol resolveSymbol(org.jetbrains.kotlin.psi.KtClassLiteralExpression);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaClassifierSymbol resolveSymbol(org.jetbrains.kotlin.psi.KtSuperTypeEntry);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaClassifierSymbol resolveSymbol(org.jetbrains.kotlin.psi.KtDelegatedSuperTypeEntry);
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaCallResolutionAttempt tryResolveCall(org.jetbrains.kotlin.resolution.KtResolvableCall);
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaForLoopCallResolutionAttempt tryResolveCall(org.jetbrains.kotlin.psi.KtForExpression);
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaDelegatedPropertyCallResolutionAttempt tryResolveCall(org.jetbrains.kotlin.psi.KtPropertyDelegate);
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaSingleOrMultiCall resolveCall(org.jetbrains.kotlin.resolution.KtResolvableCall);
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaAnnotationCall resolveCall(org.jetbrains.kotlin.psi.KtAnnotationEntry);
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaFunctionCall<org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol> resolveCall(org.jetbrains.kotlin.psi.KtSuperTypeCallEntry);
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaDelegatedConstructorCall resolveCall(org.jetbrains.kotlin.psi.KtConstructorDelegationCall);
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaDelegatedConstructorCall resolveCall(org.jetbrains.kotlin.psi.KtConstructorDelegationReferenceExpression);
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaFunctionCall<?> resolveCall(org.jetbrains.kotlin.psi.KtCallElement);
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaCallableReferenceCall<?, ?> resolveCall(org.jetbrains.kotlin.psi.KtCallableReferenceExpression);
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaFunctionCall<org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol> resolveCall(org.jetbrains.kotlin.psi.KtArrayAccessExpression);
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaFunctionCall<org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol> resolveCall(org.jetbrains.kotlin.psi.KtCollectionLiteralExpression);
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaDelegatedConstructorCall resolveCall(org.jetbrains.kotlin.psi.KtEnumEntrySuperclassReferenceExpression);
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaFunctionCall<org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol> resolveCall(org.jetbrains.kotlin.psi.KtWhenConditionInRange);
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaSingleCall<?, ?> resolveCall(org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry);
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaSingleCall<?, ?> resolveCall(org.jetbrains.kotlin.psi.KtQualifiedExpression);
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaForLoopCall resolveCall(org.jetbrains.kotlin.psi.KtForExpression);
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaDelegatedPropertyCall resolveCall(org.jetbrains.kotlin.psi.KtPropertyDelegate);
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaFunctionCall<org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol> resolveCall(org.jetbrains.kotlin.psi.KtConstructorCalleeExpression);
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaSingleCall<?, ?> resolveCall(org.jetbrains.kotlin.psi.KtNameReferenceExpression);
+  public abstract java.util.List<org.jetbrains.kotlin.analysis.api.resolution.KaCallCandidate> collectCallCandidates(org.jetbrains.kotlin.resolution.KtResolvableCall);
+  public abstract java.util.Collection<org.jetbrains.kotlin.analysis.api.symbols.KaSymbol> resolveToSymbols(org.jetbrains.kotlin.idea.references.KtReference);
+  public abstract org.jetbrains.kotlin.analysis.api.symbols.KaSymbol resolveToSymbol(org.jetbrains.kotlin.idea.references.KtReference);
+  public abstract boolean isImplicitReferenceToCompanion(org.jetbrains.kotlin.idea.references.KtReference);
+  public abstract boolean isImplicitReferenceToCompanion(org.jetbrains.kotlin.psi.KtSimpleNameExpression);
+  public abstract boolean getUsesContextSensitiveResolution(org.jetbrains.kotlin.idea.references.KtReference);
+  public static void getUsesContextSensitiveResolution$annotations(org.jetbrains.kotlin.idea.references.KtReference);
+  public abstract boolean getUsesContextSensitiveResolution(org.jetbrains.kotlin.psi.KtSimpleNameExpression);
+  public static void getUsesContextSensitiveResolution$annotations(org.jetbrains.kotlin.psi.KtSimpleNameExpression);
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaContextSensitiveResolutionStatus getContextSensitiveResolutionStatus(org.jetbrains.kotlin.psi.KtSimpleNameExpression);
+  public static void getContextSensitiveResolutionStatus$annotations(org.jetbrains.kotlin.psi.KtSimpleNameExpression);
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaCallInfo resolveToCall(org.jetbrains.kotlin.psi.KtElement);
+  public abstract java.util.List<org.jetbrains.kotlin.analysis.api.resolution.KaCallCandidateInfo> resolveToCallCandidates(org.jetbrains.kotlin.psi.KtElement);
+}
+Compiled from "KaCalls.kt"
+public interface org.jetbrains.kotlin.analysis.api.resolution.KaSingleOrMultiCall extends org.jetbrains.kotlin.analysis.api.lifetime.KaLifetimeOwner {
+}
+Compiled from "KaCall.kt"
+public interface org.jetbrains.kotlin.analysis.api.resolution.KaFunctionCall<S extends org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol> extends org.jetbrains.kotlin.analysis.api.resolution.KaSingleCall<S, org.jetbrains.kotlin.analysis.api.signatures.KaFunctionSignature<? extends S>>, org.jetbrains.kotlin.analysis.api.resolution.KaCallableMemberCall<S, org.jetbrains.kotlin.analysis.api.signatures.KaFunctionSignature<? extends S>> {
+  public abstract java.util.Map<org.jetbrains.kotlin.psi.KtExpression, org.jetbrains.kotlin.analysis.api.signatures.KaVariableSignature<org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol>> getValueArgumentMapping();
+  public abstract java.util.Map<org.jetbrains.kotlin.psi.KtExpression, org.jetbrains.kotlin.analysis.api.signatures.KaVariableSignature<org.jetbrains.kotlin.analysis.api.symbols.KaContextParameterSymbol>> getContextArgumentMapping();
+  public static void getContextArgumentMapping$annotations();
+  public abstract java.util.Map<org.jetbrains.kotlin.psi.KtExpression, org.jetbrains.kotlin.analysis.api.signatures.KaVariableSignature<org.jetbrains.kotlin.analysis.api.symbols.KaParameterSymbol>> getCombinedArgumentMapping();
+  public default java.util.Map<org.jetbrains.kotlin.psi.KtExpression, org.jetbrains.kotlin.analysis.api.signatures.KaVariableSignature<org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol>> getArgumentMapping();
+  public static void getArgumentMapping$annotations();
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaPartiallyAppliedSymbol<S, org.jetbrains.kotlin.analysis.api.signatures.KaFunctionSignature<S>> getPartiallyAppliedSymbol();
+  public static void getPartiallyAppliedSymbol$annotations();
+}
+Compiled from "KaCalls.kt"
+public interface org.jetbrains.kotlin.analysis.api.resolution.KaSingleCall<S extends org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol, C extends org.jetbrains.kotlin.analysis.api.signatures.KaCallableSignature<? extends S>> extends org.jetbrains.kotlin.analysis.api.resolution.KaSingleOrMultiCall {
+  public abstract C getSignature();
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaReceiverValue getDispatchReceiver();
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaReceiverValue getExtensionReceiver();
+  public abstract java.util.List<org.jetbrains.kotlin.analysis.api.resolution.KaReceiverValue> getContextArguments();
+  public static void getContextArguments$annotations();
+  public abstract java.util.Map<org.jetbrains.kotlin.analysis.api.symbols.KaTypeParameterSymbol, org.jetbrains.kotlin.analysis.api.types.KaType> getTypeArgumentsMapping();
+}
+Compiled from "KtBinaryExpression.java"
+public class org.jetbrains.kotlin.psi.KtBinaryExpression extends org.jetbrains.kotlin.psi.KtExpressionImpl implements org.jetbrains.kotlin.psi.KtOperationExpression,org.jetbrains.kotlin.resolution.KtResolvableCall {
+  public org.jetbrains.kotlin.psi.KtBinaryExpression(com.intellij.lang.ASTNode);
+  public <R, D> R accept(org.jetbrains.kotlin.psi.KtVisitor<R, D>, D);
+  public org.jetbrains.kotlin.psi.KtExpression getLeft();
+  public org.jetbrains.kotlin.psi.KtExpression getRight();
+  public org.jetbrains.kotlin.psi.KtOperationReferenceExpression getOperationReference();
+  public com.intellij.psi.tree.IElementType getOperationToken();
+  public org.jetbrains.kotlin.psi.KtSimpleNameExpression getOperationReference();
+}
+Compiled from "KtResolvable.kt"
+public interface org.jetbrains.kotlin.resolution.KtResolvableCall extends org.jetbrains.kotlin.resolution.KtResolvable {
+}
+Compiled from "KtCallExpression.kt"
+public class org.jetbrains.kotlin.psi.KtCallExpression extends org.jetbrains.kotlin.psi.KtExpressionImplStub<org.jetbrains.kotlin.psi.stubs.KotlinPlaceHolderStub<org.jetbrains.kotlin.psi.KtCallExpression>> implements org.jetbrains.kotlin.psi.KtCallElement, org.jetbrains.kotlin.psi.KtReferenceExpression {
+  public org.jetbrains.kotlin.psi.KtCallExpression(com.intellij.lang.ASTNode);
+  public org.jetbrains.kotlin.psi.KtCallExpression(org.jetbrains.kotlin.psi.stubs.KotlinPlaceHolderStub<org.jetbrains.kotlin.psi.KtCallExpression>);
+  public <R, D> R accept(org.jetbrains.kotlin.psi.KtVisitor<R, D>, D);
+  public org.jetbrains.kotlin.psi.KtExpression getCalleeExpression();
+  public org.jetbrains.kotlin.psi.KtValueArgumentList getValueArgumentList();
+  public org.jetbrains.kotlin.psi.KtTypeArgumentList getTypeArgumentList();
+  public java.util.List<org.jetbrains.kotlin.psi.KtLambdaArgument> getLambdaArguments();
+  public java.util.List<org.jetbrains.kotlin.psi.KtValueArgument> getValueArguments();
+  public java.util.List<org.jetbrains.kotlin.psi.KtTypeProjection> getTypeArguments();
+}

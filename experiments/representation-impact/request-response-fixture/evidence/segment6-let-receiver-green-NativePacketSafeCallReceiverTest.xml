@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketSafeCallReceiverTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T16:35:39.948Z" hostname="Austins-MacBook-Pro.local" time="10.255">
+  <properties/>
+  <testcase name="testOriginalSafeCallEmitsNoNonNullGuardForAnotherValue" classname="io.github.amichne.kast.relation.intellij.NativePacketSafeCallReceiverTest" time="7.795"/>
+  <testcase name="testOriginalCheckedThisSuppliesTheExactLetExtensionReceiverWithItsOwnNonNullGuard" classname="io.github.amichne.kast.relation.intellij.NativePacketSafeCallReceiverTest" time="1.434"/>
+  <testcase name="testOriginalSafeCallSuppliesNoDirectReceiverToLetResultShortcut" classname="io.github.amichne.kast.relation.intellij.NativePacketSafeCallReceiverTest" time="1.013"/>
+  <system-out><![CDATA[NULLABLE_CALLER callable=SOURCE.requireNotNull call=939:1020 extension=939:967 dispatch=NONE
+NULLABLE_CALLBACK_VALUE source=EXACT_IMPLICIT_IT target=SOURCE.Outcome.success.value index=0
+NULLABLE_BODY this=1622:1626 receiverSymbol=EXACT_REQUIRE_EXTENSION let=1622:1655 callback=1632:1655 it=1650:1652 implicitFormal=EXACT receiverTypeDiagnostic=T? formalTypeDiagnostic=T & Any
+NULLABLE_ALIAS_CAPTURE status=COMPILER_IDENTITIES source_alias_transfer,let_model,NonNull=NOT_RUN
+THIS_READ_K2 function=requireNotNull this=1622:1626 symbol=EXACT_EXTENSION
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+COMPOSITE_SUCCESS_STAGE row=C2.1 receiver source=ExactDeclarationTextRange(startInclusive=769, endExclusive=954) transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=769, endExclusive=954))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 map formal source=ExactDeclarationTextRange(startInclusive=769, endExclusive=954) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=289, endExclusive=439))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 Success.value source=ExactDeclarationTextRange(startInclusive=289, endExclusive=439) transfers=[(LOCAL_READ, ExactDeclarationTextRange(startInclusive=345, endExclusive=349)), (FIELD_READ, ExactDeclarationTextRange(startInclusive=393, endExclusive=398)), (FIELD_READ, ExactDeclarationTextRange(startInclusive=427, endExclusive=432))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 builtin argument source=ExactDeclarationTextRange(startInclusive=393, endExclusive=398) transfers=[(ARGUMENT, ExactDeclarationTextRange(startInclusive=393, endExclusive=398))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 callback formal source=ExactDeclarationTextRange(startInclusive=393, endExclusive=398) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=959, endExclusive=989))] frontier=[]
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=818, endExclusive=917) pathDepth=2 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=806, endExclusive=814))] causes=[] work=4
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) pathDepth=2 transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=1088, endExclusive=1143))] causes=[] work=2
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1088, endExclusive=1143) pathDepth=2 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=1137, endExclusive=1143))] causes=[] work=3
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1137, endExclusive=1143) pathDepth=2 transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=1149, endExclusive=1284))] causes=[] work=2
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1149, endExclusive=1284) pathDepth=2 transfers=[(LOCAL_READ, ExactDeclarationTextRange(startInclusive=1189, endExclusive=1193)), (FIELD_READ, ExactDeclarationTextRange(startInclusive=1227, endExclusive=1232))] causes=[] work=7
+BIND_BRANCH_SETUP kind=CONTROLLED_TRACKED_INITIALIZER guard=ORIGINAL_S2_NATIVE_PREFIX
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=939, endExclusive=953) pathDepth=0 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=939, endExclusive=953))] causes=[] work=40
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=939, endExclusive=953) pathDepth=0 transfers=[] causes=[UNMODELED_CALL] work=39
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=939, endExclusive=967) pathDepth=0 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=939, endExclusive=967))] causes=[] work=3
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=939, endExclusive=967) pathDepth=0 transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=1549, endExclusive=1681))] causes=[] work=2
+THIS_READ_SETUP kind=ISOLATED_ORIGINAL_EXCLUDE_POSITION model=ACTUAL_SELECTION source_entry=ACTUAL
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1549, endExclusive=1681) pathDepth=0 transfers=[(LOCAL_READ, ExactDeclarationTextRange(startInclusive=1622, endExclusive=1626))] causes=[UNSUPPORTED_EXPRESSION] work=11
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1622, endExclusive=1626) pathDepth=0 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=1622, endExclusive=1626))] causes=[] work=40
+SAFE_CALL_RECEIVER_RESULT foreign_subject_guard=FORBIDDEN exhaustion=NOT_ASSERTED
+NULLABLE_CALLER callable=SOURCE.requireNotNull call=939:1020 extension=939:967 dispatch=NONE
+NULLABLE_CALLBACK_VALUE source=EXACT_IMPLICIT_IT target=SOURCE.Outcome.success.value index=0
+NULLABLE_BODY this=1622:1626 receiverSymbol=EXACT_REQUIRE_EXTENSION let=1622:1655 callback=1632:1655 it=1650:1652 implicitFormal=EXACT receiverTypeDiagnostic=T? formalTypeDiagnostic=T & Any
+NULLABLE_ALIAS_CAPTURE status=COMPILER_IDENTITIES source_alias_transfer,let_model,NonNull=NOT_RUN
+THIS_READ_K2 function=requireNotNull this=1622:1626 symbol=EXACT_EXTENSION
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+COMPOSITE_SUCCESS_STAGE row=C2.1 receiver source=ExactDeclarationTextRange(startInclusive=769, endExclusive=954) transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=769, endExclusive=954))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 map formal source=ExactDeclarationTextRange(startInclusive=769, endExclusive=954) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=289, endExclusive=439))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 Success.value source=ExactDeclarationTextRange(startInclusive=289, endExclusive=439) transfers=[(LOCAL_READ, ExactDeclarationTextRange(startInclusive=345, endExclusive=349)), (FIELD_READ, ExactDeclarationTextRange(startInclusive=393, endExclusive=398)), (FIELD_READ, ExactDeclarationTextRange(startInclusive=427, endExclusive=432))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 builtin argument source=ExactDeclarationTextRange(startInclusive=393, endExclusive=398) transfers=[(ARGUMENT, ExactDeclarationTextRange(startInclusive=393, endExclusive=398))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 callback formal source=ExactDeclarationTextRange(startInclusive=393, endExclusive=398) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=959, endExclusive=989))] frontier=[]
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=818, endExclusive=917) pathDepth=2 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=806, endExclusive=814))] causes=[] work=4
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) pathDepth=2 transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=1088, endExclusive=1143))] causes=[] work=2
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1088, endExclusive=1143) pathDepth=2 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=1137, endExclusive=1143))] causes=[] work=3
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1137, endExclusive=1143) pathDepth=2 transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=1149, endExclusive=1284))] causes=[] work=2
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1149, endExclusive=1284) pathDepth=2 transfers=[(LOCAL_READ, ExactDeclarationTextRange(startInclusive=1189, endExclusive=1193)), (FIELD_READ, ExactDeclarationTextRange(startInclusive=1227, endExclusive=1232))] causes=[] work=7
+BIND_BRANCH_SETUP kind=CONTROLLED_TRACKED_INITIALIZER guard=ORIGINAL_S2_NATIVE_PREFIX
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=939, endExclusive=953) pathDepth=0 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=939, endExclusive=953))] causes=[] work=40
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=939, endExclusive=953) pathDepth=0 transfers=[] causes=[UNMODELED_CALL] work=39
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=939, endExclusive=967) pathDepth=0 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=939, endExclusive=967))] causes=[] work=3
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=939, endExclusive=967) pathDepth=0 transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=1549, endExclusive=1681))] causes=[] work=2
+THIS_READ_SETUP kind=ISOLATED_ORIGINAL_EXCLUDE_POSITION model=ACTUAL_SELECTION source_entry=ACTUAL
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1549, endExclusive=1681) pathDepth=0 transfers=[(LOCAL_READ, ExactDeclarationTextRange(startInclusive=1622, endExclusive=1626))] causes=[UNSUPPORTED_EXPRESSION] work=11
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1622, endExclusive=1626) pathDepth=0 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=1622, endExclusive=1626))] causes=[] work=40
+SAFE_CALL_RECEIVER_RESULT exact_this=GUARDED matched_let=ADMITTED callback_transport=NOT_ASSERTED
+NULLABLE_CALLER callable=SOURCE.requireNotNull call=939:1020 extension=939:967 dispatch=NONE
+NULLABLE_CALLBACK_VALUE source=EXACT_IMPLICIT_IT target=SOURCE.Outcome.success.value index=0
+NULLABLE_BODY this=1622:1626 receiverSymbol=EXACT_REQUIRE_EXTENSION let=1622:1655 callback=1632:1655 it=1650:1652 implicitFormal=EXACT receiverTypeDiagnostic=T? formalTypeDiagnostic=T & Any
+NULLABLE_ALIAS_CAPTURE status=COMPILER_IDENTITIES source_alias_transfer,let_model,NonNull=NOT_RUN
+THIS_READ_K2 function=requireNotNull this=1622:1626 symbol=EXACT_EXTENSION
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+COMPOSITE_SUCCESS_STAGE row=C2.1 receiver source=ExactDeclarationTextRange(startInclusive=769, endExclusive=954) transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=769, endExclusive=954))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 map formal source=ExactDeclarationTextRange(startInclusive=769, endExclusive=954) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=289, endExclusive=439))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 Success.value source=ExactDeclarationTextRange(startInclusive=289, endExclusive=439) transfers=[(LOCAL_READ, ExactDeclarationTextRange(startInclusive=345, endExclusive=349)), (FIELD_READ, ExactDeclarationTextRange(startInclusive=393, endExclusive=398)), (FIELD_READ, ExactDeclarationTextRange(startInclusive=427, endExclusive=432))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 builtin argument source=ExactDeclarationTextRange(startInclusive=393, endExclusive=398) transfers=[(ARGUMENT, ExactDeclarationTextRange(startInclusive=393, endExclusive=398))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 callback formal source=ExactDeclarationTextRange(startInclusive=393, endExclusive=398) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=959, endExclusive=989))] frontier=[]
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=818, endExclusive=917) pathDepth=2 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=806, endExclusive=814))] causes=[] work=4
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) pathDepth=2 transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=1088, endExclusive=1143))] causes=[] work=2
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1088, endExclusive=1143) pathDepth=2 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=1137, endExclusive=1143))] causes=[] work=3
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1137, endExclusive=1143) pathDepth=2 transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=1149, endExclusive=1284))] causes=[] work=2
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1149, endExclusive=1284) pathDepth=2 transfers=[(LOCAL_READ, ExactDeclarationTextRange(startInclusive=1189, endExclusive=1193)), (FIELD_READ, ExactDeclarationTextRange(startInclusive=1227, endExclusive=1232))] causes=[] work=7
+BIND_BRANCH_SETUP kind=CONTROLLED_TRACKED_INITIALIZER guard=ORIGINAL_S2_NATIVE_PREFIX
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=939, endExclusive=953) pathDepth=0 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=939, endExclusive=953))] causes=[] work=40
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=939, endExclusive=953) pathDepth=0 transfers=[] causes=[UNMODELED_CALL] work=39
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=939, endExclusive=967) pathDepth=0 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=939, endExclusive=967))] causes=[] work=3
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=939, endExclusive=967) pathDepth=0 transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=1549, endExclusive=1681))] causes=[] work=2
+THIS_READ_SETUP kind=ISOLATED_ORIGINAL_EXCLUDE_POSITION model=ACTUAL_SELECTION source_entry=ACTUAL
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1549, endExclusive=1681) pathDepth=0 transfers=[(LOCAL_READ, ExactDeclarationTextRange(startInclusive=1622, endExclusive=1626))] causes=[UNSUPPORTED_EXPRESSION] work=11
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1622, endExclusive=1626) pathDepth=0 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=1622, endExclusive=1626))] causes=[] work=40
+SAFE_CALL_RECEIVER_RESULT receiver_result_shortcut=FORBIDDEN exhaustion=NOT_ASSERTED
+]]></system-out>
+  <system-err><![CDATA[[   1266]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1267]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

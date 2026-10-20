@@ -9,6 +9,10 @@ import io.github.amichne.kast.protocol.contract.SourceDeclarationKindDocument
 import io.github.amichne.kast.protocol.contract.SourceDeclarationVisibilityDocument
 import io.github.amichne.kast.protocol.contract.SourceReadFormatDocument
 import io.github.amichne.kast.protocol.contract.SourceReadResult
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.mapConverted
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

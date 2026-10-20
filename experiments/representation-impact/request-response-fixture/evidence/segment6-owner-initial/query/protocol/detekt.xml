@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="4.3">
+<file name="query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingQualificationTest.kt">
+	<error line="111" column="9" severity="error" message="The function compact boundary retains model reference unknown provenance and every required obligation is too long (51). The maximum length is 50." source="detekt.LongMethod" />
+</file>
+<file name="query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactValueModelProjectionTest.kt">
+	<error line="16" column="9" severity="error" message="The function typed application output keeps actual and reviewed artifact proof with conditional whole projection is too long (57). The maximum length is 50." source="detekt.LongMethod" />
+</file>
+</checkstyle>

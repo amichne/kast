@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactCallbackDecodeDepthTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T04:47:41.934Z" hostname="Austins-MacBook-Pro.local" time="0.268">
+  <properties/>
+  <testcase name="bounded input cannot bypass the callback depth limit through callable transfer frames()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackDecodeDepthTest" time="0.145"/>
+  <testcase name="988 expanded frame occurrences decode even when direct frames share one object()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackDecodeDepthTest" time="0.094"/>
+  <testcase name="1022 expanded frame occurrences exceed the document count limit()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackDecodeDepthTest" time="0.017"/>
+  <testcase name="small callback frame trees decode with full typed invocation evidence()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackDecodeDepthTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

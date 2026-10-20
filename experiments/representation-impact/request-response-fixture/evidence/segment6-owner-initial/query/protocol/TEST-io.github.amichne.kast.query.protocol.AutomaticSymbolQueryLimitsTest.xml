@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryLimitsTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.230Z" hostname="Austins-MacBook-Pro.local" time="0.02">
+  <properties/>
+  <testcase name="elapsed allowance rejects completion without renewing public execution()" classname="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryLimitsTest" time="0.003"/>
+  <testcase name="hard cancellation never blindly replays semantic work()" classname="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryLimitsTest" time="0.001"/>
+  <testcase name="aggregate work stop rejects completion while preserving proven rows and internal continuation()" classname="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryLimitsTest" time="0.002"/>
+  <testcase name="semantic pages receive the remaining invocation time without an unresumable slice()" classname="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryLimitsTest" time="0.002"/>
+  <testcase name="budget increase next action requires a decision and preserves the issued checkpoint()" classname="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryLimitsTest" time="0.002"/>
+  <testcase name="aggregate retained bytes stop without skipping a consumed page through a continuation()" classname="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryLimitsTest" time="0.005"/>
+  <testcase name="cooperative cancellation rejects completion and preserves historical continuation()" classname="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryLimitsTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

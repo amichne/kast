@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryExpansionScopeAdmissionTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.330Z" hostname="Austins-MacBook-Pro.local" time="0.004">
+  <properties/>
+  <testcase name="duplicate source sets and escaping directories fail admission()" classname="io.github.amichne.kast.query.protocol.QueryExpansionScopeAdmissionTest" time="0.001"/>
+  <testcase name="source expansion refines ownership restrictions separately from presentation()" classname="io.github.amichne.kast.query.protocol.QueryExpansionScopeAdmissionTest" time="0.0"/>
+  <testcase name="expansion scope encoded shape requires its discriminator and closed source fields()" classname="io.github.amichne.kast.query.protocol.QueryExpansionScopeAdmissionTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

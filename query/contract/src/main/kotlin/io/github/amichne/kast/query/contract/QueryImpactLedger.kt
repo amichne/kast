@@ -11,6 +11,7 @@ import io.github.amichne.kast.relation.contract.RepresentationModelApplication
 import io.github.amichne.kast.relation.contract.RepresentationRule
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowWorkReceipt
+import io.github.amichne.kast.relation.contract.ValueModelApplication
 import io.github.amichne.kast.relation.contract.ValueSite
 import java.util.Collections
 
@@ -29,6 +30,7 @@ enum class QueryImpactLedgerFailure {
     CONFLICTING_OBSERVATIONS,
     MISSING_NATIVE_OBSERVATION,
     UNPROVEN_COMPILER_STEP,
+    UNPROVEN_MODELED_VALUE_STEP,
     MISSING_BRANCH,
     MISSING_OBLIGATION,
     UNDECLARED_MODEL,
@@ -166,7 +168,8 @@ internal fun QueryImpactPath.hasModeledArrival(index: Int): Boolean =
     when (steps.getOrNull(index)) {
         is QueryImpactStep.ModeledRepresentation,
         is QueryImpactStep.ModeledBoundary -> true
-        is QueryImpactStep.Compiler -> false
+        is QueryImpactStep.Compiler,
+        is QueryImpactStep.ModeledValue -> false
         null ->
             when (terminal) {
                 is QueryImpactTerminal.Consumer,
@@ -196,7 +199,8 @@ internal fun QueryImpactPath.usesDeclaredModels(
 ): Boolean =
     steps.all { step ->
         when (step) {
-            is QueryImpactStep.Compiler -> true
+            is QueryImpactStep.Compiler,
+            is QueryImpactStep.ModeledValue -> true
             is QueryImpactStep.ModeledRepresentation ->
                 when (val model = step.application) {
                     is RepresentationModelApplication.Transfer -> model.rule in representations
@@ -213,6 +217,7 @@ internal fun QueryImpactPath.usesDeclaredModels(
                         when (history) {
                             is RepresentationHistory.Origin -> history.rule in representations
                             is RepresentationHistory.CompilerTransfer,
+                            is ValueModelApplication,
                             is RepresentationHistory.Unmodeled -> true
                             is RepresentationModelApplication.Transfer -> history.rule in representations
                             is RepresentationModelApplication.Transformation -> history.rule in representations

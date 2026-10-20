@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.StagedRelationQueryTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:33.520Z" hostname="Austins-MacBook-Pro.local" time="0.017">
+  <properties/>
+  <testcase name="one shared grant rejects the unsplit two hop question()" classname="io.github.amichne.kast.query.protocol.StagedRelationQueryTest" time="0.005"/>
+  <testcase name="a rejected retained prefix cannot become a complete answer through a smaller stage()" classname="io.github.amichne.kast.query.protocol.StagedRelationQueryTest" time="0.008"/>
+  <testcase name="complete retained stage supplies the next hop without repeating the prefix()" classname="io.github.amichne.kast.query.protocol.StagedRelationQueryTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

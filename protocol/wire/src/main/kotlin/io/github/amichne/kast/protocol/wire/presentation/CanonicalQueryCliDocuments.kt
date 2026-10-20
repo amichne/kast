@@ -25,6 +25,7 @@ import io.github.amichne.kast.protocol.contract.continuationToken
 import io.github.amichne.kast.protocol.contract.reason
 import io.github.amichne.kast.protocol.contract.recoveryAction
 import io.github.amichne.kast.protocol.contract.terminalReason
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import io.github.amichne.kast.protocol.contract.validateImpactAccounting
 import io.github.amichne.kast.protocol.contract.validateImpactCompletion
 import io.github.amichne.kast.protocol.wire.RelationReferenceOccurrenceWireDocument

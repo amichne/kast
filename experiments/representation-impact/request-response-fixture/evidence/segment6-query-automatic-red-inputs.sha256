@@ -1,0 +1,8 @@
+4d43ccb202ae677b201141fc0baca23546611c4aad001da84feb10e21035e609  query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt
+3506e579ca756579d50fb236fd50bb8a650fe1856f907470551f9611928a27a2  query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactSnapshot.kt
+a9414552d1f2cd4d6c5b16265ee02f83b6e9ee60e753552ed8932c774354c78d  query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactObservedArrivals.kt
+671dc4e4d8d75ff7a75e968a9cea88f63e6e77610351ae9ad1f1a70f2b0fe293  query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactReadAcquisition.kt
+7286c49d2998f94147f6babf21967bb8106d1df4c270ee7f53aaff9a8f851a44  query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactCapacity.kt
+01de77f266a026dde99749b0514749c733a771d64a974dd77dd815882cb703f9  query/service/src/test/kotlin/io/github/amichne/kast/query/service/AutomaticValueQueryCase.kt
+919f949a9a2aa616085fad7f3702fcf7a44a4b55288c9ae265009c1b14573256  query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryImpactAutomaticValueExecutionTest.kt
+50a5582a7c4a07dc0a3a97bc00f0b26c7fff0ba726d8d42202b039f95c9a21a9  query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryImpactExecutionFixture.kt

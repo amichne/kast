@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.RetainedSymbolGraphMeasurementTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:31.405Z" hostname="Austins-MacBook-Pro.local" time="2.094">
+  <properties/>
+  <testcase name="symbol graph decreases emitted bytes at identical canonical wire partitions()" classname="io.github.amichne.kast.query.protocol.RetainedSymbolGraphMeasurementTest" time="2.094"/>
+  <system-out><![CDATA[D3 SYMBOLS typed_reply_bytes=240484 aggregate_cap=262144 headroom=21660
+D3 canonical partition evidence=/Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/build/reports/retained-graph-delivery/symbol-canonical-partitions.json
+D3 SYMBOLS canonical_page_cap=20000 SymbolGraphCount(rows=53, pages=27, candidateReads=703, canonicalBytes=495304, verboseBytes=495024, compactBytes=239619, verboseEndpointDescriptions=212, compactEndpointDescriptions=80) semantic_provider_calls=0 physical_rpcs=NOT_RUN
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

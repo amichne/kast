@@ -1,0 +1,2 @@
+rule	location	status	reason
+Slopsentral.Grade	results/error-return-and-known-empty-oracles.md:1	ASSESSED_ADVISORY_REMAINS	Grade10.62 reflects exact selectors, declaration names, ranges, and source/model distinctions needed for review. Comprehension NOT_ASSESSED.

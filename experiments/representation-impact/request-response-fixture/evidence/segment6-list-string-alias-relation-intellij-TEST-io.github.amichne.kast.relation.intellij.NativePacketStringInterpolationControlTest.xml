@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketStringInterpolationControlTest" tests="16" skipped="0" failures="0" errors="0" timestamp="2026-10-20T19:26:27.351Z" hostname="Austins-MacBook-Pro.local" time="6.237">
+  <properties/>
+  <testcase name="testAnActualNonnullableBooleanContributesToItsExactTemplate" classname="io.github.amichne.kast.relation.intellij.NativePacketStringInterpolationControlTest" time="0.44"/>
+  <testcase name="testACustomSourceToStringDoesNotGrantTheBuiltinScalarRule" classname="io.github.amichne.kast.relation.intellij.NativePacketStringInterpolationControlTest" time="0.409"/>
+  <testcase name="testAnActualNonnullableShortContributesToItsExactTemplate" classname="io.github.amichne.kast.relation.intellij.NativePacketStringInterpolationControlTest" time="0.419"/>
+  <testcase name="testAnActualNonnullableCharContributesToItsExactTemplate" classname="io.github.amichne.kast.relation.intellij.NativePacketStringInterpolationControlTest" time="0.406"/>
+  <testcase name="testAnActualNonnullableStringContributesToItsExactTemplate" classname="io.github.amichne.kast.relation.intellij.NativePacketStringInterpolationControlTest" time="0.369"/>
+  <testcase name="testANullableBuiltinScalarKeepsItsUnsupportedQualification" classname="io.github.amichne.kast.relation.intellij.NativePacketStringInterpolationControlTest" time="0.413"/>
+  <testcase name="testARealJavaFlexibleStringDoesNotGrantTheDirectClassRule" classname="io.github.amichne.kast.relation.intellij.NativePacketStringInterpolationControlTest" time="0.346"/>
+  <testcase name="testAnActualNonnullableByteContributesToItsExactTemplate" classname="io.github.amichne.kast.relation.intellij.NativePacketStringInterpolationControlTest" time="0.4"/>
+  <testcase name="testAnActualNonnullableLongContributesToItsExactTemplate" classname="io.github.amichne.kast.relation.intellij.NativePacketStringInterpolationControlTest" time="0.349"/>
+  <testcase name="testAnActualNonnullableDoubleContributesToItsExactTemplate" classname="io.github.amichne.kast.relation.intellij.NativePacketStringInterpolationControlTest" time="0.377"/>
+  <testcase name="testTheActualScalarCannotReachASiblingTemplateOrItsConstantEntry" classname="io.github.amichne.kast.relation.intellij.NativePacketStringInterpolationControlTest" time="0.383"/>
+  <testcase name="testAnActualNonnullableFloatContributesToItsExactTemplate" classname="io.github.amichne.kast.relation.intellij.NativePacketStringInterpolationControlTest" time="0.38"/>
+  <testcase name="testATrackedStringFieldCannotBecomeTheWholeTemplateValue" classname="io.github.amichne.kast.relation.intellij.NativePacketStringInterpolationControlTest" time="0.409"/>
+  <testcase name="testAnActualNonnullableIntContributesToItsExactTemplate" classname="io.github.amichne.kast.relation.intellij.NativePacketStringInterpolationControlTest" time="0.347"/>
+  <testcase name="testAGenuineTypeParameterDoesNotGrantTheBuiltinScalarRule" classname="io.github.amichne.kast.relation.intellij.NativePacketStringInterpolationControlTest" time="0.41"/>
+  <testcase name="testAGenuineInputReferenceCannotJumpToTheLaterConstantResult" classname="io.github.amichne.kast.relation.intellij.NativePacketStringInterpolationControlTest" time="0.376"/>
+  <system-out><![CDATA[INTERPOLATION_CONTROL source=ExactDeclarationTextRange(startInclusive=268, endExclusive=273) transfers=[(DERIVATION, ExactDeclarationTextRange(startInclusive=257, endExclusive=275))] causes=[]
+INTERPOLATION_CONTROL source=ExactDeclarationTextRange(startInclusive=834, endExclusive=839) transfers=[] causes=[UNSUPPORTED_EXPRESSION]
+INTERPOLATION_CONTROL source=ExactDeclarationTextRange(startInclusive=445, endExclusive=450) transfers=[(DERIVATION, ExactDeclarationTextRange(startInclusive=436, endExclusive=452))] causes=[]
+INTERPOLATION_CONTROL source=ExactDeclarationTextRange(startInclusive=326, endExclusive=331) transfers=[(DERIVATION, ExactDeclarationTextRange(startInclusive=318, endExclusive=333))] causes=[]
+INTERPOLATION_CONTROL source=ExactDeclarationTextRange(startInclusive=201, endExclusive=206) transfers=[(DERIVATION, ExactDeclarationTextRange(startInclusive=191, endExclusive=208))] causes=[]
+INTERPOLATION_CONTROL source=ExactDeclarationTextRange(startInclusive=752, endExclusive=757) transfers=[] causes=[UNSUPPORTED_EXPRESSION]
+INTERPOLATION_CONTROL source=ExactDeclarationTextRange(startInclusive=954, endExclusive=996) transfers=[] causes=[UNSUPPORTED_EXPRESSION]
+INTERPOLATION_CONTROL source=ExactDeclarationTextRange(startInclusive=384, endExclusive=389) transfers=[(DERIVATION, ExactDeclarationTextRange(startInclusive=376, endExclusive=391))] causes=[]
+INTERPOLATION_CONTROL source=ExactDeclarationTextRange(startInclusive=558, endExclusive=563) transfers=[(DERIVATION, ExactDeclarationTextRange(startInclusive=550, endExclusive=565))] causes=[]
+INTERPOLATION_CONTROL source=ExactDeclarationTextRange(startInclusive=683, endExclusive=688) transfers=[(DERIVATION, ExactDeclarationTextRange(startInclusive=673, endExclusive=690))] causes=[]
+INTERPOLATION_CONTROL source=ExactDeclarationTextRange(startInclusive=1191, endExclusive=1196) transfers=[(DERIVATION, ExactDeclarationTextRange(startInclusive=1179, endExclusive=1198))] causes=[]
+INTERPOLATION_CONTROL source=ExactDeclarationTextRange(startInclusive=619, endExclusive=624) transfers=[(DERIVATION, ExactDeclarationTextRange(startInclusive=610, endExclusive=626))] causes=[]
+INTERPOLATION_CONTROL source=ExactDeclarationTextRange(startInclusive=1076, endExclusive=1081) transfers=[] causes=[UNSUPPORTED_EXPRESSION]
+INTERPOLATION_CONTROL source=ExactDeclarationTextRange(startInclusive=500, endExclusive=505) transfers=[(DERIVATION, ExactDeclarationTextRange(startInclusive=493, endExclusive=507))] causes=[]
+INTERPOLATION_CONTROL source=ExactDeclarationTextRange(startInclusive=899, endExclusive=904) transfers=[] causes=[UNSUPPORTED_EXPRESSION]
+INTERPOLATION_CONTROL source=ExactDeclarationTextRange(startInclusive=1338, endExclusive=1343) transfers=[] causes=[EXTERNAL_CALL]
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

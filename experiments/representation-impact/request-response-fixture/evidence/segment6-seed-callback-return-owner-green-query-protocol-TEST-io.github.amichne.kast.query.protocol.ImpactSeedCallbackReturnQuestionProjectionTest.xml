@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactSeedCallbackReturnQuestionProjectionTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T19:56:39.636Z" hostname="Austins-MacBook-Pro.local" time="0.151">
+  <properties/>
+  <testcase name="an explicit empty return question keeps the qualified flow without proving completion()" classname="io.github.amichne.kast.query.protocol.ImpactSeedCallbackReturnQuestionProjectionTest" time="0.137"/>
+  <testcase name="an empty return keeps unavailable and rejected proof limits as finite diagnostics()" classname="io.github.amichne.kast.query.protocol.ImpactSeedCallbackReturnQuestionProjectionTest" time="0.007"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

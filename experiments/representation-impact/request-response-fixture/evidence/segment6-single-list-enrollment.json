@@ -1,0 +1,59 @@
+{
+  "input_stage_receipt": "segment6-single-list-insertion-staged-inputs.sha256",
+  "mapping": [
+    {
+      "draft": "experiments/representation-impact/request-response-fixture/drafts/segment6/single-list-insertion/NativePacketSingleListInsertionFacts.kt",
+      "archive": "experiments/representation-impact/request-response-fixture/evidence/segment6-single-list-reviewed-NativePacketSingleListInsertionFacts.kt.txt",
+      "active": "relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketSingleListInsertionFacts.kt",
+      "sha256": "c5dbde09c8a3182156325f89147ba66e4b5b3c88d772ebc8e0e641c5910ccb26"
+    },
+    {
+      "draft": "experiments/representation-impact/request-response-fixture/drafts/segment6/single-list-insertion/NativePacketSingleListInsertionSource.kt",
+      "archive": "experiments/representation-impact/request-response-fixture/evidence/segment6-single-list-reviewed-NativePacketSingleListInsertionSource.kt.txt",
+      "active": "relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketSingleListInsertionSource.kt",
+      "sha256": "bbf7651f4b733a14bf3f2f2e1cdebdb4f590ec233fcc5f07ca2d0559d2c5ad8f"
+    },
+    {
+      "draft": "experiments/representation-impact/request-response-fixture/drafts/segment6/single-list-insertion/NativePacketSingleListInsertionTest.kt",
+      "archive": "experiments/representation-impact/request-response-fixture/evidence/segment6-single-list-reviewed-NativePacketSingleListInsertionTest.kt.txt",
+      "active": "relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketSingleListInsertionTest.kt",
+      "sha256": "f5058f0b0013c28c840d4606c3eac0cbb3d32ec361b9738b1e66082858947504"
+    },
+    {
+      "draft": "experiments/representation-impact/request-response-fixture/drafts/segment6/single-list-insertion/SingleListInsertionControls.kt",
+      "archive": "experiments/representation-impact/request-response-fixture/evidence/segment6-single-list-reviewed-SingleListInsertionControls.kt.txt",
+      "active": "experiments/representation-impact/request-response-fixture/src/main/kotlin/fixture/controls/SingleListInsertionControls.kt",
+      "sha256": "19ab3627e246202331747c7db4a8335bf8823c2f3a57d71ed6dbbec240dfa5a5"
+    }
+  ],
+  "original_manifest_hashes": {
+    "initial-freeze.sha256": "88eb9a636cd55fb525f12f2b308c9dbdc71e3e94075c155f4f1fd0858695752c",
+    "derived-sources.sha256": "df263db1f6ebeff1a64461ec41f32954006d2aeed673c1adc5893426e1a30e8c",
+    "segment4-controls.sha256": "2fcaa494779d0ec01d10a18601b938d899249bd1f86ef8217fcceb263fd9f5a9",
+    "segment4-return-controls.sha256": "4bee370576aa45344a06fff74e2f412c92cf6b5b9d7c3562b92433d3258e59d5",
+    "segment6-library-controls.sha256": "1b4d23fd4a626b757df279f82776a4dd9f61ba3b6343b59ff4914930c4a4d01c",
+    "segment5-branch-controls.sha256": "ddbf1311f2ff26a3404ee0839d321f147fdc312a63f4dd843ef9594746bb401b",
+    "segment5-entry-controls.sha256": "3e52d0bdd6d895abbc6eb397a569ba7d7af4c3b1a82249062d70b1ef5585c870",
+    "segment5-source-function-controls.sha256": "c55f382fad7a425ac2053ae1384829d386ebe813ac8452d4f67582abf0aec200",
+    "segment6-let-controls.sha256": "b885f2cfe36a8a5a2af3e9827d40f5a8d6636dbc0212349beec125deff5e8f24",
+    "segment5-elvis-controls.sha256": "e154a148b661d9f99f19c25c7eeeeeda67eb763a9ef63d558a8857b5249c9c79"
+  },
+  "original_rows": 28,
+  "original_manifest_and_source_rows": "PASSED_UNCHANGED",
+  "new_manifest": "experiments/representation-impact/request-response-fixture/segment6-single-list-controls.sha256",
+  "manifest_count": 11,
+  "new_model_api_references": "NONE",
+  "required_generic_application_assertions": "UNCHANGED",
+  "active_native_cases": 7,
+  "assertions": "NOT_RUN",
+  "gradle": "NOT_RUN",
+  "scope_review": {
+    "guides": [
+      "relation/AGENTS.md",
+      "experiments/representation-impact/request-response-fixture/AGENTS.md"
+    ],
+    "owner_or_rule_change": false,
+    "guide_change": "manifest enrollment facts and count only",
+    "new_child_guide": false
+  }
+}

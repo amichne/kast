@@ -1,0 +1,6 @@
+01de77f266a026dde99749b0514749c733a771d64a974dd77dd815882cb703f9  experiments/representation-impact/request-response-fixture/drafts/segment6/AutomaticValueQueryCase.kt
+919f949a9a2aa616085fad7f3702fcf7a44a4b55288c9ae265009c1b14573256  experiments/representation-impact/request-response-fixture/drafts/segment6/QueryImpactAutomaticValueExecutionTest.kt
+f67ce8bdc7b210c3f632140684356c252f77277e74f5e72a50cd901226cfef98  query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryImpactExecutionFixture.kt
+c4a2507cdc172a86a62039a46d5df7aad34945335d8ba4eff799b990a752f28f  query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactPath.kt
+da2b39bdd8b7e5de16a96877ef5158e977f735944786ce5fee9a84c4bba75124  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlow.kt
+1db71df116179706b393359bda97e3b923a61e7b55b61ba9ca60b4d1dc2eec84  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueModelApplication.kt

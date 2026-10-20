@@ -1,0 +1,4 @@
+a349e2d479914e3f3443ca8e46cef0d1507122165840b51b52a13f9a577d30d3  protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactValueModelValidation.kt
+9f719172b384db0f08d12c1e75c1cbb7e6e883687fcf494de5f181d28399aa51  query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingQualificationTest.kt
+4fbd21975c5a94ffd338ec72ce2d075f5df2ae5ba8fcc0b98f46f49e2dabc7b3  query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactValueModelProjectionTest.kt
+43b28a8f4ec622ed7b08db281baf620e4ae87eb7bd94b51e00453a985b326580  query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessPresentationTest.kt

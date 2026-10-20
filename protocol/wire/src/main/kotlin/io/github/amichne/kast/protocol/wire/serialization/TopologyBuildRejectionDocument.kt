@@ -13,6 +13,11 @@ import io.github.amichne.kast.protocol.contract.TopologyEnumerationRejection
 import io.github.amichne.kast.protocol.contract.TopologyExtractionRejection
 import io.github.amichne.kast.protocol.contract.TopologyPublicationRejection
 import io.github.amichne.kast.protocol.contract.TopologySnapshotRejection
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.combineConverted
+import io.github.amichne.kast.protocol.contract.mapConverted
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocumentConversion
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator

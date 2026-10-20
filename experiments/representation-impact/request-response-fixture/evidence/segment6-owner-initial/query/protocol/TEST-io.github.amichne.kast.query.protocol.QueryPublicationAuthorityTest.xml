@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryPublicationAuthorityTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.465Z" hostname="Austins-MacBook-Pro.local" time="0.01">
+  <properties/>
+  <testcase name="an active producer cannot publish itself as its own successor()" classname="io.github.amichne.kast.query.protocol.QueryPublicationAuthorityTest" time="0.001"/>
+  <testcase name="one cached entry under capacity one rejects an additional replay claim without changing retention()" classname="io.github.amichne.kast.query.protocol.QueryPublicationAuthorityTest" time="0.001"/>
+  <testcase name="a retained output cannot hide a cycle back to its active producer()" classname="io.github.amichne.kast.query.protocol.QueryPublicationAuthorityTest" time="0.002"/>
+  <testcase name="publication releases staged work that its final fitted page cannot advertise()" classname="io.github.amichne.kast.query.protocol.QueryPublicationAuthorityTest" time="0.001"/>
+  <testcase name="a cached entry and its replay claims share the same configured count capacity()" classname="io.github.amichne.kast.query.protocol.QueryPublicationAuthorityTest" time="0.001"/>
+  <testcase name="publication cannot replace its authority or operation proof()" classname="io.github.amichne.kast.query.protocol.QueryPublicationAuthorityTest" time="0.001"/>
+  <testcase name="publication checks the authority of transitive output dependencies()" classname="io.github.amichne.kast.query.protocol.QueryPublicationAuthorityTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.LocalBindingTraversalAdmissionTest" tests="3" skipped="0" failures="2" errors="0" timestamp="2026-10-20T04:34:52.752Z" hostname="Austins-MacBook-Pro.local" time="0.019">
+  <properties/>
+  <testcase name="candidate-free enumeration propagates cancellation before exhaustion()" classname="io.github.amichne.kast.relation.contract.LocalBindingTraversalAdmissionTest" time="0.015">
+    <failure message="org.opentest4j.AssertionFailedError: Expected java.util.concurrent.CancellationException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Expected java.util.concurrent.CancellationException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+	at io.github.amichne.kast.relation.contract.LocalBindingTraversalAdmissionTest.candidate-free enumeration propagates cancellation before exhaustion(LocalBindingTraversalAdmissionTest.kt:33)
+</failure>
+  </testcase>
+  <testcase name="candidate-free enumeration that reaches the deadline remains suspended()" classname="io.github.amichne.kast.relation.contract.LocalBindingTraversalAdmissionTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected type, expected: &lt;io.github.amichne.kast.relation.contract.ValueFlowRead.Suspended&gt; but was: &lt;io.github.amichne.kast.relation.contract.ValueFlowRead.Observed&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected type, expected: &lt;io.github.amichne.kast.relation.contract.ValueFlowRead.Suspended&gt; but was: &lt;io.github.amichne.kast.relation.contract.ValueFlowRead.Observed&gt;
+	at org.junit.jupiter.api.Assertions.assertInstanceOf(Assertions.java:3699)
+	at io.github.amichne.kast.relation.contract.LocalBindingTraversalAdmissionTest.candidate-free enumeration that reaches the deadline remains suspended(LocalBindingTraversalAdmissionTest.kt:20)
+</failure>
+  </testcase>
+  <testcase name="candidate-free current enumeration exhausts without candidate work()" classname="io.github.amichne.kast.relation.contract.LocalBindingTraversalAdmissionTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

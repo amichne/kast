@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.RepresentationSourceConservationTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T01:49:20.941Z" hostname="Austins-MacBook-Pro.local" time="0.099">
+  <properties/>
+  <testcase name="constructor storage keeps history without assigning the argument representation to the constructed object()" classname="io.github.amichne.kast.relation.contract.RepresentationSourceConservationTest" time="0.073"/>
+  <testcase name="field projection keeps history without assigning the object representation to its field()" classname="io.github.amichne.kast.relation.contract.RepresentationSourceConservationTest" time="0.01"/>
+  <testcase name="matched source entry and return preserve the value representation and exact history()" classname="io.github.amichne.kast.relation.contract.RepresentationSourceConservationTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

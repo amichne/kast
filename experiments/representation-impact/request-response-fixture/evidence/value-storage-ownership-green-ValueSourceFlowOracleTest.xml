@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T02:05:49.508Z" hostname="Austins-MacBook-Pro.local" time="0.008">
+  <properties/>
+  <testcase name="frame storage shares an existing endpoint payload but charges an equal detached copy()" classname="io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTest" time="0.007"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

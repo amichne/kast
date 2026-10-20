@@ -12,6 +12,7 @@ import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.query.contract.QueryValuePathAccounting
 
 internal fun invocationAccounting(
+    references: QueryReferenceAuthority,
     rows: QueryRows?,
     output: QueryOutputDocument.ImpactWitness?,
     previewSize: Int,
@@ -25,10 +26,11 @@ internal fun invocationAccounting(
                 QueryImpactWitnessView.create(ledger, output.section.witnessSection(), 0, previewSize).required()
             )
         }
-    return Refinement.Refined(selected.impactAccountingDocument().required())
+    return Refinement.Refined(selected.impactAccountingDocument(references).required())
 }
 
 internal fun invocationWitnessPreview(
+    references: QueryReferenceAuthority,
     rows: QueryRows?,
     output: QueryOutputDocument.ImpactWitness,
     retained: QueryResultIssuance.Issued?,
@@ -42,6 +44,7 @@ internal fun invocationWitnessPreview(
         val projected =
             QueryRows.ImpactWitness.of(view)
                 .projectWitnessItems(
+                    references,
                     if (view.section == QueryImpactWitnessSection.FINDINGS) issued.rowIds.take(end) else null,
                     if (view.section == QueryImpactWitnessSection.SITE_ACCOUNTING) issued.rowIds else null,
                 )

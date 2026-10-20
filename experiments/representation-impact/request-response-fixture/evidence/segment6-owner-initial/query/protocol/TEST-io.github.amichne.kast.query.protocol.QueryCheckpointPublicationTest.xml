@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryCheckpointPublicationTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.263Z" hostname="Austins-MacBook-Pro.local" time="0.015">
+  <properties/>
+  <testcase name="concurrent checkpoint execution has one publisher()" classname="io.github.amichne.kast.query.protocol.QueryCheckpointPublicationTest" time="0.003"/>
+  <testcase name="published execution page is replayed without semantic work()" classname="io.github.amichne.kast.query.protocol.QueryCheckpointPublicationTest" time="0.001"/>
+  <testcase name="checkpoint resumes each larger allowance through canonical admission with retained plan()" classname="io.github.amichne.kast.query.protocol.QueryCheckpointPublicationTest" time="0.002"/>
+  <testcase name="initial retained rows are invisible until publication and revoked on rejection()" classname="io.github.amichne.kast.query.protocol.QueryCheckpointPublicationTest" time="0.003"/>
+  <testcase name="cancelled checkpoint attempt releases ownership without publishing()" classname="io.github.amichne.kast.query.protocol.QueryCheckpointPublicationTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketEntryMutabilityTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:32:11.726Z" hostname="Austins-MacBook-Pro.local" time="1.148">
+  <properties/>
+  <testcase name="testSupplementalImmutableEntryReadsItsActualLocalReference" classname="io.github.amichne.kast.relation.intellij.NativePacketEntryMutabilityTest" time="0.625"/>
+  <testcase name="testSupplementalReassignedMutableEntryKeepsMutableControlFlowInsteadOfExhaustion" classname="io.github.amichne.kast.relation.intellij.NativePacketEntryMutabilityTest" time="0.523"/>
+  <system-out><![CDATA[ENTRY_MUTABILITY_RESULT source=ACTUAL_REASSIGNED_VAR cause=MUTABLE_CONTROL_FLOW full_S2_route=NOT_ASSERTED
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

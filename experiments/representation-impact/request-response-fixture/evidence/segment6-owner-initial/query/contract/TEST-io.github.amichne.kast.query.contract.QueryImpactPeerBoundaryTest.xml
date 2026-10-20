@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryImpactPeerBoundaryTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:17.765Z" hostname="Austins-MacBook-Pro.local" time="0.005">
+  <properties/>
+  <testcase name="duplicate or undeclared peer proof fails before any source is admitted()" classname="io.github.amichne.kast.query.contract.QueryImpactPeerBoundaryTest" time="0.002"/>
+  <testcase name="same root moved epoch stays stale rather than becoming a peer()" classname="io.github.amichne.kast.query.contract.QueryImpactPeerBoundaryTest" time="0.0"/>
+  <testcase name="same owner and compiler signature at another exact range cannot replace selected target()" classname="io.github.amichne.kast.query.contract.QueryImpactPeerBoundaryTest" time="0.0"/>
+  <testcase name="wrong source full authority cannot adopt a reviewed peer link()" classname="io.github.amichne.kast.query.contract.QueryImpactPeerBoundaryTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

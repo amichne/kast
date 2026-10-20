@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ReferenceAuthorityRecoveryTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.771Z" hostname="Austins-MacBook-Pro.local" time="0.017">
+  <properties/>
+  <testcase name="matching candidate reaches source while malformed and wrong-family candidates reject()" classname="io.github.amichne.kast.query.protocol.ReferenceAuthorityRecoveryTest" time="0.004"/>
+  <testcase name="foreign root host unsupported version and invalid epoch issue no epoch pair()" classname="io.github.amichne.kast.query.protocol.ReferenceAuthorityRecoveryTest" time="0.002"/>
+  <testcase name="query source and concat preserve epoch evidence through canonical rejection()" classname="io.github.amichne.kast.query.protocol.ReferenceAuthorityRecoveryTest" time="0.007"/>
+  <testcase name="source stale epoch preserves exact pair and safe action before provider effects()" classname="io.github.amichne.kast.query.protocol.ReferenceAuthorityRecoveryTest" time="0.001"/>
+  <testcase name="same epoch unsupported content view stays distinct without numeric authority evidence()" classname="io.github.amichne.kast.query.protocol.ReferenceAuthorityRecoveryTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

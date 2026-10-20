@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.SourceFunctionProducerDocumentTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T16:03:01.388Z" hostname="Austins-MacBook-Pro.local" time="0.116">
+  <properties/>
+  <testcase name="source function producer encodes full property proof and exact actual result correspondence()" classname="io.github.amichne.kast.protocol.contract.SourceFunctionProducerDocumentTest" time="0.098"/>
+  <testcase name="changed call reference execution basis and unknown producer variant reject output proof()" classname="io.github.amichne.kast.protocol.contract.SourceFunctionProducerDocumentTest" time="0.011"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

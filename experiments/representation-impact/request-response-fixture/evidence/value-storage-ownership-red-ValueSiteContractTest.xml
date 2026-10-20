@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueSiteContractTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-20T02:04:32.731Z" hostname="Austins-MacBook-Pro.local" time="0.064">
+  <properties/>
+  <testcase name="flow obligations charge the shared source payload once and preserve distinct copies()" classname="io.github.amichne.kast.relation.contract.ValueSiteContractTest" time="0.058">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;2048&gt; but was: &lt;4696&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;2048&gt; but was: &lt;4696&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+	at io.github.amichne.kast.relation.contract.ValueSiteContractTest.flow obligations charge the shared source payload once and preserve distinct copies(ValueSiteContractTest.kt:46)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

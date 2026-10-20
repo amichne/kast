@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactPredicateProjectionTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.831Z" hostname="Austins-MacBook-Pro.local" time="0.004">
+  <properties/>
+  <testcase name="implicit formal projection keeps the body anchor and explicit implicit origin()" classname="io.github.amichne.kast.query.protocol.ImpactPredicateProjectionTest" time="0.0"/>
+  <testcase name="site projection keeps a predicate on its exact tested value()" classname="io.github.amichne.kast.query.protocol.ImpactPredicateProjectionTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

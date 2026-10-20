@@ -4,7 +4,10 @@ import io.github.amichne.kast.protocol.contract.DiagnosticCheckFailure
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckQualification
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckRequest
 import io.github.amichne.kast.protocol.contract.DiagnosticCheckResult
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
 import io.github.amichne.kast.protocol.contract.reason
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
 
 internal object CanonicalReadSerializers {
     private val factory = GeneratedWireCodecFactory(wireJson)

@@ -1,0 +1,23 @@
+{
+  "status": "NOT_RUN",
+  "enrollment": "WAIT_FOR_STABLE_ROOT_API",
+  "scope": "Original S1 constructor707:792 and production source domain, targets, grants, retention, completion, combined cases unchanged. Only the named known-candidate positive adds one exact issued Echo declaration.",
+  "known_positive": {
+    "selector": "testOriginalS1ProductionReportsTheExactKnownEchoExclusion",
+    "added_input": "QueryImpactDeclarationDocument with actual exact-symbol resolved and issued EchoOffersClient.readOffers token, current basis/file/range/compiler identity",
+    "source_admission": "PRODUCTION_AND_TEST exact lookup identifies the known candidate. The value-flow query stays PRODUCTION_ONLY/main/src/generated EXCLUDE/libraries EXCLUDE.",
+    "required_output": "The unchanged exact Echo SOURCE_DOMAIN exclusion with IMPORTED_MODEL_NATIVE_SCOPE, actual target declaration and definition occurrence",
+    "relationship_proof": "The explicit declaration does not prove IMPLEMENTATIONS. Native must freshly prove the exact relation and imported ownership under the current authority.",
+    "current_gap": "No known-declaration input reaches NativeValueImplementationDispatch. This named assertion remains expected RED after valid admission until the channel exists."
+  },
+  "no_known_control": {
+    "selector": "testOriginalS1ProductionWithoutAKnownDeclarationKeepsTheExactSelectedDomain",
+    "request": "Exact original producer, requested apiBody, domain and s1Declarations list, with no Echo item",
+    "positive": "Actual original seed and exact production IMPLEMENTATIONS dispatch, selected in-domain main target/exhausted count1/no omissions",
+    "forbidden": "No emitted Echo implementation execution frame; existing S1 forbidden witness assertions stay",
+    "qualification": "No specific excluded candidate or global absence conclusion from RELATIONSHIP_UNPROVEN. Authoritatively known exclusions are not forbidden."
+  },
+  "combined_selectors": "Both existing combined selectors remain unchanged. Their metadata/default inputs stay unchanged.",
+  "assertion_identity": "Existing exactEchoExclusion, assertProductionKnownEchoExclusion and all existing frame/domain/coverage predicates stay byte-identical.",
+  "protected_seed": "Original nested ClientRequest constructor, not Echo destination or helper substitute."
+}

@@ -15,6 +15,7 @@ import io.github.amichne.kast.relation.contract.ModelValuePosition
 import io.github.amichne.kast.relation.contract.ModelVersion
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
+import io.github.amichne.kast.relation.contract.RelationCallableBody
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationRequest
@@ -22,6 +23,7 @@ import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.RepresentationDomain
 import io.github.amichne.kast.relation.contract.RepresentationRule
 import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
+import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
 import io.github.amichne.kast.relation.contract.ValueInvocation
@@ -50,6 +52,42 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class QueryValuePathRetentionTest {
+    @Test
+    fun `retained anonymous execution preserves exact body identity and consumes its storage`() {
+        val fixture = Fixture()
+        val range = ExactDeclarationTextRange.parse(5, 80).refined()
+        val signature =
+            CanonicalCompilerSignature.function(
+                    RelationCallableBody.Anonymous.sourceIdentity(fixture.file, range),
+                    null,
+                    emptyList(),
+                    emptyList(),
+                    0,
+                )
+                .refined() as CanonicalCompilerSignature.Function
+        val body = RelationCallableBody.Anonymous.fromCompiler(fixture.file, range, signature).refined()
+        val owner = ValueExecutionOwner.fromCompiler(fixture.owner, body, fixture.lease.identity).refined()
+        val original = fixture.path(executionOwner = owner)
+        val ledger = fixture.ledger(listOf(original))
+        val rows = QueryRows.ValuePaths.fromInvestigation(ledger).refined()
+        val complete =
+            QueryExecutionResult.Complete.create(
+                QueryResult(rows, emptyList()),
+                QueryCoverage.Complete(count(1)),
+            )
+        val retained = QueryRetainedResult.capture(fixture.lease, complete).refined() as QueryRetainedResult.ValuePaths
+        assertSame(owner, retained.selectRows(listOf(0)).refined().valuePaths.single().producer.executionOwner)
+        assertTrue(
+            QueryImpactRetainedGraph().site(original.producer) >
+                QueryImpactRetainedGraph().site(fixture.path().producer)
+        )
+        val foreign = SemanticReadLease(fixture.lease.workspaceRoot, EvidenceGeneration.parse(2).refined())
+        assertEquals(
+            Refinement.Rejected(QueryRetainedResultFailure.BASIS_MISMATCH),
+            QueryRetainedResult.capture(foreign, complete),
+        )
+    }
+
     @Test
     fun `connected terminal paths cannot construct complete investigation without an expansion ledger`() {
         val fixture = Fixture()
@@ -243,6 +281,7 @@ class QueryValuePathRetentionTest {
                                             path.producer.enclosing,
                                             path.producer.range,
                                             path.producer.enclosing,
+                                            path.producer.executionOwner,
                                         )
                                         .refined(),
                                 )
@@ -280,12 +319,16 @@ class QueryValuePathRetentionTest {
                 .refined()
         }
 
-        fun path(offset: Int = 10): QueryImpactPath {
+        fun path(
+            offset: Int = 10,
+            executionOwner: ValueExecutionOwner = ValueExecutionOwner.declaration(owner),
+        ): QueryImpactPath {
             val source =
                 ValueSite.fromCompiler(
                         owner,
                         ExactDeclarationTextRange.parse(offset, offset + 1).refined(),
                         ValueRole.ExpressionResult,
+                        executionOwner,
                     )
                     .refined()
             val terminal =

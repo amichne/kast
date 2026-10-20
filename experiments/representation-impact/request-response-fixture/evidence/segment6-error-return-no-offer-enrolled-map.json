@@ -1,0 +1,53 @@
+{
+  "type": "FIXTURE_ENROLLMENT",
+  "files": [
+    {
+      "staged": "experiments/representation-impact/request-response-fixture/drafts/segment6/error-carrier-return/NativePacketCompositeErrorReturnFacts.kt",
+      "archive": "experiments/representation-impact/request-response-fixture/evidence/segment6-error-return-no-offer-reviewed-NativePacketCompositeErrorReturnFacts.kt.txt",
+      "active": "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketCompositeErrorReturnFacts.kt",
+      "sha256": "fc98ecb1bc44a3bb7ceec8bcc43ee4cd71579221c0606c04fe27177221e0f61a"
+    },
+    {
+      "staged": "experiments/representation-impact/request-response-fixture/drafts/segment6/error-carrier-return/NativePacketCompositeErrorReturnOracle.kt",
+      "archive": "experiments/representation-impact/request-response-fixture/evidence/segment6-error-return-no-offer-reviewed-NativePacketCompositeErrorReturnOracle.kt.txt",
+      "active": "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketCompositeErrorReturnOracle.kt",
+      "sha256": "03ad6ced3beb7a3c1658ff5c1d26a95d0c2f0a31f19ed061fc04be0970f85d19"
+    },
+    {
+      "staged": "experiments/representation-impact/request-response-fixture/drafts/segment6/error-carrier-return/NativePacketCompositeErrorReturnSelectors.kt",
+      "archive": "experiments/representation-impact/request-response-fixture/evidence/segment6-error-return-no-offer-reviewed-NativePacketCompositeErrorReturnSelectors.kt.txt",
+      "active": "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketCompositeErrorReturnSelectors.kt",
+      "sha256": "7ec6a1345aef89fb65bb306198b827f3cb9fb98a306477566b7bbb682c457ee2"
+    },
+    {
+      "staged": "experiments/representation-impact/request-response-fixture/drafts/segment6/no-offer/NativePacketNoOfferQueryOracle.kt",
+      "archive": "experiments/representation-impact/request-response-fixture/evidence/segment6-error-return-no-offer-reviewed-NativePacketNoOfferQueryOracle.kt.txt",
+      "active": "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketNoOfferQueryOracle.kt",
+      "sha256": "3ab6b9e0ab57d9857d0ced155563baef49a06147d8477ffec065efd3d9d92588"
+    },
+    {
+      "staged": "experiments/representation-impact/request-response-fixture/drafts/segment6/no-offer/NativePacketNoOfferLiteralSource.kt",
+      "archive": "experiments/representation-impact/request-response-fixture/evidence/segment6-error-return-no-offer-reviewed-NativePacketNoOfferLiteralSource.kt.txt",
+      "active": "relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketNoOfferLiteralSource.kt",
+      "sha256": "aa2b6a6415b0b1cc1b8e51697226bab7cd3ee619fd6b36bc40cc7c581867be91"
+    },
+    {
+      "staged": "experiments/representation-impact/request-response-fixture/drafts/segment6/no-offer/NativePacketNoOfferLiteralTest.kt",
+      "archive": "experiments/representation-impact/request-response-fixture/evidence/segment6-error-return-no-offer-reviewed-NativePacketNoOfferLiteralTest.kt.txt",
+      "active": "relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketNoOfferLiteralTest.kt",
+      "sha256": "076d35600b44bdf5a1c5aa17fd413d29bf0537b19cf59fe9822d09d0cb8b3b8e"
+    }
+  ],
+  "assertions": "UNCHANGED_REVIEWED_BYTES",
+  "gradle": "NOT_RUN",
+  "compiled": "NOT_RUN",
+  "nativeAssertions": "NOT_RUN",
+  "queryAssertions": "NOT_RUN",
+  "knownEmptySatisfiability": "UNPROVED",
+  "format": "CACHED_KTFMT_0_64_KOTLINLANG_MAXWIDTH_120_PASSED",
+  "reviewedSourceByteIdentity": "PASSED",
+  "existingSourceReverseAdditionComparison": "PASSED",
+  "existingTestReverseAdditionComparison": "PASSED",
+  "scopeGuide": "UNCHANGED_COMMANDS_OWNERSHIP_RULES",
+  "cacheEdits": false
+}

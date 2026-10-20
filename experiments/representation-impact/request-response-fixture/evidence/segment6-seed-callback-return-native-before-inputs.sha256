@@ -1,0 +1,4 @@
+adfd4488c6bd0ed4b07baf2e35a7a3a9d2b3ad4ba0439f40eb23672c6c088ec2  experiments/representation-impact/request-response-fixture/evidence/segment6-seed-callback-return-native-before-NativeValueSourceReturns.kt.txt
+155f794c8a86944be87a4adfad963657a119b982cb660f83d93b59d7b5ac0ad3  experiments/representation-impact/request-response-fixture/evidence/segment6-seed-callback-return-native-before-NativeValueFlowTransfers.kt.txt
+4b26d01a28d72cced2c580b1aaeed83804b3d0586a024e2c0e9bfeee67a03cd9  experiments/representation-impact/request-response-fixture/evidence/segment6-seed-callback-return-native-before-NativeValueCallbackReturn.kt.txt
+a6e9e6b0a7709dc706da6d236a92ea5ac6900cb0ae7c32e779da03e6ae535871  experiments/representation-impact/request-response-fixture/evidence/segment6-seed-callback-return-native-before-NativeValueReturnFlow.kt.txt

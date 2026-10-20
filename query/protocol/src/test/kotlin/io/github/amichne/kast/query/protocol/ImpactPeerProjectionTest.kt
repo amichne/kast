@@ -41,15 +41,21 @@ import org.junit.jupiter.api.Test
 
 /** Pure admitted-domain starting facts prove projection, not installed peer compiler acquisition. */
 class ImpactPeerProjectionTest {
+    private val projectionReferences = CanonicalQueryReferences()
+
     @Test
     fun `used peer terminal and unused model retain the same completed proof without source basis replacement`() {
         val boundary = boundary()
         val connection = BoundaryArrival.connect(boundary.model.source, boundary.model).value()
         val terminal = QueryImpactTerminal.Unresolved.PeerContinuation.admit(boundary, connection).value()
-        val path = terminal.projectPeerTerminal().value() as ImpactPathTerminalDocument.UnresolvedPeerContinuation
+        val path =
+            terminal.projectPeerTerminal(projectionReferences).value()
+                as ImpactPathTerminalDocument.UnresolvedPeerContinuation
         val compact =
-            terminal.projectPeerFindingTerminal().value() as ImpactFindingTerminalDocument.UnresolvedPeerContinuation
-        val model = boundary.projectPeerModelWitness().value() as ImpactWitnessDocument.PeerBoundaryModel
+            terminal.projectPeerFindingTerminal(projectionReferences).value()
+                as ImpactFindingTerminalDocument.UnresolvedPeerContinuation
+        val model =
+            boundary.projectPeerModelWitness(projectionReferences).value() as ImpactWitnessDocument.PeerBoundaryModel
         assertEquals(path.admission, compact.admission)
         assertEquals(path.admission, model.admission)
         assertEquals(path.target, compact.target)

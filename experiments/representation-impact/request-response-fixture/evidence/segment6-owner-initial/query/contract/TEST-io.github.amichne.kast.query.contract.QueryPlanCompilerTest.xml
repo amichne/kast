@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryPlanCompilerTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:17.842Z" hostname="Austins-MacBook-Pro.local" time="0.007">
+  <properties/>
+  <testcase name="text discovery rejects constructors before execution()" classname="io.github.amichne.kast.query.contract.QueryPlanCompilerTest" time="0.002"/>
+  <testcase name="unsupported exhaustive declaration kind is rejected before execution()" classname="io.github.amichne.kast.query.contract.QueryPlanCompilerTest" time="0.001"/>
+  <testcase name="discovery source compiles an ordered exact-symbol stage chain()" classname="io.github.amichne.kast.query.contract.QueryPlanCompilerTest" time="0.001"/>
+  <testcase name="text discovery admits the existing exact relation pipeline()" classname="io.github.amichne.kast.query.contract.QueryPlanCompilerTest" time="0.001"/>
+  <testcase name="ref only output remains a valid exact projection()" classname="io.github.amichne.kast.query.contract.QueryPlanCompilerTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

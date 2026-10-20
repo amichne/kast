@@ -1,0 +1,232 @@
+package io.github.amichne.kast.query.service
+
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.query.contract.QueryImpactRepresentation
+import io.github.amichne.kast.query.contract.QueryImpactSource
+import io.github.amichne.kast.query.contract.QueryImpactStep
+import io.github.amichne.kast.relation.contract.ContractModelIdentity
+import io.github.amichne.kast.relation.contract.ModelIdentifier
+import io.github.amichne.kast.relation.contract.ModelRuleReference
+import io.github.amichne.kast.relation.contract.ModelValuePosition
+import io.github.amichne.kast.relation.contract.ModelVersion
+import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.RelationSearchBoundary
+import io.github.amichne.kast.relation.contract.RepresentationDomain
+import io.github.amichne.kast.relation.contract.RepresentationEvidence
+import io.github.amichne.kast.relation.contract.RepresentationModelApplication
+import io.github.amichne.kast.relation.contract.RepresentationPropagationFailure
+import io.github.amichne.kast.relation.contract.RepresentationRule
+import io.github.amichne.kast.relation.contract.ValueAccessPath
+import io.github.amichne.kast.relation.contract.ValueArgumentPosition
+import io.github.amichne.kast.relation.contract.ValueCallFrame
+import io.github.amichne.kast.relation.contract.ValueCallStack
+import io.github.amichne.kast.relation.contract.ValueExecutionOwner
+import io.github.amichne.kast.relation.contract.ValueFormalParameter
+import io.github.amichne.kast.relation.contract.ValueFormalPosition
+import io.github.amichne.kast.relation.contract.ValueInvocation
+import io.github.amichne.kast.relation.contract.ValuePathSegment
+import io.github.amichne.kast.relation.contract.ValuePredicate
+import io.github.amichne.kast.relation.contract.ValuePredicateSubject
+import io.github.amichne.kast.relation.contract.ValuePredicates
+import io.github.amichne.kast.relation.contract.ValueProducerOrigin
+import io.github.amichne.kast.relation.contract.ValueRole
+import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.relation.contract.ValueSourceOperation
+import io.github.amichne.kast.relation.contract.ValueSourceTransfer
+import io.github.amichne.kast.relation.contract.ValueTransfer
+import io.github.amichne.kast.relation.contract.ValueTransferEvidence
+import io.github.amichne.kast.relation.contract.ValueTransferKind
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateName
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Test
+
+class QueryImpactModelStateConservationTest {
+    @Test
+    fun `identity model result preserves the actual nonempty source call stack`() {
+        val f = Fixture()
+
+        val arrivals = modeledImpactArrivals(f.route, f.source).value()
+        val next = (arrivals.tasks.single() as PipelineTask.ImpactExplore).route
+
+        assertEquals(f.stack, next.site.callStack)
+        assertEquals(f.input.valuePath, next.site.valuePath)
+        assertEquals(
+            f.call.identity,
+            (next.steps.last() as QueryImpactStep.ModeledRepresentation).application.invocation.identity,
+        )
+        val application =
+            (next.steps.last() as QueryImpactStep.ModeledRepresentation).application
+                as RepresentationModelApplication.Transfer
+        assertSame(f.transfer, application.rule)
+        assertEquals(f.input, application.source)
+        assertEquals(f.stack, application.target.callStack)
+    }
+
+    @Test
+    fun `identity model keeps the exact predicate conjunction with the source call context`() {
+        val f = Fixture()
+        val predicate = ValuePredicate.NonNull.fromCompiler(ValuePredicateSubject.fromCompiler(f.input))
+        val predicates = ValuePredicates.fromCompiler(listOf(predicate)).value()
+        val guarded = f.input.withState(predicates = predicates).value()
+        val edge =
+            ValueTransfer.fromCompiler(
+                    f.input,
+                    guarded,
+                    ValueTransferKind.ARGUMENT,
+                    ValueTransferEvidence.Guarded.fromCompiler(ValueTransferEvidence.Direct, predicates).value(),
+                )
+                .value()
+        val route =
+            f.route.copy(
+                steps = f.route.steps + QueryImpactStep.Compiler(edge),
+                representation = QueryImpactRepresentation.Present(f.evidence.transfer(edge).value()),
+            )
+        val next = (modeledImpactArrivals(route, f.source).value().tasks.single() as PipelineTask.ImpactExplore).route
+        assertEquals(predicates, next.site.predicates)
+        assertEquals(f.stack, next.site.callStack)
+        assertEquals(guarded, (next.steps.last() as QueryImpactStep.ModeledRepresentation).application.source)
+    }
+
+    @Test
+    fun `whole argument model cannot accept an output that erases source call state`() {
+        val f = Fixture()
+        assertEquals(
+            Refinement.Rejected(RepresentationPropagationFailure.SITE_MISMATCH),
+            f.evidence.modeledTransfer(f.call.resultSite(), f.call, f.transfer),
+        )
+    }
+
+    @Test
+    fun `whole argument model cannot transform an unmodeled element contribution`() {
+        val f = Fixture()
+        val path = ValueAccessPath.fromSegments(listOf(ValuePathSegment.AnyElement)).value()
+        val input = f.input.withState(valuePath = path).value()
+        val evidence = f.evidence.unmodeled(input).value()
+        assertEquals(
+            Refinement.Rejected(RepresentationPropagationFailure.POSITION_MISMATCH),
+            evidence.modeledTransfer(
+                f.call.resultSite().withState(valuePath = path, callStack = f.stack).value(),
+                f.call,
+                f.transfer,
+            ),
+        )
+    }
+
+    private class Fixture {
+        val f = QueryImpactExecutionFixture()
+        private val body = body()
+        private val caller = ValueInvocation.fromCompiler(f.owner, range(30, 60), body).value()
+        val call = ValueInvocation.fromCompiler(body, range(350, 360), f.call("identity", 70, 80).callable).value()
+        private val frame = ValueCallFrame.direct(caller, ValueExecutionOwner.declaration(body)).value()
+        val stack = ValueCallStack.Empty.enter(frame).value()
+        private val zero = ValueArgumentPosition.parse(0).value()
+        private val parameter =
+            ValueFormalParameter.fromCompiler(
+                    callable = body,
+                    position = zero,
+                    name = SymbolDiscoveryCandidateName.parse("input").value(),
+                    range = range(310, 320),
+                )
+                .value()
+        private val position = ValueFormalPosition.Parameter(parameter)
+        private val actual = f.argument(caller)
+        private val formal =
+            ValueSite.fromCompiler(
+                    enclosing = body,
+                    range = parameter.range,
+                    role = ValueRole.Formal(position),
+                    callStack = stack,
+                )
+                .value()
+        val input =
+            ValueSite.fromCompiler(
+                    enclosing = body,
+                    range = range(351, 359),
+                    role = ValueRole.Argument(call, zero),
+                    callStack = stack,
+                )
+                .value()
+        private val model =
+            ContractModelIdentity(id("identity"), ModelVersion.parse(1).value(), id("review:identity-state"))
+        private val domain = RepresentationDomain.admit(model, listOf(id("STATE"))).value()
+        private val originRule =
+            RepresentationRule.Origin.admit(
+                    ModelRuleReference(model, id("origin")),
+                    f.bind(
+                        (f.producer.origin as ValueProducerOrigin.Declared).invocation.callable,
+                        ModelValuePosition.Result,
+                    ),
+                    domain.state(id("STATE")).value(),
+                )
+                .value()
+        val transfer =
+            RepresentationRule.Transfer.admit(
+                    ModelRuleReference(model, id("transfer")),
+                    f.bind(call.callable, ModelValuePosition.Argument(ValueArgumentPosition.parse(0).value())),
+                    f.bind(call.callable, ModelValuePosition.Result),
+                )
+                .value()
+        val origin = RepresentationEvidence.origin(f.producer.site, f.producer.invocation, originRule).value()
+        private val edges =
+            listOf(
+                f.edge(origin.site, actual, ValueTransferKind.ARGUMENT),
+                ValueTransfer.fromCompiler(
+                        source = actual,
+                        target = formal,
+                        kind = ValueTransferKind.SOURCE_CALL_ENTRY,
+                        evidence = ValueSourceTransfer.fromCompiler(ValueSourceOperation.Enter(frame, position)),
+                    )
+                    .value(),
+                f.edge(formal, input, ValueTransferKind.ARGUMENT),
+            )
+        val evidence = edges.fold(origin) { current, edge -> current.transfer(edge).value() }
+        val route =
+            QueryImpactRoute(
+                f.producer.site,
+                edges.map(QueryImpactStep::Compiler),
+                QueryImpactRepresentation.Present(evidence),
+            )
+        val source =
+            QueryImpactSource.admit(
+                    producers = listOf(f.producer),
+                    representationModels = listOf(originRule, transfer),
+                    boundaryModels = emptyList(),
+                    domain = RelationSearchBoundary.WORKSPACE_EXPANSION,
+                )
+                .value()
+
+        private fun body(): RelationEndpoint {
+            val evidence =
+                CompilerGroundedSymbolEvidence.fromBoundary(
+                        file = f.owner.file,
+                        rawStartInclusive = 300,
+                        rawEndExclusive = 500,
+                        rawName = "body",
+                        rawQualifiedIdentity = "fixture.body",
+                        kind = CompilerSymbolKind.FUNCTION,
+                        signature =
+                            CanonicalCompilerSignature.function(
+                                    rawQualifiedIdentity = "fixture.body",
+                                    rawReceiverType = null,
+                                    rawContextReceiverTypes = emptyList(),
+                                    rawValueParameterTypes = listOf("kotlin.String"),
+                                    rawTypeParameterCount = 0,
+                                )
+                                .value(),
+                    )
+                    .value()
+            return RelationEndpoint.resolve(f.lease, f.scope, evidence).value()
+        }
+    }
+}
+
+private fun id(value: String) = ModelIdentifier.parse(value).value()
+
+private fun range(start: Int, end: Int) = ExactDeclarationTextRange.parse(start, end).value()
+
+private fun <T> Refinement<T, *>.value(): T = (this as Refinement.Refined).value

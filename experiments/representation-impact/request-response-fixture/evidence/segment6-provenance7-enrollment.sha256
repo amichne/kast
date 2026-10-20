@@ -1,0 +1,4 @@
+a97d84722617c56d313b41d94685246d8b93252858d4e1c746eb478800ca6522  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/RepresentationModeledValueOracleTest.kt
+a4c35da7175613836d9ce2f1cc5776fc8bc6e1b6e7c3178b08a38b890c4be3f7  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ModeledValueProvenanceOracleCase.kt
+164efac465a8c88bcc8b79038c05b1b2eece44ca5bc54986c4b6191a007f2a03  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt
+2ecd074021a8cde24578afb6fafd34f74a2befe44dc3bb5406a6e0c4437e4e2a  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueModelApplication.kt

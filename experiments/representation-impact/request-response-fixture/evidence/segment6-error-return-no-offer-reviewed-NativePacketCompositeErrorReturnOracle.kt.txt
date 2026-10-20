@@ -1,0 +1,289 @@
+package io.github.amichne.kast.runtime.hosted
+
+import io.github.amichne.kast.protocol.contract.ImpactCallFrameDocument
+import io.github.amichne.kast.protocol.contract.ImpactCallOccurrenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactCallTargetDocument
+import io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument
+import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactFormalPositionDocument
+import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactPathDocument
+import io.github.amichne.kast.protocol.contract.ImpactPathStepDocument
+import io.github.amichne.kast.protocol.contract.ImpactSourceOperationDocument
+import io.github.amichne.kast.protocol.contract.ImpactTransferKindDocument
+import io.github.amichne.kast.protocol.contract.ImpactValuePathSegmentDocument
+import io.github.amichne.kast.protocol.contract.ImpactValuePredicateDocument
+import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
+import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBindingWireDocument
+import io.github.amichne.kast.protocol.contract.hasSameCallStackIdentity
+import junit.framework.TestCase.assertTrue
+
+/** A fixed retained route must reconstruct both Error carriers before the matched client return. */
+internal class NativePacketCompositeErrorReturnOracle(private val facts: NativePacketCompositeErrorReturnFacts) {
+    private val common = facts.common
+    private val error = facts.error
+
+    fun assertRequiredRows(paths: List<ImpactPathDocument>) {
+        val assessments = paths.map(::rows)
+        val complete = paths.filterIndexed { index, _ -> assessments[index].all { it.passed } }
+        assertTrue("Original S2 lacks the complete Error C2.5/C2.6 continuation: $assessments", complete.isNotEmpty())
+        NativePacketCompositeQueryErrorOracle(error).assertRequiredRow(complete)
+    }
+
+    fun assertForbiddenWitnesses(paths: List<ImpactPathDocument>) {
+        assertTrue("No admitted original-S2 evidence exists", paths.any(::originalSeed))
+        NativePacketCompositeQueryErrorOracle(error).assertForbiddenWitnesses(paths)
+        val clientCodes = paths.flatMap { it.compositeSites() }.filter(::carriesClientCode)
+        val unguarded = clientCodes.filterNot(::guardedError)
+        assertTrue(
+            "Error continuation lost its original execute predicate at ${unguarded.map { it.range }}",
+            unguarded.isEmpty(),
+        )
+        val wrongCarriers =
+            paths
+                .flatMap { it.compilerTransfers() }
+                .filter { transfer ->
+                    val storage =
+                        (transfer.compositeOperation() as? ImpactSourceOperationDocument.ConstructField)?.storage
+                    storage?.field == common.successValue && carriesClientCode(transfer.target)
+                }
+        assertTrue("ClientError.code entered a replacement Success carrier", wrongCarriers.isEmpty())
+        val wrongCalls = paths.flatMap { it.compilerTransfers() }.filter(::crossedClientReturn)
+        assertTrue("The client Return reached another invocation", wrongCalls.isEmpty())
+    }
+
+    private fun rows(path: ImpactPathDocument): List<CompositeRequiredRow> {
+        if (!originalSeed(path) || !path.compositeContiguous()) return listOf(CompositeRequiredRow("S2_PREFIX", false))
+        val route = NativePacketCompositeErrorReturnRows(path.compilerTransfers())
+        val mapReturn =
+            route.row("C2.5:map-Error-reconstruction") { transfer ->
+                carrierReturned(transfer, common.mapInvocation, listOf(error.errorValue))
+            }
+        val callbackEntry = route.row("C2.5:mapError-source-callback", ::callbackEntry)
+        val mapperReturn = route.row("C2.4:matched-mapper-return", ::mapperReturned)
+        val callbackNormal = route.row("C2.5:callback-normal-return", ::callbackNormalReturn)
+        val callbackReturn = route.row("C2.5:matched-callback-return", ::callbackReturned)
+        val mapErrorReturn =
+            route.row("C2.5:mapError-Error-reconstruction") { transfer ->
+                carrierReturned(transfer, common.mapErrorInvocation, listOf(error.errorValue, error.clientCode))
+            }
+        val clientReturn = route.row("C2.5:Error-client-return", ::clientReturned)
+        val callerReturn = route.row("C2.6:Error-matched-caller", ::callerReturned)
+        val storage =
+            listOf(common.mapInvocation, common.mapErrorInvocation).all { invocation ->
+                path.compilerTransfers().any { storesError(it, invocation) }
+            }
+        return listOf(
+            mapReturn,
+            callbackEntry,
+            mapperReturn,
+            callbackNormal,
+            callbackReturn,
+            mapErrorReturn,
+            clientReturn,
+            callerReturn,
+        ) + CompositeRequiredRow("C2.5:both-source-constructions", storage)
+    }
+
+    private fun callbackEntry(transfer: ImpactCompilerTransferDocument): Boolean {
+        val entry = transfer.compositeOperation() as? ImpactSourceOperationDocument.Enter ?: return false
+        if (transfer.kind != ImpactTransferKindDocument.SOURCE_CALL_ENTRY || !callbackFrame(entry.frame)) return false
+        return entry.position == ImpactFormalPositionDocument.Parameter(facts.callbackParameter) &&
+            transfer.target.executionOwner == facts.callbackOwner &&
+            guardedError(transfer.target)
+    }
+
+    private fun callbackFrame(frame: ImpactCallFrameDocument): Boolean {
+        val target = frame.target as? ImpactCallTargetDocument.Callback ?: return false
+        val invocation = (frame.invocation as? ImpactCallOccurrenceDocument.Function)?.invocation ?: return false
+        if (frame.enclosing != common.mapErrorInvocation.callable) return false
+        if (frame.callee.enclosing != common.clientMethod || frame.callee.executionOwner != facts.callbackOwner)
+            return false
+        if (invocation.range != facts.transformInvoke || target.selected !in target.flow.invocations) return false
+        val selected = target.selected.occurrence.range
+        if (
+            selected.startInclusive != facts.transformInvoke.start.value ||
+                selected.endExclusive != facts.transformInvoke.end.value
+        )
+            return false
+        return target.supplyingFrame.invocation == ImpactCallOccurrenceDocument.Declared(common.mapErrorInvocation) &&
+            callbackSupply(target)
+    }
+
+    private fun callbackSupply(target: ImpactCallTargetDocument.Callback): Boolean {
+        val binding = target.flow.binding as? QueryCallbackBindingWireDocument.Bound ?: return false
+        if (binding.invocation != common.mapErrorInvocation || binding.position != 0) return false
+        val exact = binding.parameter.range
+        return binding.parameter.file == common.mapErrorInvocation.callable.file.value &&
+            exact.startInclusive == facts.transformParameter.start.value &&
+            exact.endExclusive == facts.transformParameter.end.value
+    }
+
+    private fun mapperReturned(transfer: ImpactCompilerTransferDocument): Boolean {
+        val returned = transfer.compositeOperation() as? ImpactSourceOperationDocument.Return ?: return false
+        val declared = returned.frame.invocation as? ImpactCallOccurrenceDocument.Declared ?: return false
+        val call = declared.invocation
+        val exact =
+            call.callable == error.mapper &&
+                call.range == error.mapperInvocation &&
+                call.executionOwner == facts.callbackOwner
+        return transfer.kind == ImpactTransferKindDocument.SOURCE_CALL_RETURN &&
+            exact &&
+            returned.frame.callee.enclosing == error.mapper &&
+            transfer.target.enclosing == common.clientMethod &&
+            transfer.target.executionOwner == facts.callbackOwner &&
+            transfer.target.range == error.mapperInvocation &&
+            path(transfer.target, listOf(error.clientCode)) &&
+            popped(transfer, returned.frame) &&
+            guardedError(transfer.target)
+    }
+
+    private fun callbackReturned(transfer: ImpactCompilerTransferDocument): Boolean {
+        val returned = transfer.compositeOperation() as? ImpactSourceOperationDocument.Return ?: return false
+        if (transfer.kind != ImpactTransferKindDocument.SOURCE_CALL_RETURN || !callbackFrame(returned.frame))
+            return false
+        val normal =
+            transfer.source.role == ImpactValueRoleDocument.Return && transfer.source.range == error.mapperInvocation
+        return normal &&
+            transfer.source.executionOwner == facts.callbackOwner &&
+            transfer.target.range == facts.transformInvoke &&
+            path(transfer.target, listOf(error.clientCode)) &&
+            popped(transfer, returned.frame) &&
+            guardedError(transfer.target)
+    }
+
+    private fun callbackNormalReturn(transfer: ImpactCompilerTransferDocument) =
+        transfer.kind == ImpactTransferKindDocument.RETURN &&
+            transfer.target.role == ImpactValueRoleDocument.Return &&
+            transfer.target.enclosing == common.clientMethod &&
+            transfer.target.executionOwner == facts.callbackOwner &&
+            transfer.target.range == error.mapperInvocation &&
+            path(transfer.target, listOf(error.clientCode)) &&
+            guardedError(transfer.target)
+
+    private fun storesError(
+        transfer: ImpactCompilerTransferDocument,
+        invocation: ImpactInvocationReferenceDocument,
+    ): Boolean {
+        val storage =
+            (transfer.compositeOperation() as? ImpactSourceOperationDocument.ConstructField)?.storage ?: return false
+        if (
+            transfer.kind != ImpactTransferKindDocument.CONSTRUCTOR_FIELD ||
+                storage.constructor != facts.errorConstructor
+        )
+            return false
+        val parameter = storage.parameter
+        val exact =
+            storage.field == error.errorValue &&
+                parameter.callable == facts.errorConstructor &&
+                parameter.index.value == 0 &&
+                parameter.name == packetQueryText("value") &&
+                parameter.range == error.errorValue.range
+        val fields =
+            if (invocation == common.mapInvocation) listOf(error.errorValue)
+            else listOf(error.errorValue, error.clientCode)
+        return exact &&
+            path(transfer.target, fields) &&
+            transfer.source.callStack.values.any {
+                it.invocation == ImpactCallOccurrenceDocument.Declared(invocation)
+            } &&
+            guardedError(transfer.target)
+    }
+
+    private fun carrierReturned(
+        transfer: ImpactCompilerTransferDocument,
+        invocation: ImpactInvocationReferenceDocument,
+        fields: List<ImpactDeclarationReferenceDocument>,
+    ): Boolean {
+        val returned = transfer.compositeOperation() as? ImpactSourceOperationDocument.Return ?: return false
+        if (transfer.kind != ImpactTransferKindDocument.SOURCE_CALL_RETURN) return false
+        return returned.frame.invocation == ImpactCallOccurrenceDocument.Declared(invocation) &&
+            returned.frame.enclosing == common.clientMethod &&
+            returned.frame.target == ImpactCallTargetDocument.Direct &&
+            returned.frame.callee.enclosing == invocation.callable &&
+            transfer.target.enclosing == common.clientMethod &&
+            transfer.target.executionOwner == invocation.executionOwner &&
+            transfer.target.role == ImpactValueRoleDocument.ExpressionResult &&
+            transfer.target.range == invocation.range &&
+            path(transfer.target, fields) &&
+            popped(transfer, returned.frame) &&
+            guardedError(transfer.target)
+    }
+
+    private fun clientReturned(transfer: ImpactCompilerTransferDocument) =
+        transfer.kind == ImpactTransferKindDocument.RETURN &&
+            transfer.target.enclosing == common.clientMethod &&
+            transfer.target.range == common.clientReturn &&
+            transfer.target.role == ImpactValueRoleDocument.Return &&
+            path(transfer.target, listOf(error.errorValue, error.clientCode)) &&
+            guardedError(transfer.target)
+
+    private fun callerReturned(transfer: ImpactCompilerTransferDocument): Boolean {
+        val frame = returnedFrame(transfer) ?: return false
+        val target = transfer.target
+        return common.callerFrame.matches(frame) &&
+            target.enclosing == common.callerFrame.enclosing &&
+            target.range == common.callerFrame.invocation.range &&
+            target.executionOwner == common.callerFrame.invocation.executionOwner &&
+            path(target, listOf(error.errorValue, error.clientCode)) &&
+            guardedError(target)
+    }
+
+    private fun crossedClientReturn(transfer: ImpactCompilerTransferDocument): Boolean {
+        val frame = returnedFrame(transfer) ?: return false
+        if (frame.callee.enclosing != common.clientMethod || !carriesClientCode(transfer.target)) return false
+        return !common.callerFrame.matches(frame) || transfer.target.range != common.callerFrame.invocation.range
+    }
+
+    private fun returnedFrame(transfer: ImpactCompilerTransferDocument): ImpactCallFrameDocument? {
+        if (transfer.kind != ImpactTransferKindDocument.SOURCE_CALL_RETURN) return null
+        return when (val operation = transfer.compositeOperation()) {
+            is ImpactSourceOperationDocument.Return -> operation.frame
+            is ImpactSourceOperationDocument.SeedReturn -> operation.frame
+            else -> null
+        }
+    }
+
+    private fun popped(transfer: ImpactCompilerTransferDocument, frame: ImpactCallFrameDocument) =
+        packetQueryList(transfer.source.callStack.values.takeLast(1))
+            .hasSameCallStackIdentity(packetQueryList(listOf(frame))) &&
+            packetQueryList(transfer.source.callStack.values.dropLast(1))
+                .hasSameCallStackIdentity(transfer.target.callStack)
+
+    private fun originalSeed(path: ImpactPathDocument) =
+        path.producer == common.executeReceiver.copy(role = ImpactValueRoleDocument.ExpressionResult)
+
+    private fun guardedError(site: ImpactValueSiteReferenceDocument) =
+        site.predicates.values.any { predicate ->
+            predicate is ImpactValuePredicateDocument.Subtype &&
+                predicate.subject == common.executeReceiver.compositeSubject() &&
+                predicate.resolvedType == error.errorType
+        }
+
+    private fun carriesClientCode(site: ImpactValueSiteReferenceDocument) =
+        ImpactValuePathSegmentDocument.Field(error.clientCode) in site.valuePath.values
+
+    private fun path(site: ImpactValueSiteReferenceDocument, fields: List<ImpactDeclarationReferenceDocument>) =
+        site.valuePath.values == fields.map(ImpactValuePathSegmentDocument::Field)
+
+    private fun ImpactPathDocument.compilerTransfers() =
+        steps.values.filterIsInstance<ImpactPathStepDocument.Compiler>().map { it.transfer }
+}
+
+/** This cursor assesses a finite existing witness and never requests a native transfer. */
+private class NativePacketCompositeErrorReturnRows(private val route: List<ImpactCompilerTransferDocument>) {
+    private var next = 0
+    private var blocked = false
+
+    fun row(id: String, accepts: (ImpactCompilerTransferDocument) -> Boolean): CompositeRequiredRow {
+        if (blocked) return CompositeRequiredRow("$id:NOT_REACHED", false)
+        val found = route.indices.firstOrNull { it >= next && accepts(route[it]) }
+        if (found == null) {
+            blocked = true
+            return CompositeRequiredRow("$id:MISSING", false)
+        }
+        next = found + 1
+        return CompositeRequiredRow(id, true)
+    }
+}

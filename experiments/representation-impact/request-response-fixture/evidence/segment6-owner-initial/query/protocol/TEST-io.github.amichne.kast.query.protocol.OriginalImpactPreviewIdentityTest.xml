@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.OriginalImpactPreviewIdentityTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.940Z" hostname="Austins-MacBook-Pro.local" time="0.004">
+  <properties/>
+  <testcase name="missing stored identity rejects with an exact row identity cause()" classname="io.github.amichne.kast.query.protocol.OriginalImpactPreviewIdentityTest" time="0.002"/>
+  <testcase name="another investigation cannot borrow stored path identities()" classname="io.github.amichne.kast.query.protocol.OriginalImpactPreviewIdentityTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

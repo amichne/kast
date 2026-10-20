@@ -1,86 +1,35 @@
 package io.github.amichne.kast.query.protocol
 
-import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
-import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.OperationOutcome
-import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.kernel.ResourceBudget
-import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
-import io.github.amichne.kast.protocol.contract.BoundedProtocolList
-import io.github.amichne.kast.protocol.contract.ImpactCallablePositionDocument
-import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
-import io.github.amichne.kast.protocol.contract.ImpactEvidenceRevisionDocument
 import io.github.amichne.kast.protocol.contract.ImpactModelDocument
-import io.github.amichne.kast.protocol.contract.ImpactModelFormatDocument
-import io.github.amichne.kast.protocol.contract.ImpactModelIdentifierDocument
-import io.github.amichne.kast.protocol.contract.ImpactModelIdentityDocument
-import io.github.amichne.kast.protocol.contract.ImpactModelValuePositionDocument
-import io.github.amichne.kast.protocol.contract.ImpactModelVersionDocument
-import io.github.amichne.kast.protocol.contract.ImpactRepresentationRuleDocument
-import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
-import io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument
-import io.github.amichne.kast.protocol.contract.ProtocolOffset
-import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryContainmentDocument
 import io.github.amichne.kast.protocol.contract.QueryDirectoryScopeDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoverySourcePolicyDocument
-import io.github.amichne.kast.protocol.contract.QueryExecutionBudgetDocument
-import io.github.amichne.kast.protocol.contract.QueryExecutionDocument
-import io.github.amichne.kast.protocol.contract.QueryExecutionKindDocument
 import io.github.amichne.kast.protocol.contract.QueryExpansionScopeDocument
-import io.github.amichne.kast.protocol.contract.QueryFromDocument
-import io.github.amichne.kast.protocol.contract.QueryImpactDeclarationDocument
-import io.github.amichne.kast.protocol.contract.QueryImpactFlowDocument
-import io.github.amichne.kast.protocol.contract.QueryImpactProducerDocument
-import io.github.amichne.kast.protocol.contract.QueryImpactSourceDocument
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureCode
-import io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureDocument
-import io.github.amichne.kast.protocol.contract.QueryOutputDocument
-import io.github.amichne.kast.protocol.contract.QueryRunRejection
-import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.query.contract.AdmittedQueryPlan
-import io.github.amichne.kast.query.contract.QueryBudget
-import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryExecutionRejection
 import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryImpactFlowSemantics
 import io.github.amichne.kast.query.contract.QueryOperations
 import io.github.amichne.kast.relation.contract.RelationBudget
-import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
-import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.RepresentationRule
 import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
-import io.github.amichne.kast.relation.contract.ValueInvocation
+import io.github.amichne.kast.relation.contract.ValueInvocationSelectionKind
 import io.github.amichne.kast.relation.contract.ValueModelDeclarationRead
 import io.github.amichne.kast.relation.contract.ValueProducerSeed
 import io.github.amichne.kast.relation.contract.ValueProducerSeedCompilerPort
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRead
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRequest
-import io.github.amichne.kast.relation.contract.ValueRole
-import io.github.amichne.kast.relation.contract.ValueSite
-import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
-import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
-import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
-import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectory
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryDirectoryConstraint
-import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
-import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
-import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
-import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSelector
-import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
-import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
-import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceSetName
-import java.nio.file.Path
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -89,19 +38,66 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /** Scripted detached compiler observations establish the production admission rule, not installed K2 behavior. */
-class QueryImpactSourceAdmissionTest {
-    private val owner = endpoint("investigate", 0, 200)
-    private val callable = endpoint("encrypt", 210, 250)
-    private val references = CanonicalQueryReferences()
-    private val budget =
-        QueryBudget(
-            ResourceBudget(
-                ResultLimit.parse(20).refined(),
-                WorkUnitLimit.parse(10).refined(),
-                ElapsedTimeLimitMillis.parse(1000).refined(),
-            ),
-            QueryByteLimit.parse(100000).refined(),
-        )
+internal class QueryImpactSourceAdmissionTest : QueryImpactSourceAdmissionCase() {
+    @Test
+    fun `native selector proof keeps the canonical origin during source acquisition`() = runTest {
+        var calls = 0
+        val compiler =
+            object : ValueProducerSeedCompilerPort {
+                override suspend fun seed(request: ValueProducerSeedRequest): ValueProducerSeedRead {
+                    assertEquals(0, calls++)
+                    assertEquals(range(25, 35), request.anchor)
+                    val supplied = selectorProof(request, request.anchor, request.expectedCallable)
+                    assertEquals(ValueInvocationSelectionKind.QUALIFIED_SELECTOR, supplied.selection.kind)
+                    return ValueProducerSeedRead.Seeded(supplied, work(3))
+                }
+
+                override suspend fun revalidate(
+                    selector: SymbolSelector,
+                    budget: RelationBudget,
+                ): ValueModelDeclarationRead = error("unexpected declaration")
+            }
+        val admitted = document(listOf(anchor(25, 35))).admitImpact(owner.lease, references, compiler, budget).refined()
+        val producer = admitted.source.producers.single()
+        assertEquals(range(20, 35), producer.site.range)
+        assertEquals(producer.site.range, producer.invocation.range)
+        assertEquals(producer.site.executionOwner, producer.invocation.executionOwner)
+        assertEquals(3L, admitted.examinedWork)
+        assertEquals(1, calls)
+    }
+
+    @Test
+    fun `native selector proof from another request anchor or callable cannot replace the selected seed`() = runTest {
+        val other = endpoint("decrypt", 260, 300)
+        val cases =
+            listOf(
+                QueryImpactSourceFailureCode.ANCHOR_MISMATCH to
+                    (range(26, 35) to SymbolSelector.issue(callable.lease, callable.scope, callable.evidence)),
+                QueryImpactSourceFailureCode.CALLABLE_MISMATCH to
+                    (range(25, 35) to SymbolSelector.issue(other.lease, other.scope, other.evidence)),
+            )
+        for ((expected, substitute) in cases) {
+            var calls = 0
+            val compiler =
+                object : ValueProducerSeedCompilerPort {
+                    override suspend fun seed(request: ValueProducerSeedRequest): ValueProducerSeedRead {
+                        assertEquals(0, calls++)
+                        return ValueProducerSeedRead.Seeded(
+                            selectorProof(request, substitute.first, substitute.second),
+                            work(3),
+                        )
+                    }
+
+                    override suspend fun revalidate(
+                        selector: SymbolSelector,
+                        budget: RelationBudget,
+                    ): ValueModelDeclarationRead = error("unexpected declaration")
+                }
+            val result = document(listOf(anchor(25, 35))).admitImpact(owner.lease, references, compiler, budget)
+            assertEquals(expected, result.failure().admissionCode())
+            assertEquals(1, calls)
+        }
+    }
 
     @Test
     fun `exact invocation producers and fresh models retain one domain and consume successive grants`() = runTest {
@@ -358,144 +354,4 @@ class QueryImpactSourceAdmissionTest {
         assertEquals(1, calls)
         assertEquals(0, executions)
     }
-
-    private fun proof(request: ValueProducerSeedRequest): ValueProducerSeed {
-        val call =
-            ValueInvocation.fromCompiler(
-                    RelationEndpoint.subject(request.enclosing),
-                    request.anchor,
-                    RelationEndpoint.subject(request.expectedCallable),
-                )
-                .refined()
-        val site = ValueSite.fromCompiler(call.enclosing, request.anchor, ValueRole.ExpressionResult).refined()
-        return ValueProducerSeed.fromCompiler(request, site, call).refined()
-    }
-
-    private fun document(
-        anchors: List<ImpactSourceRangeDocument> = listOf(anchor(20, 35)),
-        model: Boolean = false,
-    ): QueryImpactSourceDocument {
-        val declaration = declaration(callable)
-        val identity =
-            ImpactModelIdentityDocument(
-                id("encryption"),
-                ImpactModelVersionDocument.parse(1).refined(),
-                id("review:913"),
-            )
-        val syntax =
-            ImpactModelDocument.Representation(
-                ImpactModelFormatDocument.Current,
-                identity,
-                bounded(listOf(id("HIPED"))),
-                bounded(
-                    listOf(
-                        ImpactRepresentationRuleDocument.Origin(
-                            id("origin"),
-                            ImpactCallablePositionDocument(declaration, ImpactModelValuePositionDocument.Result),
-                            id("HIPED"),
-                        )
-                    )
-                ),
-            )
-        return QueryImpactSourceDocument(
-            bounded(anchors.map { QueryImpactProducerDocument(token(owner), token(callable), it) }),
-            bounded(if (model) listOf(QueryImpactDeclarationDocument(token(callable), declaration)) else emptyList()),
-            QueryExpansionScopeDocument.Workspace,
-            QueryImpactFlowDocument.KOTLIN_FORWARD_V1,
-            bounded(if (model) listOf(syntax) else emptyList()),
-        )
-    }
-
-    private fun request(source: QueryImpactSourceDocument) =
-        QueryRunRequest.Run(
-            QueryFromDocument.Impact(source),
-            bounded(emptyList()),
-            QueryOutputDocument.ValuePaths,
-            QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-        )
-
-    private fun token(endpoint: RelationEndpoint.Resolved): ProtocolText =
-        (references.issueExact(SymbolSelector.issue(endpoint.lease, endpoint.scope, endpoint.evidence))
-                as ExactSelectorIssuance.Issued)
-            .selector
-
-    private fun declaration(endpoint: RelationEndpoint.Resolved) =
-        ImpactDeclarationReferenceDocument(
-            ImpactSemanticBasisDocument.Published(
-                text("/workspace"),
-                ImpactEvidenceRevisionDocument.parse(7).refined(),
-            ),
-            text(endpoint.file.stableValue),
-            anchor(endpoint.range.startInclusive, endpoint.range.endExclusive),
-            text(endpoint.compilerIdentity.value),
-        )
-
-    private fun QueryRunRejection.admissionCode() =
-        ((this as QueryRunRejection.ImpactSourceRejected).cause as QueryImpactSourceFailureDocument.Admission).cause
-
-    private fun endpoint(name: String, start: Int, end: Int, fileName: String = "File.kt"): RelationEndpoint.Resolved {
-        val lease =
-            SemanticReadLease(
-                CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
-                EvidenceGeneration.parse(7).refined(),
-            )
-        val file =
-            (SymbolDiscoveryCandidate.fromBoundary(
-                        SymbolDiscoveryKind.SYMBOL,
-                        name,
-                        lease,
-                        Path.of("/workspace/$fileName"),
-                        "file:///workspace/$fileName",
-                        start,
-                    )
-                    .refined()
-                    .location as SymbolDiscoveryCandidateLocation.Declaration)
-                .file
-        val evidence =
-            CompilerGroundedSymbolEvidence.fromBoundary(
-                    file,
-                    start,
-                    end,
-                    name,
-                    "fixture.$name",
-                    CompilerSymbolKind.FUNCTION,
-                    CanonicalCompilerSignature.function("fixture.$name", null, emptyList(), emptyList(), 0).refined(),
-                )
-                .refined()
-        return RelationEndpoint.resolve(
-                lease,
-                SymbolSearchScope.Workspace(
-                    SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-                    SymbolGeneratedSourcePolicy.EXCLUDE,
-                    SymbolLibraryPolicy.EXCLUDE,
-                ),
-                evidence,
-            )
-            .refined() as RelationEndpoint.Resolved
-    }
-
-    private fun anchor(start: Int, end: Int) =
-        ImpactSourceRangeDocument(ProtocolOffset.parse(start).refined(), ProtocolOffset.parse(end).refined())
-
-    private fun range(start: Int, end: Int) = ExactDeclarationTextRange.parse(start, end).refined()
-
-    private fun work(value: Long) = RelationWorkCount.parse(value).refined()
-
-    private fun id(value: String) = ImpactModelIdentifierDocument.parse(value).refined()
-
-    private fun text(value: String) = ProtocolText.parse(value).refined()
-
-    private fun <T> bounded(values: List<T>) = BoundedProtocolList.create(values).refined()
-
-    private fun <V, F> Refinement<V, F>.refined(): V =
-        when (this) {
-            is Refinement.Refined -> value
-            is Refinement.Rejected -> error(failure.toString())
-        }
-
-    private fun <V, F> Refinement<V, F>.failure(): F =
-        when (this) {
-            is Refinement.Refined -> error("expected rejection")
-            is Refinement.Rejected -> failure
-        }
 }

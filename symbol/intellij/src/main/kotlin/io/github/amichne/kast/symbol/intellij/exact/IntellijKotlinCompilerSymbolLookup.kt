@@ -158,6 +158,8 @@ internal fun KaSymbol.toCompilerProjection(
 ): IntellijCompilerSymbolProjectionResult {
     if (depth > LocalDeclarationAddress.MAX_OWNER_DEPTH)
         return localProjectionRejected(LocalDeclarationProjectionFailure.OwnerDepthExceeded, observation)
+    val primaryProperty = (this as? KaValueParameterSymbol)?.generatedPrimaryConstructorProperty
+    if (primaryProperty != null) return primaryProperty.toCompilerProjection(session, observation, file, depth)
     if (location == KaSymbolLocation.LOCAL || with(session) { containingSymbol is KaAnonymousObjectSymbol })
         return localCompilerProjection(session, observation, file, depth)
     return qualifiedCompilerProjection(session, observation, file, depth)

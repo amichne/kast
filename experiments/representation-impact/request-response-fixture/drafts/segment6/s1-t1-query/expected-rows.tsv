@@ -1,0 +1,7 @@
+rows	assertion	selector	domain	scope	status
+C1.1-C1.4	POSITIVE	NativePacketS1QueryTest.testOriginalS1RowsC11ThroughC14ReachTheExactOpaqueBodyArgument	PRODUCTION_ONLY	original707:792 constructor -> exact body[1] with EXTERNAL_CALL	NOT_RUN
+C1.N1,C1.N2,FIELD_CONTROLS	FORBIDDEN_EMITTED	NativePacketS1QueryTest.testOriginalS1ProductionWitnessesForbidResponseLogAndFieldSubstitution	PRODUCTION_ONLY	no production response/getOffer/Logger and no token/destination/channel substitution	NOT_RUN
+T1.PRODUCTION	POSITIVE_EXCLUSION_AND_FORBIDDEN	NativePacketT1QueryTest.testOriginalS1ProductionReportsTheExactKnownEchoExclusion	PRODUCTION_ONLY	both real roots imported; exact Echo SOURCE_DOMAIN exclusion and no response witnesses	NOT_RUN
+T1.COMBINED	POSITIVE	NativePacketT1QueryTest.testOriginalS1CombinedEchoReachesTheFullGuardedFeatureReturn	PRODUCTION_AND_TEST	same originalS1 -> actual listOf insertion -> Echo matched return -> exact guarded getOffer Success.value.link	NOT_RUN
+T1.N	FORBIDDEN_EMITTED	NativePacketT1QueryTest.testCombinedWitnessesKeepProductionOpaqueAndForbidEchoFieldAndLogSubstitution	PRODUCTION_AND_TEST	production has no response route; Echo needs destination and exact guards; no Logger input	NOT_RUN
+C1.5	POSITIVE_AND_KEY_VALUE_CONTROLS	NOT_ENROLLED	PRODUCTION_ONLY	token derives Authorization value through template/Pair.second/map; no key provenance or identity claim	NOT_RUN

@@ -1,0 +1,382 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Calculating task graph as configuration cache cannot be reused because an input to unknown location has changed.
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :query:protocol:spotlessKotlin
+> Task :query:protocol:spotlessKotlinApply
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :kernel:compileJava NO-SOURCE
+> Task :diagnostic:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :diagnostic:contract:compileKotlin UP-TO-DATE
+> Task :diagnostic:contract:compileJava NO-SOURCE
+> Task :protocol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+> Task :protocol:contract:compileKotlin UP-TO-DATE
+> Task :protocol:contract:compileJava NO-SOURCE
+> Task :query:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:contract:compileKotlin UP-TO-DATE
+> Task :relation:contract:compileJava NO-SOURCE
+> Task :source:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:contract:compileKotlin UP-TO-DATE
+> Task :source:contract:compileJava NO-SOURCE
+> Task :traversal:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :traversal:contract:compileKotlin UP-TO-DATE
+> Task :traversal:contract:compileJava NO-SOURCE
+> Task :query:contract:compileKotlin UP-TO-DATE
+> Task :query:contract:compileJava NO-SOURCE
+> Task :query:protocol:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :query:protocol:compileKotlin UP-TO-DATE
+> Task :query:protocol:compileJava NO-SOURCE
+> Task :query:protocol:processResources NO-SOURCE
+> Task :query:protocol:classes UP-TO-DATE
+> Task :query:protocol:jar UP-TO-DATE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesKotlin UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesJava NO-SOURCE
+> Task :query:protocol:compileTestFixturesKotlin UP-TO-DATE
+> Task :query:protocol:compileTestFixturesJava NO-SOURCE
+> Task :query:protocol:processTestFixturesResources NO-SOURCE
+> Task :query:protocol:testFixturesClasses UP-TO-DATE
+> Task :query:protocol:testFixturesJar UP-TO-DATE
+> Task :kernel:processResources NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar UP-TO-DATE
+> Task :diagnostic:contract:processResources NO-SOURCE
+> Task :diagnostic:contract:classes UP-TO-DATE
+> Task :diagnostic:contract:jar UP-TO-DATE
+> Task :protocol:contract:processResources UP-TO-DATE
+> Task :protocol:contract:classes UP-TO-DATE
+> Task :protocol:contract:jar UP-TO-DATE
+> Task :protocol:registry:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:registry:compileKotlin UP-TO-DATE
+> Task :protocol:registry:compileJava NO-SOURCE
+> Task :protocol:registry:processResources NO-SOURCE
+> Task :protocol:registry:classes UP-TO-DATE
+> Task :protocol:registry:jar UP-TO-DATE
+> Task :protocol:wire:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:wire:compileKotlin UP-TO-DATE
+> Task :protocol:wire:compileJava NO-SOURCE
+> Task :protocol:wire:processResources NO-SOURCE
+> Task :protocol:wire:classes UP-TO-DATE
+> Task :protocol:wire:jar UP-TO-DATE
+> Task :query:contract:processResources NO-SOURCE
+> Task :query:contract:classes UP-TO-DATE
+> Task :query:contract:jar UP-TO-DATE
+> Task :query:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :query:service:compileKotlin UP-TO-DATE
+> Task :query:service:compileJava NO-SOURCE
+
+> Task :query:protocol:compileTestKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/AutomaticSymbolQueryLimitsTest.kt:209:36 Cast is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactModelAdmissionTest.kt:128:82 Cast is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryImpactBoundarySourceAdmissionTest.kt:314:28 Cast is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceAdmissionCase.kt:219:24 Cast is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceRetentionTest.kt:296:24 Cast is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryOutputPublicationFixture.kt:46:13 'when' is exhaustive so 'else' is redundant here.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphDeliveryCapture.kt:39:9 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphDeliveryCapture.kt:51:84 Redundant creation of Json format. Creating instances for each use can be slow.
+
+> Task :query:protocol:compileTestJava NO-SOURCE
+> Task :query:protocol:processTestResources UP-TO-DATE
+> Task :query:protocol:testClasses UP-TO-DATE
+> Task :query:service:processResources NO-SOURCE
+> Task :query:service:classes UP-TO-DATE
+> Task :query:service:jar UP-TO-DATE
+> Task :relation:contract:processResources NO-SOURCE
+> Task :relation:contract:classes UP-TO-DATE
+> Task :relation:contract:jar UP-TO-DATE
+> Task :source:contract:processResources NO-SOURCE
+> Task :source:contract:classes UP-TO-DATE
+> Task :source:contract:jar UP-TO-DATE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :traversal:contract:processResources NO-SOURCE
+> Task :traversal:contract:classes UP-TO-DATE
+> Task :traversal:contract:jar UP-TO-DATE
+> Task :workspace:contract:processTestFixturesResources NO-SOURCE
+> Task :workspace:contract:testFixturesClasses UP-TO-DATE
+> Task :workspace:contract:testFixturesJar UP-TO-DATE
+
+> Task :query:protocol:test FAILED
+
+OriginalImpactRetentionTest > initial invocation keeps original paths when no path row fits its execution page() FAILED
+    org.opentest4j.AssertionFailedError: receipts=[CaptureStarted, Captured, Issuance(outcome=ISSUED), PreviewRowIdentityRejected(itemCount=QueryCount(value=0), identityCount=QueryCount(value=3))] ==> Unexpected type, expected: <io.github.amichne.kast.protocol.contract.QueryRunRejection.CompletionUnproven> but was: <io.github.amichne.kast.protocol.contract.QueryRunRejection.ExecutionRejected>
+        at app//org.junit.jupiter.api.Assertions.assertInstanceOf(Assertions.java:3717)
+        at app//io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest.assertInvocationSelection(OriginalImpactRetentionTest.kt:92)
+        at app//io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest.access$assertInvocationSelection(OriginalImpactRetentionTest.kt:70)
+        at app//io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest$initial invocation keeps original paths when no path row fits its execution page$1.invokeSuspend(OriginalImpactRetentionTest.kt:75)
+        at app//io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest$initial invocation keeps original paths when no path row fits its execution page$1.invoke(OriginalImpactRetentionTest.kt)
+        at app//io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest$initial invocation keeps original paths when no path row fits its execution page$1.invoke(OriginalImpactRetentionTest.kt)
+        at app//kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt$runTest$2$1$1.invokeSuspend(TestBuilders.kt:317)
+        at app//kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        at app//kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+        at app//kotlinx.coroutines.test.TestDispatcher.processEvent$kotlinx_coroutines_test(TestDispatcher.kt:24)
+        at app//kotlinx.coroutines.test.TestCoroutineScheduler.tryRunNextTaskUnless$kotlinx_coroutines_test(TestCoroutineScheduler.kt:98)
+        at app//kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt$runTest$2$1$workRunner$1.invokeSuspend(TestBuilders.kt:326)
+        at app//kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        at app//kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+        at app//kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:256)
+        at app//kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:54)
+        at app//kotlinx.coroutines.BuildersKt__BuildersKt.runBlockingImpl(Builders.kt:30)
+        at app//kotlinx.coroutines.BuildersKt.runBlockingImpl(Unknown Source)
+        at app//kotlinx.coroutines.BuildersKt__Builders_concurrentKt.runBlockingK(Builders.concurrent.kt:172)
+        at app//kotlinx.coroutines.BuildersKt.runBlockingK(Unknown Source)
+        at app//kotlinx.coroutines.BuildersKt__Builders_concurrentKt.runBlockingK$default(Builders.concurrent.kt:157)
+        at app//kotlinx.coroutines.BuildersKt.runBlockingK$default(Unknown Source)
+        at app//kotlinx.coroutines.test.TestBuildersJvmKt.createTestResult(TestBuildersJvm.kt:10)
+        at app//kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:309)
+        at app//kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:1)
+        at app//kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:167)
+        at app//kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:1)
+        at app//kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0$default(TestBuilders.kt:159)
+        at app//kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0$default(TestBuilders.kt:1)
+        at app//io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest.initial invocation keeps original paths when no path row fits its execution page(OriginalImpactRetentionTest.kt:74)
+
+OriginalImpactRetentionTest > initial invocation gives a non-prefix selection its original row identity() FAILED
+    org.opentest4j.AssertionFailedError: receipts=[CaptureStarted, Captured, Issuance(outcome=ISSUED), PreviewRowIdentityRejected(itemCount=QueryCount(value=1), identityCount=QueryCount(value=3))] ==> Unexpected type, expected: <io.github.amichne.kast.protocol.contract.QueryRunRejection.CompletionUnproven> but was: <io.github.amichne.kast.protocol.contract.QueryRunRejection.ExecutionRejected>
+        at app//org.junit.jupiter.api.Assertions.assertInstanceOf(Assertions.java:3717)
+        at app//io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest.assertInvocationSelection(OriginalImpactRetentionTest.kt:92)
+        at app//io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest.access$assertInvocationSelection(OriginalImpactRetentionTest.kt:70)
+        at app//io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest$initial invocation gives a non-prefix selection its original row identity$1.invokeSuspend(OriginalImpactRetentionTest.kt:80)
+        at app//io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest$initial invocation gives a non-prefix selection its original row identity$1.invoke(OriginalImpactRetentionTest.kt)
+        at app//io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest$initial invocation gives a non-prefix selection its original row identity$1.invoke(OriginalImpactRetentionTest.kt)
+        at app//kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt$runTest$2$1$1.invokeSuspend(TestBuilders.kt:317)
+        at app//kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        at app//kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+        at app//kotlinx.coroutines.test.TestDispatcher.processEvent$kotlinx_coroutines_test(TestDispatcher.kt:24)
+        at app//kotlinx.coroutines.test.TestCoroutineScheduler.tryRunNextTaskUnless$kotlinx_coroutines_test(TestCoroutineScheduler.kt:98)
+        at app//kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt$runTest$2$1$workRunner$1.invokeSuspend(TestBuilders.kt:326)
+        at app//kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        at app//kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+        at app//kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:256)
+        at app//kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:54)
+        at app//kotlinx.coroutines.BuildersKt__BuildersKt.runBlockingImpl(Builders.kt:30)
+        at app//kotlinx.coroutines.BuildersKt.runBlockingImpl(Unknown Source)
+        at app//kotlinx.coroutines.BuildersKt__Builders_concurrentKt.runBlockingK(Builders.concurrent.kt:172)
+        at app//kotlinx.coroutines.BuildersKt.runBlockingK(Unknown Source)
+        at app//kotlinx.coroutines.BuildersKt__Builders_concurrentKt.runBlockingK$default(Builders.concurrent.kt:157)
+        at app//kotlinx.coroutines.BuildersKt.runBlockingK$default(Unknown Source)
+        at app//kotlinx.coroutines.test.TestBuildersJvmKt.createTestResult(TestBuildersJvm.kt:10)
+        at app//kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:309)
+        at app//kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:1)
+        at app//kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:167)
+        at app//kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:1)
+        at app//kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0$default(TestBuilders.kt:159)
+        at app//kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0$default(TestBuilders.kt:1)
+        at app//io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest.initial invocation gives a non-prefix selection its original row identity(OriginalImpactRetentionTest.kt:79)
+
+6 tests completed, 2 failed
+
+> Task :change:apply:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :change:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :change:contract:compileKotlin UP-TO-DATE
+> Task :change:contract:compileJava NO-SOURCE
+> Task :change:recovery:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :evidence:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :evidence:contract:compileKotlin UP-TO-DATE
+> Task :evidence:contract:compileJava NO-SOURCE
+> Task :change:recovery:compileKotlin UP-TO-DATE
+> Task :change:recovery:compileJava NO-SOURCE
+> Task :change:apply:compileKotlin UP-TO-DATE
+> Task :change:apply:compileJava NO-SOURCE
+> Task :change:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :change:verify:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :change:verify:compileKotlin UP-TO-DATE
+> Task :change:verify:compileJava NO-SOURCE
+> Task :symbol:intellij:extractSymbolIdeaDistribution UP-TO-DATE
+> Task :workspace:intellij-read:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:intellij-read:extractWorkspaceReadIdeaDistribution UP-TO-DATE
+> Task :workspace:intellij-read:compileKotlin UP-TO-DATE
+> Task :workspace:intellij-read:compileJava NO-SOURCE
+> Task :change:intellij:compileKotlin UP-TO-DATE
+> Task :change:intellij:compileJava NO-SOURCE
+> Task :change:plan:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :change:plan:compileKotlin UP-TO-DATE
+> Task :change:plan:compileJava NO-SOURCE
+> Task :change:protocol:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :change:protocol:compileKotlin UP-TO-DATE
+> Task :change:protocol:compileJava NO-SOURCE
+> Task :diagnostic:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :diagnostic:intellij:extractDiagnosticKotlinPlugin UP-TO-DATE
+> Task :diagnostic:intellij:compileKotlin UP-TO-DATE
+> Task :diagnostic:intellij:compileJava NO-SOURCE
+> Task :diagnostic:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :diagnostic:service:compileKotlin UP-TO-DATE
+> Task :diagnostic:service:compileJava NO-SOURCE
+> Task :evidence:sqlite:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :evidence:sqlite:compileKotlin UP-TO-DATE
+> Task :evidence:sqlite:compileJava NO-SOURCE
+> Task :relation:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:intellij:extractRelationKotlinPlugin UP-TO-DATE
+> Task :relation:intellij:compileKotlin UP-TO-DATE
+> Task :relation:intellij:compileJava NO-SOURCE
+> Task :relation:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:service:compileKotlin UP-TO-DATE
+> Task :relation:service:compileJava NO-SOURCE
+> Task :runtime:hosted:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:intellij:compileKotlin UP-TO-DATE
+> Task :source:intellij:compileJava NO-SOURCE
+> Task :source:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:service:compileKotlin UP-TO-DATE
+> Task :source:service:compileJava NO-SOURCE
+> Task :symbol:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:intellij:compileKotlin UP-TO-DATE
+> Task :symbol:intellij:compileJava NO-SOURCE
+> Task :symbol:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:service:compileKotlin UP-TO-DATE
+> Task :symbol:service:compileJava NO-SOURCE
+> Task :topology:build:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :topology:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :topology:contract:compileKotlin UP-TO-DATE
+> Task :topology:contract:compileJava NO-SOURCE
+> Task :topology:build:compileKotlin UP-TO-DATE
+> Task :topology:build:compileJava NO-SOURCE
+> Task :topology:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :topology:intellij:extractTopologyKotlinPlugin UP-TO-DATE
+> Task :topology:intellij:compileKotlin UP-TO-DATE
+> Task :topology:intellij:compileJava NO-SOURCE
+> Task :traversal:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :traversal:service:compileKotlin UP-TO-DATE
+> Task :traversal:service:compileJava NO-SOURCE
+
+> Task :runtime:hosted:compileKotlin FAILED
+e: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt:19:5 'when' expression must be exhaustive. Add the 'is PreviewRowIdentityRejected' branch or an 'else' branch.
+
+> Task :protocol:wire:generateHostedContract UP-TO-DATE
+> Task :runtime:hosted:processResources UP-TO-DATE
+> Task :change:apply:processResources NO-SOURCE
+> Task :change:apply:classes UP-TO-DATE
+> Task :change:apply:jar UP-TO-DATE
+> Task :change:contract:processResources NO-SOURCE
+> Task :change:contract:classes UP-TO-DATE
+> Task :change:contract:jar UP-TO-DATE
+> Task :change:intellij:processResources NO-SOURCE
+> Task :change:intellij:classes UP-TO-DATE
+> Task :change:intellij:jar UP-TO-DATE
+> Task :change:plan:processResources NO-SOURCE
+> Task :change:plan:classes UP-TO-DATE
+> Task :change:plan:jar UP-TO-DATE
+> Task :change:protocol:processResources NO-SOURCE
+> Task :change:protocol:classes UP-TO-DATE
+> Task :change:protocol:jar UP-TO-DATE
+> Task :change:recovery:processResources NO-SOURCE
+> Task :change:recovery:classes UP-TO-DATE
+> Task :change:recovery:jar UP-TO-DATE
+> Task :change:verify:processResources NO-SOURCE
+> Task :change:verify:classes UP-TO-DATE
+> Task :change:verify:jar UP-TO-DATE
+> Task :diagnostic:intellij:processResources NO-SOURCE
+> Task :diagnostic:intellij:classes UP-TO-DATE
+> Task :diagnostic:intellij:jar UP-TO-DATE
+> Task :diagnostic:service:processResources NO-SOURCE
+> Task :diagnostic:service:classes UP-TO-DATE
+> Task :diagnostic:service:jar UP-TO-DATE
+> Task :evidence:contract:processResources NO-SOURCE
+> Task :evidence:contract:classes UP-TO-DATE
+> Task :evidence:contract:jar UP-TO-DATE
+> Task :evidence:sqlite:processResources NO-SOURCE
+> Task :evidence:sqlite:classes UP-TO-DATE
+> Task :evidence:sqlite:jar UP-TO-DATE
+> Task :relation:intellij:extractNativeTestIdea UP-TO-DATE
+> Task :relation:intellij:processResources NO-SOURCE
+> Task :relation:intellij:classes UP-TO-DATE
+> Task :relation:intellij:jar UP-TO-DATE
+> Task :relation:service:processResources NO-SOURCE
+> Task :relation:service:classes UP-TO-DATE
+> Task :relation:service:jar UP-TO-DATE
+> Task :runtime:hosted:processNativeTestResources UP-TO-DATE
+> Task :source:intellij:processResources NO-SOURCE
+> Task :source:intellij:classes UP-TO-DATE
+> Task :source:intellij:jar UP-TO-DATE
+> Task :source:service:processResources NO-SOURCE
+> Task :source:service:classes UP-TO-DATE
+> Task :source:service:jar UP-TO-DATE
+> Task :symbol:intellij:processResources NO-SOURCE
+> Task :symbol:intellij:classes UP-TO-DATE
+> Task :symbol:intellij:jar UP-TO-DATE
+> Task :symbol:service:processResources NO-SOURCE
+> Task :symbol:service:classes UP-TO-DATE
+> Task :symbol:service:jar UP-TO-DATE
+> Task :topology:build:processResources NO-SOURCE
+> Task :topology:build:classes UP-TO-DATE
+> Task :topology:build:jar UP-TO-DATE
+> Task :topology:contract:processResources NO-SOURCE
+> Task :topology:contract:classes UP-TO-DATE
+> Task :topology:contract:jar UP-TO-DATE
+> Task :topology:intellij:processResources NO-SOURCE
+> Task :topology:intellij:classes UP-TO-DATE
+> Task :topology:intellij:jar UP-TO-DATE
+> Task :traversal:service:processResources NO-SOURCE
+> Task :traversal:service:classes UP-TO-DATE
+> Task :traversal:service:jar UP-TO-DATE
+> Task :workspace:intellij-read:processResources NO-SOURCE
+> Task :workspace:intellij-read:classes UP-TO-DATE
+> Task :workspace:intellij-read:jar UP-TO-DATE
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-20-01-59-56-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/problems/problems-report.html
+
+FAILURE: Build completed with 2 failures.
+
+1: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':query:protocol:test'.
+> There were failing tests. See the report at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+==============================================================================
+
+2: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':runtime:hosted:compileKotlin' (registered by plugin 'org.jetbrains.kotlin.jvm').
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.btapi.BuildToolsApiCompilationWork
+   > Kotlin compiler: NO_ELSE_IN_WHEN
+       Kotlin compiler error
+         'when' expression must be exhaustive. Add the 'is PreviewRowIdentityRejected' branch or an 'else' branch.
+         Location: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt:19
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+==============================================================================
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 37s
+100 actionable tasks: 5 executed, 95 up-to-date
+Configuration cache entry stored.

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueAnonymousFormalOracleTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-20T03:43:47.259Z" hostname="Austins-MacBook-Pro.local" time="0.085">
+  <properties/>
+  <testcase name="same lexical host and implicit name do not merge distinct anonymous bodies()" classname="io.github.amichne.kast.relation.contract.ValueAnonymousFormalOracleTest" time="0.052"/>
+  <testcase name="declared formal cannot use a range outside its actual anonymous body()" classname="io.github.amichne.kast.relation.contract.ValueAnonymousFormalOracleTest" time="0.004"/>
+  <testcase name="explicit anonymous formal uses the body signature instead of the lexical hosts arity()" classname="io.github.amichne.kast.relation.contract.ValueAnonymousFormalOracleTest" time="0.014"/>
+  <testcase name="implicit formals reject a named owner a renamed parameter or multiple parameters()" classname="io.github.amichne.kast.relation.contract.ValueAnonymousFormalOracleTest" time="0.001"/>
+  <testcase name="anonymous index outside the body signature cannot borrow a lexical parameter()" classname="io.github.amichne.kast.relation.contract.ValueAnonymousFormalOracleTest" time="0.001"/>
+  <testcase name="foreign anonymous formal cannot become a local formal site()" classname="io.github.amichne.kast.relation.contract.ValueAnonymousFormalOracleTest" time="0.002"/>
+  <testcase name="implicit formal keeps a real body anchor without a parameter declaration range()" classname="io.github.amichne.kast.relation.contract.ValueAnonymousFormalOracleTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

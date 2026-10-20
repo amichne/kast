@@ -1,0 +1,167 @@
+--- experiments/representation-impact/request-response-fixture/evidence/segment6-explicit-this-before-NativeValueReceiverReads.kt.txt
++++ relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueReceiverReads.kt
+@@ -7,11 +7,15 @@
+ import io.github.amichne.kast.kernel.Refinement
+ import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
+ import io.github.amichne.kast.relation.contract.ValueFormalPosition
++import io.github.amichne.kast.relation.contract.ValueReceiverKind
+ import io.github.amichne.kast.relation.contract.ValueRole
+ import io.github.amichne.kast.relation.contract.ValueSite
+ import io.github.amichne.kast.relation.contract.ValueTransfer
++import io.github.amichne.kast.relation.contract.ValueTransferKind
++import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+ import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
+ import org.jetbrains.kotlin.analysis.api.symbols.KaKotlinPropertySymbol
++import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
+ import org.jetbrains.kotlin.idea.references.KtReference
+ import org.jetbrains.kotlin.psi.KtCallElement
+ import org.jetbrains.kotlin.psi.KtCallExpression
+@@ -19,6 +23,7 @@
+ import org.jetbrains.kotlin.psi.KtNameReferenceExpression
+ import org.jetbrains.kotlin.psi.KtNamedFunction
+ import org.jetbrains.kotlin.psi.KtQualifiedExpression
++import org.jetbrains.kotlin.psi.KtThisExpression
+ import org.jetbrains.kotlin.psi.KtUserType
+ import org.jetbrains.kotlin.psi.KtValueArgumentName
+ 
+@@ -37,6 +42,7 @@
+         val body = function.bodyExpression ?: return false
+         return PsiTreeUtil.processElements(body) { element ->
+             if (!admitTraversal()) return@processElements false
++            if (element is KtThisExpression) return@processElements thisRead(function, element, permit, consume)
+             if (element is KtCallExpression) {
+                 if (!permit()) return@processElements false
+                 return@processElements calls(function, element, permit, consume)
+@@ -60,6 +66,31 @@
+             }
+             true
+         }
++    }
++
++    private fun thisRead(
++        function: KtNamedFunction,
++        expression: KtThisExpression,
++        permit: () -> Boolean,
++        consume: (Refinement<ValueTransfer, ValueFlowUnsupportedCause>) -> Unit,
++    ): Boolean {
++        if (valueNativeOwnership(expression, function) != NativeValueOwnership.ADMITTED) {
++            consume(Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION))
++            return true
++        }
++        if (!scope.nativeScope.contains(expression.containingFile.virtualFile)) {
++            consume(Refinement.Rejected(ValueFlowUnsupportedCause.OUTSIDE_DOMAIN))
++            return true
++        }
++        if (!permit()) return false
++        when (val actual = nativeThisReceiverKind(function, expression, projection.observation)) {
++            is Refinement.Refined -> {
++                val position = (source.role as? ValueRole.Formal)?.position as? ValueFormalPosition.Receiver
++                if (position?.kind == actual.value) consume(nativeThisRead(source, expression))
++            }
++            is Refinement.Rejected -> consume(actual)
++        }
++        return true
+     }
+ 
+     private fun calls(
+@@ -144,6 +175,55 @@
+         }
+ }
+ 
++/** The current named execution and its actual K2 receiver symbol establish the alias, including labeled this. */
++internal fun nativeThisReceiverKind(
++    function: KtNamedFunction,
++    expression: KtThisExpression,
++    observation: IntellijReadObservation,
++): Refinement<ValueReceiverKind, ValueFlowUnsupportedCause> =
++    observation.observedAnalyze(expression) {
++        val reference =
++            expression.instanceReference.references.filterIsInstance<KtReference>().singleOrNull()
++                ?: return@observedAnalyze Refinement.Rejected(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
++        val actual =
++            reference.resolveToSymbol()
++                ?: return@observedAnalyze Refinement.Rejected(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
++        if (actual.origin != KaSymbolOrigin.SOURCE)
++            return@observedAnalyze Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
++        val callable = function.symbol
++        when (actual) {
++            callable.receiverParameter -> Refinement.Refined(ValueReceiverKind.EXTENSION)
++            callable.containingDeclaration -> Refinement.Refined(ValueReceiverKind.DISPATCH)
++            else -> Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
++        }
++    }
++
++private fun nativeThisRead(
++    source: ValueSite,
++    expression: KtThisExpression,
++): Refinement<ValueTransfer, ValueFlowUnsupportedCause> {
++    val target =
++        when (
++            val admitted =
++                ValueSite.fromCompiler(
++                    enclosing = source.enclosing,
++                    range = sourceValueRange(expression),
++                    role = ValueRole.LocalRead,
++                    executionOwner = source.executionOwner,
++                    valuePath = source.valuePath,
++                    callStack = source.callStack,
++                    predicates = source.predicates,
++                )
++        ) {
++            is Refinement.Refined -> admitted.value
++            is Refinement.Rejected -> return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
++        }
++    return when (val admitted = ValueTransfer.fromCompiler(source, target, ValueTransferKind.LOCAL_READ)) {
++        is Refinement.Refined -> admitted
++        is Refinement.Rejected -> Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
++    }
++}
++
+ private fun KtNameReferenceExpression.isFieldReceiverCandidate(): Boolean =
+     parent !is KtValueArgumentName && parent !is KtUserType && (parent as? KtCallElement)?.calleeExpression !== this
+ 
+--- experiments/representation-impact/request-response-fixture/evidence/segment6-explicit-this-before-IntellijValueSiteRevalidationNative.kt.txt
++++ relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueSiteRevalidationNative.kt
+@@ -36,6 +36,7 @@
+ import org.jetbrains.kotlin.psi.KtProperty
+ import org.jetbrains.kotlin.psi.KtQualifiedExpression
+ import org.jetbrains.kotlin.psi.KtReturnExpression
++import org.jetbrains.kotlin.psi.KtThisExpression
+ import org.jetbrains.kotlin.psi.KtValueArgument
+ 
+ /** Revalidates one exact claimed role without exploring a flow or attaching model vocabulary. */
+@@ -189,7 +190,7 @@
+         ValueSiteRoleClaim.ExpressionResult -> expressionRole(element, observation)
+         ValueSiteRoleClaim.LocalBinding -> localBindingRole(element, observation)
+         ValueSiteRoleClaim.PropertyAssignment -> propertyRole(element, observation)
+-        ValueSiteRoleClaim.LocalRead -> localReadRole(element, observation)
++        ValueSiteRoleClaim.LocalRead -> localReadRole(element, prepared.owner, observation)
+         ValueSiteRoleClaim.Return -> returnRole(element, observation)
+         is ValueSiteRoleClaim.Argument -> argumentRole(element, prepared, executionOwner)
+         is ValueSiteRoleClaim.Receiver -> receiverRole(element, prepared, executionOwner)
+@@ -223,10 +224,21 @@
+ 
+ private fun localReadRole(
+     element: PsiElement,
+-    observation: IntellijReadObservation,
+-): Refinement<ValueRole, ValueFlowUnsupportedCause> =
+-    if (element is KtExpression && element.hasNativeLocalReference(observation)) Refinement.Refined(ValueRole.LocalRead)
+-    else roleRejected()
++    owner: PsiElement,
++    observation: IntellijReadObservation,
++): Refinement<ValueRole, ValueFlowUnsupportedCause> {
++    if (element is KtThisExpression) {
++        val function = owner as? KtNamedFunction ?: return roleRejected()
++        if (valueNativeOwnership(element, function) != NativeValueOwnership.ADMITTED) return roleRejected()
++        return when (val receiver = nativeThisReceiverKind(function, element, observation)) {
++            is Refinement.Refined -> Refinement.Refined(ValueRole.LocalRead)
++            is Refinement.Rejected -> receiver
++        }
++    }
++    return if (element is KtExpression && element.hasNativeLocalReference(observation))
++        Refinement.Refined(ValueRole.LocalRead)
++    else roleRejected()
++}
+ 
+ private fun returnRole(
+     element: PsiElement,

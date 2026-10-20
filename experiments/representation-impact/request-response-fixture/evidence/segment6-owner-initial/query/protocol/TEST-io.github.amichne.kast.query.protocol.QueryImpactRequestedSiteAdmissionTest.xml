@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.387Z" hostname="Austins-MacBook-Pro.local" time="0.015">
+  <properties/>
+  <testcase name="requested sites reuse exact model site native receipts once and preserve original question order()" classname="io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest" time="0.003"/>
+  <testcase name="native requested site failures preserve finite cause and abort without following target reads()" classname="io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest" time="0.002"/>
+  <testcase name="foreign requested native claim rejects before all native effects()" classname="io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest" time="0.002"/>
+  <testcase name="requested native proof remains charged within explicit small checkpoint grant()" classname="io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest" time="0.004"/>
+  <testcase name="duplicate requested sites reject before all native effects()" classname="io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest" time="0.001"/>
+  <testcase name="native anonymous owner must match the supplied requested site owner()" classname="io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

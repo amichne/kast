@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueSiteContractTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-20T16:02:53.420Z" hostname="Austins-MacBook-Pro.local" time="0.018">
+  <properties/>
+  <testcase name="normal branch anchors and catch index reject invalid ranges()" classname="io.github.amichne.kast.relation.contract.ValueSiteContractTest" time="0.001"/>
+  <testcase name="argument role preserves call and formal parameter position()" classname="io.github.amichne.kast.relation.contract.ValueSiteContractTest" time="0.0"/>
+  <testcase name="normal branch result preserves exact conditional provenance and cannot become a catch fallback()" classname="io.github.amichne.kast.relation.contract.ValueSiteContractTest" time="0.009"/>
+  <testcase name="transparent wrapper return remains bound to its actual call and formal argument()" classname="io.github.amichne.kast.relation.contract.ValueSiteContractTest" time="0.001"/>
+  <testcase name="flow obligations charge the shared source payload once and preserve distinct copies()" classname="io.github.amichne.kast.relation.contract.ValueSiteContractTest" time="0.001"/>
+  <testcase name="producer proof retains exact selected invocation and rejects same signature from another file()" classname="io.github.amichne.kast.relation.contract.ValueSiteContractTest" time="0.001"/>
+  <testcase name="source anchor cannot escape exact owner or current basis()" classname="io.github.amichne.kast.relation.contract.ValueSiteContractTest" time="0.001"/>
+  <testcase name="callable sharing preserves invocation identity and excludes different scope file and authority()" classname="io.github.amichne.kast.relation.contract.ValueSiteContractTest" time="0.001"/>
+  <testcase name="same callable different invocations remain distinct values()" classname="io.github.amichne.kast.relation.contract.ValueSiteContractTest" time="0.0"/>
+  <testcase name="search domain changes coverage without changing value identity()" classname="io.github.amichne.kast.relation.contract.ValueSiteContractTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

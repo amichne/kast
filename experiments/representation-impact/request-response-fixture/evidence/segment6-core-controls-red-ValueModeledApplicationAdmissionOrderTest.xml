@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueModeledApplicationAdmissionOrderTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-20T13:35:55.325Z" hostname="Austins-MacBook-Pro.local" time="0.019">
+  <properties/>
+  <testcase name="wrong selected call rejects for source mismatch despite a tiny byte grant()" classname="io.github.amichne.kast.relation.contract.ValueModeledApplicationAdmissionOrderTest" time="0.016">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=SOURCE_MISMATCH)&gt; but was: &lt;Rejected(failure=DETACHED_CAPACITY_EXCEEDED)&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=SOURCE_MISMATCH)&gt; but was: &lt;Rejected(failure=DETACHED_CAPACITY_EXCEEDED)&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.relation.contract.ValueModeledApplicationAdmissionOrderTest.wrong selected call rejects for source mismatch despite a tiny byte grant(ValueModeledApplicationAdmissionOrderTest.kt:22)
+</failure>
+  </testcase>
+  <testcase name="the same tiny byte grant still refuses a correctly bound application for capacity()" classname="io.github.amichne.kast.relation.contract.ValueModeledApplicationAdmissionOrderTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.CompleteOnlyQueryTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.624Z" hostname="Austins-MacBook-Pro.local" time="0.013">
+  <properties/>
+  <testcase name="unfittable mandatory rejection preserves its original preview for outer typed byte rejection()" classname="io.github.amichne.kast.query.protocol.CompleteOnlyQueryTest" time="0.002"/>
+  <testcase name="incomplete execution rejects with retrievable original evidence and qualification()" classname="io.github.amichne.kast.query.protocol.CompleteOnlyQueryTest" time="0.003"/>
+  <testcase name="original resumability is evidence and does not advertise a policy resume()" classname="io.github.amichne.kast.query.protocol.CompleteOnlyQueryTest" time="0.002"/>
+  <testcase name="strict preview fits the complete public envelope without losing retained rows or coverage()" classname="io.github.amichne.kast.query.protocol.CompleteOnlyQueryTest" time="0.003"/>
+  <testcase name="complete only succeeds after automatic exhaustion and retains original question policy()" classname="io.github.amichne.kast.query.protocol.CompleteOnlyQueryTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

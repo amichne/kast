@@ -1,0 +1,218 @@
+@file:OptIn(org.jetbrains.kotlin.analysis.api.KaExperimentalApi::class)
+
+package io.github.amichne.kast.relation.intellij
+
+import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiManager
+import com.intellij.psi.PsiNamedElement
+import com.intellij.psi.util.PsiTreeUtil
+import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
+import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertNotNull
+import junit.framework.TestCase.assertSame
+import junit.framework.TestCase.assertTrue
+import org.jetbrains.kotlin.analysis.api.KaSession
+import org.jetbrains.kotlin.analysis.api.resolution.KaExplicitReceiverValue
+import org.jetbrains.kotlin.analysis.api.resolution.KaImplicitReceiverValue
+import org.jetbrains.kotlin.analysis.api.resolution.KaReceiverValue
+import org.jetbrains.kotlin.analysis.api.resolution.KaSmartCastedReceiverValue
+import org.jetbrains.kotlin.analysis.api.symbols.KaKotlinPropertySymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
+import org.jetbrains.kotlin.analysis.api.types.KaClassType
+import org.jetbrains.kotlin.analysis.api.types.KaIntersectionType
+import org.jetbrains.kotlin.idea.references.KtReference
+import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression
+import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtQualifiedExpression
+import org.jetbrains.kotlin.psi.KtStringTemplateEntryWithExpression
+import org.jetbrains.kotlin.psi.KtStringTemplateExpression
+import org.jetbrains.kotlin.psi.KtThisExpression
+import org.jetbrains.kotlin.psi.KtWhenConditionIsPattern
+import org.jetbrains.kotlin.psi.KtWhenExpression
+
+/** Actual branch symbols, fields, scalar types, and immediate template entries supply independent expectations. */
+internal class NativePacketS3LogFieldFacts(private val project: Project, private val base: VirtualFile) {
+    fun read(fixture: NativePacketValueFixture): S3LogFieldFacts =
+        ReadAction.compute<S3LogFieldFacts, RuntimeException> {
+            val file =
+                PsiManager.getInstance(project)
+                    .findFile(checkNotNull(base.findFileByRelativePath("src/fixture/client/OffersClient.kt"))) as KtFile
+            val helper =
+                PsiTreeUtil.collectElementsOfType(file, KtNamedFunction::class.java).single { it.name == "toLogLine" }
+            val branch = helper.bodyExpression as KtWhenExpression
+            val subject = branch.subjectExpression as KtThisExpression
+            assertEquals(exact(THIS_START, THIS_END), range(subject))
+            val projection = IntellijK2RelationProjection(project, fixture.lease.workspaceRoot)
+            IntellijReadObservation.None.observedAnalyze(helper) {
+                val symbol = helper.symbol
+                assertEquals(KaSymbolOrigin.SOURCE, symbol.origin)
+                assertNotNull(symbol.receiverParameter)
+                val receiver = checkNotNull(symbol.receiverParameter)
+                assertEquals(
+                    symbol.receiverParameter,
+                    subject.instanceReference.references.filterIsInstance<KtReference>().single().resolveToSymbol(),
+                )
+                val success =
+                    describe(
+                        branch = branch,
+                        selection = S3LogBranchSelection("Success", "statusCode", "kotlin.Int"),
+                        receiver = receiver,
+                        projection = projection,
+                    )
+                val error =
+                    describe(
+                        branch = branch,
+                        selection = S3LogBranchSelection("Error", "code", "kotlin.String"),
+                        receiver = receiver,
+                        projection = projection,
+                    )
+                println(
+                    "S3_LOG_FIELD_K2 subject=${range(subject)} helper=${range(helper)} " +
+                        "success=${success.scalarRange}:kotlin.Int error=${error.scalarRange}:kotlin.String " +
+                        "subjectReceiver=EXACT_SOURCE_EXTENSION templateResult=kotlin.String"
+                )
+                S3LogFieldFacts(
+                    subjectRange = range(subject),
+                    whenRange = range(branch),
+                    success = success,
+                    error = error,
+                )
+            }
+        }
+
+    private fun KaSession.describe(
+        branch: KtWhenExpression,
+        selection: S3LogBranchSelection,
+        receiver: KaSymbol,
+        projection: IntellijK2RelationProjection,
+    ): S3LogBranchFacts {
+        val entry =
+            branch.entries.single { candidate ->
+                val condition = candidate.conditions.single() as KtWhenConditionIsPattern
+                (condition.typeReference?.type as KaClassType).classId.shortClassName.asString() == selection.typeName
+            }
+        val condition = entry.conditions.single() as KtWhenConditionIsPattern
+        assertTrue(!condition.isNegated)
+        assertEquals(null, entry.guard)
+        val type = checkNotNull(condition.typeReference).type as KaClassType
+        val template = entry.expression as KtStringTemplateExpression
+        val interpolation = template.entries.filterIsInstance<KtStringTemplateEntryWithExpression>().single()
+        val scalar = interpolation.expression as KtQualifiedExpression
+        val value = scalar.receiverExpression as KtNameReferenceExpression
+        val selector = scalar.selectorExpression as KtNameReferenceExpression
+        assertEquals("value", value.getReferencedName())
+        assertEquals(selection.fieldName, selector.getReferencedName())
+        assertSame(scalar, interpolation.expression)
+        assertSame(template, interpolation.parent)
+        val property = provePayload(value, type, receiver)
+        val selected = checkNotNull(selector.resolveCall()).signature.symbol as KaKotlinPropertySymbol
+        assertEquals(KaSymbolOrigin.SOURCE, selected.origin)
+        assertType(scalar, selection.scalarType)
+        assertType(template, "kotlin.String")
+        assertType(branch, "kotlin.String")
+        return S3LogBranchFacts(
+            valueRange = range(value),
+            scalarRange = range(scalar),
+            templateRange = range(template),
+            entryRange = range(interpolation),
+            literalRange = range(template.entries.first { it !is KtStringTemplateEntryWithExpression }),
+            entryIndex = template.entries.indexOf(interpolation),
+            payload = evidence(projection, checkNotNull(property.psi) as PsiNamedElement),
+            field = evidence(projection, checkNotNull(selected.psi) as PsiNamedElement),
+            type = evidence(projection, checkNotNull(type.symbol.psi) as PsiNamedElement),
+        )
+    }
+
+    private fun KaSession.provePayload(
+        value: KtNameReferenceExpression,
+        type: KaClassType,
+        receiver: KaSymbol,
+    ): KaKotlinPropertySymbol {
+        val actual = checkNotNull(value.resolveCall())
+        val property = actual.signature.symbol as KaKotlinPropertySymbol
+        assertEquals(KaSymbolOrigin.SOURCE, property.origin)
+        assertEquals(type.symbol, property.containingDeclaration)
+        assertTrue(
+            "The real payload dispatch must name the original extension receiver",
+            exactReceiver(actual.dispatchReceiver, receiver),
+        )
+        val smart = actual.dispatchReceiver as? KaSmartCastedReceiverValue
+        if (smart != null) {
+            val smartType = smart.type
+            val contains =
+                when (smartType) {
+                    is KaClassType -> smartType.symbol == type.symbol
+                    is KaIntersectionType -> smartType.conjuncts.any { it is KaClassType && it.symbol == type.symbol }
+                    else -> false
+                }
+            assertTrue("The smart cast must retain the actual branch class", contains)
+        }
+        return property
+    }
+
+    private fun KaSession.assertType(expression: org.jetbrains.kotlin.psi.KtExpression, expected: String) {
+        val actual = expression.expressionType as KaClassType
+        assertEquals(expected, actual.classId.asSingleFqName().asString())
+        assertTrue(!actual.isMarkedNullable)
+    }
+
+    private fun KaSession.exactReceiver(actual: KaReceiverValue?, expected: KaSymbol): Boolean =
+        when (actual) {
+            is KaImplicitReceiverValue -> actual.symbol == expected
+            is KaSmartCastedReceiverValue -> exactReceiver(actual.original, expected)
+            is KaExplicitReceiverValue -> {
+                val expression = actual.expression as? KtThisExpression
+                expression
+                    ?.instanceReference
+                    ?.references
+                    ?.filterIsInstance<KtReference>()
+                    ?.single()
+                    ?.resolveToSymbol() == expected
+            }
+            null -> false
+        }
+
+    private fun evidence(
+        projection: IntellijK2RelationProjection,
+        declaration: PsiNamedElement,
+    ): CompilerGroundedSymbolEvidence {
+        val projected = projection.project(declaration)
+        assertTrue(projected is IntellijRelationDeclarationProjection.Projected)
+        return (projected as IntellijRelationDeclarationProjection.Projected).evidence
+    }
+
+    private fun exact(start: Int, end: Int) = ExactDeclarationTextRange.parse(start, end).nativeRefined()
+
+    private companion object {
+        const val THIS_START = 1656
+        const val THIS_END = 1660
+    }
+}
+
+internal data class S3LogFieldFacts(
+    val subjectRange: ExactDeclarationTextRange,
+    val whenRange: ExactDeclarationTextRange,
+    val success: S3LogBranchFacts,
+    val error: S3LogBranchFacts,
+)
+
+internal data class S3LogBranchFacts(
+    val valueRange: ExactDeclarationTextRange,
+    val scalarRange: ExactDeclarationTextRange,
+    val templateRange: ExactDeclarationTextRange,
+    val entryRange: ExactDeclarationTextRange,
+    val literalRange: ExactDeclarationTextRange,
+    val entryIndex: Int,
+    val payload: CompilerGroundedSymbolEvidence,
+    val field: CompilerGroundedSymbolEvidence,
+    val type: CompilerGroundedSymbolEvidence,
+)
+
+private data class S3LogBranchSelection(val typeName: String, val fieldName: String, val scalarType: String)

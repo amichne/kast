@@ -1,0 +1,156 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
+package io.github.amichne.kast.protocol.contract
+
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonClassDiscriminator
+
+/** Full output evidence composes existing compiler and domain proofs. It grants no supplied-model authority. */
+@Serializable
+data class ImpactModelEndpointDocument(
+    val declaration: ImpactDeclarationReferenceDocument,
+    val compilerTarget: QueryExcludedCompilerTargetWireDocument,
+    val domain: QueryRelationDomainDocument,
+    @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
+    val fingerprint: ProtocolText,
+)
+
+@Serializable
+@JsonClassDiscriminator("type")
+sealed interface ImpactModelExecutionDocument {
+    val enclosing: ImpactModelEndpointDocument
+
+    @Serializable
+    @SerialName("DECLARATION")
+    data class Declaration(override val enclosing: ImpactModelEndpointDocument) : ImpactModelExecutionDocument
+
+    @Serializable
+    @SerialName("ANONYMOUS")
+    data class Anonymous(
+        override val enclosing: ImpactModelEndpointDocument,
+        val body: QueryCallbackBodyWireDocument.Anonymous,
+    ) : ImpactModelExecutionDocument
+}
+
+@Serializable
+data class ImpactReviewedArtifactDocument(
+    val binaryDigest: ImpactLibraryDigestDocument,
+    val sourceDigest: ImpactLibraryDigestDocument,
+    val version: ImpactLibraryVersionDocument,
+)
+
+@Serializable
+enum class ImpactLibraryOriginDocument {
+    SOURCE,
+    LIBRARY,
+    UNSUPPORTED,
+}
+
+@Serializable
+data class ImpactLibraryArtifactDocument(
+    val basis: ImpactSemanticBasisDocument,
+    val root: ProtocolText,
+    val moduleName: ImpactLibraryModuleDocument,
+    val binaryDigest: ImpactLibraryDigestDocument,
+    val version: ImpactLibraryVersionDocument,
+    val origin: ImpactLibraryOriginDocument,
+)
+
+@Serializable
+@JsonClassDiscriminator("type")
+sealed interface ImpactReviewedValueModelDocument {
+    val reference: ImpactRuleReferenceDocument
+    val artifact: ImpactReviewedArtifactDocument
+    val callable: CompilerSignatureWireDocument
+
+    @Serializable
+    @SerialName("FIRST_OR_NULL")
+    data class FirstOrNull(
+        override val reference: ImpactRuleReferenceDocument,
+        override val artifact: ImpactReviewedArtifactDocument,
+        override val callable: CompilerSignatureWireDocument,
+    ) : ImpactReviewedValueModelDocument
+
+    @Serializable
+    @SerialName("SINGLE_ELEMENT_LIST_OF")
+    data class SingleElementListOf(
+        override val reference: ImpactRuleReferenceDocument,
+        override val artifact: ImpactReviewedArtifactDocument,
+        override val callable: CompilerSignatureWireDocument,
+    ) : ImpactReviewedValueModelDocument
+
+    @Serializable
+    @SerialName("LET")
+    data class Let(
+        override val reference: ImpactRuleReferenceDocument,
+        override val artifact: ImpactReviewedArtifactDocument,
+        override val callable: CompilerSignatureWireDocument,
+    ) : ImpactReviewedValueModelDocument
+}
+
+@Serializable
+data class ImpactReviewedLibraryBindingDocument(
+    val enclosing: ImpactModelEndpointDocument,
+    val invocation: ImpactCallOccurrenceDocument,
+    val callable: ImpactModelEndpointDocument,
+    val execution: ImpactModelExecutionDocument,
+    val model: ImpactReviewedValueModelDocument,
+    val artifact: ImpactLibraryArtifactDocument,
+)
+
+@Serializable
+@JsonClassDiscriminator("type")
+sealed interface ImpactValueModelConditionDocument {
+    @Serializable
+    @SerialName("SELECTED_ELEMENT")
+    data class SelectedElement(
+        val receiver: ImpactValueSiteReferenceDocument,
+        val result: ImpactValueSiteReferenceDocument,
+        val index: ImpactSelectedElementDocument,
+    ) : ImpactValueModelConditionDocument
+}
+
+@Serializable
+@JsonClassDiscriminator("type")
+sealed interface ImpactValueModelApplicationDocument {
+    val source: ImpactValueSiteReferenceDocument
+    val target: ImpactValueSiteReferenceDocument
+    val binding: ImpactReviewedLibraryBindingDocument
+
+    @Serializable
+    @SerialName("SCOPE_CALLBACK_INPUT")
+    data class ScopeCallbackInput(
+        override val source: ImpactValueSiteReferenceDocument,
+        override val target: ImpactValueSiteReferenceDocument,
+        override val binding: ImpactReviewedLibraryBindingDocument,
+        val frame: ImpactCallFrameDocument,
+    ) : ImpactValueModelApplicationDocument
+
+    @Serializable
+    @SerialName("SCOPE_CALLBACK_RETURN")
+    data class ScopeCallbackReturn(
+        override val source: ImpactValueSiteReferenceDocument,
+        override val target: ImpactValueSiteReferenceDocument,
+        override val binding: ImpactReviewedLibraryBindingDocument,
+        val frame: ImpactCallFrameDocument,
+    ) : ImpactValueModelApplicationDocument
+
+    @Serializable
+    @SerialName("COLLECTION_INSERTION")
+    data class CollectionInsertion(
+        override val source: ImpactValueSiteReferenceDocument,
+        override val target: ImpactValueSiteReferenceDocument,
+        override val binding: ImpactReviewedLibraryBindingDocument,
+        val index: ImpactInsertedElementDocument,
+    ) : ImpactValueModelApplicationDocument
+
+    @Serializable
+    @SerialName("COLLECTION_SELECTION")
+    data class CollectionSelection(
+        override val source: ImpactValueSiteReferenceDocument,
+        override val target: ImpactValueSiteReferenceDocument,
+        override val binding: ImpactReviewedLibraryBindingDocument,
+        val condition: ImpactValueModelConditionDocument,
+    ) : ImpactValueModelApplicationDocument
+}

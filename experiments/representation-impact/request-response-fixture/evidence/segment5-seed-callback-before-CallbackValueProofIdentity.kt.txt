@@ -1,0 +1,55 @@
+package io.github.amichne.kast.protocol.contract
+
+/** Reference handles remain encoded, while an occurrence keeps its exact source identity. */
+internal fun RelationOccurrenceWireDocument.sameCallbackProof(other: RelationOccurrenceWireDocument): Boolean =
+    file == other.file && range == other.range
+
+internal fun <T> List<T>.sameProofList(other: List<T>, same: (T, T) -> Boolean): Boolean =
+    size == other.size && zip(other).all { (first, second) -> same(first, second) }
+
+internal fun ImpactValueSiteReferenceDocument.sameCallbackProof(other: ImpactValueSiteReferenceDocument): Boolean =
+    hasSameValueIdentity(other)
+
+internal fun ImpactCompilerTransferDocument.sameCallbackProof(other: ImpactCompilerTransferDocument): Boolean =
+    source.hasSameValueIdentity(other.source) &&
+        target.hasSameValueIdentity(other.target) &&
+        kind == other.kind &&
+        evidence.sameCallbackProof(other.evidence)
+
+internal fun BoundedProtocolList<ImpactValuePredicateDocument>.hasSamePredicateIdentity(
+    other: BoundedProtocolList<ImpactValuePredicateDocument>
+): Boolean = values.size == other.values.size && values.all { first -> other.values.any { first.samePredicate(it) } }
+
+private fun ImpactValuePredicateDocument.samePredicate(other: ImpactValuePredicateDocument): Boolean =
+    subject.site().hasSameValueIdentity(other.subject.site()) &&
+        when (this) {
+            is ImpactValuePredicateDocument.NonNull -> other is ImpactValuePredicateDocument.NonNull
+            is ImpactValuePredicateDocument.Subtype ->
+                other is ImpactValuePredicateDocument.Subtype && resolvedType == other.resolvedType
+        }
+
+private fun ImpactTransferEvidenceDocument.sameCallbackProof(other: ImpactTransferEvidenceDocument): Boolean =
+    when (this) {
+        ImpactTransferEvidenceDocument.Direct -> other == ImpactTransferEvidenceDocument.Direct
+        is ImpactTransferEvidenceDocument.NormalBranchResult -> this == other
+        is ImpactTransferEvidenceDocument.Source ->
+            other is ImpactTransferEvidenceDocument.Source && operation.sameCallbackProof(other.operation)
+        is ImpactTransferEvidenceDocument.Guarded ->
+            other is ImpactTransferEvidenceDocument.Guarded &&
+                delegate.sameCallbackProof(other.delegate) &&
+                added.hasSamePredicateIdentity(other.added)
+    }
+
+private fun ImpactSourceOperationDocument.sameCallbackProof(other: ImpactSourceOperationDocument): Boolean =
+    when (this) {
+        is ImpactSourceOperationDocument.Enter ->
+            other is ImpactSourceOperationDocument.Enter &&
+                frame.hasSameFrameIdentity(other.frame) &&
+                position == other.position
+        is ImpactSourceOperationDocument.Return ->
+            other is ImpactSourceOperationDocument.Return && frame.hasSameFrameIdentity(other.frame)
+        is ImpactSourceOperationDocument.SeedReturn ->
+            other is ImpactSourceOperationDocument.SeedReturn && frame.hasSameFrameIdentity(other.frame)
+        is ImpactSourceOperationDocument.ReadField -> this == other
+        is ImpactSourceOperationDocument.ConstructField -> this == other
+    }

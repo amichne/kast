@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueStringDerivationOracleTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-20T19:11:05.751Z" hostname="Austins-MacBook-Pro.local" time="0.007">
+  <properties/>
+  <testcase name="another entry in the same template cannot borrow the scalar occurrence()" classname="io.github.amichne.kast.relation.contract.ValueStringDerivationOracleTest" time="0.001"/>
+  <testcase name="direct evidence cannot assert a derivation()" classname="io.github.amichne.kast.relation.contract.ValueStringDerivationOracleTest" time="0.0"/>
+  <testcase name="entry must lie strictly inside the template()" classname="io.github.amichne.kast.relation.contract.ValueStringDerivationOracleTest" time="0.001"/>
+  <testcase name="another template or an input outside the exact entry cannot borrow interpolation evidence()" classname="io.github.amichne.kast.relation.contract.ValueStringDerivationOracleTest" time="0.0"/>
+  <testcase name="whole LocalRead scalar derives the exact whole template with all state()" classname="io.github.amichne.kast.relation.contract.ValueStringDerivationOracleTest" time="0.0"/>
+  <testcase name="each admitted scalar kind keeps its exact template entry and index()" classname="io.github.amichne.kast.relation.contract.ValueStringDerivationOracleTest" time="0.001"/>
+  <testcase name="entry index accepts zero and maximum Int but rejects negative input()" classname="io.github.amichne.kast.relation.contract.ValueStringDerivationOracleTest" time="0.001"/>
+  <testcase name="whole expression scalar also derives the template()" classname="io.github.amichne.kast.relation.contract.ValueStringDerivationOracleTest" time="0.0"/>
+  <testcase name="a field path and non-scalar source role cannot become a whole template()" classname="io.github.amichne.kast.relation.contract.ValueStringDerivationOracleTest" time="0.001"/>
+  <testcase name="interpolation evidence cannot assert an ordinary transfer kind()" classname="io.github.amichne.kast.relation.contract.ValueStringDerivationOracleTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

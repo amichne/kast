@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ExecutionReportAdmissionTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:20.013Z" hostname="Austins-MacBook-Pro.local" time="0.018">
+  <properties/>
+  <testcase name="report amounts reject nonpositive quoted fractional and overflowing values()" classname="io.github.amichne.kast.protocol.contract.ExecutionReportAdmissionTest" time="0.01"/>
+  <testcase name="valid caller default and clamped report shapes retain their exact numeric representation()" classname="io.github.amichne.kast.protocol.contract.ExecutionReportAdmissionTest" time="0.003"/>
+  <testcase name="selection and clamping must describe one possible admitted grant()" classname="io.github.amichne.kast.protocol.contract.ExecutionReportAdmissionTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

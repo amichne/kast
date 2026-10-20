@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryConcatAdmissionTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.285Z" hostname="Austins-MacBook-Pro.local" time="0.01">
+  <properties/>
+  <testcase name="fresh discovery query reacquires concatenated exact references before plan admission()" classname="io.github.amichne.kast.query.protocol.QueryConcatAdmissionTest" time="0.005"/>
+  <testcase name="unissued concatenated reference reports its step and token position before execution()" classname="io.github.amichne.kast.query.protocol.QueryConcatAdmissionTest" time="0.002"/>
+  <testcase name="fresh exact source reacquires once and returns exact query evidence()" classname="io.github.amichne.kast.query.protocol.QueryConcatAdmissionTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

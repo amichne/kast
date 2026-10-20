@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ReferenceAuthorityMismatchTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:20.829Z" hostname="Austins-MacBook-Pro.local" time="0.015">
+  <properties/>
+  <testcase name="epoch evidence encodes the request and admitted current values()" classname="io.github.amichne.kast.protocol.contract.ReferenceAuthorityMismatchTest" time="0.002"/>
+  <testcase name="source step and impact failures keep the same admitted mismatch()" classname="io.github.amichne.kast.protocol.contract.ReferenceAuthorityMismatchTest" time="0.009"/>
+  <testcase name="authority evidence cannot attach to an unrelated query failure()" classname="io.github.amichne.kast.protocol.contract.ReferenceAuthorityMismatchTest" time="0.001"/>
+  <testcase name="matching or nonpositive epochs cannot establish a mismatch()" classname="io.github.amichne.kast.protocol.contract.ReferenceAuthorityMismatchTest" time="0.001"/>
+  <testcase name="authority evidence cannot attach to an unrelated source failure()" classname="io.github.amichne.kast.protocol.contract.ReferenceAuthorityMismatchTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

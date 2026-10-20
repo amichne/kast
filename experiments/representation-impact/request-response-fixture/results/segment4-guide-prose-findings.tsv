@@ -1,0 +1,4 @@
+document	line	rule	severity	assessment	reason	message
+protocol/AGENTS.md	1	Slopsentral.Grade	warning	ASSESSED	Keep exact source paths, commands, identifiers, and evidence limits. Reader comprehension remains NOT_ASSESSED.	Estimated Flesch-Kincaid grade 17.80 exceeds the shared advisory target of 8.
+experiments/representation-impact/request-response-fixture/AGENTS.md	1	Slopsentral.Grade	warning	ASSESSED	Keep exact source paths, commands, identifiers, and evidence limits. Reader comprehension remains NOT_ASSESSED.	Estimated Flesch-Kincaid grade 10.90 exceeds the shared advisory target of 8.
+experiments/representation-impact/request-response-fixture/README.md	1	Slopsentral.Grade	warning	ASSESSED	Keep exact source paths, commands, identifiers, and evidence limits. Reader comprehension remains NOT_ASSESSED.	Estimated Flesch-Kincaid grade 9.95 exceeds the shared advisory target of 8.

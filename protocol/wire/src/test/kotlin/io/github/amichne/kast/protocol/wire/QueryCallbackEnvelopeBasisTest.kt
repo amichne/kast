@@ -16,10 +16,13 @@ import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.QueryCallableObservationDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBodyWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowFailureDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackFlowWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackGraphObligationsDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackObservationDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackReferenceReceiverWireDocument
 import io.github.amichne.kast.protocol.contract.QueryExpandedFrontierDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryKnownMinimum
@@ -44,6 +47,9 @@ import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
 import io.github.amichne.kast.protocol.contract.TraversalExtentDocument
 import io.github.amichne.kast.protocol.contract.TraversalProgressDocument
 import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import java.util.UUID
 import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Assertions.assertEquals

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.QueryDiscoveryUniverseContractTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:20.747Z" hostname="Austins-MacBook-Pro.local" time="0.013">
+  <properties/>
+  <testcase name="every discovery progress variant declares its Kotlin declaration universe()" classname="io.github.amichne.kast.protocol.contract.QueryDiscoveryUniverseContractTest" time="0.012"/>
+  <testcase name="missing or unsupported declaration language cannot be admitted()" classname="io.github.amichne.kast.protocol.contract.QueryDiscoveryUniverseContractTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

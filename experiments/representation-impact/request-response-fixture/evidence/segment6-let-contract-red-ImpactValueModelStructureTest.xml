@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactValueModelStructureTest" tests="6" skipped="0" failures="1" errors="0" timestamp="2026-10-20T16:28:25.855Z" hostname="Austins-MacBook-Pro.local" time="0.137">
+  <properties/>
+  <testcase name="let review output encodes exact kind and rejects an unknown kind()" classname="io.github.amichne.kast.protocol.contract.ImpactValueModelStructureTest" time="0.082"/>
+  <testcase name="self-consistent output structure grants no claim of registry membership()" classname="io.github.amichne.kast.protocol.contract.ImpactValueModelStructureTest" time="0.031"/>
+  <testcase name="scalar failures keep exact finite presentation names()" classname="io.github.amichne.kast.protocol.contract.ImpactValueModelStructureTest" time="0.006"/>
+  <testcase name="collection selection rejects a structurally consistent let review binding()" classname="io.github.amichne.kast.protocol.contract.ImpactValueModelStructureTest" time="0.006">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;false&gt; but was: &lt;true&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;false&gt; but was: &lt;true&gt;
+	at org.junit.jupiter.api.Assertions.assertFalse(Assertions.java:257)
+	at io.github.amichne.kast.protocol.contract.ImpactValueModelStructureTest.collection selection rejects a structurally consistent let review binding(ImpactValueModelStructureTest.kt:131)
+</failure>
+  </testcase>
+  <testcase name="actual artifact review and semantic basis cannot contradict one another()" classname="io.github.amichne.kast.protocol.contract.ImpactValueModelStructureTest" time="0.002"/>
+  <testcase name="consistent exact source context and artifact fields admit output structure()" classname="io.github.amichne.kast.protocol.contract.ImpactValueModelStructureTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

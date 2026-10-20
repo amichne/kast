@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.RetainedSymbolGraphFallbackTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:31.385Z" hostname="Austins-MacBook-Pro.local" time="0.02">
+  <properties/>
+  <testcase name="legacy absent selection proof preserves full symbol rows()" classname="io.github.amichne.kast.query.protocol.RetainedSymbolGraphFallbackTest" time="0.008"/>
+  <testcase name="empty symbol page preserves all reference evidence in full output()" classname="io.github.amichne.kast.query.protocol.RetainedSymbolGraphFallbackTest" time="0.005"/>
+  <testcase name="symbols without connection proof preserve full output()" classname="io.github.amichne.kast.query.protocol.RetainedSymbolGraphFallbackTest" time="0.007"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

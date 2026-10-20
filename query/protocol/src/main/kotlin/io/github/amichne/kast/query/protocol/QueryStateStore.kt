@@ -257,7 +257,7 @@ class QueryStateStore(
         val rowIds = java.util.Collections.unmodifiableList(List(rowCount) { generatedRowReference() })
         entries[Key.Result(reference)] = Entry.Result(normalized, result, rowIds, clock(), bytes, publicationOwner)
         retainedBytes()
-        return QueryResultIssuance.Issued(reference, rowIds)
+        return QueryResultIssuance.Issued(reference, rowIds, result)
     }
 
     @Synchronized

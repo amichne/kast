@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryRetainedRowAdmissionTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.697Z" hostname="Austins-MacBook-Pro.local" time="0.021">
+  <properties/>
+  <testcase name="small symbol pages preserve complete producer coverage and stable row identities()" classname="io.github.amichne.kast.query.protocol.QueryRetainedRowAdmissionTest" time="0.002"/>
+  <testcase name="issued row identities are immutable and stable across restoration and presentation()" classname="io.github.amichne.kast.query.protocol.QueryRetainedRowAdmissionTest" time="0.002"/>
+  <testcase name="issued row identity selects only the original proven row and qualifies unchecked omissions()" classname="io.github.amichne.kast.query.protocol.QueryRetainedRowAdmissionTest" time="0.002"/>
+  <testcase name="small binding pages preserve complete producer coverage and stable row identities()" classname="io.github.amichne.kast.query.protocol.QueryRetainedRowAdmissionTest" time="0.002"/>
+  <testcase name="issued output row identity seeds a later query without reconstructing the symbol()" classname="io.github.amichne.kast.query.protocol.QueryRetainedRowAdmissionTest" time="0.002"/>
+  <testcase name="unknown row identity rejects before semantic execution()" classname="io.github.amichne.kast.query.protocol.QueryRetainedRowAdmissionTest" time="0.002"/>
+  <testcase name="issued row identity is scoped to its owning retained result()" classname="io.github.amichne.kast.query.protocol.QueryRetainedRowAdmissionTest" time="0.001"/>
+  <testcase name="selected retained binding row admits named projection before evaluation()" classname="io.github.amichne.kast.query.protocol.QueryRetainedRowAdmissionTest" time="0.002"/>
+  <testcase name="partial retained right input cannot establish difference()" classname="io.github.amichne.kast.query.protocol.QueryRetainedRowAdmissionTest" time="0.001"/>
+  <testcase name="retained binding pairs page with row IDs and reject symbol presentation()" classname="io.github.amichne.kast.query.protocol.QueryRetainedRowAdmissionTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketFirstOrNullFrontierTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T12:09:12.372Z" hostname="Austins-MacBook-Pro.local" time="11.51">
+  <properties/>
+  <testcase name="testOriginalElementOneReceiverNativeFrontier" classname="io.github.amichne.kast.relation.intellij.NativePacketFirstOrNullFrontierTest" time="8.798"/>
+  <testcase name="testOriginalElementZeroReceiverNativeFrontier" classname="io.github.amichne.kast.relation.intellij.NativePacketFirstOrNullFrontierTest" time="1.304"/>
+  <testcase name="testOriginalAnyElementReceiverNativeFrontier" classname="io.github.amichne.kast.relation.intellij.NativePacketFirstOrNullFrontierTest" time="0.96"/>
+  <testcase name="testSourceDefinedSameNameReceiverNativeFrontier" classname="io.github.amichne.kast.relation.intellij.NativePacketFirstOrNullFrontierTest" time="0.436"/>
+  <system-out><![CDATA[FIRST_OR_NULL_SCOPE kind=SUPPLEMENTAL_POSITION sourcePolicy=PRODUCTION_ONLY libraryPolicy=INCLUDE original_S2=UNCHANGED
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+FIRST_OR_NULL_ARTIFACT version=2.3.20-release-208 sha256=0ae12504a5040ebaf37703908483420d1a5624dd1d93f357665f8c77c848a01e virtualRoot=jar:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/idea/plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar!/
+FIRST_OR_NULL_BINDING library=true identity=canonical-signature-sha256-v1|89eb817fb2a84e662aa1a766097e194fdac214f8031f7bf42776bc675f4d5550 callable=kotlin.collections.firstOrNull receiver=Present(type=CanonicalCompilerType(value=kotlin/collections/List<T>)) parameterCount=0 contextCount=0 typeParameters=1
+FIRST_OR_NULL_NATIVE variant=OBSERVED transfers=[SOURCE_CALL_ENTRY] causes=[] work=2
+FIRST_OR_NULL_TARGET range=ExactDeclarationTextRange(startInclusive=22846, endExclusive=22929) owner=canonical-signature-sha256-v1|89eb817fb2a84e662aa1a766097e194fdac214f8031f7bf42776bc675f4d5550 body=canonical-signature-sha256-v1|89eb817fb2a84e662aa1a766097e194fdac214f8031f7bf42776bc675f4d5550 path=[ELEMENT:1] role=FORMAL:Receiver(kind=EXTENSION) predicateCount=0 frames=[ExactDeclarationTextRange(startInclusive=939, endExclusive=967)]
+FIRST_OR_NULL_EXPECTED row=ORIGINAL_ELEMENT_ONE condition=FORBIDDEN_UNSELECTED_ELEMENT result=NO_APPLICATION suffix=WHOLE addedNonNull=false model_assertion=NOT_RUN
+FIRST_OR_NULL_SCOPE kind=SUPPLEMENTAL_POSITION sourcePolicy=PRODUCTION_ONLY libraryPolicy=INCLUDE original_S2=UNCHANGED
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+FIRST_OR_NULL_ARTIFACT version=2.3.20-release-208 sha256=0ae12504a5040ebaf37703908483420d1a5624dd1d93f357665f8c77c848a01e virtualRoot=jar:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/idea/plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar!/
+FIRST_OR_NULL_BINDING library=true identity=canonical-signature-sha256-v1|89eb817fb2a84e662aa1a766097e194fdac214f8031f7bf42776bc675f4d5550 callable=kotlin.collections.firstOrNull receiver=Present(type=CanonicalCompilerType(value=kotlin/collections/List<T>)) parameterCount=0 contextCount=0 typeParameters=1
+FIRST_OR_NULL_NATIVE variant=OBSERVED transfers=[SOURCE_CALL_ENTRY] causes=[] work=2
+FIRST_OR_NULL_TARGET range=ExactDeclarationTextRange(startInclusive=22846, endExclusive=22929) owner=canonical-signature-sha256-v1|89eb817fb2a84e662aa1a766097e194fdac214f8031f7bf42776bc675f4d5550 body=canonical-signature-sha256-v1|89eb817fb2a84e662aa1a766097e194fdac214f8031f7bf42776bc675f4d5550 path=[ELEMENT:0] role=FORMAL:Receiver(kind=EXTENSION) predicateCount=0 frames=[ExactDeclarationTextRange(startInclusive=939, endExclusive=967)]
+FIRST_OR_NULL_EXPECTED row=ORIGINAL_ELEMENT_ZERO condition=FIRST_ELEMENT_EXISTS result=SELECTED:ExactDeclarationTextRange(startInclusive=939, endExclusive=967) suffix=WHOLE addedNonNull=false model_assertion=NOT_RUN
+FIRST_OR_NULL_SCOPE kind=SUPPLEMENTAL_POSITION sourcePolicy=PRODUCTION_ONLY libraryPolicy=INCLUDE original_S2=UNCHANGED
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+FIRST_OR_NULL_ARTIFACT version=2.3.20-release-208 sha256=0ae12504a5040ebaf37703908483420d1a5624dd1d93f357665f8c77c848a01e virtualRoot=jar:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/idea/plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar!/
+FIRST_OR_NULL_BINDING library=true identity=canonical-signature-sha256-v1|89eb817fb2a84e662aa1a766097e194fdac214f8031f7bf42776bc675f4d5550 callable=kotlin.collections.firstOrNull receiver=Present(type=CanonicalCompilerType(value=kotlin/collections/List<T>)) parameterCount=0 contextCount=0 typeParameters=1
+FIRST_OR_NULL_NATIVE variant=OBSERVED transfers=[SOURCE_CALL_ENTRY] causes=[] work=2
+FIRST_OR_NULL_TARGET range=ExactDeclarationTextRange(startInclusive=22846, endExclusive=22929) owner=canonical-signature-sha256-v1|89eb817fb2a84e662aa1a766097e194fdac214f8031f7bf42776bc675f4d5550 body=canonical-signature-sha256-v1|89eb817fb2a84e662aa1a766097e194fdac214f8031f7bf42776bc675f4d5550 path=[ANY_ELEMENT] role=FORMAL:Receiver(kind=EXTENSION) predicateCount=0 frames=[ExactDeclarationTextRange(startInclusive=939, endExclusive=967)]
+FIRST_OR_NULL_EXPECTED row=ORIGINAL_ANY_ELEMENT condition=FIRST_ELEMENT_EXISTS result=SELECTED:ExactDeclarationTextRange(startInclusive=939, endExclusive=967) suffix=WHOLE addedNonNull=false model_assertion=NOT_RUN
+FIRST_OR_NULL_SCOPE kind=SUPPLEMENTAL_POSITION sourcePolicy=PRODUCTION_ONLY libraryPolicy=INCLUDE original_S2=UNCHANGED
+FIRST_OR_NULL_BINDING library=false identity=canonical-signature-sha256-v1|832d7f50b7644a85907a7135b6dc04af44b57ee509899fb5dff899b687730f86 callable=fixture.controls.firstelement.firstOrNull receiver=Present(type=CanonicalCompilerType(value=kotlin/collections/List<kotlin/String>)) parameterCount=0 contextCount=0 typeParameters=0
+FIRST_OR_NULL_NATIVE variant=OBSERVED transfers=[SOURCE_CALL_ENTRY] causes=[] work=2
+FIRST_OR_NULL_TARGET range=ExactDeclarationTextRange(startInclusive=39, endExclusive=97) owner=canonical-signature-sha256-v1|832d7f50b7644a85907a7135b6dc04af44b57ee509899fb5dff899b687730f86 body=canonical-signature-sha256-v1|832d7f50b7644a85907a7135b6dc04af44b57ee509899fb5dff899b687730f86 path=[ELEMENT:0] role=FORMAL:Receiver(kind=EXTENSION) predicateCount=0 frames=[ExactDeclarationTextRange(startInclusive=161, endExclusive=181)]
+FIRST_OR_NULL_NATIVE variant=OBSERVED transfers=[] causes=[] work=2
+FIRST_OR_NULL_EXPECTED row=SOURCE_SAME_NAME condition=FORBIDDEN_SOURCE_CALLABLE result=NO_APPLICATION suffix=WHOLE addedNonNull=false model_assertion=NOT_RUN
+]]></system-out>
+  <system-err><![CDATA[[   1279]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1279]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

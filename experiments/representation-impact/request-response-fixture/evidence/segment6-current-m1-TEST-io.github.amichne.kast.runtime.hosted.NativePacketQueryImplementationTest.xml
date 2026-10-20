@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.runtime.hosted.NativePacketQueryImplementationTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T19:42:19.772Z" hostname="Austins-MacBook-Pro.local" time="8.715">
+  <properties/>
+  <testcase name="testInterfaceConstructorOutgoingKeepsTheConcreteTargetThroughRetention" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryImplementationTest" time="7.609"/>
+  <testcase name="testInterfaceIncomingReturnKeepsTheConcreteTargetThroughRetention" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryImplementationTest" time="1.094"/>
+  <system-out><![CDATA[PACKET_QUERY_CAPTURE outgoing=true nativeFlowReads=12 retainedReadDelta=0 paths=1
+PACKET_QUERY_PATH index=0 steps=11 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_InterfaceConstructorOutgoingKeepsTheConcreteTargetThroughRetention_3KyMQcXViOe0HCPOlxKIdXRdEWp/src/fixture/variants/v1/V1.kt range=786:797 role=Argument pathDepth=1 terminal=FLOW:EXTERNAL_CALL evidence=ImplementationDispatch
+PACKET_QUERY_CAPTURE outgoing=false nativeFlowReads=14 retainedReadDelta=0 paths=1
+PACKET_QUERY_PATH index=0 steps=13 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_InterfaceIncomingReturnKeepsTheConcreteTargetThroughRetention_3KyMRj9mfDytBN9AZytcn6LYVfQ/src/fixture/variants/v1/V1.kt range=1102:1138 role=Return pathDepth=1 terminal=SUPPORTED_DOMAIN_END
+]]></system-out>
+  <system-err><![CDATA[[   1498]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1498]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

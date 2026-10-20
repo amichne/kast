@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-20T01:40:04.161Z" hostname="Austins-MacBook-Pro.local" time="0.009">
+  <properties/>
+  <testcase name="foreign basis cannot enter a field path call frame or value state()" classname="io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTest" time="0.001"/>
+  <testcase name="direct occurrence evidence cannot forge field reads or constructor storage()" classname="io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTest" time="0.001"/>
+  <testcase name="source return rejects a changed field or unconsumed frame()" classname="io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTest" time="0.001"/>
+  <testcase name="two calls to one mapper cannot consume each others return()" classname="io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTest" time="0.0"/>
+  <testcase name="direct occurrence evidence cannot forge source call entry or return()" classname="io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTest" time="0.003"/>
+  <testcase name="source entry rejects a changed field or another entered invocation()" classname="io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTest" time="0.0"/>
+  <testcase name="eight field and element segments fit while the ninth rejects()" classname="io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTest" time="0.0"/>
+  <testcase name="source return preserves its field path and consumes exactly its own frame()" classname="io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTest" time="0.001"/>
+  <testcase name="source entry preserves its field path and the exact entered invocation()" classname="io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTest" time="0.0"/>
+  <testcase name="same typed request fields preserve separate declaration identity()" classname="io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

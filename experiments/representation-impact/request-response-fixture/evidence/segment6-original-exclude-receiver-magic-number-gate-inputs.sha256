@@ -1,0 +1,3 @@
+d03d51cf24473cbafaffb6f7928b04cf40e065d4aa7b24cfc87fe589313411fa  experiments/representation-impact/request-response-fixture/evidence/segment6-original-exclude-reviewed-NativePacketReviewedReceiverSource.kt.txt
+7a5b8f3ee8f4a92d25359fa2e85a4b766d7ce6f580656c30525a9bde894c69f3  experiments/representation-impact/request-response-fixture/evidence/segment6-original-exclude-receiver-magic-number-gate.log
+88a756760327f7cf6b5e4916f0f07475ad2cbf79526db7667ee39dc3737e716a  experiments/representation-impact/request-response-fixture/evidence/segment6-original-exclude-receiver-magic-number-detekt.xml

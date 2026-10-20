@@ -19,6 +19,8 @@ import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryCountDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.toContract
 import io.github.amichne.kast.protocol.wire.presentation.QueryResultItemCliDocument
 import io.github.amichne.kast.protocol.wire.presentation.toCliDocument
 import kotlinx.serialization.json.Json

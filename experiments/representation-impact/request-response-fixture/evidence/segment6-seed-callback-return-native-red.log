@@ -1,0 +1,128 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Calculating task graph as no cached configuration is available for tasks: :relation:intellij:nativeFixtureTest --tests *NativePacketSeedCallbackReturnTest
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :kernel:compileJava NO-SOURCE
+> Task :protocol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+> Task :protocol:contract:compileKotlin UP-TO-DATE
+> Task :protocol:contract:compileJava NO-SOURCE
+> Task :relation:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:contract:compileKotlin UP-TO-DATE
+> Task :relation:contract:compileJava NO-SOURCE
+> Task :relation:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:intellij:extractRelationKotlinPlugin UP-TO-DATE
+> Task :workspace:intellij-read:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:intellij-read:extractWorkspaceReadIdeaDistribution UP-TO-DATE
+> Task :workspace:intellij-read:compileKotlin UP-TO-DATE
+> Task :workspace:intellij-read:compileJava NO-SOURCE
+> Task :relation:intellij:compileKotlin UP-TO-DATE
+> Task :relation:intellij:compileJava NO-SOURCE
+> Task :relation:intellij:processResources NO-SOURCE
+> Task :relation:intellij:classes UP-TO-DATE
+> Task :relation:intellij:jar UP-TO-DATE
+> Task :kernel:processResources NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar UP-TO-DATE
+> Task :protocol:contract:processResources UP-TO-DATE
+> Task :protocol:contract:classes UP-TO-DATE
+> Task :protocol:contract:jar UP-TO-DATE
+> Task :relation:contract:processResources NO-SOURCE
+> Task :relation:contract:classes UP-TO-DATE
+> Task :relation:contract:jar UP-TO-DATE
+> Task :relation:intellij:extractNativeTestIdea UP-TO-DATE
+
+> Task :relation:intellij:compileNativeTestKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketSeedCallbackReturnFacts.kt:35:20 'static fun <T : Any!, E : Throwable!> compute(p0: ThrowableComputable<T!, E!>): T!' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketSeedCallbackReturnFacts.kt:119:28 'interface KaSimpleFunctionCall : KaFunctionCall<KaFunctionSymbol>' is deprecated. Use 'KaFunctionCall' instead.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketSeedCallbackReturnFacts.kt:119:57 'val isImplicitInvoke: Boolean' is deprecated. Check whether the call is instance of the 'KaImplicitInvokeCall' instead.
+
+> Task :relation:intellij:compileNativeTestJava NO-SOURCE
+> Task :relation:intellij:detektNativeTest
+> Task :relation:intellij:processNativeTestResources UP-TO-DATE
+> Task :relation:intellij:nativeTestClasses UP-TO-DATE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar UP-TO-DATE
+> Task :workspace:intellij-read:processResources NO-SOURCE
+> Task :workspace:intellij-read:classes UP-TO-DATE
+> Task :workspace:intellij-read:jar UP-TO-DATE
+Oct 20, 2026 3:43:45 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: Index dispose started
+
+> Task :relation:intellij:nativeFixtureTest
+
+NativePacketSeedCallbackReturnTest > testOriginalS2EmptyStackReturnReachesOnlyTheActualBuiltinResultWithItsSupplierFrame FAILED
+    junit.framework.AssertionFailedError: The original S2 anonymous Return1029:1057 needs its actual builtin result872:897. Causes=[UNSUPPORTED_RETURN]. Later sequential/getOffer return=NOT_REACHED expected:<1> but was:<0>
+        at app//junit.framework.Assert.fail(Assert.java:57)
+        at app//junit.framework.Assert.failNotEquals(Assert.java:329)
+        at app//junit.framework.Assert.assertEquals(Assert.java:78)
+        at app//junit.framework.Assert.assertEquals(Assert.java:234)
+        at app//junit.framework.TestCase.assertEquals(TestCase.java:377)
+        at app//io.github.amichne.kast.relation.intellij.NativePacketSeedCallbackReturnTest.testOriginalS2EmptyStackReturnReachesOnlyTheActualBuiltinResultWithItsSupplierFrame(NativePacketSeedCallbackReturnTest.kt:34)
+
+Oct 20, 2026 3:43:45 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: StubIndexExtension-s were unloaded
+Oct 20, 2026 3:43:45 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: Start shutting down /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/system/index/rep.names
+Oct 20, 2026 3:43:45 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: Finished shutting down /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/system/index/rep.names
+Oct 20, 2026 3:43:45 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: Index dispose completed in 160ms.
+Oct 20, 2026 3:43:45 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: VFS disconnect started
+Oct 20, 2026 3:43:45 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: VFS closing
+Oct 20, 2026 3:43:45 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: VFS disconnect completed in 1 ms.
+
+> Task :relation:intellij:nativeFixtureTest FAILED
+
+2 tests completed, 1 failed
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-20-15-43-46-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':relation:intellij:nativeFixtureTest'.
+> There were failing tests. See the report at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/reports/tests/nativeFixtureTest/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 49s
+32 actionable tasks: 3 executed, 29 up-to-date
+Configuration cache entry stored.

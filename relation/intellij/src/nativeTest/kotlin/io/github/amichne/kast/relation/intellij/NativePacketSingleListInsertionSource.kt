@@ -1,0 +1,158 @@
+package io.github.amichne.kast.relation.intellij
+
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
+import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.RelationMeaning
+import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.relation.contract.RelationSearchBoundary
+import io.github.amichne.kast.relation.contract.ValueCallTarget
+import io.github.amichne.kast.relation.contract.ValueExecutionBody
+import io.github.amichne.kast.relation.contract.ValueFlowRead
+import io.github.amichne.kast.relation.contract.ValueFlowRequest
+import io.github.amichne.kast.relation.contract.ValueFlowStep
+import io.github.amichne.kast.relation.contract.ValueProducerSeedRead
+import io.github.amichne.kast.relation.contract.ValueRole
+import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.relation.contract.ValueTransferKind
+import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
+import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
+import io.github.amichne.kast.symbol.contract.SymbolSearchScope
+import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
+import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertTrue
+import kotlinx.coroutines.runBlocking
+
+/** The original nested constructor reaches the real Echo destination under the combined source domain. */
+internal class NativePacketSingleListInsertionSource(
+    private val project: Project,
+    private val base: VirtualFile,
+    private val fixture: NativePacketValueFixture,
+) {
+    fun originalEchoDestination(): ValueSite {
+        val request =
+            fixture.selection(
+                PacketDeclaration(FEATURE, "OffersProcessorImpl", "getOffer"),
+                "ClientRequest",
+                PacketDeclaration(CLIENT, "ClientRequest", "<init>"),
+            )
+        val seeded = runBlocking {
+            IntellijValueFlowCompilerAdapter()
+                .seed(project = project, current = fixture.lease, request = request, model = fixture.model)
+        }
+        assertTrue(
+            "The original S1 constructor must admit before insertion assertions",
+            seeded is ValueProducerSeedRead.Seeded,
+        )
+        var source = (seeded as ValueProducerSeedRead.Seeded).seed.site
+        assertEquals(request.anchor, source.range)
+        assertTrue(source.executionOwner.body is ValueExecutionBody.Anonymous)
+        for (kind in
+            listOf(ValueTransferKind.LOCAL_BINDING, ValueTransferKind.LOCAL_READ, ValueTransferKind.ARGUMENT)) {
+            source = next(source, kind, RelationSearchBoundary.RETAINED_SUBJECT)
+        }
+        val echo = fixture.callableDeclaration(PacketDeclaration(ECHO, "EchoOffersClient", "readOffers"))
+        val dispatch = read(source)
+        val formal =
+            dispatch.transfers
+                .single { transfer ->
+                    transfer.kind == ValueTransferKind.SOURCE_CALL_ENTRY &&
+                        transfer.target.enclosing.compilerIdentity == echo.compilerIdentity
+                }
+                .target
+        assertTrue(formal.callStack.frames.last().target is ValueCallTarget.Implementation)
+        val requestRead = next(formal, ValueTransferKind.LOCAL_READ, RelationSearchBoundary.RETAINED_SUBJECT)
+        val destination = next(requestRead, ValueTransferKind.FIELD_READ, RelationSearchBoundary.RETAINED_SUBJECT)
+        val expected =
+            fixture.argumentExpression(
+                PacketDeclaration(ECHO, "EchoOffersClient", "readOffers"),
+                "listOf",
+                "request.destination",
+            )
+        assertEquals(expected.anchor, destination.range)
+        assertEquals(formal.callStack, destination.callStack)
+        assertEquals(formal.predicates, destination.predicates)
+        return destination
+    }
+
+    fun expression(owner: PacketDeclaration, text: String): PacketExpression =
+        fixture.argumentExpression(owner, "listOf", text)
+
+    fun resolve(input: PacketExpression): ValueSite {
+        val result = runBlocking {
+            IntellijValueFlowCompilerAdapter()
+                .resolve(
+                    project = project,
+                    current = fixture.lease,
+                    enclosing = input.enclosing,
+                    anchor = input.anchor,
+                    domain =
+                        RelationRequest.start(
+                            subject = RelationEndpoint.subject(input.enclosing),
+                            meaning = RelationMeaning.References,
+                            budget = fixture.budget,
+                            boundary = libraries,
+                        ),
+                    model = fixture.model,
+                )
+        }
+        assertTrue("The supplemental exact compiler position must resolve", result is ValueSiteResolution.Found)
+        return (result as ValueSiteResolution.Found).site
+    }
+
+    fun argument(source: ValueSite, boundary: RelationSearchBoundary): ValueSite =
+        next(source, ValueTransferKind.ARGUMENT, boundary).also { argument ->
+            assertTrue(argument.role is ValueRole.Argument)
+            assertEquals(0, (argument.role as ValueRole.Argument).position.value)
+            assertEquals(source.valuePath, argument.valuePath)
+            assertEquals(source.callStack, argument.callStack)
+            assertEquals(source.predicates, argument.predicates)
+        }
+
+    fun facts(input: PacketExpression, expectedVararg: Boolean = false, sourceDefined: Boolean = false) =
+        NativePacketSingleListInsertionFacts(project, base).read(input, expectedVararg, sourceDefined)
+
+    fun read(
+        source: ValueSite,
+        boundary: RelationSearchBoundary = RelationSearchBoundary.RETAINED_SUBJECT,
+    ): ValueFlowStep {
+        val result = runBlocking {
+            IntellijValueFlowCompilerAdapter()
+                .read(
+                    project = project,
+                    current = fixture.lease,
+                    request = ValueFlowRequest(source, fixture.budget, boundary),
+                    model = fixture.model,
+                )
+        }
+        assertTrue("The real native read must reach its model assertion", result is ValueFlowRead.Observed)
+        return (result as ValueFlowRead.Observed).step
+    }
+
+    private fun next(source: ValueSite, kind: ValueTransferKind, boundary: RelationSearchBoundary): ValueSite {
+        val step = read(source, boundary)
+        val selected = step.transfers.filter { it.kind == kind }
+        assertEquals(
+            "The source prefix needs $kind at ${source.range}. Causes=${step.obligations.map { it.cause }}",
+            1,
+            selected.size,
+        )
+        return selected.single().target
+    }
+
+    companion object {
+        const val CONTROL = "src/main/kotlin/fixture/controls/SingleListInsertionControls.kt"
+        const val ECHO = "src/test/kotlin/fixture/client/EchoOffersClient.kt"
+        const val CLIENT = NativePacketCompositeSuccessSource.CLIENT
+        const val FEATURE = "src/main/kotlin/fixture/feature/OffersProcessor.kt"
+        val libraries =
+            RelationSearchBoundary.Explicit(
+                SymbolSearchScope.Workspace(
+                    SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+                    SymbolGeneratedSourcePolicy.EXCLUDE,
+                    SymbolLibraryPolicy.INCLUDE,
+                )
+            )
+        val ECHO_PATHS = NativePacketCompositeSuccessSource.PATHS + ECHO
+    }
+}

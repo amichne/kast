@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryImpactPredicateRetentionTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T04:13:02.681Z" hostname="Austins-MacBook-Pro.local" time="0.109">
+  <properties/>
+  <testcase name="implicit formal storage preserves its anonymous execution and honest origin()" classname="io.github.amichne.kast.query.contract.QueryImpactPredicateRetentionTest" time="0.085"/>
+  <testcase name="a native predicate selection remains exact rather than selecting the unguarded occurrence()" classname="io.github.amichne.kast.query.contract.QueryImpactPredicateRetentionTest" time="0.006"/>
+  <testcase name="site storage visits the exact tested value and resolved class proof()" classname="io.github.amichne.kast.query.contract.QueryImpactPredicateRetentionTest" time="0.006"/>
+  <testcase name="site identity storage visits the nonnull predicate independently of the enclosing site()" classname="io.github.amichne.kast.query.contract.QueryImpactPredicateRetentionTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

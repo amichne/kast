@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryImpactPathProjectionTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.352Z" hostname="Austins-MacBook-Pro.local" time="0.01">
+  <properties/>
+  <testcase name="cycle and checkpoint stops retain positive ordered route and exact capacity witnesses()" classname="io.github.amichne.kast.query.protocol.QueryImpactPathProjectionTest" time="0.002"/>
+  <testcase name="modeled boundary keeps two bases obligations and unknown current without erasing origin()" classname="io.github.amichne.kast.query.protocol.QueryImpactPathProjectionTest" time="0.002"/>
+  <testcase name="supported terminal projects exact original domain and measured work without complete field()" classname="io.github.amichne.kast.query.protocol.QueryImpactPathProjectionTest" time="0.0"/>
+  <testcase name="rejected reads preserve every native and contract cause with exact site and requested domain()" classname="io.github.amichne.kast.query.protocol.QueryImpactPathProjectionTest" time="0.001"/>
+  <testcase name="consumer projection retains different current state and complete expected rule separately()" classname="io.github.amichne.kast.query.protocol.QueryImpactPathProjectionTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

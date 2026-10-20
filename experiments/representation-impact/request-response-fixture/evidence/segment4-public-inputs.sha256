@@ -1,0 +1,5 @@
+00542adf337fcd26b9d76b0c6962e58fb778f1006e773419bb3cb9602bf8f5e1  app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
+b9e4f8a75fdb50625f7c5af051eb4ae728547ffae6a234db37ed0542d8cf8179  app-server/src/main/resources/io/github/amichne/kast/appserver/query/query_symbols.parameters.json
+ef1b7ed469c8cd96e7c0d98b609fd76072f2369766eb17d4a3446177ce1e38b7  app-server/src/main/resources/io/github/amichne/kast/appserver/query/query_symbols.openai-parameters.json
+5abcb61e7d982ff51017b354d399933b19882cb348edeacd0383bff3af92ee3e  packaging/test-public-query-generation.py
+5b59d9b9a46c616e81989705858c2b6451f794731e19a690612bfeaa8f890227  app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicImpactCallFrameContractTest.kt

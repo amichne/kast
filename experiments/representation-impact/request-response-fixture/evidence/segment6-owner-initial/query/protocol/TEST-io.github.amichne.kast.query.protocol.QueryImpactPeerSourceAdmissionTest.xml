@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryImpactPeerSourceAdmissionTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.381Z" hostname="Austins-MacBook-Pro.local" time="0.006">
+  <properties/>
+  <testcase name="completed exact peer is bound once while all source work stays on source authority()" classname="io.github.amichne.kast.query.protocol.QueryImpactPeerSourceAdmissionTest" time="0.002"/>
+  <testcase name="missing extra duplicate or stale peer proof rejects before source native work()" classname="io.github.amichne.kast.query.protocol.QueryImpactPeerSourceAdmissionTest" time="0.002"/>
+  <testcase name="peer storage reservation rejects before source seeds consume the original grant()" classname="io.github.amichne.kast.query.protocol.QueryImpactPeerSourceAdmissionTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

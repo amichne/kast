@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryTextMatchProjectionTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.752Z" hostname="Austins-MacBook-Pro.local" time="0.009">
+  <properties/>
+  <testcase name="lexical match projects beside a reusable exact ref and never becomes occurrence evidence()" classname="io.github.amichne.kast.query.protocol.QueryTextMatchProjectionTest" time="0.003"/>
+  <testcase name="domain match capacity fits the canonical wire evidence collection()" classname="io.github.amichne.kast.query.protocol.QueryTextMatchProjectionTest" time="0.0"/>
+  <testcase name="text result read retains lexical evidence and exact ref without another semantic execution()" classname="io.github.amichne.kast.query.protocol.QueryTextMatchProjectionTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

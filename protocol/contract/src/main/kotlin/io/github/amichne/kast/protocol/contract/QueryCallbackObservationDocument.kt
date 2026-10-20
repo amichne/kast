@@ -145,6 +145,7 @@ enum class QueryCallbackFlowCauseDocument {
     TIME_LIMIT_REACHED,
     RESULT_LIMIT_REACHED,
     BYTE_LIMIT_REACHED,
+    PROOF_LIMIT_REACHED,
 }
 
 @Serializable
@@ -167,6 +168,7 @@ enum class QueryCallbackFlowFailureDocument {
     INVALID_SCAN_PROOF,
     INVALID_FORWARDING_PATH,
     INVALID_DEPENDENCY_CONTRACT,
+    PROOF_LIMIT_REACHED,
 }
 
 @Serializable

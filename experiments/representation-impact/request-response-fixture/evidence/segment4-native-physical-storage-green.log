@@ -1,0 +1,40 @@
+Reusing configuration cache.
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:contract:processResources NO-SOURCE
+> Task :kernel:processResources NO-SOURCE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :relation:contract:processTestResources NO-SOURCE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :workspace:contract:processTestFixturesResources NO-SOURCE
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :kernel:compileJava NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar UP-TO-DATE
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar UP-TO-DATE
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+> Task :workspace:contract:compileTestFixturesKotlin UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesJava NO-SOURCE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :workspace:contract:testFixturesClasses UP-TO-DATE
+> Task :workspace:contract:testFixturesJar UP-TO-DATE
+> Task :relation:contract:compileKotlin
+> Task :relation:contract:compileJava NO-SOURCE
+> Task :relation:contract:classes UP-TO-DATE
+> Task :relation:contract:jar
+> Task :relation:contract:compileTestKotlin
+> Task :relation:contract:compileTestJava NO-SOURCE
+> Task :relation:contract:testClasses UP-TO-DATE
+> Task :relation:contract:test
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-20-03-11-13-0.txt
+
+BUILD SUCCESSFUL in 2s
+12 actionable tasks: 4 executed, 8 up-to-date
+Configuration cache entry reused.

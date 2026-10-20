@@ -1,0 +1,207 @@
+package io.github.amichne.kast.query.protocol
+
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceWireDocument
+import io.github.amichne.kast.protocol.contract.ImpactInsertedElementDocument
+import io.github.amichne.kast.protocol.contract.ImpactLibraryArtifactDocument
+import io.github.amichne.kast.protocol.contract.ImpactLibraryDigestDocument
+import io.github.amichne.kast.protocol.contract.ImpactLibraryModuleDocument
+import io.github.amichne.kast.protocol.contract.ImpactLibraryOriginDocument
+import io.github.amichne.kast.protocol.contract.ImpactLibraryVersionDocument
+import io.github.amichne.kast.protocol.contract.ImpactModelEndpointDocument
+import io.github.amichne.kast.protocol.contract.ImpactModelExecutionDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedArtifactDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedLibraryBindingDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedValueModelDocument
+import io.github.amichne.kast.protocol.contract.ImpactSelectedElementDocument
+import io.github.amichne.kast.protocol.contract.ImpactValueModelApplicationDocument
+import io.github.amichne.kast.protocol.contract.ImpactValueModelConditionDocument
+import io.github.amichne.kast.protocol.contract.QueryExcludedCompilerTargetWireDocument
+import io.github.amichne.kast.protocol.contract.SourceRangeWireDocument
+import io.github.amichne.kast.protocol.contract.callbackWire
+import io.github.amichne.kast.protocol.contract.toWireDocument
+import io.github.amichne.kast.relation.contract.LibraryArtifactObservation
+import io.github.amichne.kast.relation.contract.LibraryModelDeclarationOrigin
+import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.ReviewedLibraryArtifact
+import io.github.amichne.kast.relation.contract.ReviewedLibraryBinding
+import io.github.amichne.kast.relation.contract.ReviewedValueModel
+import io.github.amichne.kast.relation.contract.SelectedElementCondition
+import io.github.amichne.kast.relation.contract.ValueExecutionBody
+import io.github.amichne.kast.relation.contract.ValueExecutionOwner
+import io.github.amichne.kast.relation.contract.ValueModelApplication
+
+internal fun ValueModelApplication.impactDocument(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactValueModelApplicationDocument> =
+    source
+        .impactDocument(references)
+        .impactZip(target.impactDocument(references))
+        .impactZip(binding.impactDocument(references))
+        .impactThen { (sites, binding) ->
+            when (this) {
+                is ValueModelApplication.ScopeCallbackInput ->
+                    frame.impactDocument(references).impactMap { frame ->
+                        ImpactValueModelApplicationDocument.ScopeCallbackInput(
+                            sites.first,
+                            sites.second,
+                            binding,
+                            frame,
+                        )
+                    }
+                is ValueModelApplication.ScopeCallbackReturn ->
+                    frame.impactDocument(references).impactMap { frame ->
+                        ImpactValueModelApplicationDocument.ScopeCallbackReturn(
+                            sites.first,
+                            sites.second,
+                            binding,
+                            frame,
+                        )
+                    }
+                is ValueModelApplication.CollectionInsertion ->
+                    ImpactInsertedElementDocument.parse(index.value)
+                        .impactFailure(ImpactPathProjectionFailure::ValueModel)
+                        .impactMap { index ->
+                            ImpactValueModelApplicationDocument.CollectionInsertion(
+                                sites.first,
+                                sites.second,
+                                binding,
+                                index,
+                            )
+                        }
+                is ValueModelApplication.CollectionSelection ->
+                    condition.impactDocument(references).impactMap { condition ->
+                        ImpactValueModelApplicationDocument.CollectionSelection(
+                            sites.first,
+                            sites.second,
+                            binding,
+                            condition,
+                        )
+                    }
+            }
+        }
+
+private fun SelectedElementCondition.impactDocument(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactValueModelConditionDocument.SelectedElement> =
+    receiver
+        .impactDocument(references)
+        .impactZip(result.impactDocument(references))
+        .impactZip(
+            ImpactSelectedElementDocument.parse(index.value).impactFailure(ImpactPathProjectionFailure::ValueModel)
+        )
+        .impactMap { (sites, index) ->
+            ImpactValueModelConditionDocument.SelectedElement(sites.first, sites.second, index)
+        }
+
+internal fun ReviewedLibraryBinding.impactDocument(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactReviewedLibraryBindingDocument> {
+    val call =
+        invocation.enclosing
+            .impactModelEndpoint()
+            .impactZip(invocation.impactOccurrenceDocument())
+            .impactZip(invocation.callable.impactModelEndpoint())
+            .impactZip(invocation.executionOwner.impactModelExecution(references))
+    return call.impactZip(model.impactDocument().impactZip(artifact.impactDocument())).impactMap { (call, review) ->
+        ImpactReviewedLibraryBindingDocument(
+            call.first.first.first,
+            call.first.first.second,
+            call.first.second,
+            call.second,
+            review.first,
+            review.second,
+        )
+    }
+}
+
+internal fun RelationEndpoint.impactModelEndpoint(): ImpactProjected<ImpactModelEndpointDocument> {
+    val domain =
+        relationDomainDocument(scope, constraints)
+            ?: return Refinement.Rejected(ImpactPathProjectionFailure.DOMAIN_PROJECTION_REJECTED)
+    val signature =
+        signature.protocolDocument()?.toWireDocument()
+            ?: return Refinement.Rejected(ImpactPathProjectionFailure.DOMAIN_PROJECTION_REJECTED)
+    val compiler =
+        QueryExcludedCompilerTargetWireDocument(
+            file.stableValue,
+            SourceRangeWireDocument(range.startInclusive, range.endExclusive),
+            name.value,
+            kind.protocolKind().toWireDocument(),
+            CompilerSymbolEvidenceWireDocument(compilerIdentity.value, signature),
+        )
+    return impactDeclaration().impactZip(fingerprint.value.impactText()).impactMap { (declaration, fingerprint) ->
+        ImpactModelEndpointDocument(declaration, compiler, domain, fingerprint)
+    }
+}
+
+internal fun ValueExecutionOwner.impactModelExecution(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactModelExecutionDocument> =
+    enclosing.impactModelEndpoint().impactThen { enclosing ->
+        when (val body = body) {
+            ValueExecutionBody.Declaration -> Refinement.Refined(ImpactModelExecutionDocument.Declaration(enclosing))
+            is ValueExecutionBody.Anonymous -> {
+                val projected =
+                    CallbackProjection(references, this.enclosing.lease).anonymous(body.callable)?.callbackWire()
+                if (projected == null) Refinement.Rejected(ImpactPathProjectionFailure.DOMAIN_PROJECTION_REJECTED)
+                else Refinement.Refined(ImpactModelExecutionDocument.Anonymous(enclosing, projected))
+            }
+        }
+    }
+
+internal fun ReviewedValueModel.impactDocument(): ImpactProjected<ImpactReviewedValueModelDocument> {
+    val signature =
+        callable.protocolDocument()?.toWireDocument()
+            ?: return Refinement.Rejected(ImpactPathProjectionFailure.DOMAIN_PROJECTION_REJECTED)
+    return reference.impactDocument().impactZip(artifact.impactDocument()).impactMap { (reference, artifact) ->
+        when (this) {
+            ReviewedValueModel.FirstOrNull ->
+                ImpactReviewedValueModelDocument.FirstOrNull(reference, artifact, signature)
+            ReviewedValueModel.Let -> ImpactReviewedValueModelDocument.Let(reference, artifact, signature)
+            ReviewedValueModel.SingleElementListOf ->
+                ImpactReviewedValueModelDocument.SingleElementListOf(reference, artifact, signature)
+        }
+    }
+}
+
+private fun ReviewedLibraryArtifact.impactDocument(): ImpactProjected<ImpactReviewedArtifactDocument> =
+    ImpactLibraryDigestDocument.parse(binaryDigest.value)
+        .impactFailure(ImpactPathProjectionFailure::ValueModel)
+        .impactZip(
+            ImpactLibraryDigestDocument.parse(sourceDigest.value).impactFailure(ImpactPathProjectionFailure::ValueModel)
+        )
+        .impactZip(
+            ImpactLibraryVersionDocument.parse(version.value).impactFailure(ImpactPathProjectionFailure::ValueModel)
+        )
+        .impactMap { (digests, version) -> ImpactReviewedArtifactDocument(digests.first, digests.second, version) }
+
+private fun LibraryArtifactObservation.impactDocument(): ImpactProjected<ImpactLibraryArtifactDocument> {
+    val labels =
+        root.value
+            .impactText()
+            .impactZip(
+                ImpactLibraryModuleDocument.parse(moduleName.value)
+                    .impactFailure(ImpactPathProjectionFailure::ValueModel)
+            )
+    val content =
+        ImpactLibraryDigestDocument.parse(binaryDigest.value)
+            .impactFailure(ImpactPathProjectionFailure::ValueModel)
+            .impactZip(
+                ImpactLibraryVersionDocument.parse(version.value).impactFailure(ImpactPathProjectionFailure::ValueModel)
+            )
+    return basis.impactDocument().impactZip(labels).impactZip(content).impactMap { (identity, content) ->
+        ImpactLibraryArtifactDocument(
+            identity.first,
+            identity.second.first,
+            identity.second.second,
+            content.first,
+            content.second,
+            when (origin) {
+                LibraryModelDeclarationOrigin.SOURCE -> ImpactLibraryOriginDocument.SOURCE
+                LibraryModelDeclarationOrigin.LIBRARY -> ImpactLibraryOriginDocument.LIBRARY
+                LibraryModelDeclarationOrigin.UNSUPPORTED -> ImpactLibraryOriginDocument.UNSUPPORTED
+            },
+        )
+    }
+}

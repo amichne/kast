@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.QueryExecutionContinuationTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:20.766Z" hostname="Austins-MacBook-Pro.local" time="0.013">
+  <properties/>
+  <testcase name="resume encodes only its action and opaque continuation string()" classname="io.github.amichne.kast.protocol.contract.QueryExecutionContinuationTest" time="0.005"/>
+  <testcase name="pipeline and output continuation families cannot be interchanged()" classname="io.github.amichne.kast.protocol.contract.QueryExecutionContinuationTest" time="0.0"/>
+  <testcase name="checkpoint variants keep typed families and string tokens()" classname="io.github.amichne.kast.protocol.contract.QueryExecutionContinuationTest" time="0.008"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

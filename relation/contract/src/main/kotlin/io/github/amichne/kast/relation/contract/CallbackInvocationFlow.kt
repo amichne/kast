@@ -28,6 +28,7 @@ enum class CallbackInvocationFlowCause {
     TIME_LIMIT_REACHED,
     RESULT_LIMIT_REACHED,
     BYTE_LIMIT_REACHED,
+    PROOF_LIMIT_REACHED,
 }
 
 sealed interface CallbackBindingEvidence {
@@ -92,6 +93,8 @@ private constructor(
         additional: List<CallbackBodyBinding>
     ): Refinement<CallbackInvocationFlow, CallbackInvocationFlowFailure> {
         val combined = ownerBindings + additional
+        if (!CallbackValueProofLimits.admits(invocations, combined, forwarding))
+            return Refinement.Rejected(CallbackInvocationFlowFailure.PROOF_LIMIT_REACHED)
         val causes = obligations + combined.flatMap { it.obligations }
         if (
             scan == CallbackInvocationScan.EXHAUSTIVE &&
@@ -159,6 +162,8 @@ private constructor(
             scan: CallbackInvocationScan = CallbackInvocationScan.INCOMPLETE,
             forwarding: CallbackForwardingEvidence = CallbackForwardingEvidence.InvocationRoutes,
         ): Refinement<CallbackInvocationFlow, CallbackInvocationFlowFailure> {
+            if (!CallbackValueProofLimits.admits(invocations, forwarding = forwarding))
+                return Refinement.Rejected(CallbackInvocationFlowFailure.PROOF_LIMIT_REACHED)
             val admitted = admitCallbackFlowEvidence(basis, body, binding, invocations, obligations)
             when (admitted) {
                 is Refinement.Refined -> Unit
@@ -225,6 +230,7 @@ enum class CallbackInvocationFlowFailure {
     INVALID_SCAN_PROOF,
     INVALID_FORWARDING_PATH,
     INVALID_DEPENDENCY_CONTRACT,
+    PROOF_LIMIT_REACHED,
 }
 
 sealed interface CallbackInvocationFlowRead {

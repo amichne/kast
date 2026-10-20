@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactCollectionInsertionContractTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T19:01:05.214Z" hostname="Austins-MacBook-Pro.local" time="0.14">
+  <properties/>
+  <testcase name="single element insertion encodes index zero without a selection condition()" classname="io.github.amichne.kast.protocol.contract.ImpactCollectionInsertionContractTest" time="0.104"/>
+  <testcase name="unknown insertion kinds and nonzero inserted indices fail typed decoding()" classname="io.github.amichne.kast.protocol.contract.ImpactCollectionInsertionContractTest" time="0.016"/>
+  <testcase name="insertion prepends zero to the complete input path and preserves exact context()" classname="io.github.amichne.kast.protocol.contract.ImpactCollectionInsertionContractTest" time="0.008"/>
+  <testcase name="wrong argument call review and artifact cannot borrow insertion output()" classname="io.github.amichne.kast.protocol.contract.ImpactCollectionInsertionContractTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

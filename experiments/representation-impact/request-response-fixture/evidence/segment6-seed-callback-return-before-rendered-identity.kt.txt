@@ -1,0 +1,192 @@
+@file:OptIn(org.jetbrains.kotlin.analysis.api.KaExperimentalApi::class)
+
+package io.github.amichne.kast.relation.intellij
+
+import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiManager
+import com.intellij.psi.util.PsiTreeUtil
+import io.github.amichne.kast.relation.contract.RelationCallableBody
+import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.SourceLessCallable
+import io.github.amichne.kast.relation.contract.ValueExecutionOwner
+import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
+import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertTrue
+import org.jetbrains.kotlin.analysis.api.KaSession
+import org.jetbrains.kotlin.analysis.api.resolution.KaSimpleFunctionCall
+import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
+import org.jetbrains.kotlin.analysis.api.types.KaClassType
+import org.jetbrains.kotlin.idea.references.KtReference
+import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtFunctionLiteral
+import org.jetbrains.kotlin.psi.KtNamedFunction
+
+/** Actual K2 mapping binds the original literal to its source supplier and real builtin invocation. */
+internal class NativePacketSeedCallbackReturnFacts(private val project: Project, private val base: VirtualFile) {
+    fun read(source: ValueSite): SeedCallbackReturnFacts =
+        ReadAction.compute<SeedCallbackReturnFacts, RuntimeException> {
+            val syntax = syntax()
+            val projection = IntellijK2RelationProjection(project, source.enclosing.lease.workspaceRoot)
+            val caller = endpoint(projection, syntax.caller, source)
+            val supplier = endpoint(projection, syntax.supplier, source)
+            val body =
+                IntellijReadObservation.None.observedAnalyze(syntax.supplied) {
+                    proveSupply(source, syntax)
+                    owner(syntax.supplied, caller)
+                }
+            val builtin = IntellijReadObservation.None.observedAnalyze(syntax.invoked) { proveBuiltin(syntax) }
+            assertTrue(source.executionOwner.hasSameProofAs(body))
+            println(
+                "SEED_CALLBACK_RETURN_K2 body=${range(syntax.supplied)} " +
+                    "supplier=${range(syntax.call.valueInvocationExpression())} " +
+                    "builtin=${range(syntax.invoked.valueInvocationExpression())} " +
+                    "parameter=ACTUAL_SOURCE_BLOCK actualInvoke=BUILTIN_FUNCTION1 normalResult=ACTUAL"
+            )
+            SeedCallbackReturnFacts(
+                caller = caller,
+                supplier = supplier,
+                supplierCall = range(syntax.call.valueInvocationExpression()),
+                body = body,
+                builtin = builtin,
+                invoked = range(syntax.invoked.valueInvocationExpression()),
+            )
+        }
+
+    private fun syntax(): SeedCallbackReturnSyntax {
+        val feature = psi(FEATURE)
+        val caller = functions(feature).single { it.name == "getOffer" && it.hasBody() }
+        val call = calls(caller).single { it.calleeExpression?.text == "sequential" }
+        val supplied = checkNotNull(call.lambdaArguments.single().getLambdaExpression()).functionLiteral
+        val outcome = psi(NativePacketCompositeSuccessSource.OUTCOME)
+        val supplier = functions(outcome).single { it.name == "sequential" }
+        val invoked = calls(supplier).single { it.calleeExpression?.text == "block" }
+        val result = checkNotNull(supplied.bodyExpression).statements.last() as KtCallExpression
+        assertEquals(exact(BODY_START, BODY_END), range(supplied))
+        assertEquals(exact(SUPPLIER_START, BODY_END), range(call.valueInvocationExpression()))
+        assertEquals(exact(RESULT_START, RESULT_END), range(result))
+        assertEquals(exact(INVOKED_START, INVOKED_END), range(invoked.valueInvocationExpression()))
+        return SeedCallbackReturnSyntax(caller, call, supplier, supplied, invoked, result)
+    }
+
+    private fun KaSession.proveSupply(source: ValueSite, syntax: SeedCallbackReturnSyntax) {
+        val call = checkNotNull(syntax.call.resolveCall())
+        val symbol = call.signature.symbol as KaNamedFunctionSymbol
+        assertEquals(KaSymbolOrigin.SOURCE, symbol.origin)
+        assertEquals(KaSymbolModality.FINAL, symbol.modality)
+        assertEquals(syntax.supplier.originalElement, checkNotNull(symbol.psi).originalElement)
+        val formal = symbol.valueParameters.single()
+        val literal = checkNotNull(syntax.call.lambdaArguments.single().getLambdaExpression())
+        assertEquals(formal, call.valueArgumentMapping[literal]?.symbol)
+        assertEquals("block", formal.name.asString())
+        assertEquals(syntax.supplier.valueParameters.single().originalElement, checkNotNull(formal.psi).originalElement)
+        val anonymous = syntax.supplied.symbol
+        assertEquals(KaSymbolOrigin.SOURCE, anonymous.origin)
+        assertTrue(anonymous.valueParameters.isEmpty())
+        val receiver = checkNotNull(anonymous.receiverParameter)
+        assertEquals(KaSymbolOrigin.SOURCE, receiver.origin)
+        assertEquals(
+            "fixture.outcome.OutcomeScope",
+            (receiver.returnType as KaClassType).classId.asSingleFqName().asString(),
+        )
+        assertTrue(syntax.result.isUsedAsResultOfLambda)
+        assertEquals(
+            "fixture.feature.FeatureResponse",
+            (syntax.result.expressionType as KaClassType).classId.asSingleFqName().asString(),
+        )
+        assertEquals(source.range, range(syntax.result))
+    }
+
+    private fun KaSession.proveBuiltin(syntax: SeedCallbackReturnSyntax): SourceLessCallable {
+        val call = checkNotNull(syntax.invoked.resolveCall())
+        assertTrue(call is KaSimpleFunctionCall && call.isImplicitInvoke)
+        val symbol = call.signature.symbol as KaNamedFunctionSymbol
+        assertEquals("kotlin.Function1.invoke", symbol.callableId?.asSingleFqName()?.asString())
+        assertEquals(1, symbol.valueParameters.size)
+        val reference =
+            checkNotNull(syntax.invoked.calleeExpression).references.filterIsInstance<KtReference>().single()
+        assertEquals(syntax.supplier.symbol.valueParameters.single(), reference.resolveToSymbol())
+        return nativeBuiltinCallable(symbol).nativeRefined()
+    }
+
+    private fun KaSession.owner(literal: KtFunctionLiteral, host: RelationEndpoint): ValueExecutionOwner {
+        val symbol = literal.symbol
+        val exact = range(literal)
+        val signature =
+            CanonicalCompilerSignature.function(
+                    rawQualifiedIdentity = RelationCallableBody.Anonymous.sourceIdentity(host.file, exact),
+                    rawReceiverType = symbol.receiverParameter?.returnType?.toString(),
+                    rawContextReceiverTypes = symbol.contextReceivers.map { it.type.toString() },
+                    rawValueParameterTypes = symbol.valueParameters.map { it.returnType.toString() },
+                    rawTypeParameterCount = 0,
+                )
+                .nativeRefined() as CanonicalCompilerSignature.Function
+        val body = RelationCallableBody.Anonymous.fromCompiler(host.file, exact, signature).nativeRefined()
+        return ValueExecutionOwner.fromCompiler(host, body, host.lease.identity).nativeRefined()
+    }
+
+    private fun endpoint(
+        projection: IntellijK2RelationProjection,
+        function: KtNamedFunction,
+        source: ValueSite,
+    ): RelationEndpoint {
+        val actual = projection.project(function) as IntellijRelationDeclarationProjection.Projected
+        return RelationEndpoint.resolve(
+                lease = source.enclosing.lease,
+                scope = source.enclosing.scope,
+                evidence = actual.evidence,
+                constraints = source.enclosing.constraints,
+            )
+            .nativeRefined()
+    }
+
+    private fun psi(path: String): KtFile {
+        val relative = "src/" + path.removePrefix("src/main/kotlin/")
+        return PsiManager.getInstance(project).findFile(checkNotNull(base.findFileByRelativePath(relative))) as KtFile
+    }
+
+    private fun functions(element: com.intellij.psi.PsiElement) =
+        PsiTreeUtil.collectElementsOfType(element, KtNamedFunction::class.java)
+
+    private fun calls(element: com.intellij.psi.PsiElement) =
+        PsiTreeUtil.collectElementsOfType(element, KtCallExpression::class.java)
+
+    private fun exact(start: Int, end: Int) = ExactDeclarationTextRange.parse(start, end).nativeRefined()
+
+    private companion object {
+        const val FEATURE = "src/main/kotlin/fixture/feature/OffersProcessor.kt"
+        const val BODY_START = 677
+        const val BODY_END = 1063
+        const val SUPPLIER_START = 658
+        const val RESULT_START = 1029
+        const val RESULT_END = 1057
+        const val INVOKED_START = 872
+        const val INVOKED_END = 897
+    }
+}
+
+internal data class SeedCallbackReturnFacts(
+    val caller: RelationEndpoint,
+    val supplier: RelationEndpoint,
+    val supplierCall: ExactDeclarationTextRange,
+    val body: ValueExecutionOwner,
+    val builtin: SourceLessCallable,
+    val invoked: ExactDeclarationTextRange,
+)
+
+private data class SeedCallbackReturnSyntax(
+    val caller: KtNamedFunction,
+    val call: KtCallExpression,
+    val supplier: KtNamedFunction,
+    val supplied: KtFunctionLiteral,
+    val invoked: KtCallExpression,
+    val result: KtCallExpression,
+)

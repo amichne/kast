@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.CallbackResultSubjectTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.326Z" hostname="Austins-MacBook-Pro.local" time="0.029">
+  <properties/>
+  <testcase name="another native subject rejects before a source handle request()" classname="io.github.amichne.kast.query.protocol.CallbackResultSubjectTest" time="0.014"/>
+  <testcase name="issued subject keeps the native fingerprint and exact public reference()" classname="io.github.amichne.kast.query.protocol.CallbackResultSubjectTest" time="0.004"/>
+  <testcase name="another read authority rejects before a source handle request()" classname="io.github.amichne.kast.query.protocol.CallbackResultSubjectTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

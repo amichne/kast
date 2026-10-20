@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.DiagnosticNonAdvancingPublicationTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.674Z" hostname="Austins-MacBook-Pro.local" time="0.002">
+  <properties/>
+  <testcase name="unchanged successor rejects with precise evidence and keeps the original parent available()" classname="io.github.amichne.kast.query.protocol.DiagnosticNonAdvancingPublicationTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

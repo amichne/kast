@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.SourceReadSimpleRequestTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:20.844Z" hostname="Austins-MacBook-Pro.local" time="0.038">
+  <properties/>
+  <testcase name="short request rejects unchecked legacy selector()" classname="io.github.amichne.kast.protocol.contract.SourceReadSimpleRequestTest" time="0.007"/>
+  <testcase name="simple request rejects an unknown text discriminator as finite data()" classname="io.github.amichne.kast.protocol.contract.SourceReadSimpleRequestTest" time="0.007"/>
+  <testcase name="documented overrides normalize through the typed source request()" classname="io.github.amichne.kast.protocol.contract.SourceReadSimpleRequestTest" time="0.014"/>
+  <testcase name="one exact symbol admits source read defaults()" classname="io.github.amichne.kast.protocol.contract.SourceReadSimpleRequestTest" time="0.002"/>
+  <testcase name="all published short request discriminator values admit()" classname="io.github.amichne.kast.protocol.contract.SourceReadSimpleRequestTest" time="0.004"/>
+  <testcase name="simple exact request rejects a second anchor()" classname="io.github.amichne.kast.protocol.contract.SourceReadSimpleRequestTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

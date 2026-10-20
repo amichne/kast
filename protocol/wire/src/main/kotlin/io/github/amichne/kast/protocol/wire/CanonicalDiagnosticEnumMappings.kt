@@ -6,6 +6,15 @@ import io.github.amichne.kast.protocol.contract.DiagnosticKnownCountDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticLimitationDocument
 import io.github.amichne.kast.protocol.contract.DiagnosticLimitationReasonDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.combineConverted
+import io.github.amichne.kast.protocol.contract.convertEach
+import io.github.amichne.kast.protocol.contract.flatMapConverted
+import io.github.amichne.kast.protocol.contract.flattenConverted
+import io.github.amichne.kast.protocol.contract.mapConverted
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
+import io.github.amichne.kast.protocol.contract.toWireDocumentConversion
 
 internal fun DiagnosticCheckQualification.toWireDocument(): DiagnosticCheckQualificationWireDocument =
     DiagnosticCheckQualificationWireDocument(

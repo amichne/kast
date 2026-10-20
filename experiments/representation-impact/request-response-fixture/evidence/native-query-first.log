@@ -1,0 +1,324 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Calculating task graph as no cached configuration is available for tasks: :runtime:hosted:nativeFixtureTest --tests *NativePacketQueryTest
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :kernel:compileJava NO-SOURCE
+> Task :change:apply:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :change:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :diagnostic:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :diagnostic:contract:compileKotlin UP-TO-DATE
+> Task :diagnostic:contract:compileJava NO-SOURCE
+> Task :relation:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+> Task :relation:contract:compileKotlin UP-TO-DATE
+> Task :relation:contract:compileJava NO-SOURCE
+> Task :traversal:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :traversal:contract:compileKotlin
+> Task :traversal:contract:compileJava NO-SOURCE
+
+> Task :change:contract:compileKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/AddDeclarationApplyObservation.kt:51:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/AddDeclarationApplyObservation.kt:113:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/AddDeclarationCompilerContext.kt:14:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/AddDeclarationCompilerContext.kt:141:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/AddDeclarationIntent.kt:57:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/AddDeclarationSemantics.kt:29:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/AddDeclarationSemantics.kt:92:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/AddDeclarationSemantics.kt:119:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/PlannedAddDeclaration.kt:18:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/PlannedAddDeclaration.kt:123:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/AddDeclarationChangePlan.kt:67:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/AddDeclarationChangePlan.kt:75:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/AddDeclarationOwnership.kt:17:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/AddDeclarationOwnership.kt:81:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/ChangeIntent.kt:196:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/ChangeIntent.kt:199:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/ChangeIntent.kt:206:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/ChangeIntent.kt:213:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/ChangeIntent.kt:221:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/admission/ChangeIntent.kt:229:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/proof/AddDeclarationFileProof.kt:14:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/proof/AddDeclarationFileProof.kt:58:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/proof/AddDeclarationFileProof.kt:96:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/proof/AddDeclarationRevalidation.kt:24:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/proof/AddDeclarationRevalidation.kt:88:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/proof/AddDeclarationRevalidation.kt:108:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/proof/AddDeclarationRevalidation.kt:157:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+
+> Task :change:contract:compileJava NO-SOURCE
+> Task :change:recovery:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :evidence:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :evidence:contract:compileKotlin FROM-CACHE
+> Task :evidence:contract:compileJava NO-SOURCE
+> Task :change:recovery:compileKotlin
+> Task :change:recovery:compileJava NO-SOURCE
+> Task :change:apply:compileKotlin
+> Task :change:apply:compileJava NO-SOURCE
+> Task :change:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :change:verify:checkKotlinGradlePluginConfigurationErrors SKIPPED
+
+> Task :change:verify:compileKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/verify/src/main/kotlin/io/github/amichne/kast/change/verify/LiveAddDeclarationReceiptCodec.kt:48:17 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/verify/src/main/kotlin/io/github/amichne/kast/change/verify/LiveReplaceBodyReceipt.kt:164:17 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/change/verify/src/main/kotlin/io/github/amichne/kast/change/verify/ObligationDischarge.kt:20:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+
+> Task :change:verify:compileJava NO-SOURCE
+> Task :protocol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:contract:compileKotlin UP-TO-DATE
+> Task :protocol:contract:compileJava NO-SOURCE
+> Task :symbol:intellij:extractSymbolIdeaDistribution
+> Task :workspace:intellij-read:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:intellij-read:extractWorkspaceReadIdeaDistribution UP-TO-DATE
+> Task :workspace:intellij-read:compileKotlin UP-TO-DATE
+> Task :workspace:intellij-read:compileJava NO-SOURCE
+> Task :change:intellij:compileKotlin
+> Task :change:intellij:compileJava NO-SOURCE
+> Task :change:plan:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :change:plan:compileKotlin
+> Task :change:plan:compileJava NO-SOURCE
+> Task :change:protocol:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :change:protocol:compileKotlin
+> Task :change:protocol:compileJava NO-SOURCE
+> Task :diagnostic:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :diagnostic:intellij:extractDiagnosticKotlinPlugin
+
+> Task :diagnostic:intellij:compileKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/ProjectBoundDiagnosticEnumeration.kt:114:27 'static field NAME: ID<FileType!, Void!>!' is deprecated. Deprecated in Java.
+
+> Task :diagnostic:intellij:compileJava NO-SOURCE
+> Task :diagnostic:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :diagnostic:service:compileKotlin FROM-CACHE
+> Task :diagnostic:service:compileJava NO-SOURCE
+> Task :evidence:sqlite:checkKotlinGradlePluginConfigurationErrors SKIPPED
+
+> Task :evidence:sqlite:compileKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteLiveChangePlanStore.kt:182:13 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteLiveChangeReceiptStore.kt:229:13 Redundant creation of Json format. Creating instances for each use can be slow.
+
+> Task :evidence:sqlite:compileJava NO-SOURCE
+> Task :protocol:registry:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:registry:compileKotlin UP-TO-DATE
+> Task :protocol:registry:compileJava NO-SOURCE
+> Task :protocol:wire:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:wire:compileKotlin UP-TO-DATE
+> Task :protocol:wire:compileJava NO-SOURCE
+> Task :query:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:contract:compileKotlin UP-TO-DATE
+> Task :source:contract:compileJava NO-SOURCE
+> Task :query:contract:compileKotlin
+> Task :query:contract:compileJava NO-SOURCE
+> Task :query:protocol:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :query:protocol:compileKotlin
+> Task :query:protocol:compileJava NO-SOURCE
+> Task :query:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :query:service:compileKotlin
+> Task :query:service:compileJava NO-SOURCE
+> Task :relation:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:intellij:extractRelationKotlinPlugin UP-TO-DATE
+> Task :relation:intellij:compileKotlin
+> Task :relation:intellij:compileJava NO-SOURCE
+> Task :relation:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:service:compileKotlin
+> Task :relation:service:compileJava NO-SOURCE
+> Task :runtime:hosted:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:intellij:compileKotlin FROM-CACHE
+> Task :source:intellij:compileJava NO-SOURCE
+> Task :source:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:service:compileKotlin FROM-CACHE
+> Task :source:service:compileJava NO-SOURCE
+> Task :symbol:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:intellij:compileKotlin FROM-CACHE
+> Task :symbol:intellij:compileJava NO-SOURCE
+> Task :symbol:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:service:compileKotlin FROM-CACHE
+> Task :symbol:service:compileJava NO-SOURCE
+> Task :topology:build:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :topology:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :topology:contract:compileKotlin FROM-CACHE
+> Task :topology:contract:compileJava NO-SOURCE
+> Task :topology:build:compileKotlin
+> Task :topology:build:compileJava NO-SOURCE
+> Task :topology:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :topology:intellij:extractTopologyKotlinPlugin
+
+> Task :topology:intellij:compileKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/topology/intellij/src/main/kotlin/io/github/amichne/kast/topology/intellij/SemanticNativeConfiguration.kt:37:98 'var intellijPluginRoot: String?' is deprecated. This flag is deprecated.
+
+> Task :topology:intellij:compileJava NO-SOURCE
+> Task :traversal:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :traversal:service:compileKotlin
+> Task :traversal:service:compileJava NO-SOURCE
+
+> Task :runtime:hosted:compileKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedAutomaticQueryPreview.kt:89:67 Unnecessary safe call on a non-null receiver of type 'QueryInvocationDocument'.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt:40:59 This is a delicate API and its use requires care. Make sure you fully read and understand documentation of the declaration that is marked as a delicate API.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointDescriptor.kt:13:20 'var isLenient: Boolean' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointProtocol.kt:108:72 'var isLenient: Boolean' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointProtocol.kt:242:17 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt:287:21 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt:135:29 Redundant creation of Json format. Creating instances for each use can be slow.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt:105:83 This is a delicate API and its use requires care. Make sure you fully read and understand documentation of the declaration that is marked as a delicate API.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshExistingImport.kt:47:26 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshExistingImport.kt:51:26 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshExistingImport.kt:53:26 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshExistingImport.kt:61:35 'static fun isDisposed(p0: Disposable): Boolean' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshImportCallback.kt:30:26 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshImportCallback.kt:43:26 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshImportCallback.kt:45:26 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshImportCallback.kt:52:35 'static fun isDisposed(p0: Disposable): Boolean' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshImportCallback.kt:88:23 'static fun isDisposed(p0: Disposable): Boolean' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshTaskTrigger.kt:32:26 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshTaskTrigger.kt:50:26 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshTaskTrigger.kt:57:26 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshTaskTrigger.kt:61:26 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshTaskTrigger.kt:65:26 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+
+> Task :runtime:hosted:compileJava NO-SOURCE
+> Task :kernel:processResources NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar UP-TO-DATE
+> Task :protocol:contract:processResources UP-TO-DATE
+> Task :protocol:contract:classes UP-TO-DATE
+> Task :protocol:contract:jar UP-TO-DATE
+> Task :protocol:registry:processResources NO-SOURCE
+> Task :protocol:registry:classes UP-TO-DATE
+> Task :protocol:registry:jar UP-TO-DATE
+> Task :protocol:wire:processResources NO-SOURCE
+> Task :protocol:wire:classes UP-TO-DATE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar UP-TO-DATE
+> Task :protocol:wire:generateHostedContract
+> Task :runtime:hosted:processResources
+> Task :runtime:hosted:classes
+> Task :runtime:hosted:jar
+> Task :change:apply:processResources NO-SOURCE
+> Task :change:apply:classes UP-TO-DATE
+> Task :change:apply:jar
+> Task :change:contract:processResources NO-SOURCE
+> Task :change:contract:classes UP-TO-DATE
+> Task :change:contract:jar
+> Task :change:intellij:processResources NO-SOURCE
+> Task :change:intellij:classes UP-TO-DATE
+> Task :change:intellij:jar
+> Task :change:plan:processResources NO-SOURCE
+> Task :change:plan:classes UP-TO-DATE
+> Task :change:plan:jar
+> Task :change:protocol:processResources NO-SOURCE
+> Task :change:protocol:classes UP-TO-DATE
+> Task :change:protocol:jar
+> Task :change:recovery:processResources NO-SOURCE
+> Task :change:recovery:classes UP-TO-DATE
+> Task :change:recovery:jar
+> Task :change:verify:processResources NO-SOURCE
+> Task :change:verify:classes UP-TO-DATE
+> Task :change:verify:jar
+> Task :diagnostic:contract:processResources NO-SOURCE
+> Task :diagnostic:contract:classes UP-TO-DATE
+> Task :diagnostic:contract:jar UP-TO-DATE
+> Task :diagnostic:intellij:processResources NO-SOURCE
+> Task :diagnostic:intellij:classes UP-TO-DATE
+> Task :diagnostic:intellij:jar
+> Task :diagnostic:service:processResources NO-SOURCE
+> Task :diagnostic:service:classes UP-TO-DATE
+> Task :diagnostic:service:jar
+> Task :evidence:contract:processResources NO-SOURCE
+> Task :evidence:contract:classes UP-TO-DATE
+> Task :evidence:contract:jar
+> Task :evidence:sqlite:processResources NO-SOURCE
+> Task :evidence:sqlite:classes UP-TO-DATE
+> Task :evidence:sqlite:jar
+> Task :protocol:wire:jar UP-TO-DATE
+> Task :query:contract:processResources NO-SOURCE
+> Task :query:contract:classes UP-TO-DATE
+> Task :query:contract:jar UP-TO-DATE
+> Task :query:protocol:processResources NO-SOURCE
+> Task :query:protocol:classes UP-TO-DATE
+> Task :query:protocol:jar UP-TO-DATE
+> Task :query:service:processResources NO-SOURCE
+> Task :query:service:classes UP-TO-DATE
+> Task :query:service:jar UP-TO-DATE
+> Task :relation:contract:processResources NO-SOURCE
+> Task :relation:contract:classes UP-TO-DATE
+> Task :relation:contract:jar UP-TO-DATE
+> Task :relation:intellij:extractNativeTestIdea UP-TO-DATE
+> Task :relation:intellij:processResources NO-SOURCE
+> Task :relation:intellij:classes UP-TO-DATE
+> Task :relation:intellij:jar
+> Task :relation:service:processResources NO-SOURCE
+> Task :relation:service:classes UP-TO-DATE
+> Task :relation:service:jar
+
+> Task :runtime:hosted:compileNativeTestKotlin FAILED
+e: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativeScopedCacheManagerTraceTest.kt:303:45 Overload resolution ambiguity between candidates:
+fun text(value: String): ProtocolText
+fun text(value: String): ProtocolText
+e: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativeScopedCacheManagerTraceTest.kt:304:55 Overload resolution ambiguity between candidates:
+fun text(value: String): ProtocolText
+fun text(value: String): ProtocolText
+e: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativeScopedCacheManagerTraceTest.kt:339:13 Overload resolution ambiguity between candidates:
+fun text(value: String): ProtocolText
+fun text(value: String): ProtocolText
+e: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativeScopedCacheManagerTraceTest.kt:344:41 Overload resolution ambiguity between candidates:
+fun text(value: String): ProtocolText
+fun text(value: String): ProtocolText
+e: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativeScopedCacheManagerTraceTest.kt:466:9 Conflicting overloads:
+fun text(value: String): ProtocolText
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-19-21-42-37-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':runtime:hosted:compileNativeTestKotlin' (registered by plugin 'org.jetbrains.kotlin.jvm').
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.btapi.BuildToolsApiCompilationWork
+   > Kotlin compiler: OVERLOAD_RESOLUTION_AMBIGUITY
+       Kotlin compiler error
+         Overload resolution ambiguity between candidates:
+         fun text(value: String): ProtocolText
+         fun text(value: String): ProtocolText
+         Location: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativeScopedCacheManagerTraceTest.kt:303
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 1m 14s
+81 actionable tasks: 39 executed, 7 from cache, 35 up-to-date
+Configuration cache entry stored.

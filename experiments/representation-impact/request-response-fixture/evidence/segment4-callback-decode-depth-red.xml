@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactCallbackDecodeDepthTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-20T04:26:14.672Z" hostname="Austins-MacBook-Pro.local" time="0.164">
+  <properties/>
+  <testcase name="bounded input cannot bypass the callback depth limit through callable transfer frames()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackDecodeDepthTest" time="0.152">
+    <failure message="org.opentest4j.AssertionFailedError: Bounded encoded input bytes=580812 ==&gt; Expected kotlinx.serialization.SerializationException to be thrown, but nothing was thrown." type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Bounded encoded input bytes=580812 ==&gt; Expected kotlinx.serialization.SerializationException to be thrown, but nothing was thrown.
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3260)
+	at io.github.amichne.kast.protocol.contract.ImpactCallbackDecodeDepthTest.bounded input cannot bypass the callback depth limit through callable transfer frames(ImpactCallbackDecodeDepthTest.kt:26)
+</failure>
+  </testcase>
+  <testcase name="small callback frame trees decode with full typed invocation evidence()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackDecodeDepthTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

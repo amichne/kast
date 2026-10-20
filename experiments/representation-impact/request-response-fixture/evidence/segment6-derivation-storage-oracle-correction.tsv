@@ -1,0 +1,5 @@
+assertion	old_expected_bytes	new_expected_bytes	incoming_reference_bytes	base_node_bytes	evidence_allowance_bytes	authority	status
+first physical proof	4608	4616	8	512	4096	QueryImpactRetainedGraph.node + QueryImpactTransferStorageTest normal branch allowance	FIXTURE_ARITHMETIC_CORRECTED
+equal distinct physical proof	4608	4616	8	512	4096	QueryImpactRetainedGraph.node + QueryImpactTransferStorageTest normal branch allowance	FIXTURE_ARITHMETIC_CORRECTED
+repeated same proof	8	8	8	0	0	QueryImpactRetainedGraph.node repeated identity	UNCHANGED
+production accounting							UNCHANGED

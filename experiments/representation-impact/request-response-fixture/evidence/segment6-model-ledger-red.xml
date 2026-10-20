@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryImpactAutomaticModelConservationTest" tests="6" skipped="0" failures="3" errors="0" timestamp="2026-10-20T13:26:03.072Z" hostname="Austins-MacBook-Pro.local" time="0.094">
+  <properties/>
+  <testcase name="automatic application and native sibling remain independent of supplied models()" classname="io.github.amichne.kast.query.contract.QueryImpactAutomaticModelConservationTest" time="0.069"/>
+  <testcase name="an automatic application cannot erase an external obligation()" classname="io.github.amichne.kast.query.contract.QueryImpactAutomaticModelConservationTest" time="0.005"/>
+  <testcase name="an application-bearing observation does not establish a supported domain end()" classname="io.github.amichne.kast.query.contract.QueryImpactAutomaticModelConservationTest" time="0.006">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=TERMINAL_UNPROVEN)&gt; but was: &lt;Refined(value=io.github.amichne.kast.query.contract.QueryImpactTerminal$SupportedDomainEnd@323659f8)&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=TERMINAL_UNPROVEN)&gt; but was: &lt;Refined(value=io.github.amichne.kast.query.contract.QueryImpactTerminal$SupportedDomainEnd@323659f8)&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.query.contract.QueryImpactAutomaticModelConservationTest.an application-bearing observation does not establish a supported domain end(QueryImpactAutomaticModelConservationTest.kt:74)
+</failure>
+  </testcase>
+  <testcase name="a missing application route cannot borrow its native sibling()" classname="io.github.amichne.kast.query.contract.QueryImpactAutomaticModelConservationTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=MISSING_BRANCH)&gt; but was: &lt;Rejected(failure=UNACCOUNTED_NATIVE_READ)&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=MISSING_BRANCH)&gt; but was: &lt;Rejected(failure=UNACCOUNTED_NATIVE_READ)&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.query.contract.QueryImpactAutomaticModelConservationTest.a missing application route cannot borrow its native sibling(QueryImpactAutomaticModelConservationTest.kt:35)
+</failure>
+  </testcase>
+  <testcase name="an application from another observed module cannot borrow the same call()" classname="io.github.amichne.kast.query.contract.QueryImpactAutomaticModelConservationTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=UNPROVEN_MODELED_VALUE_STEP)&gt; but was: &lt;Refined(value=io.github.amichne.kast.query.contract.QueryImpactLedger@5488b5c5)&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=UNPROVEN_MODELED_VALUE_STEP)&gt; but was: &lt;Refined(value=io.github.amichne.kast.query.contract.QueryImpactLedger@5488b5c5)&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.query.contract.QueryImpactAutomaticModelConservationTest.an application from another observed module cannot borrow the same call(QueryImpactAutomaticModelConservationTest.kt:64)
+</failure>
+  </testcase>
+  <testcase name="an application route cannot borrow a missing native sibling()" classname="io.github.amichne.kast.query.contract.QueryImpactAutomaticModelConservationTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketEntryBindingTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:28:56.836Z" hostname="Austins-MacBook-Pro.local" time="11.461">
+  <properties/>
+  <testcase name="testSupplementalEntryBindingRoleReadmissionReacquiresTheGenuineSequentialOwner" classname="io.github.amichne.kast.relation.intellij.NativePacketEntryBindingTest" time="7.791"/>
+  <testcase name="testOriginalMatchedComponentResultBindsAndReadsOnlyResponseWithItsCompleteState" classname="io.github.amichne.kast.relation.intellij.NativePacketEntryBindingTest" time="1.682"/>
+  <testcase name="testOriginalResponseAndLinkReferencesHaveDistinctImmutableLocalSymbols" classname="io.github.amichne.kast.relation.intellij.NativePacketEntryBindingTest" time="1.086"/>
+  <testcase name="testSupplementalEntryReferenceRoleReadmissionUsesItsActualLocalSymbol" classname="io.github.amichne.kast.relation.intellij.NativePacketEntryBindingTest" time="0.889"/>
+  <system-out><![CDATA[DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+ENTRY_BINDING_K2 response=806:814 read=939:947 neighbor=931:935 neighborRead=1052:1056 immutable=true
+ENTRY_BINDING_SUPPLEMENTAL stage=ROLE_READMISSION full_S2_route=NOT_ASSERTED
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+ENTRY_BINDING_K2 response=806:814 read=939:947 neighbor=931:935 neighborRead=1052:1056 immutable=true
+COMPOSITE_SUCCESS_STAGE row=C2.1 receiver source=ExactDeclarationTextRange(startInclusive=769, endExclusive=954) transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=769, endExclusive=954))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 map formal source=ExactDeclarationTextRange(startInclusive=769, endExclusive=954) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=289, endExclusive=439))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 Success.value source=ExactDeclarationTextRange(startInclusive=289, endExclusive=439) transfers=[(FIELD_READ, ExactDeclarationTextRange(startInclusive=393, endExclusive=398)), (FIELD_READ, ExactDeclarationTextRange(startInclusive=427, endExclusive=432))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 builtin argument source=ExactDeclarationTextRange(startInclusive=393, endExclusive=398) transfers=[(ARGUMENT, ExactDeclarationTextRange(startInclusive=393, endExclusive=398))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 callback formal source=ExactDeclarationTextRange(startInclusive=393, endExclusive=398) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=959, endExclusive=989))] frontier=[]
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=818, endExclusive=917) pathDepth=2 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=806, endExclusive=814))] causes=[] work=4
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) pathDepth=2 transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=1088, endExclusive=1143))] causes=[] work=2
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1088, endExclusive=1143) pathDepth=2 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=1137, endExclusive=1143))] causes=[] work=3
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1137, endExclusive=1143) pathDepth=2 transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=1149, endExclusive=1284))] causes=[] work=2
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1149, endExclusive=1284) pathDepth=2 transfers=[(FIELD_READ, ExactDeclarationTextRange(startInclusive=1227, endExclusive=1232))] causes=[] work=6
+BIND_BRANCH_SETUP kind=CONTROLLED_TRACKED_INITIALIZER guard=ORIGINAL_S2_NATIVE_PREFIX
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1227, endExclusive=1232) pathDepth=1 transfers=[(BRANCH_ALTERNATIVE, ExactDeclarationTextRange(startInclusive=1183, endExclusive=1284))] causes=[] work=3
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1183, endExclusive=1284) pathDepth=1 transfers=[(RETURN, ExactDeclarationTextRange(startInclusive=1183, endExclusive=1284))] causes=[] work=3
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1183, endExclusive=1284) pathDepth=1 transfers=[(SOURCE_CALL_RETURN, ExactDeclarationTextRange(startInclusive=1137, endExclusive=1143))] causes=[] work=2
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1137, endExclusive=1143) pathDepth=1 transfers=[(RETURN, ExactDeclarationTextRange(startInclusive=1137, endExclusive=1143))] causes=[] work=3
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1137, endExclusive=1143) pathDepth=1 transfers=[(SOURCE_CALL_RETURN, ExactDeclarationTextRange(startInclusive=806, endExclusive=814))] causes=[] work=2
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) pathDepth=1 transfers=[(LOCAL_BINDING, ExactDeclarationTextRange(startInclusive=806, endExclusive=814))] causes=[] work=3
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) pathDepth=1 transfers=[(LOCAL_READ, ExactDeclarationTextRange(startInclusive=939, endExclusive=947))] causes=[] work=3
+ENTRY_BINDING_RESULT row=C2.7 stage=matched-result,immutable-binding,exact-reference C2.8,C2.9=NOT_RUN
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+ENTRY_BINDING_K2 response=806:814 read=939:947 neighbor=931:935 neighborRead=1052:1056 immutable=true
+ENTRY_BINDING_PREREQUISITE status=ACTUAL_K2_DISTINCT_IMMUTABLE_LOCALS transfers=NOT_RUN
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+ENTRY_BINDING_K2 response=806:814 read=939:947 neighbor=931:935 neighborRead=1052:1056 immutable=true
+ENTRY_BINDING_SUPPLEMENTAL stage=LOCAL_READ_READMISSION full_S2_route=NOT_ASSERTED
+]]></system-out>
+  <system-err><![CDATA[[   1132]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1132]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

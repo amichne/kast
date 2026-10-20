@@ -1,0 +1,2 @@
+543509a7f4d22d6ec850f52b70c898bca478c37d
+Implementation includes uncommitted shared work. The input manifest covers the oracle, runner, and frozen source inputs, not the full implementation tree.

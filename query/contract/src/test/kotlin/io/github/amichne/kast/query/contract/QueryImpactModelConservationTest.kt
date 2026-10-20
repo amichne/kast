@@ -21,6 +21,7 @@ import io.github.amichne.kast.relation.contract.RepresentationDomain
 import io.github.amichne.kast.relation.contract.RepresentationEvidence
 import io.github.amichne.kast.relation.contract.RepresentationRule
 import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
+import io.github.amichne.kast.relation.contract.ValueProducerOrigin
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
@@ -41,7 +42,12 @@ class QueryImpactModelConservationTest {
                     f.producer,
                     emptyList(),
                     QueryImpactRepresentation.Present(
-                        RepresentationEvidence.origin(f.producer, f.producerWitness.invocation, rule).value()
+                        RepresentationEvidence.origin(
+                                f.producer,
+                                (f.producerWitness.origin as ValueProducerOrigin.Declared).invocation,
+                                rule,
+                            )
+                            .value()
                     ),
                     terminal,
                 )
@@ -86,7 +92,12 @@ class QueryImpactModelConservationTest {
         f.paths.map { route ->
             val evidence =
                 route.steps.fold(
-                    RepresentationEvidence.origin(f.producer, f.producerWitness.invocation, rule).value()
+                    RepresentationEvidence.origin(
+                            f.producer,
+                            (f.producerWitness.origin as ValueProducerOrigin.Declared).invocation,
+                            rule,
+                        )
+                        .value()
                 ) { current, step ->
                     current.transfer((step as QueryImpactStep.Compiler).transfer).value()
                 }

@@ -1,0 +1,8 @@
+{
+  "source": "relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketCallerNonNullRoute.kt",
+  "sha256": "55f4a1e3a20b5348466fa0c67134eeafc16595569584ccd1210e0efe0729a6a5",
+  "status": "SETUP_FAILURE",
+  "reason": "The route expected the complete mapError initializer818:917 as the direct readOffers caller result. The actual immediate source call is818:860. The Feature mapError source path must precede its complete initializer.",
+  "log": "/tmp/kast-insertion-core-and-caller-guard-red-compile-repaired.log",
+  "assertions": "Caller NonNull alias NOT_REACHED"
+}

@@ -8,6 +8,7 @@ import io.github.amichne.kast.protocol.contract.QueryWalkObservationDocument
 import io.github.amichne.kast.protocol.contract.TraversalProgressDocument
 import io.github.amichne.kast.protocol.contract.TraversalRecordDocument
 import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import io.github.amichne.kast.protocol.wire.TraversalReferenceObservationWireDocument
 import io.github.amichne.kast.protocol.wire.toWireDocument
 import kotlinx.serialization.SerialName

@@ -1,0 +1,8 @@
+54bbf67685929eb4872aff0e7107b800b7b766cffef1019024a03538e235e4eb  protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/CallbackValueProofIdentity.kt
+051d419536653a518074cd736194639d948df2afc96ae4b93c9ba6d9d25dab43  protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactImplementationValidation.kt
+bf4a118db4e6042516123cfc63fffe0ba1e784b743ec7b3a0180b097461e99a6  protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactValueStateDocuments.kt
+b4cf00663775cea89f9f63e8ff52fa688fdf83c1b1a246677a94397edc165fab  protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactValueStateValidation.kt
+3f84a015a434d9d021f50375318f90a2bd029b5d662a43e5745254142a3a5136  protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract/ImpactCallbackIdentityTest.kt
+ca8641dc52a65cd9c4a3b8e6d6eda6aec2cc19d8b502635c719bd9355c1a3b40  query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactValueStateStorage.kt
+b52d6742af40a5f6123b313f04e500fe3b8fbc2e9b8af3010e5985692933dd78  query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryValuePathBasis.kt
+cca45539b953375f65d26df7e2183e21a69458ff3840d782d85a42bffc12173e  query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactValueStateProjection.kt

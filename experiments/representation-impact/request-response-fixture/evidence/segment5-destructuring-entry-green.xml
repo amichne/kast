@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketDestructuringEntryTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T07:03:38.615Z" hostname="Austins-MacBook-Pro.local" time="8.384">
+  <properties/>
+  <testcase name="testOriginalInitializerCarriesItsTrackedFieldsToTheActualComponentReceiver" classname="io.github.amichne.kast.relation.intellij.NativePacketDestructuringEntryTest" time="7.148"/>
+  <testcase name="testK2GroundedSyntheticReceiverSetupEntersTheExactComponentExtensionFormal" classname="io.github.amichne.kast.relation.intellij.NativePacketDestructuringEntryTest" time="1.227"/>
+  <system-out><![CDATA[DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+DESTRUCTURING_SIGNATURE callable=fixture.outcome.OutcomeScope.component1 receiver=Present(type=CanonicalCompilerType(value=fixture/outcome/Outcome<E,S>)) parameters=[] contexts=[] typeParameters=1
+DESTRUCTURING_ACTUAL diagnosticReceiver=fixture/outcome/Outcome<fixture/feature/FeatureError, fixture/client/ClientResponse> diagnosticParameters=[] diagnosticResult=fixture/client/ClientResponse argumentCount=0
+DESTRUCTURING_BODY range=ExactDeclarationTextRange(startInclusive=677, endExclusive=1063) identity=canonical-signature-sha256-v1|7d847ee12bb8c37fb24fc1ed55e825167cd73ba394d0c75a0fada180bad50c13
+DESTRUCTURING_RECEIVER slot=EXTENSION kind=EXPLICIT range=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) diagnosticType=fixture/outcome/Outcome<fixture/feature/FeatureError, fixture/client/ClientResponse>
+DESTRUCTURING_RECEIVER slot=DISPATCH kind=IMPLICIT subtype=KaFirReceiverParameterSymbol psiRange=ExactDeclarationTextRange(startInclusive=677, endExclusive=1063) sameAnonymous=false sameReceiver=true receiverOwnerIsAnonymous=true origin=SOURCE diagnosticType=fixture/outcome/OutcomeScope<fixture/feature/FeatureError>
+DESTRUCTURING_RECEIVER_SYMBOL slot=DISPATCH status=LOCAL_REJECTED cause=UnsupportedDeclaration
+DESTRUCTURING_K2 status=CHARACTERIZED adapter_admission=NOT_RUN full_S2_route=NOT_RUN
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+DESTRUCTURING_ENTRY_READ variant=OBSERVED source=ExactDeclarationTextRange(startInclusive=818, endExclusive=917) pathDepth=2 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=806, endExclusive=814))] causes=[]
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+DESTRUCTURING_SIGNATURE callable=fixture.outcome.OutcomeScope.component1 receiver=Present(type=CanonicalCompilerType(value=fixture/outcome/Outcome<E,S>)) parameters=[] contexts=[] typeParameters=1
+DESTRUCTURING_ACTUAL diagnosticReceiver=fixture/outcome/Outcome<fixture/feature/FeatureError, fixture/client/ClientResponse> diagnosticParameters=[] diagnosticResult=fixture/client/ClientResponse argumentCount=0
+DESTRUCTURING_BODY range=ExactDeclarationTextRange(startInclusive=677, endExclusive=1063) identity=canonical-signature-sha256-v1|d0e3b9a5242a71b34c21b13144d3f9e2dcde7d10c3b761b38e116d6c30da328d
+DESTRUCTURING_RECEIVER slot=EXTENSION kind=EXPLICIT range=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) diagnosticType=fixture/outcome/Outcome<fixture/feature/FeatureError, fixture/client/ClientResponse>
+DESTRUCTURING_RECEIVER slot=DISPATCH kind=IMPLICIT subtype=KaFirReceiverParameterSymbol psiRange=ExactDeclarationTextRange(startInclusive=677, endExclusive=1063) sameAnonymous=false sameReceiver=true receiverOwnerIsAnonymous=true origin=SOURCE diagnosticType=fixture/outcome/OutcomeScope<fixture/feature/FeatureError>
+DESTRUCTURING_RECEIVER_SYMBOL slot=DISPATCH status=LOCAL_REJECTED cause=UnsupportedDeclaration
+DESTRUCTURING_K2 status=CHARACTERIZED adapter_admission=NOT_RUN full_S2_route=NOT_RUN
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+DESTRUCTURING_ENTRY_SETUP kind=SYNTHETIC_TYPED_RECEIVER k2=EXACT_ORIGINAL_COMPONENT1 first_transfer=NOT_ASSERTED
+DESTRUCTURING_ENTRY_READ variant=OBSERVED source=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) pathDepth=2 transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=1088, endExclusive=1143))] causes=[]
+]]></system-out>
+  <system-err><![CDATA[[   1265]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1266]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

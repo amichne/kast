@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactSeedCallbackReturnContractTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T19:56:32.558Z" hostname="Austins-MacBook-Pro.local" time="0.013">
+  <properties/>
+  <testcase name="a seeded callback return keeps its supplier path predicates and distinct encoded operation()" classname="io.github.amichne.kast.protocol.contract.ImpactSeedCallbackReturnContractTest" time="0.006"/>
+  <testcase name="seeded callback return rejects another body basis result invocation and predicate loss()" classname="io.github.amichne.kast.protocol.contract.ImpactSeedCallbackReturnContractTest" time="0.003"/>
+  <testcase name="seeded callback return rejects ordinary operations stack substitutions and opaque frames()" classname="io.github.amichne.kast.protocol.contract.ImpactSeedCallbackReturnContractTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

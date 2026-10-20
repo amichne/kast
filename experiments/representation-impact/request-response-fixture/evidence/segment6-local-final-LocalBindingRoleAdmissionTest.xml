@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.LocalBindingRoleAdmissionTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T12:31:51.021Z" hostname="Austins-MacBook-Pro.local" time="0.004">
+  <properties/>
+  <testcase name="role proof follows cancellation and deadline within its existing work unit()" classname="io.github.amichne.kast.relation.contract.LocalBindingRoleAdmissionTest" time="0.001"/>
+  <testcase name="rejected role records its exact cause without enumerating candidates()" classname="io.github.amichne.kast.relation.contract.LocalBindingRoleAdmissionTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

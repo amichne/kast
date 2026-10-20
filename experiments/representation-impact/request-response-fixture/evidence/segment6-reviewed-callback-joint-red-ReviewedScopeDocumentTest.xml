@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ReviewedScopeDocumentTest" tests="6" skipped="0" failures="2" errors="0" timestamp="2026-10-20T16:49:25.717Z" hostname="Austins-MacBook-Pro.local" time="0.162">
+  <properties/>
+  <testcase name="renewed anonymous handles keep identity but unknown target and application kinds reject()" classname="io.github.amichne.kast.protocol.contract.ReviewedScopeDocumentTest" time="0.124"/>
+  <testcase name="reviewed callback frames cannot grant native source transfer evidence()" classname="io.github.amichne.kast.protocol.contract.ReviewedScopeDocumentTest" time="0.01"/>
+  <testcase name="reviewed input rejects dispatch receiver changed formal and missing push()" classname="io.github.amichne.kast.protocol.contract.ReviewedScopeDocumentTest" time="0.008"/>
+  <testcase name="reviewed return rejects another call foreign proof and direct receiver result()" classname="io.github.amichne.kast.protocol.contract.ReviewedScopeDocumentTest" time="0.002"/>
+  <testcase name="reviewed callback frame keeps full binding formal and anonymous proof()" classname="io.github.amichne.kast.protocol.contract.ReviewedScopeDocumentTest" time="0.008">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:190)
+	at io.github.amichne.kast.protocol.contract.ReviewedScopeDocumentTest.reviewed callback frame keeps full binding formal and anonymous proof(ReviewedScopeDocumentTest.kt:28)
+</failure>
+  </testcase>
+  <testcase name="reviewed input and matched return preserve path predicates and exact push pop()" classname="io.github.amichne.kast.protocol.contract.ReviewedScopeDocumentTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:190)
+	at io.github.amichne.kast.protocol.contract.ReviewedScopeDocumentTest.reviewed input and matched return preserve path predicates and exact push pop(ReviewedScopeDocumentTest.kt:37)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryImpactAutomaticModelConservationTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:17.594Z" hostname="Austins-MacBook-Pro.local" time="0.057">
+  <properties/>
+  <testcase name="automatic application and native sibling remain independent of supplied models()" classname="io.github.amichne.kast.query.contract.QueryImpactAutomaticModelConservationTest" time="0.043"/>
+  <testcase name="an automatic application cannot erase an external obligation()" classname="io.github.amichne.kast.query.contract.QueryImpactAutomaticModelConservationTest" time="0.003"/>
+  <testcase name="an application-bearing observation does not establish a supported domain end()" classname="io.github.amichne.kast.query.contract.QueryImpactAutomaticModelConservationTest" time="0.003"/>
+  <testcase name="a missing application route cannot borrow its native sibling()" classname="io.github.amichne.kast.query.contract.QueryImpactAutomaticModelConservationTest" time="0.002"/>
+  <testcase name="an application from another observed module cannot borrow the same call()" classname="io.github.amichne.kast.query.contract.QueryImpactAutomaticModelConservationTest" time="0.003"/>
+  <testcase name="an application route cannot borrow a missing native sibling()" classname="io.github.amichne.kast.query.contract.QueryImpactAutomaticModelConservationTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

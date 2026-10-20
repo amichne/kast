@@ -23,6 +23,7 @@ internal fun ImpactPathProjectionFailure.presentationRejection(): QueryRunReject
             is ImpactPathProjectionFailure.Text -> ImpactPresentationFailureDocument.Text(cause.presentationCause())
             is ImpactPathProjectionFailure.Offset -> ImpactPresentationFailureDocument.Offset(cause.presentationCause())
             is ImpactPathProjectionFailure.Model -> ImpactPresentationFailureDocument.Model(cause.presentationCause())
+            is ImpactPathProjectionFailure.ValueModel -> ImpactPresentationFailureDocument.ValueModel(cause)
             is ImpactPathProjectionFailure.Collection ->
                 ImpactPresentationFailureDocument.Collection(cause.presentationCause())
             is ImpactPathProjectionFailure.DomainFingerprint ->

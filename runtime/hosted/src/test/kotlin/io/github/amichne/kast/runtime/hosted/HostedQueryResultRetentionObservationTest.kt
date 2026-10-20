@@ -1,5 +1,7 @@
 package io.github.amichne.kast.runtime.hosted
 
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.query.contract.QueryCount
 import io.github.amichne.kast.query.contract.QueryRetainedResultFailure
 import io.github.amichne.kast.query.protocol.QueryResultRetentionEvidence
 import io.github.amichne.kast.query.protocol.QueryResultRetentionIssue
@@ -11,6 +13,17 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class HostedQueryResultRetentionObservationTest {
+    @Test
+    fun `preview identity rejection stays distinct from capture and issuance`() {
+        val observation = Observation()
+        val zero = (QueryCount.parse(0) as Refinement.Refined).value
+        val three = (QueryCount.parse(3) as Refinement.Refined).value
+        hostedQueryResultRetentionObservation(observation)
+            .observe(QueryResultRetentionEvidence.PreviewRowIdentityRejected(zero, three))
+        assertEquals(listOf(IntellijReadCounter.QUERY_RETENTION_PREVIEW_ROW_IDENTITY_REJECTED), observation.counters)
+        assertEquals(listOf(IntellijReadPhase.RETENTION), observation.phases)
+    }
+
     @Test
     fun `the sole capture owner retains bounded started and captured counters`() {
         val observation = Observation()

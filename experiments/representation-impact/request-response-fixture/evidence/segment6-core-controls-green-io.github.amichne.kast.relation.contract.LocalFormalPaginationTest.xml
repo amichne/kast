@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.LocalFormalPaginationTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T13:43:43.794Z" hostname="Austins-MacBook-Pro.local" time="0.089">
+  <properties/>
+  <testcase name="a formal parameter page keeps one address and resumes its unconsumed neighbor()" classname="io.github.amichne.kast.relation.contract.LocalFormalPaginationTest" time="0.082"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

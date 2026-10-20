@@ -1,0 +1,3 @@
+a7fba9f9825bafe9d2bdd11b9566137a59d024547b3fb2fa533a9dd6374650f9  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueModelEvidenceSharing.kt
+63bce7e7bb85818709aba2709276df9d708808187471e6ff4b5a8e3c565c02c7  protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactSeedCallbackEntryValidation.kt
+f73cc73726f8ef8793b038886e95ff05c19e560df546a4a90aad3003766f8f46  query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryValuePathBasis.kt

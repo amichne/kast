@@ -70,7 +70,8 @@ internal fun validateImpactRead(
             is Refinement.Rejected -> return ValueFlowRead.ContractRejected(admitted.failure, page.examinedWorkUnits)
             is Refinement.Refined -> admitted.value
         }
-    val remainderBytes = (read as? ValueFlowRead.Suspended)?.remainder?.retainedBytes ?: 0L
+    val returnedBytes = step.returnedByteCount((read as? ValueFlowRead.Suspended)?.remainder).value
+    val returnedResults = step.transfers.size.toLong() + step.applications.size
     val receipt = step.receipts.single()
     val failure =
         when {
@@ -78,12 +79,10 @@ internal fun validateImpactRead(
             step.domain.boundary != request.boundary -> ValueFlowStepFailure.DOMAIN_MISMATCH
             step.examinedWorkUnits.value > request.budget.resources.workUnitLimit.value ->
                 ValueFlowStepFailure.WORK_LIMIT_EXCEEDED
-            step.transfers.size > request.budget.resources.resultLimit.value ->
-                ValueFlowStepFailure.RESULT_LIMIT_EXCEEDED
-            step.retainedBytes > request.budget.returnedBytes.value - remainderBytes ->
-                ValueFlowStepFailure.DETACHED_CAPACITY_EXCEEDED
-            receipt.returnedBytes.value != step.retainedBytes + remainderBytes ||
-                receipt.returnedResults.value != step.transfers.size ||
+            returnedResults > request.budget.resources.resultLimit.value -> ValueFlowStepFailure.RESULT_LIMIT_EXCEEDED
+            returnedBytes > request.budget.returnedBytes.value -> ValueFlowStepFailure.DETACHED_CAPACITY_EXCEEDED
+            receipt.returnedBytes.value != returnedBytes ||
+                receipt.returnedResults.value.toLong() != returnedResults ||
                 receipt.examinedWorkUnits != step.examinedWorkUnits -> ValueFlowStepFailure.INVALID_PROGRESS
             read is ValueFlowRead.Observed && step.terminal == ValueFlowTerminal.ResourceSuspended ->
                 ValueFlowStepFailure.INVALID_PROGRESS

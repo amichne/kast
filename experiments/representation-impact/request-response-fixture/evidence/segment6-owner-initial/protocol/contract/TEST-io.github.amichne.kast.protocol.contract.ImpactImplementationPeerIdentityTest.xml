@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactImplementationPeerIdentityTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:20.456Z" hostname="Austins-MacBook-Pro.local" time="0.042">
+  <properties/>
+  <testcase name="reviewed peer rule accepts the same qualified call with fresh work observations()" classname="io.github.amichne.kast.protocol.contract.ImpactImplementationPeerIdentityTest" time="0.036"/>
+  <testcase name="peer obligations and representation history keep exact positions without freezing work observations()" classname="io.github.amichne.kast.protocol.contract.ImpactImplementationPeerIdentityTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,9 @@
+row	assertion	selector	scope	status
+C2.5.ERROR	POSITIVE	testOriginalS2ErrorRowsShareOneRetainedCarrierRouteThroughC26	one contiguous original-S2 Error mapper/callback/reconstruction/client-return witness	NOT_RUN
+C2.6.ERROR	POSITIVE	testOriginalS2ErrorRowsShareOneRetainedCarrierRouteThroughC26	same witness exact production implementation matched caller result Error.value.code	NOT_RUN
+C2.5-6.N	FORBIDDEN_EMITTED	testOriginalS2ErrorReturnsForbidSuccessCarrierAndCrossCallWitnesses	debug substitution, original guard loss, Success carrier, cross-call result	NOT_RUN
+NO_OFFER.K2	PREREQUISITE	testOriginalNoOfferLiteralHasItsActualZeroArgumentCallbackAndReasonParameter	actual source literal1007:1017/String/noncaptured argument0/zero-argument anonymous body	NOT_RUN
+NO_OFFER.STORAGE	LOCAL_POSITIVE	testOriginalNoOfferLiteralContributesToItsExactFeatureErrorReasonField	literal position through exact constructor985:1018 reason0 storage; not full constant return	NOT_RUN
+NO_OFFER.INPUT.N	FORBIDDEN_EMITTED	testOriginalS2EmittedInputWitnessesNeverAcquireTheLiteralNoOfferReason	original full-S2 input never acquires constant-constructor reason storage	NOT_RUN
+CTRL.EMPTY	POSITIVE_AND_SATISFIABILITY	NOT_ENROLLED	same collection empty fact plus literal error route and no satisfiable Success+NonNull link	NOT_RUN
+CTRL.NO_OFFER.FULL	POSITIVE	NOT_ENROLLED	literal reason through matched callback/error/second component/Halt catch to getOffer Error.value.reason	NOT_RUN

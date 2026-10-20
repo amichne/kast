@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.runtime.hosted.NativePacketQueryVariantTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T19:42:31.319Z" hostname="Austins-MacBook-Pro.local" time="3.071">
+  <properties/>
+  <testcase name="testV2OutgoingPreservesReceiverHelperFieldsAndMatchedReturn" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryVariantTest" time="0.568"/>
+  <testcase name="testV3NestedConstructorOutgoingReachesTheExactTransportArgument" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryVariantTest" time="0.487"/>
+  <testcase name="testV3NestedSendIncomingReachesTheExactFeatureReturn" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryVariantTest" time="0.488"/>
+  <testcase name="testV8DestinationIndexOneReachesSendIndexZero" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryVariantTest" time="0.476"/>
+  <testcase name="testV2IncomingPreservesReceiverHelperFieldsAndMatchedReturn" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryVariantTest" time="0.511"/>
+  <testcase name="testV8IncomingReachesTheExactFeatureReturn" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryVariantTest" time="0.54"/>
+  <system-out><![CDATA[PACKET_QUERY_CAPTURE outgoing=true nativeFlowReads=16 retainedReadDelta=0 paths=1
+PACKET_QUERY_PATH index=0 steps=15 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_V2OutgoingPreservesReceiverHelperFieldsAndMatchedReturn_3KyMSCz98HE9rG1Okib3aSZ1Spd/src/fixture/variants/v2/V2.kt range=665:676 role=Argument pathDepth=1 terminal=FLOW:EXTERNAL_CALL evidence=ImplementationDispatch
+PACKET_QUERY_CAPTURE outgoing=true nativeFlowReads=8 retainedReadDelta=0 paths=1
+PACKET_QUERY_PATH index=0 steps=7 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_V3NestedConstructorOutgoingReachesTheExactTransportArgument_3KyMSEInz76iZOH3fIuSzdHTonG/src/fixture/variants/v3/V3.kt range=618:650 role=Argument pathDepth=1 terminal=FLOW:EXTERNAL_CALL evidence=ImplementationDispatch
+PACKET_QUERY_CAPTURE outgoing=false nativeFlowReads=10 retainedReadDelta=0 paths=1
+PACKET_QUERY_PATH index=0 steps=9 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_V3NestedSendIncomingReachesTheExactFeatureReturn_3KyMSHjlEsh9RDXsMwqibIvT5KW/src/fixture/variants/v3/V3.kt range=792:862 role=Return pathDepth=1 terminal=SUPPORTED_DOMAIN_END
+PACKET_QUERY_CAPTURE outgoing=true nativeFlowReads=12 retainedReadDelta=0 paths=1
+PACKET_QUERY_PATH index=0 steps=11 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_V8DestinationIndexOneReachesSendIndexZero_3KyMSKxQCxiBes3CTui2zNq1Guq/src/fixture/variants/v8/V8.kt range=765:776 role=Argument pathDepth=1 terminal=FLOW:EXTERNAL_CALL evidence=ImplementationDispatch
+PACKET_QUERY_CAPTURE outgoing=false nativeFlowReads=18 retainedReadDelta=0 paths=1
+PACKET_QUERY_PATH index=0 steps=17 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_V2IncomingPreservesReceiverHelperFieldsAndMatchedReturn_3KyMSO305CRpjk8auiJ4YGHCn5g/src/fixture/variants/v2/V2.kt range=979:1015 role=Return pathDepth=1 terminal=SUPPORTED_DOMAIN_END
+PACKET_QUERY_CAPTURE outgoing=false nativeFlowReads=14 retainedReadDelta=0 paths=1
+PACKET_QUERY_PATH index=0 steps=13 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_V8IncomingReachesTheExactFeatureReturn_3KyMSN5CDko0mUgMFPCaeD4zWPD/src/fixture/variants/v8/V8.kt range=1081:1117 role=Return pathDepth=1 terminal=SUPPORTED_DOMAIN_END
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

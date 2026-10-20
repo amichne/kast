@@ -1,0 +1,128 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Calculating task graph as configuration cache cannot be reused because an input to unknown location has changed.
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :relation:contract:spotlessKotlin
+> Task :relation:contract:spotlessKotlinApply
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :kernel:compileJava NO-SOURCE
+> Task :relation:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+> Task :relation:contract:compileKotlin
+> Task :relation:contract:compileJava NO-SOURCE
+> Task :relation:contract:processResources NO-SOURCE
+> Task :relation:contract:classes UP-TO-DATE
+> Task :relation:contract:jar
+> Task :kernel:processResources NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar UP-TO-DATE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesKotlin UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesJava NO-SOURCE
+> Task :relation:contract:compileTestKotlin
+> Task :relation:contract:compileTestJava NO-SOURCE
+> Task :relation:contract:processTestResources NO-SOURCE
+> Task :relation:contract:testClasses UP-TO-DATE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :workspace:contract:processTestFixturesResources NO-SOURCE
+> Task :workspace:contract:testFixturesClasses UP-TO-DATE
+> Task :workspace:contract:testFixturesJar UP-TO-DATE
+
+> Task :relation:contract:test FAILED
+
+ValueFullEndpointIdentityControlTest > a declaration-kind constraint cannot borrow an unrestricted endpoint() FAILED
+    org.opentest4j.AssertionFailedError: expected: <34> but was: <40>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:569)
+        at app//io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest.assertConserved(ValueFullEndpointIdentityControlTest.kt:127)
+        at app//io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest.a declaration-kind constraint cannot borrow an unrestricted endpoint(ValueFullEndpointIdentityControlTest.kt:63)
+
+ValueFullEndpointIdentityControlTest > another semantic basis cannot borrow an older full proof() FAILED
+    org.opentest4j.AssertionFailedError: expected: <34> but was: <40>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:569)
+        at app//io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest.assertConserved(ValueFullEndpointIdentityControlTest.kt:127)
+        at app//io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest.another semantic basis cannot borrow an older full proof(ValueFullEndpointIdentityControlTest.kt:76)
+
+ValueFullEndpointIdentityControlTest > full equal subject selectors keep fingerprints and all semantic facts(TestReporter) FAILED
+    org.opentest4j.AssertionFailedError: expected: <34> but was: <40>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:569)
+        at app//io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest.assertConserved(ValueFullEndpointIdentityControlTest.kt:127)
+        at app//io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest.full equal subject selectors keep fingerprints and all semantic facts(ValueFullEndpointIdentityControlTest.kt:32)
+
+ValueFullEndpointIdentityControlTest > subject and resolved representations cannot replace one another() FAILED
+    org.opentest4j.AssertionFailedError: expected: <34> but was: <40>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:569)
+        at app//io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest.assertConserved(ValueFullEndpointIdentityControlTest.kt:127)
+        at app//io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest.subject and resolved representations cannot replace one another(ValueFullEndpointIdentityControlTest.kt:92)
+
+ValueFullEndpointIdentityControlTest > full selector sharing compacts the source without replacing it with a resolved endpoint(TestReporter) FAILED
+    org.opentest4j.AssertionFailedError: expected: <34> but was: <40>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:569)
+        at app//io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest.assertConserved(ValueFullEndpointIdentityControlTest.kt:127)
+        at app//io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest.full selector sharing compacts the source without replacing it with a resolved endpoint(ValueFullEndpointIdentityControlTest.kt:43)
+
+ValueFullEndpointSharingTest > the same declaration with another full scope cannot borrow the prior endpoint(TestReporter) FAILED
+    org.opentest4j.AssertionFailedError: expected: <4> but was: <6>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:569)
+        at app//io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest.assertConserved(ValueFullEndpointSharingTest.kt:72)
+        at app//io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest.the same declaration with another full scope cannot borrow the prior endpoint(ValueFullEndpointSharingTest.kt:52)
+
+ValueFullEndpointSharingTest > full admitted endpoint sharing compacts the source before its next native read(TestReporter) FAILED
+    org.opentest4j.AssertionFailedError: expected: <4> but was: <6>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:569)
+        at app//io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest.assertConserved(ValueFullEndpointSharingTest.kt:72)
+        at app//io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest.full admitted endpoint sharing compacts the source before its next native read(ValueFullEndpointSharingTest.kt:33)
+
+ValueFullEndpointSharingTest > distinct resolved endpoint proofs keep every fact and receipt through sharing(TestReporter) FAILED
+    org.opentest4j.AssertionFailedError: expected: <4> but was: <6>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:569)
+        at app//io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest.assertConserved(ValueFullEndpointSharingTest.kt:72)
+        at app//io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest.distinct resolved endpoint proofs keep every fact and receipt through sharing(ValueFullEndpointSharingTest.kt:24)
+
+16 tests completed, 8 failed
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-20-14-30-06-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':relation:contract:test'.
+> There were failing tests. See the report at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 24s
+24 actionable tasks: 6 executed, 18 up-to-date
+Configuration cache entry stored.

@@ -1,9 +1,15 @@
 package io.github.amichne.kast.protocol.wire
 
+import io.github.amichne.kast.protocol.contract.RelationOccurrenceWireDocument
 import io.github.amichne.kast.protocol.contract.RelationOwnershipUnavailableCauseDocument
 import io.github.amichne.kast.protocol.contract.RelationReferenceContextDocument
 import io.github.amichne.kast.protocol.contract.RelationReferenceOccurrenceDocument
 import io.github.amichne.kast.protocol.contract.RelationReferenceOwnershipDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.combineConverted
+import io.github.amichne.kast.protocol.contract.mapConverted
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

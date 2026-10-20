@@ -1,0 +1,111 @@
+package io.github.amichne.kast.relation.intellij
+
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.RelationMeaning
+import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.relation.contract.ValueFlowObligation
+import io.github.amichne.kast.relation.contract.ValueFlowRejection
+import io.github.amichne.kast.relation.contract.ValueFlowRequest
+import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
+import io.github.amichne.kast.relation.contract.ValueRole
+import io.github.amichne.kast.relation.contract.ValueTransferKind
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCallScope
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
+import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertTrue
+
+/** The phase starts after the native reader's initial unit and first successful permit. */
+internal class NativePacketCallbackGrantOrderingPhase(
+    private val fixture: NativePacketValueFixture,
+    private val request: ValueFlowRequest,
+) {
+    private val allowance = IntellijRelationAllowance { System.nanoTime() }
+    private val counter = GrantOrderingCounter(allowance, request.budget.resources.workUnitLimit.value)
+
+    fun read(project: com.intellij.openapi.project.Project): GrantOrderingCapture {
+        val domain = RelationRequest.start(request.source.enclosing, RelationMeaning.References, request.budget)
+        val prepared = IntellijValueFlowCompilerAdapter(counter).prepare(project, domain, fixture.model)
+        assertTrue("Real callback phase setup failed", prepared is IntellijValueFlowCompilerAdapter.Prepared.Ready)
+        val ready = prepared as IntellijValueFlowCompilerAdapter.Prepared.Ready
+        allowance.examine()
+        assertEquals(CallbackWorkAdmission.READY, allowance.admitCallbackWork(request.budget.resources))
+        assertEquals(OUTER_WORK, allowance.examined)
+        val retained =
+            NativeValueFlowTransfers(
+                request = request,
+                owner = ready.owner,
+                scope = ready.scope,
+                observation = counter,
+            )
+        val result =
+            NativeValueCallbackFlow(
+                    request = request,
+                    role = request.source.role as ValueRole.FunctionArgument,
+                    scope = ready.scope,
+                    projection = ready.projection,
+                    allowance = allowance,
+                    retained = retained,
+                    permit = { permit(retained) },
+                )
+                .read()
+        return GrantOrderingCapture(
+            result = result,
+            work = allowance.examined,
+            sessions = counter.sessions,
+            exhaustedSessions = counter.exhaustedSessions,
+            entries = retained.edges.map { it.kind },
+            obligations = retained.obligations.toList(),
+        )
+    }
+
+    private fun permit(retained: NativeValueFlowTransfers): Boolean =
+        when (allowance.admitCallbackWork(request.budget.resources)) {
+            CallbackWorkAdmission.READY -> true
+            CallbackWorkAdmission.WORK_LIMIT_REACHED -> {
+                retained.unresolved(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
+                false
+            }
+            CallbackWorkAdmission.TIME_LIMIT_REACHED -> {
+                retained.unresolved(ValueFlowUnsupportedCause.TIME_LIMIT_REACHED)
+                false
+            }
+        }
+
+    private companion object {
+        const val OUTER_WORK = 2L
+    }
+}
+
+internal data class GrantOrderingCapture(
+    val result: Refinement<Unit, ValueFlowRejection>,
+    val work: Long,
+    val sessions: Int,
+    val exhaustedSessions: Int,
+    val entries: List<ValueTransferKind>,
+    val obligations: List<ValueFlowObligation>,
+)
+
+private class GrantOrderingCounter(private val allowance: IntellijRelationAllowance, private val grant: Long) :
+    IntellijReadObservation {
+    var sessions = 0
+        private set
+
+    var exhaustedSessions = 0
+        private set
+
+    override fun enterCall(call: IntellijReadCall): IntellijReadCallScope {
+        if (call == IntellijReadCall.K2_ANALYSIS) {
+            sessions++
+            if (allowance.examined >= grant) exhaustedSessions++
+        }
+        return IntellijReadCallScope.None
+    }
+
+    override fun count(counter: IntellijReadCounter, contributor: IntellijReadContributor, amount: Int) = Unit
+
+    override fun terminated(reason: IntellijReadTermination, contributor: IntellijReadContributor) = Unit
+}

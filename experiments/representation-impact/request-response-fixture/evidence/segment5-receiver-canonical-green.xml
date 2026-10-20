@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueReceiverSlotContractTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T11:49:27.148Z" hostname="Austins-MacBook-Pro.local" time="0.07">
+  <properties/>
+  <testcase name="fresh receiver admission keeps a matching claimed slot()" classname="io.github.amichne.kast.relation.contract.ValueReceiverSlotContractTest" time="0.047"/>
+  <testcase name="fresh receiver admission rejects a different claimed slot()" classname="io.github.amichne.kast.relation.contract.ValueReceiverSlotContractTest" time="0.004"/>
+  <testcase name="two receiver slots at one call have distinct value identities()" classname="io.github.amichne.kast.relation.contract.ValueReceiverSlotContractTest" time="0.001"/>
+  <testcase name="canonical value evidence keeps both receiver slots at one call()" classname="io.github.amichne.kast.relation.contract.ValueReceiverSlotContractTest" time="0.003"/>
+  <testcase name="a receiver cannot enter the other slot at the same exact call()" classname="io.github.amichne.kast.relation.contract.ValueReceiverSlotContractTest" time="0.004"/>
+  <testcase name="each receiver slot enters only its own formal without a new call()" classname="io.github.amichne.kast.relation.contract.ValueReceiverSlotContractTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

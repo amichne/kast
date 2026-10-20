@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueReviewedReturnSharingTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T18:31:26.060Z" hostname="Austins-MacBook-Pro.local" time="0.004">
+  <properties/>
+  <testcase name="reviewed return sharing conserves nested predicate proof without more retained policy bytes(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueReviewedReturnSharingTest" time="0.004">
+    <properties>
+      <property name="return.before.policyBytes" value="89864"/>
+      <property name="return.after.policyBytes" value="89864"/>
+      <property name="return.before.frame" value="1903406683"/>
+      <property name="return.after.frame" value="1903406683"/>
+    </properties>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

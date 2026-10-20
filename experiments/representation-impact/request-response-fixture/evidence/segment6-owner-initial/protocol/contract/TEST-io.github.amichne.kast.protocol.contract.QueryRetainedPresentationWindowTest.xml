@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.QueryRetainedPresentationWindowTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:20.815Z" hostname="Austins-MacBook-Pro.local" time="0.005">
+  <properties/>
+  <testcase name="retained presentation bounds reject reversed and out of result windows()" classname="io.github.amichne.kast.protocol.contract.QueryRetainedPresentationWindowTest" time="0.001"/>
+  <testcase name="slicing rejects a retained payload whose window or result association was lost()" classname="io.github.amichne.kast.protocol.contract.QueryRetainedPresentationWindowTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

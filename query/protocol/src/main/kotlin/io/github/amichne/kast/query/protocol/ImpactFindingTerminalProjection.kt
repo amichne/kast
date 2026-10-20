@@ -16,19 +16,23 @@ import io.github.amichne.kast.relation.contract.BoundaryUnresolvedReason
 import io.github.amichne.kast.relation.contract.ConsumerRepresentationEvidence
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
 
-internal fun QueryImpactTerminal.findingDocument(): ImpactProjected<ImpactFindingTerminalDocument> =
+internal fun QueryImpactTerminal.findingDocument(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactFindingTerminalDocument> =
     when (this) {
         is QueryImpactTerminal.Consumer -> projectFindingConsumer()
-        is QueryImpactTerminal.ModeledTerminal -> projectFindingModeledTerminal()
-        is QueryImpactTerminal.Unresolved.PeerContinuation -> projectPeerFindingTerminal()
+        is QueryImpactTerminal.ModeledTerminal -> projectFindingModeledTerminal(references)
+        is QueryImpactTerminal.Unresolved.PeerContinuation -> projectPeerFindingTerminal(references)
         is QueryImpactTerminal.Unresolved.Flow ->
-            Refinement.Refined(ImpactFindingTerminalDocument.UnresolvedFlow(obligation.cause.impactDocument()))
+            obligation.evidence.impactDocument(references, obligation.site.enclosing.lease).impactMap { evidence ->
+                ImpactFindingTerminalDocument.UnresolvedFlow(obligation.cause.impactDocument(), evidence)
+            }
         is QueryImpactTerminal.Unresolved.ReadRejected ->
-            rejection.impactDocument().impactMap(ImpactFindingTerminalDocument::UnresolvedRead)
+            rejection.impactDocument(references).impactMap(ImpactFindingTerminalDocument::UnresolvedRead)
         is QueryImpactTerminal.Unresolved.ExecutionStop ->
             stop.findingDocument().impactMap(ImpactFindingTerminalDocument::ExecutionStop)
-        is QueryImpactTerminal.Unresolved.Boundary -> projectFindingBoundary()
-        is QueryImpactTerminal.SupportedDomainEnd -> projectFindingEnd()
+        is QueryImpactTerminal.Unresolved.Boundary -> projectFindingBoundary(references)
+        is QueryImpactTerminal.SupportedDomainEnd -> projectFindingEnd(references)
         is QueryImpactTerminal.ExplicitScopeExclusion -> projectFindingExclusion()
     }
 
@@ -46,12 +50,13 @@ private fun QueryImpactTerminal.Consumer.projectFindingConsumer(): ImpactProject
         )
     }
 
-private fun QueryImpactTerminal.ModeledTerminal.projectFindingModeledTerminal():
-    ImpactProjected<ImpactFindingTerminalDocument> =
+private fun QueryImpactTerminal.ModeledTerminal.projectFindingModeledTerminal(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactFindingTerminalDocument> =
     boundary.model.reference
         .impactDocument()
-        .impactZip(boundary.source.impactDocument())
-        .impactZip(boundary.obligations.impactEach { it.impactDocument() })
+        .impactZip(boundary.source.impactDocument(references))
+        .impactZip(boundary.obligations.impactEach { it.impactDocument(references) })
         .impactMap { (position, obligations) ->
             ImpactFindingTerminalDocument.ModeledTerminal(
                 position.first,
@@ -61,9 +66,11 @@ private fun QueryImpactTerminal.ModeledTerminal.projectFindingModeledTerminal():
             )
         }
 
-private fun QueryImpactTerminal.Unresolved.Boundary.projectFindingBoundary():
-    ImpactProjected<ImpactFindingTerminalDocument> =
-    boundary.source.impactDocument().impactZip(boundary.obligation.impactDocument()).impactMap { (source, obligation) ->
+private fun QueryImpactTerminal.Unresolved.Boundary.projectFindingBoundary(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactFindingTerminalDocument> =
+    boundary.source.impactDocument(references).impactZip(boundary.obligation.impactDocument(references)).impactMap {
+        (source, obligation) ->
         ImpactFindingTerminalDocument.UnresolvedBoundary(
             source,
             when (boundary.reason) {
@@ -76,9 +83,11 @@ private fun QueryImpactTerminal.Unresolved.Boundary.projectFindingBoundary():
         )
     }
 
-private fun QueryImpactTerminal.SupportedDomainEnd.projectFindingEnd(): ImpactProjected<ImpactFindingTerminalDocument> =
+private fun QueryImpactTerminal.SupportedDomainEnd.projectFindingEnd(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactFindingTerminalDocument> =
     observation.source
-        .impactDocument()
+        .impactDocument(references)
         .impactZip(observation.domain.impactDocument())
         .impactZip(count(observation.examinedWorkUnits.value))
         .impactZip(count(observation.retainedBytes))

@@ -20,6 +20,8 @@ private fun QueryResultRetentionEvidence.retentionCounter(): IntellijReadCounter
         QueryResultRetentionEvidence.CaptureStarted -> IntellijReadCounter.QUERY_RETENTION_CAPTURE_STARTED
         QueryResultRetentionEvidence.Captured -> IntellijReadCounter.QUERY_RETENTION_CAPTURED
         is QueryResultRetentionEvidence.CaptureRejected -> cause.retentionCounter()
+        is QueryResultRetentionEvidence.PreviewRowIdentityRejected ->
+            IntellijReadCounter.QUERY_RETENTION_PREVIEW_ROW_IDENTITY_REJECTED
         is QueryResultRetentionEvidence.Issuance ->
             when (outcome) {
                 QueryResultRetentionIssue.ISSUED -> IntellijReadCounter.QUERY_RETENTION_RESULT_ISSUED

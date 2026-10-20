@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueModeledApplicationPhysicalStorageTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T13:43:43.901Z" hostname="Austins-MacBook-Pro.local" time="0.004">
+  <properties/>
+  <testcase name="actual module text pays two bytes per extra character()" classname="io.github.amichne.kast.relation.contract.ValueModeledApplicationPhysicalStorageTest" time="0.003"/>
+  <testcase name="an execution host with the same value identity keeps its full distinct endpoint payload()" classname="io.github.amichne.kast.relation.contract.ValueModeledApplicationPhysicalStorageTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

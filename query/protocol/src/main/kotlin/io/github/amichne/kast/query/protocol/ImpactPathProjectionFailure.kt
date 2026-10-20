@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.PositiveLimitFailure
 import io.github.amichne.kast.protocol.contract.ImpactModelPrimitiveFailure
+import io.github.amichne.kast.protocol.contract.ImpactValueModelPrimitiveFailure
 import io.github.amichne.kast.protocol.contract.ProtocolCollectionFailure
 import io.github.amichne.kast.protocol.contract.ProtocolOffsetFailure
 import io.github.amichne.kast.protocol.contract.ProtocolTextFailure
@@ -14,6 +15,8 @@ sealed interface ImpactPathProjectionFailure {
     data class Offset(val cause: ProtocolOffsetFailure) : ImpactPathProjectionFailure
 
     data class Model(val cause: ImpactModelPrimitiveFailure) : ImpactPathProjectionFailure
+
+    data class ValueModel(val cause: ImpactValueModelPrimitiveFailure) : ImpactPathProjectionFailure
 
     data class Collection(val cause: ProtocolCollectionFailure) : ImpactPathProjectionFailure
 

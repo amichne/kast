@@ -164,6 +164,7 @@ internal fun transport(
 
 internal fun ImmutableCallbackInvocationFlowFailure.callbackFailure(): CallbackInvocationFlowFailure =
     when (this) {
+        ImmutableCallbackInvocationFlowFailure.PROOF_LIMIT_REACHED -> CallbackInvocationFlowFailure.PROOF_LIMIT_REACHED
         ImmutableCallbackInvocationFlowFailure.ORIGIN_MISMATCH -> CallbackInvocationFlowFailure.BODY_OUTSIDE_ARGUMENT
         ImmutableCallbackInvocationFlowFailure.BASIS_MISMATCH -> CallbackInvocationFlowFailure.BASIS_MISMATCH
         ImmutableCallbackInvocationFlowFailure.DESTINATION_MISMATCH ->

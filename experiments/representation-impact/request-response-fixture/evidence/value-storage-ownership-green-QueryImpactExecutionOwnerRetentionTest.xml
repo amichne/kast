@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryImpactExecutionOwnerRetentionTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T02:05:53.503Z" hostname="Austins-MacBook-Pro.local" time="0.076">
+  <properties/>
+  <testcase name="default sites and calls share their exact admitted endpoint declaration owner()" classname="io.github.amichne.kast.query.contract.QueryImpactExecutionOwnerRetentionTest" time="0.064"/>
+  <testcase name="equal distinct admitted endpoints keep separate declaration owner objects()" classname="io.github.amichne.kast.query.contract.QueryImpactExecutionOwnerRetentionTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

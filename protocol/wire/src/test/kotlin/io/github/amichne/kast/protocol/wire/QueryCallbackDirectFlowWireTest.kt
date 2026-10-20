@@ -1,5 +1,8 @@
 package io.github.amichne.kast.protocol.wire
 
+import io.github.amichne.kast.protocol.contract.QueryCallbackBindingWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBodyBindingWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBodySupplyWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationScanDocument
 import kotlinx.serialization.json.jsonObject

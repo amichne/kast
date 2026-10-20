@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.runtime.hosted.NativePacketCompositeQueryTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T06:54:47.031Z" hostname="Austins-MacBook-Pro.local" time="9.185">
+  <properties/>
+  <testcase name="testOriginalS2ClientErrorRowC24KeepsExactSourceFieldsAndErrorGuard" classname="io.github.amichne.kast.runtime.hosted.NativePacketCompositeQueryTest" time="9.176"/>
+  <system-out><![CDATA[PACKET_NATIVE_CALLBACK selected=ExactDeclarationTextRange(startInclusive=383, endExclusive=399) supplier=ExactDeclarationTextRange(startInclusive=769, endExclusive=989) target=ExactDeclarationTextRange(startInclusive=959, endExclusive=989) targetOwner=Anonymous predicates=1
+PACKET_NATIVE_CALLBACK selected=ExactDeclarationTextRange(startInclusive=577, endExclusive=593) supplier=ExactDeclarationTextRange(startInclusive=769, endExclusive=1147) target=ExactDeclarationTextRange(startInclusive=1014, endExclusive=1019) targetOwner=Anonymous predicates=2
+PACKET_NATIVE_BYTE_REFUSAL candidate=120866 reserve=43008 allowance=125375
+PACKET_NATIVE_BYTES range=ExactDeclarationTextRange(startInclusive=571, endExclusive=594) role=ExpressionResult source=57314 base=61504 available=125375 response=63552 pathDepth=2 stackDepth=1 predicates=2 work=3 transfers=[] causes=[BYTE_LIMIT_REACHED]
+PACKET_NATIVE_FRAME index=0 range=ExactDeclarationTextRange(startInclusive=769, endExclusive=1147) kind=DIRECT
+PACKET_QUERY_CAPTURE outgoing=false nativeFlowReads=90 retainedReadDelta=0 paths=3
+PACKET_QUERY_PATH index=0 steps=54 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2ClientErrorRowC24KeepsExactSourceFieldsAndErrorGuard_3Kwr5RFGdNTWJI1PtuPKAMEGDgf/src/fixture/feature/OffersProcessor.kt range=818:917 role=ExpressionResult pathDepth=2 terminal=FLOW:UNSUPPORTED_EXPRESSION evidence=None
+PACKET_QUERY_PATH index=1 steps=20 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2ClientErrorRowC24KeepsExactSourceFieldsAndErrorGuard_3Kwr5RFGdNTWJI1PtuPKAMEGDgf/src/fixture/client/OffersClient.kt range=1074:1092 role=ExpressionResult pathDepth=0 terminal=FLOW:UNSUPPORTED_EXPRESSION evidence=None
+PACKET_QUERY_PATH index=2 steps=35 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2ClientErrorRowC24KeepsExactSourceFieldsAndErrorGuard_3Kwr5RFGdNTWJI1PtuPKAMEGDgf/src/fixture/outcome/Outcome.kt range=571:594 role=ExpressionResult pathDepth=2 terminal=FLOW:BYTE_LIMIT_REACHED evidence=None
+]]></system-out>
+  <system-err><![CDATA[[   1261]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1261]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

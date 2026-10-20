@@ -1,0 +1,22 @@
+{
+  "/Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/experiments/representation-impact/request-response-fixture/results/error-return-and-known-empty-oracles.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 10.62 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    }
+  ]
+}

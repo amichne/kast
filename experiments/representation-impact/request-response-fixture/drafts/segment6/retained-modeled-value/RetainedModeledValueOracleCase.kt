@@ -1,0 +1,219 @@
+package io.github.amichne.kast.query.protocol
+
+import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.kernel.OperationOutcome
+import io.github.amichne.kast.kernel.ResourceBudget
+import io.github.amichne.kast.kernel.ResultLimit
+import io.github.amichne.kast.kernel.WorkUnitLimit
+import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.ImpactModelDocument
+import io.github.amichne.kast.protocol.contract.ImpactModelFormatDocument
+import io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument
+import io.github.amichne.kast.protocol.contract.ImpactWitnessSectionDocument
+import io.github.amichne.kast.protocol.contract.ProtocolOffset
+import io.github.amichne.kast.protocol.contract.QueryExecutionBudgetDocument
+import io.github.amichne.kast.protocol.contract.QueryExecutionDocument
+import io.github.amichne.kast.protocol.contract.QueryExecutionKindDocument
+import io.github.amichne.kast.protocol.contract.QueryExpansionScopeDocument
+import io.github.amichne.kast.protocol.contract.QueryFromDocument
+import io.github.amichne.kast.protocol.contract.QueryImpactFlowDocument
+import io.github.amichne.kast.protocol.contract.QueryImpactProducerDocument
+import io.github.amichne.kast.protocol.contract.QueryImpactSourceDocument
+import io.github.amichne.kast.protocol.contract.QueryOutputDocument
+import io.github.amichne.kast.protocol.contract.QueryRetentionModeDocument
+import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.protocol.contract.QueryRunResult
+import io.github.amichne.kast.query.contract.QueryBudget
+import io.github.amichne.kast.query.contract.QueryByteLimit
+import io.github.amichne.kast.query.contract.QueryExecutionRequest
+import io.github.amichne.kast.query.contract.QueryExecutionResult
+import io.github.amichne.kast.query.contract.QueryImpactLedger
+import io.github.amichne.kast.query.contract.QueryImpactProducer
+import io.github.amichne.kast.query.contract.QueryImpactSource
+import io.github.amichne.kast.query.contract.QueryOperations
+import io.github.amichne.kast.query.contract.QueryOutputSyntax
+import io.github.amichne.kast.query.contract.QueryPlanAdmission
+import io.github.amichne.kast.query.contract.QueryPlanCompiler
+import io.github.amichne.kast.query.contract.QueryPlanSyntax
+import io.github.amichne.kast.query.contract.QueryRetainedResult
+import io.github.amichne.kast.query.contract.QueryRows
+import io.github.amichne.kast.query.contract.QuerySourceSyntax
+import io.github.amichne.kast.query.contract.QueryValuePathAccounting
+import io.github.amichne.kast.query.service.QueryNanoClock
+import io.github.amichne.kast.query.service.QueryService
+import io.github.amichne.kast.relation.contract.ContractModelIdentity
+import io.github.amichne.kast.relation.contract.ExactModelCallablePosition
+import io.github.amichne.kast.relation.contract.ModelCallableReference
+import io.github.amichne.kast.relation.contract.ModelIdentifier
+import io.github.amichne.kast.relation.contract.ModelRuleReference
+import io.github.amichne.kast.relation.contract.ModelValuePosition
+import io.github.amichne.kast.relation.contract.ModelVersion
+import io.github.amichne.kast.relation.contract.RelationBudget
+import io.github.amichne.kast.relation.contract.RelationByteLimit
+import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.RelationMeaning
+import io.github.amichne.kast.relation.contract.RelationOperations
+import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.relation.contract.RelationSearchBoundary
+import io.github.amichne.kast.relation.contract.RelationWorkCount
+import io.github.amichne.kast.relation.contract.RepresentationDomain
+import io.github.amichne.kast.relation.contract.RepresentationEvidence
+import io.github.amichne.kast.relation.contract.RepresentationRule
+import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
+import io.github.amichne.kast.relation.contract.ValueFlowCompilerPort
+import io.github.amichne.kast.relation.contract.ValueFlowObligation
+import io.github.amichne.kast.relation.contract.ValueFlowRead
+import io.github.amichne.kast.relation.contract.ValueFlowStep
+import io.github.amichne.kast.relation.contract.ValueFlowTerminal
+import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
+import io.github.amichne.kast.relation.contract.ValueInvocation
+import io.github.amichne.kast.relation.contract.ValueModelApplication
+import io.github.amichne.kast.relation.contract.ValueReceiverKind
+import io.github.amichne.kast.relation.contract.ValueRole
+import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.relation.contract.ValueTransfer
+import io.github.amichne.kast.relation.contract.ValueTransferKind
+import io.github.amichne.kast.source.contract.SourceReadOperations
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
+import io.github.amichne.kast.symbol.contract.ExactSymbolRequest
+import io.github.amichne.kast.symbol.contract.SymbolDescriptionResult
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOperations
+import io.github.amichne.kast.symbol.contract.SymbolExactOperations
+import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
+import io.github.amichne.kast.symbol.contract.SymbolResolutionResult
+import io.github.amichne.kast.symbol.contract.SymbolSelector
+import io.github.amichne.kast.traversal.contract.TraversalBudget
+import io.github.amichne.kast.traversal.contract.TraversalByteLimit
+import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
+import io.github.amichne.kast.traversal.contract.TraversalFrontierLimit
+import io.github.amichne.kast.traversal.contract.TraversalOperations
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
+
+/** Real query and retention owners consume assumed detached compiler facts, without native or performance claims. */
+internal class RetainedModeledValueOracleCase {
+    val metadata = ImpactValueModelProjectionCase()
+    val references = metadata.references
+    private val host = metadata.host as RelationEndpoint.Resolved
+    val lease = host.lease
+    private val producerCall =
+        ValueInvocation.fromCompiler(host, range(40, 42), host, metadata.invocation.executionOwner).modelValue()
+    val producer = QueryImpactProducer.admit(producerCall.resultSite(), producerCall).modelValue()
+    val receiver = ValueSite.fromCompiler(host, range(46, 50),
+        ValueRole.Receiver(metadata.invocation, ValueReceiverKind.EXTENSION), metadata.invocation.executionOwner).modelValue()
+    val application = ValueModelApplication.CollectionSelection.selectFirst(receiver, metadata.binding).modelValue()
+    val result = application.target
+    val intoReceiver = ValueTransfer.fromCompiler(producer.site, receiver, ValueTransferKind.RECEIVER).modelValue()
+    private val model = ContractModelIdentity(id("retained-model-tracer"), ModelVersion.parse(1).modelValue(), id("review:detached"))
+    private val vocabulary = RepresentationDomain.admit(model, listOf(id("OPAQUE"))).modelValue()
+    val originRule = RepresentationRule.Origin.admit(ModelRuleReference(model, id("origin")),
+        originPosition(), vocabulary.state(id("OPAQUE")).modelValue()).modelValue()
+    val origin = RepresentationEvidence.origin(producer.site, producer.invocation, originRule).modelValue()
+    private val resources = ResourceBudget(ResultLimit.parse(100).modelValue(), WorkUnitLimit.parse(200).modelValue(),
+        ElapsedTimeLimitMillis.parse(10000).modelValue())
+    val budget = QueryBudget(resources, QueryByteLimit.parse(10_000_000).modelValue(), QueryByteLimit.parse(32_000_000).modelValue())
+    private val expected = listOf(producer.site, receiver, result)
+    var nativeCalls = 0
+        private set
+    var semanticReplayCalls = 0
+        private set
+    private var unexpectedCalls = 0
+    lateinit var ledger: QueryImpactLedger
+        private set
+    lateinit var issued: QueryResultIssuance.Issued
+        private set
+    private val store = QueryStateStore(clock = { 0 })
+    val request = question()
+    private val presentation = CanonicalQueryProtocol(QueryOperations {
+        semanticReplayCalls++
+        error("Retained modeled evidence cannot invoke semantic execution")
+    }, references, store)
+
+    suspend fun execute() {
+        val source = QueryImpactSource.admit(listOf(producer), listOf(originRule), emptyList(),
+            RelationSearchBoundary.WORKSPACE_EXPANSION).modelValue()
+        val plan = (QueryPlanCompiler.admit(QueryPlanSyntax(QuerySourceSyntax.Impact(source), emptyList(),
+            QueryOutputSyntax.ValuePaths)) as QueryPlanAdmission.Admitted).plan
+        val execution = service().run(QueryExecutionRequest.create(plan, lease, budget).modelValue())
+        assertInstanceOf(QueryExecutionResult.Qualified::class.java, execution, execution.toString())
+        val qualified = execution as QueryExecutionResult.Qualified
+        ledger = ((qualified.result.rows as QueryRows.ValuePaths).accounting as QueryValuePathAccounting.Investigated).ledger
+        val retained = QueryRetainedResult.captureInvestigation(lease, qualified).modelValue()
+        issued = store.issueResult(request, retained) as QueryResultIssuance.Issued
+        assertEquals(3, nativeCalls)
+        assertEquals(0, unexpectedCalls)
+    }
+
+    suspend fun paths() = read(QueryRunRequest.ReadResult.valuePaths(issued.reference))
+
+    suspend fun witness(section: ImpactWitnessSectionDocument) =
+        read(QueryRunRequest.ReadResult.impactWitness(issued.reference, section))
+
+    private suspend fun read(request: QueryRunRequest.ReadResult): QueryRunResult {
+        val page = presentation.executePage(request, lease, budget)
+        assertInstanceOf(OperationOutcome.Qualified::class.java, page, page.toString())
+        return (page as OperationOutcome.Qualified).evidence.payload
+    }
+
+    private fun service() = QueryService(
+        SymbolDiscoveryOperations { unexpected("discovery") },
+        object : SymbolExactOperations {
+            override suspend fun resolve(request: SymbolResolutionRequest): SymbolResolutionResult = unexpected("resolve")
+            override suspend fun describe(request: ExactSymbolRequest): SymbolDescriptionResult = unexpected("describe")
+        },
+        SourceReadOperations { unexpected("source") },
+        RelationOperations { unexpected("relation") },
+        TraversalOperations { unexpected("traversal") },
+        ceiling(),
+        QueryNanoClock { 0 },
+        nativePort(),
+    )
+
+    private fun ceiling() = TraversalBudget(resources.resultLimit, TraversalByteLimit.parse(10_000_000).modelValue(),
+        resources.workUnitLimit, resources.elapsedTimeLimit, TraversalDepthLimit.parse(1).modelValue(),
+        TraversalFrontierLimit.parse(100).modelValue(), RelationBudget(resources, RelationByteLimit.parse(10_000_000).modelValue()))
+
+    private fun nativePort() = ValueFlowCompilerPort { input ->
+            if (nativeCalls >= expected.size) unexpected("excess value read")
+            assertEquals(expected[nativeCalls], input.source)
+            val index = nativeCalls++
+            val obligations = if (index == 2) listOf(ValueFlowObligation(input.source, ValueFlowUnsupportedCause.EXTERNAL_CALL)) else emptyList()
+            ValueFlowRead.Observed(ValueFlowStep.fromCompiler(input.source,
+                if (index == 0) listOf(intoReceiver) else emptyList(), obligations,
+                if (obligations.isEmpty()) ValueFlowTerminal.SupportedDomainExhausted else ValueFlowTerminal.Unresolved,
+                RelationRequest.start(host, RelationMeaning.References, input.budget, input.boundary),
+                RelationWorkCount.parse(1).modelValue(), applications = if (index == 1) listOf(application) else emptyList()).modelValue())
+    }
+
+    private fun question() = QueryRunRequest.Run(QueryFromDocument.Impact(sourceDocument()), bounded(emptyList()),
+        QueryOutputDocument.ValuePaths,
+        QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
+        retention = QueryRetentionModeDocument.RETAIN)
+
+    private fun sourceDocument(): QueryImpactSourceDocument {
+        val selector = SymbolSelector.issue(lease, host.scope, host.evidence)
+        val exact = (references.issueExact(selector) as ExactSelectorIssuance.Issued).selector
+        val modelDocument = ImpactModelDocument.Representation(ImpactModelFormatDocument.Current,
+            model.impactDocument().modelValue(), bounded(listOf(id("OPAQUE").value.impactId().modelValue())),
+            bounded(listOf(originRule.impactDocument().modelValue())))
+        return QueryImpactSourceDocument(
+            seeds = bounded(listOf(QueryImpactProducerDocument(exact, exact,
+                ImpactSourceRangeDocument(ProtocolOffset.parse(40).modelValue(), ProtocolOffset.parse(42).modelValue())))),
+            declarations = bounded(emptyList()), domain = QueryExpansionScopeDocument.Workspace,
+            flow = QueryImpactFlowDocument.KOTLIN_FORWARD_V1,
+            models = bounded(listOf(modelDocument)))
+    }
+
+    private fun originPosition() = ExactModelCallablePosition.admit(ModelCallableReference(lease.identity,
+        host.compilerIdentity, host.file, host.range, ModelValuePosition.Result),
+        RevalidatedRelationEndpoint.validate(host, host.evidence).modelValue()).modelValue()
+
+    private fun unexpected(stage: String): Nothing {
+        unexpectedCalls++
+        error("Unexpected modeled-retention fixture effect: $stage")
+    }
+
+    private fun id(raw: String) = ModelIdentifier.parse(raw).modelValue()
+    private fun range(start: Int, end: Int) = ExactDeclarationTextRange.parse(start, end).modelValue()
+    private fun <T> bounded(values: List<T>) = BoundedProtocolList.create(values).modelValue()
+}

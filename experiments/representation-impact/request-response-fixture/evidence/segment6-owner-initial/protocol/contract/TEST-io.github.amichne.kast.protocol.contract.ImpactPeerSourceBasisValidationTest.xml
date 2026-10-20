@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactPeerSourceBasisValidationTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:20.573Z" hostname="Austins-MacBook-Pro.local" time="0.001">
+  <properties/>
+  <testcase name="foreign requested site cannot become an ordinary source claim through matching question()" classname="io.github.amichne.kast.protocol.contract.ImpactPeerSourceBasisValidationTest" time="0.0"/>
+  <testcase name="foreign second seed cannot borrow the first source basis()" classname="io.github.amichne.kast.protocol.contract.ImpactPeerSourceBasisValidationTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

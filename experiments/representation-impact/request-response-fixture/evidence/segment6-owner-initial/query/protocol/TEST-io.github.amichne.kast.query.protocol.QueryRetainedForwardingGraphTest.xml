@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryRetainedForwardingGraphTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.485Z" hostname="Austins-MacBook-Pro.local" time="0.011">
+  <properties/>
+  <testcase name="retained reads preserve finite recursive graph and reissue every exact site without native replay()" classname="io.github.amichne.kast.query.protocol.QueryRetainedForwardingGraphTest" time="0.007"/>
+  <testcase name="supplier activation failure retains the proven graph in qualified result reads()" classname="io.github.amichne.kast.query.protocol.QueryRetainedForwardingGraphTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.CompleteOnlyNamedReferenceTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.601Z" hostname="Austins-MacBook-Pro.local" time="0.022">
+  <properties/>
+  <testcase name="trace preserves a named source reference with unknown execution()" classname="io.github.amichne.kast.query.protocol.CompleteOnlyNamedReferenceTest" time="0.013"/>
+  <testcase name="unsupported named reference retains its exact failure in strict rejection()" classname="io.github.amichne.kast.query.protocol.CompleteOnlyNamedReferenceTest" time="0.004"/>
+  <testcase name="complete named reference proof is retained without creating a named row()" classname="io.github.amichne.kast.query.protocol.CompleteOnlyNamedReferenceTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

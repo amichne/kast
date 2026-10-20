@@ -1,0 +1,2 @@
+PACKET_VALUE_PROOF_ALLOCATION physicalSites=2 physicalFrames=1 physicalCallbackFrames=0 distinctFullCallbackProofs=0 physicalEndpoints=5 distinctFullEndpointProofs=4 complete=true
+PACKET_VALUE_PROOF_ALLOCATION physicalSites=8 physicalFrames=3 physicalCallbackFrames=0 distinctFullCallbackProofs=0 physicalEndpoints=13 distinctFullEndpointProofs=8 complete=true

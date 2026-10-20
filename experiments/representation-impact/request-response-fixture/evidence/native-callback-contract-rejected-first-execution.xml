@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativeValueCallbackContractRejectedTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-20T05:06:25.546Z" hostname="Austins-MacBook-Pro.local" time="0.074">
+  <properties/>
+  <testcase name="invalid forwarding path keeps its raw contract failure as an obligation()" classname="io.github.amichne.kast.relation.intellij.NativeValueCallbackContractRejectedTest" time="0.061">
+    <failure message="java.lang.IllegalStateException: Detached fixture rejected: STALE_SITE" type="java.lang.IllegalStateException">java.lang.IllegalStateException: Detached fixture rejected: STALE_SITE
+	at io.github.amichne.kast.relation.intellij.NativeCallbackFailureCaseKt.failureValue(NativeCallbackFailureCase.kt:54)
+	at io.github.amichne.kast.relation.intellij.NativeValueCallbackContractRejectedTest.invalid forwarding path keeps its raw contract failure as an obligation(NativeValueCallbackContractRejectedTest.kt:20)
+</failure>
+  </testcase>
+  <testcase name="unrelated expression rejects callback contract failure evidence()" classname="io.github.amichne.kast.relation.intellij.NativeValueCallbackContractRejectedTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

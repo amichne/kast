@@ -1,0 +1,27 @@
+{
+  "comprehension": {
+    "type": "NOT_ASSESSED"
+  },
+  "documents": [
+    {
+      "findings": [],
+      "metrics": {
+        "estimatedSyllables": 625,
+        "fleschKincaidGrade": 7.24,
+        "sentences": 40,
+        "words": 387,
+        "wordsPerSentence": 9.68
+      },
+      "path": "/Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/experiments/representation-impact/request-response-fixture/evidence/segment4-native-storage-policy.md",
+      "sourceSha256": "20d95e0e522701bb5f76f2087d7167992fb267fe2f23a9509e1bc81f76c23c19",
+      "type": "DOCUMENT_ASSESSMENT"
+    }
+  ],
+  "engine": {
+    "policySha256": "0a7cc8bb61ff2eb3ea13957b54d752e90d48cf41d936de789143b650d55ea277",
+    "type": "VALE",
+    "version": "3.24.0"
+  },
+  "schemaVersion": 2,
+  "type": "ASSESSED"
+}

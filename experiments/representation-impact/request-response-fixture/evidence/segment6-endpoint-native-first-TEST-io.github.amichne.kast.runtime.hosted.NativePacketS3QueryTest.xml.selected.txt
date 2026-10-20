@@ -1,0 +1,12 @@
+PACKET_NATIVE_READ_REJECTED range=ExactDeclarationTextRange(startInclusive=939, endExclusive=1020) role=ExpressionResult cause=GRANT_TOO_SMALL sourceBytes=91352 allowance=114492 work=1 workLimit=99041 consumed=0 emitted=0
+PACKET_VALUE_PROOF_ALLOCATION physicalSites=7 physicalFrames=2 physicalCallbackFrames=0 distinctFullCallbackProofs=0 physicalEndpoints=9 distinctFullEndpointProofs=9 complete=true
+PACKET_NATIVE_READ_REJECTED range=ExactDeclarationTextRange(startInclusive=427, endExclusive=432) role=Argument cause=GRANT_TOO_SMALL sourceBytes=29958 allowance=27523 work=1 workLimit=99037 consumed=0 emitted=0
+PACKET_NATIVE_REJECTED_FRAME index=0 range=ExactDeclarationTextRange(startInclusive=769, endExclusive=989) kind=DIRECT flowBytes=0 selectedBytes=0 identityBytes=0 frameEndpointReferences=3 physicalEndpoints=2 fullProofEndpoints=2
+PACKET_VALUE_PROOF_ALLOCATION physicalSites=2 physicalFrames=1 physicalCallbackFrames=0 distinctFullCallbackProofs=0 physicalEndpoints=4 distinctFullEndpointProofs=4 complete=true
+PACKET_NATIVE_READ_REJECTED range=ExactDeclarationTextRange(startInclusive=939, endExclusive=1020) role=ExpressionResult cause=GRANT_TOO_SMALL sourceBytes=91264 allowance=117794 work=1 workLimit=99041 consumed=0 emitted=0
+PACKET_VALUE_PROOF_ALLOCATION physicalSites=7 physicalFrames=2 physicalCallbackFrames=0 distinctFullCallbackProofs=0 physicalEndpoints=9 distinctFullEndpointProofs=9 complete=true
+PACKET_NATIVE_READ_REJECTED range=ExactDeclarationTextRange(startInclusive=939, endExclusive=1020) role=ExpressionResult cause=GRANT_TOO_SMALL sourceBytes=91264 allowance=68737 work=1 workLimit=99040 consumed=0 emitted=0
+PACKET_VALUE_PROOF_ALLOCATION physicalSites=7 physicalFrames=2 physicalCallbackFrames=0 distinctFullCallbackProofs=0 physicalEndpoints=9 distinctFullEndpointProofs=9 complete=true
+PACKET_NATIVE_READ_REJECTED range=ExactDeclarationTextRange(startInclusive=427, endExclusive=432) role=ExpressionResult cause=GRANT_TOO_SMALL sourceBytes=23906 allowance=45317 work=1 workLimit=99039 consumed=0 emitted=0
+PACKET_NATIVE_REJECTED_FRAME index=0 range=ExactDeclarationTextRange(startInclusive=769, endExclusive=989) kind=DIRECT flowBytes=0 selectedBytes=0 identityBytes=0 frameEndpointReferences=3 physicalEndpoints=2 fullProofEndpoints=2
+PACKET_VALUE_PROOF_ALLOCATION physicalSites=2 physicalFrames=1 physicalCallbackFrames=0 distinctFullCallbackProofs=0 physicalEndpoints=3 distinctFullEndpointProofs=3 complete=true

@@ -1,0 +1,6 @@
+owner	selector	cases	status
+:protocol:contract	*ImpactSeedCallbackReturnContractTest	3	NOT_RUN
+:protocol:contract	*ImpactSeedCallbackReturnQuestionTest	3	NOT_RUN
+:query:contract	*QuerySeedCallbackReturnStorageTest	1	NOT_RUN
+:query:protocol	*ImpactSeedCallbackReturnProjectionTest	1	NOT_RUN
+:query:protocol	*ImpactSeedCallbackReturnQuestionProjectionTest	2	NOT_RUN

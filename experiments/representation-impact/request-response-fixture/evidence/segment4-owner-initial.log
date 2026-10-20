@@ -1,0 +1,421 @@
+Calculating task graph as no cached configuration is available for tasks: :protocol:contract:check :protocol:wire:check :query:contract:check :query:protocol:check :query:service:check verifyJsonContracts
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :protocol:contract:checkTestKotlinFileLength
+> Task :protocol:contract:checkMainKotlinFileLength FAILED
+> Task :protocol:contract:spotlessKotlin
+> Task :protocol:contract:spotlessKotlinCheck
+> Task :protocol:contract:spotlessKotlinGradle UP-TO-DATE
+> Task :protocol:contract:spotlessKotlinGradleCheck UP-TO-DATE
+> Task :protocol:contract:spotlessCheck
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :kernel:compileJava NO-SOURCE
+> Task :protocol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+
+> Task :protocol:contract:compileKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryImmutableCallbackValueDocument.kt:24:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+
+> Task :protocol:contract:detekt FAILED
+Successfully generated markdown at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/build/reports/detekt/detekt.md
+Successfully generated html at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/build/reports/detekt/detekt.html
+Successfully generated sarif at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/build/reports/detekt/detekt.sarif
+Successfully generated checkstyle at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/build/reports/detekt/detekt.xml
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactCallbackValidation.kt:13:48 The function admitsCallback appears to be too complex based on Cyclomatic Complexity (complexity: 17). The maximum allowed complexity for methods is set to '12' [CyclomaticComplexMethod]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactPathDocuments.kt:53:9 The function admitsEvidence appears to be too complex based on Cyclomatic Complexity (complexity: 15). The maximum allowed complexity for methods is set to '12' [CyclomaticComplexMethod]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactValueStateValidation.kt:179:46 The function actualMatches appears to be too complex based on Cyclomatic Complexity (complexity: 15). The maximum allowed complexity for methods is set to '12' [CyclomaticComplexMethod]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallableObservationWireDocuments.kt:9:12 The file name 'QueryCallableObservationWireDocuments' does not match the name of the single top-level declaration 'QuerySourceLessCallableWireDocument'. [MatchingDeclarationName]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackBodyBindingWireSerializer.kt:63:25 The function admitCallbackProofSize appears to be too complex based on Cognitive Complexity (complexity: 14). Defined maximum allowed complexity for methods is set to '12' [CognitiveComplexMethod]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryNamedCallbackReferenceWireDocument.kt:11:18 The file name 'QueryNamedCallbackReferenceWireDocument' does not match the name of the single top-level declaration 'QueryCallbackReferenceReceiverWireDocument'. [MatchingDeclarationName]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryScopeExclusionWireDocuments.kt:7:12 The file name 'QueryScopeExclusionWireDocuments' does not match the name of the single top-level declaration 'QueryExcludedCompilerTargetWireDocument'. [MatchingDeclarationName]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract/ImpactValueStateShapeTest.kt:13:7 Class ImpactValueStateShapeTest is too large. Consider splitting it into smaller pieces. [LargeClass]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract/ImpactValueStateShapeTest.kt:28:9 The function implicit formals keep the exact anonymous execution body and reject contradictory origin is too long (64). The maximum length is 50. [LongMethod]
+
+
+> Task :protocol:contract:processResources UP-TO-DATE
+> Task :kernel:processResources NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar UP-TO-DATE
+> Task :protocol:contract:processTestResources UP-TO-DATE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar UP-TO-DATE
+> Task :protocol:wire:checkMainKotlinFileLength
+> Task :protocol:wire:checkTestKotlinFileLength
+
+> Task :protocol:contract:compileKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryImmutableCallbackValueDocument.kt:24:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+
+> Task :protocol:wire:detekt
+> Task :protocol:wire:spotlessKotlin
+> Task :protocol:wire:spotlessKotlinCheck
+> Task :protocol:wire:spotlessKotlinGradle FROM-CACHE
+> Task :protocol:wire:spotlessKotlinGradleCheck UP-TO-DATE
+> Task :protocol:wire:spotlessCheck
+> Task :protocol:registry:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:wire:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:wire:processResources NO-SOURCE
+> Task :protocol:wire:processTestFixturesResources NO-SOURCE
+> Task :protocol:registry:processResources NO-SOURCE
+> Task :protocol:wire:processTestResources UP-TO-DATE
+> Task :query:contract:checkMainKotlinFileLength
+> Task :query:contract:checkTestKotlinFileLength
+> Task :query:contract:detekt
+> Task :query:contract:spotlessKotlin
+> Task :query:contract:spotlessKotlinCheck
+> Task :query:contract:spotlessKotlinGradle UP-TO-DATE
+> Task :query:contract:spotlessKotlinGradleCheck UP-TO-DATE
+> Task :query:contract:spotlessCheck
+> Task :query:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:contract:compileKotlin UP-TO-DATE
+> Task :relation:contract:compileJava NO-SOURCE
+> Task :source:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:contract:compileKotlin UP-TO-DATE
+> Task :source:contract:compileJava NO-SOURCE
+> Task :traversal:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :traversal:contract:compileKotlin UP-TO-DATE
+> Task :traversal:contract:compileJava NO-SOURCE
+> Task :protocol:contract:compileJava NO-SOURCE
+> Task :protocol:contract:classes UP-TO-DATE
+> Task :protocol:contract:jar
+> Task :query:contract:compileKotlin
+> Task :protocol:registry:compileKotlin
+> Task :protocol:registry:compileJava NO-SOURCE
+> Task :protocol:contract:compileTestKotlin
+> Task :protocol:contract:compileTestJava NO-SOURCE
+> Task :protocol:contract:testClasses UP-TO-DATE
+
+> Task :protocol:contract:test FAILED
+
+ImpactFindingShapeTest > all compact terminal variants preserve independent finite shapes and original rejection work() FAILED
+    org.opentest4j.AssertionFailedError: expected: <[{"type":"CONSUMER","reference":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"rule":"rule"},"expectedState":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"domain":["HIPED","VOLTAGE"],"state":"VOLTAGE"},"outcome":"SATISFIED"},{"type":"CONSUMER","reference":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"rule":"rule"},"expectedState":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"domain":["HIPED","VOLTAGE"],"state":"VOLTAGE"},"outcome":"DIFFERENT"},{"type":"CONSUMER","reference":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"rule":"rule"},"expectedState":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"domain":["HIPED","VOLTAGE"],"state":"VOLTAGE"},"outcome":"UNKNOWN"},{"type":"MODELED_TERMINAL","reference":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"rule":"rule"},"source":{"site":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":20,"end":21},"role":{"type":"PROPERTY_ASSIGNMENT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[]},"kind":"PERSISTENCE","contract":{"id":"storage","version":1},"slot":"ciphertext"},"meaning":"REVIEWED_RETENTION","obligations":[{"position":{"site":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":20,"end":21},"role":{"type":"PROPERTY_ASSIGNMENT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[]},"kind":"PERSISTENCE","contract":{"id":"storage","version":1},"slot":"ciphertext"},"required":["RETENTION_POLICY","DECODING_COMPATIBILITY","MIGRATION_PROOF"]}]},{"type":"UNRESOLVED_FLOW","cause":"MUTABLE_CONTROL_FLOW","evidence":{"type":"NONE"}},{"type":"UNRESOLVED_READ","rejection":{"type":"NATIVE","source":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":20,"end":21},"role":{"type":"PROPERTY_ASSIGNMENT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[]},"domain":{"type":"WORKSPACE"},"cause":"AUTHORITY_MOVED","examinedWorkUnits":3}},{"type":"UNRESOLVED_READ","rejection":{"type":"CONTRACT","source":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":20,"end":21},"role":{"type":"PROPERTY_ASSIGNMENT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[]},"domain":{"type":"WORKSPACE"},"cause":"DOMAIN_MISMATCH","examinedWorkUnits":4}},{"type":"UNRESOLVED_BOUNDARY","source":{"site":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":20,"end":21},"role":{"type":"PROPERTY_ASSIGNMENT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[]},"kind":"PERSISTENCE","contract":{"id":"storage","version":1},"slot":"ciphertext"},"reason":"MISSING_MODEL","obligation":{"position":{"site":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":20,"end":21},"role":{"type":"PROPERTY_ASSIGNMENT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[]},"kind":"PERSISTENCE","contract":{"id":"storage","version":1},"slot":"ciphertext"},"required":["RETENTION_POLICY","DECODING_COMPATIBILITY","MIGRATION_PROOF"]}},{"type":"EXECUTION_STOP","stop":{"type":"CYCLE","repeatedAt":2}},{"type":"EXECUTION_STOP","stop":{"type":"CHECKPOINT_CAPACITY","requiredBytes":20,"availableBytes":10}},{"type":"SUPPORTED_DOMAIN_END","observation":{"source":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":20,"end":21},"role":{"type":"PROPERTY_ASSIGNMENT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[]},"domain":{"subject":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"meaning":"references","requestedDomain":"WORKSPACE","domain":{"scope":{"type":"WORKSPACE"},"source_policy":"production-only","generated_sources":"exclude","libraries":"exclude","source_sets":{"kind":"all"},"directory":null,"package_name":null,"declaration_kinds":[]},"fingerprint":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","budget":{"maxElapsedMillis":100,"maxWorkUnits":10,"maxResults":2,"maxReturnedBytes":10000},"position":{"type":"START"}},"examinedWorkUnits":1,"retainedBytes":200,"terminal":"SUPPORTED_DOMAIN_EXHAUSTED"}},{"type":"EXPLICIT_SCOPE_EXCLUSION","domain":{"scope":{"type":"WORKSPACE"},"source_policy":"production-only","generated_sources":"exclude","libraries":"exclude","source_sets":{"kind":"all"},"directory":null,"package_name":null,"declaration_kinds":[]},"cause":"OUTSIDE_DIRECTORY"}]> but was: <[{"type":"CONSUMER","reference":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"rule":"rule"},"expectedState":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"domain":["HIPED","VOLTAGE"],"state":"VOLTAGE"},"outcome":"SATISFIED"},{"type":"CONSUMER","reference":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"rule":"rule"},"expectedState":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"domain":["HIPED","VOLTAGE"],"state":"VOLTAGE"},"outcome":"DIFFERENT"},{"type":"CONSUMER","reference":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"rule":"rule"},"expectedState":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"domain":["HIPED","VOLTAGE"],"state":"VOLTAGE"},"outcome":"UNKNOWN"},{"type":"MODELED_TERMINAL","reference":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"rule":"rule"},"source":{"site":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":20,"end":21},"role":{"type":"PROPERTY_ASSIGNMENT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[],"predicates":[]},"kind":"PERSISTENCE","contract":{"id":"storage","version":1},"slot":"ciphertext"},"meaning":"REVIEWED_RETENTION","obligations":[{"position":{"site":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":20,"end":21},"role":{"type":"PROPERTY_ASSIGNMENT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[],"predicates":[]},"kind":"PERSISTENCE","contract":{"id":"storage","version":1},"slot":"ciphertext"},"required":["RETENTION_POLICY","DECODING_COMPATIBILITY","MIGRATION_PROOF"]}]},{"type":"UNRESOLVED_FLOW","cause":"MUTABLE_CONTROL_FLOW","evidence":{"type":"NONE"}},{"type":"UNRESOLVED_READ","rejection":{"type":"NATIVE","source":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":20,"end":21},"role":{"type":"PROPERTY_ASSIGNMENT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[],"predicates":[]},"domain":{"type":"WORKSPACE"},"cause":"AUTHORITY_MOVED","examinedWorkUnits":3}},{"type":"UNRESOLVED_READ","rejection":{"type":"CONTRACT","source":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":20,"end":21},"role":{"type":"PROPERTY_ASSIGNMENT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[],"predicates":[]},"domain":{"type":"WORKSPACE"},"cause":"DOMAIN_MISMATCH","examinedWorkUnits":4}},{"type":"UNRESOLVED_BOUNDARY","source":{"site":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":20,"end":21},"role":{"type":"PROPERTY_ASSIGNMENT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[],"predicates":[]},"kind":"PERSISTENCE","contract":{"id":"storage","version":1},"slot":"ciphertext"},"reason":"MISSING_MODEL","obligation":{"position":{"site":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":20,"end":21},"role":{"type":"PROPERTY_ASSIGNMENT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[],"predicates":[]},"kind":"PERSISTENCE","contract":{"id":"storage","version":1},"slot":"ciphertext"},"required":["RETENTION_POLICY","DECODING_COMPATIBILITY","MIGRATION_PROOF"]}},{"type":"EXECUTION_STOP","stop":{"type":"CYCLE","repeatedAt":2}},{"type":"EXECUTION_STOP","stop":{"type":"CHECKPOINT_CAPACITY","requiredBytes":20,"availableBytes":10}},{"type":"SUPPORTED_DOMAIN_END","observation":{"source":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":20,"end":21},"role":{"type":"PROPERTY_ASSIGNMENT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[],"predicates":[]},"domain":{"subject":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"meaning":"references","requestedDomain":"WORKSPACE","domain":{"scope":{"type":"WORKSPACE"},"source_policy":"production-only","generated_sources":"exclude","libraries":"exclude","source_sets":{"kind":"all"},"directory":null,"package_name":null,"declaration_kinds":[]},"fingerprint":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","budget":{"maxElapsedMillis":100,"maxWorkUnits":10,"maxResults":2,"maxReturnedBytes":10000},"position":{"type":"START"}},"examinedWorkUnits":1,"retainedBytes":200,"terminal":"SUPPORTED_DOMAIN_EXHAUSTED"}},{"type":"EXPLICIT_SCOPE_EXCLUSION","domain":{"scope":{"type":"WORKSPACE"},"source_policy":"production-only","generated_sources":"exclude","libraries":"exclude","source_sets":{"kind":"all"},"directory":null,"package_name":null,"declaration_kinds":[]},"cause":"OUTSIDE_DIRECTORY"}]>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+        at app//io.github.amichne.kast.protocol.contract.ImpactFindingShapeTest.all compact terminal variants preserve independent finite shapes and original rejection work(ImpactFindingShapeTest.kt:33)
+
+ImpactFindingShapeTest > finding emits required original path identity current alternatives and ordered compact provenance() FAILED
+    org.opentest4j.AssertionFailedError: expected: <{"section":"FINDINGS","ordinal":2,"witness":{"type":"FINDING","finding":{"path":{"pathOrdinal":2,"pathRowId":"result-row:v1:00000000-0000-0000-0000-000000000001"},"producer":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":10,"end":11},"role":{"type":"EXPRESSION_RESULT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[]},"destination":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":20,"end":21},"role":{"type":"PROPERTY_ASSIGNMENT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[]},"representation":{"type":"PRESENT","branches":[{"current":{"type":"KNOWN","state":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"domain":["HIPED","VOLTAGE"],"state":"VOLTAGE"}},"provenance":[{"type":"ORIGIN","reference":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"rule":"rule"},"state":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"domain":["HIPED","VOLTAGE"],"state":"VOLTAGE"}},{"type":"MODELED_TRANSFER","reference":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"rule":"rule"}},{"type":"MODELED_TRANSFORMATION","reference":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"rule":"rule"}},{"type":"BOUNDARY_MODEL","reference":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"rule":"rule"}},{"type":"UNMODELED"}]},{"current":{"type":"UNKNOWN","reason":"UNMODELED_TRANSFORMATION"},"provenance":[{"type":"UNMODELED"}]}]},"terminal":{"type":"UNRESOLVED_FLOW","cause":"MUTABLE_CONTROL_FLOW","evidence":{"type":"NONE"}},"boundaryObligations":[{"position":{"site":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":20,"end":21},"role":{"type":"PROPERTY_ASSIGNMENT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[]},"kind":"PERSISTENCE","contract":{"id":"storage","version":1},"slot":"ciphertext"},"required":["RETENTION_POLICY","DECODING_COMPATIBILITY","MIGRATION_PROOF"]}]}}}> but was: <{"section":"FINDINGS","ordinal":2,"witness":{"type":"FINDING","finding":{"path":{"pathOrdinal":2,"pathRowId":"result-row:v1:00000000-0000-0000-0000-000000000001"},"producer":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":10,"end":11},"role":{"type":"EXPRESSION_RESULT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[],"predicates":[]},"destination":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":20,"end":21},"role":{"type":"PROPERTY_ASSIGNMENT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[],"predicates":[]},"representation":{"type":"PRESENT","branches":[{"current":{"type":"KNOWN","state":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"domain":["HIPED","VOLTAGE"],"state":"VOLTAGE"}},"provenance":[{"type":"ORIGIN","reference":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"rule":"rule"},"state":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"domain":["HIPED","VOLTAGE"],"state":"VOLTAGE"}},{"type":"MODELED_TRANSFER","reference":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"rule":"rule"}},{"type":"MODELED_TRANSFORMATION","reference":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"rule":"rule"}},{"type":"BOUNDARY_MODEL","reference":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"rule":"rule"}},{"type":"UNMODELED"}]},{"current":{"type":"UNKNOWN","reason":"UNMODELED_TRANSFORMATION"},"provenance":[{"type":"UNMODELED"}]}]},"terminal":{"type":"UNRESOLVED_FLOW","cause":"MUTABLE_CONTROL_FLOW","evidence":{"type":"NONE"}},"boundaryObligations":[{"position":{"site":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":20,"end":21},"role":{"type":"PROPERTY_ASSIGNMENT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[],"predicates":[]},"kind":"PERSISTENCE","contract":{"id":"storage","version":1},"slot":"ciphertext"},"required":["RETENTION_POLICY","DECODING_COMPATIBILITY","MIGRATION_PROOF"]}]}}}>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+        at app//io.github.amichne.kast.protocol.contract.ImpactFindingShapeTest.finding emits required original path identity current alternatives and ordered compact provenance(ImpactFindingShapeTest.kt:25)
+
+ImpactPeerShapeTest > path and compact finding preserve full independent peer receipt and required unresolved reason() FAILED
+    org.opentest4j.AssertionFailedError: expected: <{"type":"UNRESOLVED_PEER_CONTINUATION","reference":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"rule":"rule"},"target":{"enclosing":{"basis":{"type":"LIVE","root":"/peer","host":"00000000-0000-0000-0000-000000000009","epoch":9,"contentView":"SAVED_PSI_COMMITTED","referenceVersion":1},"file":"/peer/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":10,"end":11},"role":{"type":"EXPRESSION_RESULT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[]},"admission":{"acquisition":{"completedBasis":{"type":"LIVE","root":"/peer","host":"00000000-0000-0000-0000-000000000009","epoch":9,"contentView":"SAVED_PSI_COMMITTED","referenceVersion":1},"budget":{"maxElapsedMillis":100,"maxWorkUnits":10,"maxResults":2,"maxReturnedBytes":10000},"examinedWorkUnits":4,"elapsedNanos":1500000},"selection":{"budget":{"maxElapsedMillis":100,"maxWorkUnits":10,"maxResults":2,"maxReturnedBytes":10000},"examinedWorkUnits":2}},"reason":"PEER_FLOW_NOT_INVESTIGATED"}> but was: <{"type":"UNRESOLVED_PEER_CONTINUATION","reference":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"rule":"rule"},"target":{"enclosing":{"basis":{"type":"LIVE","root":"/peer","host":"00000000-0000-0000-0000-000000000009","epoch":9,"contentView":"SAVED_PSI_COMMITTED","referenceVersion":1},"file":"/peer/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":10,"end":11},"role":{"type":"EXPRESSION_RESULT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[],"predicates":[]},"admission":{"acquisition":{"completedBasis":{"type":"LIVE","root":"/peer","host":"00000000-0000-0000-0000-000000000009","epoch":9,"contentView":"SAVED_PSI_COMMITTED","referenceVersion":1},"budget":{"maxElapsedMillis":100,"maxWorkUnits":10,"maxResults":2,"maxReturnedBytes":10000},"examinedWorkUnits":4,"elapsedNanos":1500000},"selection":{"budget":{"maxElapsedMillis":100,"maxWorkUnits":10,"maxResults":2,"maxReturnedBytes":10000},"examinedWorkUnits":2}},"reason":"PEER_FLOW_NOT_INVESTIGATED"}>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+        at app//io.github.amichne.kast.protocol.contract.ImpactPeerShapeTest.path and compact finding preserve full independent peer receipt and required unresolved reason(ImpactPeerShapeTest.kt:17)
+
+ImpactPeerShapeTest > unused reviewed peer model retains its completed native target receipt in models witness() FAILED
+    org.opentest4j.AssertionFailedError: expected: <{"type":"PEER_BOUNDARY_MODEL","reference":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"rule":"rule"},"rule":{"type":"CONTINUATION","id":"rule","source":{"site":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":10,"end":11},"role":{"type":"EXPRESSION_RESULT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[]},"kind":"PERSISTENCE","contract":{"id":"storage","version":1},"slot":"ciphertext"},"target":{"site":{"enclosing":{"basis":{"type":"LIVE","root":"/peer","host":"00000000-0000-0000-0000-000000000009","epoch":9,"contentView":"SAVED_PSI_COMMITTED","referenceVersion":1},"file":"/peer/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":10,"end":11},"role":{"type":"EXPRESSION_RESULT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[]},"kind":"PERSISTENCE","contract":{"id":"storage","version":1},"slot":"ciphertext"},"assumptions":["CONTRACT_COMPATIBLE"]},"admission":{"acquisition":{"completedBasis":{"type":"LIVE","root":"/peer","host":"00000000-0000-0000-0000-000000000009","epoch":9,"contentView":"SAVED_PSI_COMMITTED","referenceVersion":1},"budget":{"maxElapsedMillis":100,"maxWorkUnits":10,"maxResults":2,"maxReturnedBytes":10000},"examinedWorkUnits":4,"elapsedNanos":1500000},"selection":{"budget":{"maxElapsedMillis":100,"maxWorkUnits":10,"maxResults":2,"maxReturnedBytes":10000},"examinedWorkUnits":2}}}> but was: <{"type":"PEER_BOUNDARY_MODEL","reference":{"model":{"id":"crypto","version":1,"provenance":"reviewed"},"rule":"rule"},"rule":{"type":"CONTINUATION","id":"rule","source":{"site":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":10,"end":11},"role":{"type":"EXPRESSION_RESULT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[],"predicates":[]},"kind":"PERSISTENCE","contract":{"id":"storage","version":1},"slot":"ciphertext"},"target":{"site":{"enclosing":{"basis":{"type":"LIVE","root":"/peer","host":"00000000-0000-0000-0000-000000000009","epoch":9,"contentView":"SAVED_PSI_COMMITTED","referenceVersion":1},"file":"/peer/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":10,"end":11},"role":{"type":"EXPRESSION_RESULT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[],"predicates":[]},"kind":"PERSISTENCE","contract":{"id":"storage","version":1},"slot":"ciphertext"},"assumptions":["CONTRACT_COMPATIBLE"]},"admission":{"acquisition":{"completedBasis":{"type":"LIVE","root":"/peer","host":"00000000-0000-0000-0000-000000000009","epoch":9,"contentView":"SAVED_PSI_COMMITTED","referenceVersion":1},"budget":{"maxElapsedMillis":100,"maxWorkUnits":10,"maxResults":2,"maxReturnedBytes":10000},"examinedWorkUnits":4,"elapsedNanos":1500000},"selection":{"budget":{"maxElapsedMillis":100,"maxWorkUnits":10,"maxResults":2,"maxReturnedBytes":10000},"examinedWorkUnits":2}}}>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+        at app//io.github.amichne.kast.protocol.contract.ImpactPeerShapeTest.unused reviewed peer model retains its completed native target receipt in models witness(ImpactPeerShapeTest.kt:26)
+
+154 tests completed, 4 failed
+
+> Task :protocol:registry:classes UP-TO-DATE
+> Task :protocol:registry:jar UP-TO-DATE
+> Task :query:contract:compileJava NO-SOURCE
+> Task :query:contract:processResources NO-SOURCE
+> Task :query:contract:classes UP-TO-DATE
+> Task :query:contract:jar
+> Task :query:contract:compileTestKotlin
+> Task :query:contract:compileTestJava NO-SOURCE
+> Task :query:contract:processTestResources NO-SOURCE
+> Task :query:contract:testClasses UP-TO-DATE
+> Task :relation:contract:processResources NO-SOURCE
+> Task :relation:contract:classes UP-TO-DATE
+> Task :relation:contract:jar UP-TO-DATE
+> Task :source:contract:processResources NO-SOURCE
+> Task :source:contract:classes UP-TO-DATE
+> Task :source:contract:jar UP-TO-DATE
+> Task :traversal:contract:processResources NO-SOURCE
+> Task :traversal:contract:classes UP-TO-DATE
+> Task :traversal:contract:jar UP-TO-DATE
+> Task :query:contract:test
+> Task :query:contract:check
+> Task :query:protocol:checkMainKotlinFileLength
+> Task :query:protocol:checkTestKotlinFileLength
+> Task :protocol:wire:compileKotlin
+> Task :protocol:wire:compileJava NO-SOURCE
+> Task :protocol:wire:classes UP-TO-DATE
+> Task :protocol:wire:jar
+
+> Task :query:protocol:detekt FAILED
+Successfully generated markdown at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/build/reports/detekt/detekt.md
+Successfully generated html at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/build/reports/detekt/detekt.html
+Successfully generated sarif at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/build/reports/detekt/detekt.sarif
+Successfully generated checkstyle at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/build/reports/detekt/detekt.xml
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingProjection.kt:64:5 Function parameter `references` is unused. [UnusedParameter]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactIdentityProjection.kt:140:38 Function parameter `references` is unused. [UnusedParameter]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt:86:37 The function impactDocument is too long (54). The maximum length is 50. [LongMethod]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceAcquisition.kt:37:16 Class QueryImpactSourceAcquisition is too large. Consider splitting it into smaller pieces. [LargeClass]
+
+
+> Task :query:protocol:spotlessKotlin
+> Task :query:protocol:spotlessKotlinCheck
+> Task :query:protocol:spotlessKotlinGradle UP-TO-DATE
+> Task :query:protocol:spotlessKotlinGradleCheck UP-TO-DATE
+> Task :query:protocol:spotlessCheck
+> Task :diagnostic:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :diagnostic:contract:compileKotlin UP-TO-DATE
+> Task :diagnostic:contract:compileJava NO-SOURCE
+> Task :query:protocol:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:wire:compileTestFixturesKotlin
+> Task :protocol:wire:compileTestFixturesJava NO-SOURCE
+> Task :protocol:wire:testFixturesClasses UP-TO-DATE
+> Task :protocol:wire:testFixturesJar
+> Task :query:protocol:compileKotlin
+> Task :query:protocol:compileJava NO-SOURCE
+> Task :query:protocol:processResources NO-SOURCE
+> Task :query:protocol:classes UP-TO-DATE
+> Task :query:protocol:jar
+> Task :workspace:contract:compileTestFixturesKotlin UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesJava NO-SOURCE
+> Task :query:protocol:compileTestFixturesKotlin
+> Task :query:protocol:compileTestFixturesJava NO-SOURCE
+> Task :query:protocol:processTestFixturesResources NO-SOURCE
+> Task :query:protocol:testFixturesClasses UP-TO-DATE
+> Task :query:protocol:testFixturesJar UP-TO-DATE
+> Task :diagnostic:contract:processResources NO-SOURCE
+> Task :diagnostic:contract:classes UP-TO-DATE
+> Task :diagnostic:contract:jar UP-TO-DATE
+> Task :query:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+
+> Task :protocol:wire:compileTestKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire/LocalCompilerSignatureWireTest.kt:82:32 Check for instance is always 'true'.
+
+> Task :query:service:compileKotlin
+> Task :query:service:compileJava NO-SOURCE
+> Task :protocol:wire:compileTestJava NO-SOURCE
+> Task :protocol:wire:testClasses UP-TO-DATE
+
+> Task :query:protocol:compileTestKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactModelAdmissionTest.kt:128:82 Cast is redundant.
+
+> Task :query:protocol:compileTestJava NO-SOURCE
+> Task :query:protocol:processTestResources UP-TO-DATE
+> Task :query:protocol:testClasses UP-TO-DATE
+> Task :query:service:processResources NO-SOURCE
+> Task :query:service:classes UP-TO-DATE
+> Task :query:service:jar
+> Task :workspace:contract:processTestFixturesResources NO-SOURCE
+> Task :workspace:contract:testFixturesClasses UP-TO-DATE
+> Task :workspace:contract:testFixturesJar UP-TO-DATE
+
+> Task :protocol:wire:test
+
+ImpactPathWireTest > wire and CLI retain complete canonical VALUE_PATH payload and required discriminators() FAILED
+    org.opentest4j.AssertionFailedError: expected: <{"type":"VALUE_PATH","path":{"producer":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":10,"end":11},"role":{"type":"EXPRESSION_RESULT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[]},"steps":[],"representation":{"type":"NOT_MODELED"},"terminal":{"type":"UNRESOLVED_FLOW","site":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":10,"end":11},"role":{"type":"EXPRESSION_RESULT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[]},"cause":"EXTERNAL_CALL","evidence":{"type":"NONE"}}}}> but was: <{"type":"VALUE_PATH","path":{"producer":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":10,"end":11},"role":{"type":"EXPRESSION_RESULT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[],"predicates":[]},"steps":[],"representation":{"type":"NOT_MODELED"},"terminal":{"type":"UNRESOLVED_FLOW","site":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":10,"end":11},"role":{"type":"EXPRESSION_RESULT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[],"predicates":[]},"cause":"EXTERNAL_CALL","evidence":{"type":"NONE"}}}}>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+        at app//io.github.amichne.kast.protocol.wire.ImpactPathWireTest.wire and CLI retain complete canonical VALUE_PATH payload and required discriminators(ImpactPathWireTest.kt:33)
+
+ImpactWitnessWireTest > witness records preserve exact producer and obligation identities in independent wire and CLI shapes() FAILED
+    org.opentest4j.AssertionFailedError: expected: <{"type":"IMPACT_WITNESS","item":{"section":"PRODUCERS","ordinal":0,"witness":{"type":"PRODUCER","site":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":10,"end":11},"role":{"type":"EXPRESSION_RESULT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[]},"invocation":{"range":{"start":10,"end":11},"callable":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"executionOwner":{"type":"DECLARATION"}}}}}> but was: <{"type":"IMPACT_WITNESS","item":{"section":"PRODUCERS","ordinal":0,"witness":{"type":"PRODUCER","site":{"enclosing":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"range":{"start":10,"end":11},"role":{"type":"EXPRESSION_RESULT"},"executionOwner":{"type":"DECLARATION"},"valuePath":[],"callStack":[],"predicates":[]},"invocation":{"range":{"start":10,"end":11},"callable":{"basis":{"type":"PUBLISHED","root":"/workspace","generation":7},"file":"/workspace/File.kt","range":{"start":0,"end":100},"compilerIdentity":"canonical-signature-sha256-v1|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"executionOwner":{"type":"DECLARATION"}}}}}>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+        at app//io.github.amichne.kast.protocol.wire.ImpactWitnessWireTest.witness records preserve exact producer and obligation identities in independent wire and CLI shapes(ImpactWitnessWireTest.kt:43)
+
+323 tests completed, 2 failed
+
+> Task :protocol:wire:test FAILED
+> Task :query:service:checkMainKotlinFileLength
+> Task :query:service:checkTestKotlinFileLength
+
+> Task :query:service:detekt FAILED
+Successfully generated markdown at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/service/build/reports/detekt/detekt.md
+Successfully generated html at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/service/build/reports/detekt/detekt.html
+Successfully generated sarif at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/service/build/reports/detekt/detekt.sarif
+Successfully generated checkstyle at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/service/build/reports/detekt/detekt.xml
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryImpactExecutionFixture.kt:278:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+
+
+> Task :query:service:spotlessKotlin
+> Task :query:service:spotlessKotlinCheck
+> Task :query:service:spotlessKotlinGradle FROM-CACHE
+> Task :query:service:spotlessKotlinGradleCheck UP-TO-DATE
+> Task :query:service:spotlessCheck
+> Task :traversal:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :traversal:service:compileKotlin UP-TO-DATE
+> Task :traversal:service:compileJava NO-SOURCE
+> Task :query:service:compileTestKotlin
+> Task :query:service:compileTestJava NO-SOURCE
+> Task :query:service:processTestResources NO-SOURCE
+> Task :query:service:testClasses UP-TO-DATE
+> Task :traversal:service:processResources NO-SOURCE
+> Task :traversal:service:classes UP-TO-DATE
+> Task :traversal:service:jar UP-TO-DATE
+
+> Task :query:protocol:test
+
+ImpactExecutionOwnerProjectionTest > declaration execution is explicit in output and old references keep their declaration meaning() FAILED
+    org.opentest4j.AssertionFailedError: expected: <[enclosing, range, role, executionOwner, valuePath, callStack]> but was: <[enclosing, range, role, executionOwner, valuePath, callStack, predicates]>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+        at app//io.github.amichne.kast.query.protocol.ImpactExecutionOwnerProjectionTest.declaration execution is explicit in output and old references keep their declaration meaning(ImpactExecutionOwnerProjectionTest.kt:40)
+
+ImpactSourceValueProjectionTest > native entry and return projection preserves the exact field formal and call frame() FAILED
+    org.opentest4j.AssertionFailedError: expected: <ImpactInvocationReferenceDocument(range=ImpactSourceRangeDocument(start=ProtocolOffset(value=30), end=ProtocolOffset(value=40)), callable=ImpactDeclarationReferenceDocument(basis=Published(root=ProtocolText(value=/workspace), generation=ImpactEvidenceRevisionDocument(value=1)), file=ProtocolText(value=/workspace/File.kt), range=ImpactSourceRangeDocument(start=ProtocolOffset(value=210), end=ProtocolOffset(value=250)), compilerIdentity=ProtocolText(value=canonical-signature-sha256-v1|201e74016a538bc387c400c45b037b7fa561ea14f0148a50f451b483ef6ae246)), executionOwner=Declaration)> but was: <Declared(invocation=ImpactInvocationReferenceDocument(range=ImpactSourceRangeDocument(start=ProtocolOffset(value=30), end=ProtocolOffset(value=40)), callable=ImpactDeclarationReferenceDocument(basis=Published(root=ProtocolText(value=/workspace), generation=ImpactEvidenceRevisionDocument(value=1)), file=ProtocolText(value=/workspace/File.kt), range=ImpactSourceRangeDocument(start=ProtocolOffset(value=210), end=ProtocolOffset(value=250)), compilerIdentity=ProtocolText(value=canonical-signature-sha256-v1|201e74016a538bc387c400c45b037b7fa561ea14f0148a50f451b483ef6ae246)), executionOwner=Declaration))>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+        at app//io.github.amichne.kast.query.protocol.ImpactSourceValueProjectionTest.native entry and return projection preserves the exact field formal and call frame(ImpactSourceValueProjectionTest.kt:61)
+
+> Task :query:service:test
+
+> Task :query:protocol:test
+
+QueryImpactRequestedSiteAdmissionTest > requested native proof remains charged within explicit small checkpoint grant() FAILED
+    org.opentest4j.AssertionFailedError: Rejected(failure=ImpactSourceRejected(cause=Admission(cause=BYTE_LIMIT_REACHED, position=ProtocolOffset(value=1)))) ==> expected: <true> but was: <false>
+        at app//org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:232)
+        at app//io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest$requested native proof remains charged within explicit small checkpoint grant$1.invokeSuspend(QueryImpactRequestedSiteAdmissionTest.kt:124)
+        at app//io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest$requested native proof remains charged within explicit small checkpoint grant$1.invoke(QueryImpactRequestedSiteAdmissionTest.kt)
+        at app//io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest$requested native proof remains charged within explicit small checkpoint grant$1.invoke(QueryImpactRequestedSiteAdmissionTest.kt)
+        at app//kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt$runTest$2$1$1.invokeSuspend(TestBuilders.kt:317)
+        at app//kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        at app//kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+        at app//kotlinx.coroutines.test.TestDispatcher.processEvent$kotlinx_coroutines_test(TestDispatcher.kt:24)
+        at app//kotlinx.coroutines.test.TestCoroutineScheduler.tryRunNextTaskUnless$kotlinx_coroutines_test(TestCoroutineScheduler.kt:98)
+        at app//kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt$runTest$2$1$workRunner$1.invokeSuspend(TestBuilders.kt:326)
+        at app//kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        at app//kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+        at app//kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:256)
+        at app//kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:54)
+        at app//kotlinx.coroutines.BuildersKt__BuildersKt.runBlockingImpl(Builders.kt:30)
+        at app//kotlinx.coroutines.BuildersKt.runBlockingImpl(Unknown Source)
+        at app//kotlinx.coroutines.BuildersKt__Builders_concurrentKt.runBlockingK(Builders.concurrent.kt:172)
+        at app//kotlinx.coroutines.BuildersKt.runBlockingK(Unknown Source)
+        at app//kotlinx.coroutines.BuildersKt__Builders_concurrentKt.runBlockingK$default(Builders.concurrent.kt:157)
+        at app//kotlinx.coroutines.BuildersKt.runBlockingK$default(Unknown Source)
+        at app//kotlinx.coroutines.test.TestBuildersJvmKt.createTestResult(TestBuildersJvm.kt:10)
+        at app//kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:309)
+        at app//kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:1)
+        at app//kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:167)
+        at app//kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:1)
+        at app//kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0$default(TestBuilders.kt:159)
+        at app//kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0$default(TestBuilders.kt:1)
+        at app//io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest.requested native proof remains charged within explicit small checkpoint grant(QueryImpactRequestedSiteAdmissionTest.kt:113)
+
+> Task :verifyJsonContracts
+JSON contract syntax check: 628 fingerprints, 0 violations. Report: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/json-contracts/report.json
+
+> Task :query:protocol:test
+
+353 tests completed, 3 failed
+
+> Task :query:protocol:test FAILED
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-20-01-45-54-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/problems/problems-report.html
+
+FAILURE: Build completed with 7 failures.
+
+1: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':protocol:contract:checkMainKotlinFileLength' (registered by plugin 'kast.kotlin-quality').
+> Kotlin files exceed the 400-line budget:
+    protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactPathDocuments.kt: 401 lines (limit 400)
+  Split a real semantic unit; do not compress code or weaken cohesion to satisfy this gate.
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+==============================================================================
+
+2: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':protocol:contract:detekt'.
+> Analysis failed with 9 issues.
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+==============================================================================
+
+3: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':protocol:contract:test'.
+> There were failing tests. See the report at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+==============================================================================
+
+4: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':query:protocol:detekt'.
+> Analysis failed with 4 issues.
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+==============================================================================
+
+5: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':protocol:wire:test'.
+> There were failing tests. See the report at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/wire/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+==============================================================================
+
+6: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':query:service:detekt'.
+> Analysis failed with 1 issues.
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+==============================================================================
+
+7: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':query:protocol:test'.
+> There were failing tests. See the report at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+==============================================================================
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 26s
+94 actionable tasks: 50 executed, 2 from cache, 42 up-to-date
+Configuration cache entry stored.

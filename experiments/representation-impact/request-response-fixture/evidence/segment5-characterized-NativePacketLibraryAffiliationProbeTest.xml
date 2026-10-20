@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketLibraryAffiliationProbeTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T06:41:39.413Z" hostname="Austins-MacBook-Pro.local" time="1.151">
+  <properties/>
+  <testcase name="testOriginalFirstOrNullCapturesActualModuleAndBinaryAffiliation" classname="io.github.amichne.kast.relation.intellij.NativePacketLibraryAffiliationProbeTest" time="1.15"/>
+  <system-out><![CDATA[LIBRARY_AFFILIATION_MODULE kind=LIBRARY subtype=org.jetbrains.kotlin.idea.base.fir.projectStructure.modules.library.KaLibraryModuleImpl
+LIBRARY_AFFILIATION_BINARY name=packet-stdlib subtype=org.jetbrains.kotlin.idea.base.fir.projectStructure.modules.library.KaLibraryModuleImpl rootsCount=0 roots=[] exactArtifactMatch=false
+LIBRARY_AFFILIATION_VIRTUAL count=1 urls=[jar:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/idea/plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar!/] truncated=false
+LIBRARY_AFFILIATION_PSI url=jar:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/idea/plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar!/kotlin/collections/CollectionsKt.class
+LIBRARY_AFFILIATION_PROJECTOR status=EXTERNAL url=jar:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/idea/plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar!/kotlin/collections/CollectionsKt.class
+LIBRARY_AFFILIATION_RESULT status=CHARACTERIZED artifact_assertion=NOT_RUN models=NOT_RUN
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,6 @@
+module	reports	tests	failures	errors	skipped	execution	sorted_report_content_sha256
+protocol/contract	49	154	0	0	0	EXECUTED	ab08cbced2b4579ed89fa9ba98e9667898ebb885c33b97dbebe81c17cb36ff68
+protocol/wire	71	323	0	0	0	EXECUTED	3d142cabc188bd6323303b00ad263465ddabb49f656299f1fa831c14448d415b
+query/contract	24	99	0	0	0	FROM-CACHE	a9ddfdb4c6d9c3d0a4dfe020ae7497e27dd7a4c2aa32c0b0213aeb42146f1b0c
+query/protocol	103	358	0	0	0	EXECUTED	9ee8261a60e23db574ce42cbd72017b4c22585fdfcd00942e2e64a48a4db717b
+query/service	43	183	0	0	0	EXECUTED	56d7a6e939301473f120cec7991468b15af85f5aae20be66d41e42c9b6b6110f

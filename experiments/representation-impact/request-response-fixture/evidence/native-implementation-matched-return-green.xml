@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketImplementationReturnTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T03:10:38.144Z" hostname="Austins-MacBook-Pro.local" time="8.489">
+  <properties/>
+  <testcase name="testEchoReturnRejectsTheConstantImplementationFrame" classname="io.github.amichne.kast.relation.intellij.NativePacketImplementationReturnTest" time="7.414"/>
+  <testcase name="testEchoReturnPopsOnlyItsFreshEquivalentImplementationFrame" classname="io.github.amichne.kast.relation.intellij.NativePacketImplementationReturnTest" time="1.065"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[[   1163]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1164]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

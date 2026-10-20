@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.WorkspacePreparationDeadlineTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:20.888Z" hostname="Austins-MacBook-Pro.local" time="0.003">
+  <properties/>
+  <testcase name="child allowance loses every elapsed fraction and never restarts the parent budget()" classname="io.github.amichne.kast.protocol.contract.WorkspacePreparationDeadlineTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

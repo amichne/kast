@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactSeedCallbackQuestionTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T17:48:59.260Z" hostname="Austins-MacBook-Pro.local" time="0.048">
+  <properties/>
+  <testcase name="a seed diagnostic rejects another callable basis and nondeclaration execution()" classname="io.github.amichne.kast.protocol.contract.ImpactSeedCallbackQuestionTest" time="0.007"/>
+  <testcase name="an empty declaration seed keeps its exact bound supplier and outstanding cause()" classname="io.github.amichne.kast.protocol.contract.ImpactSeedCallbackQuestionTest" time="0.041"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

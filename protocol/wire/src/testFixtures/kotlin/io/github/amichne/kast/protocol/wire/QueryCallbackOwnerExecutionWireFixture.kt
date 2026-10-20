@@ -3,8 +3,21 @@ package io.github.amichne.kast.protocol.wire
 import io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBindingWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBodyBindingWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBodySupplyWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBodyWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackFlowWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationScanDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackOwnerExecutionWireDocument
+import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackFlowWireDocument
+import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackUseWireDocument
+import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackValueOriginWireDocument
+import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackValueWireDocument
+import io.github.amichne.kast.protocol.contract.RelationOccurrenceWireDocument
+import io.github.amichne.kast.protocol.contract.callbackWire
+import io.github.amichne.kast.protocol.contract.toWireDocument
 
 class QueryCallbackOwnerExecutionWireFixture {
     private val fixture = QueryCallbackWireFixture()

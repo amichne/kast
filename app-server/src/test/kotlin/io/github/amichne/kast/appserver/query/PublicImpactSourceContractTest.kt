@@ -5,15 +5,21 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ImpactCallablePositionDocument
 import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactEvidenceRevisionDocument
+import io.github.amichne.kast.protocol.contract.ImpactExecutionOwnerDocument
+import io.github.amichne.kast.protocol.contract.ImpactFormalParameterDocument
+import io.github.amichne.kast.protocol.contract.ImpactFormalPositionDocument
+import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactModelDocument
 import io.github.amichne.kast.protocol.contract.ImpactModelFormatDocument
 import io.github.amichne.kast.protocol.contract.ImpactModelIdentifierDocument
 import io.github.amichne.kast.protocol.contract.ImpactModelIdentityDocument
 import io.github.amichne.kast.protocol.contract.ImpactModelValuePositionDocument
 import io.github.amichne.kast.protocol.contract.ImpactModelVersionDocument
+import io.github.amichne.kast.protocol.contract.ImpactReceiverKindDocument
 import io.github.amichne.kast.protocol.contract.ImpactRepresentationRuleDocument
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
 import io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument
+import io.github.amichne.kast.protocol.contract.ImpactValuePathSegmentDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactWitnessSectionDocument
@@ -43,6 +49,78 @@ class PublicImpactSourceContractTest {
     private val json = Json {
         encodeDefaults = true
         explicitNulls = true
+    }
+
+    @Test
+    fun `formal field intent preserves resolved declarations and rejects an unknown path segment`() {
+        val host = declarationReference()
+        val parameter =
+            ImpactFormalParameterDocument(host, ProtocolOffset.parse(1).refined(), text("destination"), range(40, 70))
+        val target =
+            ImpactValueSiteReferenceDocument(
+                host,
+                parameter.range,
+                ImpactValueRoleDocument.Formal(ImpactFormalPositionDocument.Parameter(parameter)),
+                valuePath = bounded(listOf(ImpactValuePathSegmentDocument.Field(host))),
+            )
+        val source =
+            PublicToolImpactSource(
+                seeds = producerSeeds(),
+                declarations = bounded(emptyList()),
+                models = bounded(emptyList()),
+                domain = PublicToolImpactWorkspaceDomain,
+                flow = QueryImpactFlowDocument.KOTLIN_FORWARD_V1,
+                requestedSites = bounded(listOf(target)),
+            )
+        val input = PublicToolQuerySymbols(PublicToolRunAction(source, output = PublicToolValuePathsOutput))
+        val encoded = json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input)
+        val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, encoded).refined()
+        val run = (admitted.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
+        assertEquals(listOf(target), (run.from as QueryFromDocument.Impact).investigation.requestedSites.values)
+        val unknown = json.encodeToString(PublicToolQuerySymbols.serializer(), input).replace("FIELD", "UNKNOWN_FIELD")
+        assertEquals(
+            Refinement.Rejected(PublicToolInputFailure.SchemaRejected),
+            PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, Json.parseToJsonElement(unknown)),
+        )
+    }
+
+    @Test
+    fun `anonymous receiver reference preserves its body through public admission and rejects an unknown owner`() {
+        val host = declarationReference()
+        val body =
+            host.copy(
+                range = range(10, 180),
+                compilerIdentity = text("canonical-signature-sha256-v1|" + "b".repeat(64)),
+            )
+        val execution = ImpactExecutionOwnerDocument.Anonymous(body)
+        val invocation = ImpactInvocationReferenceDocument(range(20, 80), host, execution)
+        val target =
+            ImpactValueSiteReferenceDocument(
+                host,
+                range(20, 40),
+                ImpactValueRoleDocument.Receiver(invocation, ImpactReceiverKindDocument.EXTENSION),
+                execution,
+            )
+        val source =
+            PublicToolImpactSource(
+                seeds = producerSeeds(),
+                declarations = bounded(emptyList()),
+                models = bounded(emptyList()),
+                domain = PublicToolImpactWorkspaceDomain,
+                flow = QueryImpactFlowDocument.KOTLIN_FORWARD_V1,
+                requestedSites = bounded(listOf(target)),
+            )
+        val input = PublicToolQuerySymbols(PublicToolRunAction(source, output = PublicToolValuePathsOutput))
+        val encoded = json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), input)
+        val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, encoded).refined()
+        val run = (admitted.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
+        assertEquals(listOf(target), (run.from as QueryFromDocument.Impact).investigation.requestedSites.values)
+        val unknown =
+            json.encodeToString(PublicToolQuerySymbols.serializer(), input).replace("ANONYMOUS", "UNKNOWN_EXECUTION")
+        assertEquals(
+            Refinement.Rejected(PublicToolInputFailure.SchemaRejected),
+            PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, Json.parseToJsonElement(unknown)),
+        )
     }
 
     @Test

@@ -11,18 +11,24 @@ import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
+import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueInvocation
+import io.github.amichne.kast.relation.contract.ValueInvocationSelection
 import io.github.amichne.kast.relation.contract.ValueModelDeclarationRead
+import io.github.amichne.kast.relation.contract.ValueProducerOrigin
 import io.github.amichne.kast.relation.contract.ValueProducerSeed
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRead
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRejection
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRequest
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadStage
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
+import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaErrorType
 import org.jetbrains.kotlin.psi.KtCallElement
@@ -106,12 +112,31 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
                 is Refinement.Rejected -> return ValueProducerSeedRead.Rejected(admitted.failure)
                 is Refinement.Refined -> admitted.value
             }
-        val endpoint =
-            when (val proof = proveInvocation(expression, enclosing, callable, request.expectedCallable)) {
-                is Refinement.Rejected -> return ValueProducerSeedRead.Rejected(proof.failure)
-                is Refinement.Refined -> proof.value.endpoint
-            }
-        return detachedSeed(request, endpoint, started)
+        val target =
+            if (request.expectedCallable.kind == CompilerSymbolKind.PROPERTY)
+                when (
+                    val proof =
+                        nativeSourceFunctionSeed(
+                            expression = expression,
+                            enclosing = enclosing,
+                            expected = callable,
+                            selector = request.expectedCallable,
+                        )
+                ) {
+                    is Refinement.Rejected -> return ValueProducerSeedRead.Rejected(proof.failure)
+                    is Refinement.Refined -> proof.value
+                }
+            else
+                when (val proof = proveInvocation(expression, enclosing, callable, request.expectedCallable)) {
+                    is Refinement.Rejected -> return ValueProducerSeedRead.Rejected(proof.failure)
+                    is Refinement.Refined -> NativeSeedTarget.Declared(proof.value.endpoint)
+                }
+        return detachedSeed(
+            request = request,
+            target = target,
+            expression = expression,
+            started = started,
+        )
     }
 
     private fun prepareDeclaration(
@@ -144,8 +169,12 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
                 expression.call.resolveCall()
                     ?: return@observedAnalyze Refinement.Rejected(ValueProducerSeedRejection.UNRESOLVED_INVOCATION)
             val symbol =
-                resolved.signature.symbol as? KaNamedFunctionSymbol
-                    ?: return@observedAnalyze Refinement.Rejected(ValueProducerSeedRejection.UNSUPPORTED_INVOCATION)
+                when (val candidate = resolved.signature.symbol) {
+                    is KaNamedFunctionSymbol -> candidate
+                    is KaConstructorSymbol -> candidate
+                    else ->
+                        return@observedAnalyze Refinement.Rejected(ValueProducerSeedRejection.UNSUPPORTED_INVOCATION)
+                }
             val declaration =
                 symbol.psi as? PsiNamedElement
                     ?: return@observedAnalyze Refinement.Rejected(ValueProducerSeedRejection.UNSUPPORTED_INVOCATION)
@@ -156,25 +185,70 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
 
     private fun detachedSeed(
         request: ValueProducerSeedRequest,
-        endpoint: RelationEndpoint,
+        target: NativeSeedTarget,
+        expression: NativeSeedExpression,
         started: Long,
     ): ValueProducerSeedRead {
         if (elapsedBudgetReached(started, request.budget))
             return ValueProducerSeedRead.Rejected(ValueProducerSeedRejection.TIME_LIMIT_REACHED)
-        val invocation =
-            when (
-                val result =
-                    ValueInvocation.fromCompiler(RelationEndpoint.subject(request.enclosing), request.anchor, endpoint)
-            ) {
-                is Refinement.Rejected ->
-                    return ValueProducerSeedRead.Rejected(ValueProducerSeedRejection.ANCHOR_MISMATCH)
-                is Refinement.Refined -> result.value
+        val origin =
+            when (target) {
+                is NativeSeedTarget.Declared ->
+                    when (
+                        val result =
+                            ValueInvocation.fromCompiler(
+                                enclosing = RelationEndpoint.subject(request.enclosing),
+                                range = expression.canonicalRange,
+                                callable = target.endpoint,
+                                executionOwner = expression.executionOwner,
+                            )
+                    ) {
+                        is Refinement.Rejected ->
+                            return ValueProducerSeedRead.Rejected(ValueProducerSeedRejection.ANCHOR_MISMATCH)
+                        is Refinement.Refined -> ValueProducerOrigin.Declared(result.value)
+                    }
+                is NativeSeedTarget.SourceFunction ->
+                    when (
+                        val admitted =
+                            ValueProducerOrigin.SourceFunction.fromCompiler(
+                                target.invocation,
+                                target.property,
+                                target.reference,
+                            )
+                    ) {
+                        is Refinement.Refined -> admitted.value
+                        is Refinement.Rejected -> return ValueProducerSeedRead.ContractRejected(admitted.failure)
+                    }
             }
+        return seeded(request, origin)
+    }
+
+    private fun seeded(request: ValueProducerSeedRequest, origin: ValueProducerOrigin): ValueProducerSeedRead {
+        val invocation = origin.invocation
         val site = invocation.resultSite()
-        if (site.retainedBytes > request.budget.returnedBytes.value)
-            return ValueProducerSeedRead.Rejected(ValueProducerSeedRejection.BYTE_LIMIT_REACHED)
-        return when (val result = ValueProducerSeed.fromCompiler(request, site, invocation)) {
-            is Refinement.Refined -> ValueProducerSeedRead.Seeded(result.value, workCount(SEED_WORK_UNITS))
+        val selection =
+            when (val admitted = ValueInvocationSelection.fromCompiler(invocation, request.anchor)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return ValueProducerSeedRead.ContractRejected(admitted.failure)
+            }
+        return when (
+            val result =
+                when (origin) {
+                    is ValueProducerOrigin.Declared ->
+                        ValueProducerSeed.fromCompiler(
+                            request = request,
+                            site = site,
+                            invocation = origin.invocation,
+                            selection = selection,
+                        )
+                    is ValueProducerOrigin.SourceFunction ->
+                        ValueProducerSeed.fromSourceFunction(request, site, origin, selection)
+                }
+        ) {
+            is Refinement.Refined ->
+                if (result.value.retainedBytes > request.budget.returnedBytes.value)
+                    ValueProducerSeedRead.Rejected(ValueProducerSeedRejection.BYTE_LIMIT_REACHED)
+                else ValueProducerSeedRead.Seeded(result.value, workCount(SEED_WORK_UNITS))
             is Refinement.Rejected -> ValueProducerSeedRead.ContractRejected(result.failure)
         }
     }
@@ -213,7 +287,12 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
     }
 }
 
-private data class NativeSeedExpression(val expression: KtExpression, val call: KtCallElement)
+internal data class NativeSeedExpression(
+    val expression: KtExpression,
+    val call: KtCallElement,
+    val executionOwner: ValueExecutionOwner,
+    val canonicalRange: ExactDeclarationTextRange,
+)
 
 private fun exactSeedExpression(
     enclosing: IntellijValueFlowCompilerAdapter.Prepared.Ready,
@@ -222,20 +301,49 @@ private fun exactSeedExpression(
     val expression =
         enclosing.owner.exactValueElement(request.anchor)
             ?: return Refinement.Rejected(ValueProducerSeedRejection.ANCHOR_MISMATCH)
-    if (valueNativeOwnership(expression, enclosing.owner) != NativeValueOwnership.ADMITTED)
-        return Refinement.Rejected(ValueProducerSeedRejection.OWNER_MISMATCH)
+    val execution =
+        when (
+            val admitted =
+                nativeValueExecutionOwner(
+                    element = expression,
+                    host = enclosing.owner,
+                    enclosing = RelationEndpoint.subject(request.enclosing),
+                    scope = enclosing.scope,
+                    observation = enclosing.projection.observation,
+                )
+        ) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return Refinement.Rejected(admitted.failure.seedCause())
+        }
     val call =
         when (expression) {
             is KtCallElement -> expression
             is KtQualifiedExpression -> expression.selectorExpression as? KtCallElement
             else -> null
         } ?: return Refinement.Rejected(ValueProducerSeedRejection.UNSUPPORTED_INVOCATION)
-    if (call.valueInvocationExpression() !== expression)
+    val canonical =
+        call.valueInvocationExpression() as? KtExpression
+            ?: return Refinement.Rejected(ValueProducerSeedRejection.ANCHOR_MISMATCH)
+    if (canonical !== expression && call !== expression)
         return Refinement.Rejected(ValueProducerSeedRejection.ANCHOR_MISMATCH)
-    return Refinement.Refined(NativeSeedExpression(expression, call))
+    val canonicalRange =
+        when (
+            val parsed = ExactDeclarationTextRange.parse(canonical.textRange.startOffset, canonical.textRange.endOffset)
+        ) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> return Refinement.Rejected(ValueProducerSeedRejection.ANCHOR_MISMATCH)
+        }
+    return Refinement.Refined(
+        NativeSeedExpression(
+            expression = canonical,
+            call = call,
+            executionOwner = execution.owner,
+            canonicalRange = canonicalRange,
+        )
+    )
 }
 
-private fun projectDeclaration(
+internal fun projectDeclaration(
     native: IntellijValueFlowCompilerAdapter.Prepared.Ready,
     declaration: PsiNamedElement,
     selector: SymbolSelector,

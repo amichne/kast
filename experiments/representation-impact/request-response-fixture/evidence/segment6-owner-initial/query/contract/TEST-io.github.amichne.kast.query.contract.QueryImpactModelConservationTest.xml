@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryImpactModelConservationTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:17.734Z" hostname="Austins-MacBook-Pro.local" time="0.013">
+  <properties/>
+  <testcase name="origin models for another exact callable stay retained without creating routes()" classname="io.github.amichne.kast.query.contract.QueryImpactModelConservationTest" time="0.002"/>
+  <testcase name="unvisited boundary model stays retained without creating a route()" classname="io.github.amichne.kast.query.contract.QueryImpactModelConservationTest" time="0.002"/>
+  <testcase name="execution cutoff retains incompleteness before applying boundary models()" classname="io.github.amichne.kast.query.contract.QueryImpactModelConservationTest" time="0.0"/>
+  <testcase name="native branches cannot borrow conservation from another origin route()" classname="io.github.amichne.kast.query.contract.QueryImpactModelConservationTest" time="0.004"/>
+  <testcase name="every applicable origin model requires its own retained route()" classname="io.github.amichne.kast.query.contract.QueryImpactModelConservationTest" time="0.001"/>
+  <testcase name="every applicable boundary alternative retains its obligations()" classname="io.github.amichne.kast.query.contract.QueryImpactModelConservationTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

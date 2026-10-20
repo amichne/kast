@@ -42,6 +42,12 @@ data class QueryImpactSourceDocument(
 
 @Serializable
 enum class QueryImpactSourceFailureCode(internal val recoveryAction: ReadRecoveryAction) {
+    ACCESS_PATH_DEPTH_EXCEEDED(ReadRecoveryAction.CORRECT_REQUEST),
+    CALL_CONTEXT_DEPTH_EXCEEDED(ReadRecoveryAction.CORRECT_REQUEST),
+    RECURSIVE_SOURCE_CALL(ReadRecoveryAction.CORRECT_REQUEST),
+    PREDICATE_LIMIT_REACHED(ReadRecoveryAction.CORRECT_REQUEST),
+    CALLBACK_FLOW_UNPROVEN(ReadRecoveryAction.CORRECT_REQUEST),
+    CALLBACK_PROOF_LIMIT_REACHED(ReadRecoveryAction.CORRECT_REQUEST),
     FINALLY_UNSUPPORTED(ReadRecoveryAction.CORRECT_REQUEST),
     ABRUPT_COMPLETION(ReadRecoveryAction.CORRECT_REQUEST),
     EMPTY_PRODUCERS(ReadRecoveryAction.CORRECT_REQUEST),
@@ -64,6 +70,7 @@ enum class QueryImpactSourceFailureCode(internal val recoveryAction: ReadRecover
     CALLABLE_MISMATCH(ReadRecoveryAction.CORRECT_REQUEST),
     ANCHOR_MISMATCH(ReadRecoveryAction.CORRECT_REQUEST),
     ROLE_MISMATCH(ReadRecoveryAction.CORRECT_REQUEST),
+    RECEIVER_KIND_MISMATCH(ReadRecoveryAction.CORRECT_REQUEST),
     STALE_ENCLOSING(ReadRecoveryAction.REACQUIRE_AUTHORITY),
     STALE_CALLABLE(ReadRecoveryAction.REACQUIRE_AUTHORITY),
     UNRESOLVED_INVOCATION(ReadRecoveryAction.CORRECT_REQUEST),

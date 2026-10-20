@@ -1,0 +1,5 @@
+Repository root: mise exec -- vale --no-global --config=.vale.ini --output=JSON experiments/representation-impact/request-response-fixture/results/library-model-review.md
+Exit 0. Slopsentral.Grade advisory 11.06.
+Skill cwd: /Users/amichne/.codex/plugins/cache/slopsentral/repository-knowledge/3.1.0/skills/controlled-technical-writing
+uv run --locked --script scripts/assess_text.py --vale-bin /Users/amichne/.local/share/mise/installs/vale/3.24.0/vale --glossary /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/docs/glossary.json /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/experiments/representation-impact/request-response-fixture/results/library-model-review.md
+Exit 1. ASSESSED. Grade advisory 11.06. Terminology OUT_OF_SCOPE. Glossary CHECKED. Comprehension NOT_ASSESSED. Necessary compiler and model identifiers remain.

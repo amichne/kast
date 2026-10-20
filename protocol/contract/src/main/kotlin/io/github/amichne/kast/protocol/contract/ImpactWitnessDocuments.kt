@@ -3,6 +3,7 @@
 package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
@@ -52,6 +53,17 @@ sealed interface ImpactWitnessDocument {
         ImpactWitnessDocument
 
     @Serializable
+    @SerialName("PRODUCER_SOURCE_FUNCTION")
+    data class ProducerSourceFunction(
+        val site: ImpactValueSiteReferenceDocument,
+        val invocation: ImpactFunctionInvocationReferenceDocument,
+        val enclosing: ImpactModelEndpointDocument,
+        val execution: ImpactModelExecutionDocument,
+        val property: ImpactModelEndpointDocument,
+        val reference: ImpactImplementationOccurrenceDocument,
+    ) : ImpactWitnessDocument
+
+    @Serializable
     @SerialName("REPRESENTATION_MODEL")
     data class RepresentationModel(
         val reference: ImpactRuleReferenceDocument,
@@ -76,6 +88,9 @@ sealed interface ImpactWitnessDocument {
         val obligationCount: QueryDiscoveryCountDocument,
         val receipts: BoundedProtocolList<ImpactNativeReadReceiptDocument> =
             (BoundedProtocolList.create(emptyList<ImpactNativeReadReceiptDocument>()) as Refinement.Refined).value,
+        @EncodeDefault
+        val applicationCount: QueryDiscoveryCountDocument =
+            (QueryDiscoveryCountDocument.parse(0) as Refinement.Refined).value,
     ) : ImpactWitnessDocument
 
     @Serializable
@@ -87,12 +102,21 @@ sealed interface ImpactWitnessDocument {
     ) : ImpactWitnessDocument
 
     @Serializable
+    @SerialName("VALUE_MODEL_APPLICATION")
+    data class ValueModelApplication(
+        val observationOrdinal: QueryDiscoveryCountDocument,
+        val applicationOrdinal: QueryDiscoveryCountDocument,
+        val application: ImpactValueModelApplicationDocument,
+    ) : ImpactWitnessDocument
+
+    @Serializable
     @SerialName("FLOW_OBLIGATION")
     data class FlowObligation(
         val observationOrdinal: QueryDiscoveryCountDocument,
         val obligationOrdinal: QueryDiscoveryCountDocument,
         val site: ImpactValueSiteReferenceDocument,
         val cause: ImpactFlowUnsupportedDocument,
+        @EncodeDefault val evidence: ImpactFlowObligationEvidenceDocument = ImpactFlowObligationEvidenceDocument.None,
     ) : ImpactWitnessDocument
 
     @Serializable
@@ -155,6 +179,10 @@ sealed interface ImpactFindingProvenanceDocument {
     data class ModeledTransformation(val reference: ImpactRuleReferenceDocument) : ImpactFindingProvenanceDocument
 
     @Serializable
+    @SerialName("MODELED_VALUE")
+    data class ModeledValue(val reference: ImpactRuleReferenceDocument) : ImpactFindingProvenanceDocument
+
+    @Serializable
     @SerialName("BOUNDARY_MODEL")
     data class BoundaryModel(val reference: ImpactRuleReferenceDocument) : ImpactFindingProvenanceDocument
 
@@ -192,7 +220,10 @@ sealed interface ImpactFindingTerminalDocument {
 
     @Serializable
     @SerialName("UNRESOLVED_FLOW")
-    data class UnresolvedFlow(val cause: ImpactFlowUnsupportedDocument) : ImpactFindingTerminalDocument
+    data class UnresolvedFlow(
+        val cause: ImpactFlowUnsupportedDocument,
+        @EncodeDefault val evidence: ImpactFlowObligationEvidenceDocument = ImpactFlowObligationEvidenceDocument.None,
+    ) : ImpactFindingTerminalDocument
 
     @Serializable
     @SerialName("UNRESOLVED_READ")

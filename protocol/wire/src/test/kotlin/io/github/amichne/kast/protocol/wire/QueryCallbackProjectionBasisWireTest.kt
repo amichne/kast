@@ -3,9 +3,15 @@ package io.github.amichne.kast.protocol.wire
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ImpactEvidenceRevisionDocument
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBodyWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowFailureDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackFlowWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackGraphObligationsDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackReferenceReceiverWireDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import kotlinx.serialization.SerializationException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows

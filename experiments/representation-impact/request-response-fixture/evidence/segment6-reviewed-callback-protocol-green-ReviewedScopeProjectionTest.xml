@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ReviewedScopeProjectionTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T16:54:41.120Z" hostname="Austins-MacBook-Pro.local" time="0.012">
+  <properties/>
+  <testcase name="modeled application tags remain distinct and a changed proof cannot match the stack()" classname="io.github.amichne.kast.query.protocol.ReviewedScopeProjectionTest" time="0.009"/>
+  <testcase name="scope input output preserve actual let call full formal proof and matched frame()" classname="io.github.amichne.kast.query.protocol.ReviewedScopeProjectionTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,9 @@
+{
+  "type": "FIXTURE_POLICY_REPAIR",
+  "format": "PASSED_CACHED_KTFMT_0_64",
+  "reversePredicateExpansion": "PASSED_ALL_CONDITIONS_AND_ORDER_UNCHANGED",
+  "reverseNamedArguments": "PASSED",
+  "compilerAndAssertions": "NOT_RUN",
+  "expectedRows": "UNCHANGED",
+  "seedsQueriesGrants": "UNCHANGED"
+}

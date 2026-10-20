@@ -1,0 +1,70 @@
+package io.github.amichne.kast.runtime.hosted
+
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.module.JavaModuleType
+import com.intellij.openapi.projectRoots.JavaSdk
+import com.intellij.openapi.projectRoots.Sdk
+import kotlinx.coroutines.runBlocking
+
+/** The original S2 route joins real K2, the existing query scheduler, and its retained evidence. */
+class NativePacketCompositeQueryTest : NativeSmartModeFixtureTest() {
+    override fun getModuleType() = JavaModuleType.getModuleType()
+
+    fun testOriginalCompositeSourceFactsAdmitBeforeCapture() = runBlocking {
+        val fixture = prepare()
+        val facts = fixture.successFacts()
+        assertEquals("main", fixture.root.sourceSet.value)
+        assertEquals(facts.getOfferReturn.enclosing.basis, facts.executeReceiver.enclosing.basis)
+        assertFalse(facts.clientLinks == facts.featureLink)
+    }
+
+    fun testOriginalS2SuccessRowsShareOneRetainedFullRouteThroughC29() = runBlocking {
+        val fixture = prepare()
+        val facts = fixture.successFacts()
+        NativePacketCompositeQuerySuccessOracle(facts).assertRequiredRows(capture(fixture, facts))
+    }
+
+    fun testOriginalS2SourcePrefixReachesTheMatchedClientCallerThroughC26() = runBlocking {
+        val fixture = prepare()
+        val facts = fixture.successFacts()
+        NativePacketCompositeQuerySuccessOracle(facts).assertSourcePrefixThroughC26(capture(fixture, facts))
+    }
+
+    fun testOriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments() = runBlocking {
+        val fixture = prepare()
+        val facts = fixture.successFacts()
+        NativePacketCompositeQuerySuccessOracle(facts).assertForbiddenWitnesses(capture(fixture, facts))
+    }
+
+    fun testOriginalS2ClientErrorRowC24KeepsExactSourceFieldsAndErrorGuard() = runBlocking {
+        prepare().assertClientErrorC24Required()
+    }
+
+    fun testOriginalS2ClientErrorRowC24ForbidsDebugMessageAndSuccessWitnesses() = runBlocking {
+        prepare().assertClientErrorC24Forbidden()
+    }
+
+    private fun prepare(): NativePacketCompositeQueryCase {
+        lateinit var sdk: Sdk
+        ApplicationManager.getApplication().invokeAndWait {
+            sdk = JavaSdk.getInstance().createJdk("packet-composite-query-sdk", System.getProperty("java.home"), false)
+            registerTestProjectJdk(sdk)
+        }
+        return NativePacketQueryFixture(
+                project = project,
+                base = getOrCreateProjectBaseDir(),
+                module = module,
+                sdk = sdk,
+            )
+            .prepareComposite()
+    }
+
+    private suspend fun capture(fixture: NativePacketCompositeQueryCase, facts: NativePacketCompositeQueryFacts) =
+        NativePacketQueryCapture(fixture.services)
+            .paths(
+                producer = fixture.source.producerS2(),
+                targets = listOf(facts.getOfferReturn),
+                outgoing = false,
+                declarations = fixture.source.requestedDeclarations(),
+            )
+}

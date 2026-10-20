@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.runtime.hosted.HostedQueryResultRetentionObservationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T06:11:01.620Z" hostname="Austins-MacBook-Pro.local" time="0.032">
+  <properties/>
+  <testcase name="all finite capture rejections preserve their exact bounded diagnostic counter()" classname="io.github.amichne.kast.runtime.hosted.HostedQueryResultRetentionObservationTest" time="0.019"/>
+  <testcase name="preview identity rejection stays distinct from capture and issuance()" classname="io.github.amichne.kast.runtime.hosted.HostedQueryResultRetentionObservationTest" time="0.004"/>
+  <testcase name="the sole capture owner retains bounded started and captured counters()" classname="io.github.amichne.kast.runtime.hosted.HostedQueryResultRetentionObservationTest" time="0.0"/>
+  <testcase name="issued unavailable and capacity outcomes stay distinct after the issuance effect()" classname="io.github.amichne.kast.runtime.hosted.HostedQueryResultRetentionObservationTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

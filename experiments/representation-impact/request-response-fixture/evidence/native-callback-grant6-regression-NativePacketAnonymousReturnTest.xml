@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketAnonymousReturnTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-20T05:55:56.294Z" hostname="Austins-MacBook-Pro.local" time="9.299">
+  <properties/>
+  <testcase name="testDiscardedNonfinalExpressionDoesNotEmitReturn" classname="io.github.amichne.kast.relation.intellij.NativePacketAnonymousReturnTest" time="6.21"/>
+  <testcase name="testThrownValueKeepsAbruptCompletion" classname="io.github.amichne.kast.relation.intellij.NativePacketAnonymousReturnTest" time="0.738"/>
+  <testcase name="testNonlocalReturnKeepsAbruptCompletion" classname="io.github.amichne.kast.relation.intellij.NativePacketAnonymousReturnTest" time="0.548"/>
+  <testcase name="testExplicitReturnAcrossFinallyKeepsItsExplicitCause" classname="io.github.amichne.kast.relation.intellij.NativePacketAnonymousReturnTest" time="0.474"/>
+  <testcase name="testExplicitLocalLabelReturnTargetsTheSameAnonymousBody" classname="io.github.amichne.kast.relation.intellij.NativePacketAnonymousReturnTest" time="0.467"/>
+  <testcase name="testImplicitTryFinallyResultKeepsItsExplicitCause" classname="io.github.amichne.kast.relation.intellij.NativePacketAnonymousReturnTest" time="0.442"/>
+  <testcase name="testGenuineAnonymousNormalResultEmitsReturn" classname="io.github.amichne.kast.relation.intellij.NativePacketAnonymousReturnTest" time="0.41"/>
+  <system-out><![CDATA[ANONYMOUS_RETURN_CONTROL source=ExactDeclarationTextRange(startInclusive=501, endExclusive=512) transfers=[] frontier=[]
+ANONYMOUS_RETURN_CONTROL source=ExactDeclarationTextRange(startInclusive=752, endExclusive=761) transfers=[] frontier=[ABRUPT_COMPLETION]
+ANONYMOUS_RETURN_CONTROL source=ExactDeclarationTextRange(startInclusive=634, endExclusive=645) transfers=[] frontier=[ABRUPT_COMPLETION]
+ANONYMOUS_RETURN_CONTROL source=ExactDeclarationTextRange(startInclusive=999, endExclusive=1010) transfers=[] frontier=[FINALLY_UNSUPPORTED]
+ANONYMOUS_RETURN_CONTROL source=ExactDeclarationTextRange(startInclusive=434, endExclusive=445) transfers=[RETURN] frontier=[]
+ANONYMOUS_RETURN_CONTROL source=ExactDeclarationTextRange(startInclusive=837, endExclusive=848) transfers=[] frontier=[FINALLY_UNSUPPORTED]
+ANONYMOUS_RETURN_CONTROL source=ExactDeclarationTextRange(startInclusive=348, endExclusive=359) transfers=[RETURN] frontier=[]
+]]></system-out>
+  <system-err><![CDATA[[   1183]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1183]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

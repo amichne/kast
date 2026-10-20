@@ -31,6 +31,7 @@ enum class ImmutableCallbackInvocationFlowFailure {
     MISSING_OBLIGATION,
     OWNER_BINDING_MISMATCH,
     DUPLICATE_OWNER_BINDING,
+    PROOF_LIMIT_REACHED,
 }
 
 /** Complete source-use enumeration is independent from the formal-body enumeration in every supplied use. */
@@ -58,6 +59,8 @@ private constructor(
         additional: List<CallbackBodyBinding>
     ): Refinement<ImmutableCallbackInvocationFlow, ImmutableCallbackInvocationFlowFailure> {
         val combined = ownerBindings + additional
+        if (!CallbackValueProofLimits.admits(source, uses, combined))
+            return Refinement.Rejected(ImmutableCallbackInvocationFlowFailure.PROOF_LIMIT_REACHED)
         val causes = obligations + combined.flatMap { it.obligations }
         if (
             scan == CallbackInvocationScan.EXHAUSTIVE &&
@@ -149,10 +152,9 @@ private constructor(
             scan: CallbackInvocationScan,
             ownerBindings: List<CallbackBodyBinding> = emptyList(),
         ): Refinement<ImmutableCallbackInvocationFlow, ImmutableCallbackInvocationFlowFailure> {
-            if (
-                ImmutableCallbackValue.fromCompiler(origin, source, source, emptyList()) is Refinement.Rejected ||
-                    uses.any { !it.value.tracesSource(origin, source) }
-            )
+            if (!CallbackValueProofLimits.admits(source, uses, ownerBindings))
+                return Refinement.Rejected(ImmutableCallbackInvocationFlowFailure.PROOF_LIMIT_REACHED)
+            if (!admitsSourceOrigin(origin, source, uses))
                 return Refinement.Rejected(ImmutableCallbackInvocationFlowFailure.ORIGIN_MISMATCH)
             if (uses.distinct().size != uses.size)
                 return Refinement.Rejected(ImmutableCallbackInvocationFlowFailure.DUPLICATE_USE)
@@ -190,6 +192,14 @@ private constructor(
                 is Refinement.Rejected -> admitted
             }
         }
+
+        private fun admitsSourceOrigin(
+            origin: ImmutableCallbackValueOrigin,
+            source: ValueSite,
+            uses: List<ImmutableCallbackInvocationUse>,
+        ): Boolean =
+            ImmutableCallbackValue.fromCompiler(origin, source, source, emptyList()) is Refinement.Refined &&
+                uses.all { it.value.tracesSource(origin, source) }
     }
 }
 

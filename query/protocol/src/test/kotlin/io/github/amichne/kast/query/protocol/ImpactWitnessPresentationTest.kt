@@ -33,6 +33,7 @@ import io.github.amichne.kast.query.contract.QueryOperations
 import io.github.amichne.kast.query.contract.QueryResult
 import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QueryRows
+import io.github.amichne.kast.relation.contract.ValueProducerOrigin
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
@@ -45,6 +46,8 @@ import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 
 class ImpactWitnessPresentationTest {
+    private val projectionReferences = CanonicalQueryReferences()
+
     @Test
     fun `read result exposes original producer invocation and flattened native records without replay`() = runTest {
         val fixture = ImpactWitnessPresentationFixture()
@@ -85,7 +88,10 @@ class ImpactWitnessPresentationTest {
         val producer =
             ((producerPage.evidence.payload.items.values.single() as QueryResultItemDocument.ImpactWitness).item.witness
                 as ImpactWitnessDocument.Producer)
-        assertEquals(fixture.producer.invocation.impactDocument().value(), producer.invocation)
+        assertEquals(
+            (fixture.producer.origin as ValueProducerOrigin.Declared).invocation.impactDocument().value(),
+            producer.invocation,
+        )
         assertEquals(0, executions)
     }
 
@@ -296,9 +302,11 @@ class ImpactWitnessPresentationTest {
                 "transferCount",
                 "obligationCount",
                 "receipts",
+                "applicationCount",
             ),
             encoded.keys,
         )
+        assertEquals("0", encoded.getValue("applicationCount").jsonPrimitive.content)
         val receipts = encoded.getValue("receipts").jsonArray
         assertEquals(2, receipts.size)
         receipts.forEachIndexed { index, receipt ->
@@ -321,7 +329,12 @@ class ImpactWitnessPresentationTest {
         val wrongRecord =
             (original.items.values.first() as QueryResultItemDocument.ImpactWitness)
                 .item
-                .copy(witness = ImpactWitnessDocument.ProducerSiteOnly(fixture.producer.site.impactDocument().value()))
+                .copy(
+                    witness =
+                        ImpactWitnessDocument.ProducerSiteOnly(
+                            fixture.producer.site.impactDocument(references = projectionReferences).value()
+                        )
+                )
         val mixed =
             original.copy(
                 items =

@@ -12,6 +12,7 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverQualification
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
+import io.github.amichne.kast.protocol.contract.toContract
 
 internal object CanonicalChangeSerializers {
     private val factory = GeneratedWireCodecFactory(wireJson)

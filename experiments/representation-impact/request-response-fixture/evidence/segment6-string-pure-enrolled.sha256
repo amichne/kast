@@ -1,0 +1,5 @@
+fa5403586d42ab7d518bfcc2e902a49a128cb14505d70eb352d6d897f60cc7f1  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/RepresentationStringDerivationOracleTest.kt
+0a660ab9114f9f44fa5c6040ed3c9d1df73bcfe304ac88029e95d0b649c78028  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/StringDerivationOracleCase.kt
+bc729fb97cc5a01dc0ec66a576750ce4759685c1a77054f1ce1f9b078352d908  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/StringDerivationRepresentationCase.kt
+8b47e2d9974f99bdc6800011546c4f41883c1c18abf173d5baf6ea7934dfd542  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueStringDerivationContextOracleTest.kt
+c3c1b769d1c51164c41e8aebf69b09ff4a88830f9e7b0f4df84194a29a5b4164  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueStringDerivationOracleTest.kt

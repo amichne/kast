@@ -14,6 +14,7 @@ import io.github.amichne.kast.relation.contract.RepresentationEvidence
 import io.github.amichne.kast.relation.contract.RepresentationModelApplication
 import io.github.amichne.kast.relation.contract.RepresentationPropagationFailure
 import io.github.amichne.kast.relation.contract.RepresentationRule
+import io.github.amichne.kast.relation.contract.ValueAccessPath
 import io.github.amichne.kast.relation.contract.ValueRole
 
 internal data class QueryImpactModelArrivals(val tasks: List<PipelineTask>, val paths: List<QueryImpactPath>) {
@@ -30,7 +31,7 @@ internal fun modeledImpactArrivals(
     val paths = mutableListOf<QueryImpactPath>()
     val present = route.representation as? QueryImpactRepresentation.Present
     val argument = route.site.role as? ValueRole.Argument
-    if (present != null && argument != null) {
+    if (present != null && argument != null && route.site.valuePath == ValueAccessPath.Whole) {
         for (model in source.representationModels.filter { it.matchesInput(argument) }) {
             when (val arrival = representationArrival(route, present.evidence, argument, model)) {
                 is Refinement.Rejected -> return arrival
@@ -58,8 +59,21 @@ private fun representationArrival(
     evidence: RepresentationEvidence,
     argument: ValueRole.Argument,
     model: RepresentationRule,
-): Refinement<QueryImpactModelArrivals, QueryImpactExecutionFailure> =
-    when (model) {
+): Refinement<QueryImpactModelArrivals, QueryImpactExecutionFailure> {
+    val output =
+        when (
+            val admitted =
+                argument.call
+                    .resultSite()
+                    .withState(callStack = route.site.callStack, predicates = route.site.predicates)
+        ) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected ->
+                return Refinement.Rejected(
+                    QueryImpactExecutionFailure.Representation(RepresentationPropagationFailure.BASIS_MISMATCH)
+                )
+        }
+    return when (model) {
         is RepresentationRule.Origin -> Refinement.Refined(QueryImpactModelArrivals(emptyList(), emptyList()))
         is RepresentationRule.ConsumerExpectation ->
             when (val expected = evidence.expect(model)) {
@@ -70,14 +84,15 @@ private fun representationArrival(
         is RepresentationRule.Transfer ->
             modeledRepresentation(
                 route,
-                evidence.modeledTransfer(argument.call.resultSite(), argument.call, model),
+                evidence.modeledTransfer(output, argument.call, model),
             )
         is RepresentationRule.Transformation ->
             modeledRepresentation(
                 route,
-                evidence.transform(argument.call.resultSite(), argument.call, model),
+                evidence.transform(output, argument.call, model),
             )
     }
+}
 
 private fun modeledRepresentation(
     route: QueryImpactRoute,

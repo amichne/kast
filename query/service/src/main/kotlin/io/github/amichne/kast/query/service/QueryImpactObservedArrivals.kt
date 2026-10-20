@@ -23,6 +23,21 @@ internal fun compilerImpactArrivals(
     return Refinement.Refined(tasks)
 }
 
+internal fun valueModelImpactArrivals(
+    route: QueryImpactRoute,
+    observation: ValueFlowStep,
+): Refinement<List<PipelineTask>, QueryImpactExecutionFailure> {
+    val tasks = mutableListOf<PipelineTask>()
+    for (application in observation.applications) {
+        when (val branch = route.modeledValue(application)) {
+            is Refinement.Rejected ->
+                return Refinement.Rejected(QueryImpactExecutionFailure.Representation(branch.failure))
+            is Refinement.Refined -> tasks += PipelineTask.ImpactExplore(branch.value)
+        }
+    }
+    return Refinement.Refined(tasks)
+}
+
 internal fun observedImpactTerminals(
     route: QueryImpactRoute,
     observation: ValueFlowStep,
@@ -56,4 +71,7 @@ private fun supportedEndPath(
 }
 
 private fun ValueFlowStep.isSupportedEnd(): Boolean =
-    transfers.isEmpty() && obligations.isEmpty() && terminal == ValueFlowTerminal.SupportedDomainExhausted
+    transfers.isEmpty() &&
+        applications.isEmpty() &&
+        obligations.isEmpty() &&
+        terminal == ValueFlowTerminal.SupportedDomainExhausted

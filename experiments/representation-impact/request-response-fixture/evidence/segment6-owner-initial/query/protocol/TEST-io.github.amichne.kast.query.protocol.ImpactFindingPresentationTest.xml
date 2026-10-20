@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactFindingPresentationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.770Z" hostname="Austins-MacBook-Pro.local" time="0.012">
+  <properties/>
+  <testcase name="admitted one finding grant bounds construction before projection and preserves original links()" classname="io.github.amichne.kast.query.protocol.ImpactFindingPresentationTest" time="0.004"/>
+  <testcase name="finding cursor drain preserves large view links closure and required compact encoded shape()" classname="io.github.amichne.kast.query.protocol.ImpactFindingPresentationTest" time="0.004"/>
+  <testcase name="finding projection rejects absent or mismatched original row count before constructing documents()" classname="io.github.amichne.kast.query.protocol.ImpactFindingPresentationTest" time="0.001"/>
+  <testcase name="compact retained findings link both original routes to full path rows without semantic replay()" classname="io.github.amichne.kast.query.protocol.ImpactFindingPresentationTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

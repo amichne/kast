@@ -46,8 +46,13 @@ sealed interface QueryResultRestoration {
 sealed interface QueryResultIssuance {
     data object Unavailable : QueryResultIssuance
 
-    data class Issued(val reference: QueryResultReference, val rowIds: List<QueryResultRowReference>) :
-        QueryResultIssuance
+    @ConsistentCopyVisibility
+    data class Issued
+    internal constructor(
+        val reference: QueryResultReference,
+        val rowIds: List<QueryResultRowReference>,
+        val result: QueryRetainedResult,
+    ) : QueryResultIssuance
 
     data object CapacityExceeded : QueryResultIssuance
 }

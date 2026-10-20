@@ -12,10 +12,14 @@ import io.github.amichne.kast.protocol.contract.QueryWalkCallbackObservationDocu
 import io.github.amichne.kast.protocol.contract.QueryWalkCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryWalkObservationDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
+import io.github.amichne.kast.protocol.contract.SourceRangeWireDocument
 import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
 import io.github.amichne.kast.protocol.contract.TraversalPartialExpansionDocument
 import io.github.amichne.kast.protocol.contract.TraversalProgressDocument
 import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test

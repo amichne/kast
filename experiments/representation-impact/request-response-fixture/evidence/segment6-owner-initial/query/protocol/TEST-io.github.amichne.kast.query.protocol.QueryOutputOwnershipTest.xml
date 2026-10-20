@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryOutputOwnershipTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.435Z" hostname="Austins-MacBook-Pro.local" time="0.009">
+  <properties/>
+  <testcase name="published output page replays without invoking semantic execution()" classname="io.github.amichne.kast.query.protocol.QueryOutputOwnershipTest" time="0.002"/>
+  <testcase name="output suffix uses the same hidden ownership quota and retirement as pipeline state()" classname="io.github.amichne.kast.query.protocol.QueryOutputOwnershipTest" time="0.001"/>
+  <testcase name="replay capacity is rejected before semantic execution()" classname="io.github.amichne.kast.query.protocol.QueryOutputOwnershipTest" time="0.002"/>
+  <testcase name="discarded initial attempt revokes its detached output suffix()" classname="io.github.amichne.kast.query.protocol.QueryOutputOwnershipTest" time="0.002"/>
+  <testcase name="checkpoint expiry during an attempt refuses publication and drains reserved ownership()" classname="io.github.amichne.kast.query.protocol.QueryOutputOwnershipTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,130 @@
+@file:OptIn(org.jetbrains.kotlin.analysis.api.KaExperimentalApi::class)
+
+package io.github.amichne.kast.relation.intellij
+
+import com.intellij.psi.PsiNamedElement
+import com.intellij.psi.util.PsiTreeUtil
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
+import io.github.amichne.kast.relation.contract.ValueFormalPosition
+import io.github.amichne.kast.relation.contract.ValueRole
+import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
+import org.jetbrains.kotlin.analysis.api.symbols.KaKotlinPropertySymbol
+import org.jetbrains.kotlin.idea.references.KtReference
+import org.jetbrains.kotlin.psi.KtCallElement
+import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression
+import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtQualifiedExpression
+import org.jetbrains.kotlin.psi.KtUserType
+import org.jetbrains.kotlin.psi.KtValueArgumentName
+
+/** Enumerates one source body; the existing flow coordinator owns every allowance and emitted transfer. */
+internal class NativeValueReceiverFields(
+    private val source: ValueSite,
+    private val scope: CompiledRelationScope,
+    private val projection: IntellijK2RelationProjection,
+) {
+    fun forEachField(
+        function: KtNamedFunction,
+        admitTraversal: () -> Boolean,
+        permit: () -> Boolean,
+        consume: (Refinement<NativeValueFieldRead, ValueFlowUnsupportedCause>) -> Unit,
+    ): Boolean {
+        val body = function.bodyExpression ?: return false
+        return PsiTreeUtil.processElements(body) { element ->
+            if (!admitTraversal()) return@processElements false
+            val name = element as? KtNameReferenceExpression ?: return@processElements true
+            if (!name.isFieldReceiverCandidate()) return@processElements true
+            if (!permit()) return@processElements false
+            when (val field = receiverField(function, name)) {
+                NativeReceiverField.Unrelated -> Unit
+                is NativeReceiverField.Selected -> consume(projected(function, field))
+                is NativeReceiverField.Unsupported -> consume(Refinement.Rejected(field.cause))
+            }
+            true
+        }
+    }
+
+    private fun projected(
+        function: KtNamedFunction,
+        candidate: NativeReceiverField.Selected,
+    ): Refinement<NativeValueFieldRead, ValueFlowUnsupportedCause> {
+        if (valueNativeOwnership(candidate.expression, function) != NativeValueOwnership.ADMITTED)
+            return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+        val field =
+            when (
+                val value =
+                    nativeValueField(
+                        declaration = candidate.declaration,
+                        enclosing = source.enclosing,
+                        scope = scope,
+                        projection = projection,
+                    )
+            ) {
+                is Refinement.Refined -> value.value
+                is Refinement.Rejected -> return value
+            }
+        return when (val selected = sourceFieldTarget(source, candidate.expression, field)) {
+            is Refinement.Rejected -> selected
+            is Refinement.Refined ->
+                when (val read = selected.value) {
+                    NativeValueFieldRead.DifferentField -> selected
+                    is NativeValueFieldRead.Transfer ->
+                        nativeGuardedField(source, read.value, candidate.guard, scope, projection)
+                }
+        }
+    }
+
+    private fun receiverField(function: KtNamedFunction, expression: KtNameReferenceExpression): NativeReceiverField =
+        projection.observation.observedAnalyze(expression) {
+            val position =
+                (source.role as? ValueRole.Formal)?.position as? ValueFormalPosition.Receiver
+                    ?: return@observedAnalyze NativeReceiverField.Unsupported(ValueFlowUnsupportedCause.UNMODELED_CALL)
+            val call =
+                expression.resolveCall()
+                    ?: return@observedAnalyze when (
+                        expression.references.filterIsInstance<KtReference>().singleOrNull()?.resolveToSymbol()
+                    ) {
+                        is KaKotlinPropertySymbol,
+                        null -> NativeReceiverField.Unsupported(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
+                        else -> NativeReceiverField.Unrelated
+                    }
+            val property =
+                call.signature.symbol as? KaKotlinPropertySymbol ?: return@observedAnalyze NativeReceiverField.Unrelated
+            val guard =
+                when (val proof = receiverFieldGuard(function, position, expression, call.dispatchReceiver, property)) {
+                    NativeReceiverFieldProof.Unrelated -> return@observedAnalyze NativeReceiverField.Unrelated
+                    is NativeReceiverFieldProof.Unsupported ->
+                        return@observedAnalyze NativeReceiverField.Unsupported(proof.cause)
+                    is NativeReceiverFieldProof.Matched -> proof.guard
+                }
+            val declaration =
+                property.psi as? PsiNamedElement
+                    ?: return@observedAnalyze NativeReceiverField.Unsupported(
+                        ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE
+                    )
+            val parent = expression.parent as? KtQualifiedExpression
+            NativeReceiverField.Selected(
+                declaration,
+                if (parent?.selectorExpression === expression) parent else expression,
+                guard,
+            )
+        }
+}
+
+private fun KtNameReferenceExpression.isFieldReceiverCandidate(): Boolean =
+    parent !is KtValueArgumentName && parent !is KtUserType && (parent as? KtCallElement)?.calleeExpression !== this
+
+private sealed interface NativeReceiverField {
+    data class Selected(
+        val declaration: PsiNamedElement,
+        val expression: KtExpression,
+        val guard: NativeReceiverGuard,
+    ) : NativeReceiverField
+
+    data object Unrelated : NativeReceiverField
+
+    data class Unsupported(val cause: ValueFlowUnsupportedCause) : NativeReceiverField
+}

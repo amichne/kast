@@ -1,0 +1,4 @@
+suite	tests	failures	errors	skipped	xml_sha256
+io.github.amichne.kast.relation.intellij.NativePacketCallerNonNullTest	2	1	0	0	cfaedadeec07517976e20dd5b8d71961f68efc1aaa0ad803cb10fe1b42951f2e
+io.github.amichne.kast.relation.intellij.NativePacketS3LogFieldTest	6	0	0	0	f6316b41875d1a93270a57e3e7aa80296c8355d76238d134e42fba2b362e72cd
+io.github.amichne.kast.relation.intellij.NativePacketSingleListInsertionTest	7	0	0	0	73866f63e03600c27df1f8a218287c804160b768e2da23126e79298c23f25498

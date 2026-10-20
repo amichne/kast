@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryStateDependencyAdmissionTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.737Z" hostname="Austins-MacBook-Pro.local" time="0.007">
+  <properties/>
+  <testcase name="output dedup cannot reuse a staged token depending on another attempt private result()" classname="io.github.amichne.kast.query.protocol.QueryStateDependencyAdmissionTest" time="0.001"/>
+  <testcase name="exact cached publication remains replayable while its public successor is busy()" classname="io.github.amichne.kast.query.protocol.QueryStateDependencyAdmissionTest" time="0.002"/>
+  <testcase name="output dedup cannot reuse a ready token whose pinned transitive dependency expired()" classname="io.github.amichne.kast.query.protocol.QueryStateDependencyAdmissionTest" time="0.002"/>
+  <testcase name="direct checkpoint restoration cannot bypass its active execution claim()" classname="io.github.amichne.kast.query.protocol.QueryStateDependencyAdmissionTest" time="0.001"/>
+  <testcase name="output dedup cannot reuse its own staged token with a missing dependency()" classname="io.github.amichne.kast.query.protocol.QueryStateDependencyAdmissionTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

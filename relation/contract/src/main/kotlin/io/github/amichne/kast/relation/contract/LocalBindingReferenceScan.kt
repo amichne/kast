@@ -18,12 +18,13 @@ sealed interface LocalReferenceResolution {
 class LocalBindingReferenceScan<C>(
     private val request: ValueFlowRequest,
     private val domain: RelationRequest,
-    private val enumerate: ((C) -> Boolean) -> Unit,
+    private val enumerate: (LocalReferenceTraversal<C>) -> Unit,
     private val key: (C) -> LocalReferenceKey,
     private val confirm: (C) -> LocalReferenceResolution,
     private val checkCanceled: () -> Unit,
     private val elapsedMillis: () -> Long,
     private val onWork: (RelationWorkCount) -> Unit = {},
+    private val admitRole: () -> Refinement<Unit, ValueFlowUnsupportedCause> = { Refinement.Refined(Unit) },
 ) {
     private val edges = mutableListOf<ValueTransfer>()
     private val obligations = mutableListOf<ValueFlowObligation>()
@@ -33,13 +34,20 @@ class LocalBindingReferenceScan<C>(
     private var suspension: ValueFlowSuspensionCause? = null
 
     fun read(): ValueFlowRead {
-        if (request.source.role != ValueRole.LocalBinding || hasForeignRemainder())
+        if (!request.source.role.hasReferenceReads() || hasForeignRemainder())
             return ValueFlowRead.ContractRejected(ValueFlowStepFailure.SOURCE_MISMATCH, count())
         // Reserve a transfer, every possible semantic obligation and a detached address before confirmation.
         if (!fitsCandidate() || request.budget.resources.workUnitLimit.value < MINIMUM_PROGRESS_WORK)
             return ValueFlowRead.Rejected(ValueFlowRejection.GRANT_TOO_SMALL, count())
         spend() // role admission, after the adapter's authority/owner unit
-        enumerate(::visit)
+        if (admitTraversal()) {
+            when (val role = admitRole()) {
+                is Refinement.Refined ->
+                    if (admitTraversal()) enumerate(LocalReferenceTraversal(::admitTraversal, ::visit))
+                is Refinement.Rejected -> obligation(role.failure)
+            }
+        }
+        admitTraversal()
         // Replay can consume the time grant before reaching new input; a later grant may still advance it.
         if (
             suspension != null &&
@@ -53,34 +61,78 @@ class LocalBindingReferenceScan<C>(
     private fun hasForeignRemainder(): Boolean =
         request.remainder?.let { it.source != request.source || it.boundary != request.boundary } ?: false
 
-    private fun visit(candidate: C): Boolean {
+    private fun admitTraversal(): Boolean {
         checkCanceled()
+        if (suspension != null) return false
         if (elapsedMillis() >= request.budget.resources.elapsedTimeLimit.value) {
             suspension = ValueFlowSuspensionCause.TIME_LIMIT_REACHED
             return false
         }
+        return true
+    }
+
+    private fun visit(candidate: C): Boolean {
+        if (!admitTraversal()) return false
         val address = key(candidate)
         if (address in consumed) return true
         if (!permitted()) return false
         spend()
-        when (val result = confirm(candidate)) {
-            LocalReferenceResolution.OtherBinding -> Unit
-            is LocalReferenceResolution.Unsupported -> obligation(result.cause)
-            is LocalReferenceResolution.Transfer -> transfer(result.target)
-        }
-        consumed += address
-        return true
+        return publish(address, admitResolution(confirm(candidate)))
     }
 
-    private fun transfer(target: ValueSite) {
-        if (target.identity.owner != request.source.identity.owner) {
-            obligation(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-            return
+    private fun admitResolution(result: LocalReferenceResolution): LocalReferenceDecision =
+        when (result) {
+            LocalReferenceResolution.OtherBinding -> LocalReferenceDecision.OtherBinding
+            is LocalReferenceResolution.Unsupported -> LocalReferenceDecision.Unsupported(result.cause)
+            is LocalReferenceResolution.Transfer -> {
+                if (result.target.identity.owner != request.source.identity.owner)
+                    LocalReferenceDecision.Unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+                else
+                    when (
+                        val transfer =
+                            ValueTransfer.fromCompiler(request.source, result.target, ValueTransferKind.LOCAL_READ)
+                    ) {
+                        is Refinement.Rejected ->
+                            LocalReferenceDecision.Unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+                        is Refinement.Refined -> LocalReferenceDecision.Transfer(transfer.value)
+                    }
+            }
         }
-        when (val transfer = ValueTransfer.fromCompiler(request.source, target, ValueTransferKind.LOCAL_READ)) {
-            is Refinement.Rejected -> obligation(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-            is Refinement.Refined -> if (emitted.add(target.identity)) edges += transfer.value
+
+    private fun publish(address: LocalReferenceKey, decision: LocalReferenceDecision): Boolean {
+        val nextEdges =
+            edges +
+                when (decision) {
+                    is LocalReferenceDecision.Transfer ->
+                        if (decision.value.target.identity in emitted) emptyList() else listOf(decision.value)
+                    is LocalReferenceDecision.Unsupported,
+                    LocalReferenceDecision.OtherBinding -> emptyList()
+                }
+        val nextObligations =
+            obligations +
+                when (decision) {
+                    is LocalReferenceDecision.Unsupported ->
+                        listOf(ValueFlowObligation(request.source, decision.cause)).filter { it !in obligations }
+                    is LocalReferenceDecision.Transfer,
+                    LocalReferenceDecision.OtherBinding -> emptyList()
+                }
+        val nextConsumed = consumed + address
+        val nextEmitted = emitted + nextEdges.map { it.target.identity }
+        val nextRemainder =
+            LocalBindingReadRemainder.admit(request.source, request.boundary, nextConsumed, nextEmitted).value()
+        val bytes =
+            ValueFlowStep.detachedByteCount(request.source, domain, nextEdges, nextObligations, nextRemainder).value
+        if (!fits(bytes)) {
+            suspension = ValueFlowSuspensionCause.BYTE_LIMIT_REACHED
+            return false
         }
+        edges.clear()
+        edges += nextEdges
+        obligations.clear()
+        obligations += nextObligations
+        consumed += address
+        emitted += nextEmitted
+        return true
     }
 
     private fun finish(): ValueFlowRead {
@@ -99,7 +151,7 @@ class LocalBindingReferenceScan<C>(
                         terminal,
                         domain,
                         count(),
-                        RelationByteCount.parse(remainder?.retainedBytes ?: 0L).value(),
+                        remainder,
                     )
             ) {
                 is Refinement.Rejected -> return ValueFlowRead.ContractRejected(result.failure, count())
@@ -122,15 +174,14 @@ class LocalBindingReferenceScan<C>(
     }
 
     private fun fitsCandidate(): Boolean {
-        val base = ValueFlowStep.detachedByteCount(request.source, domain, edges, obligations).value
-        val remaining = request.budget.returnedBytes.value - base
-        val reserve = (2048L + request.source.retainedBytes) * ValueFlowUnsupportedCause.entries.size
-        val next =
-            LocalBindingReadRemainder.storageBytes(request.source, consumed.size, emitted.size) +
-                1024L +
-                2048L +
-                3L * request.source.retainedBytes
-        return remaining >= 0L && reserve <= remaining && next <= remaining - reserve
+        val predicted =
+            localReferenceCandidateStorageBytes(request.source, domain, edges, obligations, consumed, emitted)
+        return fits(predicted.value)
+    }
+
+    private fun fits(bytes: Long): Boolean {
+        val reserve = 2048L * ValueFlowUnsupportedCause.entries.size
+        return bytes.addBytes(reserve) <= request.budget.returnedBytes.value
     }
 
     private fun remainder(): LocalBindingReadRemainder =
@@ -147,6 +198,14 @@ class LocalBindingReferenceScan<C>(
         val value = ValueFlowObligation(request.source, cause)
         if (value !in obligations) obligations += value
     }
+}
+
+private sealed interface LocalReferenceDecision {
+    data class Transfer(val value: ValueTransfer) : LocalReferenceDecision
+
+    data class Unsupported(val cause: ValueFlowUnsupportedCause) : LocalReferenceDecision
+
+    data object OtherBinding : LocalReferenceDecision
 }
 
 private fun <V> Refinement<V, *>.value(): V =

@@ -1,0 +1,24 @@
+{
+  "status": "NOT_RUN",
+  "file": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueSeedCallbackReturnObligationOracleTest.kt",
+  "test_count": 16,
+  "expected_provenance": "Expected results derive from explicit Return/Empty/Anonymous facts and ValueCallbackOracleCase Bound supplier. No native call, positive transfer, or query completion is claimed.",
+  "flow_positive": "Exact original source site, path, predicates, Empty stack, complete CallbackInvocationFlow value including INCOMPLETE/raw WORK/BYTE causes and selected invocation. Outer cause CALLBACK_FLOW_UNPROVEN.",
+  "flow_negatives": [
+    "wrong anonymous body",
+    "foreign basis gives BASIS_MISMATCH",
+    "other source host",
+    "same identity under another full source scope",
+    "supplier with anonymous caller execution",
+    "active source stack",
+    "named declaration Return",
+    "nonreturn LocalRead",
+    "unavailable rather than Bound supplier"
+  ],
+  "range_proof": "Existing CallbackInvocationFlow factory rejects BODY_OUTSIDE_ARGUMENT before a non-containing supplier can form a question. The oracle does not forge this excluded state.",
+  "diagnostics": "Return Empty Anonymous accepts fromCallbackUnavailable(PROOF_LIMIT_REACHED) and fromCallbackContractRejected(PROOF_LIMIT_REACHED), preserves raw finite causes and exact source, outer CALLBACK_PROOF_LIMIT_REACHED. Nonreturn and named-return diagnostic controls reject SOURCE_MISMATCH.",
+  "original21": "Exact three file hashes unchanged.",
+  "gradle": "NOT_RUN",
+  "configured_horizontalization": "NOT_RUN pending root serialized lane",
+  "prose": "No prose artifact changed in this increment."
+}

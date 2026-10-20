@@ -40,6 +40,7 @@ import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueInvocation
+import io.github.amichne.kast.relation.contract.ValueModelApplication
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueTransfer
@@ -68,6 +69,7 @@ internal data class ImpactReadExpectation(
     val edges: List<ValueTransfer> = emptyList(),
     val causes: List<ValueFlowUnsupportedCause> = emptyList(),
     val work: Long = 1,
+    val applications: List<ValueModelApplication> = emptyList(),
 )
 
 internal class QueryImpactExecutionFixture(generation: Long = 1) {
@@ -258,18 +260,40 @@ internal class QueryImpactExecutionFixture(generation: Long = 1) {
                     is RelationEndpoint.Resolved ->
                         RelationRequest.start(enclosing, RelationMeaning.References, input.budget, input.boundary)
                 }
-            ValueFlowRead.Observed(
-                ValueFlowStep.fromCompiler(
-                        read.site,
-                        read.edges,
-                        obligations,
-                        if (obligations.isEmpty()) ValueFlowTerminal.SupportedDomainExhausted
-                        else ValueFlowTerminal.Unresolved,
-                        domain,
-                        RelationWorkCount.parse(read.work).value(),
+            when (
+                val step =
+                    ValueFlowStep.fromCompiler(
+                        source = read.site,
+                        transfers = read.edges,
+                        obligations = obligations,
+                        terminal =
+                            if (obligations.isEmpty()) ValueFlowTerminal.SupportedDomainExhausted
+                            else ValueFlowTerminal.Unresolved,
+                        domain = domain,
+                        examinedWorkUnits = RelationWorkCount.parse(read.work).value(),
+                        applications = read.applications,
                     )
-                    .value()
-            )
+            ) {
+                is Refinement.Refined -> ValueFlowRead.Observed(step.value)
+                is Refinement.Rejected -> {
+                    val requiredBytes =
+                        ValueFlowStep.detachedByteCount(
+                                source = read.site,
+                                domain = domain,
+                                transfers = read.edges,
+                                obligations = obligations,
+                                applications = read.applications,
+                            )
+                            .value
+                    error(
+                        "Fixture refinement rejected: ${step.failure} " +
+                            "requiredBytes=$requiredBytes " +
+                            "grantedBytes=${input.budget.returnedBytes.value} completedReads=${examined.size - 1} " +
+                            "transfers=${read.edges.size} applications=${read.applications.size} " +
+                            "obligations=${obligations.size}"
+                    )
+                }
+            }
         }
 
         fun assertConsumed() {

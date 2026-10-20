@@ -20,6 +20,7 @@ class AdmittedBoundaryModel private constructor(val model: ContractModelIdentity
         fun admit(
             syntax: AdmittedImpactModelSyntax,
             current: List<BoundaryPosition>,
+            references: QueryReferenceAuthority,
         ): Refinement<AdmittedBoundaryModel, ImpactModelAdmissionFailure> {
             val document = syntax.document
             if (document !is ImpactModelDocument.Boundary)
@@ -30,7 +31,9 @@ class AdmittedBoundaryModel private constructor(val model: ContractModelIdentity
                     is Refinement.Rejected -> return admitted
                 }
             val rules = mutableListOf<BoundaryModel>()
-            for (rule in document.rules.values) when (val admitted = admitBoundaryRule(model, rule, current)) {
+            for (rule in document.rules.values) when (
+                val admitted = admitBoundaryRule(model, rule, current, references)
+            ) {
                 is Refinement.Refined -> rules += admitted.value
                 is Refinement.Rejected -> return admitted
             }
@@ -43,6 +46,7 @@ private fun admitBoundaryRule(
     model: ContractModelIdentity,
     syntax: ImpactBoundaryRuleDocument,
     current: List<BoundaryPosition>,
+    references: QueryReferenceAuthority,
 ): Refinement<BoundaryModel, ImpactModelAdmissionFailure> {
     val id =
         when (val admitted = syntax.id.domainIdentifier()) {
@@ -54,12 +58,12 @@ private fun admitBoundaryRule(
         when (syntax) {
             is ImpactBoundaryRuleDocument.Continuation -> {
                 val source =
-                    when (val admitted = syntax.source.bind(current)) {
+                    when (val admitted = syntax.source.bind(current, references)) {
                         is Refinement.Refined -> admitted.value
                         is Refinement.Rejected -> return admitted
                     }
                 val target =
-                    when (val admitted = syntax.target.bind(current)) {
+                    when (val admitted = syntax.target.bind(current, references)) {
                         is Refinement.Refined -> admitted.value
                         is Refinement.Rejected -> return admitted
                     }
@@ -74,7 +78,7 @@ private fun admitBoundaryRule(
             }
             is ImpactBoundaryRuleDocument.Terminal -> {
                 val source =
-                    when (val admitted = syntax.source.bind(current)) {
+                    when (val admitted = syntax.source.bind(current, references)) {
                         is Refinement.Refined -> admitted.value
                         is Refinement.Rejected -> return admitted
                     }

@@ -1,0 +1,10 @@
+topic	decision	limit
+operation	SEED_CALLBACK_RETURN carries one genuine callback frame	No native authority from decoding
+source	Return with Empty stack and exact anonymous callee	Full scope equality remains core-owned
+result	Actual builtin invocation result and one Direct supplying frame	Ordinary Return and SeedReturn stay distinct
+state	Keep basis path predicates and full encoded callback proof	No new model or input schema
+question	Explicit bound seed-return question	Existing active matcher stays narrow
+refusals	CallbackUnavailable and CallbackContractRejected keep exact causes	Diagnostics grant no transfer or completion
+storage	Distinct node 512 plus incoming 8 and frame reference 8	Repeated object reference 8
+scope	Existing protocol query and fixture instructions examined	No command owner or local rule change
+assessment	ASSESSED with Slopsentral.Grade advisory at line 1	Keep precise compiler and native authority terms

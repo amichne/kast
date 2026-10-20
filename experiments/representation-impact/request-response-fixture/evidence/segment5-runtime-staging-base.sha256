@@ -1,0 +1,3 @@
+ece38f1f5edc8328ed4e54ceb7fec041be8271f3b60ac0bb164c22e6a18db40b  runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketQueryServices.kt
+6f8c691819c33878d9b497a11a3a8659af6a25402208aacc0978c33c668020b1  runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketQueryFixture.kt
+761faab532ecee63e30745b9a40a7cb4974b493cfc0200fd6f882f3b9bcab749  runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketQueryFrameOracle.kt

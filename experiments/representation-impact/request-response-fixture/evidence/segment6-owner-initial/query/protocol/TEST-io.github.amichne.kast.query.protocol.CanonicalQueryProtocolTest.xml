@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.CanonicalQueryProtocolTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.355Z" hostname="Austins-MacBook-Pro.local" time="0.042">
+  <properties/>
+  <testcase name="constrained candidate reference restores scope and preserves published authority()" classname="io.github.amichne.kast.query.protocol.CanonicalQueryProtocolTest" time="0.008"/>
+  <testcase name="location source is admitted as one exact-file query intent()" classname="io.github.amichne.kast.query.protocol.CanonicalQueryProtocolTest" time="0.005"/>
+  <testcase name="live detached identity rejects old host epoch root and version()" classname="io.github.amichne.kast.query.protocol.CanonicalQueryProtocolTest" time="0.002"/>
+  <testcase name="qualified empty query stays qualified and semantic rejection stays rejected()" classname="io.github.amichne.kast.query.protocol.CanonicalQueryProtocolTest" time="0.002"/>
+  <testcase name="canonical source projection retains every finite domain rejection()" classname="io.github.amichne.kast.query.protocol.CanonicalQueryProtocolTest" time="0.015"/>
+  <testcase name="host supplied authority and budget reach query execution with exact scope()" classname="io.github.amichne.kast.query.protocol.CanonicalQueryProtocolTest" time="0.002"/>
+  <testcase name="host lookup expands the token before canonical authority and kind validation()" classname="io.github.amichne.kast.query.protocol.CanonicalQueryProtocolTest" time="0.002"/>
+  <testcase name="text source preserves word scope and kinds and rejects unsupported text before effects()" classname="io.github.amichne.kast.query.protocol.CanonicalQueryProtocolTest" time="0.003"/>
+  <testcase name="specialist source admission intersects both host projection caps()" classname="io.github.amichne.kast.query.protocol.CanonicalQueryProtocolTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

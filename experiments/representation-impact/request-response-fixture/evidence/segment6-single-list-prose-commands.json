@@ -1,0 +1,30 @@
+[
+  {
+    "name": "guide_vale",
+    "command": "mise exec -- vale --no-global --config=.vale.ini --output=JSON experiments/representation-impact/request-response-fixture/AGENTS.md > experiments/representation-impact/request-response-fixture/evidence/segment6-single-list-guide.vale.json",
+    "workdir": "/Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast",
+    "firstExit": 1,
+    "finalExit": 0
+  },
+  {
+    "name": "readme_vale",
+    "command": "mise exec -- vale --no-global --config=.vale.ini --output=JSON experiments/representation-impact/request-response-fixture/README.md > experiments/representation-impact/request-response-fixture/evidence/segment6-single-list-readme.vale.json",
+    "workdir": "/Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast",
+    "firstExit": 1,
+    "finalExit": 0
+  },
+  {
+    "name": "guide_assessment",
+    "command": "uv run --locked --script scripts/assess_text.py --vale-bin /Users/amichne/.local/share/mise/installs/vale/3.24.0/vale --glossary /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/docs/glossary.json /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/experiments/representation-impact/request-response-fixture/AGENTS.md > /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/experiments/representation-impact/request-response-fixture/evidence/segment6-single-list-guide.assessment.json",
+    "workdir": "/Users/amichne/.codex/plugins/cache/slopsentral/repository-knowledge/3.1.0/skills/controlled-technical-writing",
+    "firstExit": 1,
+    "finalExit": 1
+  },
+  {
+    "name": "readme_assessment",
+    "command": "uv run --locked --script scripts/assess_text.py --vale-bin /Users/amichne/.local/share/mise/installs/vale/3.24.0/vale --glossary /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/docs/glossary.json /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/experiments/representation-impact/request-response-fixture/README.md > /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/experiments/representation-impact/request-response-fixture/evidence/segment6-single-list-readme.assessment.json",
+    "workdir": "/Users/amichne/.codex/plugins/cache/slopsentral/repository-knowledge/3.1.0/skills/controlled-technical-writing",
+    "firstExit": 1,
+    "finalExit": 1
+  }
+]

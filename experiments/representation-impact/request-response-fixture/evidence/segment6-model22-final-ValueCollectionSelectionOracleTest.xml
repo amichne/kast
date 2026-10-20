@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-20T12:51:04.770Z" hostname="Austins-MacBook-Pro.local" time="0.018">
+  <properties/>
+  <testcase name="a different leading field cannot masquerade as an element()" classname="io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest" time="0.003"/>
+  <testcase name="the result role cannot masquerade as the list receiver()" classname="io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest" time="0.001"/>
+  <testcase name="element one does not reach the first result()" classname="io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest" time="0.002"/>
+  <testcase name="another occurrence of the same callable cannot borrow the invocation binding()" classname="io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest" time="0.001"/>
+  <testcase name="element zero selects its exact field suffix()" classname="io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest" time="0.002"/>
+  <testcase name="a stale receiver cannot borrow a fresh binding()" classname="io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest" time="0.001"/>
+  <testcase name="selection keeps an existing exact nonnull subject without inventing a result fact()" classname="io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest" time="0.002"/>
+  <testcase name="abstract element selects zero condition without a claim about every element()" classname="io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest" time="0.001"/>
+  <testcase name="whole list selects a conditional whole result with exact callback context()" classname="io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest" time="0.001"/>
+  <testcase name="dispatch slot cannot borrow the extension selection()" classname="io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

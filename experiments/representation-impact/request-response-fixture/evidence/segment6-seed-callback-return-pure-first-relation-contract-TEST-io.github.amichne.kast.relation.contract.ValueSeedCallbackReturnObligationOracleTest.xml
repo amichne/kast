@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnObligationOracleTest" tests="16" skipped="0" failures="0" errors="0" timestamp="2026-10-20T19:54:17.385Z" hostname="Austins-MacBook-Pro.local" time="0.108">
+  <properties/>
+  <testcase name="another anonymous body cannot replace the source return body()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnObligationOracleTest" time="0.07"/>
+  <testcase name="a named return cannot become an anonymous return seed question()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnObligationOracleTest" time="0.004"/>
+  <testcase name="diagnostic refusals cannot reinterpret a named empty return as an anonymous callback()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnObligationOracleTest" time="0.002"/>
+  <testcase name="a foreign callback basis preserves the finite basis rejection()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnObligationOracleTest" time="0.002"/>
+  <testcase name="a selected invocation and incomplete scan remain qualified in the return question()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnObligationOracleTest" time="0.003"/>
+  <testcase name="an active callback context cannot become an empty return seed question()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnObligationOracleTest" time="0.002"/>
+  <testcase name="the same host identity under another full scope cannot supply the question()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnObligationOracleTest" time="0.001"/>
+  <testcase name="an unavailable supplier does not grant a bound return question()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnObligationOracleTest" time="0.001"/>
+  <testcase name="diagnostic refusals cannot reinterpret a local read as an empty return()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnObligationOracleTest" time="0.0"/>
+  <testcase name="a qualified zero-invocation return question keeps every source fact and raw cause()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnObligationOracleTest" time="0.003"/>
+  <testcase name="an empty anonymous return keeps the raw unavailable proof limit()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnObligationOracleTest" time="0.001"/>
+  <testcase name="a nested caller execution cannot masquerade as a declaration supplier()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnObligationOracleTest" time="0.001"/>
+  <testcase name="a different declared host cannot supply the original anonymous return()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnObligationOracleTest" time="0.001"/>
+  <testcase name="a local read cannot masquerade as a normal return question()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnObligationOracleTest" time="0.001"/>
+  <testcase name="an empty anonymous return keeps the raw rejected proof limit()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnObligationOracleTest" time="0.001"/>
+  <testcase name="a supplier outside the anonymous body cannot form the compiler flow proof()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnObligationOracleTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

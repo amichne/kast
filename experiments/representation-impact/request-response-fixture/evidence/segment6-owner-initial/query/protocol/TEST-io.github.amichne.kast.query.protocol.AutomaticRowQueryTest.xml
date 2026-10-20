@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.AutomaticRowQueryTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.099Z" hostname="Austins-MacBook-Pro.local" time="0.032">
+  <properties/>
+  <testcase name="binding accumulation preserves both named cells and joined mode()" classname="io.github.amichne.kast.query.protocol.AutomaticRowQueryTest" time="0.005"/>
+  <testcase name="changing binding mode across pages fails closed before merging()" classname="io.github.amichne.kast.query.protocol.AutomaticRowQueryTest" time="0.005"/>
+  <testcase name="traversal records keep arrival proof across empty advancing pages()" classname="io.github.amichne.kast.query.protocol.AutomaticRowQueryTest" time="0.011"/>
+  <testcase name="occurrences exhaust empty advancing pages and retained reads do not execute providers()" classname="io.github.amichne.kast.query.protocol.AutomaticRowQueryTest" time="0.004"/>
+  <testcase name="occurrence result and evidence cursors drain independently without semantic replay()" classname="io.github.amichne.kast.query.protocol.AutomaticRowQueryTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryReviewedCallbackStorageTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-20T16:49:43.815Z" hostname="Austins-MacBook-Pro.local" time="0.086">
+  <properties/>
+  <testcase name="frame retention visits actual binding argument and full formal proof()" classname="io.github.amichne.kast.query.contract.QueryReviewedCallbackStorageTest" time="0.068"/>
+  <testcase name="reviewed application retention includes the actual module label payload()" classname="io.github.amichne.kast.query.contract.QueryReviewedCallbackStorageTest" time="0.01">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;12&gt; but was: &lt;18&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;12&gt; but was: &lt;18&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+	at io.github.amichne.kast.query.contract.QueryReviewedCallbackStorageTest.reviewed application retention includes the actual module label payload(QueryReviewedCallbackStorageTest.kt:58)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

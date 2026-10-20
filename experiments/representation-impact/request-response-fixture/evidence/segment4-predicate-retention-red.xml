@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryImpactPredicateRetentionTest" tests="3" skipped="0" failures="3" errors="0" timestamp="2026-10-20T04:06:27.554Z" hostname="Austins-MacBook-Pro.local" time="0.084">
+  <properties/>
+  <testcase name="implicit formal storage preserves its anonymous execution and honest origin()" classname="io.github.amichne.kast.query.contract.QueryImpactPredicateRetentionTest" time="0.068">
+    <failure message="java.lang.IllegalStateException: Formal execution owner was not visited" type="java.lang.IllegalStateException">java.lang.IllegalStateException: Formal execution owner was not visited
+	at io.github.amichne.kast.query.contract.QueryImpactPredicateRetentionTest.implicit_formal_storage_preserves_its_anonymous_execution_and_honest_origin$lambda$0(QueryImpactPredicateRetentionTest.kt:63)
+	at io.github.amichne.kast.query.contract.QueryImpactRetainedGraph.node$io_github_amichne_query_query_contract(QueryImpactRetainedGraph.kt:54)
+	at io.github.amichne.kast.query.contract.QueryImpactPredicateRetentionTest.implicit formal storage preserves its anonymous execution and honest origin(QueryImpactPredicateRetentionTest.kt:63)
+</failure>
+  </testcase>
+  <testcase name="site storage visits the exact tested value and resolved class proof()" classname="io.github.amichne.kast.query.contract.QueryImpactPredicateRetentionTest" time="0.007">
+    <failure message="java.lang.IllegalStateException: Predicate conjunction was not visited" type="java.lang.IllegalStateException">java.lang.IllegalStateException: Predicate conjunction was not visited
+	at io.github.amichne.kast.query.contract.QueryImpactPredicateRetentionTest.site_storage_visits_the_exact_tested_value_and_resolved_class_proof$lambda$0(QueryImpactPredicateRetentionTest.kt:32)
+	at io.github.amichne.kast.query.contract.QueryImpactRetainedGraph.node$io_github_amichne_query_query_contract(QueryImpactRetainedGraph.kt:54)
+	at io.github.amichne.kast.query.contract.QueryImpactPredicateRetentionTest.site storage visits the exact tested value and resolved class proof(QueryImpactPredicateRetentionTest.kt:32)
+</failure>
+  </testcase>
+  <testcase name="site identity storage visits the nonnull predicate independently of the enclosing site()" classname="io.github.amichne.kast.query.contract.QueryImpactPredicateRetentionTest" time="0.003">
+    <failure message="java.lang.IllegalStateException: Identity conjunction was not visited" type="java.lang.IllegalStateException">java.lang.IllegalStateException: Identity conjunction was not visited
+	at io.github.amichne.kast.query.contract.QueryImpactPredicateRetentionTest.site_identity_storage_visits_the_nonnull_predicate_independently_of_the_enclosing_site$lambda$0(QueryImpactPredicateRetentionTest.kt:50)
+	at io.github.amichne.kast.query.contract.QueryImpactRetainedGraph.node$io_github_amichne_query_query_contract(QueryImpactRetainedGraph.kt:54)
+	at io.github.amichne.kast.query.contract.QueryImpactPredicateRetentionTest.site identity storage visits the nonnull predicate independently of the enclosing site(QueryImpactPredicateRetentionTest.kt:50)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

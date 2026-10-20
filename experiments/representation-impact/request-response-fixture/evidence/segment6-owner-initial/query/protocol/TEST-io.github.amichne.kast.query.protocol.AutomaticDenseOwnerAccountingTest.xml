@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.AutomaticDenseOwnerAccountingTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:24.995Z" hostname="Austins-MacBook-Pro.local" time="0.041">
+  <properties/>
+  <testcase name="retention observations distinguish zero capacity and saturated exhaustion()" classname="io.github.amichne.kast.query.protocol.AutomaticDenseOwnerAccountingTest" time="0.001"/>
+  <testcase name="inventory owner ledger commits only the accepted transaction()" classname="io.github.amichne.kast.query.protocol.AutomaticDenseOwnerAccountingTest" time="0.005"/>
+  <testcase name="inventory owner ledger reconciles unique payloads reference cells and advancing state structure()" classname="io.github.amichne.kast.query.protocol.AutomaticDenseOwnerAccountingTest" time="0.002"/>
+  <testcase name="advancing inventory keeps exact state proof and reference charges()" classname="io.github.amichne.kast.query.protocol.AutomaticDenseOwnerAccountingTest" time="0.01"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

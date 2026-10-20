@@ -1,0 +1,27 @@
+{
+  "comprehension": {
+    "type": "NOT_ASSESSED"
+  },
+  "documents": [
+    {
+      "findings": [],
+      "metrics": {
+        "estimatedSyllables": 56,
+        "fleschKincaidGrade": 3.42,
+        "sentences": 5,
+        "words": 42,
+        "wordsPerSentence": 8.4
+      },
+      "path": "/Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/experiments/representation-impact/request-response-fixture/results/library-model-review-findings.md",
+      "sourceSha256": "647e6f964daafdd72f0cd9cb9ef7a347788838e49088e5c8b7c53076c09d6f74",
+      "type": "DOCUMENT_ASSESSMENT"
+    }
+  ],
+  "engine": {
+    "policySha256": "0a7cc8bb61ff2eb3ea13957b54d752e90d48cf41d936de789143b650d55ea277",
+    "type": "VALE",
+    "version": "3.24.0"
+  },
+  "schemaVersion": 2,
+  "type": "ASSESSED"
+}

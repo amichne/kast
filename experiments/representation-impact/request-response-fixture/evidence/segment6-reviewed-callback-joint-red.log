@@ -1,0 +1,297 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Calculating task graph as no cached configuration is available for tasks: :protocol:contract:test --tests *ReviewedScopeDocumentTest :query:protocol:test --tests *ReviewedScopeProjectionTest :query:contract:test --tests *QueryReviewedCallbackStorageTest :relation:intellij:nativeFixtureTest --tests *NativePacketLetCallbackTest
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :kernel:compileJava NO-SOURCE
+> Task :protocol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+> Task :protocol:contract:compileKotlin
+> Task :protocol:contract:compileJava NO-SOURCE
+> Task :protocol:contract:processResources UP-TO-DATE
+> Task :protocol:contract:classes UP-TO-DATE
+> Task :protocol:contract:jar
+> Task :kernel:processResources NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar UP-TO-DATE
+> Task :protocol:contract:compileTestKotlin
+> Task :protocol:contract:compileTestJava NO-SOURCE
+> Task :protocol:contract:processTestResources UP-TO-DATE
+> Task :protocol:contract:testClasses UP-TO-DATE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar UP-TO-DATE
+
+> Task :protocol:contract:test FAILED
+
+ReviewedScopeDocumentTest > reviewed callback frame keeps full binding formal and anonymous proof() FAILED
+    org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
+        at app//org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:190)
+        at app//io.github.amichne.kast.protocol.contract.ReviewedScopeDocumentTest.reviewed callback frame keeps full binding formal and anonymous proof(ReviewedScopeDocumentTest.kt:28)
+
+ReviewedScopeDocumentTest > reviewed input and matched return preserve path predicates and exact push pop() FAILED
+    org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
+        at app//org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:190)
+        at app//io.github.amichne.kast.protocol.contract.ReviewedScopeDocumentTest.reviewed input and matched return preserve path predicates and exact push pop(ReviewedScopeDocumentTest.kt:37)
+
+6 tests completed, 2 failed
+
+> Task :diagnostic:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :diagnostic:contract:compileKotlin UP-TO-DATE
+> Task :diagnostic:contract:compileJava NO-SOURCE
+> Task :query:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:contract:compileKotlin UP-TO-DATE
+> Task :relation:contract:compileJava NO-SOURCE
+> Task :source:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:contract:compileKotlin UP-TO-DATE
+> Task :source:contract:compileJava NO-SOURCE
+> Task :traversal:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :traversal:contract:compileKotlin
+> Task :traversal:contract:compileJava NO-SOURCE
+> Task :query:contract:compileKotlin
+> Task :query:contract:compileJava NO-SOURCE
+> Task :query:protocol:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :query:protocol:compileKotlin
+> Task :query:protocol:compileJava NO-SOURCE
+> Task :query:protocol:processResources NO-SOURCE
+> Task :query:protocol:classes UP-TO-DATE
+> Task :query:protocol:jar
+> Task :workspace:contract:compileTestFixturesKotlin UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesJava NO-SOURCE
+> Task :query:protocol:compileTestFixturesKotlin
+> Task :query:protocol:compileTestFixturesJava NO-SOURCE
+> Task :query:protocol:processTestFixturesResources NO-SOURCE
+> Task :query:protocol:testFixturesClasses UP-TO-DATE
+> Task :query:protocol:testFixturesJar UP-TO-DATE
+> Task :diagnostic:contract:processResources NO-SOURCE
+> Task :diagnostic:contract:classes UP-TO-DATE
+> Task :diagnostic:contract:jar UP-TO-DATE
+> Task :protocol:registry:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:registry:compileKotlin
+> Task :protocol:registry:compileJava NO-SOURCE
+> Task :protocol:registry:processResources NO-SOURCE
+> Task :protocol:registry:classes UP-TO-DATE
+> Task :protocol:registry:jar UP-TO-DATE
+> Task :protocol:wire:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:wire:compileKotlin
+> Task :protocol:wire:compileJava NO-SOURCE
+> Task :protocol:wire:processResources NO-SOURCE
+> Task :protocol:wire:classes UP-TO-DATE
+> Task :protocol:wire:jar UP-TO-DATE
+> Task :query:contract:processResources NO-SOURCE
+> Task :query:contract:classes UP-TO-DATE
+> Task :query:contract:jar
+> Task :query:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :query:service:compileKotlin
+> Task :query:service:compileJava NO-SOURCE
+> Task :query:protocol:compileTestKotlin
+> Task :query:protocol:compileTestJava NO-SOURCE
+> Task :query:protocol:processTestResources UP-TO-DATE
+> Task :query:protocol:testClasses UP-TO-DATE
+> Task :query:service:processResources NO-SOURCE
+> Task :query:service:classes UP-TO-DATE
+> Task :query:service:jar UP-TO-DATE
+> Task :relation:contract:processResources NO-SOURCE
+> Task :relation:contract:classes UP-TO-DATE
+> Task :relation:contract:jar UP-TO-DATE
+> Task :source:contract:processResources NO-SOURCE
+> Task :source:contract:classes UP-TO-DATE
+> Task :source:contract:jar UP-TO-DATE
+> Task :traversal:contract:processResources NO-SOURCE
+> Task :traversal:contract:classes UP-TO-DATE
+> Task :traversal:contract:jar UP-TO-DATE
+> Task :workspace:contract:processTestFixturesResources NO-SOURCE
+> Task :workspace:contract:testFixturesClasses UP-TO-DATE
+> Task :workspace:contract:testFixturesJar UP-TO-DATE
+> Task :query:protocol:test
+> Task :query:contract:compileTestKotlin
+> Task :query:contract:compileTestJava NO-SOURCE
+> Task :query:contract:processTestResources NO-SOURCE
+> Task :query:contract:testClasses UP-TO-DATE
+
+> Task :query:contract:test FAILED
+
+QueryReviewedCallbackStorageTest > reviewed application retention includes the actual module label payload() FAILED
+    org.opentest4j.AssertionFailedError: expected: <12> but was: <18>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+        at app//io.github.amichne.kast.query.contract.QueryReviewedCallbackStorageTest.reviewed application retention includes the actual module label payload(QueryReviewedCallbackStorageTest.kt:58)
+
+2 tests completed, 1 failed
+
+> Task :relation:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:intellij:extractRelationKotlinPlugin UP-TO-DATE
+> Task :workspace:intellij-read:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:intellij-read:extractWorkspaceReadIdeaDistribution UP-TO-DATE
+> Task :workspace:intellij-read:compileKotlin
+> Task :workspace:intellij-read:compileJava NO-SOURCE
+> Task :relation:intellij:compileKotlin
+> Task :relation:intellij:compileJava NO-SOURCE
+> Task :relation:intellij:processResources NO-SOURCE
+> Task :relation:intellij:classes UP-TO-DATE
+> Task :relation:intellij:jar UP-TO-DATE
+> Task :relation:intellij:extractNativeTestIdea UP-TO-DATE
+
+> Task :relation:intellij:compileNativeTestKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketCompositePayloadTest.kt:183:20 'static fun <T : Any!, E : Throwable!> compute(p0: ThrowableComputable<T!, E!>): T!' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketDestructuringEntryTest.kt:80:20 'static fun <E : Throwable!> run(p0: ThrowableRunnable<E!>): Unit' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketDestructuringEntryTest.kt:81:35 'static fun <T : Any!, E : Throwable!> compute(p0: ThrowableComputable<T!, E!>): T!' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketFirstOrNullApplicationTest.kt:37:24 'static fun <T : Any!, E : Throwable!> compute(p0: ThrowableComputable<T!, E!>): T!' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketFirstOrNullFrontierTest.kt:47:24 'static fun <T : Any!, E : Throwable!> compute(p0: ThrowableComputable<T!, E!>): T!' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketImplicitBindFlowTest.kt:110:20 'static fun <E : Throwable!> run(p0: ThrowableRunnable<E!>): Unit' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketImplicitBindFlowTest.kt:112:35 'static fun <T : Any!, E : Throwable!> compute(p0: ThrowableComputable<T!, E!>): T!' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketLetCallbackFacts.kt:54:20 'static fun <T : Any!, E : Throwable!> compute(p0: ThrowableComputable<T!, E!>): T!' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketLetCallbackSource.kt:59:24 'static fun <T : Any!, E : Throwable!> compute(p0: ThrowableComputable<T!, E!>): T!' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketThisReadSource.kt:70:24 'static fun <T : Any!, E : Throwable!> compute(p0: ThrowableComputable<T!, E!>): T!' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketUserInvokeTest.kt:53:20 'static fun <E : Throwable!> run(p0: ThrowableRunnable<E!>): Unit' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketValueFixture.kt:396:73 'static fun <T : Any!, E : Throwable!> compute(p0: ThrowableComputable<T!, E!>): T!' is deprecated. Deprecated in Java.
+
+> Task :relation:intellij:compileNativeTestJava NO-SOURCE
+> Task :relation:intellij:detektNativeTest
+> Task :relation:intellij:processNativeTestResources UP-TO-DATE
+> Task :relation:intellij:nativeTestClasses UP-TO-DATE
+> Task :workspace:intellij-read:processResources NO-SOURCE
+> Task :workspace:intellij-read:classes UP-TO-DATE
+> Task :workspace:intellij-read:jar UP-TO-DATE
+
+> Task :relation:intellij:nativeFixtureTest
+
+NativePacketLetCallbackTest > testOriginalLetReceiverEntersItsExactImplicitItAndKeepsBothScopedPredicates FAILED
+    junit.framework.AssertionFailedError: Let needs receiver-to-actual-formal model evidence. Causes=[EXTERNAL_CALL]. The callback result is NOT_REACHED expected:<1> but was:<0>
+        at app//junit.framework.Assert.fail(Assert.java:57)
+        at app//junit.framework.Assert.failNotEquals(Assert.java:329)
+        at app//junit.framework.Assert.assertEquals(Assert.java:78)
+        at app//junit.framework.Assert.assertEquals(Assert.java:234)
+        at app//junit.framework.TestCase.assertEquals(TestCase.java:377)
+        at app//io.github.amichne.kast.relation.intellij.NativePacketLetCallbackTest.entry(NativePacketLetCallbackTest.kt:111)
+        at app//io.github.amichne.kast.relation.intellij.NativePacketLetCallbackTest.testOriginalLetReceiverEntersItsExactImplicitItAndKeepsBothScopedPredicates(NativePacketLetCallbackTest.kt:23)
+
+NativePacketLetCallbackTest > testIndependentConstantLiteralNormalResultReturnsToItsOwnLetCall FAILED
+    junit.framework.AssertionFailedError: A genuine normal callback Return needs the same Let result. Causes=[EXTERNAL_CALL] expected:<1> but was:<0>
+        at app//junit.framework.Assert.fail(Assert.java:57)
+        at app//junit.framework.Assert.failNotEquals(Assert.java:329)
+        at app//junit.framework.Assert.assertEquals(Assert.java:78)
+        at app//junit.framework.Assert.assertEquals(Assert.java:234)
+        at app//junit.framework.TestCase.assertEquals(TestCase.java:377)
+        at app//io.github.amichne.kast.relation.intellij.NativePacketLetCallbackTest.returned(NativePacketLetCallbackTest.kt:149)
+        at app//io.github.amichne.kast.relation.intellij.NativePacketLetCallbackTest.testIndependentConstantLiteralNormalResultReturnsToItsOwnLetCall(NativePacketLetCallbackTest.kt:64)
+
+NativePacketLetCallbackTest > testTwoActualLetCallsKeepDifferentFormalsAndNeverCrossTheirReturns FAILED
+    junit.framework.AssertionFailedError: Let needs receiver-to-actual-formal model evidence. Causes=[EXTERNAL_CALL]. The callback result is NOT_REACHED expected:<1> but was:<0>
+        at app//junit.framework.Assert.fail(Assert.java:57)
+        at app//junit.framework.Assert.failNotEquals(Assert.java:329)
+        at app//junit.framework.Assert.assertEquals(Assert.java:78)
+        at app//junit.framework.Assert.assertEquals(Assert.java:234)
+        at app//junit.framework.TestCase.assertEquals(TestCase.java:377)
+        at app//io.github.amichne.kast.relation.intellij.NativePacketLetCallbackTest.entry(NativePacketLetCallbackTest.kt:111)
+        at app//io.github.amichne.kast.relation.intellij.NativePacketLetCallbackTest.testTwoActualLetCallsKeepDifferentFormalsAndNeverCrossTheirReturns(NativePacketLetCallbackTest.kt:74)
+
+NativePacketLetCallbackTest > testConstantCallbackEntersItsGenuineUnusedFormalWithoutPayloadToConstantResult FAILED
+    junit.framework.AssertionFailedError: Let needs receiver-to-actual-formal model evidence. Causes=[EXTERNAL_CALL]. The callback result is NOT_REACHED expected:<1> but was:<0>
+        at app//junit.framework.Assert.fail(Assert.java:57)
+        at app//junit.framework.Assert.failNotEquals(Assert.java:329)
+        at app//junit.framework.Assert.assertEquals(Assert.java:78)
+        at app//junit.framework.Assert.assertEquals(Assert.java:234)
+        at app//junit.framework.TestCase.assertEquals(TestCase.java:377)
+        at app//io.github.amichne.kast.relation.intellij.NativePacketLetCallbackTest.entry(NativePacketLetCallbackTest.kt:111)
+        at app//io.github.amichne.kast.relation.intellij.NativePacketLetCallbackTest.testConstantCallbackEntersItsGenuineUnusedFormalWithoutPayloadToConstantResult(NativePacketLetCallbackTest.kt:52)
+
+NativePacketLetCallbackTest > testOriginalNormalSuccessCallbackResultReturnsOnlyToItsMatchedLetCall FAILED
+    junit.framework.AssertionFailedError: A genuine normal callback Return needs the same Let result. Causes=[EXTERNAL_CALL] expected:<1> but was:<0>
+        at app//junit.framework.Assert.fail(Assert.java:57)
+        at app//junit.framework.Assert.failNotEquals(Assert.java:329)
+        at app//junit.framework.Assert.assertEquals(Assert.java:78)
+        at app//junit.framework.Assert.assertEquals(Assert.java:234)
+        at app//junit.framework.TestCase.assertEquals(TestCase.java:377)
+        at app//io.github.amichne.kast.relation.intellij.NativePacketLetCallbackTest.returned(NativePacketLetCallbackTest.kt:149)
+        at app//io.github.amichne.kast.relation.intellij.NativePacketLetCallbackTest.testOriginalNormalSuccessCallbackResultReturnsOnlyToItsMatchedLetCall(NativePacketLetCallbackTest.kt:41)
+
+Oct 20, 2026 12:50:23 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: Index dispose started
+Oct 20, 2026 12:50:24 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: StubIndexExtension-s were unloaded
+Oct 20, 2026 12:50:24 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: Start shutting down /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/system/index/rep.names
+Oct 20, 2026 12:50:24 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: Finished shutting down /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/system/index/rep.names
+Oct 20, 2026 12:50:24 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: Index dispose completed in 139ms.
+Oct 20, 2026 12:50:24 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: VFS disconnect started
+Oct 20, 2026 12:50:24 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: VFS closing
+Oct 20, 2026 12:50:24 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: VFS disconnect completed in 1 ms.
+
+> Task :relation:intellij:nativeFixtureTest FAILED
+
+6 tests completed, 5 failed
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-20-12-50-24-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/problems/problems-report.html
+
+FAILURE: Build completed with 3 failures.
+
+1: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':protocol:contract:test'.
+> There were failing tests. See the report at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+==============================================================================
+
+2: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':query:contract:test'.
+> There were failing tests. See the report at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/contract/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+==============================================================================
+
+3: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':relation:intellij:nativeFixtureTest'.
+> There were failing tests. See the report at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/reports/tests/nativeFixtureTest/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+==============================================================================
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 1m 24s
+60 actionable tasks: 22 executed, 38 up-to-date
+Configuration cache entry stored.

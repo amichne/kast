@@ -54,7 +54,7 @@ internal class QueryItemProjector(private val authority: QueryReferenceAuthority
         originalPathRowIds: List<QueryResultRowReference>?,
     ): QueryProjection<QueryResultItemDocument> =
         if (output is QueryOutputDocument.ImpactWitness && output.section.witnessSection() == rows.view.section)
-            rows.projectWitnessItems(originalRowIds, originalPathRowIds)
+            rows.projectWitnessItems(authority, originalRowIds, originalPathRowIds)
         else QueryProjection.Rejected
 
     private fun projectSymbolRows(
@@ -72,7 +72,7 @@ internal class QueryItemProjector(private val authority: QueryReferenceAuthority
 
     private fun projectValuePaths(rows: QueryRows.ValuePaths): QueryProjection<QueryResultItemDocument> {
         val documents = mutableListOf<QueryResultItemDocument>()
-        for (path in rows.values) when (val projected = path.impactDocument()) {
+        for (path in rows.values) when (val projected = path.impactDocument(authority)) {
             is io.github.amichne.kast.kernel.Refinement.Refined ->
                 documents += QueryResultItemDocument.ValuePath(projected.value)
             is io.github.amichne.kast.kernel.Refinement.Rejected ->

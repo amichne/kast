@@ -1,0 +1,51 @@
+package io.github.amichne.kast.relation.contract
+
+import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.kernel.ResourceBudget
+import io.github.amichne.kast.kernel.ResultLimit
+import io.github.amichne.kast.kernel.WorkUnitLimit
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Test
+
+/** An admitted implicit formal keeps exact progress through the existing reference scanner. */
+class LocalFormalPaginationTest {
+    @Test
+    fun `a formal parameter page keeps one address and resumes its unconsumed neighbor`() {
+        val f = FormalPaginationCase()
+        val first = assertInstanceOf(ValueFlowRead.Suspended::class.java, f.scan(work = 3))
+        assertEquals(ValueFlowSuspensionCause.WORK_LIMIT_REACHED, first.cause)
+        assertEquals(listOf(0), f.confirmed)
+        assertEquals(setOf(f.key(0)), first.remainder.consumed)
+        assertEquals(setOf(f.targets[0].identity), first.remainder.emitted)
+        assertEquals(3L, first.step.examinedWorkUnits.value)
+        val last = assertInstanceOf(ValueFlowRead.Observed::class.java, f.scan(work = 4, remainder = first.remainder))
+        assertEquals(listOf(0, 1), f.confirmed)
+        assertEquals(listOf(f.targets[1]), last.step.transfers.map { it.target })
+        assertEquals(setOf(f.key(0)), first.remainder.consumed)
+    }
+}
+
+private class FormalPaginationCase {
+    val source = ValueCallbackOracleCase().entered()
+    val confirmed = mutableListOf<Int>()
+    val targets = listOf(45, 50).map { start ->
+        ValueSite.fromCompiler(source.enclosing, flowRange(start, start + 2), ValueRole.LocalRead,
+            source.executionOwner, source.valuePath, source.callStack, source.predicates).flowRefined()
+    }
+
+    fun key(index: Int) = LocalReferenceKey(targets[index].range, targets[index].range,
+        LocalReferenceKind.fromBoundary("implicit-parameter-reference").flowRefined())
+
+    fun scan(work: Long, remainder: LocalBindingReadRemainder? = null): ValueFlowRead {
+        val budget = RelationBudget(ResourceBudget(ResultLimit.parse(4).flowRefined(), WorkUnitLimit.parse(work).flowRefined(),
+            ElapsedTimeLimitMillis.parse(1000).flowRefined()), RelationByteLimit.parse(4_000_000).flowRefined())
+        val request = ValueFlowRequest(source, budget, RelationSearchBoundary.WORKSPACE_EXPANSION, remainder)
+        return LocalBindingReferenceScan<Int>(request,
+            RelationRequest.start(source.enclosing, RelationMeaning.References, budget, request.boundary),
+            enumerate = { traversal -> for (index in targets.indices) if (!traversal.visit(index)) break },
+            key = ::key,
+            confirm = { index -> confirmed += index; LocalReferenceResolution.Transfer(targets[index]) },
+            checkCanceled = {}, elapsedMillis = { 0L }).read()
+    }
+}

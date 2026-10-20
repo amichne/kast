@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ImpactConsumerOutcomeDocument
+import io.github.amichne.kast.protocol.contract.ImpactFindingBranchDocument
 import io.github.amichne.kast.protocol.contract.ImpactFindingProvenanceDocument
 import io.github.amichne.kast.protocol.contract.ImpactFindingRepresentationDocument
 import io.github.amichne.kast.protocol.contract.ImpactFindingTerminalDocument
@@ -29,6 +30,8 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class ImpactFindingQualificationTest {
+    private val projectionReferences = CanonicalQueryReferences()
+
     @Test
     fun `compact consumer retains expected state origin and every distinct current outcome`() {
         val fixture = ImpactFindingModelFixture()
@@ -57,7 +60,7 @@ class ImpactFindingQualificationTest {
                     )
                     .value()
             val terminal =
-                QueryImpactTerminal.Consumer(arrived.expect(rule).value()).findingDocument().value()
+                QueryImpactTerminal.Consumer(arrived.expect(rule).value()).findingDocument(projectionReferences).value()
                     as ImpactFindingTerminalDocument.Consumer
             assertEquals(outcome, terminal.outcome)
             assertEquals(expected, terminal.expectedState.state.value)
@@ -88,8 +91,9 @@ class ImpactFindingQualificationTest {
                 )
                 .value()
         val unknownTerminal =
-            QueryImpactTerminal.Consumer(weakened.expect(unknownRule).value()).findingDocument().value()
-                as ImpactFindingTerminalDocument.Consumer
+            QueryImpactTerminal.Consumer(weakened.expect(unknownRule).value())
+                .findingDocument(projectionReferences)
+                .value() as ImpactFindingTerminalDocument.Consumer
         assertEquals(ImpactConsumerOutcomeDocument.UNKNOWN, unknownTerminal.outcome)
         val branch =
             (QueryImpactRepresentation.Present(weakened).findingDocument().value()
@@ -127,18 +131,7 @@ class ImpactFindingQualificationTest {
                 .branches
                 .values
                 .single()
-        assertEquals(
-            listOf("origin", "wire"),
-            branch.provenance.values.map {
-                when (it) {
-                    is ImpactFindingProvenanceDocument.Origin -> it.reference.rule.value
-                    is ImpactFindingProvenanceDocument.BoundaryModel -> it.reference.rule.value
-                    is ImpactFindingProvenanceDocument.ModeledTransfer,
-                    is ImpactFindingProvenanceDocument.ModeledTransformation,
-                    ImpactFindingProvenanceDocument.Unmodeled -> error("Unexpected model provenance")
-                }
-            },
-        )
+        assertBoundaryProvenance(branch)
         assertEquals(
             ImpactRepresentationCurrentDocument.Unknown(
                 ImpactRepresentationUnknownDocument.BOUNDARY_PRESERVATION_UNPROVEN
@@ -147,10 +140,29 @@ class ImpactFindingQualificationTest {
         )
         val unresolved = BoundaryArrival.unresolved(target, BoundaryUnresolvedReason.MISSING_CONSUMER)
         val terminal =
-            QueryImpactTerminal.Unresolved.Boundary(unresolved).findingDocument().value()
+            QueryImpactTerminal.Unresolved.Boundary(unresolved).findingDocument(projectionReferences).value()
                 as ImpactFindingTerminalDocument.UnresolvedBoundary
-        assertEquals(unresolved.obligation.impactDocument().value(), terminal.obligation)
+        assertEquals(
+            unresolved.obligation.impactDocument(references = projectionReferences).value(),
+            terminal.obligation,
+        )
         assertModeledTerminal(fixture, target)
+    }
+
+    private fun assertBoundaryProvenance(branch: ImpactFindingBranchDocument) {
+        assertEquals(
+            listOf("origin", "wire"),
+            branch.provenance.values.map {
+                when (it) {
+                    is ImpactFindingProvenanceDocument.Origin -> it.reference.rule.value
+                    is ImpactFindingProvenanceDocument.BoundaryModel -> it.reference.rule.value
+                    is ImpactFindingProvenanceDocument.ModeledTransfer,
+                    is ImpactFindingProvenanceDocument.ModeledTransformation,
+                    is ImpactFindingProvenanceDocument.ModeledValue,
+                    ImpactFindingProvenanceDocument.Unmodeled -> error("Unexpected model provenance")
+                }
+            },
+        )
     }
 
     private fun assertModeledTerminal(
@@ -167,9 +179,12 @@ class ImpactFindingQualificationTest {
                 .value()
         val end = BoundaryArrival.terminal(target, rule).value()
         val modeled =
-            QueryImpactTerminal.ModeledTerminal(end).findingDocument().value()
+            QueryImpactTerminal.ModeledTerminal(end).findingDocument(projectionReferences).value()
                 as ImpactFindingTerminalDocument.ModeledTerminal
-        assertEquals(end.obligations.map { it.impactDocument().value() }, modeled.obligations.values)
+        assertEquals(
+            end.obligations.map { it.impactDocument(references = projectionReferences).value() },
+            modeled.obligations.values,
+        )
         assertEquals("sink", modeled.reference.rule.value)
     }
 
@@ -185,7 +200,7 @@ class ImpactFindingQualificationTest {
                     RelationWorkCount.parse(3).value(),
                 )
             val projected =
-                (QueryImpactTerminal.Unresolved.ReadRejected(rejection).findingDocument().value()
+                (QueryImpactTerminal.Unresolved.ReadRejected(rejection).findingDocument(projectionReferences).value()
                         as ImpactFindingTerminalDocument.UnresolvedRead)
                     .rejection as ImpactReadRejectionDocument.Native
             assertEquals(cause.name, projected.cause.name)
@@ -200,7 +215,7 @@ class ImpactFindingQualificationTest {
                     RelationWorkCount.parse(2).value(),
                 )
             val projected =
-                (QueryImpactTerminal.Unresolved.ReadRejected(rejection).findingDocument().value()
+                (QueryImpactTerminal.Unresolved.ReadRejected(rejection).findingDocument(projectionReferences).value()
                         as ImpactFindingTerminalDocument.UnresolvedRead)
                     .rejection as ImpactReadRejectionDocument.Contract
             assertEquals(cause.name, projected.cause.name)

@@ -58,6 +58,8 @@ import org.junit.jupiter.api.Test
 
 /** Detached compiler observations test admission only; they do not establish native evaluation. */
 class ImpactModelAdmissionTest {
+    private val projectionReferences = CanonicalQueryReferences()
+
     @Test
     fun `all four rules preserve exact current callable and model identity`() {
         val current = endpoint()
@@ -153,8 +155,10 @@ class ImpactModelAdmissionTest {
             )
         val syntax = AdmittedImpactModelSyntax.admit(document).refined()
         val rule =
-            AdmittedBoundaryModel.admit(syntax, listOf(source, target)).refined().rules.single()
-                as BoundaryModel.Continuation
+            AdmittedBoundaryModel.admit(syntax, listOf(source, target), references = projectionReferences)
+                .refined()
+                .rules
+                .single() as BoundaryModel.Continuation
         assertEquals(source.reference, rule.source.reference)
         assertEquals(target.reference, rule.target.reference)
         assertEquals(
@@ -162,6 +166,7 @@ class ImpactModelAdmissionTest {
             AdmittedBoundaryModel.admit(
                 syntax,
                 listOf(source, boundary(endpoint(root = "/unrelated", generation = 9))),
+                projectionReferences,
             ),
         )
     }

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.HostedReferenceAnchorTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:20.045Z" hostname="Austins-MacBook-Pro.local" time="0.009">
+  <properties/>
+  <testcase name="compact reference syntax retains its disjoint source anchor family()" classname="io.github.amichne.kast.protocol.contract.HostedReferenceAnchorTest" time="0.005"/>
+  <testcase name="v5 handles admit only canonical unpadded 128 bit digests()" classname="io.github.amichne.kast.protocol.contract.HostedReferenceAnchorTest" time="0.002"/>
+  <testcase name="compact reference parser rejects malformed and noncanonical digests()" classname="io.github.amichne.kast.protocol.contract.HostedReferenceAnchorTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

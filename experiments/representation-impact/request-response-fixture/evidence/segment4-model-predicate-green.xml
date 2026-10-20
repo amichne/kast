@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.service.QueryImpactModelStateConservationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T04:13:03.892Z" hostname="Austins-MacBook-Pro.local" time="0.073">
+  <properties/>
+  <testcase name="whole argument model cannot transform an unmodeled element contribution()" classname="io.github.amichne.kast.query.service.QueryImpactModelStateConservationTest" time="0.057"/>
+  <testcase name="whole argument model cannot accept an output that erases source call state()" classname="io.github.amichne.kast.query.service.QueryImpactModelStateConservationTest" time="0.004"/>
+  <testcase name="identity model result preserves the actual nonempty source call stack()" classname="io.github.amichne.kast.query.service.QueryImpactModelStateConservationTest" time="0.003"/>
+  <testcase name="identity model keeps the exact predicate conjunction with the source call context()" classname="io.github.amichne.kast.query.service.QueryImpactModelStateConservationTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

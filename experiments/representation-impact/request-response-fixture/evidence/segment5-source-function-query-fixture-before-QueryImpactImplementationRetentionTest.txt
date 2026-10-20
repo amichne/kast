@@ -1,0 +1,193 @@
+package io.github.amichne.kast.query.contract
+
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.RelationBatch
+import io.github.amichne.kast.relation.contract.RelationByteCount
+import io.github.amichne.kast.relation.contract.RelationCompilation
+import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.RelationFact
+import io.github.amichne.kast.relation.contract.RelationLimitation
+import io.github.amichne.kast.relation.contract.RelationMeaning
+import io.github.amichne.kast.relation.contract.RelationOccurrence
+import io.github.amichne.kast.relation.contract.RelationProvenance
+import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.relation.contract.RelationResultCount
+import io.github.amichne.kast.relation.contract.RelationWorkCount
+import io.github.amichne.kast.relation.contract.ValueCallFrame
+import io.github.amichne.kast.relation.contract.ValueCallTarget
+import io.github.amichne.kast.relation.contract.ValueFlowObligation
+import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
+import io.github.amichne.kast.relation.contract.ValueImplementationDispatch
+import io.github.amichne.kast.relation.contract.ValueReceiverKind
+import io.github.amichne.kast.relation.contract.ValueRole
+import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.relation.contract.ValueSourceOwnership
+import io.github.amichne.kast.relation.contract.ValueTransfer
+import io.github.amichne.kast.relation.contract.ValueTransferKind
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.workspace.contract.ImportedWorkspaceModelState
+import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
+import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
+import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
+import java.nio.file.Path
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Test
+
+class QueryImpactImplementationRetentionTest {
+    @Test
+    fun `frame retention visits every strongly owned target proof`() {
+        val f = ImplementationRetentionFixture()
+        val frame = f.frame()
+        val target = frame.target as ValueCallTarget.Implementation
+        val graph = QueryImpactRetainedGraph()
+        frame.storageBytes(graph)
+
+        assertEquals(8L, graph.node(target) { error("Target proof was not visited") })
+        assertEquals(8L, graph.node(target.dispatch) { error("Dispatch proof was not visited") })
+        assertEquals(8L, graph.node(target.dispatch.batch) { error("Batch proof was not visited") })
+        assertEquals(8L, graph.node(target.dispatch.batch.request) { error("Question proof was not visited") })
+        assertEquals(8L, graph.node(target.relation) { error("Selected relation was not visited") })
+        assertEquals(8L, graph.node(target.ownership) { error("Source ownership was not visited") })
+        assertEquals(8L, graph.node(target.ownership.root) { error("Imported root was not visited") })
+    }
+
+    @Test
+    fun `zero-fact unresolved obligation retention visits its qualified dispatch`() {
+        val f = ImplementationRetentionFixture()
+        val dispatch = f.incompleteEmptyDispatch()
+        val site = ValueSite.fromCompiler(f.base.owner, f.base.producer.range, ValueRole.Return).value()
+        val obligation =
+            ValueFlowObligation.fromImplementation(site, ValueFlowUnsupportedCause.UNMODELED_CALL, dispatch).value()
+        val step = f.base.observe(site, emptyList(), listOf(obligation))
+        val graph = QueryImpactRetainedGraph()
+        step.storageBytes(graph)
+
+        assertEquals(8L, graph.node(obligation.evidence) { error("Obligation evidence was not visited") })
+        assertEquals(8L, graph.node(dispatch) { error("Qualified dispatch was not visited") })
+        assertEquals(8L, graph.node(dispatch.batch) { error("Empty batch was not visited") })
+        assertEquals(8L, graph.node(dispatch.coverage) { error("Incomplete coverage was not visited") })
+    }
+
+    @Test
+    fun `zero-fact dispatch obligation cannot lose its evidence in a retained path`() {
+        val f = ImplementationRetentionFixture()
+        val base = f.base
+        val receiver =
+            ValueSite.fromCompiler(
+                    base.owner,
+                    base.producer.range,
+                    ValueRole.Receiver(base.producerWitness.invocation, ValueReceiverKind.DISPATCH),
+                )
+                .value()
+        val edge = ValueTransfer.fromCompiler(base.producer, receiver, ValueTransferKind.RECEIVER).value()
+        val obligation =
+            ValueFlowObligation.fromImplementation(
+                    receiver,
+                    ValueFlowUnsupportedCause.UNMODELED_CALL,
+                    f.incompleteEmptyDispatch(),
+                )
+                .value()
+        val observations =
+            listOf(base.observe(base.producer, listOf(edge)), base.observe(receiver, emptyList(), listOf(obligation)))
+        fun ledger(retained: ValueFlowObligation) =
+            base.ledger(
+                listOf(
+                    QueryImpactPath.fromEvidence(
+                            base.producer,
+                            listOf(QueryImpactStep.Compiler(edge)),
+                            QueryImpactRepresentation.NotModeled,
+                            QueryImpactTerminal.Unresolved.Flow(retained),
+                        )
+                        .value()
+                ),
+                observations,
+            )
+
+        assertInstanceOf(Refinement.Refined::class.java, ledger(obligation))
+        assertEquals(
+            Refinement.Rejected(QueryImpactLedgerFailure.MISSING_OBLIGATION),
+            ledger(ValueFlowObligation(receiver, ValueFlowUnsupportedCause.UNMODELED_CALL)),
+        )
+    }
+}
+
+private class ImplementationRetentionFixture {
+    val base = QueryImpactLedgerFixture()
+    private val implementation =
+        RelationEndpoint.resolve(
+                base.lease,
+                base.scope,
+                CompilerGroundedSymbolEvidence.fromBoundary(
+                        base.file,
+                        300,
+                        400,
+                        "implementation",
+                        "fixture.implementation",
+                        CompilerSymbolKind.FUNCTION,
+                        CanonicalCompilerSignature.function("fixture.implementation", null, emptyList(), emptyList(), 0)
+                            .value(),
+                    )
+                    .value(),
+            )
+            .value()
+    private val question = RelationRequest.start(base.owner, RelationMeaning.Implementations, base.domain.budget)
+    private val fact =
+        RelationFact.create(
+                question,
+                implementation,
+                base.owner,
+                RelationOccurrence.fromSource(implementation.file, implementation.range),
+                RelationProvenance.K2_AUTHORED_SOURCE,
+            )
+            .value()
+    private val root =
+        (WorkspaceSearchScopeModel.compile(
+                base.lease.workspaceRoot,
+                ImportedWorkspaceModelState.COMPLETE,
+                listOf(
+                    WorkspaceSourceRootBoundary(
+                        "fixture",
+                        Path.of("/fixture"),
+                        ":",
+                        "main",
+                        Path.of("/fixture"),
+                        WorkspaceSourceRootKind.PRODUCTION,
+                        WorkspaceSourceRootProvenance.AUTHORED,
+                    )
+                ),
+            ) as WorkspaceSearchScopeModelCompilation.Compiled)
+            .model
+            .sourceRoots
+            .single()
+
+    fun frame(): ValueCallFrame {
+        val batch = batch(listOf(fact))
+        val dispatch = ValueImplementationDispatch.fromCompiler(RelationCompilation.complete(batch)).value()
+        val owner = ValueSourceOwnership.fromCompiler(implementation, root).value()
+        return ValueCallFrame.implementation(base.producerWitness.invocation, dispatch, fact, owner).value()
+    }
+
+    fun incompleteEmptyDispatch(): ValueImplementationDispatch {
+        val read =
+            RelationCompilation.qualifiedTerminal(batch(emptyList()), setOf(RelationLimitation.UNRESOLVED_TARGET))
+                .value()
+        return ValueImplementationDispatch.fromCompiler(read).value()
+    }
+
+    private fun batch(facts: List<RelationFact>) =
+        RelationBatch.create(
+                question,
+                facts,
+                RelationByteCount.parse(facts.sumOf { it.canonicalProjection().toByteArray().size.toLong() }).value(),
+                RelationWorkCount.parse(1).value(),
+                RelationResultCount.parse(facts.size).value(),
+            )
+            .value()
+}
+
+private fun <T> Refinement<T, *>.value(): T = (this as Refinement.Refined).value

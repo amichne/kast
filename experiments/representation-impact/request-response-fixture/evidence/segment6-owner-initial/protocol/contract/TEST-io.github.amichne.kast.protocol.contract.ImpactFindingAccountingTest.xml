@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactFindingAccountingTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:20.355Z" hostname="Austins-MacBook-Pro.local" time="0.051">
+  <properties/>
+  <testcase name="finding path ordinal is admitted only with matching original path accounting and witness ordinal()" classname="io.github.amichne.kast.protocol.contract.ImpactFindingAccountingTest" time="0.038"/>
+  <testcase name="two original path ordinals cannot present one issued path row identity()" classname="io.github.amichne.kast.protocol.contract.ImpactFindingAccountingTest" time="0.001"/>
+  <testcase name="finding requires mandatory investigated accounting and cannot strengthen completion()" classname="io.github.amichne.kast.protocol.contract.ImpactFindingAccountingTest" time="0.001"/>
+  <testcase name="present finding representation cannot claim zero admitted alternatives()" classname="io.github.amichne.kast.protocol.contract.ImpactFindingAccountingTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

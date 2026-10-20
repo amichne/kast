@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactAccountingProjectionTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.689Z" hostname="Austins-MacBook-Pro.local" time="0.019">
+  <properties/>
+  <testcase name="ordinary rows and connectivity only paths report distinct explicit accounting()" classname="io.github.amichne.kast.query.protocol.ImpactAccountingProjectionTest" time="0.006"/>
+  <testcase name="selected page retains unresolved obligation from original investigation()" classname="io.github.amichne.kast.query.protocol.ImpactAccountingProjectionTest" time="0.003"/>
+  <testcase name="rejected seed read counts remain distinct from successful native observations()" classname="io.github.amichne.kast.query.protocol.ImpactAccountingProjectionTest" time="0.001"/>
+  <testcase name="model witness section retains complete original reviewed rules in stable order()" classname="io.github.amichne.kast.query.protocol.ImpactAccountingProjectionTest" time="0.005"/>
+  <testcase name="investigated pages preserve original ledger counts exact seeds model references and closure()" classname="io.github.amichne.kast.query.protocol.ImpactAccountingProjectionTest" time="0.0"/>
+  <testcase name="explicit requested directory and source sets survive accounting and rejected read projection()" classname="io.github.amichne.kast.query.protocol.ImpactAccountingProjectionTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

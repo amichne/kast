@@ -3,7 +3,10 @@ package io.github.amichne.kast.protocol.wire
 import io.github.amichne.kast.protocol.contract.QueryCallbackExclusionReasonDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowFailureDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackFlowWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackNamedUnavailableCauseDocument
+import io.github.amichne.kast.protocol.contract.RelationOccurrenceWireDocument
+import io.github.amichne.kast.protocol.contract.SourceRangeWireDocument
 import kotlinx.serialization.SerializationException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows

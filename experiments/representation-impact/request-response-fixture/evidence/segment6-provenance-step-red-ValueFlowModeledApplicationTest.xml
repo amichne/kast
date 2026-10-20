@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueFlowModeledApplicationTest" tests="4" skipped="0" failures="3" errors="0" timestamp="2026-10-20T13:07:58.645Z" hostname="Austins-MacBook-Pro.local" time="0.022">
+  <properties/>
+  <testcase name="application source cannot borrow another selected invocation()" classname="io.github.amichne.kast.relation.contract.ValueFlowModeledApplicationTest" time="0.014">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=SOURCE_MISMATCH)&gt; but was: &lt;Refined(value=io.github.amichne.kast.relation.contract.ValueFlowStep@4b1c0397)&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=SOURCE_MISMATCH)&gt; but was: &lt;Refined(value=io.github.amichne.kast.relation.contract.ValueFlowStep@4b1c0397)&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.relation.contract.ValueFlowModeledApplicationTest.application source cannot borrow another selected invocation(ValueFlowModeledApplicationTest.kt:38)
+</failure>
+  </testcase>
+  <testcase name="result limit counts both native transfers and reviewed applications()" classname="io.github.amichne.kast.relation.contract.ValueFlowModeledApplicationTest" time="0.003">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=RESULT_LIMIT_EXCEEDED)&gt; but was: &lt;Refined(value=io.github.amichne.kast.relation.contract.ValueFlowStep@5eeedb60)&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=RESULT_LIMIT_EXCEEDED)&gt; but was: &lt;Refined(value=io.github.amichne.kast.relation.contract.ValueFlowStep@5eeedb60)&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.relation.contract.ValueFlowModeledApplicationTest.result limit counts both native transfers and reviewed applications(ValueFlowModeledApplicationTest.kt:18)
+</failure>
+  </testcase>
+  <testcase name="step snapshots applications and keeps proof through callable sharing()" classname="io.github.amichne.kast.relation.contract.ValueFlowModeledApplicationTest" time="0.002"/>
+  <testcase name="final detached capacity includes the actual application proof()" classname="io.github.amichne.kast.relation.contract.ValueFlowModeledApplicationTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:190)
+	at io.github.amichne.kast.relation.contract.ValueFlowModeledApplicationTest.final detached capacity includes the actual application proof(ValueFlowModeledApplicationTest.kt:49)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

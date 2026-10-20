@@ -3,9 +3,23 @@ package io.github.amichne.kast.protocol.wire
 import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBindingWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBodyBindingWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBodySupplyWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBodyWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackCallableWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackExclusionReasonDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackFlowWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackForwardingEvidenceWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackForwardingWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationScanDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackParameterIdentityWireDocument
+import io.github.amichne.kast.protocol.contract.RelationOccurrenceWireDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.callbackWire
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 

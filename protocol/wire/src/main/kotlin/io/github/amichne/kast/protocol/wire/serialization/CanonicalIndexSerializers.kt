@@ -5,6 +5,8 @@ import io.github.amichne.kast.protocol.contract.IndexSyncRejection
 import io.github.amichne.kast.protocol.contract.IndexSyncRequest
 import io.github.amichne.kast.protocol.contract.IndexSyncResult
 import io.github.amichne.kast.protocol.contract.IndexSyncStateDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.toContract
 
 internal object CanonicalIndexSerializers {
     private val factory = GeneratedWireCodecFactory(wireJson)

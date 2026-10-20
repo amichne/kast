@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactImplementationPeerIdentityTest" tests="2" skipped="0" failures="2" errors="0" timestamp="2026-10-20T03:06:30.771Z" hostname="Austins-MacBook-Pro.local" time="0.097">
+  <properties/>
+  <testcase name="reviewed peer rule accepts the same qualified call with fresh work observations()" classname="io.github.amichne.kast.protocol.contract.ImpactImplementationPeerIdentityTest" time="0.08">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Refined(value=kotlin.Unit)&gt; but was: &lt;Rejected(failure=WITNESS_VIEW_MISMATCH)&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Refined(value=kotlin.Unit)&gt; but was: &lt;Rejected(failure=WITNESS_VIEW_MISMATCH)&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.protocol.contract.ImpactImplementationPeerIdentityTest.reviewed peer rule accepts the same qualified call with fresh work observations(ImpactImplementationPeerIdentityTest.kt:15)
+</failure>
+  </testcase>
+  <testcase name="peer obligations and representation history keep exact positions without freezing work observations()" classname="io.github.amichne.kast.protocol.contract.ImpactImplementationPeerIdentityTest" time="0.01">
+    <failure message="org.opentest4j.MultipleFailuresError: Multiple Failures (2 failures)&#10;&#9;org.opentest4j.AssertionFailedError: expected: &lt;true&gt; but was: &lt;false&gt;&#10;&#9;org.opentest4j.AssertionFailedError: expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.MultipleFailuresError">org.opentest4j.MultipleFailuresError: Multiple Failures (2 failures)
+	org.opentest4j.AssertionFailedError: expected: &lt;true&gt; but was: &lt;false&gt;
+	org.opentest4j.AssertionFailedError: expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.AssertAll.assertAll(AssertAll.java:80)
+	at org.junit.jupiter.api.AssertAll.assertAll(AssertAll.java:44)
+	at org.junit.jupiter.api.AssertAll.assertAll(AssertAll.java:38)
+	at org.junit.jupiter.api.Assertions.assertAll(Assertions.java:3048)
+	at io.github.amichne.kast.protocol.contract.ImpactImplementationPeerIdentityTest.peer obligations and representation history keep exact positions without freezing work observations(ImpactImplementationPeerIdentityTest.kt:48)
+	Suppressed: org.opentest4j.AssertionFailedError: expected: &lt;true&gt; but was: &lt;false&gt;
+		... 2 more
+	Suppressed: org.opentest4j.AssertionFailedError: expected: &lt;true&gt; but was: &lt;false&gt;
+		... 2 more
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

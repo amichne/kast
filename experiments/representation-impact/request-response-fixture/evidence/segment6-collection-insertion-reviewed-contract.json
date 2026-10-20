@@ -1,0 +1,147 @@
+{
+  "status": "STAGED_NOT_ENROLLED_NOT_COMPILED_NOT_RUN",
+  "authority": "Central reviewed insertion contract plus previously captured exact listOf overload and artifact metadata. Pure compiler endpoints remain assumed inputs.",
+  "native_claims": [],
+  "factory": "ValueModelApplication.CollectionInsertion.insertSingle(source,binding)",
+  "model": "ReviewedValueModel.SingleElementListOf",
+  "rule": "collections.listOf.insert-zero",
+  "native_metadata_evidence": "evidence/segment5-library-binding-affiliation-green.xml",
+  "condition": "No SelectedElementCondition or new NonNull fact. This operation constructs a single-element collection from its actual input.",
+  "target": "Exact same invocation result ExpressionResult, Element0 plus incoming path, same full owner/execution proof, stack and predicates",
+  "depth_failure": "ValueModelApplicationFailure.ACCESS_PATH_DEPTH_EXCEEDED",
+  "invalid_position_limit": "Argument1 is not a legal ValueSite for the fixed one-parameter call. Its nearest pure control asserts existing site rejection. Native vararg/spread controls remain separate.",
+  "no_native_transfer": "The modeled arrival remains RepresentationHistory.Model and does not append a compiler transfer from argument to library result.",
+  "rows": [
+    {
+      "id": "I01",
+      "selector": "ValueCollectionInsertionOracleTest.single element review pins the fixed overload rule and exact reviewed artifact",
+      "expected": "Exact fixed-T overload, no receiver, type parameters1, rule collections.listOf.insert-zero and pinned binary/source/version",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "I02",
+      "selector": "ValueCollectionInsertionOracleTest.whole actual argument zero supplies only the exact result element zero",
+      "expected": "Argument0 Whole becomes exact invocation result Element0 with full context and predicates unchanged",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "I03",
+      "selector": "ValueCollectionInsertionOracleTest.insertion keeps the incoming resolved field suffix after element zero",
+      "expected": "Argument0 field suffix becomes Element0 followed by the same resolved fields",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "I04",
+      "selector": "ValueCollectionInsertionOracleTest.seven incoming segments permit the eighth insertion segment",
+      "expected": "Incoming depth7 plus Element0 admits exact depth8",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "I05",
+      "selector": "ValueCollectionInsertionOracleTest.eight incoming segments preserve an exact depth refusal without truncation",
+      "expected": "Incoming depth8 rejects ACCESS_PATH_DEPTH_EXCEEDED and preserves source path",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "I06",
+      "selector": "ValueCollectionInsertionOracleTest.an expression result cannot impersonate the fixed actual argument",
+      "expected": "ExpressionResult source rejects SOURCE_MISMATCH",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "I07",
+      "selector": "ValueCollectionInsertionOracleTest.argument one for the exact fixed overload rejects before model application",
+      "expected": "Impossible Argument1 for one-parameter fixed overload rejects INVALID_ARGUMENT_POSITION before application",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "I08",
+      "selector": "ValueCollectionInsertionOracleTest.insertion preserves an existing exact nonnull predicate without adding another fact",
+      "expected": "Existing exact NonNull is preserved and no predicate is invented",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "I09",
+      "selector": "ValueCollectionInsertionBindingOracleTest.another occurrence of the same library callable cannot borrow the binding",
+      "expected": "Another range for same callable rejects SOURCE_MISMATCH",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "I10",
+      "selector": "ValueCollectionInsertionBindingOracleTest.a stale actual argument cannot borrow a fresh library binding",
+      "expected": "Stale argument rejects BASIS_MISMATCH",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "I11",
+      "selector": "ValueCollectionInsertionBindingOracleTest.a changed full enclosing scope cannot borrow the argument binding",
+      "expected": "Changed full enclosing scope at same compact invocation identity rejects SOURCE_MISMATCH",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "I12",
+      "selector": "ValueCollectionInsertionBindingOracleTest.a changed full callable scope cannot borrow the argument binding",
+      "expected": "Changed full callable scope at same compact invocation identity rejects SOURCE_MISMATCH",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "I13",
+      "selector": "ValueCollectionInsertionBindingOracleTest.a changed declaration constraint cannot borrow an unrestricted binding",
+      "expected": "Changed enclosing declaration constraint rejects SOURCE_MISMATCH",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "I14",
+      "selector": "ValueCollectionInsertionBindingOracleTest.a changed full execution host cannot borrow the argument binding",
+      "expected": "Changed full execution host rejects SOURCE_MISMATCH",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "I15",
+      "selector": "ValueCollectionInsertionBindingOracleTest.equal full proofs recreated as fresh objects keep the exact insertion",
+      "expected": "Fresh equivalent full proofs remain admissible",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "I16",
+      "selector": "ReviewedSingleElementListOracleTest.a first element selection review cannot authorize insertion",
+      "expected": "FirstOrNull model binding rejects RULE_MISMATCH",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "I17",
+      "selector": "ReviewedSingleElementListOracleTest.insertion binding rejects wrong origin bytes version and virtual artifact membership",
+      "expected": "Actual origin, binary bytes, version and virtual-root mismatches reject their finite binding causes",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "I18",
+      "selector": "ReviewedSingleElementListOracleTest.array receiver and different generic arity cannot borrow the fixed single T review",
+      "expected": "Array parameter, extra receiver or generic arity mismatch cannot borrow fixed-T overload",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "I19",
+      "selector": "RepresentationCollectionInsertionOracleTest.insertion remains model history and introduces no argument to result compiler transfer",
+      "expected": "Exact actual application appends model history, weakens Known and creates no compiler transfer to library result",
+      "status": "NOT_RUN"
+    }
+  ],
+  "validation": {
+    "cached_ktfmt0.64": "PASSED",
+    "line_limit120": "PASSED",
+    "compilation": "NOT_RUN",
+    "detekt": "NOT_RUN",
+    "assertions": "NOT_RUN",
+    "gradle": "NOT_RUN"
+  },
+  "scope_review": {
+    "guides": [
+      "relation/AGENTS.md",
+      "experiments/representation-impact/request-response-fixture/AGENTS.md"
+    ],
+    "active_sources_changed": false,
+    "guide_rules_changed": false,
+    "new_child_guide": false
+  }
+}

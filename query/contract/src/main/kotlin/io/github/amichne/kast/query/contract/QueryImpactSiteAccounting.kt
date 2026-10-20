@@ -2,7 +2,6 @@ package io.github.amichne.kast.query.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
-import io.github.amichne.kast.relation.contract.ValueSite
 import java.util.Collections
 
 class QueryImpactSiteExclusion
@@ -19,13 +18,13 @@ sealed interface QueryImpactSiteOutcome {
     ) : QueryImpactSiteOutcome {
         companion object {
             internal fun fromOriginalPaths(
-                site: ValueSite,
+                selection: QueryImpactSiteSelection,
                 paths: List<QueryImpactPath>,
                 domain: RelationSearchBoundary,
-            ): Refinement<QueryImpactSiteOutcome, QueryImpactLedgerFailure> = account(site, paths, domain)
+            ): Refinement<QueryImpactSiteOutcome, QueryImpactLedgerFailure> = account(selection, paths, domain)
 
             private fun account(
-                site: ValueSite,
+                selection: QueryImpactSiteSelection,
                 paths: List<QueryImpactPath>,
                 domain: RelationSearchBoundary,
             ): Refinement<QueryImpactSiteOutcome, QueryImpactLedgerFailure> {
@@ -39,9 +38,9 @@ sealed interface QueryImpactSiteOutcome {
                                 return Refinement.Rejected(QueryImpactLedgerFailure.UNPROVEN_TERMINAL)
                         }
                     val excluded = (path.terminal as? QueryImpactTerminal.ExplicitScopeExclusion)?.exclusion
-                    if (excluded != null && excluded.site == site) {
+                    if (excluded != null && selection.matches(excluded.site)) {
                         if (excluded.domain == domain) exclusions += QueryImpactSiteExclusion(ordinal, excluded)
-                    } else if (path.reaches(site)) reached += ordinal
+                    } else if (path.reaches(selection)) reached += ordinal
                 }
                 return Refinement.Refined(
                     when {
@@ -86,7 +85,8 @@ private constructor(
                     }
                 val outcome =
                     when (
-                        val admitted = QueryImpactSiteOutcome.Reached.fromOriginalPaths(requested.site, paths, domain)
+                        val admitted =
+                            QueryImpactSiteOutcome.Reached.fromOriginalPaths(requested.selection, paths, domain)
                     ) {
                         is Refinement.Refined -> admitted.value
                         is Refinement.Rejected -> return admitted
@@ -98,7 +98,9 @@ private constructor(
     }
 }
 
-private fun QueryImpactPath.reaches(site: ValueSite): Boolean =
-    producer == site || destination == site || steps.any { it.source == site || it.target == site }
+private fun QueryImpactPath.reaches(selection: QueryImpactSiteSelection): Boolean =
+    selection.matches(producer) ||
+        selection.matches(destination) ||
+        steps.any { selection.matches(it.source) || selection.matches(it.target) }
 
 private fun <T> snapshot(values: List<T>): List<T> = Collections.unmodifiableList(values.toList())

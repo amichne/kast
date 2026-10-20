@@ -1,0 +1,12 @@
+claim	status	source	limit
+Public contract version stays 14	DECIDED	Root decision after source review on 2026-10-20	Local implementation only
+HEAD requested-site roles exclude RECEIVER	INSPECTED	HEAD:app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json:$defs/ImpactRequestedSite	The new required kind changes an unreleased variant
+The authored schema owns contractVersion	INSPECTED	packaging/generate-public-query.py:78,416,480	Generated constants remain projections
+Provider admission compares the catalog version	INSPECTED	app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt:274-277	Version equality alone does not establish shape parity
+Provider admission compares the full input schema	INSPECTED	app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastProvider.kt:361-367	Current provider guard assertions remain necessary
+Pi and Copilot compare the catalog version	INSPECTED	pi/extension.ts:717;copilot/extension.mjs:672	No old closed-decoder compatibility claim for MODELED_VALUE
+Unknown output variants stay rejected	PLANNED	Focused encoded-shape controls under protocol ownership	No model proof enters supplied-model input
+Release publication	NOT_AUTHORIZED	Current parent scope	No publication action occurred
+Automatic review authority stays in the relation factory	INSPECTED	relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ReviewedValueModel.kt:ReviewedLibraryBinding.fromCompiler	Protocol structure alone does not prove a reviewed artifact
+Application output admits structure and proof consistency only	DECIDED	protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactValueModelValidation.kt	No application decoder issues a native or model capability
+Current source and peer inputs need native site admission	INSPECTED	query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactPeerSourceEvidence.kt:admit;QueryImpactSourceAcquisition.kt:acquireSite	These inputs cannot deserialize automatic applications

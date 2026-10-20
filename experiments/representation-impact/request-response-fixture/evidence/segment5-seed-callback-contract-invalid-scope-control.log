@@ -1,0 +1,229 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Calculating task graph as no cached configuration is available for tasks: :relation:contract:spotlessKotlinApply :relation:intellij:spotlessKotlinApply :protocol:contract:spotlessKotlinApply :query:contract:spotlessKotlinApply :query:protocol:spotlessKotlinApply :runtime:hosted:spotlessKotlinApply :relation:contract:test --tests *ValueSeedCallbackEntryTest --tests *ValueSeedCallbackQuestionTest --tests *ValueCallbackObligationOracleTest --tests *ValueReviewedEvidenceSharingTest --tests *ValueReviewedReturnSharingTest :protocol:contract:test --tests *ImpactSeedCallbackQuestionTest --tests *ImpactCallbackIdentityTest :query:protocol:test --tests *ImpactSeedCallbackEntryProjectionTest --tests *ImpactSeedCallbackQuestionProjectionTest
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :relation:contract:spotlessKotlin
+> Task :relation:contract:spotlessKotlinApply
+> Task :relation:intellij:spotlessKotlin
+> Task :relation:intellij:spotlessKotlinApply
+> Task :protocol:contract:spotlessKotlin
+> Task :protocol:contract:spotlessKotlinApply
+> Task :query:contract:spotlessKotlin
+> Task :query:contract:spotlessKotlinApply
+> Task :query:protocol:spotlessKotlin
+> Task :query:protocol:spotlessKotlinApply
+> Task :runtime:hosted:spotlessKotlin
+> Task :runtime:hosted:spotlessKotlinApply
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :kernel:compileJava NO-SOURCE
+> Task :relation:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+
+> Task :relation:contract:compileKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationFact.kt:53:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationFact.kt:71:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationFact.kt:177:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationFact.kt:226:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlowObligation.kt:26:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueTransferEvidence.kt:27:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueTransferEvidence.kt:43:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationFact.kt:53:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationFact.kt:71:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationFact.kt:177:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationFact.kt:226:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlowObligation.kt:26:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueTransferEvidence.kt:27:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueTransferEvidence.kt:43:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+
+> Task :relation:contract:compileJava NO-SOURCE
+> Task :relation:contract:processResources NO-SOURCE
+> Task :relation:contract:classes UP-TO-DATE
+> Task :relation:contract:jar
+> Task :kernel:processResources NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar UP-TO-DATE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesKotlin UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesJava NO-SOURCE
+
+> Task :relation:contract:compileTestKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/CallbackOwnerBindingContractTest.kt:91:45 Cast is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueLetCallbackOracleTest.kt:153:31 Cast is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueSiteRevalidationContractTest.kt:162:24 Cast is redundant.
+
+> Task :relation:contract:compileTestJava NO-SOURCE
+> Task :relation:contract:processTestResources NO-SOURCE
+> Task :relation:contract:testClasses UP-TO-DATE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :workspace:contract:processTestFixturesResources NO-SOURCE
+> Task :workspace:contract:testFixturesClasses UP-TO-DATE
+> Task :workspace:contract:testFixturesJar UP-TO-DATE
+
+> Task :relation:contract:test
+
+ValueSeedCallbackEntryTest > the same callback identity under another full owner scope cannot replace the target() FAILED
+    org.opentest4j.AssertionFailedError: expected: <Rejected(failure=EVIDENCE_MISMATCH)> but was: <Refined(value=io.github.amichne.kast.relation.contract.ValueTransfer@6c1d5ab1)>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+        at app//io.github.amichne.kast.relation.contract.ValueSeedCallbackEntryTest.rejected(ValueSeedCallbackEntryTest.kt:127)
+        at app//io.github.amichne.kast.relation.contract.ValueSeedCallbackEntryTest.the same callback identity under another full owner scope cannot replace the target(ValueSeedCallbackEntryTest.kt:98)
+
+ValueSeedCallbackEntryTest > the same invoke identity under another full owner scope cannot enter the callback() FAILED
+    org.opentest4j.AssertionFailedError: expected: <Rejected(failure=EVIDENCE_MISMATCH)> but was: <Refined(value=io.github.amichne.kast.relation.contract.ValueTransfer@6c1d5ab1)>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+        at app//io.github.amichne.kast.relation.contract.ValueSeedCallbackEntryTest.rejected(ValueSeedCallbackEntryTest.kt:127)
+        at app//io.github.amichne.kast.relation.contract.ValueSeedCallbackEntryTest.the same invoke identity under another full owner scope cannot enter the callback(ValueSeedCallbackEntryTest.kt:80)
+
+ValueSeedCallbackQuestionTest > the same callable identity with another full scope cannot supply a seed question() FAILED
+    org.opentest4j.AssertionFailedError: expected: <Rejected(failure=SOURCE_MISMATCH)> but was: <Refined(value=ValueFlowObligation(site=io.github.amichne.kast.relation.contract.ValueSite@5794aaba, cause=CALLBACK_FLOW_UNPROVEN, evidence=CallbackFlow(flow=CallbackInvocationFlow(basis=Published(lease=SemanticReadLease(workspaceRoot=CanonicalWorkspaceRoot(value=/fixture), generation=EvidenceGeneration(value=1))), body=Anonymous(file=Workspace(path=CanonicalWorkspaceFilePath(value=/fixture/SourceFlow.kt)), range=ExactDeclarationTextRange(startInclusive=40, endExclusive=60), signature=Function(qualifiedIdentity=CanonicalCompilerQualifiedIdentity(value=anonymous@/fixture/SourceFlow.kt#40:60), receiver=Absent, contextReceivers=[], valueParameters=[CanonicalCompilerType(value=String)], typeParameterCount=CanonicalTypeParameterCount(value=0)), compilerIdentity=CompilerSymbolIdentity(value=canonical-signature-sha256-v1|b82286af3395551ed0b1ec482132b4c5cb0e79decfa844da5c0cbfc60f452551)), binding=Bound(binding=CallbackArgumentBinding(invocation=io.github.amichne.kast.relation.contract.ValueInvocation@9f88b471, invocationOwner=Named(evidence=CompilerGroundedSymbolEvidence(file=Workspace(path=CanonicalWorkspaceFilePath(value=/fixture/SourceFlow.kt)), range=ExactDeclarationTextRange(startInclusive=0, endExclusive=300), name=SymbolDiscoveryCandidateName(value=readOffers), qualifiedIdentity=Available(value=fixture.readOffers), kind=FUNCTION, signature=Function(qualifiedIdentity=CanonicalCompilerQualifiedIdentity(value=fixture.readOffers), receiver=Absent, contextReceivers=[], valueParameters=[], typeParameterCount=CanonicalTypeParameterCount(value=0)), compilerIdentity=CompilerSymbolIdentity(value=canonical-signature-sha256-v1|2647be38a170eeaaea68a3f4692ab8283b8e2b339f74e9405b4d8dc5d03aa91b))), position=ValueArgumentPosition(value=0), parameter=RelationOccurrence(file=Workspace(path=CanonicalWorkspaceFilePath(value=/fixture/SourceFlow.kt)), range=ExactDeclarationTextRange(startInclusive=410, endExclusive=430)))), invocations=[CallbackParameterInvocation(occurrence=RelationOccurrence(file=Workspace(path=CanonicalWorkspaceFilePath(value=/fixture/SourceFlow.kt)), range=ExactDeclarationTextRange(startInclusive=500, endExclusive=520)), owner=Named(evidence=CompilerGroundedSymbolEvidence(file=Workspace(path=CanonicalWorkspaceFilePath(value=/fixture/SourceFlow.kt)), range=ExactDeclarationTextRange(startInclusive=400, endExclusive=600), name=SymbolDiscoveryCandidateName(value=map), qualifiedIdentity=Available(value=fixture.Outcome.map), kind=FUNCTION, signature=Function(qualifiedIdentity=CanonicalCompilerQualifiedIdentity(value=fixture.Outcome.map), receiver=Absent, contextReceivers=[], valueParameters=[CanonicalCompilerType(value=(String)->String)], typeParameterCount=CanonicalTypeParameterCount(value=0)), compilerIdentity=CompilerSymbolIdentity(value=canonical-signature-sha256-v1|b84c58dc9e6ff70eaccf8df0974f37a0f35ded650c839346ba14da7daee41fcc))), callableTransfers=[], forwardings=[])], obligations=[], ownerBindings=[], scan=EXHAUSTIVE, forwarding=InvocationRoutes))))>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+        at app//io.github.amichne.kast.relation.contract.ValueSeedCallbackQuestionTest.the same callable identity with another full scope cannot supply a seed question(ValueSeedCallbackQuestionTest.kt:101)
+
+26 tests completed, 3 failed
+
+> Task :relation:contract:test FAILED
+> Task :protocol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:contract:compileKotlin
+> Task :protocol:contract:compileJava NO-SOURCE
+> Task :protocol:contract:processResources UP-TO-DATE
+> Task :protocol:contract:classes UP-TO-DATE
+> Task :protocol:contract:jar
+> Task :protocol:contract:compileTestKotlin
+> Task :protocol:contract:compileTestJava NO-SOURCE
+> Task :protocol:contract:processTestResources UP-TO-DATE
+> Task :protocol:contract:testClasses UP-TO-DATE
+> Task :protocol:contract:test
+> Task :diagnostic:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :diagnostic:contract:compileKotlin UP-TO-DATE
+> Task :diagnostic:contract:compileJava NO-SOURCE
+> Task :query:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:contract:compileKotlin UP-TO-DATE
+> Task :source:contract:compileJava NO-SOURCE
+> Task :traversal:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+
+> Task :traversal:contract:compileKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalCallableObservation.kt:16:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalCallbackObservation.kt:16:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPartialExpansion.kt:43:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalPlan.kt:132:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalRecord.kt:19:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalReferenceObservation.kt:14:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalResult.kt:10:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalResult.kt:26:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalResult.kt:33:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalResult.kt:138:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalScopeExclusion.kt:15:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalState.kt:53:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalState.kt:104:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalState.kt:147:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/traversal/contract/src/main/kotlin/io/github/amichne/kast/traversal/contract/TraversalState.kt:186:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+
+> Task :traversal:contract:compileJava NO-SOURCE
+
+> Task :query:contract:compileKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryWalkEvidence.kt:25:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryWalkEvidence.kt:47:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryWalkEvidence.kt:54:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryWalkEvidence.kt:74:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryWalkEvidence.kt:96:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+
+> Task :query:contract:compileJava NO-SOURCE
+> Task :query:protocol:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :query:protocol:compileKotlin
+> Task :query:protocol:compileJava NO-SOURCE
+> Task :query:protocol:processResources NO-SOURCE
+> Task :query:protocol:classes UP-TO-DATE
+> Task :query:protocol:jar
+> Task :query:protocol:compileTestFixturesKotlin
+> Task :query:protocol:compileTestFixturesJava NO-SOURCE
+> Task :query:protocol:processTestFixturesResources NO-SOURCE
+> Task :query:protocol:testFixturesClasses UP-TO-DATE
+> Task :query:protocol:testFixturesJar UP-TO-DATE
+> Task :diagnostic:contract:processResources NO-SOURCE
+> Task :diagnostic:contract:classes UP-TO-DATE
+> Task :diagnostic:contract:jar UP-TO-DATE
+> Task :protocol:registry:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:registry:compileKotlin
+> Task :protocol:registry:compileJava NO-SOURCE
+> Task :protocol:registry:processResources NO-SOURCE
+> Task :protocol:registry:classes UP-TO-DATE
+> Task :protocol:registry:jar UP-TO-DATE
+> Task :protocol:wire:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:wire:compileKotlin
+> Task :protocol:wire:compileJava NO-SOURCE
+> Task :protocol:wire:processResources NO-SOURCE
+> Task :protocol:wire:classes UP-TO-DATE
+> Task :protocol:wire:jar UP-TO-DATE
+> Task :query:contract:processResources NO-SOURCE
+> Task :query:contract:classes UP-TO-DATE
+> Task :query:contract:jar
+> Task :query:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :query:service:compileKotlin
+> Task :query:service:compileJava NO-SOURCE
+
+> Task :query:protocol:compileTestKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactModelAdmissionTest.kt:128:82 Cast is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryImpactBoundarySourceAdmissionTest.kt:314:28 Cast is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceAdmissionCase.kt:219:24 Cast is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceRetentionTest.kt:296:24 Cast is redundant.
+
+> Task :query:protocol:compileTestJava NO-SOURCE
+> Task :query:protocol:processTestResources UP-TO-DATE
+> Task :query:protocol:testClasses UP-TO-DATE
+> Task :query:service:processResources NO-SOURCE
+> Task :query:service:classes UP-TO-DATE
+> Task :query:service:jar UP-TO-DATE
+> Task :source:contract:processResources NO-SOURCE
+> Task :source:contract:classes UP-TO-DATE
+> Task :source:contract:jar UP-TO-DATE
+> Task :traversal:contract:processResources NO-SOURCE
+> Task :traversal:contract:classes UP-TO-DATE
+> Task :traversal:contract:jar UP-TO-DATE
+> Task :query:protocol:test
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-20-13-49-16-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':relation:contract:test'.
+> There were failing tests. See the report at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 57s
+61 actionable tasks: 31 executed, 30 up-to-date
+Configuration cache entry stored.

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketElvisControlTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-20T17:29:13.680Z" hostname="Austins-MacBook-Pro.local" time="14.767">
+  <properties/>
+  <testcase name="testDirectRightReachesWholeElvisWithoutAnInventedNullPredicate" classname="io.github.amichne.kast.relation.intellij.NativePacketElvisControlTest" time="9.052"/>
+  <testcase name="testNonnullableNothingOnTheRightKeepsAbruptCompletion" classname="io.github.amichne.kast.relation.intellij.NativePacketElvisControlTest" time="1.301"/>
+  <testcase name="testDirectNullableLeftReachesWholeElvisWithItsOwnWholeNonNullSubject" classname="io.github.amichne.kast.relation.intellij.NativePacketElvisControlTest" time="0.93"/>
+  <testcase name="testNullableNothingOnTheLeftCannotContributeToEitherElvisResultOrFallback" classname="io.github.amichne.kast.relation.intellij.NativePacketElvisControlTest" time="0.622"/>
+  <testcase name="testResultAcrossFinallyKeepsTheExactFinallyQualification" classname="io.github.amichne.kast.relation.intellij.NativePacketElvisControlTest" time="0.613"/>
+  <testcase name="testNullableNothingOnTheRightRemainsANormalNullResult" classname="io.github.amichne.kast.relation.intellij.NativePacketElvisControlTest" time="0.537"/>
+  <testcase name="testDiscardedElvisCannotAcquireTheLaterConstantReturn" classname="io.github.amichne.kast.relation.intellij.NativePacketElvisControlTest" time="0.609"/>
+  <testcase name="testNestedArgumentKeepsItsRealSourceCallAndCannotJumpToTheElvis" classname="io.github.amichne.kast.relation.intellij.NativePacketElvisControlTest" time="0.549"/>
+  <testcase name="testUnitValuedElvisKeepsItsUnsupportedQualification" classname="io.github.amichne.kast.relation.intellij.NativePacketElvisControlTest" time="0.541"/>
+  <system-out><![CDATA[ELVIS_CONTROL_K2 case=RIGHT source=ExactDeclarationTextRange(startInclusive=409, endExclusive=421) whole=ExactDeclarationTextRange(startInclusive=394, endExclusive=421) sourceClass=kotlin.String sourceNullable=false targetClass=kotlin.String targetNullable=false
+ELVIS_CONTROL_K2 case=BOTTOM source=ExactDeclarationTextRange(startInclusive=587, endExclusive=594) whole=ExactDeclarationTextRange(startInclusive=572, endExclusive=594) sourceClass=kotlin.Nothing sourceNullable=false targetClass=kotlin.String targetNullable=false
+ELVIS_CONTROL_K2 case=LEFT source=ExactDeclarationTextRange(startInclusive=394, endExclusive=405) whole=ExactDeclarationTextRange(startInclusive=394, endExclusive=421) sourceClass=kotlin.String sourceNullable=true targetClass=kotlin.String targetNullable=false
+ELVIS_CONTROL_K2 case=LEFT_NULL source=ExactDeclarationTextRange(startInclusive=452, endExclusive=463) whole=ExactDeclarationTextRange(startInclusive=452, endExclusive=479) sourceClass=kotlin.Nothing sourceNullable=true targetClass=kotlin.String targetNullable=false
+ELVIS_CONTROL_RESULT case=LEFT_NULL claim=NO_SELECTED_PAYLOAD completion=NOT_ASSERTED
+ELVIS_CONTROL_K2 case=FINALLY source=ExactDeclarationTextRange(startInclusive=807, endExclusive=818) whole=ExactDeclarationTextRange(startInclusive=807, endExclusive=834) sourceClass=kotlin.String sourceNullable=true targetClass=kotlin.String targetNullable=false
+ELVIS_CONTROL_K2 case=RIGHT_NULL source=ExactDeclarationTextRange(startInclusive=527, endExclusive=538) whole=ExactDeclarationTextRange(startInclusive=512, endExclusive=538) sourceClass=kotlin.Nothing sourceNullable=true targetClass=kotlin.String targetNullable=true
+ELVIS_CONTROL_K2 case=DISCARDED source=ExactDeclarationTextRange(startInclusive=695, endExclusive=706) whole=ExactDeclarationTextRange(startInclusive=695, endExclusive=722) sourceClass=kotlin.String sourceNullable=true targetClass=kotlin.String targetNullable=false
+ELVIS_CONTROL_RESULT case=DISCARDED claim=NO_FALSE_RETURN completion=NOT_ASSERTED
+ELVIS_CONTROL_K2 case=FOREIGN source=ExactDeclarationTextRange(startInclusive=929, endExclusive=940) whole=ExactDeclarationTextRange(startInclusive=921, endExclusive=957) sourceClass=kotlin.String sourceNullable=true targetClass=kotlin.String targetNullable=false
+ELVIS_CONTROL_K2 case=UNIT source=ExactDeclarationTextRange(startInclusive=627, endExclusive=641) whole=ExactDeclarationTextRange(startInclusive=627, endExclusive=649) sourceClass=kotlin.Unit sourceNullable=true targetClass=kotlin.Unit targetNullable=false
+]]></system-out>
+  <system-err><![CDATA[[   1589]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1589]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

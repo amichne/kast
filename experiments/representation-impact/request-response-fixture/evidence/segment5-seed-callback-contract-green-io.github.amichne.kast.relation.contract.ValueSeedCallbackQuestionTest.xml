@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueSeedCallbackQuestionTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-20T17:50:23.169Z" hostname="Austins-MacBook-Pro.local" time="0.009">
+  <properties/>
+  <testcase name="a seed question preserves both a selected invocation and the outstanding cause()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackQuestionTest" time="0.002"/>
+  <testcase name="an empty seed question preserves the whole qualified flow without a positive edge()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackQuestionTest" time="0.001"/>
+  <testcase name="a selected source subject preserves the same current resolved supplier proof()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackQuestionTest" time="0.003"/>
+  <testcase name="a seed question rejects an active stack and a foreign semantic basis()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackQuestionTest" time="0.002"/>
+  <testcase name="the same callable identity with another full scope cannot supply a seed question()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackQuestionTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

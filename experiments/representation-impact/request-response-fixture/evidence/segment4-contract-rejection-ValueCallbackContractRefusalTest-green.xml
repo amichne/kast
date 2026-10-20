@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueCallbackContractRefusalTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T05:05:32.523Z" hostname="Austins-MacBook-Pro.local" time="0.075">
+  <properties/>
+  <testcase name="an unrelated expression cannot issue a callback contract refusal()" classname="io.github.amichne.kast.relation.contract.ValueCallbackContractRefusalTest" time="0.059"/>
+  <testcase name="detached callback rejection preserves its raw failure without a freshness claim()" classname="io.github.amichne.kast.relation.contract.ValueCallbackContractRefusalTest" time="0.005"/>
+  <testcase name="proof limit rejection keeps its exact raw and outer cause()" classname="io.github.amichne.kast.relation.contract.ValueCallbackContractRefusalTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

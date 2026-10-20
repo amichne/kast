@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketImplementationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T02:57:58.381Z" hostname="Austins-MacBook-Pro.local" time="9.691">
+  <properties/>
+  <testcase name="testCombinedScopeKeepsEachImplementationFrame" classname="io.github.amichne.kast.relation.intellij.NativePacketImplementationTest" time="7.439"/>
+  <testcase name="testV1CombinedEntersTheConcreteImplementation" classname="io.github.amichne.kast.relation.intellij.NativePacketImplementationTest" time="1.001"/>
+  <testcase name="testV1ProductionEntersTheConcreteImplementation" classname="io.github.amichne.kast.relation.intellij.NativePacketImplementationTest" time="0.704"/>
+  <testcase name="testDefaultBodyCannotBypassTheConstantOverride" classname="io.github.amichne.kast.relation.intellij.NativePacketImplementationTest" time="0.537"/>
+  <system-out><![CDATA[Known-source policy=PRODUCTION_ONLY callable=fixture.controls.TestEchoMapper.identity file=Workspace(path=CanonicalWorkspaceFilePath(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_DefaultBodyCannotBypassTheConstantOverride_3KwOJ0FPj1VqnQwQ02j7DDyPqjJ/test/fixture/controls/TestEchoMapper.kt)) range=77:151 compilerIdentity=canonical-signature-sha256-v1|3c3645ae4a4a3793bcf918d69a4163c69b08ddf13d5fd2768b0c981866e7b602 basis=Published(lease=SemanticReadLease(workspaceRoot=CanonicalWorkspaceRoot(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_DefaultBodyCannotBypassTheConstantOverride_3KwOJ0FPj1VqnQwQ02j7DDyPqjJ), generation=EvidenceGeneration(value=1))) rule=SOURCE_DOMAIN_EXCLUDED
+]]></system-out>
+  <system-err><![CDATA[[   1155]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1155]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

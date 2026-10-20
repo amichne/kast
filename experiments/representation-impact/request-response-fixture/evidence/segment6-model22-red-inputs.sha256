@@ -1,0 +1,5 @@
+6d1c0e63351794be3f89ccd97df8f26b5c964f8ac9e30d9aa3dd6f22856aa7aa  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ReviewedValueModel.kt
+14ee24b722b6eaa7058d9e21d848dfd74fc774584ba039db096739fba0eae81a  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueModelApplication.kt
+97b7f2ce40d084c289ab1c6018d8baa198f84cd140c1033f74be288b40d95a19  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ReviewedModelOracleCase.kt
+996317c491279d348733198e5d7f99ea1216f0f5778b9ba858fa6c6c802276c4  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ReviewedLibraryBindingOracleTest.kt
+f8fc0a21f9e03067e4c4d9053c62c7b1c48bc003ba88db5aa87ba6b8ace74729  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueCollectionSelectionOracleTest.kt

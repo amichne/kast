@@ -5,8 +5,11 @@ import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ImpactAccountingDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
+import io.github.amichne.kast.protocol.contract.QueryCallbackBodyBindingWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackFlowWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackObservationDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackOwnerExecutionWireDocument
 import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryQuestionDocument
@@ -14,6 +17,9 @@ import io.github.amichne.kast.protocol.contract.QueryRelationCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationProviderDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test

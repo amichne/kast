@@ -1,0 +1,2 @@
+source_callable	role	range	path	stack_depth	frames	site_bytes	base_bytes	reserved_bytes	granted_bytes	result	examined_work
+toWireRequest	Formal Receiver EXTENSION	1025:1098	Whole	2	936:963->fetch;599:622->toWireRequest	53728	57218	1003968	1000000	GRANT_TOO_SMALL	1

@@ -22,6 +22,8 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 
 class ImpactSiteAccountingPresentationTest {
+    private val projectionReferences = CanonicalQueryReferences()
+
     @Test
     fun `requested sites retain both original route links and unknown relationship without provider replay`() =
         runTest {
@@ -52,7 +54,7 @@ class ImpactSiteAccountingPresentationTest {
                 (f.store.restoreResult(f.reference, f.symbols.authority) as QueryResultRestoration.Restored).request,
             )
             assertEquals(
-                f.requestedSites.map { it.site.impactDocument().value() },
+                f.requestedSites.map { it.site.impactDocument(references = projectionReferences).value() },
                 (page.impactAccounting as ImpactAccountingDocument.Investigated).requestedSites.values,
             )
             assertEquals(listOf(1L, 1L), accounting.map { it.admission.examinedWorkUnits.value })

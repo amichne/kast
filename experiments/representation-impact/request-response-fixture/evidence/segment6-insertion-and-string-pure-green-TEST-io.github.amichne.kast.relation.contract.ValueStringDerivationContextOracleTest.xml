@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueStringDerivationContextOracleTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T19:11:05.742Z" hostname="Austins-MacBook-Pro.local" time="0.008">
+  <properties/>
+  <testcase name="a missing frame or another same-callee invocation cannot receive the derivation()" classname="io.github.amichne.kast.relation.contract.ValueStringDerivationContextOracleTest" time="0.001"/>
+  <testcase name="derivation cannot erase a predicate or invent an unrelated predicate()" classname="io.github.amichne.kast.relation.contract.ValueStringDerivationContextOracleTest" time="0.001"/>
+  <testcase name="a changed scope with identical declaration metadata cannot receive the derivation()" classname="io.github.amichne.kast.relation.contract.ValueStringDerivationContextOracleTest" time="0.0"/>
+  <testcase name="a different anonymous body under the same host cannot receive the derivation()" classname="io.github.amichne.kast.relation.contract.ValueStringDerivationContextOracleTest" time="0.002"/>
+  <testcase name="a different declaration cannot receive the same range as a string derivation()" classname="io.github.amichne.kast.relation.contract.ValueStringDerivationContextOracleTest" time="0.001"/>
+  <testcase name="a fresh basis cannot receive an older interpolation transfer()" classname="io.github.amichne.kast.relation.contract.ValueStringDerivationContextOracleTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

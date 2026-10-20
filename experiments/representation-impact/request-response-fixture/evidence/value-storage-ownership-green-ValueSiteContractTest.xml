@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueSiteContractTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T02:05:49.446Z" hostname="Austins-MacBook-Pro.local" time="0.061">
+  <properties/>
+  <testcase name="flow obligations charge the shared source payload once and preserve distinct copies()" classname="io.github.amichne.kast.relation.contract.ValueSiteContractTest" time="0.053"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

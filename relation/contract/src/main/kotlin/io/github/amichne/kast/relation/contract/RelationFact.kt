@@ -13,41 +13,9 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryConstraints
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
 import io.github.amichne.kast.symbol.contract.SymbolSelector
-import io.github.amichne.kast.symbol.contract.fingerprintFields
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.SemanticReadIdentity
 import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
-
-private const val RELATION_ENDPOINT_FINGERPRINT_LENGTH = 64
-
-enum class RelationEndpointFingerprintFailure {
-    INVALID_SHA256
-}
-
-@JvmInline
-value class RelationEndpointFingerprint private constructor(val value: String) {
-    init {
-        require(
-            value.length == RELATION_ENDPOINT_FINGERPRINT_LENGTH &&
-                value.all { character -> character in '0'..'9' || character in 'a'..'f' }
-        )
-    }
-
-    companion object {
-        fun parse(raw: String): Refinement<RelationEndpointFingerprint, RelationEndpointFingerprintFailure> =
-            if (
-                raw.length == RELATION_ENDPOINT_FINGERPRINT_LENGTH &&
-                    raw.all { character -> character in '0'..'9' || character in 'a'..'f' }
-            ) {
-                Refinement.Refined(RelationEndpointFingerprint(raw))
-            } else {
-                Refinement.Rejected(RelationEndpointFingerprintFailure.INVALID_SHA256)
-            }
-
-        internal fun established(raw: String): RelationEndpointFingerprint = RelationEndpointFingerprint(raw)
-    }
-}
 
 enum class RelationEndpointResolutionFailure {
     FILE_OUTSIDE_EXACT_SCOPE
@@ -67,6 +35,20 @@ sealed interface RelationEndpoint {
     val compilerIdentity: CompilerSymbolIdentity
     val fingerprint: RelationEndpointFingerprint
     val valueIdentity: ValueDeclarationIdentity
+    val valueExecutionOwner: ValueExecutionOwner
+
+    /** A selected subject and a resolved endpoint can carry the same full current proof. */
+    fun hasSameProofAs(other: RelationEndpoint): Boolean =
+        lease == other.lease &&
+            scope == other.scope &&
+            constraints == other.constraints &&
+            file == other.file &&
+            range == other.range &&
+            name == other.name &&
+            qualifiedIdentity == other.qualifiedIdentity &&
+            kind == other.kind &&
+            signature == other.signature &&
+            compilerIdentity == other.compilerIdentity
 
     @ConsistentCopyVisibility
     data class Subject internal constructor(val selector: SymbolSelector) : RelationEndpoint {
@@ -83,6 +65,7 @@ sealed interface RelationEndpoint {
         override val fingerprint: RelationEndpointFingerprint =
             RelationEndpointFingerprint.established(selector.fingerprint.value)
         override val valueIdentity = ValueDeclarationIdentity(compilerIdentity, file, range)
+        override val valueExecutionOwner = ValueExecutionOwner.establishDeclaration(this)
     }
 
     @ConsistentCopyVisibility
@@ -102,6 +85,7 @@ sealed interface RelationEndpoint {
         override val signature: CanonicalCompilerSignature = evidence.signature
         override val compilerIdentity: CompilerSymbolIdentity = evidence.compilerIdentity
         override val valueIdentity = ValueDeclarationIdentity(compilerIdentity, file, range)
+        override val valueExecutionOwner = ValueExecutionOwner.establishDeclaration(this)
 
         companion object {
             internal fun create(
@@ -326,62 +310,6 @@ private constructor(
     }
 }
 
-private fun relationEndpointFingerprint(
-    lease: SemanticReadAuthority,
-    scope: SymbolSearchScope,
-    evidence: CompilerGroundedSymbolEvidence,
-    constraints: SymbolDiscoveryConstraints,
-): RelationEndpointFingerprint {
-    val canonical = buildString {
-        appendFactField(lease.workspaceRoot.value)
-        appendFactField(lease.identity.revisionKey.value)
-        scope.appendEndpointFields(this)
-        constraints.fingerprintFields().forEach(::appendFactField)
-        appendFactField(evidence.file.stableValue)
-        appendFactField(evidence.range.startInclusive.toString())
-        appendFactField(evidence.range.endExclusive.toString())
-        appendFactField(evidence.name.value)
-        appendFactField(evidence.kind.name)
-        appendFactField(evidence.compilerIdentity.value)
-    }
-    val digest = MessageDigest.getInstance("SHA-256").digest(canonical.toByteArray(StandardCharsets.UTF_8))
-    return RelationEndpointFingerprint.established(
-        digest.joinToString(separator = "") { byte ->
-            (byte.toInt() and 0xff).toString(16).padStart(2, '0')
-        }
-    )
-}
-
-private fun SymbolSearchScope.appendEndpointFields(target: StringBuilder) {
-    when (this) {
-        is SymbolSearchScope.ExactFile -> {
-            target.appendFactField("exact-file")
-            target.appendFactField(file.value)
-        }
-        is SymbolSearchScope.Module -> {
-            target.appendFactField("module")
-            target.appendFactField(module.value)
-        }
-        is SymbolSearchScope.SourceSet -> {
-            target.appendFactField("source-set")
-            target.appendFactField(project.buildRoot.value)
-            target.appendFactField(project.projectPath.value)
-            target.appendFactField(sourceSet.value)
-        }
-        is SymbolSearchScope.GradleProject -> {
-            target.appendFactField("gradle-project")
-            target.appendFactField(project.buildRoot.value)
-            target.appendFactField(project.projectPath.value)
-        }
-        is SymbolSearchScope.Workspace -> {
-            target.appendFactField("workspace")
-            target.appendFactField(libraries.name)
-        }
-    }
-    target.appendFactField(sourceKinds.name)
-    target.appendFactField(generatedSources.name)
-}
-
 private fun RelationMeaning.canonicalOrder(): Int =
     when (this) {
         RelationMeaning.References -> 0
@@ -393,7 +321,7 @@ private fun RelationMeaning.canonicalOrder(): Int =
         RelationMeaning.TypeUses -> 6
     }
 
-private fun StringBuilder.appendFactField(value: String) {
+internal fun StringBuilder.appendFactField(value: String) {
     append(value.toByteArray(StandardCharsets.UTF_8).size)
     append(':')
     append(value)

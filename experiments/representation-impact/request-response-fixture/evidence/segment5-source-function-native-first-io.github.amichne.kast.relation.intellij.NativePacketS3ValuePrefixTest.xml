@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketS3ValuePrefixTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T16:07:06.359Z" hostname="Austins-MacBook-Pro.local" time="2.19">
+  <properties/>
+  <testcase name="testOriginalAdaptSeedFlowsIntoItsExactLogAndReturnLocalConsumers" classname="io.github.amichne.kast.relation.intellij.NativePacketS3ValuePrefixTest" time="1.298"/>
+  <testcase name="testOriginalAdaptInvocationRejectsTheSourceExecuteMethodAsItsExpectedOrigin" classname="io.github.amichne.kast.relation.intellij.NativePacketS3ValuePrefixTest" time="0.891"/>
+  <system-out><![CDATA[S3_PREFIX_K2 seed=761:768 property=594:642 builtin=Function0.invoke source_alias=ACTUAL_RESULT_LOCAL
+S3_NEXT_STAGE stage=C3.2 log callback status=OBSERVED semantic_row=NOT_ASSERTED
+S3_NEXT_FRONTIER transfers=[] causes=[CALLBACK_FLOW_UNPROVEN] work=2
+S3_NEXT_STAGE stage=C3.3 matched execute return status=OBSERVED semantic_row=NOT_ASSERTED
+S3_NEXT_FRONTIER transfers=[(SOURCE_CALL_RETURN, ExactDeclarationTextRange(startInclusive=769, endExclusive=954))] causes=[] work=5
+S3_PREFIX_RESULT local_consumers=ASSERTED origin_capability,C3.2_fields,C3.3_caller,C3.N1=NOT_ASSERTED
+S3_PREFIX_K2 seed=761:768 property=594:642 builtin=Function0.invoke source_alias=ACTUAL_RESULT_LOCAL
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

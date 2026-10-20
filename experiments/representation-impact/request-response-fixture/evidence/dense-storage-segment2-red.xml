@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest" tests="7" skipped="0" failures="1" errors="0" timestamp="2026-10-20T01:50:41.918Z" hostname="Austins-MacBook-Pro.local" time="0.499">
+  <properties/>
+  <testcase name="shared modeled branch prefixes finish within existing checkpoint capacity with every path intact()" classname="io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest" time="0.005"/>
+  <testcase name="repeated root references are charged without removing an evidence row()" classname="io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest" time="0.001"/>
+  <testcase name="dense repeated callable evidence retains every flow obligation within default checkpoint capacity()" classname="io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest" time="0.477">
+    <failure message="java.lang.IllegalStateException: Fixture refinement rejected: DETACHED_CAPACITY_EXCEEDED" type="java.lang.IllegalStateException">java.lang.IllegalStateException: Fixture refinement rejected: DETACHED_CAPACITY_EXCEEDED
+	at io.github.amichne.kast.query.service.QueryImpactExecutionFixtureKt.value(QueryImpactExecutionFixture.kt:284)
+	at io.github.amichne.kast.query.service.QueryImpactExecutionFixtureKt.access$value(QueryImpactExecutionFixture.kt:1)
+	at io.github.amichne.kast.query.service.QueryImpactExecutionFixture$Script$port$1.read(QueryImpactExecutionFixture.kt:271)
+	at io.github.amichne.kast.query.service.QueryImpactTasks.acquireRead(QueryImpactTasks.kt:230)
+	at io.github.amichne.kast.query.service.QueryImpactTasks.explore(QueryImpactTasks.kt:88)
+	at io.github.amichne.kast.query.service.QueryService$Execution.advance(QueryService.kt:128)
+	at io.github.amichne.kast.query.service.QueryService$Execution.executeNext(QueryService.kt:119)
+	at io.github.amichne.kast.query.service.QueryService$Execution.run(QueryService.kt:99)
+	at io.github.amichne.kast.query.service.QueryService.run(QueryService.kt:63)
+	at io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest$dense repeated callable evidence retains every flow obligation within default checkpoint capacity$1.invokeSuspend(QueryImpactStorageAdmissionTest.kt:61)
+	at io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest$dense repeated callable evidence retains every flow obligation within default checkpoint capacity$1.invoke(QueryImpactStorageAdmissionTest.kt)
+	at io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest$dense repeated callable evidence retains every flow obligation within default checkpoint capacity$1.invoke(QueryImpactStorageAdmissionTest.kt)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt$runTest$2$1$1.invokeSuspend(TestBuilders.kt:317)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.test.TestDispatcher.processEvent$kotlinx_coroutines_test(TestDispatcher.kt:24)
+	at kotlinx.coroutines.test.TestCoroutineScheduler.tryRunNextTaskUnless$kotlinx_coroutines_test(TestCoroutineScheduler.kt:98)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt$runTest$2$1$workRunner$1.invokeSuspend(TestBuilders.kt:326)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:256)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:54)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlockingImpl(Builders.kt:30)
+	at kotlinx.coroutines.BuildersKt.runBlockingImpl(Unknown Source)
+	at kotlinx.coroutines.BuildersKt__Builders_concurrentKt.runBlockingK(Builders.concurrent.kt:172)
+	at kotlinx.coroutines.BuildersKt.runBlockingK(Unknown Source)
+	at kotlinx.coroutines.BuildersKt__Builders_concurrentKt.runBlockingK$default(Builders.concurrent.kt:157)
+	at kotlinx.coroutines.BuildersKt.runBlockingK$default(Unknown Source)
+	at kotlinx.coroutines.test.TestBuildersJvmKt.createTestResult(TestBuildersJvm.kt:10)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:309)
+	at kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:1)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:167)
+	at kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:1)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0$default(TestBuilders.kt:159)
+	at kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0$default(TestBuilders.kt:1)
+	at io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest.dense repeated callable evidence retains every flow obligation within default checkpoint capacity(QueryImpactStorageAdmissionTest.kt:49)
+</failure>
+  </testcase>
+  <testcase name="expired presentation permission rejects before semantic effects()" classname="io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest" time="0.005"/>
+  <testcase name="storage distinguishes shared proof objects from physically distinct equal declarations()" classname="io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest" time="0.002"/>
+  <testcase name="standalone output keeps conservative byte protection()" classname="io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest" time="0.004"/>
+  <testcase name="paired presentation leaves storage charge for checkpoint ownership()" classname="io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

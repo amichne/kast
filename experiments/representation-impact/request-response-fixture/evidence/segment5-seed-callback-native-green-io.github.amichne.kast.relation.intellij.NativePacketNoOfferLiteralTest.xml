@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketNoOfferLiteralTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T17:54:04.631Z" hostname="Austins-MacBook-Pro.local" time="1.502">
+  <properties/>
+  <testcase name="testOriginalNoOfferLiteralHasItsActualZeroArgumentCallbackAndReasonParameter" classname="io.github.amichne.kast.relation.intellij.NativePacketNoOfferLiteralTest" time="0.742"/>
+  <testcase name="testOriginalNoOfferLiteralContributesToItsExactFeatureErrorReasonField" classname="io.github.amichne.kast.relation.intellij.NativePacketNoOfferLiteralTest" time="0.759"/>
+  <system-out><![CDATA[NO_OFFER_LITERAL positive=EXACT_CONSTANT_REASON_STORAGE full_error_return=NOT_ASSERTED empty_fact=NOT_ASSERTED
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

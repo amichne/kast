@@ -1,0 +1,200 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Calculating task graph as no cached configuration is available for tasks: :relation:contract:test --tests *ValueSiteContractTest.flow obligations* --tests *ValueSourceFlowOracleTest.frame storage* :query:contract:test --tests *QueryImpactExecutionOwnerRetentionTest :query:service:test --tests *QueryImpactStorageAdmissionTest.dense repeated callable evidence*
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :kernel:compileJava NO-SOURCE
+> Task :relation:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+> Task :relation:contract:compileKotlin UP-TO-DATE
+> Task :relation:contract:compileJava NO-SOURCE
+> Task :relation:contract:processResources NO-SOURCE
+> Task :relation:contract:classes UP-TO-DATE
+> Task :relation:contract:jar UP-TO-DATE
+> Task :kernel:processResources NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar UP-TO-DATE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesKotlin UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesJava NO-SOURCE
+> Task :relation:contract:compileTestKotlin
+> Task :relation:contract:compileTestJava NO-SOURCE
+> Task :relation:contract:processTestResources NO-SOURCE
+> Task :relation:contract:testClasses UP-TO-DATE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :workspace:contract:processTestFixturesResources NO-SOURCE
+> Task :workspace:contract:testFixturesClasses UP-TO-DATE
+> Task :workspace:contract:testFixturesJar UP-TO-DATE
+
+> Task :relation:contract:test FAILED
+
+ValueSiteContractTest > flow obligations charge the shared source payload once and preserve distinct copies() FAILED
+    org.opentest4j.AssertionFailedError: expected: <2048> but was: <4696>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+        at app//io.github.amichne.kast.relation.contract.ValueSiteContractTest.flow obligations charge the shared source payload once and preserve distinct copies(ValueSiteContractTest.kt:46)
+
+ValueSourceFlowOracleTest > frame storage shares an existing endpoint payload but charges an equal detached copy() FAILED
+    org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
+        at app//org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:190)
+        at app//io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTest.frame storage shares an existing endpoint payload but charges an equal detached copy(ValueSourceFlowOracleTest.kt:41)
+
+2 tests completed, 2 failed
+
+> Task :query:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:contract:compileKotlin UP-TO-DATE
+> Task :source:contract:compileJava NO-SOURCE
+> Task :traversal:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :traversal:contract:compileKotlin UP-TO-DATE
+> Task :traversal:contract:compileJava NO-SOURCE
+> Task :query:contract:compileKotlin UP-TO-DATE
+> Task :query:contract:compileJava NO-SOURCE
+> Task :query:contract:processResources NO-SOURCE
+> Task :query:contract:classes UP-TO-DATE
+> Task :query:contract:jar UP-TO-DATE
+> Task :query:contract:compileTestKotlin
+> Task :query:contract:compileTestJava NO-SOURCE
+> Task :query:contract:processTestResources NO-SOURCE
+> Task :query:contract:testClasses UP-TO-DATE
+> Task :source:contract:processResources NO-SOURCE
+> Task :source:contract:classes UP-TO-DATE
+> Task :source:contract:jar UP-TO-DATE
+> Task :traversal:contract:processResources NO-SOURCE
+> Task :traversal:contract:classes UP-TO-DATE
+> Task :traversal:contract:jar UP-TO-DATE
+
+> Task :query:contract:test FAILED
+
+QueryImpactExecutionOwnerRetentionTest > default sites and calls share their exact admitted endpoint declaration owner() FAILED
+    org.opentest4j.AssertionFailedError: defaultBytes=3373952 explicitSharedBytes=2105664 sites=150 ==> expected: io.github.amichne.kast.relation.contract.ValueExecutionOwner@60baef24<io.github.amichne.kast.relation.contract.ValueExecutionOwner@d6709e78> but was: io.github.amichne.kast.relation.contract.ValueExecutionOwner@5bf61e67<io.github.amichne.kast.relation.contract.ValueExecutionOwner@d6709e78>
+        at app//org.junit.jupiter.api.Assertions.assertSame(Assertions.java:2975)
+        at app//io.github.amichne.kast.query.contract.QueryImpactExecutionOwnerRetentionTest.default sites and calls share their exact admitted endpoint declaration owner(QueryImpactExecutionOwnerRetentionTest.kt:40)
+
+QueryImpactExecutionOwnerRetentionTest > equal distinct admitted endpoints keep separate declaration owner objects() FAILED
+    org.opentest4j.AssertionFailedError: expected: io.github.amichne.kast.relation.contract.ValueExecutionOwner@7a24eb3<io.github.amichne.kast.relation.contract.ValueExecutionOwner@d6709e78> but was: io.github.amichne.kast.relation.contract.ValueExecutionOwner@6c37bd27<io.github.amichne.kast.relation.contract.ValueExecutionOwner@d6709e78>
+        at app//org.junit.jupiter.api.Assertions.assertSame(Assertions.java:2962)
+        at app//io.github.amichne.kast.query.contract.QueryImpactExecutionOwnerRetentionTest.equal distinct admitted endpoints keep separate declaration owner objects(QueryImpactExecutionOwnerRetentionTest.kt:63)
+
+2 tests completed, 2 failed
+
+> Task :query:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :query:service:compileKotlin UP-TO-DATE
+> Task :query:service:compileJava NO-SOURCE
+> Task :query:service:processResources NO-SOURCE
+> Task :query:service:classes UP-TO-DATE
+> Task :query:service:jar UP-TO-DATE
+> Task :traversal:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :traversal:service:compileKotlin UP-TO-DATE
+> Task :traversal:service:compileJava NO-SOURCE
+> Task :query:service:compileTestKotlin
+> Task :query:service:compileTestJava NO-SOURCE
+> Task :query:service:processTestResources NO-SOURCE
+> Task :query:service:testClasses UP-TO-DATE
+> Task :traversal:service:processResources NO-SOURCE
+> Task :traversal:service:classes UP-TO-DATE
+> Task :traversal:service:jar UP-TO-DATE
+
+> Task :query:service:test FAILED
+
+QueryImpactStorageAdmissionTest > dense repeated callable evidence retains every flow obligation within default checkpoint capacity() FAILED
+    org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
+        at app//org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:190)
+        at app//io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest$dense repeated callable evidence retains every flow obligation within default checkpoint capacity$1.invokeSuspend(QueryImpactStorageAdmissionTest.kt:76)
+        at app//io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest$dense repeated callable evidence retains every flow obligation within default checkpoint capacity$1.invoke(QueryImpactStorageAdmissionTest.kt)
+        at app//io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest$dense repeated callable evidence retains every flow obligation within default checkpoint capacity$1.invoke(QueryImpactStorageAdmissionTest.kt)
+        at app//kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt$runTest$2$1$1.invokeSuspend(TestBuilders.kt:317)
+        at app//kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        at app//kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+        at app//kotlinx.coroutines.test.TestDispatcher.processEvent$kotlinx_coroutines_test(TestDispatcher.kt:24)
+        at app//kotlinx.coroutines.test.TestCoroutineScheduler.tryRunNextTaskUnless$kotlinx_coroutines_test(TestCoroutineScheduler.kt:98)
+        at app//kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt$runTest$2$1$workRunner$1.invokeSuspend(TestBuilders.kt:326)
+        at app//kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        at app//kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+        at app//kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:256)
+        at app//kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:54)
+        at app//kotlinx.coroutines.BuildersKt__BuildersKt.runBlockingImpl(Builders.kt:30)
+        at app//kotlinx.coroutines.BuildersKt.runBlockingImpl(Unknown Source)
+        at app//kotlinx.coroutines.BuildersKt__Builders_concurrentKt.runBlockingK(Builders.concurrent.kt:172)
+        at app//kotlinx.coroutines.BuildersKt.runBlockingK(Unknown Source)
+        at app//kotlinx.coroutines.BuildersKt__Builders_concurrentKt.runBlockingK$default(Builders.concurrent.kt:157)
+        at app//kotlinx.coroutines.BuildersKt.runBlockingK$default(Unknown Source)
+        at app//kotlinx.coroutines.test.TestBuildersJvmKt.createTestResult(TestBuildersJvm.kt:10)
+        at app//kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:309)
+        at app//kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:1)
+        at app//kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:167)
+        at app//kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:1)
+        at app//kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0$default(TestBuilders.kt:159)
+        at app//kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0$default(TestBuilders.kt:1)
+        at app//io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest.dense repeated callable evidence retains every flow obligation within default checkpoint capacity(QueryImpactStorageAdmissionTest.kt:49)
+
+1 test completed, 1 failed
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-19-22-04-37-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/problems/problems-report.html
+
+FAILURE: Build completed with 3 failures.
+
+1: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':relation:contract:test'.
+> There were failing tests. See the report at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+==============================================================================
+
+2: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':query:contract:test'.
+> There were failing tests. See the report at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/contract/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+==============================================================================
+
+3: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':query:service:test'.
+> There were failing tests. See the report at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/service/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+==============================================================================
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 21s
+36 actionable tasks: 6 executed, 30 up-to-date
+Configuration cache entry stored.

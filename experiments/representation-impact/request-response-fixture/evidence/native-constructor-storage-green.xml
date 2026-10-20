@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketStorageTransferTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T01:32:48.096Z" hostname="Austins-MacBook-Pro.local" time="6.714">
+  <properties/>
+  <testcase name="testOriginalV0FormalReadKeepsItsCallFrameThroughFieldProjection" classname="io.github.amichne.kast.relation.intellij.NativePacketStorageTransferTest" time="5.956"/>
+  <testcase name="testV8ConstructorStoresTheDeclaredDestinationProperty" classname="io.github.amichne.kast.relation.intellij.NativePacketStorageTransferTest" time="0.75"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[[    826]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[    826]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

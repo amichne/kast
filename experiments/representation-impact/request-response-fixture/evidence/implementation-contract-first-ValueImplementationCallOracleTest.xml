@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueImplementationCallOracleTest" tests="11" skipped="0" failures="1" errors="0" timestamp="2026-10-20T02:37:36.580Z" hostname="Austins-MacBook-Pro.local" time="0.095">
+  <properties/>
+  <testcase name="ownership of a same typed sibling does not prove the chosen implementation()" classname="io.github.amichne.kast.relation.contract.ValueImplementationCallOracleTest" time="0.058">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[String]&gt; but was: &lt;[CanonicalCompilerType(value=String)]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[String]&gt; but was: &lt;[CanonicalCompilerType(value=String)]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.relation.contract.ValueImplementationCallOracleTest.ownership of a same typed sibling does not prove the chosen implementation(ValueImplementationCallOracleTest.kt:124)
+</failure>
+  </testcase>
+  <testcase name="implementation frame preserves the static call and exact concrete source proof()" classname="io.github.amichne.kast.relation.contract.ValueImplementationCallOracleTest" time="0.006"/>
+  <testcase name="a valid fact outside the captured dispatch cannot supply a target()" classname="io.github.amichne.kast.relation.contract.ValueImplementationCallOracleTest" time="0.002"/>
+  <testcase name="implementation proof cannot redirect another static callable()" classname="io.github.amichne.kast.relation.contract.ValueImplementationCallOracleTest" time="0.001"/>
+  <testcase name="production dispatch rejects test ownership of the same declaration()" classname="io.github.amichne.kast.relation.contract.ValueImplementationCallOracleTest" time="0.001"/>
+  <testcase name="incomplete implementation coverage keeps the exact compiler limitation with an admitted frame()" classname="io.github.amichne.kast.relation.contract.ValueImplementationCallOracleTest" time="0.004"/>
+  <testcase name="foreign invocation basis cannot consume local implementation evidence()" classname="io.github.amichne.kast.relation.contract.ValueImplementationCallOracleTest" time="0.002"/>
+  <testcase name="two implementations cannot consume each others return for the same static invocation()" classname="io.github.amichne.kast.relation.contract.ValueImplementationCallOracleTest" time="0.006"/>
+  <testcase name="changed coverage or concrete implementation changes frame identity()" classname="io.github.amichne.kast.relation.contract.ValueImplementationCallOracleTest" time="0.001"/>
+  <testcase name="fresh dispatch counters preserve the same frame and matched return()" classname="io.github.amichne.kast.relation.contract.ValueImplementationCallOracleTest" time="0.001"/>
+  <testcase name="changed source domain changes frame identity for the same declarations()" classname="io.github.amichne.kast.relation.contract.ValueImplementationCallOracleTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

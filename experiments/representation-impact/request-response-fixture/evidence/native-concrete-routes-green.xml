@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketConcretePathTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-20T02:19:48.344Z" hostname="Austins-MacBook-Pro.local" time="11.367">
+  <properties/>
+  <testcase name="testV2IncomingReachesTheFeatureReturn" classname="io.github.amichne.kast.relation.intellij.NativePacketConcretePathTest" time="7.231"/>
+  <testcase name="testV0OutgoingReachesOnlyTheOpaqueRequestArgument" classname="io.github.amichne.kast.relation.intellij.NativePacketConcretePathTest" time="0.965"/>
+  <testcase name="testV8IncomingReachesTheFeatureReturn" classname="io.github.amichne.kast.relation.intellij.NativePacketConcretePathTest" time="0.736"/>
+  <testcase name="testV8OutgoingReachesOnlyTheOpaqueRequestArgument" classname="io.github.amichne.kast.relation.intellij.NativePacketConcretePathTest" time="0.538"/>
+  <testcase name="testV3OutgoingReachesOnlyTheOpaqueRequestArgument" classname="io.github.amichne.kast.relation.intellij.NativePacketConcretePathTest" time="0.499"/>
+  <testcase name="testV3IncomingReachesTheFeatureReturn" classname="io.github.amichne.kast.relation.intellij.NativePacketConcretePathTest" time="0.466"/>
+  <testcase name="testV2OutgoingReachesOnlyTheOpaqueRequestArgument" classname="io.github.amichne.kast.relation.intellij.NativePacketConcretePathTest" time="0.476"/>
+  <testcase name="testV0IncomingReachesTheFeatureReturn" classname="io.github.amichne.kast.relation.intellij.NativePacketConcretePathTest" time="0.444"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[[   1076]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1076]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

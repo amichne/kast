@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.RepresentationStringDerivationOracleTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T19:11:05.667Z" hostname="Austins-MacBook-Pro.local" time="0.024">
+  <properties/>
+  <testcase name="string derivation weakens known representation and keeps the exact compiler transfer history()" classname="io.github.amichne.kast.relation.contract.RepresentationStringDerivationOracleTest" time="0.005"/>
+  <testcase name="another scalar occurrence cannot borrow the origin representation for derivation()" classname="io.github.amichne.kast.relation.contract.RepresentationStringDerivationOracleTest" time="0.014"/>
+  <testcase name="interpolation stays compiler history and never becomes a reviewed representation application()" classname="io.github.amichne.kast.relation.contract.RepresentationStringDerivationOracleTest" time="0.001"/>
+  <testcase name="string derivation preserves a preexisting unknown reason()" classname="io.github.amichne.kast.relation.contract.RepresentationStringDerivationOracleTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

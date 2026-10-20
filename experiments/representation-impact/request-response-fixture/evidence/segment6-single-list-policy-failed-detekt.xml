@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="4.3">
+<file name="relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketSingleListInsertionFacts.kt">
+	<error line="34" column="9" severity="error" message="The function read appears to be too complex based on Cognitive Complexity (complexity: 15). Defined maximum allowed complexity for methods is set to &apos;12&apos;" source="detekt.CognitiveComplexMethod" />
+</file>
+<file name="relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketSingleListInsertionSource.kt">
+	<error line="104" column="65" severity="error" message="The implicit `it` should not be used in a multiline lambda. Consider giving your parameter a readable and descriptive name." source="detekt.MultilineLambdaItParameter" />
+</file>
+</checkstyle>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactPeerNativeWitnessValidationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:20.550Z" hostname="Austins-MacBook-Pro.local" time="0.007">
+  <properties/>
+  <testcase name="native and rejected read receipts cannot hide a foreign authority()" classname="io.github.amichne.kast.protocol.contract.ImpactPeerNativeWitnessValidationTest" time="0.003"/>
+  <testcase name="compact source finding cannot hide foreign domain end inside a source destination()" classname="io.github.amichne.kast.protocol.contract.ImpactPeerNativeWitnessValidationTest" time="0.0"/>
+  <testcase name="producer invocation cannot hide a foreign execution body behind a source callable()" classname="io.github.amichne.kast.protocol.contract.ImpactPeerNativeWitnessValidationTest" time="0.0"/>
+  <testcase name="ordinary native witness alternatives cannot claim peer basis as source compiler proof()" classname="io.github.amichne.kast.protocol.contract.ImpactPeerNativeWitnessValidationTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

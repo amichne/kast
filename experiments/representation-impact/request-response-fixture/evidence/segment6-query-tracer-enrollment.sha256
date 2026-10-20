@@ -1,0 +1,3 @@
+919f949a9a2aa616085fad7f3702fcf7a44a4b55288c9ae265009c1b14573256  query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryImpactAutomaticValueExecutionTest.kt
+01de77f266a026dde99749b0514749c733a771d64a974dd77dd815882cb703f9  query/service/src/test/kotlin/io/github/amichne/kast/query/service/AutomaticValueQueryCase.kt
+50a5582a7c4a07dc0a3a97bc00f0b26c7fff0ba726d8d42202b039f95c9a21a9  query/service/src/test/kotlin/io/github/amichne/kast/query/service/QueryImpactExecutionFixture.kt

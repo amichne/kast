@@ -18,10 +18,11 @@ import io.github.amichne.kast.query.contract.QueryImpactSiteOutcome
 import io.github.amichne.kast.query.contract.QueryRetainedRowOrdinal
 
 internal fun QueryImpactSiteAccounting.siteAccountingDocument(
-    originalPathRowIds: List<QueryResultRowReference>?
+    references: QueryReferenceAuthority,
+    originalPathRowIds: List<QueryResultRowReference>?,
 ): ImpactProjected<ImpactSiteAccountingDocument> =
     count(requestedSiteOrdinal.value.toLong())
-        .impactZip(requested.site.impactDocument())
+        .impactZip(requested.site.impactDocument(references))
         .impactZip(outcome.siteOutcomeDocument(originalPathRowIds))
         .impactZip(count(requested.examinedWorkUnits.value))
         .impactZip(

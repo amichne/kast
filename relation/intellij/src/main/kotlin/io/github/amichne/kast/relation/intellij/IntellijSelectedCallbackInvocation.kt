@@ -30,7 +30,9 @@ internal class IntellijSelectedCallbackInvocation(
             is Refinement.Rejected -> return unavailable(permit.failure)
         }
         if (!context.confirmsFunctionInvoke(call)) return SelectedCallbackInvocationRead.NotRequired
-        val expression = receiver(call) ?: return unavailable(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
+        val expression =
+            callbackInvocationReceiver(call)
+                ?: return unavailable(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
         when (val formal = IntellijCallbackSupplierFormal(context).read(expression, owner)) {
             is Refinement.Rejected -> return unavailable(formal.failure)
             is Refinement.Refined ->
@@ -88,10 +90,10 @@ internal class IntellijSelectedCallbackInvocation(
         }
     }
 
-    private fun receiver(call: KtCallExpression): KtExpression? {
-        val parent = call.parent as? KtQualifiedExpression
-        return if (parent?.selectorExpression === call) parent.receiverExpression else call.calleeExpression
-    }
-
     private fun unavailable(cause: CallbackInvocationFlowCause) = SelectedCallbackInvocationRead.Unavailable(cause)
+}
+
+internal fun callbackInvocationReceiver(call: KtCallExpression): KtExpression? {
+    val parent = call.parent as? KtQualifiedExpression
+    return if (parent?.selectorExpression === call) parent.receiverExpression else call.calleeExpression
 }

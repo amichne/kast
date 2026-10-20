@@ -1,0 +1,105 @@
+@file:OptIn(org.jetbrains.kotlin.analysis.api.KaExperimentalApi::class)
+
+package io.github.amichne.kast.relation.intellij
+
+import com.intellij.openapi.application.ReadAction
+import com.intellij.psi.PsiManager
+import com.intellij.psi.util.PsiTreeUtil
+import io.github.amichne.kast.relation.contract.ValueRole
+import io.github.amichne.kast.relation.contract.ValueTransferKind
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
+import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
+import org.jetbrains.kotlin.analysis.api.types.KaTypeParameterType
+import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression
+import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtWhenEntry
+import org.jetbrains.kotlin.psi.KtWhenExpression
+
+/** The original generic body transports S. No case claims that a concrete instantiation of S excludes Unit. */
+class NativePacketBindBranchTest : NativePacketValueFixtureTest() {
+    override val fixtureSdkName = "packet-bind-branch-jdk"
+
+    fun testOriginalBindBranchUsesItsActualSourceTypeParameterS() {
+        packetFixture(NativePacketCompositeSuccessSource.PATHS)
+        captureType()
+        println("BIND_BRANCH_TYPE capture=COMPLETE transfer=NOT_RUN concrete_nonunit_instantiation=NOT_ASSERTED")
+    }
+
+    fun testOriginalBindSuccessValueReachesItsGenericWhenResultWithExactState() {
+        val fixture = packetFixture(NativePacketCompositeSuccessSource.PATHS)
+        val expected = captureType()
+        val source = NativePacketBindBranchSource(project, getOrCreateProjectBaseDir(), fixture)
+        val value = source.successValue()
+        assertEquals(exact(VALUE_START, VALUE_END), value.range)
+        val result = source.read(value)
+        val alternatives = result.transfers.filter { transfer -> transfer.kind == ValueTransferKind.BRANCH_ALTERNATIVE }
+        assertEquals(
+            "C2.7 needs original Success.value1227:1232 to when1183:1284 with generic S. " +
+                "Causes=${result.obligations.map { it.cause }}. Bind return and C2.8/C2.9 remain NOT_REACHED",
+            1,
+            alternatives.size,
+        )
+        val selected = alternatives.single()
+        assertEquals(value, selected.source)
+        assertEquals(expected, selected.target.range)
+        assertEquals(ValueRole.ExpressionResult, selected.target.role)
+        assertEquals(value.valuePath, selected.target.valuePath)
+        assertEquals(value.predicates, selected.target.predicates)
+        assertEquals(value.callStack, selected.target.callStack)
+        assertEquals(value.executionOwner, selected.target.executionOwner)
+        assertTrue(result.transfers.none { transfer -> transfer.kind == ValueTransferKind.RETURN })
+        println("BIND_BRANCH_RESULT row=C2.7 stage=generic-when-result matched_return,C2.8,C2.9=NOT_RUN")
+    }
+
+    private fun captureType(): ExactDeclarationTextRange =
+        ReadAction.compute<ExactDeclarationTextRange, RuntimeException> {
+            val file =
+                checkNotNull(getOrCreateProjectBaseDir().findFileByRelativePath("src/fixture/outcome/Outcome.kt"))
+            val psi = PsiManager.getInstance(project).findFile(file) as KtFile
+            val bind =
+                PsiTreeUtil.collectElementsOfType(psi, KtNamedFunction::class.java).single { candidate ->
+                    candidate.name == "bind"
+                }
+            val value =
+                PsiTreeUtil.collectElementsOfType(bind, KtNameReferenceExpression::class.java).single { candidate ->
+                    range(candidate) == exact(VALUE_START, VALUE_END)
+                }
+            val entry = value.parent as KtWhenEntry
+            val branch = entry.parent as KtWhenExpression
+            assertSame(value, entry.expression)
+            assertSame(branch, bind.bodyExpression)
+            assertEquals(exact(WHEN_START, WHEN_END), range(branch))
+            IntellijReadObservation.None.observedAnalyze(value) {
+                val function = bind.symbol as KaNamedFunctionSymbol
+                val parameter = function.typeParameters.single()
+                assertEquals("S", parameter.name.asString())
+                assertEquals(KaSymbolOrigin.SOURCE, parameter.origin)
+                val sourceType = value.expressionType
+                val resultType = branch.expressionType
+                assertTrue("The actual source type needs the original S symbol", sourceType is KaTypeParameterType)
+                assertTrue("The actual when result needs the original S symbol", resultType is KaTypeParameterType)
+                assertEquals(parameter, (sourceType as KaTypeParameterType).symbol)
+                assertEquals(parameter, (resultType as KaTypeParameterType).symbol)
+                assertEquals(parameter, (bind.symbol.returnType as KaTypeParameterType).symbol)
+                println(
+                    "BIND_BRANCH_TYPE source=${range(value)} target=${range(branch)} sourceKind=TYPE_PARAMETER " +
+                        "targetKind=TYPE_PARAMETER parameter=${parameter.name.asString()} origin=${parameter.origin} " +
+                        "sourceIsOwnParameter=true targetIsOwnParameter=true concreteInstantiation=NOT_ASSERTED"
+                )
+            }
+            range(branch)
+        }
+
+    private fun exact(start: Int, end: Int) = ExactDeclarationTextRange.parse(start, end).nativeRefined()
+
+    private companion object {
+        const val VALUE_START = NativePacketBindBranchSource.VALUE_START
+        const val VALUE_END = NativePacketBindBranchSource.VALUE_END
+        const val WHEN_START = 1183
+        const val WHEN_END = 1284
+    }
+}

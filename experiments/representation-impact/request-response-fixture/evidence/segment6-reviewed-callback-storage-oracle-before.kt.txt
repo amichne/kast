@@ -1,0 +1,132 @@
+package io.github.amichne.kast.query.contract
+
+import io.github.amichne.kast.relation.contract.LibraryArtifactDigest
+import io.github.amichne.kast.relation.contract.LibraryArtifactObservation
+import io.github.amichne.kast.relation.contract.LibraryArtifactVersion
+import io.github.amichne.kast.relation.contract.LibraryModelDeclarationOrigin
+import io.github.amichne.kast.relation.contract.LibraryModelModuleName
+import io.github.amichne.kast.relation.contract.RelationCallableBody
+import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.RelationOccurrence
+import io.github.amichne.kast.relation.contract.ReviewedLibraryBinding
+import io.github.amichne.kast.relation.contract.ReviewedValueModel
+import io.github.amichne.kast.relation.contract.ValueArgumentPosition
+import io.github.amichne.kast.relation.contract.ValueCallFrame
+import io.github.amichne.kast.relation.contract.ValueExecutionOwner
+import io.github.amichne.kast.relation.contract.ValueFormalParameter
+import io.github.amichne.kast.relation.contract.ValueInvocation
+import io.github.amichne.kast.relation.contract.ValueModelApplication
+import io.github.amichne.kast.relation.contract.ValueReceiverKind
+import io.github.amichne.kast.relation.contract.ValueReviewedCallbackTarget
+import io.github.amichne.kast.relation.contract.ValueRole
+import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.DetachedVirtualFileUrl
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateName
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Test
+
+class QueryReviewedCallbackStorageTest {
+    @Test
+    fun `frame retention visits actual binding argument and full formal proof`() {
+        val f = ReviewedCallbackStorageCase()
+        val application = f.application("packet-stdlib")
+        val frame = application.frame
+        val target = frame.target as ValueReviewedCallbackTarget
+        val graph = QueryImpactRetainedGraph()
+        frame.storageBytes(graph)
+        assertEquals(8L, target.binding.storageBytes(graph))
+        assertEquals(8L, graph.node(target.argument) { error("Argument proof was not visited") })
+        assertEquals(8L, target.formal.storageBytes(graph))
+        assertEquals(8L, target.formal.callable.storageBytes(graph))
+        assertEquals(8L, target.formal.executionOwner.storageBytes(graph))
+        assertFalse(frame.hasForeignBasis(f.base.lease))
+    }
+
+    @Test
+    fun `reviewed application retention includes the actual module label payload`() {
+        val f = ReviewedCallbackStorageCase()
+        val original = "packet-stdlib"
+        val changed = "packet-stdlib-extra"
+        val first = f.application(original).storageBytes(QueryImpactRetainedGraph())
+        val second = f.application(changed).storageBytes(QueryImpactRetainedGraph())
+        assertEquals(2L * (changed.length - original.length), second - first)
+    }
+}
+
+private class ReviewedCallbackStorageCase {
+    val base = QueryImpactLedgerFixture()
+    private val bodyRange = range(60, 120)
+    private val body =
+        RelationCallableBody.Anonymous.fromCompiler(
+                base.file,
+                bodyRange,
+                CanonicalCompilerSignature.function(
+                        RelationCallableBody.Anonymous.sourceIdentity(base.file, bodyRange),
+                        null,
+                        emptyList(),
+                        listOf("String"),
+                        0,
+                    )
+                    .modelRefined() as CanonicalCompilerSignature.Function,
+            )
+            .modelRefined()
+    private val owner = ValueExecutionOwner.fromCompiler(base.owner, body, base.lease.identity).modelRefined()
+    private val formal =
+        ValueFormalParameter.fromCompilerImplicit(
+                owner,
+                ValueArgumentPosition.parse(0).modelRefined(),
+                SymbolDiscoveryCandidateName.parse("it").modelRefined(),
+            )
+            .modelRefined()
+    private val invocation = ValueInvocation.fromCompiler(base.owner, range(40, 150), library()).modelRefined()
+    private val argument = RelationOccurrence.fromSource(base.file, bodyRange)
+    private val receiver =
+        ValueSite.fromCompiler(
+                base.owner,
+                range(45, 50),
+                ValueRole.Receiver(invocation, ValueReceiverKind.EXTENSION),
+            )
+            .modelRefined()
+
+    fun application(module: String): ValueModelApplication.ScopeCallbackInput {
+        val artifact =
+            LibraryArtifactObservation(
+                base.lease.identity,
+                DetachedVirtualFileUrl.parse(QueryImpactAutomaticModelFixture.ROOT).modelRefined(),
+                LibraryModelModuleName.parse(module).modelRefined(),
+                LibraryArtifactDigest.parse(QueryImpactAutomaticModelFixture.BINARY_SHA).modelRefined(),
+                LibraryArtifactVersion.parse(QueryImpactAutomaticModelFixture.VERSION).modelRefined(),
+                LibraryModelDeclarationOrigin.LIBRARY,
+            )
+        val binding = ReviewedLibraryBinding.fromCompiler(invocation, ReviewedValueModel.Let, artifact).modelRefined()
+        val frame = ValueCallFrame.reviewedCallback(binding, argument, formal).modelRefined()
+        return ValueModelApplication.ScopeCallbackInput.enter(receiver, frame).modelRefined()
+    }
+
+    private fun library(): RelationEndpoint {
+        val evidence =
+            CompilerGroundedSymbolEvidence.fromBoundary(
+                    SymbolDiscoveryFileIdentity.External(
+                        DetachedVirtualFileUrl.parse(QueryImpactAutomaticModelFixture.ROOT + "kotlin/StandardKt.class")
+                            .modelRefined()
+                    ),
+                    1000,
+                    1100,
+                    "let",
+                    "kotlin.let",
+                    CompilerSymbolKind.FUNCTION,
+                    CanonicalCompilerSignature.function("kotlin.let", "T", emptyList(), listOf("(T)->R"), 2)
+                        .modelRefined(),
+                )
+                .modelRefined()
+        return RelationEndpoint.resolve(base.lease, base.scope, evidence).modelRefined()
+    }
+
+    private fun range(start: Int, end: Int) = ExactDeclarationTextRange.parse(start, end).modelRefined()
+}

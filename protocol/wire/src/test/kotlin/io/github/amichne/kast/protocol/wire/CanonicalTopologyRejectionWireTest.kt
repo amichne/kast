@@ -26,6 +26,7 @@ import io.github.amichne.kast.protocol.contract.TopologyCoverageSymbol
 import io.github.amichne.kast.protocol.contract.TopologyCoverageSymbolKind
 import io.github.amichne.kast.protocol.contract.TopologyCoverageWorkspaceEvidence
 import io.github.amichne.kast.protocol.contract.TopologyExtractionRejection
+import io.github.amichne.kast.protocol.contract.node
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test

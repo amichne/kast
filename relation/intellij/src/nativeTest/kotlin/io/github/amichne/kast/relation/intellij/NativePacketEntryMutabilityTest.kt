@@ -1,0 +1,141 @@
+@file:OptIn(org.jetbrains.kotlin.analysis.api.KaExperimentalApi::class)
+
+package io.github.amichne.kast.relation.intellij
+
+import com.intellij.openapi.application.ReadAction
+import com.intellij.psi.PsiManager
+import com.intellij.psi.util.PsiTreeUtil
+import io.github.amichne.kast.relation.contract.RelationSearchBoundary
+import io.github.amichne.kast.relation.contract.ValueFlowRead
+import io.github.amichne.kast.relation.contract.ValueFlowRequest
+import io.github.amichne.kast.relation.contract.ValueFlowStep
+import io.github.amichne.kast.relation.contract.ValueFlowTerminal
+import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
+import io.github.amichne.kast.relation.contract.ValueModelSiteRead
+import io.github.amichne.kast.relation.contract.ValueRole
+import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.relation.contract.ValueSiteRevalidationRequest
+import io.github.amichne.kast.relation.contract.ValueSiteRoleClaim
+import io.github.amichne.kast.relation.contract.ValueTransferKind
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
+import kotlinx.coroutines.runBlocking
+import org.jetbrains.kotlin.analysis.api.symbols.KaLocalVariableSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
+import org.jetbrains.kotlin.idea.references.KtReference
+import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
+import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
+import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression
+import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtReturnExpression
+
+/** These supplemental val/var entries isolate native binding reads. They do not replace the original S2 route. */
+class NativePacketEntryMutabilityTest : NativePacketValueFixtureTest() {
+    override val fixtureSdkName = "packet-entry-mutability-jdk"
+
+    fun testSupplementalImmutableEntryReadsItsActualLocalReference() {
+        val fixture = packetFixture(listOf(CONTROL))
+        val facts = facts(method = "immutable", mutable = false)
+        val binding = binding(fixture = fixture, method = "immutable", facts = facts)
+        val read = read(fixture, binding)
+        val references = read.transfers.filter { transfer -> transfer.kind == ValueTransferKind.LOCAL_READ }
+        assertEquals(1, references.size)
+        val transfer = references.single()
+        assertEquals(binding, transfer.source)
+        assertEquals(facts.reference, transfer.target.range)
+        assertEquals(ValueRole.LocalRead, transfer.target.role)
+        assertEquals(binding.executionOwner, transfer.target.executionOwner)
+        assertEquals(binding.callStack, transfer.target.callStack)
+        assertEquals(binding.valuePath, transfer.target.valuePath)
+        assertEquals(binding.predicates, transfer.target.predicates)
+        assertEquals(emptyList<Any>(), read.obligations)
+        assertEquals(ValueFlowTerminal.SupportedDomainExhausted, read.terminal)
+    }
+
+    fun testSupplementalReassignedMutableEntryKeepsMutableControlFlowInsteadOfExhaustion() {
+        val fixture = packetFixture(listOf(CONTROL))
+        val facts = facts(method = "mutable", mutable = true)
+        val binding = binding(fixture = fixture, method = "mutable", facts = facts)
+        val read = read(fixture, binding)
+        assertTrue("A real reassigned var entry must not emit a LOCAL_READ witness", read.transfers.isEmpty())
+        assertEquals(listOf(ValueFlowUnsupportedCause.MUTABLE_CONTROL_FLOW), read.obligations.map { it.cause })
+        assertTrue(read.obligations.all { obligation -> obligation.site == binding })
+        assertEquals(ValueFlowTerminal.Unresolved, read.terminal)
+        println(
+            "ENTRY_MUTABILITY_RESULT source=ACTUAL_REASSIGNED_VAR cause=MUTABLE_CONTROL_FLOW full_S2_route=NOT_ASSERTED"
+        )
+    }
+
+    private fun facts(method: String, mutable: Boolean): EntryMutabilityFacts =
+        ReadAction.compute<EntryMutabilityFacts, RuntimeException> {
+            val file =
+                checkNotNull(
+                    getOrCreateProjectBaseDir().findFileByRelativePath("src/fixture/controls/EntryBindingControls.kt")
+                )
+            val psi = PsiManager.getInstance(project).findFile(file) as KtFile
+            val function =
+                PsiTreeUtil.collectElementsOfType(psi, KtNamedFunction::class.java).single { it.name == method }
+            val entry =
+                PsiTreeUtil.collectElementsOfType(function, KtDestructuringDeclarationEntry::class.java).single()
+            val declaration = entry.parent as KtDestructuringDeclaration
+            val returned = PsiTreeUtil.collectElementsOfType(function, KtReturnExpression::class.java).single()
+            val reference = returned.returnedExpression as KtNameReferenceExpression
+            assertEquals(mutable, declaration.isVar)
+            assertEquals("value", reference.getReferencedName())
+            IntellijReadObservation.None.observedAnalyze(entry) {
+                val symbol = entry.symbol
+                assertTrue(symbol is KaLocalVariableSymbol)
+                assertEquals(KaSymbolOrigin.SOURCE, symbol.origin)
+                assertEquals(!mutable, symbol.isVal)
+                assertEquals(entry.originalElement, symbol.psi?.originalElement)
+                assertEquals(symbol, reference.references.filterIsInstance<KtReference>().single().resolveToSymbol())
+            }
+            EntryMutabilityFacts(range(entry), range(reference))
+        }
+
+    private fun binding(fixture: NativePacketValueFixture, method: String, facts: EntryMutabilityFacts): ValueSite {
+        val host = fixture.callableDeclaration(PacketDeclaration(CONTROL, "EntryBindingControls", method))
+        val request =
+            ValueSiteRevalidationRequest.create(
+                    enclosing = host,
+                    anchor = facts.entry,
+                    role = ValueSiteRoleClaim.LocalBinding,
+                    budget = fixture.budget,
+                )
+                .nativeRefined()
+        val read = runBlocking {
+            IntellijValueFlowCompilerAdapter()
+                .revalidateSite(project = project, current = fixture.lease, request = request, model = fixture.model)
+        }
+        assertTrue("The genuine entry binding needs native role readmission", read is ValueModelSiteRead.Revalidated)
+        return (read as ValueModelSiteRead.Revalidated).position.site.also { site ->
+            assertEquals(facts.entry, site.range)
+            assertEquals(ValueRole.LocalBinding, site.role)
+        }
+    }
+
+    private fun read(fixture: NativePacketValueFixture, binding: ValueSite): ValueFlowStep {
+        val result = runBlocking {
+            IntellijValueFlowCompilerAdapter()
+                .read(
+                    project = project,
+                    current = fixture.lease,
+                    request = ValueFlowRequest(binding, fixture.budget, RelationSearchBoundary.RETAINED_SUBJECT),
+                    model = fixture.model,
+                )
+        }
+        assertTrue("A genuine entry needs a native binding read", result is ValueFlowRead.Observed)
+        return (result as ValueFlowRead.Observed).step
+    }
+
+    private companion object {
+        const val CONTROL = "src/main/kotlin/fixture/controls/EntryBindingControls.kt"
+    }
+}
+
+private data class EntryMutabilityFacts(
+    val entry: ExactDeclarationTextRange,
+    val reference: ExactDeclarationTextRange,
+)

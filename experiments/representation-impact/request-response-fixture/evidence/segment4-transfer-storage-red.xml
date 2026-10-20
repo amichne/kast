@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryImpactTransferStorageTest" tests="5" skipped="0" failures="3" errors="0" timestamp="2026-10-20T06:51:13.760Z" hostname="Austins-MacBook-Pro.local" time="0.088">
+  <properties/>
+  <testcase name="normal branch evidence keeps its existing opaque allowance()" classname="io.github.amichne.kast.query.contract.QueryImpactTransferStorageTest" time="0.011"/>
+  <testcase name="source evidence charges its wrapper and existing operation reference()" classname="io.github.amichne.kast.query.contract.QueryImpactTransferStorageTest" time="0.061">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;528&gt; but was: &lt;12442&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;528&gt; but was: &lt;12442&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+	at io.github.amichne.kast.query.contract.QueryImpactTransferStorageTest.source evidence charges its wrapper and existing operation reference(QueryImpactTransferStorageTest.kt:30)
+</failure>
+  </testcase>
+  <testcase name="transfer shares the same evidence owner and keeps the public storage multiplier()" classname="io.github.amichne.kast.query.contract.QueryImpactTransferStorageTest" time="0.004">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;1064&gt; but was: &lt;12978&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;1064&gt; but was: &lt;12978&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+	at io.github.amichne.kast.query.contract.QueryImpactTransferStorageTest.transfer shares the same evidence owner and keeps the public storage multiplier(QueryImpactTransferStorageTest.kt:63)
+</failure>
+  </testcase>
+  <testcase name="equal distinct operations and endpoint owners still pay their physical payload()" classname="io.github.amichne.kast.query.contract.QueryImpactTransferStorageTest" time="0.002"/>
+  <testcase name="guard evidence charges its wrapper and both existing field references()" classname="io.github.amichne.kast.query.contract.QueryImpactTransferStorageTest" time="0.003">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;536&gt; but was: &lt;17104&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;536&gt; but was: &lt;17104&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+	at io.github.amichne.kast.query.contract.QueryImpactTransferStorageTest.guard evidence charges its wrapper and both existing field references(QueryImpactTransferStorageTest.kt:51)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

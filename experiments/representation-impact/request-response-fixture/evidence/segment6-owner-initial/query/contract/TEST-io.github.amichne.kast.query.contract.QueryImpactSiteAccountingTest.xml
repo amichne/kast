@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryImpactSiteAccountingTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:17.809Z" hostname="Austins-MacBook-Pro.local" time="0.01">
+  <properties/>
+  <testcase name="requested native sites preserve both proven routes and an unmatched relationship obligation()" classname="io.github.amichne.kast.query.contract.QueryImpactSiteAccountingTest" time="0.002"/>
+  <testcase name="another domain or another exact native site cannot count as requested scope exclusion()" classname="io.github.amichne.kast.query.contract.QueryImpactSiteAccountingTest" time="0.001"/>
+  <testcase name="native selection receipt rejects substituted occurrence and excess work()" classname="io.github.amichne.kast.query.contract.QueryImpactSiteAccountingTest" time="0.001"/>
+  <testcase name="duplicate native targets fail closed and unmatched obligations forbid complete execution()" classname="io.github.amichne.kast.query.contract.QueryImpactSiteAccountingTest" time="0.004"/>
+  <testcase name="positive exits preserve both original path ordinals and mixed reached partition()" classname="io.github.amichne.kast.query.contract.QueryImpactSiteAccountingTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

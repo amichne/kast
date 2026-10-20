@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketImplicitBindFlowTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T11:59:53.804Z" hostname="Austins-MacBook-Pro.local" time="10.847">
+  <properties/>
+  <testcase name="testK2ProvedBindDispatchReceiverEntersOnlyTheBindDispatchFormal" classname="io.github.amichne.kast.relation.intellij.NativePacketImplicitBindFlowTest" time="7.853"/>
+  <testcase name="testK2ProvedComponentDispatchFormalReachesOnlyTheBindDispatchReceiver" classname="io.github.amichne.kast.relation.intellij.NativePacketImplicitBindFlowTest" time="1.184"/>
+  <testcase name="testOriginalComponentExtensionFormalReachesOnlyTheBindExtensionReceiver" classname="io.github.amichne.kast.relation.intellij.NativePacketImplicitBindFlowTest" time="0.938"/>
+  <testcase name="testK2ProvedBindExtensionReceiverEntersOnlyTheBindExtensionFormal" classname="io.github.amichne.kast.relation.intellij.NativePacketImplicitBindFlowTest" time="0.862"/>
+  <system-out><![CDATA[DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+IMPLICIT_BIND_FLOW source=ExactDeclarationTextRange(startInclusive=818, endExclusive=917) sourceRole=EXPRESSION_RESULT_PREREQUISITE pathDepth=2 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=806, endExclusive=814))] causes=[] work=4
+IMPLICIT_BIND_FLOW source=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) sourceRole=RECEIVER:EXTENSION pathDepth=2 transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=1088, endExclusive=1143))] causes=[] work=2
+IMPLICIT_BIND_SETUP kind=K2_PROVED_TYPED_DISPATCH_FORMAL path=WHOLE
+IMPLICIT_BIND_SETUP kind=K2_PROVED_TYPED_RECEIVER slot=DISPATCH first_transfer=NOT_ASSERTED
+IMPLICIT_BIND_FLOW source=ExactDeclarationTextRange(startInclusive=1137, endExclusive=1143) sourceRole=RECEIVER:DISPATCH pathDepth=0 transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=1149, endExclusive=1284))] causes=[] work=2
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+IMPLICIT_BIND_FLOW source=ExactDeclarationTextRange(startInclusive=818, endExclusive=917) sourceRole=EXPRESSION_RESULT_PREREQUISITE pathDepth=2 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=806, endExclusive=814))] causes=[] work=4
+IMPLICIT_BIND_FLOW source=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) sourceRole=RECEIVER:EXTENSION pathDepth=2 transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=1088, endExclusive=1143))] causes=[] work=2
+IMPLICIT_BIND_SETUP kind=K2_PROVED_TYPED_DISPATCH_FORMAL path=WHOLE
+IMPLICIT_BIND_FLOW source=ExactDeclarationTextRange(startInclusive=1088, endExclusive=1143) sourceRole=FORMAL:Receiver(kind=DISPATCH) pathDepth=0 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=1137, endExclusive=1143))] causes=[] work=3
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+IMPLICIT_BIND_FLOW source=ExactDeclarationTextRange(startInclusive=818, endExclusive=917) sourceRole=EXPRESSION_RESULT_PREREQUISITE pathDepth=2 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=806, endExclusive=814))] causes=[] work=4
+IMPLICIT_BIND_FLOW source=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) sourceRole=RECEIVER:EXTENSION pathDepth=2 transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=1088, endExclusive=1143))] causes=[] work=2
+IMPLICIT_BIND_FLOW source=ExactDeclarationTextRange(startInclusive=1088, endExclusive=1143) sourceRole=FORMAL:Receiver(kind=EXTENSION) pathDepth=2 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=1137, endExclusive=1143))] causes=[] work=3
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+IMPLICIT_BIND_FLOW source=ExactDeclarationTextRange(startInclusive=818, endExclusive=917) sourceRole=EXPRESSION_RESULT_PREREQUISITE pathDepth=2 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=806, endExclusive=814))] causes=[] work=4
+IMPLICIT_BIND_FLOW source=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) sourceRole=RECEIVER:EXTENSION pathDepth=2 transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=1088, endExclusive=1143))] causes=[] work=2
+IMPLICIT_BIND_SETUP kind=K2_PROVED_TYPED_RECEIVER slot=EXTENSION first_transfer=NOT_ASSERTED
+IMPLICIT_BIND_FLOW source=ExactDeclarationTextRange(startInclusive=1137, endExclusive=1143) sourceRole=RECEIVER:EXTENSION pathDepth=2 transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=1149, endExclusive=1284))] causes=[] work=2
+]]></system-out>
+  <system-err><![CDATA[[   1306]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1306]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

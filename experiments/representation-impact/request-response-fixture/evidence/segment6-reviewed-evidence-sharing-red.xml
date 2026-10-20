@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueReviewedEvidenceSharingTest" tests="6" skipped="0" failures="2" errors="0" timestamp="2026-10-20T17:22:21.715Z" hostname="Austins-MacBook-Pro.local" time="0.192">
+  <properties/>
+  <testcase name="the same callable identity with another exact scope stays distinct(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueReviewedEvidenceSharingTest" time="0.143">
+    <properties>
+      <property name="scope.before" value="source=70978270 application=332498651 applicationSource=70978270 callable=1340086275 signature=719182854 bindingCallable=1340086275 bindingSignature=719182854 policyBytes=85528"/>
+      <property name="scope.after" value="source=70978270 application=332498651 applicationSource=70978270 callable=1340086275 signature=719182854 bindingCallable=1340086275 bindingSignature=719182854 policyBytes=85528"/>
+    </properties>
+  </testcase>
+  <testcase name="another artifact module cannot borrow an older reviewed binding(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueReviewedEvidenceSharingTest" time="0.015">
+    <properties>
+      <property name="artifact.before" value="source=1693799911 application=1152380885 applicationSource=1693799911 callable=180078856 signature=381930033 bindingCallable=180078856 bindingSignature=381930033 policyBytes=91492"/>
+      <property name="artifact.after" value="source=283923004 application=1152380885 applicationSource=1693799911 callable=538618049 signature=756637412 bindingCallable=180078856 bindingSignature=381930033 policyBytes=107116"/>
+    </properties>
+  </testcase>
+  <testcase name="let sharing conserves semantic proof qualifications and native receipts(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueReviewedEvidenceSharingTest" time="0.007">
+    <properties>
+      <property name="scope.let.invoke-block-value.before" value="source=1432403167 application=1272744797 applicationSource=1432403167 callable=2004628751 signature=1471800355 bindingCallable=2004628751 bindingSignature=1471800355 policyBytes=91480"/>
+      <property name="scope.let.invoke-block-value.after" value="source=2054787417 application=1272744797 applicationSource=1432403167 callable=1797159635 signature=810169941 bindingCallable=2004628751 bindingSignature=1471800355 policyBytes=107104"/>
+    </properties>
+  </testcase>
+  <testcase name="first-or-null sharing conserves semantic proof qualifications and native receipts(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueReviewedEvidenceSharingTest" time="0.003">
+    <properties>
+      <property name="collections.list.firstOrNull.select-zero.before" value="source=65551384 application=2118571592 applicationSource=65551384 callable=1317963297 signature=176097974 bindingCallable=1317963297 bindingSignature=176097974 policyBytes=85528"/>
+      <property name="collections.list.firstOrNull.select-zero.after" value="source=466319810 application=2118571592 applicationSource=65551384 callable=749098095 signature=1106468732 bindingCallable=1317963297 bindingSignature=176097974 policyBytes=101314"/>
+    </properties>
+  </testcase>
+  <testcase name="first-or-null sharing keeps one physical source and complete callable proof(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueReviewedEvidenceSharingTest" time="0.009">
+    <properties>
+      <property name="physical-collections.list.firstOrNull.select-zero.before" value="source=1217741734 application=2030458766 applicationSource=1217741734 callable=1591954203 signature=465839591 bindingCallable=1591954203 bindingSignature=465839591 policyBytes=85528"/>
+      <property name="physical-collections.list.firstOrNull.select-zero.after" value="source=194903130 application=2030458766 applicationSource=1217741734 callable=2053349061 signature=78816013 bindingCallable=1591954203 bindingSignature=465839591 policyBytes=101314"/>
+    </properties>
+    <failure message="org.opentest4j.AssertionFailedError: expected: io.github.amichne.kast.relation.contract.ValueSite@b9dfc5a&lt;io.github.amichne.kast.relation.contract.ValueSite@a47d7818&gt; but was: io.github.amichne.kast.relation.contract.ValueSite@489543a6&lt;io.github.amichne.kast.relation.contract.ValueSite@a47d7818&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: io.github.amichne.kast.relation.contract.ValueSite@b9dfc5a&lt;io.github.amichne.kast.relation.contract.ValueSite@a47d7818&gt; but was: io.github.amichne.kast.relation.contract.ValueSite@489543a6&lt;io.github.amichne.kast.relation.contract.ValueSite@a47d7818&gt;
+	at org.junit.jupiter.api.Assertions.assertSame(Assertions.java:2962)
+	at io.github.amichne.kast.relation.contract.ValueReviewedEvidenceSharingTest.assertCoherent(ValueReviewedEvidenceSharingTest.kt:123)
+	at io.github.amichne.kast.relation.contract.ValueReviewedEvidenceSharingTest.first-or-null sharing keeps one physical source and complete callable proof(ValueReviewedEvidenceSharingTest.kt:71)
+</failure>
+  </testcase>
+  <testcase name="let sharing keeps one physical source and complete callable proof(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueReviewedEvidenceSharingTest" time="0.004">
+    <properties>
+      <property name="physical-scope.let.invoke-block-value.before" value="source=2000421523 application=442465916 applicationSource=2000421523 callable=973219190 signature=893320639 bindingCallable=973219190 bindingSignature=893320639 policyBytes=91480"/>
+      <property name="physical-scope.let.invoke-block-value.after" value="source=1095849663 application=442465916 applicationSource=2000421523 callable=248495761 signature=1439693138 bindingCallable=973219190 bindingSignature=893320639 policyBytes=107104"/>
+    </properties>
+    <failure message="org.opentest4j.AssertionFailedError: expected: io.github.amichne.kast.relation.contract.ValueSite@415156bf&lt;io.github.amichne.kast.relation.contract.ValueSite@6a05f9b6&gt; but was: io.github.amichne.kast.relation.contract.ValueSite@773c0293&lt;io.github.amichne.kast.relation.contract.ValueSite@6a05f9b6&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: io.github.amichne.kast.relation.contract.ValueSite@415156bf&lt;io.github.amichne.kast.relation.contract.ValueSite@6a05f9b6&gt; but was: io.github.amichne.kast.relation.contract.ValueSite@773c0293&lt;io.github.amichne.kast.relation.contract.ValueSite@6a05f9b6&gt;
+	at org.junit.jupiter.api.Assertions.assertSame(Assertions.java:2962)
+	at io.github.amichne.kast.relation.contract.ValueReviewedEvidenceSharingTest.assertCoherent(ValueReviewedEvidenceSharingTest.kt:123)
+	at io.github.amichne.kast.relation.contract.ValueReviewedEvidenceSharingTest.let sharing keeps one physical source and complete callable proof(ValueReviewedEvidenceSharingTest.kt:66)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

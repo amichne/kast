@@ -10,6 +10,7 @@ import io.github.amichne.kast.protocol.contract.ExecutionBudgetReport
 import io.github.amichne.kast.protocol.contract.QueryRunFailure
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.SourceReadFailure
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
 import io.github.amichne.kast.protocol.contract.reason
 
 /** Typed binding of a report to one operation's closed rejection family. */

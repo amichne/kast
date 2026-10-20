@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryImpactSourceAdmissionTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-20T16:08:42.681Z" hostname="Austins-MacBook-Pro.local" time="0.226">
+  <properties/>
+  <testcase name="native selector proof keeps the canonical origin during source acquisition()" classname="io.github.amichne.kast.query.protocol.QueryImpactSourceAdmissionTest" time="0.106"/>
+  <testcase name="fresh same signature from another file cannot bind the supplied model()" classname="io.github.amichne.kast.query.protocol.QueryImpactSourceAdmissionTest" time="0.013"/>
+  <testcase name="native selector proof from another request anchor or callable cannot replace the selected seed()" classname="io.github.amichne.kast.query.protocol.QueryImpactSourceAdmissionTest" time="0.006"/>
+  <testcase name="unavailable native evidence preserves finite failure without executing query()" classname="io.github.amichne.kast.query.protocol.QueryImpactSourceAdmissionTest" time="0.013"/>
+  <testcase name="work receipt cannot exceed grant or run another seed after exhaustion()" classname="io.github.amichne.kast.query.protocol.QueryImpactSourceAdmissionTest" time="0.005"/>
+  <testcase name="plan execution receives the shared grant after producer acquisition()" classname="io.github.amichne.kast.query.protocol.QueryImpactSourceAdmissionTest" time="0.011"/>
+  <testcase name="invalid model syntax rejects before native acquisition()" classname="io.github.amichne.kast.query.protocol.QueryImpactSourceAdmissionTest" time="0.002"/>
+  <testcase name="exactly exhausted admission rejects without execution or manufactured continuation()" classname="io.github.amichne.kast.query.protocol.QueryImpactSourceAdmissionTest" time="0.003"/>
+  <testcase name="exact invocation producers and fresh models retain one domain and consume successive grants()" classname="io.github.amichne.kast.query.protocol.QueryImpactSourceAdmissionTest" time="0.016"/>
+  <testcase name="exact producer outside requested expansion directory remains admitted on its retained scope()" classname="io.github.amichne.kast.query.protocol.QueryImpactSourceAdmissionTest" time="0.007"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -15,6 +15,7 @@ import io.github.amichne.kast.query.contract.QueryImpactWitnessSection
 import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
 import io.github.amichne.kast.relation.contract.ValueFlowWorkReceipt
+import io.github.amichne.kast.relation.contract.ValueProducerOrigin
 
 internal fun ImpactWitnessSectionDocument.witnessSection(): QueryImpactWitnessSection =
     when (this) {
@@ -37,6 +38,7 @@ internal fun QueryImpactWitnessSection.witnessDocument(): ImpactWitnessSectionDo
     }
 
 internal fun QueryRows.ImpactWitness.projectWitnessItems(
+    references: QueryReferenceAuthority,
     originalRowIds: List<QueryResultRowReference>? = null,
     originalPathRowIds: List<QueryResultRowReference>? = null,
 ): QueryProjection<QueryResultItemDocument> {
@@ -46,7 +48,7 @@ internal fun QueryRows.ImpactWitness.projectWitnessItems(
         return QueryProjection.Rejected
     val result = mutableListOf<QueryResultItemDocument>()
     for ((index, record) in values.withIndex()) {
-        val document = record.evidence.impactDocument(originalRowIds?.getOrNull(index), originalPathRowIds)
+        val document = record.evidence.impactDocument(references, originalRowIds?.getOrNull(index), originalPathRowIds)
         val projected =
             count(record.ordinal.value).impactZip(document).impactMap { (ordinal, witness) ->
                 QueryResultItemDocument.ImpactWitness(
@@ -83,55 +85,76 @@ private fun QueryRows.ImpactWitness.hasOriginalFindingLinks(rowIds: List<QueryRe
 }
 
 private fun QueryImpactWitnessEntry.impactDocument(
+    references: QueryReferenceAuthority,
     originalRowId: QueryResultRowReference?,
     originalPathRowIds: List<QueryResultRowReference>?,
 ): ImpactProjected<ImpactWitnessDocument> =
     when (this) {
         is QueryImpactWitnessEntry.SiteAccounting ->
-            accounting.siteAccountingDocument(originalPathRowIds).impactMap(ImpactWitnessDocument::SiteAccounting)
+            accounting
+                .siteAccountingDocument(references, originalPathRowIds)
+                .impactMap(ImpactWitnessDocument::SiteAccounting)
         is QueryImpactWitnessEntry.Finding ->
             if (originalRowId == null) Refinement.Rejected(ImpactPathProjectionFailure.DOMAIN_PROJECTION_REJECTED)
-            else finding.findingDocument(originalRowId).impactMap(ImpactWitnessDocument::Finding)
-        is QueryImpactWitnessEntry.Producer ->
-            when (val producer = evidence) {
-                is QueryImpactProducerEvidence.Invocation ->
-                    producer.site.impactDocument().impactZip(producer.producer.invocation.impactDocument()).impactMap {
-                        (site, invocation) ->
-                        ImpactWitnessDocument.Producer(site, invocation)
-                    }
-                is QueryImpactProducerEvidence.SiteOnly ->
-                    producer.site.impactDocument().impactMap(ImpactWitnessDocument::ProducerSiteOnly)
-            }
+            else finding.findingDocument(references, originalRowId).impactMap(ImpactWitnessDocument::Finding)
+        is QueryImpactWitnessEntry.Producer -> evidence.impactWitnessDocument(references)
         is QueryImpactWitnessEntry.RepresentationModel ->
             rule.reference.impactDocument().impactZip(rule.impactDocument()).impactMap { (reference, rule) ->
                 ImpactWitnessDocument.RepresentationModel(reference, rule)
             }
-        is QueryImpactWitnessEntry.PeerBoundaryModel -> boundary.projectPeerModelWitness()
+        is QueryImpactWitnessEntry.PeerBoundaryModel -> boundary.projectPeerModelWitness(references)
         is QueryImpactWitnessEntry.BoundaryModel ->
-            model.reference.impactDocument().impactZip(model.impactDocument()).impactMap { (reference, rule) ->
+            model.reference.impactDocument().impactZip(model.impactDocument(references)).impactMap { (reference, rule)
+                ->
                 ImpactWitnessDocument.BoundaryModel(reference, rule)
             }
-        is QueryImpactWitnessEntry.ReadRejected -> projectReadRejection()
+        is QueryImpactWitnessEntry.ReadRejected -> projectReadRejection(references)
         is QueryImpactWitnessEntry.CompilerTransfer ->
             count(observationOrdinal.value)
                 .impactZip(count(transferOrdinal.value))
-                .impactZip(transfer.impactDocument())
+                .impactZip(transfer.impactDocument(references))
                 .impactMap { (position, transfer) ->
                     ImpactWitnessDocument.CompilerTransfer(position.first, position.second, transfer)
+                }
+        is QueryImpactWitnessEntry.ValueModelApplication ->
+            count(observationOrdinal.value)
+                .impactZip(count(applicationOrdinal.value))
+                .impactZip(application.impactDocument(references))
+                .impactMap { (position, application) ->
+                    ImpactWitnessDocument.ValueModelApplication(position.first, position.second, application)
                 }
         is QueryImpactWitnessEntry.FlowObligation ->
             count(observationOrdinal.value)
                 .impactZip(count(obligationOrdinal.value))
-                .impactZip(obligation.site.impactDocument())
-                .impactMap { (position, site) ->
+                .impactZip(obligation.site.impactDocument(references))
+                .impactZip(obligation.evidence.impactDocument(references, obligation.site.enclosing.lease))
+                .impactMap { (obligation, evidence) ->
                     ImpactWitnessDocument.FlowObligation(
-                        position.first,
-                        position.second,
-                        site,
-                        obligation.cause.impactDocument(),
+                        obligation.first.first,
+                        obligation.first.second,
+                        obligation.second,
+                        this.obligation.cause.impactDocument(),
+                        evidence,
                     )
                 }
-        is QueryImpactWitnessEntry.NativeRead -> projectNativeRead()
+        is QueryImpactWitnessEntry.NativeRead -> projectNativeRead(references)
+    }
+
+private fun QueryImpactProducerEvidence.impactWitnessDocument(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactWitnessDocument> =
+    when (val producer = this) {
+        is QueryImpactProducerEvidence.Invocation ->
+            when (val origin = producer.producer.origin) {
+                is ValueProducerOrigin.Declared ->
+                    producer.site.impactDocument(references).impactZip(origin.invocation.impactDocument()).impactMap {
+                        (site, invocation) ->
+                        ImpactWitnessDocument.Producer(site, invocation)
+                    }
+                is ValueProducerOrigin.SourceFunction -> producer.producer.sourceFunctionDocument(origin, references)
+            }
+        is QueryImpactProducerEvidence.SiteOnly ->
+            producer.site.impactDocument(references).impactMap(ImpactWitnessDocument::ProducerSiteOnly)
     }
 
 private fun count(raw: Int) = count(raw.toLong())
@@ -139,24 +162,30 @@ private fun count(raw: Int) = count(raw.toLong())
 private fun count(raw: Long): ImpactProjected<QueryDiscoveryCountDocument> =
     QueryDiscoveryCountDocument.parse(raw).impactFailure(ImpactPathProjectionFailure::Count)
 
-private fun QueryImpactWitnessEntry.ReadRejected.projectReadRejection(): ImpactProjected<ImpactWitnessDocument> =
-    rejection.impactDocument().impactZip(receipts.impactEach { it.receiptDocument() }).impactMap { (rejection, receipts)
-        ->
+private fun QueryImpactWitnessEntry.ReadRejected.projectReadRejection(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactWitnessDocument> =
+    rejection.impactDocument(references).impactZip(receipts.impactEach { it.receiptDocument() }).impactMap {
+        (rejection, receipts) ->
         ImpactWitnessDocument.ReadRejection(rejection, receipts)
     }
 
-private fun QueryImpactWitnessEntry.NativeRead.projectNativeRead(): ImpactProjected<ImpactWitnessDocument> =
+private fun QueryImpactWitnessEntry.NativeRead.projectNativeRead(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactWitnessDocument> =
     observation.receipts
         .impactEach { it.receiptDocument() }
         .impactThen { receipts ->
-            observation.source.impactDocument().impactZip(observation.domain.impactDocument()).impactThen {
+            observation.source.impactDocument(references).impactZip(observation.domain.impactDocument()).impactThen {
                 (source, domain) ->
                 count(observationOrdinal.value)
                     .impactZip(count(observation.examinedWorkUnits.value))
                     .impactZip(count(observation.retainedBytes))
                     .impactZip(count(observation.transfers.size))
                     .impactZip(count(observation.obligations.size))
-                    .impactMap { (counts, obligations) ->
+                    .impactZip(count(observation.applications.size))
+                    .impactMap { (withObligations, applications) ->
+                        val (counts, obligations) = withObligations
                         ImpactWitnessDocument.NativeRead(
                             counts.first.first.first,
                             source,
@@ -173,6 +202,7 @@ private fun QueryImpactWitnessEntry.NativeRead.projectNativeRead(): ImpactProjec
                             counts.second,
                             obligations,
                             receipts,
+                            applications,
                         )
                     }
             }

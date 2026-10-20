@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueModelApplicationBindingProofTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:03:52.467Z" hostname="Austins-MacBook-Pro.local" time="0.091">
+  <properties/>
+  <testcase name="receiver cannot borrow a binding with another enclosing proof at the same call identity()" classname="io.github.amichne.kast.relation.contract.ValueModelApplicationBindingProofTest" time="0.074"/>
+  <testcase name="receiver cannot borrow a binding with another execution host proof at the same call identity()" classname="io.github.amichne.kast.relation.contract.ValueModelApplicationBindingProofTest" time="0.004"/>
+  <testcase name="equal full proof reconstructed as distinct objects remains admissible()" classname="io.github.amichne.kast.relation.contract.ValueModelApplicationBindingProofTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

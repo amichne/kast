@@ -6,8 +6,15 @@ import io.github.amichne.kast.protocol.contract.QueryCallbackBindingDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationScanDocument
 import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackFlowDocument
+import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackFlowWireDocument
 import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackUseDocument
+import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackUseWireDocument
 import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackValueDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.callbackWire
+import io.github.amichne.kast.protocol.contract.immutableCallbackWire
+import io.github.amichne.kast.protocol.contract.immutableFlowWire
+import io.github.amichne.kast.protocol.contract.toContract
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject

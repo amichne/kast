@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactFindingQualificationTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.783Z" hostname="Austins-MacBook-Pro.local" time="0.01">
+  <properties/>
+  <testcase name="compact boundary retains model reference unknown provenance and every required obligation()" classname="io.github.amichne.kast.query.protocol.ImpactFindingQualificationTest" time="0.006"/>
+  <testcase name="compact read rejection retains all finite native and contract causes and work receipts()" classname="io.github.amichne.kast.query.protocol.ImpactFindingQualificationTest" time="0.002"/>
+  <testcase name="compact consumer retains expected state origin and every distinct current outcome()" classname="io.github.amichne.kast.query.protocol.ImpactFindingQualificationTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

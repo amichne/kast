@@ -1,0 +1,4 @@
+module	tests	failures	errors	skipped
+protocol/contract	131	0	0	0
+query/contract	95	0	0	0
+query/protocol	343	0	0	0

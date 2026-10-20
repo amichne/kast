@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactImplementationShapeTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T03:07:08.771Z" hostname="Austins-MacBook-Pro.local" time="0.075">
+  <properties/>
+  <testcase name="zero-fact qualified evidence survives native witness admission and refuses a substituted call()" classname="io.github.amichne.kast.protocol.contract.ImpactImplementationShapeTest" time="0.048"/>
+  <testcase name="implementation target encodes its full exact proof and direct default stays explicit()" classname="io.github.amichne.kast.protocol.contract.ImpactImplementationShapeTest" time="0.021"/>
+  <testcase name="implementation frame rejects another callable owner domain or semantic basis()" classname="io.github.amichne.kast.protocol.contract.ImpactImplementationShapeTest" time="0.001"/>
+  <testcase name="call identity ignores work observations while changed coverage cannot discharge a return()" classname="io.github.amichne.kast.protocol.contract.ImpactImplementationShapeTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

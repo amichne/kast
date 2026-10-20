@@ -1,9 +1,15 @@
 package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.CompilerReceiverWireDocument
+import io.github.amichne.kast.protocol.contract.CompilerSignatureWireDocument
+import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceWireDocument
 import io.github.amichne.kast.protocol.contract.QueryResultReference
+import io.github.amichne.kast.protocol.contract.RelationOccurrenceWireDocument
 import io.github.amichne.kast.protocol.contract.RelationOwnershipUnavailableCauseDocument
 import io.github.amichne.kast.protocol.contract.RelationReferenceContextDocument
+import io.github.amichne.kast.protocol.contract.SourceRangeWireDocument
+import io.github.amichne.kast.protocol.contract.SymbolKindWireDocument
 import io.github.amichne.kast.protocol.wire.presentation.QueryRelationGraphDirectionCliDocument
 import io.github.amichne.kast.protocol.wire.presentation.QueryRelationGraphIneligibility
 import io.github.amichne.kast.protocol.wire.presentation.QueryRelationGraphOwnershipCliDocument

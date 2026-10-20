@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.AutomaticPrivateReplayTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.062Z" hostname="Austins-MacBook-Pro.local" time="0.028">
+  <properties/>
+  <testcase name="cooperative cancellation publishes only the final checkpoint with its original expiry()" classname="io.github.amichne.kast.query.protocol.AutomaticPrivateReplayTest" time="0.002"/>
+  <testcase name="hard cancellation rolls back reservation and ends the unpublished checkpoint lifetime()" classname="io.github.amichne.kast.query.protocol.AutomaticPrivateReplayTest" time="0.002"/>
+  <testcase name="repeated automatic reuse releases only its own allocations amid unrelated retained scale()" classname="io.github.amichne.kast.query.protocol.AutomaticPrivateReplayTest" time="0.012"/>
+  <testcase name="automatic completion releases private replay owners after three pages()" classname="io.github.amichne.kast.query.protocol.AutomaticPrivateReplayTest" time="0.004"/>
+  <testcase name="public pages retain immutable replay allocations after the same three semantic calls()" classname="io.github.amichne.kast.query.protocol.AutomaticPrivateReplayTest" time="0.004"/>
+  <system-out><![CDATA[PrivateReplayReleased(entries=0, bytes=0, calls=3)
+PublicReplayRetained(entries=2, bytes=684324, calls=3)
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

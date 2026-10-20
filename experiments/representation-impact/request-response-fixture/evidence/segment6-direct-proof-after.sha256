@@ -1,0 +1,3 @@
+b66f9286f3056649b2857f74e4c3255dc80ca805153add365e26cad7531dcd01  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueExecutionOwner.kt
+7426a53bf723974b1d0d93fc53ac11dd6abc8baa5273eaa6b467731b9a67284e  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueCallBinding.kt
+386c3418e14ad0620247d3fe93e93b42c8eb33d2c93198479eb9ee2d45ed11fc  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueDirectFrameProofTest.kt

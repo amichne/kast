@@ -1,0 +1,2365 @@
+{
+  "method": "Balanced-field extraction from the actual JUnit failure text. This is detached evidence analysis, not another compiler read.",
+  "input_xml": "experiments/representation-impact/request-response-fixture/evidence/segment6-endpoint-native-first-TEST-io.github.amichne.kast.runtime.hosted.NativePacketCompositeQueryTest.xml",
+  "testcase": "testOriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments",
+  "actual_feature_sites": [
+    {
+      "enclosing": {
+        "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+        "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+        "range": [
+          569,
+          1063
+        ],
+        "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+      },
+      "range": [
+        1029,
+        1057
+      ],
+      "role": "ExpressionResult",
+      "executionOwner": {
+        "kind": "Anonymous",
+        "body": {
+          "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+          "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+          "range": [
+            677,
+            1063
+          ],
+          "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+        }
+      },
+      "valuePath": [
+        {
+          "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+          "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+          "range": [
+            305,
+            321
+          ],
+          "compilerIdentity": "canonical-signature-sha256-v1|c69079cbf99abc99528ea6ade35a050d73c4e45876a0fbdc4c8291d68838c3ed"
+        }
+      ],
+      "callStack": [],
+      "predicates": [
+        {
+          "kind": "Subtype",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/client/OffersClient.kt",
+              "range": [
+                673,
+                1147
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|ab3a3a41119b7cc98893d60a51404b05ccc6a6578621cca7688d24ecbfba6565"
+            },
+            "range": [
+              769,
+              954
+            ],
+            "role": {
+              "kind": "Receiver",
+              "invocation": {
+                "range": [
+                  769,
+                  989
+                ],
+                "callable": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                  "range": [
+                    289,
+                    439
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|b7f31b026d3d4f75595066ff8c9140dd6a34102743754e5a6ab954803a3a10bf"
+                },
+                "executionOwner": "Declaration"
+              },
+              "receiverKind": "DISPATCH"
+            },
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": []
+          },
+          "resolvedType": {
+            "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+            "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+            "range": [
+              66,
+              173
+            ],
+            "compilerIdentity": "canonical-signature-sha256-v1|f79d759e3e634b3e02332939f89c440cbb660d3f770f9859b5bfbee554202344"
+          }
+        },
+        {
+          "kind": "Subtype",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/client/OffersClient.kt",
+              "range": [
+                673,
+                1147
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|ab3a3a41119b7cc98893d60a51404b05ccc6a6578621cca7688d24ecbfba6565"
+            },
+            "range": [
+              769,
+              989
+            ],
+            "role": {
+              "kind": "Receiver",
+              "invocation": {
+                "range": [
+                  769,
+                  1147
+                ],
+                "callable": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                  "range": [
+                    445,
+                    600
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|1bf60bb6ae4f4b64d495df736325cb290e7a87d163c7035083b47c57f20e9b91"
+                },
+                "executionOwner": "Declaration"
+              },
+              "receiverKind": "DISPATCH"
+            },
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": []
+          },
+          "resolvedType": {
+            "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+            "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+            "range": [
+              66,
+              173
+            ],
+            "compilerIdentity": "canonical-signature-sha256-v1|f79d759e3e634b3e02332939f89c440cbb660d3f770f9859b5bfbee554202344"
+          }
+        },
+        {
+          "kind": "Subtype",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+              "range": [
+                569,
+                1063
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+            },
+            "range": [
+              818,
+              860
+            ],
+            "role": {
+              "kind": "Receiver",
+              "invocation": {
+                "range": [
+                  818,
+                  917
+                ],
+                "callable": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                  "range": [
+                    445,
+                    600
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|1bf60bb6ae4f4b64d495df736325cb290e7a87d163c7035083b47c57f20e9b91"
+                },
+                "executionOwner": {
+                  "kind": "Anonymous",
+                  "body": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                    "range": [
+                      677,
+                      1063
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+                  }
+                }
+              },
+              "receiverKind": "DISPATCH"
+            },
+            "executionOwner": {
+              "kind": "Anonymous",
+              "body": {
+                "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                "range": [
+                  677,
+                  1063
+                ],
+                "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+              }
+            },
+            "valuePath": [],
+            "callStack": []
+          },
+          "resolvedType": {
+            "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+            "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+            "range": [
+              66,
+              173
+            ],
+            "compilerIdentity": "canonical-signature-sha256-v1|f79d759e3e634b3e02332939f89c440cbb660d3f770f9859b5bfbee554202344"
+          }
+        },
+        {
+          "kind": "Subtype",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+              "range": [
+                1088,
+                1143
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+            },
+            "range": [
+              1137,
+              1143
+            ],
+            "role": {
+              "kind": "Receiver",
+              "invocation": {
+                "range": [
+                  1137,
+                  1143
+                ],
+                "callable": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                  "range": [
+                    1149,
+                    1284
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|fa9b51d2dd8e3df7fee7722485423063d858376bbb8786b76c0733989ad941f9"
+                },
+                "executionOwner": "Declaration"
+              },
+              "receiverKind": "EXTENSION"
+            },
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": [
+              {
+                "enclosing": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                  "range": [
+                    569,
+                    1063
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+                },
+                "invocation": {
+                  "kind": "Declared",
+                  "range": [
+                    806,
+                    814
+                  ],
+                  "callable": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1088,
+                      1143
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+                  },
+                  "executionOwner": {
+                    "kind": "Anonymous",
+                    "body": {
+                      "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                      "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                      "range": [
+                        677,
+                        1063
+                      ],
+                      "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+                    }
+                  }
+                },
+                "callee": {
+                  "enclosing": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1088,
+                      1143
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+                  },
+                  "executionOwner": "Declaration"
+                },
+                "target": "Direct"
+              }
+            ]
+          },
+          "resolvedType": {
+            "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+            "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+            "range": [
+              66,
+              173
+            ],
+            "compilerIdentity": "canonical-signature-sha256-v1|f79d759e3e634b3e02332939f89c440cbb660d3f770f9859b5bfbee554202344"
+          }
+        },
+        {
+          "kind": "NonNull",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+              "range": [
+                1549,
+                1681
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+            },
+            "range": [
+              1622,
+              1626
+            ],
+            "role": "LocalRead",
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": [
+              {
+                "enclosing": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                  "range": [
+                    569,
+                    1063
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+                },
+                "invocation": {
+                  "kind": "Declared",
+                  "range": [
+                    939,
+                    1020
+                  ],
+                  "callable": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1549,
+                      1681
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+                  },
+                  "executionOwner": {
+                    "kind": "Anonymous",
+                    "body": {
+                      "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                      "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                      "range": [
+                        677,
+                        1063
+                      ],
+                      "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+                    }
+                  }
+                },
+                "callee": {
+                  "enclosing": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1549,
+                      1681
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+                  },
+                  "executionOwner": "Declaration"
+                },
+                "target": "Direct"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "NonNull",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+              "range": [
+                1549,
+                1681
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+            },
+            "range": [
+              1622,
+              1655
+            ],
+            "role": "ExpressionResult",
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": [
+              {
+                "enclosing": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                  "range": [
+                    569,
+                    1063
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+                },
+                "invocation": {
+                  "kind": "Declared",
+                  "range": [
+                    939,
+                    1020
+                  ],
+                  "callable": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1549,
+                      1681
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+                  },
+                  "executionOwner": {
+                    "kind": "Anonymous",
+                    "body": {
+                      "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                      "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                      "range": [
+                        677,
+                        1063
+                      ],
+                      "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+                    }
+                  }
+                },
+                "callee": {
+                  "enclosing": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1549,
+                      1681
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+                  },
+                  "executionOwner": "Declaration"
+                },
+                "target": "Direct"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "Subtype",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+              "range": [
+                1088,
+                1143
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+            },
+            "range": [
+              1137,
+              1143
+            ],
+            "role": {
+              "kind": "Receiver",
+              "invocation": {
+                "range": [
+                  1137,
+                  1143
+                ],
+                "callable": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                  "range": [
+                    1149,
+                    1284
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|fa9b51d2dd8e3df7fee7722485423063d858376bbb8786b76c0733989ad941f9"
+                },
+                "executionOwner": "Declaration"
+              },
+              "receiverKind": "EXTENSION"
+            },
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": [
+              {
+                "enclosing": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                  "range": [
+                    569,
+                    1063
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+                },
+                "invocation": {
+                  "kind": "Declared",
+                  "range": [
+                    931,
+                    935
+                  ],
+                  "callable": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1088,
+                      1143
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+                  },
+                  "executionOwner": {
+                    "kind": "Anonymous",
+                    "body": {
+                      "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                      "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                      "range": [
+                        677,
+                        1063
+                      ],
+                      "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+                    }
+                  }
+                },
+                "callee": {
+                  "enclosing": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1088,
+                      1143
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+                  },
+                  "executionOwner": "Declaration"
+                },
+                "target": "Direct"
+              }
+            ]
+          },
+          "resolvedType": {
+            "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+            "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+            "range": [
+              66,
+              173
+            ],
+            "compilerIdentity": "canonical-signature-sha256-v1|f79d759e3e634b3e02332939f89c440cbb660d3f770f9859b5bfbee554202344"
+          }
+        }
+      ]
+    },
+    {
+      "enclosing": {
+        "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+        "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+        "range": [
+          569,
+          1063
+        ],
+        "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+      },
+      "range": [
+        1029,
+        1057
+      ],
+      "role": "ExpressionResult",
+      "executionOwner": {
+        "kind": "Anonymous",
+        "body": {
+          "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+          "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+          "range": [
+            677,
+            1063
+          ],
+          "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+        }
+      },
+      "valuePath": [
+        {
+          "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+          "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+          "range": [
+            305,
+            321
+          ],
+          "compilerIdentity": "canonical-signature-sha256-v1|c69079cbf99abc99528ea6ade35a050d73c4e45876a0fbdc4c8291d68838c3ed"
+        }
+      ],
+      "callStack": [],
+      "predicates": [
+        {
+          "kind": "Subtype",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/client/OffersClient.kt",
+              "range": [
+                673,
+                1147
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|ab3a3a41119b7cc98893d60a51404b05ccc6a6578621cca7688d24ecbfba6565"
+            },
+            "range": [
+              769,
+              954
+            ],
+            "role": {
+              "kind": "Receiver",
+              "invocation": {
+                "range": [
+                  769,
+                  989
+                ],
+                "callable": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                  "range": [
+                    289,
+                    439
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|b7f31b026d3d4f75595066ff8c9140dd6a34102743754e5a6ab954803a3a10bf"
+                },
+                "executionOwner": "Declaration"
+              },
+              "receiverKind": "DISPATCH"
+            },
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": []
+          },
+          "resolvedType": {
+            "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+            "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+            "range": [
+              66,
+              173
+            ],
+            "compilerIdentity": "canonical-signature-sha256-v1|f79d759e3e634b3e02332939f89c440cbb660d3f770f9859b5bfbee554202344"
+          }
+        },
+        {
+          "kind": "Subtype",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/client/OffersClient.kt",
+              "range": [
+                673,
+                1147
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|ab3a3a41119b7cc98893d60a51404b05ccc6a6578621cca7688d24ecbfba6565"
+            },
+            "range": [
+              769,
+              989
+            ],
+            "role": {
+              "kind": "Receiver",
+              "invocation": {
+                "range": [
+                  769,
+                  1147
+                ],
+                "callable": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                  "range": [
+                    445,
+                    600
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|1bf60bb6ae4f4b64d495df736325cb290e7a87d163c7035083b47c57f20e9b91"
+                },
+                "executionOwner": "Declaration"
+              },
+              "receiverKind": "DISPATCH"
+            },
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": []
+          },
+          "resolvedType": {
+            "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+            "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+            "range": [
+              66,
+              173
+            ],
+            "compilerIdentity": "canonical-signature-sha256-v1|f79d759e3e634b3e02332939f89c440cbb660d3f770f9859b5bfbee554202344"
+          }
+        },
+        {
+          "kind": "Subtype",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+              "range": [
+                569,
+                1063
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+            },
+            "range": [
+              818,
+              860
+            ],
+            "role": {
+              "kind": "Receiver",
+              "invocation": {
+                "range": [
+                  818,
+                  917
+                ],
+                "callable": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                  "range": [
+                    445,
+                    600
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|1bf60bb6ae4f4b64d495df736325cb290e7a87d163c7035083b47c57f20e9b91"
+                },
+                "executionOwner": {
+                  "kind": "Anonymous",
+                  "body": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                    "range": [
+                      677,
+                      1063
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+                  }
+                }
+              },
+              "receiverKind": "DISPATCH"
+            },
+            "executionOwner": {
+              "kind": "Anonymous",
+              "body": {
+                "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                "range": [
+                  677,
+                  1063
+                ],
+                "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+              }
+            },
+            "valuePath": [],
+            "callStack": []
+          },
+          "resolvedType": {
+            "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+            "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+            "range": [
+              66,
+              173
+            ],
+            "compilerIdentity": "canonical-signature-sha256-v1|f79d759e3e634b3e02332939f89c440cbb660d3f770f9859b5bfbee554202344"
+          }
+        },
+        {
+          "kind": "Subtype",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+              "range": [
+                1088,
+                1143
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+            },
+            "range": [
+              1137,
+              1143
+            ],
+            "role": {
+              "kind": "Receiver",
+              "invocation": {
+                "range": [
+                  1137,
+                  1143
+                ],
+                "callable": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                  "range": [
+                    1149,
+                    1284
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|fa9b51d2dd8e3df7fee7722485423063d858376bbb8786b76c0733989ad941f9"
+                },
+                "executionOwner": "Declaration"
+              },
+              "receiverKind": "EXTENSION"
+            },
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": [
+              {
+                "enclosing": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                  "range": [
+                    569,
+                    1063
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+                },
+                "invocation": {
+                  "kind": "Declared",
+                  "range": [
+                    806,
+                    814
+                  ],
+                  "callable": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1088,
+                      1143
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+                  },
+                  "executionOwner": {
+                    "kind": "Anonymous",
+                    "body": {
+                      "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                      "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                      "range": [
+                        677,
+                        1063
+                      ],
+                      "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+                    }
+                  }
+                },
+                "callee": {
+                  "enclosing": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1088,
+                      1143
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+                  },
+                  "executionOwner": "Declaration"
+                },
+                "target": "Direct"
+              }
+            ]
+          },
+          "resolvedType": {
+            "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+            "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+            "range": [
+              66,
+              173
+            ],
+            "compilerIdentity": "canonical-signature-sha256-v1|f79d759e3e634b3e02332939f89c440cbb660d3f770f9859b5bfbee554202344"
+          }
+        },
+        {
+          "kind": "NonNull",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+              "range": [
+                1549,
+                1681
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+            },
+            "range": [
+              1622,
+              1626
+            ],
+            "role": "LocalRead",
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": [
+              {
+                "enclosing": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                  "range": [
+                    569,
+                    1063
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+                },
+                "invocation": {
+                  "kind": "Declared",
+                  "range": [
+                    939,
+                    1020
+                  ],
+                  "callable": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1549,
+                      1681
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+                  },
+                  "executionOwner": {
+                    "kind": "Anonymous",
+                    "body": {
+                      "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                      "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                      "range": [
+                        677,
+                        1063
+                      ],
+                      "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+                    }
+                  }
+                },
+                "callee": {
+                  "enclosing": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1549,
+                      1681
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+                  },
+                  "executionOwner": "Declaration"
+                },
+                "target": "Direct"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "NonNull",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+              "range": [
+                1549,
+                1681
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+            },
+            "range": [
+              1622,
+              1655
+            ],
+            "role": "ExpressionResult",
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": [
+              {
+                "enclosing": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                  "range": [
+                    569,
+                    1063
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+                },
+                "invocation": {
+                  "kind": "Declared",
+                  "range": [
+                    939,
+                    1020
+                  ],
+                  "callable": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1549,
+                      1681
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+                  },
+                  "executionOwner": {
+                    "kind": "Anonymous",
+                    "body": {
+                      "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                      "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                      "range": [
+                        677,
+                        1063
+                      ],
+                      "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+                    }
+                  }
+                },
+                "callee": {
+                  "enclosing": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1549,
+                      1681
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+                  },
+                  "executionOwner": "Declaration"
+                },
+                "target": "Direct"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "Subtype",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+              "range": [
+                1088,
+                1143
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+            },
+            "range": [
+              1137,
+              1143
+            ],
+            "role": {
+              "kind": "Receiver",
+              "invocation": {
+                "range": [
+                  1137,
+                  1143
+                ],
+                "callable": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                  "range": [
+                    1149,
+                    1284
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|fa9b51d2dd8e3df7fee7722485423063d858376bbb8786b76c0733989ad941f9"
+                },
+                "executionOwner": "Declaration"
+              },
+              "receiverKind": "EXTENSION"
+            },
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": [
+              {
+                "enclosing": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                  "range": [
+                    569,
+                    1063
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+                },
+                "invocation": {
+                  "kind": "Declared",
+                  "range": [
+                    931,
+                    935
+                  ],
+                  "callable": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1088,
+                      1143
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+                  },
+                  "executionOwner": {
+                    "kind": "Anonymous",
+                    "body": {
+                      "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                      "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                      "range": [
+                        677,
+                        1063
+                      ],
+                      "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+                    }
+                  }
+                },
+                "callee": {
+                  "enclosing": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1088,
+                      1143
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+                  },
+                  "executionOwner": "Declaration"
+                },
+                "target": "Direct"
+              }
+            ]
+          },
+          "resolvedType": {
+            "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+            "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+            "range": [
+              66,
+              173
+            ],
+            "compilerIdentity": "canonical-signature-sha256-v1|f79d759e3e634b3e02332939f89c440cbb660d3f770f9859b5bfbee554202344"
+          }
+        }
+      ]
+    },
+    {
+      "enclosing": {
+        "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+        "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+        "range": [
+          569,
+          1063
+        ],
+        "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+      },
+      "range": [
+        1029,
+        1057
+      ],
+      "role": "Return",
+      "executionOwner": {
+        "kind": "Anonymous",
+        "body": {
+          "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+          "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+          "range": [
+            677,
+            1063
+          ],
+          "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+        }
+      },
+      "valuePath": [
+        {
+          "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+          "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+          "range": [
+            305,
+            321
+          ],
+          "compilerIdentity": "canonical-signature-sha256-v1|c69079cbf99abc99528ea6ade35a050d73c4e45876a0fbdc4c8291d68838c3ed"
+        }
+      ],
+      "callStack": [],
+      "predicates": [
+        {
+          "kind": "Subtype",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/client/OffersClient.kt",
+              "range": [
+                673,
+                1147
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|ab3a3a41119b7cc98893d60a51404b05ccc6a6578621cca7688d24ecbfba6565"
+            },
+            "range": [
+              769,
+              954
+            ],
+            "role": {
+              "kind": "Receiver",
+              "invocation": {
+                "range": [
+                  769,
+                  989
+                ],
+                "callable": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                  "range": [
+                    289,
+                    439
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|b7f31b026d3d4f75595066ff8c9140dd6a34102743754e5a6ab954803a3a10bf"
+                },
+                "executionOwner": "Declaration"
+              },
+              "receiverKind": "DISPATCH"
+            },
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": []
+          },
+          "resolvedType": {
+            "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+            "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+            "range": [
+              66,
+              173
+            ],
+            "compilerIdentity": "canonical-signature-sha256-v1|f79d759e3e634b3e02332939f89c440cbb660d3f770f9859b5bfbee554202344"
+          }
+        },
+        {
+          "kind": "Subtype",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/client/OffersClient.kt",
+              "range": [
+                673,
+                1147
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|ab3a3a41119b7cc98893d60a51404b05ccc6a6578621cca7688d24ecbfba6565"
+            },
+            "range": [
+              769,
+              989
+            ],
+            "role": {
+              "kind": "Receiver",
+              "invocation": {
+                "range": [
+                  769,
+                  1147
+                ],
+                "callable": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                  "range": [
+                    445,
+                    600
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|1bf60bb6ae4f4b64d495df736325cb290e7a87d163c7035083b47c57f20e9b91"
+                },
+                "executionOwner": "Declaration"
+              },
+              "receiverKind": "DISPATCH"
+            },
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": []
+          },
+          "resolvedType": {
+            "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+            "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+            "range": [
+              66,
+              173
+            ],
+            "compilerIdentity": "canonical-signature-sha256-v1|f79d759e3e634b3e02332939f89c440cbb660d3f770f9859b5bfbee554202344"
+          }
+        },
+        {
+          "kind": "Subtype",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+              "range": [
+                569,
+                1063
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+            },
+            "range": [
+              818,
+              860
+            ],
+            "role": {
+              "kind": "Receiver",
+              "invocation": {
+                "range": [
+                  818,
+                  917
+                ],
+                "callable": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                  "range": [
+                    445,
+                    600
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|1bf60bb6ae4f4b64d495df736325cb290e7a87d163c7035083b47c57f20e9b91"
+                },
+                "executionOwner": {
+                  "kind": "Anonymous",
+                  "body": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                    "range": [
+                      677,
+                      1063
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+                  }
+                }
+              },
+              "receiverKind": "DISPATCH"
+            },
+            "executionOwner": {
+              "kind": "Anonymous",
+              "body": {
+                "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                "range": [
+                  677,
+                  1063
+                ],
+                "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+              }
+            },
+            "valuePath": [],
+            "callStack": []
+          },
+          "resolvedType": {
+            "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+            "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+            "range": [
+              66,
+              173
+            ],
+            "compilerIdentity": "canonical-signature-sha256-v1|f79d759e3e634b3e02332939f89c440cbb660d3f770f9859b5bfbee554202344"
+          }
+        },
+        {
+          "kind": "Subtype",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+              "range": [
+                1088,
+                1143
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+            },
+            "range": [
+              1137,
+              1143
+            ],
+            "role": {
+              "kind": "Receiver",
+              "invocation": {
+                "range": [
+                  1137,
+                  1143
+                ],
+                "callable": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                  "range": [
+                    1149,
+                    1284
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|fa9b51d2dd8e3df7fee7722485423063d858376bbb8786b76c0733989ad941f9"
+                },
+                "executionOwner": "Declaration"
+              },
+              "receiverKind": "EXTENSION"
+            },
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": [
+              {
+                "enclosing": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                  "range": [
+                    569,
+                    1063
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+                },
+                "invocation": {
+                  "kind": "Declared",
+                  "range": [
+                    806,
+                    814
+                  ],
+                  "callable": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1088,
+                      1143
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+                  },
+                  "executionOwner": {
+                    "kind": "Anonymous",
+                    "body": {
+                      "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                      "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                      "range": [
+                        677,
+                        1063
+                      ],
+                      "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+                    }
+                  }
+                },
+                "callee": {
+                  "enclosing": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1088,
+                      1143
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+                  },
+                  "executionOwner": "Declaration"
+                },
+                "target": "Direct"
+              }
+            ]
+          },
+          "resolvedType": {
+            "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+            "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+            "range": [
+              66,
+              173
+            ],
+            "compilerIdentity": "canonical-signature-sha256-v1|f79d759e3e634b3e02332939f89c440cbb660d3f770f9859b5bfbee554202344"
+          }
+        },
+        {
+          "kind": "NonNull",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+              "range": [
+                1549,
+                1681
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+            },
+            "range": [
+              1622,
+              1626
+            ],
+            "role": "LocalRead",
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": [
+              {
+                "enclosing": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                  "range": [
+                    569,
+                    1063
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+                },
+                "invocation": {
+                  "kind": "Declared",
+                  "range": [
+                    939,
+                    1020
+                  ],
+                  "callable": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1549,
+                      1681
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+                  },
+                  "executionOwner": {
+                    "kind": "Anonymous",
+                    "body": {
+                      "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                      "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                      "range": [
+                        677,
+                        1063
+                      ],
+                      "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+                    }
+                  }
+                },
+                "callee": {
+                  "enclosing": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1549,
+                      1681
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+                  },
+                  "executionOwner": "Declaration"
+                },
+                "target": "Direct"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "NonNull",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+              "range": [
+                1549,
+                1681
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+            },
+            "range": [
+              1622,
+              1655
+            ],
+            "role": "ExpressionResult",
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": [
+              {
+                "enclosing": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                  "range": [
+                    569,
+                    1063
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+                },
+                "invocation": {
+                  "kind": "Declared",
+                  "range": [
+                    939,
+                    1020
+                  ],
+                  "callable": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1549,
+                      1681
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+                  },
+                  "executionOwner": {
+                    "kind": "Anonymous",
+                    "body": {
+                      "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                      "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                      "range": [
+                        677,
+                        1063
+                      ],
+                      "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+                    }
+                  }
+                },
+                "callee": {
+                  "enclosing": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1549,
+                      1681
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+                  },
+                  "executionOwner": "Declaration"
+                },
+                "target": "Direct"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "Subtype",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+              "range": [
+                1088,
+                1143
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+            },
+            "range": [
+              1137,
+              1143
+            ],
+            "role": {
+              "kind": "Receiver",
+              "invocation": {
+                "range": [
+                  1137,
+                  1143
+                ],
+                "callable": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                  "range": [
+                    1149,
+                    1284
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|fa9b51d2dd8e3df7fee7722485423063d858376bbb8786b76c0733989ad941f9"
+                },
+                "executionOwner": "Declaration"
+              },
+              "receiverKind": "EXTENSION"
+            },
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": [
+              {
+                "enclosing": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                  "range": [
+                    569,
+                    1063
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+                },
+                "invocation": {
+                  "kind": "Declared",
+                  "range": [
+                    931,
+                    935
+                  ],
+                  "callable": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1088,
+                      1143
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+                  },
+                  "executionOwner": {
+                    "kind": "Anonymous",
+                    "body": {
+                      "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                      "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                      "range": [
+                        677,
+                        1063
+                      ],
+                      "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+                    }
+                  }
+                },
+                "callee": {
+                  "enclosing": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1088,
+                      1143
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+                  },
+                  "executionOwner": "Declaration"
+                },
+                "target": "Direct"
+              }
+            ]
+          },
+          "resolvedType": {
+            "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+            "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+            "range": [
+              66,
+              173
+            ],
+            "compilerIdentity": "canonical-signature-sha256-v1|f79d759e3e634b3e02332939f89c440cbb660d3f770f9859b5bfbee554202344"
+          }
+        }
+      ]
+    },
+    {
+      "enclosing": {
+        "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+        "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+        "range": [
+          569,
+          1063
+        ],
+        "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+      },
+      "range": [
+        1029,
+        1057
+      ],
+      "role": "Return",
+      "executionOwner": {
+        "kind": "Anonymous",
+        "body": {
+          "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+          "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+          "range": [
+            677,
+            1063
+          ],
+          "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+        }
+      },
+      "valuePath": [
+        {
+          "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+          "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+          "range": [
+            305,
+            321
+          ],
+          "compilerIdentity": "canonical-signature-sha256-v1|c69079cbf99abc99528ea6ade35a050d73c4e45876a0fbdc4c8291d68838c3ed"
+        }
+      ],
+      "callStack": [],
+      "predicates": [
+        {
+          "kind": "Subtype",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/client/OffersClient.kt",
+              "range": [
+                673,
+                1147
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|ab3a3a41119b7cc98893d60a51404b05ccc6a6578621cca7688d24ecbfba6565"
+            },
+            "range": [
+              769,
+              954
+            ],
+            "role": {
+              "kind": "Receiver",
+              "invocation": {
+                "range": [
+                  769,
+                  989
+                ],
+                "callable": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                  "range": [
+                    289,
+                    439
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|b7f31b026d3d4f75595066ff8c9140dd6a34102743754e5a6ab954803a3a10bf"
+                },
+                "executionOwner": "Declaration"
+              },
+              "receiverKind": "DISPATCH"
+            },
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": []
+          },
+          "resolvedType": {
+            "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+            "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+            "range": [
+              66,
+              173
+            ],
+            "compilerIdentity": "canonical-signature-sha256-v1|f79d759e3e634b3e02332939f89c440cbb660d3f770f9859b5bfbee554202344"
+          }
+        },
+        {
+          "kind": "Subtype",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/client/OffersClient.kt",
+              "range": [
+                673,
+                1147
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|ab3a3a41119b7cc98893d60a51404b05ccc6a6578621cca7688d24ecbfba6565"
+            },
+            "range": [
+              769,
+              989
+            ],
+            "role": {
+              "kind": "Receiver",
+              "invocation": {
+                "range": [
+                  769,
+                  1147
+                ],
+                "callable": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                  "range": [
+                    445,
+                    600
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|1bf60bb6ae4f4b64d495df736325cb290e7a87d163c7035083b47c57f20e9b91"
+                },
+                "executionOwner": "Declaration"
+              },
+              "receiverKind": "DISPATCH"
+            },
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": []
+          },
+          "resolvedType": {
+            "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+            "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+            "range": [
+              66,
+              173
+            ],
+            "compilerIdentity": "canonical-signature-sha256-v1|f79d759e3e634b3e02332939f89c440cbb660d3f770f9859b5bfbee554202344"
+          }
+        },
+        {
+          "kind": "Subtype",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+              "range": [
+                569,
+                1063
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+            },
+            "range": [
+              818,
+              860
+            ],
+            "role": {
+              "kind": "Receiver",
+              "invocation": {
+                "range": [
+                  818,
+                  917
+                ],
+                "callable": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                  "range": [
+                    445,
+                    600
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|1bf60bb6ae4f4b64d495df736325cb290e7a87d163c7035083b47c57f20e9b91"
+                },
+                "executionOwner": {
+                  "kind": "Anonymous",
+                  "body": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                    "range": [
+                      677,
+                      1063
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+                  }
+                }
+              },
+              "receiverKind": "DISPATCH"
+            },
+            "executionOwner": {
+              "kind": "Anonymous",
+              "body": {
+                "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                "range": [
+                  677,
+                  1063
+                ],
+                "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+              }
+            },
+            "valuePath": [],
+            "callStack": []
+          },
+          "resolvedType": {
+            "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+            "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+            "range": [
+              66,
+              173
+            ],
+            "compilerIdentity": "canonical-signature-sha256-v1|f79d759e3e634b3e02332939f89c440cbb660d3f770f9859b5bfbee554202344"
+          }
+        },
+        {
+          "kind": "Subtype",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+              "range": [
+                1088,
+                1143
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+            },
+            "range": [
+              1137,
+              1143
+            ],
+            "role": {
+              "kind": "Receiver",
+              "invocation": {
+                "range": [
+                  1137,
+                  1143
+                ],
+                "callable": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                  "range": [
+                    1149,
+                    1284
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|fa9b51d2dd8e3df7fee7722485423063d858376bbb8786b76c0733989ad941f9"
+                },
+                "executionOwner": "Declaration"
+              },
+              "receiverKind": "EXTENSION"
+            },
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": [
+              {
+                "enclosing": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                  "range": [
+                    569,
+                    1063
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+                },
+                "invocation": {
+                  "kind": "Declared",
+                  "range": [
+                    806,
+                    814
+                  ],
+                  "callable": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1088,
+                      1143
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+                  },
+                  "executionOwner": {
+                    "kind": "Anonymous",
+                    "body": {
+                      "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                      "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                      "range": [
+                        677,
+                        1063
+                      ],
+                      "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+                    }
+                  }
+                },
+                "callee": {
+                  "enclosing": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1088,
+                      1143
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+                  },
+                  "executionOwner": "Declaration"
+                },
+                "target": "Direct"
+              }
+            ]
+          },
+          "resolvedType": {
+            "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+            "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+            "range": [
+              66,
+              173
+            ],
+            "compilerIdentity": "canonical-signature-sha256-v1|f79d759e3e634b3e02332939f89c440cbb660d3f770f9859b5bfbee554202344"
+          }
+        },
+        {
+          "kind": "NonNull",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+              "range": [
+                1549,
+                1681
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+            },
+            "range": [
+              1622,
+              1626
+            ],
+            "role": "LocalRead",
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": [
+              {
+                "enclosing": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                  "range": [
+                    569,
+                    1063
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+                },
+                "invocation": {
+                  "kind": "Declared",
+                  "range": [
+                    939,
+                    1020
+                  ],
+                  "callable": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1549,
+                      1681
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+                  },
+                  "executionOwner": {
+                    "kind": "Anonymous",
+                    "body": {
+                      "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                      "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                      "range": [
+                        677,
+                        1063
+                      ],
+                      "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+                    }
+                  }
+                },
+                "callee": {
+                  "enclosing": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1549,
+                      1681
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+                  },
+                  "executionOwner": "Declaration"
+                },
+                "target": "Direct"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "NonNull",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+              "range": [
+                1549,
+                1681
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+            },
+            "range": [
+              1622,
+              1655
+            ],
+            "role": "ExpressionResult",
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": [
+              {
+                "enclosing": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                  "range": [
+                    569,
+                    1063
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+                },
+                "invocation": {
+                  "kind": "Declared",
+                  "range": [
+                    939,
+                    1020
+                  ],
+                  "callable": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1549,
+                      1681
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+                  },
+                  "executionOwner": {
+                    "kind": "Anonymous",
+                    "body": {
+                      "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                      "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                      "range": [
+                        677,
+                        1063
+                      ],
+                      "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+                    }
+                  }
+                },
+                "callee": {
+                  "enclosing": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1549,
+                      1681
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|83a8523df4b33156b49de128fc256a18015eb13cafa946bb9b8d833eae15e9c3"
+                  },
+                  "executionOwner": "Declaration"
+                },
+                "target": "Direct"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "Subtype",
+          "subject": {
+            "enclosing": {
+              "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+              "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+              "range": [
+                1088,
+                1143
+              ],
+              "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+            },
+            "range": [
+              1137,
+              1143
+            ],
+            "role": {
+              "kind": "Receiver",
+              "invocation": {
+                "range": [
+                  1137,
+                  1143
+                ],
+                "callable": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                  "range": [
+                    1149,
+                    1284
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|fa9b51d2dd8e3df7fee7722485423063d858376bbb8786b76c0733989ad941f9"
+                },
+                "executionOwner": "Declaration"
+              },
+              "receiverKind": "EXTENSION"
+            },
+            "executionOwner": "Declaration",
+            "valuePath": [],
+            "callStack": [
+              {
+                "enclosing": {
+                  "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                  "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                  "range": [
+                    569,
+                    1063
+                  ],
+                  "compilerIdentity": "canonical-signature-sha256-v1|5f49c81702d378b7c79ba51ba337a69e514c7bd384b25cab9a9134df634ad17e"
+                },
+                "invocation": {
+                  "kind": "Declared",
+                  "range": [
+                    931,
+                    935
+                  ],
+                  "callable": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1088,
+                      1143
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+                  },
+                  "executionOwner": {
+                    "kind": "Anonymous",
+                    "body": {
+                      "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                      "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/feature/OffersProcessor.kt",
+                      "range": [
+                        677,
+                        1063
+                      ],
+                      "compilerIdentity": "canonical-signature-sha256-v1|b6a1eb152f6fb54e1e44897d971724d76b838df8820cbe689d3bde6ee80ab5bf"
+                    }
+                  }
+                },
+                "callee": {
+                  "enclosing": {
+                    "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+                    "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+                    "range": [
+                      1088,
+                      1143
+                    ],
+                    "compilerIdentity": "canonical-signature-sha256-v1|5d5d63de038fc6789d51ca534804cda2addf603674b8d2ebd334e62b721815e6"
+                  },
+                  "executionOwner": "Declaration"
+                },
+                "target": "Direct"
+              }
+            ]
+          },
+          "resolvedType": {
+            "basis": "Published(root=ProtocolText(value=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu), generation=ImpactEvidenceRevisionDocument(value=1))",
+            "file": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS2EmittedWitnessesPreserveGuardsAndForbidRequestArguments_3KyE8MNsNSNvrRmOGfD7rRh1uDu/src/fixture/outcome/Outcome.kt",
+            "range": [
+              66,
+              173
+            ],
+            "compilerIdentity": "canonical-signature-sha256-v1|f79d759e3e634b3e02332939f89c440cbb660d3f770f9859b5bfbee554202344"
+          }
+        }
+      ]
+    }
+  ],
+  "expected_current_oracle": {
+    "originalSuccess": {
+      "file": "fixture/client/OffersClient.kt",
+      "range": [
+        769,
+        954
+      ],
+      "role": "Receiver",
+      "receiverKind": "DISPATCH",
+      "invocation": [
+        769,
+        989
+      ],
+      "executionOwner": "Declaration",
+      "valuePath": "Whole",
+      "callStack": [],
+      "resolvedType": {
+        "file": "fixture/outcome/Outcome.kt",
+        "range": [
+          66,
+          173
+        ]
+      }
+    },
+    "NonNull": {
+      "enclosing": "OffersProcessorImpl.getOffer",
+      "file": "fixture/feature/OffersProcessor.kt",
+      "range": [
+        939,
+        967
+      ],
+      "executionOwner": {
+        "kind": "Anonymous",
+        "range": [
+          677,
+          1063
+        ]
+      },
+      "valuePath": "Whole",
+      "candidate_subject_occurs_in_emitted_sites": true
+    }
+  },
+  "diagnosis": {
+    "originalSuccess": "PRESENT_EXACT",
+    "checkedThisNonNull": "PRESENT_SCOPED_TO_ORIGINAL_SOURCE_CALLEE",
+    "elvisLeftNonNull": "PRESENT_SCOPED_TO_ORIGINAL_SOURCE_CALLEE",
+    "callerFirstOrNullNonNull": "NOT_PRESENT_IN_LISTED_FIELD_SITES",
+    "actual_alias_chain": "NOT_PROVABLE_FROM_FAILURE_SITE_LIST_ALONE",
+    "guard_falsity": "NOT_ESTABLISHED",
+    "current_oracle_result": "FAILS_EXACT_CALLER_SUBJECT_ANCHOR",
+    "public_C29_return": "NOT_ESTABLISHED_BY_ANONYMOUS_RETURN1029:1057",
+    "full_C28_C29": "NOT_PASSED"
+  },
+  "t1": {
+    "xml": "experiments/representation-impact/request-response-fixture/evidence/segment6-endpoint-native-first-TEST-io.github.amichne.kast.runtime.hosted.NativePacketT1QueryTest.xml",
+    "actual_combined_failure": "junit.framework.AssertionFailedError: T1 has no complete original-S1 Echo route through the getOffer return: [[CompositeRequiredRow(id=T1:Echo-implementation-entry:MISSING, passed=false), CompositeRequiredRow(id=T1:exact-destination-read:NOT_REACHED, passed=false), CompositeRequiredRow(id=T1:reviewed-single-element-listOf:NOT_REACHED, passed=false), CompositeRequiredRow(id=T1:ClientResponse.links[0]:NOT_REACHED, passed=false), CompositeRequiredRow(id=T1:matched-Echo-return:NOT_REACHED, passed=false), CompositeRequiredRow(id=T1:source-component-and-bind:NOT_REACHED, passed=false), CompositeRequiredRow(id=T1:exact-firstOrNull-selection:NOT_REACHED, passed=false), CompositeRequiredRow(id=T1:FeatureResponse.link:NOT_REACHED, passed=false), CompositeRequiredRow(id=T1:getOffer.Success.value.link:NOT_REACHED, passed=false)], [CompositeRequiredRow(id=T1:Echo-implementation-entry:MISSING, passed=false), CompositeRequiredRow(id=T1:exact-destination-read:NOT_REACHED, passed=false), CompositeRequiredRow(id=T1:reviewed-single-element-listOf:NOT_REACHED, passed=false), CompositeRequiredRow(id=T1:ClientResponse.links[0]:NOT_REACHED, passed=false), CompositeRequiredRow(id=T1:matched-Echo-return:NOT_REACHED, passed=false), CompositeRequiredRow(id=T1:source-component-and-bind:NOT_REACHED, passed=false), CompositeRequiredRow(id=T1:exact-firstOrNull-selection:NOT_REACHED, passed=false), CompositeRequiredRow(id=T1:FeatureResponse.link:NOT_REACHED, passed=false), CompositeRequiredRow(id=T1:getOffer.Success.value.link:NOT_REACHED, passed=false)], [CompositeRequiredRow(id=T1:Echo-implementation-entry, passed=true), CompositeRequiredRow(id=T1:exact-destination-read, passed=true), CompositeRequiredRow(id=T1:reviewed-single-element-listOf:MISSING, passed=false), CompositeRequiredRow(id=T1:ClientResponse.links[0]:NOT_REACHED, passed=false), CompositeRequiredRow(id=T1:matched-Echo-return:NOT_REACHED, passed=false), CompositeRequiredRow(id=T1:source-component-and-bind:NOT_REACHED, passed=false), CompositeRequiredRow(id=T1:exact-firstOrNull-selection:NOT_REACHED, passed=false), CompositeRequiredRow(id=T1:FeatureResponse.link:NOT_REACHED, passed=false), CompositeRequiredRow(id=T1:getOffer.Success.value.link:NOT_REACHED, passed=false)]]",
+    "Echo_entry_and_destination": "PRESENT_IN_THIRD_ASSESSMENT",
+    "first_missing": "reviewed-single-element-listOf",
+    "capture_lines": [
+      "PACKET_QUERY_CAPTURE outgoing=true nativeFlowReads=19 retainedReadDelta=0 paths=2",
+      "PACKET_QUERY_PATH index=0 steps=9 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS1ProductionReportsTheExactKnownEchoExclusion_3KyEAIHvxB7tl2z8YJ3uETYAUqa/src/main/fixture/client/OffersClient.kt range=1266:1278 role=LocalRead pathDepth=0 terminal=FLOW:UNSUPPORTED_EXPRESSION evidence=None",
+      "PACKET_QUERY_PATH index=1 steps=13 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS1ProductionReportsTheExactKnownEchoExclusion_3KyEAIHvxB7tl2z8YJ3uETYAUqa/src/main/fixture/client/OffersClient.kt range=863:886 role=Argument pathDepth=1 terminal=FLOW:EXTERNAL_CALL evidence=ImplementationDispatch",
+      "PACKET_QUERY_CAPTURE outgoing=true nativeFlowReads=22 retainedReadDelta=0 paths=3",
+      "PACKET_QUERY_PATH index=0 steps=9 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS1CombinedEchoReachesTheFullGuardedFeatureReturn_3KyEAbvHJHFcRaOxGgyjtFxxlJG/src/main/fixture/client/OffersClient.kt range=1266:1278 role=LocalRead pathDepth=0 terminal=FLOW:UNSUPPORTED_EXPRESSION evidence=None",
+      "PACKET_QUERY_PATH index=1 steps=13 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS1CombinedEchoReachesTheFullGuardedFeatureReturn_3KyEAbvHJHFcRaOxGgyjtFxxlJG/src/main/fixture/client/OffersClient.kt range=863:886 role=Argument pathDepth=1 terminal=FLOW:EXTERNAL_CALL evidence=ImplementationDispatch",
+      "PACKET_QUERY_PATH index=2 steps=6 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS1CombinedEchoReachesTheFullGuardedFeatureReturn_3KyEAbvHJHFcRaOxGgyjtFxxlJG/src/test/fixture/client/EchoOffersClient.kt range=341:360 role=ExpressionResult pathDepth=0 terminal=FLOW:EXTERNAL_CALL evidence=None",
+      "PACKET_QUERY_CAPTURE outgoing=true nativeFlowReads=22 retainedReadDelta=0 paths=3",
+      "PACKET_QUERY_PATH index=0 steps=9 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_CombinedWitnessesKeepProductionOpaqueAndForbidEchoFieldAndLogSubstitution_3KyEAgmu0H5J4CaGQTaBoAdxDAn/src/main/fixture/client/OffersClient.kt range=1266:1278 role=LocalRead pathDepth=0 terminal=FLOW:UNSUPPORTED_EXPRESSION evidence=None",
+      "PACKET_QUERY_PATH index=1 steps=13 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_CombinedWitnessesKeepProductionOpaqueAndForbidEchoFieldAndLogSubstitution_3KyEAgmu0H5J4CaGQTaBoAdxDAn/src/main/fixture/client/OffersClient.kt range=863:886 role=Argument pathDepth=1 terminal=FLOW:EXTERNAL_CALL evidence=ImplementationDispatch",
+      "PACKET_QUERY_PATH index=2 steps=6 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_CombinedWitnessesKeepProductionOpaqueAndForbidEchoFieldAndLogSubstitution_3KyEAgmu0H5J4CaGQTaBoAdxDAn/src/test/fixture/client/EchoOffersClient.kt range=341:360 role=ExpressionResult pathDepth=0 terminal=FLOW:EXTERNAL_CALL evidence=None"
+    ],
+    "capacity_terminal": "NONE_REPORTED_IN_THREE_COMBINED_PATHS"
+  },
+  "changes": {
+    "oracle": false,
+    "production": false,
+    "gradle": false
+  }
+}

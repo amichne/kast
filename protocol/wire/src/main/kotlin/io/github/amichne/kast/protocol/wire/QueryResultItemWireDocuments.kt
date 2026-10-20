@@ -4,6 +4,7 @@ package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
+import io.github.amichne.kast.protocol.contract.CompilerSignatureWireDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryBindingCellDocument
 import io.github.amichne.kast.protocol.contract.QueryBindingNameDocument
@@ -13,6 +14,16 @@ import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.QueryTextMatchDocument
 import io.github.amichne.kast.protocol.contract.RelationFactDocument
+import io.github.amichne.kast.protocol.contract.SourceRangeWireDocument
+import io.github.amichne.kast.protocol.contract.SymbolKindWireDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.combineConverted
+import io.github.amichne.kast.protocol.contract.convertEach
+import io.github.amichne.kast.protocol.contract.flatMapConverted
+import io.github.amichne.kast.protocol.contract.mapConverted
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
+import io.github.amichne.kast.protocol.contract.toWireDocumentConversion
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.appserver.query.PublicImpactCallFrameContractTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-20T02:48:08.877Z" hostname="Austins-MacBook-Pro.local" time="0.306">
+  <properties/>
+  <testcase name="direct requested frame preserves intent and rejects an unknown target discriminator()" classname="io.github.amichne.kast.appserver.query.PublicImpactCallFrameContractTest" time="0.296">
+    <failure message="java.lang.IllegalStateException: SchemaRejected" type="java.lang.IllegalStateException">java.lang.IllegalStateException: SchemaRejected
+	at io.github.amichne.kast.appserver.query.PublicImpactCallFrameContractTest.refined(PublicImpactCallFrameContractTest.kt:84)
+	at io.github.amichne.kast.appserver.query.PublicImpactCallFrameContractTest.direct requested frame preserves intent and rejects an unknown target discriminator(PublicImpactCallFrameContractTest.kt:56)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+]]></system-err>
+</testsuite>

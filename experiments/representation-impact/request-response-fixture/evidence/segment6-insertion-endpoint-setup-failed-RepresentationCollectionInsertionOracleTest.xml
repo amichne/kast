@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.RepresentationCollectionInsertionOracleTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-20T19:06:11.826Z" hostname="Austins-MacBook-Pro.local" time="0.146">
+  <properties/>
+  <testcase name="insertion remains model history and introduces no argument to result compiler transfer()" classname="io.github.amichne.kast.relation.contract.RepresentationCollectionInsertionOracleTest" time="0.134">
+    <failure message="java.lang.IllegalStateException: Fixture fact rejected: QUALIFIED_IDENTITY_MISMATCH" type="java.lang.IllegalStateException">java.lang.IllegalStateException: Fixture fact rejected: QUALIFIED_IDENTITY_MISMATCH
+	at io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTestKt.flowRefined(ValueSourceFlowOracleTest.kt:413)
+	at io.github.amichne.kast.relation.contract.ReviewedModelOracleCase.endpoint(ReviewedModelOracleCase.kt:97)
+	at io.github.amichne.kast.relation.contract.ReviewedModelOracleCase.endpoint$default(ReviewedModelOracleCase.kt:80)
+	at io.github.amichne.kast.relation.contract.SingleListModelOracleCase.&lt;init&gt;(SingleListModelOracleCase.kt:16)
+	at io.github.amichne.kast.relation.contract.SingleListModelOracleCase.&lt;init&gt;(SingleListModelOracleCase.kt:6)
+	at io.github.amichne.kast.relation.contract.RepresentationCollectionInsertionOracleTest.insertion remains model history and introduces no argument to result compiler transfer(RepresentationCollectionInsertionOracleTest.kt:12)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

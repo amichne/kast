@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryContinuationFailureTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.295Z" hostname="Austins-MacBook-Pro.local" time="0.009">
+  <properties/>
+  <testcase name="retired owner reports its cause on resume without semantic effects()" classname="io.github.amichne.kast.query.protocol.QueryContinuationFailureTest" time="0.002"/>
+  <testcase name="new epoch trims inherited receipts to admitted quotas()" classname="io.github.amichne.kast.query.protocol.QueryContinuationFailureTest" time="0.002"/>
+  <testcase name="expired output reports its exact cause before store expiry removes identity()" classname="io.github.amichne.kast.query.protocol.QueryContinuationFailureTest" time="0.001"/>
+  <testcase name="bounded receipt history returns unavailable after its cause is reclaimed()" classname="io.github.amichne.kast.query.protocol.QueryContinuationFailureTest" time="0.001"/>
+  <testcase name="capacity eviction preserves its precise cause after identity reclamation()" classname="io.github.amichne.kast.query.protocol.QueryContinuationFailureTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

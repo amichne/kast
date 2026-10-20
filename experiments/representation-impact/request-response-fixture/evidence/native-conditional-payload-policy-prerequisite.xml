@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="4.3">
+<file name="relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketConditionalPayloadRoute.kt">
+	<error line="53" column="1" severity="error" message="Line detected, which is longer than the defined maximum line length in the code style." source="detekt.MaxLineLength" />
+</file>
+</checkstyle>

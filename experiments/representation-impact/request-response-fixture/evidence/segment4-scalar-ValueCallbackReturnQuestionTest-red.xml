@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueCallbackReturnQuestionTest" tests="7" skipped="0" failures="2" errors="0" timestamp="2026-10-20T05:26:36.510Z" hostname="Austins-MacBook-Pro.local" time="0.106">
+  <properties/>
+  <testcase name="a positive return still needs the full callback answer in its active frame()" classname="io.github.amichne.kast.relation.contract.ValueCallbackReturnQuestionTest" time="0.07"/>
+  <testcase name="the same supplying occurrence cannot substitute another invocation execution()" classname="io.github.amichne.kast.relation.contract.ValueCallbackReturnQuestionTest" time="0.006"/>
+  <testcase name="a diagnostic return keeps the exact active callback callee()" classname="io.github.amichne.kast.relation.contract.ValueCallbackReturnQuestionTest" time="0.002"/>
+  <testcase name="a rejected callback return cannot substitute its execution owner()" classname="io.github.amichne.kast.relation.contract.ValueCallbackReturnQuestionTest" time="0.009">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=SOURCE_MISMATCH)&gt; but was: &lt;Refined(value=ValueFlowObligation(site=io.github.amichne.kast.relation.contract.ValueSite@e54b96c9, cause=CALLBACK_FLOW_UNPROVEN, evidence=CallbackContractRejected(cause=INVALID_FORWARDING_PATH)))&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=SOURCE_MISMATCH)&gt; but was: &lt;Refined(value=ValueFlowObligation(site=io.github.amichne.kast.relation.contract.ValueSite@e54b96c9, cause=CALLBACK_FLOW_UNPROVEN, evidence=CallbackContractRejected(cause=INVALID_FORWARDING_PATH)))&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.relation.contract.ValueCallbackReturnQuestionTest.a rejected callback return cannot substitute its execution owner(ValueCallbackReturnQuestionTest.kt:55)
+</failure>
+  </testcase>
+  <testcase name="an unavailable callback return cannot substitute its execution owner()" classname="io.github.amichne.kast.relation.contract.ValueCallbackReturnQuestionTest" time="0.003">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=SOURCE_MISMATCH)&gt; but was: &lt;Refined(value=ValueFlowObligation(site=io.github.amichne.kast.relation.contract.ValueSite@e54b96c9, cause=CALLBACK_FLOW_UNPROVEN, evidence=CallbackUnavailable(cause=PARAMETER_ESCAPES)))&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=SOURCE_MISMATCH)&gt; but was: &lt;Refined(value=ValueFlowObligation(site=io.github.amichne.kast.relation.contract.ValueSite@e54b96c9, cause=CALLBACK_FLOW_UNPROVEN, evidence=CallbackUnavailable(cause=PARAMETER_ESCAPES)))&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.relation.contract.ValueCallbackReturnQuestionTest.an unavailable callback return cannot substitute its execution owner(ValueCallbackReturnQuestionTest.kt:47)
+</failure>
+  </testcase>
+  <testcase name="a fresh qualified zero answer preserves the same callback question()" classname="io.github.amichne.kast.relation.contract.ValueCallbackReturnQuestionTest" time="0.002"/>
+  <testcase name="a diagnostic return rejects another body supplier or basis()" classname="io.github.amichne.kast.relation.contract.ValueCallbackReturnQuestionTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

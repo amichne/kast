@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.runtime.hosted.NativePacketQueryImplementationTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T03:26:45.998Z" hostname="Austins-MacBook-Pro.local" time="7.811">
+  <properties/>
+  <testcase name="testInterfaceConstructorOutgoingKeepsTheConcreteTargetThroughRetention" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryImplementationTest" time="6.864"/>
+  <testcase name="testInterfaceIncomingReturnKeepsTheConcreteTargetThroughRetention" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryImplementationTest" time="0.937"/>
+  <system-out><![CDATA[PACKET_QUERY_CAPTURE outgoing=true nativeFlowReads=12 retainedReadDelta=0 paths=1
+PACKET_QUERY_CAPTURE outgoing=false nativeFlowReads=14 retainedReadDelta=0 paths=1
+]]></system-out>
+  <system-err><![CDATA[[   1082]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1082]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

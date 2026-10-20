@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.runtime.hosted.NativePacketQueryTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-20T03:17:15.332Z" hostname="Austins-MacBook-Pro.local" time="2.862">
+  <properties/>
+  <testcase name="testIncomingEmittedWitnessesDoNotInventRequestArguments" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryTest" time="0.621"/>
+  <testcase name="testOutgoingEmittedWitnessesDoNotInventTheResponseReturn" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryTest" time="0.573"/>
+  <testcase name="testOriginalConstructorOutgoingReachesTheExactTransportArgument" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryTest" time="0.583"/>
+  <testcase name="testOpaqueSendIncomingReachesTheExactFeatureResponseField" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryTest" time="0.664"/>
+  <testcase name="testPrimaryConstructorPropertyKeepsItsExactCompilerIdentity" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryTest" time="0.418"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

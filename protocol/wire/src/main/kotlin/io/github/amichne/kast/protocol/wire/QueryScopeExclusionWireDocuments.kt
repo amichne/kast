@@ -6,6 +6,7 @@ import io.github.amichne.kast.protocol.contract.QueryCallableObservationDocument
 import io.github.amichne.kast.protocol.contract.QueryCallableTargetDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackObservationDocument
 import io.github.amichne.kast.protocol.contract.QueryExcludedCompilerTargetDocument
+import io.github.amichne.kast.protocol.contract.QueryExcludedCompilerTargetWireDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationDomainDocument
@@ -18,19 +19,20 @@ import io.github.amichne.kast.protocol.contract.QueryScopeMembershipAuthorityDoc
 import io.github.amichne.kast.protocol.contract.QuerySourceLessCallableDispositionDocument
 import io.github.amichne.kast.protocol.contract.QueryWalkScopeExclusionDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
+import io.github.amichne.kast.protocol.contract.RelationOccurrenceWireDocument
 import io.github.amichne.kast.protocol.contract.RelationProviderDocument
 import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.combineConverted
+import io.github.amichne.kast.protocol.contract.convertEach
+import io.github.amichne.kast.protocol.contract.flatMapConverted
+import io.github.amichne.kast.protocol.contract.flattenConverted
+import io.github.amichne.kast.protocol.contract.mapConverted
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
+import io.github.amichne.kast.protocol.contract.toWireDocumentConversion
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-
-@Serializable
-internal data class QueryExcludedCompilerTargetWireDocument(
-    val file: String,
-    val range: SourceRangeWireDocument,
-    val name: String,
-    val kind: SymbolKindWireDocument,
-    @SerialName("compiler_evidence") val compilerEvidence: CompilerSymbolEvidenceWireDocument,
-)
 
 @Serializable
 internal data class QueryScopeExclusionWireDocument(

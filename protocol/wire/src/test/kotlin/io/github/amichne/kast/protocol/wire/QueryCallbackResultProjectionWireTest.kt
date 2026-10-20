@@ -3,9 +3,14 @@ package io.github.amichne.kast.protocol.wire
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ImpactEvidenceRevisionDocument
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBindingWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackFlowWireDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject

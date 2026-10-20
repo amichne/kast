@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest" tests="3" skipped="0" failures="3" errors="0" timestamp="2026-10-20T18:30:06.613Z" hostname="Austins-MacBook-Pro.local" time="0.021">
+  <properties/>
+  <testcase name="the same declaration with another full scope cannot borrow the prior endpoint(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest" time="0.007">
+    <properties>
+      <property name="before.sourceBytes" value="59032"/>
+      <property name="after.sourceBytes" value="44764"/>
+      <property name="before.stepBytes" value="82318"/>
+      <property name="after.stepBytes" value="70570"/>
+      <property name="before.physicalEndpoints" value="25"/>
+      <property name="after.physicalEndpoints" value="7"/>
+    </properties>
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;4&gt; but was: &lt;6&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;4&gt; but was: &lt;6&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:569)
+	at io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest.assertConserved(ValueFullEndpointSharingTest.kt:72)
+	at io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest.the same declaration with another full scope cannot borrow the prior endpoint(ValueFullEndpointSharingTest.kt:52)
+</failure>
+  </testcase>
+  <testcase name="full admitted endpoint sharing compacts the source before its next native read(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest" time="0.007">
+    <properties>
+      <property name="before.sourceBytes" value="59032"/>
+      <property name="after.sourceBytes" value="44764"/>
+      <property name="before.stepBytes" value="82318"/>
+      <property name="after.stepBytes" value="70570"/>
+      <property name="before.physicalEndpoints" value="25"/>
+      <property name="after.physicalEndpoints" value="6"/>
+    </properties>
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;4&gt; but was: &lt;6&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;4&gt; but was: &lt;6&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:569)
+	at io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest.assertConserved(ValueFullEndpointSharingTest.kt:72)
+	at io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest.full admitted endpoint sharing compacts the source before its next native read(ValueFullEndpointSharingTest.kt:33)
+</failure>
+  </testcase>
+  <testcase name="distinct resolved endpoint proofs keep every fact and receipt through sharing(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest" time="0.006">
+    <properties>
+      <property name="before.sourceBytes" value="59032"/>
+      <property name="after.sourceBytes" value="44764"/>
+      <property name="before.stepBytes" value="82318"/>
+      <property name="after.stepBytes" value="70570"/>
+      <property name="before.physicalEndpoints" value="25"/>
+      <property name="after.physicalEndpoints" value="6"/>
+    </properties>
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;4&gt; but was: &lt;6&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;4&gt; but was: &lt;6&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:569)
+	at io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest.assertConserved(ValueFullEndpointSharingTest.kt:72)
+	at io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest.distinct resolved endpoint proofs keep every fact and receipt through sharing(ValueFullEndpointSharingTest.kt:24)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

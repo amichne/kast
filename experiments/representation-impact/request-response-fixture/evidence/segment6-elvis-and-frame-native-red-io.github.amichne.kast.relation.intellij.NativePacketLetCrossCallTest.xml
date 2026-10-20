@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketLetCrossCallTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T17:17:31.944Z" hostname="Austins-MacBook-Pro.local" time="0.449">
+  <properties/>
+  <testcase name="testFirstGenuineReturnCannotUseTheSecondActualLetFrame" classname="io.github.amichne.kast.relation.intellij.NativePacketLetCrossCallTest" time="0.449"/>
+  <system-out><![CDATA[LET_CALLBACK_K2 call=ExactDeclarationTextRange(startInclusive=248, endExclusive=264) receiver=ExactDeclarationTextRange(startInclusive=248, endExclusive=253) slot=EXTENSION dispatch=NONE body=ExactDeclarationTextRange(startInclusive=258, endExclusive=264) formal=IMPLICIT_PARAMETER_0 references=[ExactDeclarationTextRange(startInclusive=260, endExclusive=262)] normalResult=ExactDeclarationTextRange(startInclusive=260, endExclusive=262)
+LET_CALLBACK_K2 call=ExactDeclarationTextRange(startInclusive=280, endExclusive=297) receiver=ExactDeclarationTextRange(startInclusive=280, endExclusive=286) slot=EXTENSION dispatch=NONE body=ExactDeclarationTextRange(startInclusive=291, endExclusive=297) formal=IMPLICIT_PARAMETER_0 references=[ExactDeclarationTextRange(startInclusive=293, endExclusive=295)] normalResult=ExactDeclarationTextRange(startInclusive=293, endExclusive=295)
+LET_RETURN_SETUP kind=ISOLATED_K2_NORMAL_RESULT entry_application=NOT_USED
+LET_CROSS_FRAME_RESULT status=NO_MODELED_OR_CALL_RESULT causes=[UNSUPPORTED_RETURN, EXTERNAL_CALL]
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

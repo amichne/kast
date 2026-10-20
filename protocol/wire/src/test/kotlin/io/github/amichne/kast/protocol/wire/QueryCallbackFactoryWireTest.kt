@@ -13,6 +13,11 @@ import io.github.amichne.kast.protocol.contract.QueryCallbackFactoryReturnDocume
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowDocument
 import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackValueDocument
 import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackValueOriginDocument
+import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackValueOriginWireDocument
+import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackValueWireDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.immutableCallbackWire
+import io.github.amichne.kast.protocol.contract.toContract
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject

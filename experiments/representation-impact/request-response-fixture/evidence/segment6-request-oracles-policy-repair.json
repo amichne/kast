@@ -1,0 +1,34 @@
+{
+  "stage": "POLICY_SETUP_REPAIR",
+  "prior_command_duration_seconds": 55,
+  "prior_exit": 1,
+  "prior_compile": "PASSED",
+  "prior_detekt": "FAILED_FOUR_ISSUES",
+  "prior_assertions": "NOT_RUN",
+  "owner_repairs": [
+    {
+      "file": "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketS1QueryOracle.kt",
+      "before_sha256": "3ec06bbff2987742d760c4df8552fdbb1af827da8acc3bd3a93698cd95f4b4cd",
+      "after_sha256": "c3a50cb4585254c85e08838b041a5f4d547bb925ff455daf212b91d1abc1de75",
+      "reverse_expanded_predicate_tokens_and_order": "PASSED"
+    },
+    {
+      "file": "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketS3QueryCallbackOracle.kt",
+      "before_sha256": "013d4aac630fae6ac10234e3db34850b7658ab7a171066cb820ff0d37c7e5c8d",
+      "after_sha256": "30c66179fbed104c207db35f7b73e253e96e4e39cc3ff71cf942fba307dc1ce9",
+      "reverse_expanded_predicate_tokens_and_order": "PASSED"
+    },
+    {
+      "file": "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketT1ValueConditions.kt",
+      "before_sha256": "830bee302258e6eeaecf989107244be9fd5bea8a2906d0e699bf89a4ffa1bdde",
+      "after_sha256": "77c91a92d527a9844df68c78a8506dcc8a81371bed2caad9d36111237f3cca11",
+      "reverse_expanded_predicate_tokens_and_order": "PASSED"
+    }
+  ],
+  "fourth_issue_owner": "root:NativePacketValueProofAllocation.kt",
+  "formatter_exit": 0,
+  "gradle": "NOT_RUN_BY_FIXTURE_OWNER",
+  "semantic_changes": false,
+  "threshold_or_suppression_changes": false,
+  "guidance": "Examined runtime/AGENTS.md and fixture/AGENTS.md. No commands, ownership rules, or local rules changed."
+}

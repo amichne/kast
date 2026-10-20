@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryRetainedOccurrencePresentationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.497Z" hostname="Austins-MacBook-Pro.local" time="0.2">
+  <properties/>
+  <testcase name="retained file scoped occurrences page and replay without semantic execution or invented owners()" classname="io.github.amichne.kast.query.protocol.QueryRetainedOccurrencePresentationTest" time="0.009"/>
+  <testcase name="reference admission bound contains maximal signature arrays and both read authority variants()" classname="io.github.amichne.kast.query.protocol.QueryRetainedOccurrencePresentationTest" time="0.046"/>
+  <testcase name="small occurrence pages preserve complete producer coverage without semantic replay()" classname="io.github.amichne.kast.query.protocol.QueryRetainedOccurrencePresentationTest" time="0.003"/>
+  <testcase name="reference admission bound contains every encoded row variant and repeated inline selectors()" classname="io.github.amichne.kast.query.protocol.QueryRetainedOccurrencePresentationTest" time="0.141"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

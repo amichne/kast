@@ -14,6 +14,7 @@ import io.github.amichne.kast.protocol.contract.OperationRejection
 import io.github.amichne.kast.protocol.contract.OperationRequest
 import io.github.amichne.kast.protocol.contract.OperationResult
 import io.github.amichne.kast.protocol.contract.SchemaIdentity
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
 import io.github.amichne.kast.protocol.registry.OperationDefinition
 import java.util.UUID
 import kotlinx.serialization.KSerializer

@@ -1,0 +1,154 @@
+package fixture.runtime
+
+import fixture.client.ClientResponse
+import fixture.client.EchoOffersClient
+import fixture.client.HeaderBuilder
+import fixture.client.OffersClientImpl
+import fixture.controls.constantMapper
+import fixture.controls.sourceKnownBackendError
+import fixture.controls.sourceKnownEmpty
+import fixture.controls.sourceKnownNonempty
+import fixture.controls.twoMatchedMapperCalls
+import fixture.feature.FeatureError
+import fixture.feature.FeatureRequest
+import fixture.feature.FeatureResponse
+import fixture.feature.OffersProcessorImpl
+import fixture.oracle.EmittedWitness
+import fixture.oracle.Guard
+import fixture.oracle.KnownExclusion
+import fixture.oracle.QueryCompletion
+import fixture.oracle.RecordedEvidence
+import fixture.oracle.RequestResponseOracle
+import fixture.oracle.RowResult
+import fixture.oracle.SourcePolicy
+import fixture.oracle.TestedValue
+import fixture.oracle.Transfer
+import fixture.oracle.Verdict
+import fixture.oracle.evaluateRow
+import fixture.outcome.Outcome
+import fixture.wire.Call
+import fixture.wire.Envelope
+import fixture.wire.OffersApi
+import fixture.wire.WireError
+import fixture.wire.WireRequest
+import fixture.wire.WireResponse
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
+import java.nio.file.Files
+import java.nio.file.Path
+import java.security.MessageDigest
+
+private data class Invocation(val headers: Map<String, String>, val body: WireRequest)
+
+private fun scenario(
+    input: Outcome<WireError, Envelope<WireResponse>>,
+    expected: Outcome<FeatureError, FeatureResponse>,
+    expectedLog: String,
+) {
+    val invocations = mutableListOf<Invocation>()
+    val api = object : OffersApi {
+        override fun readOffers(headers: Map<String, String>, body: WireRequest): Call<WireError, WireResponse> {
+            invocations += Invocation(headers, body)
+            return Call { input }
+        }
+    }
+    val processor = OffersProcessorImpl(OffersClientImpl(api, HeaderBuilder()))
+    val originalOutput = System.out
+    val bytes = ByteArrayOutputStream()
+    val result = try {
+        PrintStream(bytes, true, Charsets.UTF_8).use { output ->
+            System.setOut(output)
+            processor.getOffer(FeatureRequest(destination = "request-destination", sessionToken = "session-token"))
+        }
+    } finally {
+        System.setOut(originalOutput)
+    }
+    check(result == expected) { "Expected $expected, got $result" }
+    check(bytes.toString(Charsets.UTF_8) == expectedLog)
+    check(invocations == listOf(Invocation(mapOf("Authorization" to "Bearer session-token"),
+        WireRequest(destination = "request-destination", channel = "APP"))))
+}
+
+private fun runtimeAssertions() {
+    scenario(sourceKnownNonempty(), Outcome.success(FeatureResponse("backend-first")), "status=207\n")
+    scenario(sourceKnownEmpty(), Outcome.error(FeatureError("NO_OFFER")), "status=204\n")
+    scenario(sourceKnownBackendError(), Outcome.error(FeatureError("BACKEND_DENIED")),
+        "code=BACKEND_DENIED\nread offers failed: private-debug\n")
+    val echo = OffersProcessorImpl(EchoOffersClient()).getOffer(FeatureRequest("echo-destination", "echo-token"))
+    check(echo == Outcome.success(FeatureResponse("echo-destination")))
+    val constant = constantMapper(Outcome.success(WireResponse(listOf("discarded-origin"))))
+    check(constant == Outcome.success(ClientResponse(listOf("constant-link"))))
+    val (first, second) = twoMatchedMapperCalls()
+    check(first == WireRequest("first-destination", "APP"))
+    check(second == WireRequest("second-destination", "APP"))
+}
+
+private fun oracleAssertions() {
+    val rows = RequestResponseOracle.rows.associateBy { it.id }
+    check(rows.size == 25)
+    check("C2.9" in RequestResponseOracle.m2)
+    val c29 = rows.getValue("C2.9")
+    val route = c29.routes.single()
+    val witness = EmittedWitness(c29.seed, c29.verdict, route)
+    val partial = RecordedEvidence(listOf(witness), completion = QueryCompletion.COMPLETION_UNPROVEN)
+    check(evaluateRow(c29, SourcePolicy.PRODUCTION_ONLY, partial) is RowResult.PositiveSatisfied)
+    check(partial.completion == QueryCompletion.COMPLETION_UNPROVEN)
+    val missingNonNull = witness.copy(route = route.copy(guards = route.guards - Guard.NonNull(TestedValue.FIRST_OR_NULL_RESULT)))
+    check(evaluateRow(c29, SourcePolicy.PRODUCTION_ONLY, RecordedEvidence(listOf(missingNonNull))) is RowResult.PositiveMissing)
+    val noWitnesses = RecordedEvidence(emptyList(), relationshipUnproven = setOf("C2.9", "C1.N1"))
+    check(evaluateRow(c29, SourcePolicy.PRODUCTION_ONLY, noWitnesses) is RowResult.PositiveMissing)
+    val forbidden = rows.getValue("C1.N1")
+    check(evaluateRow(forbidden, SourcePolicy.PRODUCTION_ONLY, noWitnesses) is RowResult.ForbiddenNotEmitted)
+    val prohibited = EmittedWitness(forbidden.seed, Verdict.CONDITIONAL_PATH,
+        forbidden.routes.first().copy(seedFields = listOf("destination")), RequestResponseOracle.PRODUCTION_IMPLEMENTATION)
+    check(evaluateRow(forbidden, SourcePolicy.PRODUCTION_ONLY, RecordedEvidence(listOf(prohibited))) is RowResult.ForbiddenEmitted)
+    val wrongArgument = EmittedWitness(fixture.oracle.Seed.S2, Verdict.CONDITIONAL_PATH,
+        fixture.oracle.FieldRoute(listOf("Success", "value"), "OffersApi.readOffers:body[1]", listOf("destination"),
+            setOf(Transfer.CONSTRUCTION)))
+    check(evaluateRow(rows.getValue("C2.N1"), SourcePolicy.PRODUCTION_ONLY,
+        RecordedEvidence(listOf(wrongArgument))) is RowResult.ForbiddenEmitted)
+    val echoRow = rows.getValue("T1.COMBINED")
+    val echoWitness = EmittedWitness(echoRow.seed, echoRow.verdict, echoRow.routes.single(),
+        RequestResponseOracle.ECHO_IMPLEMENTATION, "test")
+    check(evaluateRow(echoRow, SourcePolicy.PRODUCTION_AND_TEST, RecordedEvidence(listOf(echoWitness))) is RowResult.PositiveSatisfied)
+    check(evaluateRow(echoRow, SourcePolicy.PRODUCTION_ONLY, RecordedEvidence(listOf(echoWitness))) is RowResult.OutsidePolicy)
+    val exclusion = rows.getValue("T1.PRODUCTION")
+    check(evaluateRow(exclusion, SourcePolicy.PRODUCTION_ONLY, noWitnesses) is RowResult.ExclusionMissing)
+    check(evaluateRow(exclusion, SourcePolicy.PRODUCTION_ONLY,
+        RecordedEvidence(emptyList(), setOf(KnownExclusion(RequestResponseOracle.ECHO_IMPLEMENTATION,
+            SourcePolicy.PRODUCTION_ONLY)))) is RowResult.ExclusionSatisfied)
+    val c25 = rows.getValue("C2.5")
+    check(c25.routes.size == 2)
+    check(c25.routes.all { Transfer.CONSTRUCTION in it.transfers })
+    val v8 = RequestResponseOracle.variants.single { it.id == "V8" }
+    check(v8.constructorTarget?.declaredIndex == 1)
+    check(v8.outgoingTarget.declaredIndex == 0)
+}
+
+private fun examineFrozenInputs() {
+    val manifests = listOf(
+        "initial-freeze.sha256",
+        "derived-sources.sha256",
+        "segment4-controls.sha256",
+        "segment4-return-controls.sha256",
+        "segment6-library-controls.sha256",
+        "segment5-branch-controls.sha256",
+        "segment5-entry-controls.sha256",
+        "segment5-source-function-controls.sha256",
+    )
+    for (manifest in manifests) {
+        for (line in Files.readAllLines(Path.of(manifest))) {
+            val (expected, relativePath) = line.split("  ", limit = 2)
+            val actual = MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(Path.of(relativePath)))
+                .joinToString("") { "%02x".format(it) }
+            check(actual == expected) { "Frozen input changed: $relativePath" }
+        }
+    }
+}
+
+fun main() {
+    examineFrozenInputs()
+    runtimeAssertions()
+    oracleAssertions()
+    println("PASSED: frozen inputs, nonempty success, empty success, backend error, echo, constant mapper, matched calls, oracle outcomes")
+}

@@ -41,7 +41,7 @@ internal data class QueryProjectedEvidence(
                     is Refinement.Rejected -> return admitted
                 }
             val impactAccounting =
-                when (val projected = result.rows.impactAccountingDocument()) {
+                when (val projected = result.rows.impactAccountingDocument(authority)) {
                     is Refinement.Refined -> projected.value
                     is Refinement.Rejected -> return Refinement.Rejected(projected.failure.presentationRejection())
                 }

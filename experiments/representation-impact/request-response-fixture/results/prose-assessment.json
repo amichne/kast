@@ -1,0 +1,79 @@
+{
+  "comprehension": {
+    "type": "NOT_ASSESSED"
+  },
+  "documents": [
+    {
+      "findings": [
+        {
+          "category": "READABILITY",
+          "line": 1,
+          "message": "Estimated Flesch-Kincaid grade 9.80 exceeds the shared advisory target of 8.",
+          "rule": "Slopsentral.Grade",
+          "severity": "warning",
+          "span": [
+            1,
+            1
+          ],
+          "type": "FINDING"
+        }
+      ],
+      "metrics": {
+        "estimatedSyllables": 768,
+        "fleschKincaidGrade": 9.8,
+        "sentences": 40,
+        "words": 427,
+        "wordsPerSentence": 10.68
+      },
+      "path": "/Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/experiments/representation-impact/request-response-fixture/README.md",
+      "sourceSha256": "10db0b4752ec33d80f073f00282d0bc6f17e7011b249f48501c8b6235eee4ba2",
+      "type": "DOCUMENT_ASSESSMENT"
+    },
+    {
+      "findings": [
+        {
+          "category": "READABILITY",
+          "line": 1,
+          "message": "Estimated Flesch-Kincaid grade 10.18 exceeds the shared advisory target of 8.",
+          "rule": "Slopsentral.Grade",
+          "severity": "warning",
+          "span": [
+            1,
+            1
+          ],
+          "type": "FINDING"
+        }
+      ],
+      "metrics": {
+        "estimatedSyllables": 105,
+        "fleschKincaidGrade": 10.18,
+        "sentences": 6,
+        "words": 56,
+        "wordsPerSentence": 9.33
+      },
+      "path": "/Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/experiments/representation-impact/request-response-fixture/results/fixture-runtime.md",
+      "sourceSha256": "7055a9c479847aebe054505a0755cdcf371a832b10cfe13c3ed602b022db926c",
+      "type": "DOCUMENT_ASSESSMENT"
+    },
+    {
+      "findings": [],
+      "metrics": {
+        "estimatedSyllables": 103,
+        "fleschKincaidGrade": 7.73,
+        "sentences": 7,
+        "words": 61,
+        "wordsPerSentence": 8.71
+      },
+      "path": "/Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/experiments/representation-impact/request-response-fixture/results/readme-findings.md",
+      "sourceSha256": "4323502ce5edc525a0c219e3ea199b6740bfb885c9a1181a0758a4ebcbfb1566",
+      "type": "DOCUMENT_ASSESSMENT"
+    }
+  ],
+  "engine": {
+    "policySha256": "0a7cc8bb61ff2eb3ea13957b54d752e90d48cf41d936de789143b650d55ea277",
+    "type": "VALE",
+    "version": "3.24.0"
+  },
+  "schemaVersion": 2,
+  "type": "ASSESSED"
+}

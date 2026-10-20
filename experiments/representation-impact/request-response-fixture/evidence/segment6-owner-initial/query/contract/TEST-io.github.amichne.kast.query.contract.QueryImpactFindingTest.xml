@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryImpactFindingTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:17.686Z" hostname="Austins-MacBook-Pro.local" time="0.007">
+  <properties/>
+  <testcase name="selected finding ordinal remains the original path ordinal()" classname="io.github.amichne.kast.query.contract.QueryImpactFindingTest" time="0.002"/>
+  <testcase name="finding construction refuses an ordinal outside the original ledger()" classname="io.github.amichne.kast.query.contract.QueryImpactFindingTest" time="0.001"/>
+  <testcase name="finding view preserves original identities for distinct routes to the same destination()" classname="io.github.amichne.kast.query.contract.QueryImpactFindingTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

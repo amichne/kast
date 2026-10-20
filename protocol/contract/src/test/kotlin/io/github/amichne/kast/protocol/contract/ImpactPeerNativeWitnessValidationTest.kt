@@ -9,6 +9,20 @@ class ImpactPeerNativeWitnessValidationTest {
     private val values = fixture.values
 
     @Test
+    fun `producer invocation cannot hide a foreign execution body behind a source callable`() {
+        val invocation = ImpactInvocationReferenceDocument(fixture.source.range, fixture.source.enclosing)
+        val valid = ImpactWitnessDocument.Producer(fixture.source, invocation)
+        assertEquals(Refinement.Refined(Unit), result(valid).validateImpactAccounting())
+        for (body in listOf(fixture.target.enclosing, fixture.source.enclosing)) {
+            val changed = invocation.copy(executionOwner = ImpactExecutionOwnerDocument.Anonymous(body))
+            assertEquals(
+                Refinement.Rejected(ImpactAccountingFailure.WITNESS_VIEW_MISMATCH),
+                result(valid.copy(invocation = changed)).validateImpactAccounting(),
+            )
+        }
+    }
+
+    @Test
     fun `ordinary native witness alternatives cannot claim peer basis as source compiler proof`() {
         val native = sourceNativeRead()
         for (witness in foreignWitnesses(native)) assertEquals(

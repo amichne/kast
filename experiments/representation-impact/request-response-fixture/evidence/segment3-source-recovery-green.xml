@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactSourceRecoveryPolicyTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T03:19:25.458Z" hostname="Austins-MacBook-Pro.local" time="0.006">
+  <properties/>
+  <testcase name="every admitted source failure preserves its original recovery and scalar enum wire value()" classname="io.github.amichne.kast.protocol.contract.ImpactSourceRecoveryPolicyTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

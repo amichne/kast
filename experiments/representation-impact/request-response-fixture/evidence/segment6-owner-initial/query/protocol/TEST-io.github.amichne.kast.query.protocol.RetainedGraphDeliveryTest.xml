@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.RetainedGraphDeliveryTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:31.264Z" hostname="Austins-MacBook-Pro.local" time="0.032">
+  <properties/>
+  <testcase name="compact delivery preserves qualified coverage and the original finite blocker()" classname="io.github.amichne.kast.query.protocol.RetainedGraphDeliveryTest" time="0.007"/>
+  <testcase name="expired reference rejects before presentation and an exhausted row cursor preserves evidence()" classname="io.github.amichne.kast.query.protocol.RetainedGraphDeliveryTest" time="0.005"/>
+  <testcase name="stale and unissued references cannot gain compact evidence authority()" classname="io.github.amichne.kast.query.protocol.RetainedGraphDeliveryTest" time="0.001"/>
+  <testcase name="compact retained graph reconstructs 53 exact occurrences and repeated witnesses once()" classname="io.github.amichne.kast.query.protocol.RetainedGraphDeliveryTest" time="0.019"/>
+  <system-out><![CDATA[D3 baseline full_bytes=437022 compact_bytes=62403 rows=53 witnesses=53 semantic_calls=0
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

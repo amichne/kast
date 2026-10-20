@@ -1,0 +1,144 @@
+@file:OptIn(org.jetbrains.kotlin.analysis.api.KaExperimentalApi::class)
+
+package io.github.amichne.kast.relation.intellij
+
+import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiManager
+import com.intellij.psi.util.PsiTreeUtil
+import io.github.amichne.kast.relation.contract.ValueExecutionOwner
+import io.github.amichne.kast.relation.contract.ValueFlowStep
+import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.relation.contract.ValueTransferKind
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
+import io.github.amichne.kast.symbol.contract.SymbolSelector
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
+import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertFalse
+import junit.framework.TestCase.assertTrue
+import org.jetbrains.kotlin.analysis.api.KaSession
+import org.jetbrains.kotlin.analysis.api.symbols.KaLocalVariableSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
+import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
+import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
+import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtFunctionLiteral
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression
+
+/** Exact original entry symbols and references supply expectations independently of emitted transfers. */
+internal class NativePacketEntryBindingSource(
+    private val project: Project,
+    private val base: VirtualFile,
+    private val fixture: NativePacketValueFixture,
+) {
+    private val route = NativePacketBindBranchSource(project, base, fixture)
+
+    fun facts(): EntryBindingFacts =
+        ReadAction.compute<EntryBindingFacts, RuntimeException> {
+            val expected = NativePacketDestructuringProbeSource(project, base, fixture).expectation()
+            val file = checkNotNull(base.findFileByRelativePath("src/fixture/feature/OffersProcessor.kt"))
+            val psi = PsiManager.getInstance(project).findFile(file) as KtFile
+            val entries = PsiTreeUtil.collectElementsOfType(psi, KtDestructuringDeclarationEntry::class.java)
+            val response = entries.single { entry -> entry.name == "response" }
+            val link = entries.single { entry -> entry.name == "link" }
+            val literal = checkNotNull(PsiTreeUtil.getParentOfType(response, KtFunctionLiteral::class.java))
+            val references = PsiTreeUtil.collectElementsOfType(literal, KtNameReferenceExpression::class.java)
+            val responseRead = references.single { reference ->
+                range(reference) == exact(RESPONSE_READ_START, RESPONSE_READ_END)
+            }
+            val linkRead = references.single { reference -> range(reference) == exact(LINK_READ_START, LINK_READ_END) }
+            assertEquals("response", responseRead.getReferencedName())
+            assertEquals("link", linkRead.getReferencedName())
+            assertEquals(exact(RESPONSE_START, RESPONSE_END), range(response))
+            assertEquals(exact(LINK_START, LINK_END), range(link))
+            assertEquals(expected.executionOwner.range, range(literal))
+            assertFalse((response.parent as KtDestructuringDeclaration).isVar)
+            assertFalse((link.parent as KtDestructuringDeclaration).isVar)
+            IntellijReadObservation.None.observedAnalyze(literal) {
+                proveReferences(response = response, responseRead = responseRead, link = link, linkRead = linkRead)
+            }
+            EntryBindingFacts(
+                enclosing = expected.enclosing,
+                owner = expected.executionOwner,
+                response = range(response),
+                responseRead = range(responseRead),
+                link = range(link),
+                linkRead = range(linkRead),
+            )
+        }
+
+    /** This repeats the frozen component-return prefix as five fixed one-hop reads, without another coordinator. */
+    fun responseResult(): ValueSite {
+        val value = route.successValue()
+        val branch = next(source = value, kind = ValueTransferKind.BRANCH_ALTERNATIVE, stage = "bind when result")
+        val bindReturn = next(source = branch, kind = ValueTransferKind.RETURN, stage = "bind return")
+        val bindResult =
+            next(source = bindReturn, kind = ValueTransferKind.SOURCE_CALL_RETURN, stage = "matched bind return")
+        val componentReturn = next(source = bindResult, kind = ValueTransferKind.RETURN, stage = "component1 return")
+        return next(
+            source = componentReturn,
+            kind = ValueTransferKind.SOURCE_CALL_RETURN,
+            stage = "matched original response component return",
+        )
+    }
+
+    fun read(site: ValueSite): ValueFlowStep = route.read(site)
+
+    private fun next(source: ValueSite, kind: ValueTransferKind, stage: String): ValueSite {
+        val read = route.read(source)
+        val transfers = read.transfers.filter { transfer -> transfer.kind == kind }
+        assertEquals(
+            "The original component prefix needs $stage. Causes=${read.obligations.map { it.cause }}",
+            1,
+            transfers.size,
+        )
+        return transfers.single().target
+    }
+
+    private fun KaSession.proveReferences(
+        response: KtDestructuringDeclarationEntry,
+        responseRead: KtNameReferenceExpression,
+        link: KtDestructuringDeclarationEntry,
+        linkRead: KtNameReferenceExpression,
+    ) {
+        val responseSymbol = response.symbol
+        val linkSymbol = link.symbol
+        assertTrue(responseSymbol is KaLocalVariableSymbol)
+        assertTrue(linkSymbol is KaLocalVariableSymbol)
+        assertEquals(KaSymbolOrigin.SOURCE, responseSymbol.origin)
+        assertEquals(KaSymbolOrigin.SOURCE, linkSymbol.origin)
+        assertTrue(responseSymbol.isVal)
+        assertTrue(linkSymbol.isVal)
+        assertEquals(response.originalElement, responseSymbol.psi?.originalElement)
+        assertEquals(link.originalElement, linkSymbol.psi?.originalElement)
+        assertEquals(responseSymbol, responseRead.resolveToSymbol())
+        assertEquals(linkSymbol, linkRead.resolveToSymbol())
+        assertFalse(responseSymbol == linkSymbol)
+        assertFalse(responseSymbol == linkRead.resolveToSymbol())
+        println("ENTRY_BINDING_K2 response=806:814 read=939:947 neighbor=931:935 neighborRead=1052:1056 immutable=true")
+    }
+
+    private fun exact(start: Int, end: Int) = ExactDeclarationTextRange.parse(start, end).nativeRefined()
+
+    private companion object {
+        const val RESPONSE_START = 806
+        const val RESPONSE_END = 814
+        const val RESPONSE_READ_START = 939
+        const val RESPONSE_READ_END = 947
+        const val LINK_START = 931
+        const val LINK_END = 935
+        const val LINK_READ_START = 1052
+        const val LINK_READ_END = 1056
+    }
+}
+
+internal data class EntryBindingFacts(
+    val enclosing: SymbolSelector,
+    val owner: ValueExecutionOwner,
+    val response: ExactDeclarationTextRange,
+    val responseRead: ExactDeclarationTextRange,
+    val link: ExactDeclarationTextRange,
+    val linkRead: ExactDeclarationTextRange,
+)

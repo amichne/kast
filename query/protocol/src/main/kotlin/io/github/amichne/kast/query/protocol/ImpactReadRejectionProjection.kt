@@ -8,9 +8,11 @@ import io.github.amichne.kast.query.contract.QueryImpactReadRejection
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowStepFailure
 
-internal fun QueryImpactReadRejection.impactDocument(): ImpactProjected<ImpactReadRejectionDocument> =
+internal fun QueryImpactReadRejection.impactDocument(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactReadRejectionDocument> =
     source
-        .impactDocument()
+        .impactDocument(references)
         .impactZip(
             QueryDiscoveryCountDocument.parse(examinedWorkUnits.value).impactFailure(ImpactPathProjectionFailure::Count)
         )

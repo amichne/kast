@@ -1,0 +1,127 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Calculating task graph as no cached configuration is available for tasks: :relation:contract:spotlessKotlinApply :relation:contract:test --tests *RepresentationModeledValueOracleTest --tests *ValueFlowModeledApplicationTest
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :relation:contract:spotlessKotlin
+> Task :relation:contract:spotlessKotlinApply
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :kernel:compileJava NO-SOURCE
+> Task :relation:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+
+> Task :relation:contract:compileKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt:25:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt:55:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt:67:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt:80:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt:97:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt:104:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt:111:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueModelApplication.kt:55:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt:25:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt:55:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt:67:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt:80:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt:97:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt:104:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt:111:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueModelApplication.kt:55:5 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+
+> Task :relation:contract:compileJava NO-SOURCE
+> Task :relation:contract:processResources NO-SOURCE
+> Task :relation:contract:classes UP-TO-DATE
+> Task :relation:contract:jar
+> Task :kernel:processResources NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar UP-TO-DATE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesKotlin UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesJava NO-SOURCE
+> Task :relation:contract:compileTestKotlin
+> Task :relation:contract:compileTestJava NO-SOURCE
+> Task :relation:contract:processTestResources NO-SOURCE
+> Task :relation:contract:testClasses UP-TO-DATE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :workspace:contract:processTestFixturesResources NO-SOURCE
+> Task :workspace:contract:testFixturesClasses UP-TO-DATE
+> Task :workspace:contract:testFixturesJar UP-TO-DATE
+
+> Task :relation:contract:test FAILED
+
+RepresentationModeledValueOracleTest > selected suffix and exact local condition survive the provenance projection() FAILED
+    java.lang.ClassCastException: class io.github.amichne.kast.relation.contract.RepresentationHistory$Unmodeled cannot be cast to class io.github.amichne.kast.relation.contract.ValueModelApplication$CollectionSelection (io.github.amichne.kast.relation.contract.RepresentationHistory$Unmodeled and io.github.amichne.kast.relation.contract.ValueModelApplication$CollectionSelection are in unnamed module of loader 'app')
+        at io.github.amichne.kast.relation.contract.RepresentationModeledValueOracleTest.selected suffix and exact local condition survive the provenance projection(RepresentationModeledValueOracleTest.kt:56)
+
+RepresentationModeledValueOracleTest > a prior unknown input reason survives automatic value selection() FAILED
+    org.opentest4j.AssertionFailedError: expected: <Unknown(reason=INPUT_STATE_NOT_ESTABLISHED)> but was: <Unknown(reason=UNMODELED_TRANSFORMATION)>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+        at app//io.github.amichne.kast.relation.contract.RepresentationModeledValueOracleTest.a prior unknown input reason survives automatic value selection(RepresentationModeledValueOracleTest.kt:40)
+
+RepresentationModeledValueOracleTest > automatic application stays distinct from compiler flow and supplied representation rules() FAILED
+    org.opentest4j.AssertionFailedError: expected: <CollectionSelection(source=io.github.amichne.kast.relation.contract.ValueSite@409c7483, target=io.github.amichne.kast.relation.contract.ValueSite@76b98014, binding=io.github.amichne.kast.relation.contract.ReviewedLibraryBinding@dfb00e88, condition=SelectedElementCondition(receiver=io.github.amichne.kast.relation.contract.ValueSite@409c7483, result=io.github.amichne.kast.relation.contract.ValueSite@76b98014, index=ValueElementIndex(value=0)))> but was: <Unmodeled(source=ValueSiteIdentity(owner=ValueDeclarationIdentity(compiler=CompilerSymbolIdentity(value=canonical-signature-sha256-v1|2647be38a170eeaaea68a3f4692ab8283b8e2b339f74e9405b4d8dc5d03aa91b), file=Workspace(path=CanonicalWorkspaceFilePath(value=/fixture/SourceFlow.kt)), range=ExactDeclarationTextRange(startInclusive=0, endExclusive=300)), basis=Published(lease=SemanticReadLease(workspaceRoot=CanonicalWorkspaceRoot(value=/fixture), generation=EvidenceGeneration(value=1))), range=ExactDeclarationTextRange(startInclusive=46, endExclusive=50), role=Receiver(call=io.github.amichne.kast.relation.contract.ValueInvocation@2be514a8, kind=EXTENSION), execution=ValueExecutionIdentity(host=ValueDeclarationIdentity(compiler=CompilerSymbolIdentity(value=canonical-signature-sha256-v1|2647be38a170eeaaea68a3f4692ab8283b8e2b339f74e9405b4d8dc5d03aa91b), file=Workspace(path=CanonicalWorkspaceFilePath(value=/fixture/SourceFlow.kt)), range=ExactDeclarationTextRange(startInclusive=0, endExclusive=300)), basis=Published(lease=SemanticReadLease(workspaceRoot=CanonicalWorkspaceRoot(value=/fixture), generation=EvidenceGeneration(value=1))), body=ValueDeclarationIdentity(compiler=CompilerSymbolIdentity(value=canonical-signature-sha256-v1|b82286af3395551ed0b1ec482132b4c5cb0e79decfa844da5c0cbfc60f452551), file=Workspace(path=CanonicalWorkspaceFilePath(value=/fixture/SourceFlow.kt)), range=ExactDeclarationTextRange(startInclusive=40, endExclusive=60)), kind=ANONYMOUS), valuePath=io.github.amichne.kast.relation.contract.ValueAccessPath@1, callStack=io.github.amichne.kast.relation.contract.ValueCallStack@b1098849, predicates=io.github.amichne.kast.relation.contract.ValuePredicates@a2470ca0), target=ValueSiteIdentity(owner=ValueDeclarationIdentity(compiler=CompilerSymbolIdentity(value=canonical-signature-sha256-v1|2647be38a170eeaaea68a3f4692ab8283b8e2b339f74e9405b4d8dc5d03aa91b), file=Workspace(path=CanonicalWorkspaceFilePath(value=/fixture/SourceFlow.kt)), range=ExactDeclarationTextRange(startInclusive=0, endExclusive=300)), basis=Published(lease=SemanticReadLease(workspaceRoot=CanonicalWorkspaceRoot(value=/fixture), generation=EvidenceGeneration(value=1))), range=ExactDeclarationTextRange(startInclusive=44, endExclusive=59), role=ExpressionResult, execution=ValueExecutionIdentity(host=ValueDeclarationIdentity(compiler=CompilerSymbolIdentity(value=canonical-signature-sha256-v1|2647be38a170eeaaea68a3f4692ab8283b8e2b339f74e9405b4d8dc5d03aa91b), file=Workspace(path=CanonicalWorkspaceFilePath(value=/fixture/SourceFlow.kt)), range=ExactDeclarationTextRange(startInclusive=0, endExclusive=300)), basis=Published(lease=SemanticReadLease(workspaceRoot=CanonicalWorkspaceRoot(value=/fixture), generation=EvidenceGeneration(value=1))), body=ValueDeclarationIdentity(compiler=CompilerSymbolIdentity(value=canonical-signature-sha256-v1|b82286af3395551ed0b1ec482132b4c5cb0e79decfa844da5c0cbfc60f452551), file=Workspace(path=CanonicalWorkspaceFilePath(value=/fixture/SourceFlow.kt)), range=ExactDeclarationTextRange(startInclusive=40, endExclusive=60)), kind=ANONYMOUS), valuePath=io.github.amichne.kast.relation.contract.ValueAccessPath@1, callStack=io.github.amichne.kast.relation.contract.ValueCallStack@b1098849, predicates=io.github.amichne.kast.relation.contract.ValuePredicates@a2470ca0))>
+        at app//org.junit.jupiter.api.Assertions.assertSame(Assertions.java:2962)
+        at app//io.github.amichne.kast.relation.contract.RepresentationModeledValueOracleTest.automatic application stays distinct from compiler flow and supplied representation rules(RepresentationModeledValueOracleTest.kt:72)
+
+ValueFlowModeledApplicationTest > application source cannot borrow another selected invocation() FAILED
+    org.opentest4j.AssertionFailedError: expected: <Rejected(failure=SOURCE_MISMATCH)> but was: <Refined(value=io.github.amichne.kast.relation.contract.ValueFlowStep@4b1c0397)>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+        at app//io.github.amichne.kast.relation.contract.ValueFlowModeledApplicationTest.application source cannot borrow another selected invocation(ValueFlowModeledApplicationTest.kt:38)
+
+ValueFlowModeledApplicationTest > result limit counts both native transfers and reviewed applications() FAILED
+    org.opentest4j.AssertionFailedError: expected: <Rejected(failure=RESULT_LIMIT_EXCEEDED)> but was: <Refined(value=io.github.amichne.kast.relation.contract.ValueFlowStep@5eeedb60)>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+        at app//io.github.amichne.kast.relation.contract.ValueFlowModeledApplicationTest.result limit counts both native transfers and reviewed applications(ValueFlowModeledApplicationTest.kt:18)
+
+ValueFlowModeledApplicationTest > final detached capacity includes the actual application proof() FAILED
+    org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
+        at app//org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:190)
+        at app//io.github.amichne.kast.relation.contract.ValueFlowModeledApplicationTest.final detached capacity includes the actual application proof(ValueFlowModeledApplicationTest.kt:49)
+
+11 tests completed, 6 failed
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-20-09-07-58-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':relation:contract:test'.
+> There were failing tests. See the report at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 20s
+24 actionable tasks: 6 executed, 18 up-to-date
+Configuration cache entry stored.

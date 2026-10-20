@@ -14,13 +14,18 @@ import io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryCallbackBindingDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBindingWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackBodyDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackCallableDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackExclusionReasonDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackFlowWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackForwardingEvidenceWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackForwardingWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackNamedPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackObservationDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackParameterIdentityWireDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoverySourcePolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoverySourceSetsDocument
@@ -34,6 +39,7 @@ import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationOccurrenceDocument
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable

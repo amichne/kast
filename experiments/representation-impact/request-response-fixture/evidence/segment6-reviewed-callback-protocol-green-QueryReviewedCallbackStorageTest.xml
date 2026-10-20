@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryReviewedCallbackStorageTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T16:54:42.241Z" hostname="Austins-MacBook-Pro.local" time="0.093">
+  <properties/>
+  <testcase name="frame retention visits actual binding argument and full formal proof()" classname="io.github.amichne.kast.query.contract.QueryReviewedCallbackStorageTest" time="0.078"/>
+  <testcase name="reviewed application retention includes the actual module label payload()" classname="io.github.amichne.kast.query.contract.QueryReviewedCallbackStorageTest" time="0.007"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

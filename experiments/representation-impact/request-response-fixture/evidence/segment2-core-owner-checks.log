@@ -1,0 +1,205 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Calculating task graph as no cached configuration is available for tasks: :relation:contract:spotlessApply :query:contract:spotlessApply :symbol:intellij:spotlessApply :relation:contract:check :query:contract:check :symbol:intellij:test --tests *IntellijExactDeclaration*
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :relation:contract:spotlessKotlin
+> Task :relation:contract:spotlessKotlinApply
+> Task :relation:contract:spotlessKotlinGradle FROM-CACHE
+> Task :relation:contract:spotlessKotlinGradleApply UP-TO-DATE
+> Task :relation:contract:spotlessApply
+> Task :query:contract:spotlessKotlin
+> Task :query:contract:spotlessKotlinApply
+> Task :query:contract:spotlessKotlinGradle FROM-CACHE
+> Task :query:contract:spotlessKotlinGradleApply UP-TO-DATE
+> Task :query:contract:spotlessApply
+> Task :symbol:intellij:spotlessKotlin
+> Task :symbol:intellij:spotlessKotlinApply
+> Task :symbol:intellij:spotlessKotlinGradle FROM-CACHE
+> Task :symbol:intellij:spotlessKotlinGradleApply UP-TO-DATE
+> Task :symbol:intellij:spotlessApply
+> Task :relation:contract:checkMainKotlinFileLength FAILED
+> Task :relation:contract:checkTestKotlinFileLength
+
+> Task :relation:contract:detekt
+Successfully generated markdown at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/build/reports/detekt/detekt.md
+Successfully generated html at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/build/reports/detekt/detekt.html
+Successfully generated sarif at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/build/reports/detekt/detekt.sarif
+Successfully generated checkstyle at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/build/reports/detekt/detekt.xml
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/RepresentationSourceConservationTest.kt:39:9 The function constructor storage keeps history without assigning the argument representation to the constructed object is too long (55). The maximum length is 50. [LongMethod]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/RepresentationSourceConservationTest.kt:98:9 The function matched source entry and return preserve the value representation and exact history is too long (61). The maximum length is 50. [LongMethod]
+
+
+> Task :relation:contract:detekt FAILED
+> Task :relation:contract:spotlessKotlinCheck UP-TO-DATE
+> Task :relation:contract:spotlessKotlinGradleCheck UP-TO-DATE
+> Task :relation:contract:spotlessCheck UP-TO-DATE
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :kernel:compileJava NO-SOURCE
+> Task :relation:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+> Task :relation:contract:compileKotlin
+> Task :relation:contract:compileJava NO-SOURCE
+> Task :relation:contract:processResources NO-SOURCE
+> Task :relation:contract:classes UP-TO-DATE
+> Task :relation:contract:jar
+> Task :kernel:processResources NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar UP-TO-DATE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesKotlin UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesJava NO-SOURCE
+> Task :relation:contract:compileTestKotlin
+> Task :relation:contract:compileTestJava NO-SOURCE
+> Task :relation:contract:processTestResources NO-SOURCE
+> Task :relation:contract:testClasses UP-TO-DATE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :workspace:contract:processTestFixturesResources NO-SOURCE
+> Task :workspace:contract:testFixturesClasses UP-TO-DATE
+> Task :workspace:contract:testFixturesJar UP-TO-DATE
+> Task :relation:contract:test
+> Task :query:contract:checkMainKotlinFileLength
+> Task :query:contract:checkTestKotlinFileLength
+
+> Task :query:contract:detekt FAILED
+Successfully generated markdown at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/contract/build/reports/detekt/detekt.md
+Successfully generated html at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/contract/build/reports/detekt/detekt.html
+Successfully generated sarif at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/contract/build/reports/detekt/detekt.sarif
+Successfully generated checkstyle at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/contract/build/reports/detekt/detekt.xml
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactValueStateStorage.kt:3:1 io.github.amichne.kast.relation.contract.* is a wildcard import. Replace it with fully qualified imports. [WildcardImport]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/contract/src/test/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteSelectionTest.kt:88:21 The function route is too long (60). The maximum length is 50. [LongMethod]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/contract/src/test/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteSelectionTest.kt:4:1 io.github.amichne.kast.relation.contract.* is a wildcard import. Replace it with fully qualified imports. [WildcardImport]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/contract/src/test/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteSelectionTest.kt:5:1 io.github.amichne.kast.symbol.contract.* is a wildcard import. Replace it with fully qualified imports. [WildcardImport]
+
+
+> Task :query:contract:spotlessKotlinCheck UP-TO-DATE
+> Task :query:contract:spotlessKotlinGradleCheck UP-TO-DATE
+> Task :query:contract:spotlessCheck UP-TO-DATE
+> Task :query:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:contract:compileKotlin UP-TO-DATE
+> Task :source:contract:compileJava NO-SOURCE
+> Task :traversal:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :traversal:contract:compileKotlin UP-TO-DATE
+> Task :traversal:contract:compileJava NO-SOURCE
+> Task :query:contract:compileKotlin
+> Task :query:contract:compileJava NO-SOURCE
+> Task :query:contract:processResources NO-SOURCE
+> Task :query:contract:classes UP-TO-DATE
+> Task :query:contract:jar
+> Task :query:contract:compileTestKotlin
+> Task :query:contract:compileTestJava NO-SOURCE
+> Task :query:contract:processTestResources NO-SOURCE
+> Task :query:contract:testClasses UP-TO-DATE
+> Task :source:contract:processResources NO-SOURCE
+> Task :source:contract:classes UP-TO-DATE
+> Task :source:contract:jar UP-TO-DATE
+> Task :traversal:contract:processResources NO-SOURCE
+> Task :traversal:contract:classes UP-TO-DATE
+> Task :traversal:contract:jar UP-TO-DATE
+> Task :query:contract:test
+> Task :symbol:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:intellij:extractSymbolIdeaDistribution UP-TO-DATE
+> Task :protocol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:contract:compileKotlin UP-TO-DATE
+> Task :protocol:contract:compileJava NO-SOURCE
+> Task :workspace:intellij-read:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:intellij-read:extractWorkspaceReadIdeaDistribution UP-TO-DATE
+> Task :workspace:intellij-read:compileKotlin UP-TO-DATE
+> Task :workspace:intellij-read:compileJava NO-SOURCE
+> Task :symbol:intellij:compileKotlin
+> Task :symbol:intellij:compileJava NO-SOURCE
+> Task :symbol:intellij:processResources NO-SOURCE
+> Task :symbol:intellij:classes UP-TO-DATE
+> Task :symbol:intellij:jar
+> Task :protocol:contract:processResources UP-TO-DATE
+> Task :protocol:contract:classes UP-TO-DATE
+> Task :protocol:contract:jar UP-TO-DATE
+> Task :symbol:intellij:compileTestKotlin
+> Task :symbol:intellij:compileTestJava NO-SOURCE
+> Task :symbol:intellij:processTestResources NO-SOURCE
+> Task :symbol:intellij:testClasses UP-TO-DATE
+> Task :workspace:intellij-read:processResources NO-SOURCE
+> Task :workspace:intellij-read:classes UP-TO-DATE
+> Task :workspace:intellij-read:jar UP-TO-DATE
+> Task :symbol:intellij:test
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-19-22-13-57-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/problems/problems-report.html
+
+FAILURE: Build completed with 3 failures.
+
+1: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':relation:contract:checkMainKotlinFileLength' (registered by plugin 'kast.kotlin-quality').
+> Kotlin files exceed the 400-line budget:
+    relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationFact.kt: 403 lines (limit 400)
+  Split a real semantic unit; do not compress code or weaken cohesion to satisfy this gate.
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+==============================================================================
+
+2: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':relation:contract:detekt'.
+> Analysis failed with 2 issues.
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+==============================================================================
+
+3: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':query:contract:detekt'.
+> Analysis failed with 4 issues.
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+==============================================================================
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 40s
+63 actionable tasks: 24 executed, 3 from cache, 36 up-to-date
+Configuration cache entry stored.

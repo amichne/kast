@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.LocalBindingPhysicalCapacityTest" tests="4" skipped="0" failures="3" errors="0" timestamp="2026-10-20T12:26:36.505Z" hostname="Austins-MacBook-Pro.local" time="0.087">
+  <properties/>
+  <testcase name="an insufficient grant rejects before role admission or enumeration()" classname="io.github.amichne.kast.relation.contract.LocalBindingPhysicalCapacityTest" time="0.063"/>
+  <testcase name="a refused candidate leaves its address unconsumed after earlier progress()" classname="io.github.amichne.kast.relation.contract.LocalBindingPhysicalCapacityTest" time="0.008">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected type, expected: &lt;io.github.amichne.kast.relation.contract.ValueFlowRead.Suspended&gt; but was: &lt;io.github.amichne.kast.relation.contract.ValueFlowRead.Rejected&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected type, expected: &lt;io.github.amichne.kast.relation.contract.ValueFlowRead.Suspended&gt; but was: &lt;io.github.amichne.kast.relation.contract.ValueFlowRead.Rejected&gt;
+	at org.junit.jupiter.api.Assertions.assertInstanceOf(Assertions.java:3699)
+	at io.github.amichne.kast.relation.contract.LocalBindingPhysicalCapacityTest.a refused candidate leaves its address unconsumed after earlier progress(LocalBindingPhysicalCapacityTest.kt:68)
+</failure>
+  </testcase>
+  <testcase name="a detached equal stack pays its payload and retries without proof loss()" classname="io.github.amichne.kast.relation.contract.LocalBindingPhysicalCapacityTest" time="0.005">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;3&gt; but was: &lt;1&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;3&gt; but was: &lt;1&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+	at io.github.amichne.kast.relation.contract.LocalBindingPhysicalCapacityTest.a detached equal stack pays its payload and retries without proof loss(LocalBindingPhysicalCapacityTest.kt:56)
+</failure>
+  </testcase>
+  <testcase name="shared local-read state fits a native-scale grant and keeps exact progress()" classname="io.github.amichne.kast.relation.contract.LocalBindingPhysicalCapacityTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected type, expected: &lt;io.github.amichne.kast.relation.contract.ValueFlowRead.Suspended&gt; but was: &lt;io.github.amichne.kast.relation.contract.ValueFlowRead.Rejected&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected type, expected: &lt;io.github.amichne.kast.relation.contract.ValueFlowRead.Suspended&gt; but was: &lt;io.github.amichne.kast.relation.contract.ValueFlowRead.Rejected&gt;
+	at org.junit.jupiter.api.Assertions.assertInstanceOf(Assertions.java:3699)
+	at io.github.amichne.kast.relation.contract.LocalBindingPhysicalCapacityTest.shared local-read state fits a native-scale grant and keeps exact progress(LocalBindingPhysicalCapacityTest.kt:21)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

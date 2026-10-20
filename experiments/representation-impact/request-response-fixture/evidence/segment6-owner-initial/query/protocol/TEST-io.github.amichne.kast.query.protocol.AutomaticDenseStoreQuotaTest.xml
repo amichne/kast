@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.AutomaticDenseStoreQuotaTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:25.551Z" hostname="Austins-MacBook-Pro.local" time="0.209">
+  <properties/>
+  <testcase name="store quota completes dense references with unchanged checkpoint and execution grants()" classname="io.github.amichne.kast.query.protocol.AutomaticDenseStoreQuotaTest" time="0.208"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.QueryResultReferencesTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:20.805Z" hostname="Austins-MacBook-Pro.local" time="0.004">
+  <properties/>
+  <testcase name="presentation cursor has a bounded nonnegative domain()" classname="io.github.amichne.kast.protocol.contract.QueryResultReferencesTest" time="0.001"/>
+  <testcase name="row reference serializer admits only its issued family()" classname="io.github.amichne.kast.protocol.contract.QueryResultReferencesTest" time="0.001"/>
+  <testcase name="retained result reference cannot be an exact symbol or execution continuation()" classname="io.github.amichne.kast.protocol.contract.QueryResultReferencesTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

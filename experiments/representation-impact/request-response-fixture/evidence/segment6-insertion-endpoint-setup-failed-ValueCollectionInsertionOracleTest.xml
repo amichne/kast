@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest" tests="8" skipped="0" failures="7" errors="0" timestamp="2026-10-20T19:06:11.997Z" hostname="Austins-MacBook-Pro.local" time="0.021">
+  <properties/>
+  <testcase name="seven incoming segments permit the eighth insertion segment()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest" time="0.001">
+    <failure message="java.lang.IllegalStateException: Fixture fact rejected: QUALIFIED_IDENTITY_MISMATCH" type="java.lang.IllegalStateException">java.lang.IllegalStateException: Fixture fact rejected: QUALIFIED_IDENTITY_MISMATCH
+	at io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTestKt.flowRefined(ValueSourceFlowOracleTest.kt:413)
+	at io.github.amichne.kast.relation.contract.ReviewedModelOracleCase.endpoint(ReviewedModelOracleCase.kt:97)
+	at io.github.amichne.kast.relation.contract.ReviewedModelOracleCase.endpoint$default(ReviewedModelOracleCase.kt:80)
+	at io.github.amichne.kast.relation.contract.SingleListModelOracleCase.&lt;init&gt;(SingleListModelOracleCase.kt:16)
+	at io.github.amichne.kast.relation.contract.SingleListModelOracleCase.&lt;init&gt;(SingleListModelOracleCase.kt:6)
+	at io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest.seven incoming segments permit the eighth insertion segment(ValueCollectionInsertionOracleTest.kt:34)
+</failure>
+  </testcase>
+  <testcase name="eight incoming segments preserve an exact depth refusal without truncation()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest" time="0.002">
+    <failure message="java.lang.IllegalStateException: Fixture fact rejected: QUALIFIED_IDENTITY_MISMATCH" type="java.lang.IllegalStateException">java.lang.IllegalStateException: Fixture fact rejected: QUALIFIED_IDENTITY_MISMATCH
+	at io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTestKt.flowRefined(ValueSourceFlowOracleTest.kt:413)
+	at io.github.amichne.kast.relation.contract.ReviewedModelOracleCase.endpoint(ReviewedModelOracleCase.kt:97)
+	at io.github.amichne.kast.relation.contract.ReviewedModelOracleCase.endpoint$default(ReviewedModelOracleCase.kt:80)
+	at io.github.amichne.kast.relation.contract.SingleListModelOracleCase.&lt;init&gt;(SingleListModelOracleCase.kt:16)
+	at io.github.amichne.kast.relation.contract.SingleListModelOracleCase.&lt;init&gt;(SingleListModelOracleCase.kt:6)
+	at io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest.eight incoming segments preserve an exact depth refusal without truncation(ValueCollectionInsertionOracleTest.kt:42)
+</failure>
+  </testcase>
+  <testcase name="an expression result cannot impersonate the fixed actual argument()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest" time="0.002">
+    <failure message="java.lang.IllegalStateException: Fixture fact rejected: QUALIFIED_IDENTITY_MISMATCH" type="java.lang.IllegalStateException">java.lang.IllegalStateException: Fixture fact rejected: QUALIFIED_IDENTITY_MISMATCH
+	at io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTestKt.flowRefined(ValueSourceFlowOracleTest.kt:413)
+	at io.github.amichne.kast.relation.contract.ReviewedModelOracleCase.endpoint(ReviewedModelOracleCase.kt:97)
+	at io.github.amichne.kast.relation.contract.ReviewedModelOracleCase.endpoint$default(ReviewedModelOracleCase.kt:80)
+	at io.github.amichne.kast.relation.contract.SingleListModelOracleCase.&lt;init&gt;(SingleListModelOracleCase.kt:16)
+	at io.github.amichne.kast.relation.contract.SingleListModelOracleCase.&lt;init&gt;(SingleListModelOracleCase.kt:6)
+	at io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest.an expression result cannot impersonate the fixed actual argument(ValueCollectionInsertionOracleTest.kt:55)
+</failure>
+  </testcase>
+  <testcase name="argument one for the exact fixed overload rejects before model application()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest" time="0.002">
+    <failure message="java.lang.IllegalStateException: Fixture fact rejected: QUALIFIED_IDENTITY_MISMATCH" type="java.lang.IllegalStateException">java.lang.IllegalStateException: Fixture fact rejected: QUALIFIED_IDENTITY_MISMATCH
+	at io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTestKt.flowRefined(ValueSourceFlowOracleTest.kt:413)
+	at io.github.amichne.kast.relation.contract.ReviewedModelOracleCase.endpoint(ReviewedModelOracleCase.kt:97)
+	at io.github.amichne.kast.relation.contract.ReviewedModelOracleCase.endpoint$default(ReviewedModelOracleCase.kt:80)
+	at io.github.amichne.kast.relation.contract.SingleListModelOracleCase.&lt;init&gt;(SingleListModelOracleCase.kt:16)
+	at io.github.amichne.kast.relation.contract.SingleListModelOracleCase.&lt;init&gt;(SingleListModelOracleCase.kt:6)
+	at io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest.argument one for the exact fixed overload rejects before model application(ValueCollectionInsertionOracleTest.kt:66)
+</failure>
+  </testcase>
+  <testcase name="single element review pins the fixed overload rule and exact reviewed artifact()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest" time="0.004"/>
+  <testcase name="insertion keeps the incoming resolved field suffix after element zero()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest" time="0.002">
+    <failure message="java.lang.IllegalStateException: Fixture fact rejected: QUALIFIED_IDENTITY_MISMATCH" type="java.lang.IllegalStateException">java.lang.IllegalStateException: Fixture fact rejected: QUALIFIED_IDENTITY_MISMATCH
+	at io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTestKt.flowRefined(ValueSourceFlowOracleTest.kt:413)
+	at io.github.amichne.kast.relation.contract.ReviewedModelOracleCase.endpoint(ReviewedModelOracleCase.kt:97)
+	at io.github.amichne.kast.relation.contract.ReviewedModelOracleCase.endpoint$default(ReviewedModelOracleCase.kt:80)
+	at io.github.amichne.kast.relation.contract.SingleListModelOracleCase.&lt;init&gt;(SingleListModelOracleCase.kt:16)
+	at io.github.amichne.kast.relation.contract.SingleListModelOracleCase.&lt;init&gt;(SingleListModelOracleCase.kt:6)
+	at io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest.insertion keeps the incoming resolved field suffix after element zero(ValueCollectionInsertionOracleTest.kt:28)
+</failure>
+  </testcase>
+  <testcase name="whole actual argument zero supplies only the exact result element zero()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest" time="0.002">
+    <failure message="java.lang.IllegalStateException: Fixture fact rejected: QUALIFIED_IDENTITY_MISMATCH" type="java.lang.IllegalStateException">java.lang.IllegalStateException: Fixture fact rejected: QUALIFIED_IDENTITY_MISMATCH
+	at io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTestKt.flowRefined(ValueSourceFlowOracleTest.kt:413)
+	at io.github.amichne.kast.relation.contract.ReviewedModelOracleCase.endpoint(ReviewedModelOracleCase.kt:97)
+	at io.github.amichne.kast.relation.contract.ReviewedModelOracleCase.endpoint$default(ReviewedModelOracleCase.kt:80)
+	at io.github.amichne.kast.relation.contract.SingleListModelOracleCase.&lt;init&gt;(SingleListModelOracleCase.kt:16)
+	at io.github.amichne.kast.relation.contract.SingleListModelOracleCase.&lt;init&gt;(SingleListModelOracleCase.kt:6)
+	at io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest.whole actual argument zero supplies only the exact result element zero(ValueCollectionInsertionOracleTest.kt:22)
+</failure>
+  </testcase>
+  <testcase name="insertion preserves an existing exact nonnull predicate without adding another fact()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest" time="0.003">
+    <failure message="java.lang.IllegalStateException: Fixture fact rejected: QUALIFIED_IDENTITY_MISMATCH" type="java.lang.IllegalStateException">java.lang.IllegalStateException: Fixture fact rejected: QUALIFIED_IDENTITY_MISMATCH
+	at io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTestKt.flowRefined(ValueSourceFlowOracleTest.kt:413)
+	at io.github.amichne.kast.relation.contract.ReviewedModelOracleCase.endpoint(ReviewedModelOracleCase.kt:97)
+	at io.github.amichne.kast.relation.contract.ReviewedModelOracleCase.endpoint$default(ReviewedModelOracleCase.kt:80)
+	at io.github.amichne.kast.relation.contract.SingleListModelOracleCase.&lt;init&gt;(SingleListModelOracleCase.kt:16)
+	at io.github.amichne.kast.relation.contract.SingleListModelOracleCase.&lt;init&gt;(SingleListModelOracleCase.kt:6)
+	at io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest.insertion preserves an existing exact nonnull predicate without adding another fact(ValueCollectionInsertionOracleTest.kt:82)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

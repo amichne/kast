@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ReviewedSingleElementListOracleTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T19:11:05.571Z" hostname="Austins-MacBook-Pro.local" time="0.017">
+  <properties/>
+  <testcase name="a first element selection review cannot authorize insertion()" classname="io.github.amichne.kast.relation.contract.ReviewedSingleElementListOracleTest" time="0.01"/>
+  <testcase name="insertion binding rejects wrong origin bytes version and virtual artifact membership()" classname="io.github.amichne.kast.relation.contract.ReviewedSingleElementListOracleTest" time="0.005"/>
+  <testcase name="array receiver and different generic arity cannot borrow the fixed single T review()" classname="io.github.amichne.kast.relation.contract.ReviewedSingleElementListOracleTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

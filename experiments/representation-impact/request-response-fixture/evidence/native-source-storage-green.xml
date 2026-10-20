@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketSourceTransferTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T01:32:54.811Z" hostname="Austins-MacBook-Pro.local" time="0.999">
+  <properties/>
+  <testcase name="testOriginalV0IncomingProjectsTheResolvedResponseField" classname="io.github.amichne.kast.relation.intellij.NativePacketSourceTransferTest" time="0.533"/>
+  <testcase name="testOriginalV0OutgoingEntersTheConcreteSourceFormal" classname="io.github.amichne.kast.relation.intellij.NativePacketSourceTransferTest" time="0.466"/>
+  <system-out><![CDATA[V0_SOURCE_STAGE source=ExactDeclarationTextRange(startInclusive=659, endExclusive=686) role=ExpressionResult transfers=[(LOCAL_BINDING, ExactDeclarationTextRange(startInclusive=640, endExclusive=686))] frontier=[]
+V0_SOURCE_STAGE source=ExactDeclarationTextRange(startInclusive=640, endExclusive=686) role=LocalBinding transfers=[(LOCAL_READ, ExactDeclarationTextRange(startInclusive=717, endExclusive=729))] frontier=[]
+V0_SOURCE_STAGE source=ExactDeclarationTextRange(startInclusive=717, endExclusive=729) role=LocalRead transfers=[(FIELD_READ, ExactDeclarationTextRange(startInclusive=717, endExclusive=734))] frontier=[]
+V0_SOURCE_STAGE source=ExactDeclarationTextRange(startInclusive=883, endExclusive=917) role=ExpressionResult transfers=[(LOCAL_BINDING, ExactDeclarationTextRange(startInclusive=863, endExclusive=917))] frontier=[]
+V0_SOURCE_STAGE source=ExactDeclarationTextRange(startInclusive=863, endExclusive=917) role=LocalBinding transfers=[(LOCAL_READ, ExactDeclarationTextRange(startInclusive=960, endExclusive=973))] frontier=[]
+V0_SOURCE_STAGE source=ExactDeclarationTextRange(startInclusive=960, endExclusive=973) role=LocalRead transfers=[(ARGUMENT, ExactDeclarationTextRange(startInclusive=960, endExclusive=973))] frontier=[]
+V0_SOURCE_STAGE source=ExactDeclarationTextRange(startInclusive=960, endExclusive=973) role=Argument(call=io.github.amichne.kast.relation.contract.ValueInvocation@af0f3900, position=ValueArgumentPosition(value=0)) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=531, endExclusive=553))] frontier=[]
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

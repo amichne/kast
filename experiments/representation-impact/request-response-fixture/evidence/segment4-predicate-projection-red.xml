@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactPredicateProjectionTest" tests="2" skipped="0" failures="2" errors="0" timestamp="2026-10-20T04:10:04.582Z" hostname="Austins-MacBook-Pro.local" time="0.073">
+  <properties/>
+  <testcase name="implicit formal projection keeps the body anchor and explicit implicit origin()" classname="io.github.amichne.kast.query.protocol.ImpactPredicateProjectionTest" time="0.06">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Implicit&gt; but was: &lt;Declared(range=ImpactSourceRangeDocument(start=ProtocolOffset(value=40), end=ProtocolOffset(value=80)))&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Implicit&gt; but was: &lt;Declared(range=ImpactSourceRangeDocument(start=ProtocolOffset(value=40), end=ProtocolOffset(value=80)))&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.query.protocol.ImpactPredicateProjectionTest.implicit formal projection keeps the body anchor and explicit implicit origin(ImpactPredicateProjectionTest.kt:55)
+</failure>
+  </testcase>
+  <testcase name="site projection keeps a predicate on its exact tested value()" classname="io.github.amichne.kast.query.protocol.ImpactPredicateProjectionTest" time="0.007">
+    <failure message="java.util.NoSuchElementException: List is empty." type="java.util.NoSuchElementException">java.util.NoSuchElementException: List is empty.
+	at kotlin.collections.CollectionsKt___CollectionsKt.single(_Collections.kt:619)
+	at io.github.amichne.kast.query.protocol.ImpactPredicateProjectionTest.site projection keeps a predicate on its exact tested value(ImpactPredicateProjectionTest.kt:34)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

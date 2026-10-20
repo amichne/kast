@@ -1,0 +1,3 @@
+query/contract	tests=112	failures=0	errors=0	skipped=0	suites=27	timestampMin=2026-10-20T14:11:17.506Z	timestampMax=2026-10-20T14:11:17.906Z
+protocol/contract	tests=161	failures=0	errors=0	skipped=0	suites=51	timestampMin=2026-10-20T14:11:19.915Z	timestampMax=2026-10-20T14:11:20.888Z
+query/protocol	tests=362	failures=1	errors=0	skipped=0	suites=105	timestampMin=2026-10-20T14:11:24.715Z	timestampMax=2026-10-20T14:11:33.537Z

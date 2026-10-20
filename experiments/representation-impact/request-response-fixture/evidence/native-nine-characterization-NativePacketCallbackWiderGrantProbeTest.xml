@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketCallbackWiderGrantProbeTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T06:21:28.540Z" hostname="Austins-MacBook-Pro.local" time="8.226">
+  <properties/>
+  <testcase name="testOriginalS2CharacterizesWiderQualifiedCallbackGrantsAndFullWork" classname="io.github.amichne.kast.relation.intellij.NativePacketCallbackWiderGrantProbeTest" time="8.217"/>
+  <system-out><![CDATA[CALLBACK_WIDER_GRANT grant=100000 work=127 k2=18 entries=[SOURCE_CALL_ENTRY] causes=[] unavailable=[]
+CALLBACK_WIDER_GRANT grant=24 work=24 k2=14 entries=[] causes=[CALLBACK_FLOW_UNPROVEN] unavailable=[]
+CALLBACK_WIDER_FLOW grant=24 binding=BOUND raw=null scan=INCOMPLETE invocations=0 selected=0 causes=[WORK_LIMIT_REACHED, NO_INVOCATION_PROVEN]
+CALLBACK_WIDER_GRANT grant=32 work=32 k2=14 entries=[] causes=[CALLBACK_FLOW_UNPROVEN] unavailable=[]
+CALLBACK_WIDER_FLOW grant=32 binding=BOUND raw=null scan=INCOMPLETE invocations=0 selected=0 causes=[WORK_LIMIT_REACHED, NO_INVOCATION_PROVEN]
+CALLBACK_WIDER_GRANT grant=48 work=48 k2=14 entries=[] causes=[CALLBACK_FLOW_UNPROVEN] unavailable=[]
+CALLBACK_WIDER_FLOW grant=48 binding=BOUND raw=null scan=INCOMPLETE invocations=0 selected=0 causes=[WORK_LIMIT_REACHED, NO_INVOCATION_PROVEN]
+CALLBACK_WIDER_GRANT grant=64 work=64 k2=14 entries=[] causes=[CALLBACK_FLOW_UNPROVEN] unavailable=[]
+CALLBACK_WIDER_FLOW grant=64 binding=BOUND raw=null scan=INCOMPLETE invocations=0 selected=0 causes=[WORK_LIMIT_REACHED, NO_INVOCATION_PROVEN]
+CALLBACK_WIDER_GRANT grant=96 work=96 k2=18 entries=[] causes=[CALLBACK_FLOW_UNPROVEN, WORK_LIMIT_REACHED] unavailable=[]
+CALLBACK_WIDER_FLOW grant=96 binding=BOUND raw=null scan=INCOMPLETE invocations=1 selected=1 causes=[WORK_LIMIT_REACHED]
+CALLBACK_WIDER_GRANT grant=128 work=127 k2=18 entries=[SOURCE_CALL_ENTRY] causes=[] unavailable=[]
+CALLBACK_WIDER_GRANT grant=192 work=127 k2=18 entries=[SOURCE_CALL_ENTRY] causes=[] unavailable=[]
+CALLBACK_WIDER_GRANT grant=256 work=127 k2=18 entries=[SOURCE_CALL_ENTRY] causes=[] unavailable=[]
+CALLBACK_WIDER_GRANT_RESULT status=CHARACTERIZED ordering_assertion=NOT_RUN
+]]></system-out>
+  <system-err><![CDATA[[   1474]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1474]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

@@ -25,6 +25,10 @@ import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
 import io.github.amichne.kast.protocol.contract.RelationOccurrenceDocument
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
+import io.github.amichne.kast.protocol.contract.SymbolKindWireDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import kotlinx.serialization.SerializationException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows

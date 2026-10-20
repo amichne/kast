@@ -36,6 +36,7 @@ class QueryImpactPeerReceiptBoundsTest {
         val work = Long.MAX_VALUE / 2 + 1
         val evidence =
             ImpactPeerSourceEvidence.admit(
+                    CanonicalQueryReferences(),
                     peers,
                     listOf(
                         f.proof(0, 1, work, Long.MAX_VALUE),

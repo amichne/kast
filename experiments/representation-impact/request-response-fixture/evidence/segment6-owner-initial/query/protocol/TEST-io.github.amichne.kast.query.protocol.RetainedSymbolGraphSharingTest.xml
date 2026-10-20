@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.RetainedSymbolGraphSharingTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:33.500Z" hostname="Austins-MacBook-Pro.local" time="0.014">
+  <properties/>
+  <testcase name="unequal reference proof keeps a direct connection witness()" classname="io.github.amichne.kast.query.protocol.RetainedSymbolGraphSharingTest" time="0.006"/>
+  <testcase name="a reversed connection cannot borrow declaration-to-target proof()" classname="io.github.amichne.kast.query.protocol.RetainedSymbolGraphSharingTest" time="0.004"/>
+  <testcase name="one-node one-connection graph fits the frozen single-record cap without semantic work()" classname="io.github.amichne.kast.query.protocol.RetainedSymbolGraphSharingTest" time="0.004"/>
+  <system-out><![CDATA[D3 SYMBOLS one_node_one_connection canonical_bytes=11028 full_bytes=11086 compact_bytes=4884 cap=20000 semantic_provider_calls=0 physical_rpcs=NOT_RUN
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

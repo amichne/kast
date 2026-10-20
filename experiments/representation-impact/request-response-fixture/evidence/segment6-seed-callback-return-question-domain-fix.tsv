@@ -1,0 +1,2 @@
+file	before_sha256	after_sha256	change	expected	status
+query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactSeedCallbackReturnQuestionProjectionTest.kt	937916e74359c31c628e21312d2a22f36f878f515b579270ad67a5720444037c	ec6d345e8a02dbad64803d53508c83cf399310fc354edbc4c69e6462dc093455	Use exact anonymous callee host as request subject	UNRESOLVED_OBLIGATIONS unchanged	NOT_RUN

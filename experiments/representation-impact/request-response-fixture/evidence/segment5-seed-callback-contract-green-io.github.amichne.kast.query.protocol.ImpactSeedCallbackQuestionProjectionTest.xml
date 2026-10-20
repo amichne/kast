@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactSeedCallbackQuestionProjectionTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T17:49:16.606Z" hostname="Austins-MacBook-Pro.local" time="0.01">
+  <properties/>
+  <testcase name="explicit seed diagnostics keep the original flow and finite qualification through projection()" classname="io.github.amichne.kast.query.protocol.ImpactSeedCallbackQuestionProjectionTest" time="0.01"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

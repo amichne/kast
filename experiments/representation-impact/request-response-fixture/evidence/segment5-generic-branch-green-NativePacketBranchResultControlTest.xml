@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketBranchResultControlTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-20T13:03:32.850Z" hostname="Austins-MacBook-Pro.local" time="2.356">
+  <properties/>
+  <testcase name="testNormalStringArmReachesTheBranchAndNamedReturn" classname="io.github.amichne.kast.relation.intellij.NativePacketBranchResultControlTest" time="0.585"/>
+  <testcase name="testNullableNothingArmRemainsANormalNullValue" classname="io.github.amichne.kast.relation.intellij.NativePacketBranchResultControlTest" time="0.464"/>
+  <testcase name="testActualNothingCallDoesNotFeedTheStringBranchResult" classname="io.github.amichne.kast.relation.intellij.NativePacketBranchResultControlTest" time="0.475"/>
+  <testcase name="testUnitCoercionDoesNotGiveTheInputAFunctionReturn" classname="io.github.amichne.kast.relation.intellij.NativePacketBranchResultControlTest" time="0.428"/>
+  <testcase name="testDiscardedBranchDoesNotGiveTheInputTheLaterConstantReturn" classname="io.github.amichne.kast.relation.intellij.NativePacketBranchResultControlTest" time="0.404"/>
+  <system-out><![CDATA[BRANCH_CONTROL_TYPE case=NORMAL source=ExactDeclarationTextRange(startInclusive=309, endExclusive=320) target=ExactDeclarationTextRange(startInclusive=299, endExclusive=341) origin=SOURCE sourceClass=kotlin.String sourceNullable=false targetClass=kotlin.String targetNullable=false returnClass=kotlin.String
+BRANCH_CONTROL_STAGE source=ExactDeclarationTextRange(startInclusive=309, endExclusive=320) transfers=[(BRANCH_ALTERNATIVE, ExactDeclarationTextRange(startInclusive=299, endExclusive=341))] causes=[]
+BRANCH_CONTROL_STAGE source=ExactDeclarationTextRange(startInclusive=299, endExclusive=341) transfers=[(RETURN, ExactDeclarationTextRange(startInclusive=299, endExclusive=341))] causes=[]
+BRANCH_CONTROL_TYPE case=NULLABLE source=ExactDeclarationTextRange(startInclusive=482, endExclusive=493) target=ExactDeclarationTextRange(startInclusive=472, endExclusive=514) origin=SOURCE sourceClass=kotlin.Nothing sourceNullable=true targetClass=kotlin.String targetNullable=true returnClass=kotlin.String
+BRANCH_CONTROL_STAGE source=ExactDeclarationTextRange(startInclusive=482, endExclusive=493) transfers=[(BRANCH_ALTERNATIVE, ExactDeclarationTextRange(startInclusive=472, endExclusive=514))] causes=[]
+BRANCH_CONTROL_STAGE source=ExactDeclarationTextRange(startInclusive=472, endExclusive=514) transfers=[(RETURN, ExactDeclarationTextRange(startInclusive=472, endExclusive=514))] causes=[]
+BRANCH_CONTROL_TYPE case=ABRUPT source=ExactDeclarationTextRange(startInclusive=396, endExclusive=403) target=ExactDeclarationTextRange(startInclusive=386, endExclusive=424) origin=SOURCE sourceClass=kotlin.Nothing sourceNullable=false targetClass=kotlin.String targetNullable=false returnClass=kotlin.String
+BRANCH_CONTROL_STAGE source=ExactDeclarationTextRange(startInclusive=396, endExclusive=403) transfers=[] causes=[ABRUPT_COMPLETION]
+BRANCH_CONTROL_TYPE case=UNIT source=ExactDeclarationTextRange(startInclusive=572, endExclusive=583) target=ExactDeclarationTextRange(startInclusive=562, endExclusive=604) origin=SOURCE sourceClass=kotlin.String sourceNullable=false targetClass=kotlin.String targetNullable=false returnClass=kotlin.Unit
+BRANCH_CONTROL_STAGE source=ExactDeclarationTextRange(startInclusive=572, endExclusive=583) transfers=[(BRANCH_ALTERNATIVE, ExactDeclarationTextRange(startInclusive=562, endExclusive=604))] causes=[]
+BRANCH_CONTROL_STAGE source=ExactDeclarationTextRange(startInclusive=562, endExclusive=604) transfers=[] causes=[]
+BRANCH_CONTROL_LIMIT case=UNIT claim=NO_FALSE_RETURN completion=NOT_ASSERTED
+BRANCH_CONTROL_TYPE case=DISCARDED source=ExactDeclarationTextRange(startInclusive=673, endExclusive=684) target=ExactDeclarationTextRange(startInclusive=663, endExclusive=705) origin=SOURCE sourceClass=kotlin.String sourceNullable=false targetClass=kotlin.String targetNullable=false returnClass=kotlin.String
+BRANCH_CONTROL_STAGE source=ExactDeclarationTextRange(startInclusive=673, endExclusive=684) transfers=[(BRANCH_ALTERNATIVE, ExactDeclarationTextRange(startInclusive=663, endExclusive=705))] causes=[]
+BRANCH_CONTROL_STAGE source=ExactDeclarationTextRange(startInclusive=663, endExclusive=705) transfers=[] causes=[]
+BRANCH_CONTROL_LIMIT case=DISCARDED claim=NO_FALSE_RETURN completion=NOT_ASSERTED
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

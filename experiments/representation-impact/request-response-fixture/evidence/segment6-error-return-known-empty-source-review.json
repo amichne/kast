@@ -1,0 +1,12 @@
+{
+  "status": "SOURCE_REVIEWED",
+  "head": "543509a7f4d22d6ec850f52b70c898bca478c37d",
+  "frozenManifestsCompared": 10,
+  "frozenRowsCompared": 28,
+  "activeSourceChanges": false,
+  "gradle": "NOT_RUN",
+  "nativeAssertions": "NOT_RUN",
+  "queryAssertions": "NOT_RUN",
+  "scopeGuide": "experiments/representation-impact/request-response-fixture/AGENTS.md",
+  "guideChange": "NOT_NEEDED_COMMANDS_OWNERSHIP_RULES_UNCHANGED"
+}

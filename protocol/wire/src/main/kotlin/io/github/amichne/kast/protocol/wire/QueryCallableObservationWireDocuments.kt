@@ -4,35 +4,40 @@ package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
 import io.github.amichne.kast.protocol.contract.ProtocolIntegerConstraint
-import io.github.amichne.kast.protocol.contract.ProtocolStringConstraint
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryCallableObservationDocument
 import io.github.amichne.kast.protocol.contract.QueryCallableTargetDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBodyWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackCallableWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackParameterIdentityWireDocument
+import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackUseWireDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationDomainDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint
 import io.github.amichne.kast.protocol.contract.QueryRelationRequestedDomainDocument
 import io.github.amichne.kast.protocol.contract.QuerySourceLessCallableDispositionDocument
-import io.github.amichne.kast.protocol.contract.QuerySourceLessCallableDocument
-import io.github.amichne.kast.protocol.contract.QuerySourceLessCallableModuleKindDocument
-import io.github.amichne.kast.protocol.contract.QuerySourceLessCallableOriginDocument
+import io.github.amichne.kast.protocol.contract.QuerySourceLessCallableWireDocument
 import io.github.amichne.kast.protocol.contract.QueryWalkCallableObservationDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
+import io.github.amichne.kast.protocol.contract.RelationOccurrenceWireDocument
 import io.github.amichne.kast.protocol.contract.TraversalDepthDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.callbackWire
+import io.github.amichne.kast.protocol.contract.combineConverted
+import io.github.amichne.kast.protocol.contract.convertEach
+import io.github.amichne.kast.protocol.contract.flatMapConverted
+import io.github.amichne.kast.protocol.contract.flattenConverted
+import io.github.amichne.kast.protocol.contract.immutableCallbackWire
+import io.github.amichne.kast.protocol.contract.invocationWire
+import io.github.amichne.kast.protocol.contract.mapConverted
+import io.github.amichne.kast.protocol.contract.suppliedWire
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
+import io.github.amichne.kast.protocol.contract.toWireDocumentConversion
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
-
-@Serializable
-internal data class QuerySourceLessCallableWireDocument(
-    @SerialName("compiler_evidence") val compilerEvidence: CompilerSymbolEvidenceWireDocument,
-    val kind: SymbolKindWireDocument,
-    val origin: QuerySourceLessCallableOriginDocument,
-    @SerialName("module_kind") val moduleKind: QuerySourceLessCallableModuleKindDocument,
-    @SerialName("module_name")
-    @ProtocolStringConstraint(minimumLength = 1, maximumLength = 512, pattern = "^[^\\x00-\\x1F\\x7F-\\x9F]+$")
-    val moduleName: String,
-)
 
 @Serializable
 @JsonClassDiscriminator("type")
@@ -196,33 +201,13 @@ private fun QueryCallableTargetWireDocument.toContract(): WireDocumentConversion
 
 private fun QueryCallableTargetDocument.SourceLess.sourceLessWire() =
     QueryCallableTargetWireDocument.SourceLess(
-        QuerySourceLessCallableWireDocument(
-            this.callable.compilerEvidence.toWireDocument(),
-            this.callable.kind.toWireDocument(),
-            this.callable.origin,
-            this.callable.moduleKind,
-            this.callable.moduleName.value,
-        ),
+        this.callable.toWireDocument(),
         this.disposition,
     )
 
 private fun QueryCallableTargetWireDocument.SourceLess.sourceLessContract():
     WireDocumentConversion<QueryCallableTargetDocument> =
-    combineConverted(
-            callable.compilerEvidence.toContract(),
-            ProtocolText.parse(callable.moduleName).toWireDocumentConversion(),
-        ) { evidence, name ->
-            QuerySourceLessCallableDocument.create(
-                    evidence,
-                    callable.kind.toContract(),
-                    callable.origin,
-                    callable.moduleKind,
-                    name,
-                )
-                .toWireDocumentConversion()
-        }
-        .flattenConverted()
-        .mapConverted { QueryCallableTargetDocument.SourceLess(it, disposition) }
+    callable.toContract().mapConverted { QueryCallableTargetDocument.SourceLess(it, disposition) }
 
 @Serializable
 internal data class QueryWalkCallableObservationWireDocument(
@@ -272,14 +257,6 @@ internal fun QueryWalkCallableObservationWireDocument.toContract():
                 WireDocumentConversion.Converted(value)
             else WireDocumentConversion.Rejected
         }
-
-internal fun io.github.amichne.kast.protocol.contract.QueryCallbackInvocationDocument.invocationWire() =
-    QueryCallbackInvocationWireDocument(
-        occurrence.callbackWire(),
-        owner.callbackWire(),
-        callableTransfers.values,
-        forwardings.values.map { it.callbackWire() },
-    )
 
 private fun QueryCallableTargetWireDocument.CallbackSupplies.suppliesContract():
     WireDocumentConversion<QueryCallableTargetDocument> =

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T18:31:25.983Z" hostname="Austins-MacBook-Pro.local" time="0.011">
+  <properties/>
+  <testcase name="the same declaration with another full scope cannot borrow the prior endpoint(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest" time="0.004">
+    <properties>
+      <property name="before.sourceBytes" value="59032"/>
+      <property name="after.sourceBytes" value="44764"/>
+      <property name="before.stepBytes" value="82318"/>
+      <property name="after.stepBytes" value="66314"/>
+      <property name="before.physicalEndpoints" value="25"/>
+      <property name="after.physicalEndpoints" value="7"/>
+    </properties>
+  </testcase>
+  <testcase name="full admitted endpoint sharing compacts the source before its next native read(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest" time="0.003">
+    <properties>
+      <property name="before.sourceBytes" value="59032"/>
+      <property name="after.sourceBytes" value="44764"/>
+      <property name="before.stepBytes" value="82318"/>
+      <property name="after.stepBytes" value="66314"/>
+      <property name="before.physicalEndpoints" value="25"/>
+      <property name="after.physicalEndpoints" value="6"/>
+    </properties>
+  </testcase>
+  <testcase name="distinct resolved endpoint proofs keep every fact and receipt through sharing(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest" time="0.003">
+    <properties>
+      <property name="before.sourceBytes" value="59032"/>
+      <property name="after.sourceBytes" value="44764"/>
+      <property name="before.stepBytes" value="82318"/>
+      <property name="after.stepBytes" value="66314"/>
+      <property name="before.physicalEndpoints" value="25"/>
+      <property name="after.physicalEndpoints" value="6"/>
+    </properties>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

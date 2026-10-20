@@ -1,0 +1,43 @@
+{
+  "classification": "FIXTURE_SETUP_FAILURE_NOT_PRODUCT_RED",
+  "fixture_cause": "SingleListModelOracleCase supplies kotlin.collections.listOf signature to a helper with kotlin.collections.firstOrNull raw qualified identity.",
+  "admission_failure": "CompilerGroundedSymbolEvidenceFailure.QUALIFIED_IDENTITY_MISMATCH",
+  "actual_results": [
+    {
+      "class": "ReviewedSingleElementListOracleTest",
+      "tests": 3,
+      "failures": 3,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ValueCollectionInsertionOracleTest",
+      "tests": 8,
+      "failures": 7,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ValueCollectionInsertionBindingOracleTest",
+      "tests": 7,
+      "failures": 7,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "RepresentationCollectionInsertionOracleTest",
+      "tests": 1,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "insertion_behavior_assertions": "NOT_REACHED_IN_18_CASES",
+  "separate_metadata_case": "PASSED",
+  "proposed_correction": "Use one insertion-owned endpoint factory with explicit listOf name and qualified identity. Preserve assumed file/range/scope/lease and the exact signature. Route the overload-control setup through that same insertion-owned factory.",
+  "expected_assertions_changed": false,
+  "production_changed": false,
+  "active_source_changed": false,
+  "source_window": "WAIT_FOR_ROOT_RELEASE",
+  "gradle_by_fixture_owner": "NOT_RUN"
+}

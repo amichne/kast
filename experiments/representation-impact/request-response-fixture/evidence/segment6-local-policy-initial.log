@@ -1,0 +1,64 @@
+Calculating task graph as no cached configuration is available for tasks: :relation:contract:detekt :relation:contract:checkMainKotlinFileLength :relation:contract:checkTestKotlinFileLength :relation:contract:spotlessKotlinCheck :query:service:detekt :query:service:checkMainKotlinFileLength :query:service:checkTestKotlinFileLength :query:service:spotlessKotlinCheck
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :relation:contract:checkMainKotlinFileLength
+> Task :relation:contract:checkTestKotlinFileLength
+> Task :relation:contract:spotlessKotlin
+> Task :relation:contract:spotlessKotlinCheck
+
+> Task :relation:contract:detekt
+Successfully generated markdown at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/build/reports/detekt/detekt.md
+Successfully generated html at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/build/reports/detekt/detekt.html
+Successfully generated sarif at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/build/reports/detekt/detekt.sarif
+Successfully generated checkstyle at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/build/reports/detekt/detekt.xml
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlow.kt:215:13 The function fromCompiler appears to be too complex based on Cognitive Complexity (complexity: 14). Defined maximum allowed complexity for methods is set to '12' [CognitiveComplexMethod]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlow.kt:215:13 The function fromCompiler appears to be too complex based on Cyclomatic Complexity (complexity: 15). The maximum allowed complexity for methods is set to '12' [CyclomaticComplexMethod]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlowFootprint.kt:43:19 This expression contains a magic number. Consider defining it to a well named constant. [MagicNumber]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlowFootprint.kt:128:87 This expression contains a magic number. Consider defining it to a well named constant. [MagicNumber]
+
+
+> Task :relation:contract:detekt FAILED
+> Task :query:service:detekt
+> Task :query:service:checkMainKotlinFileLength
+> Task :query:service:checkTestKotlinFileLength
+> Task :query:service:spotlessKotlin
+> Task :query:service:spotlessKotlinCheck
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-20-08-31-08-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':relation:contract:detekt'.
+> Analysis failed with 4 issues.
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 4s
+20 actionable tasks: 10 executed, 10 up-to-date
+Configuration cache entry stored.

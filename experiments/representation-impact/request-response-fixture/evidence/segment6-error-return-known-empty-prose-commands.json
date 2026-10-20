@@ -1,0 +1,16 @@
+[
+  {
+    "argv": [
+      "mise",
+      "exec",
+      "--",
+      "vale",
+      "--no-global",
+      "--config=.vale.ini",
+      "--output=JSON",
+      "/Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/experiments/representation-impact/request-response-fixture/results/error-return-and-known-empty-oracles.md"
+    ],
+    "cwd": "/Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast",
+    "exitCode": 1
+  }
+]

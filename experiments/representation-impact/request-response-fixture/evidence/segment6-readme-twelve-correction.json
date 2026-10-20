@@ -1,0 +1,39 @@
+{
+  "edit": "Only the stale README count changed from eleven to twelve.",
+  "before_sha256": "60d8442780526315f3a1ea3556d2e01238ddac7fdca22d333439ac3fea4267b2",
+  "after_sha256": "052e77a71f8f72a110d10c9107e103b6785abb94dcb0c7c6920e51dc9b8395b3",
+  "vale": {
+    "version": "3.24.0",
+    "exit": 0,
+    "status": "PASSED",
+    "command": "mise exec -- vale --no-global --config=.vale.ini --output=JSON experiments/representation-impact/request-response-fixture/README.md"
+  },
+  "assessment": {
+    "type": "ASSESSED",
+    "exit": 1,
+    "command": "uv run --locked --script scripts/assess_text.py --vale-bin /Users/amichne/.local/share/mise/installs/vale/3.24.0/vale --glossary /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/docs/glossary.json /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/experiments/representation-impact/request-response-fixture/README.md",
+    "cwd": "/Users/amichne/.codex/plugins/cache/slopsentral/repository-knowledge/3.1.0/skills/controlled-technical-writing",
+    "grade": 10.59,
+    "findings": [
+      {
+        "category": "READABILITY",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 10.59 exceeds the shared advisory target of 8.",
+        "rule": "Slopsentral.Grade",
+        "severity": "warning",
+        "span": [
+          1,
+          1
+        ],
+        "type": "FINDING"
+      }
+    ],
+    "glossary": "CHECKED",
+    "comprehension": "NOT_ASSESSED",
+    "reason": "Keep exact source names, commands, and semantic qualifications."
+  },
+  "compiler_inputs_changed": false,
+  "manifests_changed": false,
+  "scope_guide_change_needed": false,
+  "gradle": "NOT_RUN"
+}

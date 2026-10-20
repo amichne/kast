@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryBindingRetentionTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:17.506Z" hostname="Austins-MacBook-Pro.local" time="0.078">
+  <properties/>
+  <testcase name="an unresolved exact reference cannot construct complete absence()" classname="io.github.amichne.kast.query.contract.QueryBindingRetentionTest" time="0.043"/>
+  <testcase name="complete evidence snapshots caller owned qualification lists()" classname="io.github.amichne.kast.query.contract.QueryBindingRetentionTest" time="0.005"/>
+  <testcase name="empty complete symbol result yields a proof bound to those rows()" classname="io.github.amichne.kast.query.contract.QueryBindingRetentionTest" time="0.004"/>
+  <testcase name="joined row from another basis is rejected during retention()" classname="io.github.amichne.kast.query.contract.QueryBindingRetentionTest" time="0.008"/>
+  <testcase name="equal display names do not establish join identity()" classname="io.github.amichne.kast.query.contract.QueryBindingRetentionTest" time="0.001"/>
+  <testcase name="empty binding result retains its row kind and immutable qualification()" classname="io.github.amichne.kast.query.contract.QueryBindingRetentionTest" time="0.007"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

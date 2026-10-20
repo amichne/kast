@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-20T03:07:49.739Z" hostname="Austins-MacBook-Pro.local" time="0.931">
+  <properties/>
+  <testcase name="shared modeled branch prefixes finish within existing checkpoint capacity with every path intact()" classname="io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest" time="0.119"/>
+  <testcase name="repeated root references are charged without removing an evidence row()" classname="io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest" time="0.002"/>
+  <testcase name="dense repeated callable evidence retains every flow obligation within default checkpoint capacity()" classname="io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest" time="0.8"/>
+  <testcase name="expired presentation permission rejects before semantic effects()" classname="io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest" time="0.003"/>
+  <testcase name="storage distinguishes shared proof objects from physically distinct equal declarations()" classname="io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest" time="0.0"/>
+  <testcase name="standalone output keeps conservative byte protection()" classname="io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest" time="0.002"/>
+  <testcase name="paired presentation leaves storage charge for checkpoint ownership()" classname="io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

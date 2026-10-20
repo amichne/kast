@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.AutomaticPrivateConcurrencyTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.024Z" hostname="Austins-MacBook-Pro.local" time="0.016">
+  <properties/>
+  <testcase name="retirement during a private producer revokes its reservation and prevents resurrection()" classname="io.github.amichne.kast.query.protocol.AutomaticPrivateConcurrencyTest" time="0.006"/>
+  <testcase name="final transfer cannot steal a checkpoint pinned by another producer()" classname="io.github.amichne.kast.query.protocol.AutomaticPrivateConcurrencyTest" time="0.003"/>
+  <testcase name="interleaved invocation cleanup preserves another running owner and its reservation()" classname="io.github.amichne.kast.query.protocol.AutomaticPrivateConcurrencyTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

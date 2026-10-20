@@ -271,7 +271,7 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
             bound(value.target) ?: return null,
             BoundedProtocolList.create(
                     value.callableTransfers.map {
-                        it.impactDocument().callbackValue() ?: return null
+                        it.impactDocument(authority).callbackValue() ?: return null
                     }
                 )
                 .callbackValue() ?: return null,
@@ -306,7 +306,7 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
             body(value.owner) ?: return null,
             BoundedProtocolList.create(
                     value.callableTransfers.map {
-                        it.impactDocument().callbackValue() ?: return null
+                        it.impactDocument(authority).callbackValue() ?: return null
                     }
                 )
                 .callbackValue() ?: return null,

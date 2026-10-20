@@ -1,0 +1,2 @@
+procedure	expected	observed	status
+Read exact2.3.20 sourcejar commonMain/kotlin/util/Standard.kt112-119; javap -c -p -classpath native-kotlin-stdlib.jar kotlin.StandardKt__StandardKt	receiver to Function1.invoke argument; normal callback result to let result	source return block(this); bytecode aload1,aload0,Function1.invoke,areturn; both artifact hashes match frozen identities	PASSED

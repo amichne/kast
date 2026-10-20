@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueReviewedReturnSharingTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-20T17:33:44.435Z" hostname="Austins-MacBook-Pro.local" time="0.158">
+  <properties/>
+  <testcase name="reviewed return sharing conserves nested predicate proof without more retained policy bytes(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueReviewedReturnSharingTest" time="0.152">
+    <properties>
+      <property name="return.before.policyBytes" value="89864"/>
+      <property name="return.after.policyBytes" value="102904"/>
+      <property name="return.before.frame" value="1402333753"/>
+      <property name="return.after.frame" value="763677574"/>
+    </properties>
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:190)
+	at io.github.amichne.kast.relation.contract.ValueReviewedReturnSharingTest.reviewed return sharing conserves nested predicate proof without more retained policy bytes(ValueReviewedReturnSharingTest.kt:43)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

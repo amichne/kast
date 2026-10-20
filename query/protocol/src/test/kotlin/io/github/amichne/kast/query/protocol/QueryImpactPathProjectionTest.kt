@@ -57,12 +57,18 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class QueryImpactPathProjectionTest {
+    private val projectionReferences = CanonicalQueryReferences()
+
     @Test
     fun `consumer projection retains different current state and complete expected rule separately`() {
         val fixture = ImpactPathProjectionFixture()
         val path = consumerPath(fixture)
         val encoded =
-            Json.encodeToJsonElement(ImpactPathDocument.serializer(), path.impactDocument().refined()).jsonObject
+            Json.encodeToJsonElement(
+                    ImpactPathDocument.serializer(),
+                    path.impactDocument(references = projectionReferences).refined(),
+                )
+                .jsonObject
         assertEquals(setOf("producer", "steps", "representation", "terminal"), encoded.keys)
         assertEquals(
             "COMPILER",
@@ -103,7 +109,7 @@ class QueryImpactPathProjectionTest {
     fun `modeled boundary keeps two bases obligations and unknown current without erasing origin`() {
         val fixture = ImpactPathProjectionFixture()
         val path = boundaryPath(fixture)
-        val projected = path.impactDocument().refined()
+        val projected = path.impactDocument(references = projectionReferences).refined()
         val current =
             (projected.representation as ImpactRepresentationEvidenceDocument.Present).branches.values.single().current
         assertEquals(
@@ -177,7 +183,9 @@ class QueryImpactPathProjectionTest {
                 )
                 .refined()
         val projected =
-            (path.impactDocument().refined().terminal as ImpactPathTerminalDocument.SupportedDomainEnd).observation
+            (path.impactDocument(references = projectionReferences).refined().terminal
+                    as ImpactPathTerminalDocument.SupportedDomainEnd)
+                .observation
         assertEquals(domain.scopeFingerprint.value, projected.domain.fingerprint.value)
         assertEquals(QueryRelationRequestedDomainDocument.WORKSPACE, projected.domain.requestedDomain)
         assertEquals(5, projected.examinedWorkUnits.value)
@@ -208,9 +216,11 @@ class QueryImpactPathProjectionTest {
                         QueryImpactTerminal.Unresolved.ReadRejected(rejected),
                     )
                     .refined()
-            val terminal = path.impactDocument().refined().terminal as ImpactPathTerminalDocument.UnresolvedRead
+            val terminal =
+                path.impactDocument(references = projectionReferences).refined().terminal
+                    as ImpactPathTerminalDocument.UnresolvedRead
             val evidence = terminal.rejection as ImpactReadRejectionDocument.Native
-            assertEquals(fixture.producer.impactDocument().refined(), evidence.source)
+            assertEquals(fixture.producer.impactDocument(references = projectionReferences).refined(), evidence.source)
             assertEquals(ImpactRequestedBoundaryDocument.Workspace, evidence.domain)
             assertEquals(cause.name, evidence.cause.name)
             assertEquals(3L, evidence.examinedWorkUnits.value)
@@ -223,7 +233,9 @@ class QueryImpactPathProjectionTest {
                     cause,
                     RelationWorkCount.parse(2).refined(),
                 )
-            val projected = rejected.impactDocument().refined() as ImpactReadRejectionDocument.Contract
+            val projected =
+                rejected.impactDocument(references = projectionReferences).refined()
+                    as ImpactReadRejectionDocument.Contract
             assertEquals(ImpactRequestedBoundaryDocument.RetainedSeed, projected.domain)
             assertEquals(cause.name, projected.cause.name)
             assertEquals(2L, projected.examinedWorkUnits.value)
@@ -253,11 +265,15 @@ class QueryImpactPathProjectionTest {
                 )
                 .refined()
         val projected =
-            (path.impactDocument().refined().terminal as ImpactPathTerminalDocument.ExecutionStop).stop
-                as ImpactExecutionStopDocument.Cycle
+            (path.impactDocument(references = projectionReferences).refined().terminal
+                    as ImpactPathTerminalDocument.ExecutionStop)
+                .stop as ImpactExecutionStopDocument.Cycle
         assertEquals(0L, projected.repeatedAt.value)
-        assertEquals(route.map { it.impactDocument().refined() }, projected.prefix.values)
-        assertEquals(fixture.producer.impactDocument().refined(), projected.source)
+        assertEquals(
+            route.map { it.impactDocument(references = projectionReferences).refined() },
+            projected.prefix.values,
+        )
+        assertEquals(fixture.producer.impactDocument(references = projectionReferences).refined(), projected.source)
         val capacity =
             QueryImpactExecutionStop.CheckpointCapacity.admit(
                     fixture.producer,
@@ -265,7 +281,9 @@ class QueryImpactPathProjectionTest {
                     RelationByteLimit.parse(1024).refined(),
                 )
                 .refined()
-        val cut = capacity.impactDocument().refined() as ImpactExecutionStopDocument.CheckpointCapacity
+        val cut =
+            capacity.impactDocument(references = projectionReferences).refined()
+                as ImpactExecutionStopDocument.CheckpointCapacity
         assertEquals(2048L, cut.requiredBytes.value)
         assertEquals(1024L, cut.availableBytes.value)
     }

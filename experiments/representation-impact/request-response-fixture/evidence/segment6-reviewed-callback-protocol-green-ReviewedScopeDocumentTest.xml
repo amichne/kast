@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ReviewedScopeDocumentTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T16:54:34.560Z" hostname="Austins-MacBook-Pro.local" time="0.19">
+  <properties/>
+  <testcase name="renewed anonymous handles keep identity but unknown target and application kinds reject()" classname="io.github.amichne.kast.protocol.contract.ReviewedScopeDocumentTest" time="0.143"/>
+  <testcase name="reviewed callback frames cannot grant native source transfer evidence()" classname="io.github.amichne.kast.protocol.contract.ReviewedScopeDocumentTest" time="0.019"/>
+  <testcase name="reviewed input rejects dispatch receiver changed formal and missing push()" classname="io.github.amichne.kast.protocol.contract.ReviewedScopeDocumentTest" time="0.006"/>
+  <testcase name="reviewed return rejects another call foreign proof and direct receiver result()" classname="io.github.amichne.kast.protocol.contract.ReviewedScopeDocumentTest" time="0.005"/>
+  <testcase name="reviewed callback frame keeps full binding formal and anonymous proof()" classname="io.github.amichne.kast.protocol.contract.ReviewedScopeDocumentTest" time="0.005"/>
+  <testcase name="reviewed input and matched return preserve path predicates and exact push pop()" classname="io.github.amichne.kast.protocol.contract.ReviewedScopeDocumentTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.TraceSourceRelationshipCompletionTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:33.537Z" hostname="Austins-MacBook-Pro.local" time="0.036">
+  <properties/>
+  <testcase name="trace does not convert missing source membership to an empty complete result()" classname="io.github.amichne.kast.query.protocol.TraceSourceRelationshipCompletionTest" time="0.003"/>
+  <testcase name="trace rejects unresolved compiler mapping()" classname="io.github.amichne.kast.query.protocol.TraceSourceRelationshipCompletionTest" time="0.002"/>
+  <testcase name="trace does not weaken an explicit invocation operation()" classname="io.github.amichne.kast.query.protocol.TraceSourceRelationshipCompletionTest" time="0.002"/>
+  <testcase name="execution gaps remain evidence without preventing source completion()" classname="io.github.amichne.kast.query.protocol.TraceSourceRelationshipCompletionTest" time="0.013"/>
+  <testcase name="source and resource gaps still reject trace()" classname="io.github.amichne.kast.query.protocol.TraceSourceRelationshipCompletionTest" time="0.009"/>
+  <testcase name="trace still rejects unfinished source enumeration()" classname="io.github.amichne.kast.query.protocol.TraceSourceRelationshipCompletionTest" time="0.003"/>
+  <testcase name="trace preserves known source relationships when callback execution is unknown()" classname="io.github.amichne.kast.query.protocol.TraceSourceRelationshipCompletionTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

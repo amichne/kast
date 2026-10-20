@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueCollectionInsertionBindingOracleTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-20T19:11:05.588Z" hostname="Austins-MacBook-Pro.local" time="0.028">
+  <properties/>
+  <testcase name="a stale actual argument cannot borrow a fresh library binding()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionBindingOracleTest" time="0.003"/>
+  <testcase name="equal full proofs recreated as fresh objects keep the exact insertion()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionBindingOracleTest" time="0.003"/>
+  <testcase name="a changed full enclosing scope cannot borrow the argument binding()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionBindingOracleTest" time="0.003"/>
+  <testcase name="another occurrence of the same library callable cannot borrow the binding()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionBindingOracleTest" time="0.01"/>
+  <testcase name="a changed full callable scope cannot borrow the argument binding()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionBindingOracleTest" time="0.001"/>
+  <testcase name="a changed declaration constraint cannot borrow an unrestricted binding()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionBindingOracleTest" time="0.002"/>
+  <testcase name="a changed full execution host cannot borrow the argument binding()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionBindingOracleTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

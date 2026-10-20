@@ -16,18 +16,20 @@ import io.github.amichne.kast.query.contract.QueryImpactTerminal
 import io.github.amichne.kast.relation.contract.BoundaryObligation
 import io.github.amichne.kast.relation.contract.RepresentationHistory
 import io.github.amichne.kast.relation.contract.RepresentationModelApplication
+import io.github.amichne.kast.relation.contract.ValueModelApplication
 
 /** The admitted original path link expands every omitted compiler step and full model payload. */
 internal fun QueryImpactFinding.findingDocument(
-    rowId: QueryResultRowReference
+    references: QueryReferenceAuthority,
+    rowId: QueryResultRowReference,
 ): ImpactProjected<ImpactFindingDocument> =
     QueryDiscoveryCountDocument.parse(pathOrdinal.value.toLong())
         .impactFailure(ImpactPathProjectionFailure::Count)
-        .impactZip(path.producer.impactDocument())
-        .impactZip(path.destination.impactDocument())
+        .impactZip(path.producer.impactDocument(references))
+        .impactZip(path.destination.impactDocument(references))
         .impactZip(path.representation.findingDocument())
-        .impactZip(path.terminal.findingDocument())
-        .impactZip(path.boundaryObligations().impactEach { it.impactDocument() })
+        .impactZip(path.terminal.findingDocument(references))
+        .impactZip(path.boundaryObligations().impactEach { it.impactDocument(references) })
         .impactMap { (finding, obligations) ->
             ImpactFindingDocument(
                 ImpactFindingEvidenceReferenceDocument(finding.first.first.first.first, rowId),
@@ -59,6 +61,7 @@ internal fun QueryImpactRepresentation.findingDocument(): ImpactProjected<Impact
 
 private fun RepresentationHistory.findingDocument(): ImpactProjected<ImpactFindingProvenanceDocument> =
     when (this) {
+        is ValueModelApplication -> reference.impactDocument().impactMap(ImpactFindingProvenanceDocument::ModeledValue)
         is RepresentationHistory.Origin ->
             reference.impactDocument().impactZip(rule.state.impactDocument()).impactMap { (reference, state) ->
                 ImpactFindingProvenanceDocument.Origin(reference, state)
@@ -79,6 +82,7 @@ private fun QueryImpactPath.boundaryObligations(): List<BoundaryObligation> =
         when (step) {
             is QueryImpactStep.ModeledBoundary -> step.connection.obligations
             is QueryImpactStep.Compiler,
+            is QueryImpactStep.ModeledValue,
             is QueryImpactStep.ModeledRepresentation -> emptyList()
         }
     } +

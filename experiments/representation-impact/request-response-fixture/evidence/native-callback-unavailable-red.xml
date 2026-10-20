@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativeValueCallbackUnavailableTest" tests="2" skipped="0" failures="2" errors="0" timestamp="2026-10-20T04:56:21.651Z" hostname="Austins-MacBook-Pro.local" time="0.077">
+  <properties/>
+  <testcase name="unrelated expression cannot carry unavailable callback evidence()" classname="io.github.amichne.kast.relation.intellij.NativeValueCallbackUnavailableTest" time="0.063">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=SOURCE_MISMATCH)&gt; but was: &lt;Refined(value=ValueFlowObligation(site=io.github.amichne.kast.relation.contract.ValueSite@b558fd7b, cause=CALLBACK_FLOW_UNPROVEN, evidence=None))&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=SOURCE_MISMATCH)&gt; but was: &lt;Refined(value=ValueFlowObligation(site=io.github.amichne.kast.relation.contract.ValueSite@b558fd7b, cause=CALLBACK_FLOW_UNPROVEN, evidence=None))&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.relation.intellij.NativeValueCallbackUnavailableTest.unrelated expression cannot carry unavailable callback evidence(NativeValueCallbackUnavailableTest.kt:38)
+</failure>
+  </testcase>
+  <testcase name="parameter escape keeps its raw cause beside the unresolved classification()" classname="io.github.amichne.kast.relation.intellij.NativeValueCallbackUnavailableTest" time="0.007">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected type, expected: &lt;io.github.amichne.kast.relation.contract.ValueFlowObligationEvidence.CallbackUnavailable&gt; but was: &lt;io.github.amichne.kast.relation.contract.ValueFlowObligationEvidence.None&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected type, expected: &lt;io.github.amichne.kast.relation.contract.ValueFlowObligationEvidence.CallbackUnavailable&gt; but was: &lt;io.github.amichne.kast.relation.contract.ValueFlowObligationEvidence.None&gt;
+	at org.junit.jupiter.api.Assertions.assertInstanceOf(Assertions.java:3699)
+	at io.github.amichne.kast.relation.intellij.NativeValueCallbackUnavailableTest.parameter escape keeps its raw cause beside the unresolved classification(NativeValueCallbackUnavailableTest.kt:32)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

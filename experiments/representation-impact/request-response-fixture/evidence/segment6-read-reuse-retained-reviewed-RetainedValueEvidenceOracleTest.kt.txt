@@ -1,0 +1,139 @@
+package io.github.amichne.kast.query.protocol
+
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ImpactAccountingDocument
+import io.github.amichne.kast.protocol.contract.ImpactAccountingStatusDocument
+import io.github.amichne.kast.protocol.contract.ImpactClosureDocument
+import io.github.amichne.kast.protocol.contract.ImpactFindingTerminalDocument
+import io.github.amichne.kast.protocol.contract.ImpactFlowUnsupportedDocument
+import io.github.amichne.kast.protocol.contract.ImpactPathTerminalDocument
+import io.github.amichne.kast.protocol.contract.ImpactRequiredObligationDocument
+import io.github.amichne.kast.protocol.contract.ImpactWitnessDocument
+import io.github.amichne.kast.protocol.contract.ImpactWitnessSectionDocument
+import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
+import io.github.amichne.kast.protocol.contract.validateImpactAccounting
+import io.github.amichne.kast.protocol.contract.validateImpactCompletion
+import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+
+/**
+ * Retained contract evidence proves linked views and zero semantic replay, not native reuse or summary construction.
+ */
+class RetainedValueEvidenceOracleTest {
+    @Test
+    fun `compact findings expand to the same original paths and exact unresolved native witnesses`() = runTest {
+        val case = RetainedValueEvidenceOracleCase()
+        val compact = case.witness(ImpactWitnessSectionDocument.FINDINGS)
+        val expanded = case.paths()
+        val native = case.witness(ImpactWitnessSectionDocument.NATIVE_READS)
+        val findings =
+            compact.items.values.map { row ->
+                ((row as QueryResultItemDocument.ImpactWitness).item.witness as ImpactWitnessDocument.Finding).finding
+            }
+        val paths = expanded.items.values.map { row -> row as QueryResultItemDocument.ValuePath }
+        assertEquals(listOf(0L, 1L, 2L), findings.map { finding -> finding.path.pathOrdinal.value })
+        assertEquals(case.issued.rowIds, findings.map { finding -> finding.path.pathRowId })
+        assertEquals(case.issued.rowIds, paths.map { path -> path.rowId })
+        assertEquals(listOf(0, 2, LAST_SOURCE_OFFSET), paths.map { path -> path.path.producer.range.start.value })
+        assertEquals(paths.map { path -> path.path.producer }, findings.map { finding -> finding.producer })
+        assertEquals(
+            paths.map { path -> (path.path.terminal as ImpactPathTerminalDocument.UnresolvedFlow).site },
+            findings.map { finding -> finding.destination },
+        )
+        assertEquals(
+            List(ORIGINAL_PATHS) { ImpactFlowUnsupportedDocument.MUTABLE_CONTROL_FLOW },
+            findings.map { finding -> (finding.terminal as ImpactFindingTerminalDocument.UnresolvedFlow).cause },
+        )
+        assertEquals(
+            List(ORIGINAL_PATHS) { ImpactFlowUnsupportedDocument.MUTABLE_CONTROL_FLOW },
+            paths.map { path -> (path.path.terminal as ImpactPathTerminalDocument.UnresolvedFlow).cause },
+        )
+        assertNativeWitnesses(native.items.values)
+        assertEquals(compact.question, expanded.question)
+        assertEquals(compact.question, native.question)
+        assertEquals(0, case.semanticCalls)
+    }
+
+    @Test
+    fun `bounded retained pages keep stable links exact original counts and unresolved closure`() = runTest {
+        val case = RetainedValueEvidenceOracleCase()
+        val pages =
+            listOf(0, 1, 2).map { cursor ->
+                case.witness(ImpactWitnessSectionDocument.FINDINGS, cursor = cursor, maximum = 1)
+            }
+        val repeated = case.witness(ImpactWitnessSectionDocument.FINDINGS, maximum = 1)
+        assertEquals(pages.first().items, repeated.items)
+        assertEquals(pages.first().impactAccounting, repeated.impactAccounting)
+        assertEquals(listOf(1, 2, null), pages.map { page -> page.nextCursor?.value })
+        val ids =
+            pages
+                .flatMap { page -> page.items.values }
+                .map { row ->
+                    (((row as QueryResultItemDocument.ImpactWitness).item.witness as ImpactWitnessDocument.Finding)
+                            .finding)
+                        .path
+                        .pathRowId
+                }
+        assertEquals(case.issued.rowIds, ids)
+        for (page in pages) {
+            val accounting = page.impactAccounting as ImpactAccountingDocument.Investigated
+            assertEquals(ORIGINAL_PATHS.toLong(), accounting.originalPathCount.value)
+            assertEquals(ORIGINAL_PATHS.toLong(), accounting.originalObservationCount.value)
+            assertEquals(0L, accounting.pagePathCount.value)
+            assertQualifiedClosure(accounting.status)
+            assertEquals(Refinement.Refined(Unit), page.validateImpactAccounting())
+            assertEquals(Refinement.Refined(Unit), page.validateImpactCompletion())
+        }
+        val selectedPath = case.paths(cursor = 1, maximum = 1)
+        assertEquals(listOf(case.issued.rowIds[1]), selectedPath.items.values.map { row -> row.rowId })
+        assertEquals(2, selectedPath.nextCursor?.value)
+        val accounting = selectedPath.impactAccounting as ImpactAccountingDocument.Investigated
+        assertEquals(1L, accounting.pagePathCount.value)
+        assertQualifiedClosure(accounting.status)
+        val models = case.witness(ImpactWitnessSectionDocument.MODELS)
+        assertTrue(models.items.values.isEmpty())
+        assertNull(models.nextCursor)
+        assertEquals(0, case.semanticCalls)
+    }
+
+    private fun assertNativeWitnesses(rows: List<QueryResultItemDocument>) {
+        val records = rows.map { row -> (row as QueryResultItemDocument.ImpactWitness).item }
+        assertEquals(
+            (0L until ORIGINAL_PATHS * RECORDS_PER_SOURCE).toList(),
+            records.map { record -> record.ordinal.value },
+        )
+        val reads = records.map { record -> record.witness }.filterIsInstance<ImpactWitnessDocument.NativeRead>()
+        assertEquals(listOf(0L, 1L, 2L), reads.map { read -> read.observationOrdinal.value })
+        assertEquals(listOf(0, 2, LAST_SOURCE_OFFSET), reads.map { read -> read.source.range.start.value })
+        assertEquals(List(ORIGINAL_PATHS) { 1L }, reads.map { read -> read.examinedWorkUnits.value })
+        assertEquals(List(ORIGINAL_PATHS) { 0L }, reads.map { read -> read.transferCount.value })
+        assertEquals(List(ORIGINAL_PATHS) { 0L }, reads.map { read -> read.applicationCount.value })
+        assertEquals(List(ORIGINAL_PATHS) { 1L }, reads.map { read -> read.obligationCount.value })
+        val obligations =
+            records.map { record -> record.witness }.filterIsInstance<ImpactWitnessDocument.FlowObligation>()
+        assertEquals(listOf(0L, 1L, 2L), obligations.map { obligation -> obligation.observationOrdinal.value })
+        assertEquals(
+            listOf(0, 2, LAST_SOURCE_OFFSET),
+            obligations.map { obligation -> obligation.site.range.start.value },
+        )
+        assertEquals(
+            List(ORIGINAL_PATHS) { ImpactFlowUnsupportedDocument.MUTABLE_CONTROL_FLOW },
+            obligations.map { obligation -> obligation.cause },
+        )
+    }
+
+    private fun assertQualifiedClosure(status: ImpactAccountingStatusDocument) {
+        val selected = status as ImpactAccountingStatusDocument.SelectedSubset
+        val closure = selected.originalClosure as ImpactClosureDocument.Unresolved
+        assertEquals(listOf(ImpactRequiredObligationDocument.NATIVE_FLOW), closure.required.values)
+    }
+
+    private companion object {
+        const val ORIGINAL_PATHS = 3
+        const val LAST_SOURCE_OFFSET = 4
+        const val RECORDS_PER_SOURCE = 2L
+    }
+}

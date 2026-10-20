@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueImplementationObligationOracleTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T02:37:36.676Z" hostname="Austins-MacBook-Pro.local" time="0.01">
+  <properties/>
+  <testcase name="foreign site basis cannot preserve a local zero target investigation()" classname="io.github.amichne.kast.relation.contract.ValueImplementationObligationOracleTest" time="0.002"/>
+  <testcase name="zero target qualified dispatch keeps exact limitations without a positive transfer()" classname="io.github.amichne.kast.relation.contract.ValueImplementationObligationOracleTest" time="0.007"/>
+  <testcase name="another callable or an invocation result cannot claim the captured target investigation()" classname="io.github.amichne.kast.relation.contract.ValueImplementationObligationOracleTest" time="0.001"/>
+  <testcase name="ordinary obligations do not manufacture implementation evidence()" classname="io.github.amichne.kast.relation.contract.ValueImplementationObligationOracleTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

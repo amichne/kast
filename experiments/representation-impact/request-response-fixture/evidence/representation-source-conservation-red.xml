@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.RepresentationSourceConservationTest" tests="3" skipped="0" failures="2" errors="0" timestamp="2026-10-20T01:47:59.236Z" hostname="Austins-MacBook-Pro.local" time="0.107">
+  <properties/>
+  <testcase name="constructor storage keeps history without assigning the argument representation to the constructed object()" classname="io.github.amichne.kast.relation.contract.RepresentationSourceConservationTest" time="0.084">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Unknown(reason=UNMODELED_TRANSFORMATION)&gt; but was: &lt;Known(state=RepresentationState(domain=io.github.amichne.kast.relation.contract.RepresentationDomain@892322e8, id=ModelIdentifier(value=OPAQUE)))&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Unknown(reason=UNMODELED_TRANSFORMATION)&gt; but was: &lt;Known(state=RepresentationState(domain=io.github.amichne.kast.relation.contract.RepresentationDomain@892322e8, id=ModelIdentifier(value=OPAQUE)))&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.relation.contract.RepresentationSourceConservationTest.constructor storage keeps history without assigning the argument representation to the constructed object(RepresentationSourceConservationTest.kt:49)
+</failure>
+  </testcase>
+  <testcase name="field projection keeps history without assigning the object representation to its field()" classname="io.github.amichne.kast.relation.contract.RepresentationSourceConservationTest" time="0.008">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Unknown(reason=UNMODELED_TRANSFORMATION)&gt; but was: &lt;Known(state=RepresentationState(domain=io.github.amichne.kast.relation.contract.RepresentationDomain@892322e8, id=ModelIdentifier(value=OPAQUE)))&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Unknown(reason=UNMODELED_TRANSFORMATION)&gt; but was: &lt;Known(state=RepresentationState(domain=io.github.amichne.kast.relation.contract.RepresentationDomain@892322e8, id=ModelIdentifier(value=OPAQUE)))&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.relation.contract.RepresentationSourceConservationTest.field projection keeps history without assigning the object representation to its field(RepresentationSourceConservationTest.kt:23)
+</failure>
+  </testcase>
+  <testcase name="matched source entry and return preserve the value representation and exact history()" classname="io.github.amichne.kast.relation.contract.RepresentationSourceConservationTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

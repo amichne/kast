@@ -1,0 +1,148 @@
+package io.github.amichne.kast.runtime.hosted
+
+import io.github.amichne.kast.protocol.contract.CompilerSignatureWireDocument
+import io.github.amichne.kast.protocol.contract.EmptyImpactCallStack
+import io.github.amichne.kast.protocol.contract.EmptyImpactValuePath
+import io.github.amichne.kast.protocol.contract.ImpactCallFrameDocument
+import io.github.amichne.kast.protocol.contract.ImpactCallOccurrenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactCallTargetDocument
+import io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument
+import io.github.amichne.kast.protocol.contract.ImpactExecutionOwnerDocument
+import io.github.amichne.kast.protocol.contract.ImpactExecutionReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactFormalOriginDocument
+import io.github.amichne.kast.protocol.contract.ImpactFormalParameterDocument
+import io.github.amichne.kast.protocol.contract.ImpactFormalPositionDocument
+import io.github.amichne.kast.protocol.contract.ImpactReceiverKindDocument
+import io.github.amichne.kast.protocol.contract.ImpactSourceOperationDocument
+import io.github.amichne.kast.protocol.contract.ImpactTransferKindDocument
+import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBindingWireDocument
+import io.github.amichne.kast.protocol.contract.hasSameCallStackIdentity
+
+/** Exact callback and helper frames come from the original source, not a lexical-supply assumption. */
+internal class NativePacketS3QueryCallbackOracle(private val facts: NativePacketS3QueryFacts) {
+    fun entry(transfer: ImpactCompilerTransferDocument): Boolean {
+        if (transfer.kind != ImpactTransferKindDocument.SOURCE_CALL_ENTRY) return false
+        val entry = transfer.compositeOperation() as? ImpactSourceOperationDocument.SeedCallbackEnter ?: return false
+        if (!callbackFrame(entry.frame) || !seedSource(transfer, entry.frame)) return false
+        val position = entry.position as? ImpactFormalPositionDocument.Parameter ?: return false
+        if (!implicitParameter(position.parameter)) return false
+        if (transfer.target.range != NativePacketS3QueryRanges.logBody) return false
+        if (transfer.target.valuePath != EmptyImpactValuePath) return false
+        if (transfer.target.role != ImpactValueRoleDocument.Formal(entry.position)) return false
+        if (transfer.target.predicates != transfer.source.predicates) return false
+        return transfer.target.enclosing == facts.client &&
+            transfer.target.executionOwner == facts.logBody &&
+            seedStack(transfer, entry.frame)
+    }
+
+    private fun seedSource(transfer: ImpactCompilerTransferDocument, frame: ImpactCallFrameDocument): Boolean {
+        val source = transfer.source
+        val argument = source.role as? ImpactValueRoleDocument.FunctionArgument ?: return false
+        if (source.callStack != EmptyImpactCallStack || source.valuePath != EmptyImpactValuePath) return false
+        if (source.enclosing != facts.origin.enclosing || source.executionOwner != facts.origin.executionOwner)
+            return false
+        if (source.range != NativePacketS3QueryRanges.logRead || argument.index.value != 0) return false
+        return frame.invocation == ImpactCallOccurrenceDocument.Function(argument.invocation) &&
+            argument.invocation.executionOwner == source.executionOwner
+    }
+
+    private fun seedStack(transfer: ImpactCompilerTransferDocument, frame: ImpactCallFrameDocument): Boolean {
+        val frames = transfer.target.callStack.values
+        if (frames.size != CALLBACK_STACK_DEPTH) return false
+        if (!facts.callerFrame.matches(frames.first())) return false
+        return packetQueryList(listOf(frame)).hasSameCallStackIdentity(packetQueryList(listOf(frames.last())))
+    }
+
+    private fun implicitParameter(parameter: ImpactFormalParameterDocument): Boolean {
+        if (parameter.callable != facts.client || parameter.origin != ImpactFormalOriginDocument.Implicit) return false
+        if (parameter.name != packetQueryText("it") || parameter.index.value != 0) return false
+        if (parameter.executionOwner != facts.logBody) return false
+        return parameter.range == NativePacketS3QueryRanges.logBody
+    }
+
+    fun helperEntry(transfer: ImpactCompilerTransferDocument): Boolean {
+        if (transfer.kind != ImpactTransferKindDocument.SOURCE_CALL_ENTRY) return false
+        val entry = transfer.compositeOperation() as? ImpactSourceOperationDocument.Enter ?: return false
+        val actual = transfer.source.role as? ImpactValueRoleDocument.Receiver ?: return false
+        if (actual.kind != ImpactReceiverKindDocument.EXTENSION) return false
+        if (transfer.source.valuePath != EmptyImpactValuePath || transfer.target.valuePath != EmptyImpactValuePath)
+            return false
+        if (actual.invocation != facts.helperInvocation || transfer.source.range != NativePacketS3QueryRanges.logIt)
+            return false
+        return entry.position == ImpactFormalPositionDocument.Receiver(ImpactReceiverKindDocument.EXTENSION) &&
+            helperFrame(entry.frame)
+    }
+
+    fun helperReturn(transfer: ImpactCompilerTransferDocument): Boolean {
+        if (transfer.kind != ImpactTransferKindDocument.SOURCE_CALL_RETURN) return false
+        val returned = transfer.compositeOperation() as? ImpactSourceOperationDocument.Return ?: return false
+        if (!helperFrame(returned.frame)) return false
+        if (transfer.target.enclosing != facts.client || transfer.target.executionOwner != facts.logBody) return false
+        return transfer.target.range == facts.helperInvocation.range &&
+            transfer.target.role == ImpactValueRoleDocument.ExpressionResult
+    }
+
+    fun callbackReturn(transfer: ImpactCompilerTransferDocument): Boolean {
+        if (transfer.kind != ImpactTransferKindDocument.SOURCE_CALL_RETURN) return false
+        val returned = transfer.compositeOperation() as? ImpactSourceOperationDocument.Return ?: return false
+        if (!callbackFrame(returned.frame)) return false
+        if (transfer.source.enclosing != facts.client || transfer.source.executionOwner != facts.logBody) return false
+        return transfer.target.enclosing == facts.origin.enclosing &&
+            transfer.target.range == NativePacketS3QueryRanges.logInvoke &&
+            transfer.target.role == ImpactValueRoleDocument.ExpressionResult
+    }
+
+    private fun helperFrame(frame: ImpactCallFrameDocument): Boolean {
+        if (frame.enclosing != facts.client || frame.target != ImpactCallTargetDocument.Direct) return false
+        return frame.invocation == ImpactCallOccurrenceDocument.Declared(facts.helperInvocation) &&
+            frame.callee == ImpactExecutionReferenceDocument(facts.helper)
+    }
+
+    private fun callbackFrame(frame: ImpactCallFrameDocument): Boolean {
+        if (frame.enclosing != facts.origin.enclosing) return false
+        if (frame.callee != ImpactExecutionReferenceDocument(facts.client, facts.logBody)) return false
+        val invocation = (frame.invocation as? ImpactCallOccurrenceDocument.Function)?.invocation ?: return false
+        if (invocation.range != NativePacketS3QueryRanges.logInvoke) return false
+        val signature =
+            invocation.callable.compilerEvidence.signature as? CompilerSignatureWireDocument.Function ?: return false
+        if (signature.qualifiedIdentity != "kotlin.Function1.invoke" || signature.valueParameters.size != 1)
+            return false
+        val callback = frame.target as? ImpactCallTargetDocument.Callback ?: return false
+        return supplyingFrame(callback) && selectedBody(callback)
+    }
+
+    private fun supplyingFrame(callback: ImpactCallTargetDocument.Callback): Boolean {
+        val supply = callback.supplyingFrame
+        val frame =
+            ImpactCallFrameDocument(
+                enclosing = supply.enclosing,
+                invocation = supply.invocation,
+                callee = supply.callee,
+                target = supply.target,
+            )
+        if (!facts.callerFrame.matches(frame)) return false
+        val binding = callback.flow.binding as? QueryCallbackBindingWireDocument.Bound ?: return false
+        if (binding.invocation != facts.callerFrame.invocation || binding.position != 0) return false
+        if (binding.parameter.file != facts.origin.enclosing.file.value) return false
+        return binding.parameter.range.startInclusive == facts.logParameter.start.value &&
+            binding.parameter.range.endExclusive == facts.logParameter.end.value
+    }
+
+    private fun selectedBody(callback: ImpactCallTargetDocument.Callback): Boolean {
+        val body = facts.logBody as ImpactExecutionOwnerDocument.Anonymous
+        if (callback.flow.basis != facts.origin.enclosing.basis) return false
+        if (callback.flow.body.compilerEvidence.identity != body.body.compilerIdentity.value) return false
+        if (callback.flow.body.occurrence.file != facts.client.file.value) return false
+        if (callback.flow.body.occurrence.range.startInclusive != body.body.range.start.value) return false
+        if (callback.flow.body.occurrence.range.endExclusive != body.body.range.end.value) return false
+        if (callback.selected !in callback.flow.invocations) return false
+        if (callback.selected.occurrence.file != facts.origin.enclosing.file.value) return false
+        return callback.selected.occurrence.range.startInclusive == NativePacketS3QueryRanges.logInvoke.start.value &&
+            callback.selected.occurrence.range.endExclusive == NativePacketS3QueryRanges.logInvoke.end.value
+    }
+
+    private companion object {
+        const val CALLBACK_STACK_DEPTH = 2
+    }
+}

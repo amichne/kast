@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest" tests="6" skipped="0" failures="1" errors="0" timestamp="2026-10-20T05:45:49.007Z" hostname="Austins-MacBook-Pro.local" time="0.012">
+  <properties/>
+  <testcase name="requested sites reuse exact model site native receipts once and preserve original question order()" classname="io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest" time="0.002"/>
+  <testcase name="native requested site failures preserve finite cause and abort without following target reads()" classname="io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest" time="0.003"/>
+  <testcase name="foreign requested native claim rejects before all native effects()" classname="io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest" time="0.001"/>
+  <testcase name="requested native proof remains charged within explicit small checkpoint grant()" classname="io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: Rejected(failure=ImpactSourceRejected(cause=Admission(cause=BYTE_LIMIT_REACHED, position=ProtocolOffset(value=1)))) ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Rejected(failure=ImpactSourceRejected(cause=Admission(cause=BYTE_LIMIT_REACHED, position=ProtocolOffset(value=1)))) ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:232)
+	at io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest$requested native proof remains charged within explicit small checkpoint grant$1.invokeSuspend(QueryImpactRequestedSiteAdmissionTest.kt:124)
+	at io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest$requested native proof remains charged within explicit small checkpoint grant$1.invoke(QueryImpactRequestedSiteAdmissionTest.kt)
+	at io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest$requested native proof remains charged within explicit small checkpoint grant$1.invoke(QueryImpactRequestedSiteAdmissionTest.kt)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt$runTest$2$1$1.invokeSuspend(TestBuilders.kt:317)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.test.TestDispatcher.processEvent$kotlinx_coroutines_test(TestDispatcher.kt:24)
+	at kotlinx.coroutines.test.TestCoroutineScheduler.tryRunNextTaskUnless$kotlinx_coroutines_test(TestCoroutineScheduler.kt:98)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt$runTest$2$1$workRunner$1.invokeSuspend(TestBuilders.kt:326)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:256)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:54)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlockingImpl(Builders.kt:30)
+	at kotlinx.coroutines.BuildersKt.runBlockingImpl(Unknown Source)
+	at kotlinx.coroutines.BuildersKt__Builders_concurrentKt.runBlockingK(Builders.concurrent.kt:172)
+	at kotlinx.coroutines.BuildersKt.runBlockingK(Unknown Source)
+	at kotlinx.coroutines.BuildersKt__Builders_concurrentKt.runBlockingK$default(Builders.concurrent.kt:157)
+	at kotlinx.coroutines.BuildersKt.runBlockingK$default(Unknown Source)
+	at kotlinx.coroutines.test.TestBuildersJvmKt.createTestResult(TestBuildersJvm.kt:10)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:309)
+	at kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:1)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:167)
+	at kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:1)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0$default(TestBuilders.kt:159)
+	at kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0$default(TestBuilders.kt:1)
+	at io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest.requested native proof remains charged within explicit small checkpoint grant(QueryImpactRequestedSiteAdmissionTest.kt:113)
+</failure>
+  </testcase>
+  <testcase name="duplicate requested sites reject before all native effects()" classname="io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest" time="0.001"/>
+  <testcase name="native anonymous owner must match the supplied requested site owner()" classname="io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

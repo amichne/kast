@@ -1,0 +1,6 @@
+owner	tests	failures	errors	skipped
+relation/contract	386	0	0	0
+protocol/contract	173	0	0	0
+query/contract	117	0	0	0
+query/protocol	376	0	0	0
+query/service	190	0	0	0

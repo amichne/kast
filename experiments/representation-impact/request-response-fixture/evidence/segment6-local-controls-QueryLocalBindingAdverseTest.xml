@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.service.QueryLocalBindingAdverseTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-20T12:29:49.881Z" hostname="Austins-MacBook-Pro.local" time="0.21">
+  <properties/>
+  <testcase name="timeout while replaying the consumed prefix retains a resumable remainder()" classname="io.github.amichne.kast.query.service.QueryLocalBindingAdverseTest" time="0.166"/>
+  <testcase name="a byte grant too small for any candidate rejects without enumeration()" classname="io.github.amichne.kast.query.service.QueryLocalBindingAdverseTest" time="0.005"/>
+  <testcase name="repeated time suspensions before any candidate yield finitely and drain later()" classname="io.github.amichne.kast.query.service.QueryLocalBindingAdverseTest" time="0.007"/>
+  <testcase name="insufficient retention terminates through the existing checkpoint owner()" classname="io.github.amichne.kast.query.service.QueryLocalBindingAdverseTest" time="0.004"/>
+  <testcase name="cancellation through the scan callback leaves the published predecessor immutable()" classname="io.github.amichne.kast.query.service.QueryLocalBindingAdverseTest" time="0.003"/>
+  <testcase name="elapsed suspension resumes the consumed prefix without confirming it again()" classname="io.github.amichne.kast.query.service.QueryLocalBindingAdverseTest" time="0.005"/>
+  <testcase name="too little work for progress rejects finitely while retaining the prior observation()" classname="io.github.amichne.kast.query.service.QueryLocalBindingAdverseTest" time="0.005"/>
+  <testcase name="epoch movement rejects the checkpoint before any additional enumeration()" classname="io.github.amichne.kast.query.service.QueryLocalBindingAdverseTest" time="0.002"/>
+  <testcase name="authority rejection after suspension preserves confirmed prefix and a finite rejection()" classname="io.github.amichne.kast.query.service.QueryLocalBindingAdverseTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest" tests="3" skipped="0" failures="1" errors="0" timestamp="2026-10-20T18:19:53.580Z" hostname="Austins-MacBook-Pro.local" time="0.195">
+  <properties/>
+  <testcase name="the same declaration with another full scope cannot borrow the prior endpoint(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest" time="0.151">
+    <properties>
+      <property name="before.sourceBytes" value="59032"/>
+      <property name="after.sourceBytes" value="59032"/>
+      <property name="before.stepBytes" value="82318"/>
+      <property name="after.stepBytes" value="82318"/>
+      <property name="before.physicalEndpoints" value="25"/>
+      <property name="after.physicalEndpoints" value="25"/>
+    </properties>
+  </testcase>
+  <testcase name="full admitted endpoint sharing compacts the source before its next native read(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest" time="0.029">
+    <properties>
+      <property name="before.sourceBytes" value="59032"/>
+      <property name="after.sourceBytes" value="59032"/>
+      <property name="before.stepBytes" value="82318"/>
+      <property name="after.stepBytes" value="82318"/>
+      <property name="before.physicalEndpoints" value="25"/>
+      <property name="after.physicalEndpoints" value="25"/>
+    </properties>
+    <failure message="org.opentest4j.AssertionFailedError: expected: io.github.amichne.kast.relation.contract.RelationEndpoint$Resolved@5226e402&lt;Resolved(lease=SemanticReadLease(workspaceRoot=CanonicalWorkspaceRoot(value=/fixture), generation=EvidenceGeneration(value=1)), scope=Workspace(sourceKinds=PRODUCTION_AND_TEST, generatedSources=EXCLUDE, libraries=EXCLUDE), constraints=SymbolDiscoveryConstraints(directory=null, packageName=null, declarationKinds=null, sourceSets=All), evidence=CompilerGroundedSymbolEvidence(file=Workspace(path=CanonicalWorkspaceFilePath(value=/fixture/SourceFlow.kt)), range=ExactDeclarationTextRange(startInclusive=0, endExclusive=200), name=SymbolDiscoveryCandidateName(value=host), qualifiedIdentity=Available(value=fixture.host), kind=FUNCTION, signature=Function(qualifiedIdentity=CanonicalCompilerQualifiedIdentity(value=fixture.host), receiver=Absent, contextReceivers=[], valueParameters=[CanonicalCompilerType(value=String)], typeParameterCount=CanonicalTypeParameterCount(value=0)), compilerIdentity=CompilerSymbolIdentity(value=canonical-signature-sha256-v1|6d7561e4fed569d69a184984945eeae02aa7e9c62d16ded82b05e7d46fe61422)), fingerprint=RelationEndpointFingerprint(value=57e7d4c1a9efabff31fde1b166817124f692eff72cdd9c40554e63949cd33e8d))&gt; but was: io.github.amichne.kast.relation.contract.RelationEndpoint$Resolved@72209d93&lt;Resolved(lease=SemanticReadLease(workspaceRoot=CanonicalWorkspaceRoot(value=/fixture), generation=EvidenceGeneration(value=1)), scope=Workspace(sourceKinds=PRODUCTION_AND_TEST, generatedSources=EXCLUDE, libraries=EXCLUDE), constraints=SymbolDiscoveryConstraints(directory=null, packageName=null, declarationKinds=null, sourceSets=All), evidence=CompilerGroundedSymbolEvidence(file=Workspace(path=CanonicalWorkspaceFilePath(value=/fixture/SourceFlow.kt)), range=ExactDeclarationTextRange(startInclusive=0, endExclusive=200), name=SymbolDiscoveryCandidateName(value=host), qualifiedIdentity=Available(value=fixture.host), kind=FUNCTION, signature=Function(qualifiedIdentity=CanonicalCompilerQualifiedIdentity(value=fixture.host), receiver=Absent, contextReceivers=[], valueParameters=[CanonicalCompilerType(value=String)], typeParameterCount=CanonicalTypeParameterCount(value=0)), compilerIdentity=CompilerSymbolIdentity(value=canonical-signature-sha256-v1|6d7561e4fed569d69a184984945eeae02aa7e9c62d16ded82b05e7d46fe61422)), fingerprint=RelationEndpointFingerprint(value=57e7d4c1a9efabff31fde1b166817124f692eff72cdd9c40554e63949cd33e8d))&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: io.github.amichne.kast.relation.contract.RelationEndpoint$Resolved@5226e402&lt;Resolved(lease=SemanticReadLease(workspaceRoot=CanonicalWorkspaceRoot(value=/fixture), generation=EvidenceGeneration(value=1)), scope=Workspace(sourceKinds=PRODUCTION_AND_TEST, generatedSources=EXCLUDE, libraries=EXCLUDE), constraints=SymbolDiscoveryConstraints(directory=null, packageName=null, declarationKinds=null, sourceSets=All), evidence=CompilerGroundedSymbolEvidence(file=Workspace(path=CanonicalWorkspaceFilePath(value=/fixture/SourceFlow.kt)), range=ExactDeclarationTextRange(startInclusive=0, endExclusive=200), name=SymbolDiscoveryCandidateName(value=host), qualifiedIdentity=Available(value=fixture.host), kind=FUNCTION, signature=Function(qualifiedIdentity=CanonicalCompilerQualifiedIdentity(value=fixture.host), receiver=Absent, contextReceivers=[], valueParameters=[CanonicalCompilerType(value=String)], typeParameterCount=CanonicalTypeParameterCount(value=0)), compilerIdentity=CompilerSymbolIdentity(value=canonical-signature-sha256-v1|6d7561e4fed569d69a184984945eeae02aa7e9c62d16ded82b05e7d46fe61422)), fingerprint=RelationEndpointFingerprint(value=57e7d4c1a9efabff31fde1b166817124f692eff72cdd9c40554e63949cd33e8d))&gt; but was: io.github.amichne.kast.relation.contract.RelationEndpoint$Resolved@72209d93&lt;Resolved(lease=SemanticReadLease(workspaceRoot=CanonicalWorkspaceRoot(value=/fixture), generation=EvidenceGeneration(value=1)), scope=Workspace(sourceKinds=PRODUCTION_AND_TEST, generatedSources=EXCLUDE, libraries=EXCLUDE), constraints=SymbolDiscoveryConstraints(directory=null, packageName=null, declarationKinds=null, sourceSets=All), evidence=CompilerGroundedSymbolEvidence(file=Workspace(path=CanonicalWorkspaceFilePath(value=/fixture/SourceFlow.kt)), range=ExactDeclarationTextRange(startInclusive=0, endExclusive=200), name=SymbolDiscoveryCandidateName(value=host), qualifiedIdentity=Available(value=fixture.host), kind=FUNCTION, signature=Function(qualifiedIdentity=CanonicalCompilerQualifiedIdentity(value=fixture.host), receiver=Absent, contextReceivers=[], valueParameters=[CanonicalCompilerType(value=String)], typeParameterCount=CanonicalTypeParameterCount(value=0)), compilerIdentity=CompilerSymbolIdentity(value=canonical-signature-sha256-v1|6d7561e4fed569d69a184984945eeae02aa7e9c62d16ded82b05e7d46fe61422)), fingerprint=RelationEndpointFingerprint(value=57e7d4c1a9efabff31fde1b166817124f692eff72cdd9c40554e63949cd33e8d))&gt;
+	at org.junit.jupiter.api.Assertions.assertSame(Assertions.java:2962)
+	at io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest.full admitted endpoint sharing compacts the source before its next native read(ValueFullEndpointSharingTest.kt:34)
+</failure>
+  </testcase>
+  <testcase name="distinct resolved endpoint proofs keep every fact and receipt through sharing(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest" time="0.006">
+    <properties>
+      <property name="before.sourceBytes" value="59032"/>
+      <property name="after.sourceBytes" value="59032"/>
+      <property name="before.stepBytes" value="82318"/>
+      <property name="after.stepBytes" value="82318"/>
+      <property name="before.physicalEndpoints" value="25"/>
+      <property name="after.physicalEndpoints" value="25"/>
+    </properties>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativeValueCallbackContractRejectedTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-20T05:06:51.827Z" hostname="Austins-MacBook-Pro.local" time="0.072">
+  <properties/>
+  <testcase name="invalid forwarding path keeps its raw contract failure as an obligation()" classname="io.github.amichne.kast.relation.intellij.NativeValueCallbackContractRejectedTest" time="0.061">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected type, expected: &lt;io.github.amichne.kast.kernel.Refinement.Refined&gt; but was: &lt;io.github.amichne.kast.kernel.Refinement.Rejected&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected type, expected: &lt;io.github.amichne.kast.kernel.Refinement.Refined&gt; but was: &lt;io.github.amichne.kast.kernel.Refinement.Rejected&gt;
+	at org.junit.jupiter.api.Assertions.assertInstanceOf(Assertions.java:3699)
+	at io.github.amichne.kast.relation.intellij.NativeValueCallbackContractRejectedTest.invalid forwarding path keeps its raw contract failure as an obligation(NativeValueCallbackContractRejectedTest.kt:19)
+</failure>
+  </testcase>
+  <testcase name="unrelated expression rejects callback contract failure evidence()" classname="io.github.amichne.kast.relation.intellij.NativeValueCallbackContractRejectedTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

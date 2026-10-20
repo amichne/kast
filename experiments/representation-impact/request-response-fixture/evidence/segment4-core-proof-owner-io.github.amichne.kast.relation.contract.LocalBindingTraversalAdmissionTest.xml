@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.LocalBindingTraversalAdmissionTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T04:46:45.185Z" hostname="Austins-MacBook-Pro.local" time="0.007">
+  <properties/>
+  <testcase name="traversal admission stops before a later candidate-free node()" classname="io.github.amichne.kast.relation.contract.LocalBindingTraversalAdmissionTest" time="0.004"/>
+  <testcase name="candidate-free enumeration propagates cancellation before exhaustion()" classname="io.github.amichne.kast.relation.contract.LocalBindingTraversalAdmissionTest" time="0.001"/>
+  <testcase name="candidate-free enumeration that reaches the deadline remains suspended()" classname="io.github.amichne.kast.relation.contract.LocalBindingTraversalAdmissionTest" time="0.0"/>
+  <testcase name="candidate-free current enumeration exhausts without candidate work()" classname="io.github.amichne.kast.relation.contract.LocalBindingTraversalAdmissionTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

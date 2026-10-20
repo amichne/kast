@@ -1,9 +1,21 @@
 package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.QueryCallbackFactoryBodyCallWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackFactoryBodyCallsWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackFactoryWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackParameterIdentityWireDocument
 import io.github.amichne.kast.protocol.contract.QuerySourceLessCallableDispositionDocument
 import io.github.amichne.kast.protocol.contract.QuerySourceLessCallableModuleKindDocument
 import io.github.amichne.kast.protocol.contract.QuerySourceLessCallableOriginDocument
+import io.github.amichne.kast.protocol.contract.QuerySourceLessCallableWireDocument
+import io.github.amichne.kast.protocol.contract.SymbolKindWireDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.callbackWire
+import io.github.amichne.kast.protocol.contract.immutableCallbackWire
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray

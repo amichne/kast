@@ -174,12 +174,17 @@ internal class QueryImpactTasks(
         val modeled = modeledImpactArrivals(route, source)
         if (modeled is Refinement.Rejected) return QueryImpactTaskTransition.Rejected(modeled.failure)
         val arrivals = (modeled as Refinement.Refined).value
+        val valueTasks =
+            when (val branches = valueModelImpactArrivals(route, observation)) {
+                is Refinement.Rejected -> return QueryImpactTaskTransition.Rejected(branches.failure)
+                is Refinement.Refined -> branches.value
+            }
         val terminals =
             when (val admitted = observedImpactTerminals(route, observation, arrivals.applied)) {
                 is Refinement.Rejected -> return QueryImpactTaskTransition.Rejected(admitted.failure)
                 is Refinement.Refined -> admitted.value
             }
-        val next = compilerTasks + arrivals.tasks
+        val next = compilerTasks + valueTasks + arrivals.tasks
         val rejected =
             readRejections[route.site]
                 ?.let { rejection ->

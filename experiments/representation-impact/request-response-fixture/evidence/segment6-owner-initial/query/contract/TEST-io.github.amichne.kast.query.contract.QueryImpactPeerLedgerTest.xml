@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryImpactPeerLedgerTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:17.770Z" hostname="Austins-MacBook-Pro.local" time="0.014">
+  <properties/>
+  <testcase name="retained source rows preserve exact peer proof and cannot be captured under peer authority()" classname="io.github.amichne.kast.query.contract.QueryImpactPeerLedgerTest" time="0.003"/>
+  <testcase name="independent peer native observations cannot merge into source investigation ledger()" classname="io.github.amichne.kast.query.contract.QueryImpactPeerLedgerTest" time="0.001"/>
+  <testcase name="peer endpoint cannot discharge an independent mutable source obligation()" classname="io.github.amichne.kast.query.contract.QueryImpactPeerLedgerTest" time="0.002"/>
+  <testcase name="peer terminal requires its original registered wrapper()" classname="io.github.amichne.kast.query.contract.QueryImpactPeerLedgerTest" time="0.001"/>
+  <testcase name="peer endpoint cannot replace a source compiler sibling()" classname="io.github.amichne.kast.query.contract.QueryImpactPeerLedgerTest" time="0.001"/>
+  <testcase name="unused peer model retains admission in its original model ordinal without creating a route()" classname="io.github.amichne.kast.query.contract.QueryImpactPeerLedgerTest" time="0.002"/>
+  <testcase name="ordinary downstream boundary cannot borrow completed peer endpoint exception()" classname="io.github.amichne.kast.query.contract.QueryImpactPeerLedgerTest" time="0.001"/>
+  <testcase name="guarded peer endpoint is conserved without an invented peer native read()" classname="io.github.amichne.kast.query.contract.QueryImpactPeerLedgerTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,162 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Calculating task graph as no cached configuration is available for tasks: :relation:intellij:spotlessKotlinApply :relation:intellij:nativeFixtureTest --tests *NativePacketThisRestorationTest --tests *NativePacketSafeCallReceiverTest
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :relation:intellij:spotlessKotlin
+> Task :relation:intellij:spotlessKotlinApply
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :kernel:compileJava NO-SOURCE
+> Task :protocol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+> Task :protocol:contract:compileKotlin UP-TO-DATE
+> Task :protocol:contract:compileJava NO-SOURCE
+> Task :relation:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:contract:compileKotlin UP-TO-DATE
+> Task :relation:contract:compileJava NO-SOURCE
+> Task :relation:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:intellij:extractRelationKotlinPlugin UP-TO-DATE
+> Task :workspace:intellij-read:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:intellij-read:extractWorkspaceReadIdeaDistribution UP-TO-DATE
+> Task :workspace:intellij-read:compileKotlin UP-TO-DATE
+> Task :workspace:intellij-read:compileJava NO-SOURCE
+> Task :relation:intellij:compileKotlin UP-TO-DATE
+> Task :relation:intellij:compileJava NO-SOURCE
+> Task :relation:intellij:processResources NO-SOURCE
+> Task :relation:intellij:classes UP-TO-DATE
+> Task :relation:intellij:jar UP-TO-DATE
+> Task :kernel:processResources NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar UP-TO-DATE
+> Task :protocol:contract:processResources UP-TO-DATE
+> Task :protocol:contract:classes UP-TO-DATE
+> Task :protocol:contract:jar UP-TO-DATE
+> Task :relation:contract:processResources NO-SOURCE
+> Task :relation:contract:classes UP-TO-DATE
+> Task :relation:contract:jar UP-TO-DATE
+> Task :relation:intellij:extractNativeTestIdea UP-TO-DATE
+
+> Task :relation:intellij:compileNativeTestKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketThisRestorationTest.kt:29:20 'static fun <E : Throwable!> run(p0: ThrowableRunnable<E!>): Unit' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketThisRestorationTest.kt:56:20 'static fun <E : Throwable!> run(p0: ThrowableRunnable<E!>): Unit' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketThisRestorationTest.kt:72:20 'static fun <E : Throwable!> run(p0: ThrowableRunnable<E!>): Unit' is deprecated. Deprecated in Java.
+
+> Task :relation:intellij:compileNativeTestJava NO-SOURCE
+> Task :relation:intellij:detektNativeTest
+> Task :relation:intellij:processNativeTestResources UP-TO-DATE
+> Task :relation:intellij:nativeTestClasses UP-TO-DATE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar UP-TO-DATE
+> Task :workspace:intellij-read:processResources NO-SOURCE
+> Task :workspace:intellij-read:classes UP-TO-DATE
+> Task :workspace:intellij-read:jar UP-TO-DATE
+
+> Task :relation:intellij:nativeFixtureTest
+
+NativePacketSafeCallReceiverTest > testOriginalCheckedThisSuppliesTheExactLetExtensionReceiverWithItsOwnNonNullGuard FAILED
+    junit.framework.AssertionFailedError: The actual safe call needs its exact receiver. Causes=[UNSUPPORTED_EXPRESSION]. let callback transport and C2.8/C2.9 remain NOT_ASSERTED expected:<1> but was:<0>
+        at app//junit.framework.Assert.fail(Assert.java:57)
+        at app//junit.framework.Assert.failNotEquals(Assert.java:329)
+        at app//junit.framework.Assert.assertEquals(Assert.java:78)
+        at app//junit.framework.Assert.assertEquals(Assert.java:234)
+        at app//junit.framework.TestCase.assertEquals(TestCase.java:377)
+        at app//io.github.amichne.kast.relation.intellij.NativePacketSafeCallReceiverTest.testOriginalCheckedThisSuppliesTheExactLetExtensionReceiverWithItsOwnNonNullGuard(NativePacketSafeCallReceiverTest.kt:19)
+
+NativePacketThisRestorationTest > testOriginalNullableThisRestoresItsSemanticExpressionAfterExactK2SafeNavigation FAILED
+    junit.framework.AssertionFailedError: The exact value occurrence must restore its independently selected semantic PSI expected same:<THIS_EXPRESSION> was not:<REFERENCE_EXPRESSION>
+        at app//junit.framework.Assert.fail(Assert.java:57)
+        at app//junit.framework.Assert.failNotSame(Assert.java:325)
+        at app//junit.framework.Assert.assertSame(Assert.java:288)
+        at app//junit.framework.TestCase.assertSame(TestCase.java:426)
+        at app//io.github.amichne.kast.relation.intellij.NativePacketThisRestorationTest.assertRestoration(NativePacketThisRestorationTest.kt:96)
+        at app//io.github.amichne.kast.relation.intellij.NativePacketThisRestorationTest.testOriginalNullableThisRestoresItsSemanticExpressionAfterExactK2SafeNavigation$lambda$0(NativePacketThisRestorationTest.kt:50)
+        at app//com.intellij.openapi.application.ReadAction.lambda$runBlocking$0(ReadAction.java:122)
+        at app//com.intellij.openapi.application.ThrowableComputableToLambda.invoke(coroutines.kt:351)
+        at app//com.intellij.platform.locking.impl.NestedLocksThreadingSupport.runReadAction(NestedLocksThreadingSupport.kt:861)
+        at app//com.intellij.openapi.application.impl.ApplicationImpl.runReadAction(ApplicationImpl.java:1121)
+        at app//com.intellij.openapi.application.ReadAction.runBlocking(ReadAction.java:121)
+        at app//com.intellij.openapi.application.ReadAction.run(ReadAction.java:45)
+        at app//io.github.amichne.kast.relation.intellij.NativePacketThisRestorationTest.testOriginalNullableThisRestoresItsSemanticExpressionAfterExactK2SafeNavigation(NativePacketThisRestorationTest.kt:29)
+
+NativePacketThisRestorationTest > testOriginalBindThisRestoresItsSemanticExpressionWithTheExactExtensionSymbol FAILED
+    junit.framework.AssertionFailedError: The exact value occurrence must restore its independently selected semantic PSI expected same:<THIS_EXPRESSION> was not:<REFERENCE_EXPRESSION>
+        at app//junit.framework.Assert.fail(Assert.java:57)
+        at app//junit.framework.Assert.failNotSame(Assert.java:325)
+        at app//junit.framework.Assert.assertSame(Assert.java:288)
+        at app//junit.framework.TestCase.assertSame(TestCase.java:426)
+        at app//io.github.amichne.kast.relation.intellij.NativePacketThisRestorationTest.assertRestoration(NativePacketThisRestorationTest.kt:96)
+        at app//io.github.amichne.kast.relation.intellij.NativePacketThisRestorationTest.testOriginalBindThisRestoresItsSemanticExpressionWithTheExactExtensionSymbol$lambda$0(NativePacketThisRestorationTest.kt:66)
+        at app//com.intellij.openapi.application.ReadAction.lambda$runBlocking$0(ReadAction.java:122)
+        at app//com.intellij.openapi.application.ThrowableComputableToLambda.invoke(coroutines.kt:351)
+        at app//com.intellij.platform.locking.impl.NestedLocksThreadingSupport.runReadAction(NestedLocksThreadingSupport.kt:861)
+        at app//com.intellij.openapi.application.impl.ApplicationImpl.runReadAction(ApplicationImpl.java:1121)
+        at app//com.intellij.openapi.application.ReadAction.runBlocking(ReadAction.java:121)
+        at app//com.intellij.openapi.application.ReadAction.run(ReadAction.java:45)
+        at app//io.github.amichne.kast.relation.intellij.NativePacketThisRestorationTest.testOriginalBindThisRestoresItsSemanticExpressionWithTheExactExtensionSymbol(NativePacketThisRestorationTest.kt:56)
+
+Oct 20, 2026 12:16:14 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: Index dispose started
+Oct 20, 2026 12:16:15 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: StubIndexExtension-s were unloaded
+Oct 20, 2026 12:16:15 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: Start shutting down /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/system/index/rep.names
+Oct 20, 2026 12:16:15 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: Finished shutting down /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/system/index/rep.names
+Oct 20, 2026 12:16:15 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: Index dispose completed in 97ms.
+Oct 20, 2026 12:16:15 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: VFS disconnect started
+Oct 20, 2026 12:16:15 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: VFS closing
+Oct 20, 2026 12:16:15 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: VFS disconnect completed in 0 ms.
+
+> Task :relation:intellij:nativeFixtureTest FAILED
+
+6 tests completed, 3 failed
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-20-12-16-15-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':relation:intellij:nativeFixtureTest'.
+> There were failing tests. See the report at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/reports/tests/nativeFixtureTest/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 44s
+34 actionable tasks: 5 executed, 29 up-to-date
+Configuration cache entry stored.

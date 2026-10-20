@@ -1,0 +1,92 @@
+Reusing configuration cache.
+> Task :protocol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:contract:processResources UP-TO-DATE
+> Task :kernel:processResources NO-SOURCE
+> Task :protocol:contract:processTestResources UP-TO-DATE
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :kernel:compileJava NO-SOURCE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar UP-TO-DATE
+> Task :app-server:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+
+> Task :app-server:verifyPublicQueryGeneratorRules
+.........................
+----------------------------------------------------------------------
+Ran 25 tests in 0.205s
+
+OK
+
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar UP-TO-DATE
+
+> Task :app-server:verifyPublicQueryGeneration
+Checked 28 public tool artifacts
+
+> Task :distribution:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :distribution:contract:compileKotlin UP-TO-DATE
+> Task :distribution:contract:compileJava NO-SOURCE
+> Task :distribution:managed:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :distribution:managed:compileKotlin UP-TO-DATE
+> Task :distribution:managed:compileJava NO-SOURCE
+> Task :protocol:registry:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:wire:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app-server:processResources
+> Task :app-server:processTestFixturesResources NO-SOURCE
+> Task :workspace:contract:compileTestFixturesKotlin UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesJava NO-SOURCE
+> Task :app-server:processTestResources UP-TO-DATE
+> Task :distribution:contract:processResources UP-TO-DATE
+> Task :distribution:contract:classes UP-TO-DATE
+> Task :distribution:contract:jar UP-TO-DATE
+> Task :distribution:managed:processResources NO-SOURCE
+> Task :distribution:managed:classes UP-TO-DATE
+> Task :distribution:managed:jar UP-TO-DATE
+> Task :protocol:registry:processResources NO-SOURCE
+> Task :protocol:wire:processResources NO-SOURCE
+> Task :workspace:contract:processTestFixturesResources NO-SOURCE
+> Task :workspace:contract:testFixturesClasses UP-TO-DATE
+> Task :workspace:contract:testFixturesJar UP-TO-DATE
+> Task :protocol:contract:compileKotlin
+> Task :protocol:contract:compileJava NO-SOURCE
+> Task :protocol:contract:classes UP-TO-DATE
+> Task :protocol:registry:compileKotlin UP-TO-DATE
+> Task :protocol:registry:compileJava NO-SOURCE
+> Task :protocol:wire:compileKotlin UP-TO-DATE
+> Task :protocol:wire:compileJava NO-SOURCE
+> Task :app-server:compileKotlin UP-TO-DATE
+> Task :app-server:compileJava NO-SOURCE
+> Task :app-server:classes
+> Task :protocol:contract:jar
+> Task :protocol:contract:compileTestKotlin UP-TO-DATE
+> Task :protocol:contract:compileTestJava NO-SOURCE
+> Task :protocol:contract:testClasses UP-TO-DATE
+> Task :app-server:jar
+> Task :app-server:compileTestFixturesKotlin UP-TO-DATE
+> Task :app-server:compileTestFixturesJava NO-SOURCE
+> Task :app-server:testFixturesClasses UP-TO-DATE
+> Task :app-server:testFixturesJar UP-TO-DATE
+> Task :app-server:compileTestKotlin UP-TO-DATE
+> Task :app-server:compileTestJava NO-SOURCE
+> Task :app-server:testClasses UP-TO-DATE
+> Task :protocol:registry:classes UP-TO-DATE
+> Task :protocol:registry:jar UP-TO-DATE
+> Task :protocol:wire:classes UP-TO-DATE
+> Task :protocol:wire:jar UP-TO-DATE
+> Task :protocol:contract:test
+> Task :app-server:test
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-20-07-45-44-0.txt
+
+BUILD SUCCESSFUL in 4s
+33 actionable tasks: 8 executed, 25 up-to-date
+Configuration cache entry reused.

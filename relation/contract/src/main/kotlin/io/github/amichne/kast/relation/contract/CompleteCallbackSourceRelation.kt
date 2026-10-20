@@ -90,6 +90,7 @@ internal fun CallbackInvocationFlowCause.sourceAdmission(): Refinement<Unit, Sta
         CallbackInvocationFlowCause.WORK_LIMIT_REACHED,
         CallbackInvocationFlowCause.TIME_LIMIT_REACHED,
         CallbackInvocationFlowCause.RESULT_LIMIT_REACHED,
+        CallbackInvocationFlowCause.PROOF_LIMIT_REACHED,
         CallbackInvocationFlowCause.BYTE_LIMIT_REACHED ->
             Refinement.Rejected(StaticCallbackGraphFailure.Unavailable(this))
     }

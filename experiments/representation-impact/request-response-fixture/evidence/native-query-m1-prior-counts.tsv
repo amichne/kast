@@ -1,0 +1,7 @@
+testClass	capture	outgoing	nativeFlowReads	retainedReadDelta	paths
+NativePacketQueryTest	1	false	14	0	1
+NativePacketQueryTest	2	true	12	0	1
+NativePacketQueryTest	3	true	12	0	1
+NativePacketQueryTest	4	false	14	0	1
+NativePacketQueryImplementationTest	1	true	12	0	1
+NativePacketQueryImplementationTest	2	false	14	0	1

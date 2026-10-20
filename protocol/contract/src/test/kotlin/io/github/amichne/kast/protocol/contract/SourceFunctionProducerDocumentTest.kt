@@ -1,0 +1,166 @@
+package io.github.amichne.kast.protocol.contract
+
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
+import io.github.amichne.kast.symbol.contract.fromCanonicalSignature
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+
+/** These output assertions establish correspondence, not compiler property origin or immutability. */
+class SourceFunctionProducerDocumentTest {
+    @Test
+    fun `source function producer encodes full property proof and exact actual result correspondence`() {
+        val f = SourceFunctionDocumentCase()
+        assertTrue(f.producer.hasSourceBasis(f.basis))
+        val encoded = Json.encodeToJsonElement(ImpactWitnessDocument.serializer(), f.producer).jsonObject
+        assertEquals(
+            setOf("type", "site", "invocation", "enclosing", "execution", "property", "reference"),
+            encoded.keys,
+        )
+        assertEquals("PRODUCER_SOURCE_FUNCTION", encoded.getValue("type").jsonPrimitive.content)
+        assertEquals(
+            setOf("declaration", "compilerTarget", "domain", "fingerprint"),
+            encoded.getValue("property").jsonObject.keys,
+        )
+        assertEquals(
+            f.property.compilerTarget.compilerEvidence.identity,
+            f.producer.property.declaration.compilerIdentity.value,
+        )
+        assertEquals(f.producer.site.range, f.producer.invocation.range)
+    }
+
+    @Test
+    fun `changed call reference execution basis and unknown producer variant reject output proof`() {
+        val f = SourceFunctionDocumentCase()
+        val foreign =
+            (f.basis as ImpactSemanticBasisDocument.Published).copy(
+                generation = ImpactEvidenceRevisionDocument.parse(99).sourceValue()
+            )
+        val controls =
+            listOf(
+                f.producer.copy(invocation = f.producer.invocation.copy(range = f.range(40, 55))),
+                f.producer.copy(reference = f.producer.reference.copy(range = f.range(40, 45))),
+                f.producer.copy(property = f.property.copy(declaration = f.property.declaration.copy(basis = foreign))),
+                f.producer.copy(
+                    execution =
+                        ImpactModelExecutionDocument.Declaration(
+                            f.host.copy(declaration = f.host.declaration.copy(basis = foreign))
+                        )
+                ),
+                f.producer.copy(property = f.host),
+            )
+        controls.forEach { assertFalse(it.hasSourceBasis(f.basis)) }
+        val output = Json.encodeToString(ImpactWitnessDocument.serializer(), f.producer)
+        assertThrows(SerializationException::class.java) {
+            Json.decodeFromString(
+                ImpactWitnessDocument.serializer(),
+                output.replace("PRODUCER_SOURCE_FUNCTION", "PRODUCER_OPAQUE_ALIAS"),
+            )
+        }
+    }
+}
+
+private class SourceFunctionDocumentCase {
+    private val values = ImpactFindingFixture()
+    val basis = values.declaration.basis
+    val host = endpoint(false)
+    val property = endpoint(true)
+    private val call = ImpactFunctionInvocationReferenceDocument(range(20, 35), builtin())
+    val producer =
+        ImpactWitnessDocument.ProducerSourceFunction(
+            ImpactValueSiteReferenceDocument(host.declaration, call.range, ImpactValueRoleDocument.ExpressionResult),
+            call,
+            host,
+            ImpactModelExecutionDocument.Declaration(host),
+            property,
+            ImpactImplementationOccurrenceDocument(host.declaration.file, range(20, 25)),
+        )
+
+    fun range(start: Int, end: Int) = ImpactSourceRangeDocument(values.offset(start), values.offset(end))
+
+    private fun endpoint(property: Boolean): ImpactModelEndpointDocument {
+        val name = if (property) "adapt" else "execute"
+        val qualified = "fixture.$name"
+        val signature =
+            if (property)
+                CanonicalCompilerSignature.property(qualified, null, emptyList(), "kotlin/Function0<kotlin/String>")
+                    .sourceValue()
+            else CanonicalCompilerSignature.function(qualified, null, emptyList(), emptyList(), 0).sourceValue()
+        val wire = wireSignature(property, qualified)
+        val identity = CompilerSymbolIdentity.fromCanonicalSignature(signature).value
+        val start = if (property) 210 else 0
+        val end = if (property) 250 else 200
+        val declaration =
+            ImpactDeclarationReferenceDocument(
+                basis,
+                values.text("/workspace/File.kt"),
+                range(start, end),
+                values.text(identity),
+            )
+        return ImpactModelEndpointDocument(
+            declaration,
+            QueryExcludedCompilerTargetWireDocument(
+                declaration.file.value,
+                SourceRangeWireDocument(start, end),
+                name,
+                if (property) SymbolKindWireDocument.PROPERTY else SymbolKindWireDocument.FUNCTION,
+                CompilerSymbolEvidenceWireDocument(identity, wire),
+            ),
+            values.domain,
+            values.text((if (property) "b" else "a").repeat(64)),
+        )
+    }
+
+    private fun wireSignature(property: Boolean, qualified: String): CompilerSignatureWireDocument =
+        if (property)
+            CompilerSignatureWireDocument.Property(
+                qualified,
+                CompilerReceiverWireDocument.Absent,
+                emptyList(),
+                "kotlin/Function0<kotlin/String>",
+            )
+        else
+            CompilerSignatureWireDocument.Function(
+                qualified,
+                CompilerReceiverWireDocument.Absent,
+                emptyList(),
+                emptyList(),
+                0,
+            )
+
+    private fun builtin(): QuerySourceLessCallableWireDocument {
+        val signature =
+            CanonicalCompilerSignature.function("kotlin.Function0.invoke", null, emptyList(), emptyList(), 0)
+                .sourceValue()
+        return QuerySourceLessCallableWireDocument(
+            CompilerSymbolEvidenceWireDocument(
+                CompilerSymbolIdentity.fromCanonicalSignature(signature).value,
+                CompilerSignatureWireDocument.Function(
+                    "kotlin.Function0.invoke",
+                    CompilerReceiverWireDocument.Absent,
+                    emptyList(),
+                    emptyList(),
+                    0,
+                ),
+            ),
+            SymbolKindWireDocument.FUNCTION,
+            QuerySourceLessCallableOriginDocument.LIBRARY,
+            QuerySourceLessCallableModuleKindDocument.BUILTINS,
+            "kotlin-stdlib",
+        )
+    }
+}
+
+private fun <V, F> Refinement<V, F>.sourceValue(): V =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error("Source-function document prerequisite rejected: $failure")
+    }

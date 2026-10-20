@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueFlowSourceAliasStorageTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-20T07:12:02.226Z" hostname="Austins-MacBook-Pro.local" time="0.008">
+  <properties/>
+  <testcase name="a transfer source alias uses the existing payload while a detached equal source charges it()" classname="io.github.amichne.kast.relation.contract.ValueFlowSourceAliasStorageTest" time="0.007">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;4702&gt; but was: &lt;2080&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;4702&gt; but was: &lt;2080&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+	at io.github.amichne.kast.relation.contract.ValueFlowSourceAliasStorageTest.a transfer source alias uses the existing payload while a detached equal source charges it(ValueFlowSourceAliasStorageTest.kt:41)
+</failure>
+  </testcase>
+  <testcase name="native detached byte arithmetic saturates instead of wrapping()" classname="io.github.amichne.kast.relation.contract.ValueFlowSourceAliasStorageTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

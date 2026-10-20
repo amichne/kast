@@ -51,7 +51,7 @@ private fun QueryQuestionDocument.declaresPeerFinding(finding: ImpactFindingDocu
             model.rules.values.any { rule ->
                 rule is ImpactBoundaryRuleDocument.Continuation &&
                     rule.id == peer.reference.rule &&
-                    rule.target.site == peer.target &&
+                    rule.target.site.hasSameValueIdentity(peer.target) &&
                     rule.source.site.isOnBasis(finding.producer.enclosing.basis)
             }
     }
@@ -64,7 +64,11 @@ private fun QueryQuestionDocument.declaresPeerModel(
     val source = from as? QueryFromDocument.Impact ?: return false
     return source.investigation.models.values.filterIsInstance<ImpactModelDocument.Boundary>().any {
         it.model == reference.model &&
-            it.rules.values.any { declared -> declared == rule && declared.id == reference.rule }
+            it.rules.values.any { declared ->
+                declared is ImpactBoundaryRuleDocument.Continuation &&
+                    declared.hasSameContinuationIdentity(rule) &&
+                    declared.id == reference.rule
+            }
     }
 }
 
@@ -75,7 +79,7 @@ private fun ImpactFindingDocument.hasValidPeerEvidence(
     val peer =
         terminal as? ImpactFindingTerminalDocument.UnresolvedPeerContinuation
             ?: return ImpactWitnessDocument.Finding(this).hasSourceBasis(basis)
-    if (!producer.isOnBasis(basis) || destination != peer.target) return false
+    if (!producer.isOnBasis(basis) || !destination.hasSameValueIdentity(peer.target)) return false
     if (
         peer.admission.validatePeerAdmission(basis, peer.target) !is Refinement.Refined ||
             !status.hasBoundaryObligation()

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.service.QueryImpactReadReuseOracleTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:46:50.145Z" hostname="Austins-MacBook-Pro.local" time="0.194">
+  <properties/>
+  <testcase name="a fresh investigation does not borrow the previous query local read cache()" classname="io.github.amichne.kast.query.service.QueryImpactReadReuseOracleTest" time="0.155"/>
+  <testcase name="shared native reads keep both prefixes and every model or opaque qualification()" classname="io.github.amichne.kast.query.service.QueryImpactReadReuseOracleTest" time="0.026"/>
+  <testcase name="a checkpoint cannot cross the authority model set or source domain of its original question()" classname="io.github.amichne.kast.query.service.QueryImpactReadReuseOracleTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

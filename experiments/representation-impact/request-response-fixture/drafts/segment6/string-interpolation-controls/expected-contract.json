@@ -1,0 +1,119 @@
+{
+  "status": "NOT_RUN",
+  "scope": "Supplemental exact scalar positions through actual adapter.resolve/read. Original S3 seed and six original field assertions stay unchanged.",
+  "selector": "*NativePacketStringInterpolationControlTest",
+  "positive_count": 9,
+  "negative_count": 7,
+  "positive_rows": [
+    {
+      "type": "kotlin.String",
+      "method": "stringValue",
+      "evidence_scalar_kind": "STRING"
+    },
+    {
+      "type": "kotlin.Boolean",
+      "method": "booleanValue",
+      "evidence_scalar_kind": "BOOLEAN"
+    },
+    {
+      "type": "kotlin.Char",
+      "method": "charValue",
+      "evidence_scalar_kind": "CHAR"
+    },
+    {
+      "type": "kotlin.Byte",
+      "method": "byteValue",
+      "evidence_scalar_kind": "BYTE"
+    },
+    {
+      "type": "kotlin.Short",
+      "method": "shortValue",
+      "evidence_scalar_kind": "SHORT"
+    },
+    {
+      "type": "kotlin.Int",
+      "method": "intValue",
+      "evidence_scalar_kind": "INT"
+    },
+    {
+      "type": "kotlin.Long",
+      "method": "longValue",
+      "evidence_scalar_kind": "LONG"
+    },
+    {
+      "type": "kotlin.Float",
+      "method": "floatValue",
+      "evidence_scalar_kind": "FLOAT"
+    },
+    {
+      "type": "kotlin.Double",
+      "method": "doubleValue",
+      "evidence_scalar_kind": "DOUBLE"
+    }
+  ],
+  "positive_contract": {
+    "source": "Actual immediate interpolation expression, independently resolved parameter or actual Java call as the case states",
+    "path": "Whole to Whole",
+    "target": "Exact whole enclosing template ExpressionResult",
+    "kind": "DERIVATION",
+    "evidence": [
+      "exact template range",
+      "exact immediate entry range",
+      "actual entry index from full entries list",
+      "independently expected scalar kind"
+    ],
+    "context": [
+      "exact enclosing",
+      "exact execution owner",
+      "same full call stack",
+      "same predicates"
+    ],
+    "applications": "empty",
+    "obligations": "empty for admitted scalar contribution"
+  },
+  "negative_rows": [
+    {
+      "method": "nullableValue",
+      "actual_fact": "String? nullable direct class",
+      "expected": "UNSUPPORTED_EXPRESSION, no DERIVATION/application/result edge"
+    },
+    {
+      "method": "customValue",
+      "actual_fact": "SOURCE InterpolationCustomValue with SOURCE toString override",
+      "expected": "UNSUPPORTED_EXPRESSION, no DERIVATION/application/result edge"
+    },
+    {
+      "method": "genericValue",
+      "actual_fact": "actual KaTypeParameterType for exact host type parameter",
+      "expected": "UNSUPPORTED_EXPRESSION, no DERIVATION/application/result edge"
+    },
+    {
+      "method": "flexibleValue",
+      "actual_fact": "real JAVA_LIBRARY System.getProperty call with flexible String bounds",
+      "expected": "UNSUPPORTED_EXPRESSION, no DERIVATION/application/result edge"
+    },
+    {
+      "method": "nestedPath",
+      "actual_fact": "actual scalar String source with compiler-resolved String.length field path",
+      "expected": "UNSUPPORTED_EXPRESSION, no Whole template DERIVATION/application"
+    },
+    {
+      "method": "siblings",
+      "actual_fact": "actual source parameter value in selected template plus separate other parameter template",
+      "expected": "own exact DERIVATION positive, no emitted witness to sibling template or constant entry"
+    },
+    {
+      "method": "constantResult",
+      "actual_fact": "actual source parameter reference before later literal return",
+      "expected": "no DERIVATION/application or direct literal result witness, no exhaustion/completion claim"
+    }
+  ],
+  "limits": [
+    "K2 prerequisite assertions must run before semantic claims",
+    "No reviewed logger terminal interpretation",
+    "No full S3 route substitution",
+    "No runtime toString execution",
+    "No NonNull invented",
+    "No native test ran during staging"
+  ]
+}

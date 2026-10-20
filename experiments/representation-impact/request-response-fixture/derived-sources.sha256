@@ -1,0 +1,12 @@
+0fb98dada8cbb2e40e9d1d991f213cf806a07c71a7192343797ed9fac9c5d894  src/main/kotlin/fixture/controls/DefaultIdentityControls.kt
+5e3babb407bec8b0df4987bbbe687da56ac815baf93a4dd56a5346f44efbc20d  src/main/kotlin/fixture/controls/FieldStorageControls.kt
+dbef796ac0200b1f3851886f7ab7ed40829637a638ee2d4986be932d7e6ff036  src/main/kotlin/fixture/controls/FlowControls.kt
+73173aa7b2c405e63704944390a9c43c2913268d94156f5e4a399d270e07be67  src/main/kotlin/fixture/variants/v1/V1.kt
+3beb592b408f08ab76b16128fea97bac3c088d953a4a245ff46479f7be2d9c14  src/main/kotlin/fixture/variants/v2/V2.kt
+b9895785b55d2029c8c8978a97024cc70ece59b126cdd99b15cc3bc1f33c3904  src/main/kotlin/fixture/variants/v3/V3.kt
+c543db734a8ea799a3b986560814254dc245e868a78bb21889b892af82c460ec  src/main/kotlin/fixture/variants/v4/V4.kt
+29c65205cf947b96aa7974259d475b6e59d6d56bd7490ac13d55823deef5fb4f  src/main/kotlin/fixture/variants/v5/V5.kt
+534db31b473418a8a131d5f63217750979e3dc46f8db69f5b035eb46115098b7  src/main/kotlin/fixture/variants/v6/V6.kt
+fbf889d5703ae145caa35b36ce73811ff5a806eb2b69c5d62273e8125e60e54d  src/main/kotlin/fixture/variants/v7/V7.kt
+02998a3fc91ffe4f91c9574a409a3d449cd8b0f352ccba286867e50e1b8929f7  src/main/kotlin/fixture/variants/v8/V8.kt
+c6918ed34caf171910b78b5a74e7033e7c0293bd772d15439f8894955bb5b12a  src/test/kotlin/fixture/controls/TestEchoMapper.kt

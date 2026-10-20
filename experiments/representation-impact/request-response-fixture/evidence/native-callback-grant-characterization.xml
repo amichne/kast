@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketCompositeCallbackGrantProbeTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T05:36:35.029Z" hostname="Austins-MacBook-Pro.local" time="8.016">
+  <properties/>
+  <testcase name="testOriginalS2CharacterizesQualifiedCallbackGrants" classname="io.github.amichne.kast.relation.intellij.NativePacketCompositeCallbackGrantProbeTest" time="8.007"/>
+  <system-out><![CDATA[CALLBACK_GRANT limit=1 work=1 k2=1 entries=[] frontier=[WORK_LIMIT_REACHED] flows=[]
+CALLBACK_GRANT limit=2 work=2 k2=1 entries=[] frontier=[WORK_LIMIT_REACHED] flows=[]
+CALLBACK_GRANT limit=3 work=3 k2=3 entries=[] frontier=[WORK_LIMIT_REACHED] flows=[]
+CALLBACK_GRANT limit=4 work=4 k2=6 entries=[] frontier=[WORK_LIMIT_REACHED] flows=[]
+CALLBACK_GRANT limit=5 work=5 k2=8 entries=[] frontier=[WORK_LIMIT_REACHED] flows=[]
+CALLBACK_GRANT limit=6 setup_rejected=STALE_SITE k2=9
+CALLBACK_GRANT limit=7 work=7 k2=14 entries=[] frontier=[CALLBACK_FLOW_UNPROVEN] flows=[(0, INCOMPLETE)]
+CALLBACK_GRANT limit=8 work=8 k2=14 entries=[] frontier=[CALLBACK_FLOW_UNPROVEN] flows=[(0, INCOMPLETE)]
+CALLBACK_GRANT limit=9 work=9 k2=14 entries=[] frontier=[CALLBACK_FLOW_UNPROVEN] flows=[(0, INCOMPLETE)]
+CALLBACK_GRANT limit=10 work=10 k2=14 entries=[] frontier=[CALLBACK_FLOW_UNPROVEN] flows=[(0, INCOMPLETE)]
+CALLBACK_GRANT limit=11 work=11 k2=14 entries=[] frontier=[CALLBACK_FLOW_UNPROVEN] flows=[(0, INCOMPLETE)]
+CALLBACK_GRANT limit=12 work=12 k2=14 entries=[] frontier=[CALLBACK_FLOW_UNPROVEN] flows=[(0, INCOMPLETE)]
+CALLBACK_GRANT limit=13 work=13 k2=14 entries=[] frontier=[CALLBACK_FLOW_UNPROVEN] flows=[(0, INCOMPLETE)]
+CALLBACK_GRANT limit=14 work=14 k2=14 entries=[] frontier=[CALLBACK_FLOW_UNPROVEN] flows=[(0, INCOMPLETE)]
+CALLBACK_GRANT limit=15 work=15 k2=14 entries=[] frontier=[CALLBACK_FLOW_UNPROVEN] flows=[(0, INCOMPLETE)]
+CALLBACK_GRANT limit=16 work=16 k2=14 entries=[] frontier=[CALLBACK_FLOW_UNPROVEN] flows=[(0, INCOMPLETE)]
+CALLBACK_GRANT_RESULT status=CHARACTERIZED semantic_assertion=NOT_RUN
+]]></system-out>
+  <system-err><![CDATA[[   1176]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1176]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

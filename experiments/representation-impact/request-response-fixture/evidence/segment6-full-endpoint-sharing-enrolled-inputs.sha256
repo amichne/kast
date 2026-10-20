@@ -1,0 +1,3 @@
+625c8373b652198bdbfad8a40a2e386995c1b6445f27d2c7920493343438f7e0  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueEndpointSharingCase.kt
+659b3ced58a7f0c7d65f55201b2ee2cc0b9df19beb40b46b1d6889ae42e2a804  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueEndpointSharingInventory.kt
+47e4f0fd0a49ed106a6818e4d2fe9318906e5d45e9b6f433bae66a58a7db7a8d  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueFullEndpointSharingTest.kt

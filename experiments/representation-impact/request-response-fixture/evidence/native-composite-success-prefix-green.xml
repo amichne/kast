@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketCompositeSuccessPathTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T05:25:38.163Z" hostname="Austins-MacBook-Pro.local" time="8.116">
+  <properties/>
+  <testcase name="testOriginalS2ImplicitReadMapsThePayloadAndReconstructsSuccess" classname="io.github.amichne.kast.relation.intellij.NativePacketCompositeSuccessPathTest" time="8.107"/>
+  <system-out><![CDATA[COMPOSITE_SUCCESS_STAGE row=C2.1 receiver source=ExactDeclarationTextRange(startInclusive=769, endExclusive=954) transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=769, endExclusive=954))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 map formal source=ExactDeclarationTextRange(startInclusive=769, endExclusive=954) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=289, endExclusive=439))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 Success.value source=ExactDeclarationTextRange(startInclusive=289, endExclusive=439) transfers=[(FIELD_READ, ExactDeclarationTextRange(startInclusive=393, endExclusive=398)), (FIELD_READ, ExactDeclarationTextRange(startInclusive=427, endExclusive=432))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 builtin argument source=ExactDeclarationTextRange(startInclusive=393, endExclusive=398) transfers=[(ARGUMENT, ExactDeclarationTextRange(startInclusive=393, endExclusive=398))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 callback formal source=ExactDeclarationTextRange(startInclusive=393, endExclusive=398) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=959, endExclusive=989))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.2 implicit it read source=ExactDeclarationTextRange(startInclusive=959, endExclusive=989) transfers=[(LOCAL_READ, ExactDeclarationTextRange(startInclusive=961, endExclusive=963))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.2 Envelope.body source=ExactDeclarationTextRange(startInclusive=961, endExclusive=963) transfers=[(FIELD_READ, ExactDeclarationTextRange(startInclusive=961, endExclusive=968))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.2 mapper receiver source=ExactDeclarationTextRange(startInclusive=961, endExclusive=968) transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=961, endExclusive=968))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.2 mapper formal source=ExactDeclarationTextRange(startInclusive=961, endExclusive=968) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=1399, endExclusive=1491))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.2 WireResponse.links source=ExactDeclarationTextRange(startInclusive=1399, endExclusive=1491) transfers=[(FIELD_READ, ExactDeclarationTextRange(startInclusive=1485, endExclusive=1490))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.2 ClientResponse argument source=ExactDeclarationTextRange(startInclusive=1485, endExclusive=1490) transfers=[(ARGUMENT, ExactDeclarationTextRange(startInclusive=1485, endExclusive=1490))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.2 ClientResponse.links source=ExactDeclarationTextRange(startInclusive=1485, endExclusive=1490) transfers=[(CONSTRUCTOR_FIELD, ExactDeclarationTextRange(startInclusive=1462, endExclusive=1491))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.2 mapper return source=ExactDeclarationTextRange(startInclusive=1462, endExclusive=1491) transfers=[(RETURN, ExactDeclarationTextRange(startInclusive=1462, endExclusive=1491))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.2 matched mapper return source=ExactDeclarationTextRange(startInclusive=1462, endExclusive=1491) transfers=[(SOURCE_CALL_RETURN, ExactDeclarationTextRange(startInclusive=961, endExclusive=987))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.5 anonymous normal return source=ExactDeclarationTextRange(startInclusive=961, endExclusive=987) transfers=[(RETURN, ExactDeclarationTextRange(startInclusive=961, endExclusive=987))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.5 matched builtin return source=ExactDeclarationTextRange(startInclusive=961, endExclusive=987) transfers=[(SOURCE_CALL_RETURN, ExactDeclarationTextRange(startInclusive=383, endExclusive=399))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.5 success factory argument source=ExactDeclarationTextRange(startInclusive=383, endExclusive=399) transfers=[(ARGUMENT, ExactDeclarationTextRange(startInclusive=383, endExclusive=399))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.5 success factory formal source=ExactDeclarationTextRange(startInclusive=383, endExclusive=399) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=649, endExclusive=657))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.5 success factory value source=ExactDeclarationTextRange(startInclusive=649, endExclusive=657) transfers=[(LOCAL_READ, ExactDeclarationTextRange(startInclusive=690, endExclusive=695))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.5 replacement carrier argument source=ExactDeclarationTextRange(startInclusive=690, endExclusive=695) transfers=[(ARGUMENT, ExactDeclarationTextRange(startInclusive=690, endExclusive=695))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.5 replacement carrier storage source=ExactDeclarationTextRange(startInclusive=690, endExclusive=695) transfers=[(CONSTRUCTOR_FIELD, ExactDeclarationTextRange(startInclusive=682, endExclusive=696))] frontier=[]
+COMPOSITE_RESULT rows=C2.1,C2.2 stage=success-construction remaining=C2.5-return,C2.6-C2.9 status=NOT_RUN
+]]></system-out>
+  <system-err><![CDATA[[   1095]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1095]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

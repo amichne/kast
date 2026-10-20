@@ -1,0 +1,6 @@
+a1818095a1f99f05e65db0134d67fbe74b45d556ccb95190e71f581fa1f426e8  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueAnonymousFormalOracleTest.kt
+59f94d01296a9e77947377ee50a79182dd955174682b466d1477152e880650e6  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueCallbackFrameOracleTest.kt
+59de6f5ec47c7ee321c483a5ece55e7289e66a3094513b08ad7fabefc281b3e3  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueCallbackOracleCase.kt
+fb3b25ed37743fb702c2b0b1cfd7cab0af2837ecd5337d1ea3d7e8f97d37e142  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueCallbackTransferOracleTest.kt
+7be9f6196f85834f2f24213e98a50b1593564bcf18481853a32e248a94cd2305  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueGuardedTransferOracleTest.kt
+f5a33a80aa6fa4d154459c3020288be9f9c85807d519f3bf368b83bc24ea75fc  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValuePredicateOracleTest.kt

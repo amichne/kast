@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.QueryCallbackGraphSubjectDocumentTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:20.696Z" hostname="Austins-MacBook-Pro.local" time="0.004">
+  <properties/>
+  <testcase name="callback and callable subjects encode distinct lists and exact source locations()" classname="io.github.amichne.kast.protocol.contract.QueryCallbackGraphSubjectDocumentTest" time="0.002"/>
+  <testcase name="missing callback body unknown list and callable body are rejected()" classname="io.github.amichne.kast.protocol.contract.QueryCallbackGraphSubjectDocumentTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

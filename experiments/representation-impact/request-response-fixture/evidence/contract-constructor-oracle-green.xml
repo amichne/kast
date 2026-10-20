@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueConstructorStorageOracleTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T01:40:04.134Z" hostname="Austins-MacBook-Pro.local" time="0.006">
+  <properties/>
+  <testcase name="constructor storage cannot substitute another callable()" classname="io.github.amichne.kast.relation.contract.ValueConstructorStorageOracleTest" time="0.003"/>
+  <testcase name="constructor storage cannot substitute another formal index()" classname="io.github.amichne.kast.relation.contract.ValueConstructorStorageOracleTest" time="0.001"/>
+  <testcase name="constructor storage binds the exact primary property parameter()" classname="io.github.amichne.kast.relation.contract.ValueConstructorStorageOracleTest" time="0.0"/>
+  <testcase name="constructor storage rejects a foreign evidence basis()" classname="io.github.amichne.kast.relation.contract.ValueConstructorStorageOracleTest" time="0.001"/>
+  <testcase name="constructor storage rejects a sibling property or another primary parameter()" classname="io.github.amichne.kast.relation.contract.ValueConstructorStorageOracleTest" time="0.0"/>
+  <testcase name="constructor storage adds the exact field path and preserves the caller context()" classname="io.github.amichne.kast.relation.contract.ValueConstructorStorageOracleTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,383 @@
+--- experiments/representation-impact/request-response-fixture/evidence/segment6-let-receiver-before-NativeValueReviewedCall.kt.txt
++++ relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueReviewedCall.kt
+@@ -39,7 +39,8 @@
+     fun bind(
+         expression: KtExpression,
+         qualified: KtQualifiedExpression,
+-    ): Refinement<ReviewedLibraryBinding, NativeValueModelFailure> {
++        model: ReviewedValueModel,
++    ): Refinement<NativeValueReviewedReceiver, NativeValueModelFailure> {
+         if (qualified.receiverExpression !== expression) return artifactRejected(NativeValueArtifactFailure.MISSING)
+         val call =
+             qualified.selectorExpression as? KtCallElement
+@@ -49,7 +50,10 @@
+             is Refinement.Rejected -> return Refinement.Rejected(NativeValueModelFailure.Limited(admitted.failure))
+         }
+         val target =
+-            when (val actual = projection.observation.observedAnalyze(call) { compilerTarget(call, expression) }) {
++            when (
++                val actual =
++                    projection.observation.observedAnalyze(call) { compilerTarget(call, expression, qualified, model) }
++            ) {
+                 is Refinement.Refined -> actual.value
+                 is Refinement.Rejected -> return actual
+             }
+@@ -58,19 +62,23 @@
+                 is Refinement.Refined -> actual.value
+                 is Refinement.Rejected -> return actual
+             }
+-        return observedBinding(target, invocation)
++        return when (val actual = observedBinding(target, invocation, model)) {
++            is Refinement.Refined -> Refinement.Refined(NativeValueReviewedReceiver(actual.value, target.navigation))
++            is Refinement.Rejected -> actual
++        }
+     }
+ 
+     private fun observedBinding(
+         target: NativeValueReviewedTarget,
+         invocation: ValueInvocation,
++        model: ReviewedValueModel,
+     ): Refinement<ReviewedLibraryBinding, NativeValueModelFailure> {
+         val content =
+             when (
+                 val read =
+                     NativeValueArtifactRead(
+                             file = NativeValueArtifactVirtualFile(target.local, projection.observation),
+-                            reviewed = ReviewedValueModel.FirstOrNull.artifact,
++                            reviewed = model.artifact,
+                             observation = projection.observation,
+                             permit = permit,
+                         )
+@@ -92,7 +100,7 @@
+             val binding =
+                 ReviewedLibraryBinding.fromCompiler(
+                     invocation,
+-                    ReviewedValueModel.FirstOrNull,
++                    model,
+                     observation,
+                 )
+         ) {
+@@ -107,6 +115,8 @@
+     private fun KaSession.compilerTarget(
+         call: KtCallElement,
+         expression: KtExpression,
++        qualified: KtQualifiedExpression,
++        model: ReviewedValueModel,
+     ): Refinement<NativeValueReviewedTarget, NativeValueModelFailure> {
+         val resolved = call.resolveCall() ?: return artifactRejected(NativeValueArtifactFailure.MISSING)
+         val symbol =
+@@ -115,8 +125,7 @@
+         if (symbol.origin != KaSymbolOrigin.LIBRARY) return artifactRejected(NativeValueArtifactFailure.NOT_LIBRARY)
+         val canonical = symbol.compilerProjection(this)
+         if (
+-            canonical !is IntellijCompilerProjectionResult.Projected ||
+-                canonical.projection.signature != ReviewedValueModel.FirstOrNull.callable
++            canonical !is IntellijCompilerProjectionResult.Projected || canonical.projection.signature != model.callable
+         )
+             return artifactRejected(NativeValueArtifactFailure.UNREVIEWED_CALLABLE)
+         if (
+@@ -124,6 +133,20 @@
+                 ValueReceiverKind.EXTENSION
+         )
+             return artifactRejected(NativeValueArtifactFailure.BINDING_REJECTED)
++        val navigation =
++            when (
++                val actual =
++                    nativeReviewedNavigation(
++                        model = model,
++                        source = source,
++                        expression = expression,
++                        qualified = qualified,
++                        receiver = resolved.extensionReceiver,
++                    )
++            ) {
++                is Refinement.Refined -> actual.value
++                is Refinement.Rejected -> return actual
++            }
+         val declaration = symbol.psi as? PsiNamedElement ?: return artifactRejected(NativeValueArtifactFailure.MISSING)
+         val module =
+             when (val containing = symbol.containingModule) {
+@@ -131,12 +154,13 @@
+                 is KaLibrarySourceModule -> containing.binaryLibrary
+                 else -> return artifactRejected(NativeValueArtifactFailure.NOT_LIBRARY)
+             }
+-        return artifactTarget(module, declaration)
++        return artifactTarget(module, declaration, navigation)
+     }
+ 
+     private fun artifactTarget(
+         module: KaLibraryModule,
+         declaration: PsiNamedElement,
++        navigation: NativeValueReviewedNavigation,
+     ): Refinement<NativeValueReviewedTarget, NativeValueModelFailure> {
+         val file =
+             declaration.containingFile?.virtualFile ?: return artifactRejected(NativeValueArtifactFailure.MISSING)
+@@ -164,6 +188,7 @@
+                 local = archive,
+                 root = detached,
+                 module = name,
++                navigation = navigation,
+             )
+         )
+     }
+@@ -239,4 +264,5 @@
+     val local: VirtualFile,
+     val root: DetachedVirtualFileUrl,
+     val module: LibraryModelModuleName,
++    val navigation: NativeValueReviewedNavigation,
+ )
+--- experiments/representation-impact/request-response-fixture/evidence/segment6-let-receiver-before-NativeValueReviewedModels.kt.txt
++++ relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueReviewedModels.kt
+@@ -10,6 +10,7 @@
+ import io.github.amichne.kast.relation.contract.ValueReceiverKind
+ import io.github.amichne.kast.relation.contract.ValueRole
+ import io.github.amichne.kast.relation.contract.ValueTransferKind
++import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
+ import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+ import org.jetbrains.kotlin.psi.KtCallExpression
+ import org.jetbrains.kotlin.psi.KtExpression
+@@ -33,10 +34,14 @@
+         )
+ 
+     fun arrival(expression: KtExpression, qualified: KtQualifiedExpression) {
+-        if (!qualified.namesReviewedCall()) {
+-            retained.unresolved(ValueFlowUnsupportedCause.EXTERNAL_CALL)
+-            return
+-        }
++        val model =
++            when (val selected = qualified.reviewedModel()) {
++                is Refinement.Refined -> selected.value
++                is Refinement.Rejected -> {
++                    retained.unresolved(selected.failure)
++                    return
++                }
++            }
+         when (valueNativeOwnership(expression, owner)) {
+             NativeValueOwnership.ADMITTED -> Unit
+             NativeValueOwnership.NESTED -> {
+@@ -48,33 +53,49 @@
+                 return
+             }
+         }
+-        when (val actual = binding.bind(expression, qualified)) {
+-            is Refinement.Refined ->
+-                retained.emit(
+-                    element = expression,
+-                    role = ValueRole.Receiver(actual.value.invocation, ValueReceiverKind.EXTENSION),
+-                    kind = ValueTransferKind.RECEIVER,
+-                )
++        when (val actual = binding.bind(expression, qualified, model)) {
++            is Refinement.Refined -> arrival(expression, actual.value)
+             is Refinement.Rejected -> refused(actual.failure)
+         }
+     }
+ 
++    private fun arrival(expression: KtExpression, actual: NativeValueReviewedReceiver) {
++        val role = ValueRole.Receiver(actual.binding.invocation, ValueReceiverKind.EXTENSION)
++        when (val navigation = actual.navigation) {
++            NativeValueReviewedNavigation.Direct ->
++                retained.emit(element = expression, role = role, kind = ValueTransferKind.RECEIVER)
++            is NativeValueReviewedNavigation.Safe -> {
++                val guarded = nativeSafeReceiverArrival(request.source, role, navigation.checked)
++                retained.adopt(guarded)
++                if (guarded is Refinement.Rejected) retained.unresolved(ValueFlowUnsupportedCause.EXTERNAL_CALL)
++            }
++        }
++    }
++
+     fun readReceiver(element: PsiElement): Refinement<Unit, ValueFlowRejection> {
++        val role = request.source.role as ValueRole.Receiver
++        if (
++            role.kind == ValueReceiverKind.EXTENSION &&
++                role.call.signature == ReviewedValueModel.Let.callable &&
++                role.call.callable.file is SymbolDiscoveryFileIdentity.External
++        ) {
++            retained.unresolved(ValueFlowUnsupportedCause.EXTERNAL_CALL)
++            return Refinement.Refined(Unit)
++        }
+         retained.adopt(nativeValueSourceReceiver(request.source, owner, scope, projection))
+-        val role = request.source.role as ValueRole.Receiver
+         if (role.kind != ValueReceiverKind.EXTENSION || role.call.signature != ReviewedValueModel.FirstOrNull.callable)
+             return Refinement.Refined(Unit)
+         val expression = element as? KtExpression ?: return Refinement.Rejected(ValueFlowRejection.STALE_SITE)
+         val qualified =
+             expression.parent as? KtQualifiedExpression ?: return Refinement.Rejected(ValueFlowRejection.STALE_SITE)
+-        if (!qualified.namesReviewedCall()) return Refinement.Refined(Unit)
+-        when (val actual = binding.bind(expression, qualified)) {
++        if (!qualified.namesReviewedCall(ReviewedValueModel.FirstOrNull)) return Refinement.Refined(Unit)
++        when (val actual = binding.bind(expression, qualified, ReviewedValueModel.FirstOrNull)) {
+             is Refinement.Refined -> {
+-                if (!actual.value.matchesInvocation(role.call))
++                if (!actual.value.binding.matchesInvocation(role.call))
+                     return Refinement.Rejected(ValueFlowRejection.STALE_SITE)
+                 when (
+                     val application =
+-                        ValueModelApplication.CollectionSelection.selectFirst(request.source, actual.value)
++                        ValueModelApplication.CollectionSelection.selectFirst(request.source, actual.value.binding)
+                 ) {
+                     is Refinement.Refined -> retained.emitApplication(application.value)
+                     is Refinement.Rejected -> retained.unresolved(ValueFlowUnsupportedCause.EXTERNAL_CALL)
+@@ -94,9 +115,16 @@
+     }
+ }
+ 
+-private fun KtQualifiedExpression.namesReviewedCall(): Boolean =
++private fun KtQualifiedExpression.reviewedModel(): Refinement<ReviewedValueModel, ValueFlowUnsupportedCause> =
++    when {
++        namesReviewedCall(ReviewedValueModel.FirstOrNull) -> Refinement.Refined(ReviewedValueModel.FirstOrNull)
++        namesReviewedCall(ReviewedValueModel.Let) -> Refinement.Refined(ReviewedValueModel.Let)
++        else -> Refinement.Rejected(ValueFlowUnsupportedCause.EXTERNAL_CALL)
++    }
++
++private fun KtQualifiedExpression.namesReviewedCall(model: ReviewedValueModel): Boolean =
+     (selectorExpression as? KtCallExpression)?.calleeExpression?.text ==
+-        ReviewedValueModel.FirstOrNull.callable.qualifiedIdentity.value.substringAfterLast('.')
++        model.callable.qualifiedIdentity.value.substringAfterLast('.')
+ 
+ private fun NativeValueArtifactFailure.counter(): IntellijReadCounter =
+     when (this) {
+--- experiments/representation-impact/request-response-fixture/evidence/segment6-let-receiver-before-NativeValueGuardedField.kt.txt
++++ relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueGuardedField.kt
+@@ -155,7 +155,7 @@
+     else rejectedGuard()
+ }
+ 
+-private fun ValuePredicateFailure.nativePredicateCause(): ValueFlowUnsupportedCause =
++internal fun ValuePredicateFailure.nativePredicateCause(): ValueFlowUnsupportedCause =
+     when (this) {
+         ValuePredicateFailure.CAPACITY_EXCEEDED -> ValueFlowUnsupportedCause.PREDICATE_LIMIT_REACHED
+         ValuePredicateFailure.BASIS_MISMATCH,
+--- /dev/null
++++ relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueReviewedNavigation.kt
+@@ -0,0 +1,131 @@
++@file:OptIn(org.jetbrains.kotlin.analysis.api.KaExperimentalApi::class)
++
++package io.github.amichne.kast.relation.intellij
++
++import io.github.amichne.kast.kernel.Refinement
++import io.github.amichne.kast.relation.contract.RelationOccurrence
++import io.github.amichne.kast.relation.contract.ReviewedLibraryBinding
++import io.github.amichne.kast.relation.contract.ReviewedValueModel
++import io.github.amichne.kast.relation.contract.ValueAccessPath
++import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
++import io.github.amichne.kast.relation.contract.ValuePredicate
++import io.github.amichne.kast.relation.contract.ValuePredicateSubject
++import io.github.amichne.kast.relation.contract.ValuePredicates
++import io.github.amichne.kast.relation.contract.ValueRole
++import io.github.amichne.kast.relation.contract.ValueSite
++import io.github.amichne.kast.relation.contract.ValueTransfer
++import io.github.amichne.kast.relation.contract.ValueTransferEvidence
++import io.github.amichne.kast.relation.contract.ValueTransferKind
++import org.jetbrains.kotlin.analysis.api.resolution.KaExplicitReceiverValue
++import org.jetbrains.kotlin.analysis.api.resolution.KaReceiverValue
++import org.jetbrains.kotlin.psi.KtExpression
++import org.jetbrains.kotlin.psi.KtQualifiedExpression
++import org.jetbrains.kotlin.psi.KtSafeQualifiedExpression
++
++internal sealed interface NativeValueReviewedNavigation {
++    data object Direct : NativeValueReviewedNavigation
++
++    data class Safe(val checked: RelationOccurrence) : NativeValueReviewedNavigation
++}
++
++internal data class NativeValueReviewedReceiver(
++    val binding: ReviewedLibraryBinding,
++    val navigation: NativeValueReviewedNavigation,
++)
++
++/** Only the compiler safe-navigation fact establishes this condition. The reviewed model supplies no NonNull fact. */
++internal fun nativeReviewedNavigation(
++    model: ReviewedValueModel,
++    source: ValueSite,
++    expression: KtExpression,
++    qualified: KtQualifiedExpression,
++    receiver: KaReceiverValue?,
++): Refinement<NativeValueReviewedNavigation, NativeValueModelFailure> {
++    when (model) {
++        ReviewedValueModel.FirstOrNull -> return Refinement.Refined(NativeValueReviewedNavigation.Direct)
++        ReviewedValueModel.Let -> Unit
++    }
++    val explicit =
++        receiver as? KaExplicitReceiverValue ?: return artifactRejected(NativeValueArtifactFailure.BINDING_REJECTED)
++    if (explicit.expression.originalElement != expression.originalElement)
++        return artifactRejected(NativeValueArtifactFailure.BINDING_REJECTED)
++    return when {
++        qualified is KtSafeQualifiedExpression && explicit.isSafeNavigation ->
++            Refinement.Refined(
++                NativeValueReviewedNavigation.Safe(
++                    RelationOccurrence.fromSource(source.enclosing.file, sourceValueRange(expression))
++                )
++            )
++        qualified !is KtSafeQualifiedExpression && !explicit.isSafeNavigation ->
++            Refinement.Refined(NativeValueReviewedNavigation.Direct)
++        else -> artifactRejected(NativeValueArtifactFailure.BINDING_REJECTED)
++    }
++}
++
++internal fun nativeSafeReceiverArrival(
++    source: ValueSite,
++    role: ValueRole.Receiver,
++    checked: RelationOccurrence,
++): Refinement<ValueTransfer, ValueFlowUnsupportedCause> {
++    if (source.role != ValueRole.LocalRead || checked.file != source.enclosing.file || checked.range != source.range)
++        return safeReceiverRejected()
++    val added =
++        when (val admitted = safeNonNullPredicates(source)) {
++            is Refinement.Refined -> admitted.value
++            is Refinement.Rejected -> return admitted
++        }
++    val predicates =
++        when (val admitted = source.predicates.plus(added.entries)) {
++            is Refinement.Refined -> admitted.value
++            is Refinement.Rejected -> return Refinement.Rejected(admitted.failure.nativePredicateCause())
++        }
++    val target =
++        when (
++            val admitted =
++                ValueSite.fromCompiler(
++                    enclosing = source.enclosing,
++                    range = checked.range,
++                    role = role,
++                    executionOwner = source.executionOwner,
++                    valuePath = source.valuePath,
++                    callStack = source.callStack,
++                    predicates = predicates,
++                )
++        ) {
++            is Refinement.Refined -> admitted.value
++            is Refinement.Rejected -> return safeReceiverRejected()
++        }
++    val evidence =
++        when (val admitted = ValueTransferEvidence.Guarded.fromCompiler(ValueTransferEvidence.Direct, added)) {
++            is Refinement.Refined -> admitted.value
++            is Refinement.Rejected -> return Refinement.Rejected(admitted.failure.nativePredicateCause())
++        }
++    return when (
++        val admitted =
++            ValueTransfer.fromCompiler(
++                source = source,
++                target = target,
++                kind = ValueTransferKind.RECEIVER,
++                evidence = evidence,
++            )
++    ) {
++        is Refinement.Refined -> admitted
++        is Refinement.Rejected -> safeReceiverRejected()
++    }
++}
++
++private fun safeNonNullPredicates(source: ValueSite): Refinement<ValuePredicates, ValueFlowUnsupportedCause> {
++    val whole =
++        when (val admitted = source.withState(valuePath = ValueAccessPath.Whole)) {
++            is Refinement.Refined -> admitted.value
++            is Refinement.Rejected -> return safeReceiverRejected()
++        }
++    val predicate = ValuePredicate.NonNull.fromCompiler(ValuePredicateSubject.fromCompiler(whole))
++    return when (val admitted = ValuePredicates.fromCompiler(listOf(predicate))) {
++        is Refinement.Refined -> admitted
++        is Refinement.Rejected -> Refinement.Rejected(admitted.failure.nativePredicateCause())
++    }
++}
++
++private fun safeReceiverRejected(): Refinement.Rejected<ValueFlowUnsupportedCause> =
++    Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)

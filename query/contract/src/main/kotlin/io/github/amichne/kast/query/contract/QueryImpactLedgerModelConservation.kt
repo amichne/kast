@@ -9,6 +9,7 @@ import io.github.amichne.kast.relation.contract.RepresentationEvidence
 import io.github.amichne.kast.relation.contract.RepresentationHistory
 import io.github.amichne.kast.relation.contract.RepresentationModelApplication
 import io.github.amichne.kast.relation.contract.RepresentationRule
+import io.github.amichne.kast.relation.contract.ValueProducerOrigin
 import io.github.amichne.kast.relation.contract.ValueRole
 
 /** Model alternatives are conserved by the same ledger that accounts for native outgoing branches. */
@@ -35,8 +36,13 @@ internal class QueryImpactLedgerModelConservation(
     }
 
     private fun originBranches(producer: QueryImpactProducer): Refinement<Unit, QueryImpactLedgerFailure> {
+        val invocation =
+            when (val origin = producer.origin) {
+                is ValueProducerOrigin.Declared -> origin.invocation
+                is ValueProducerOrigin.SourceFunction -> return Refinement.Refined(Unit)
+            }
         for (rule in representations.filterIsInstance<RepresentationRule.Origin>()) {
-            val admitted = RepresentationEvidence.origin(producer.site, producer.invocation, rule)
+            val admitted = RepresentationEvidence.origin(producer.site, invocation, rule)
             if (admitted is Refinement.Rejected) continue
             if (paths.none { it.retainsOrigin(producer, rule) }) return missingBranch()
         }

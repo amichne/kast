@@ -1,0 +1,3 @@
+case	production_state	fixture_source	seed	admission	transfers_before_stop	stopping_range	expected_next_range	frontier	matched_return	status
+V0.original.outgoing	STAGE1_WORKTREE	src/main/kotlin/fixture/variants/v0/V0.kt	ClientRequest(request.destination)	SEEDED	LOCAL_BINDING,LOCAL_READ,ARGUMENT fetch.request[0]	960:973	531:553	UNMODELED_CALL	NOT_REACHED	FAILED
+V0.original.incoming	STAGE1_WORKTREE	src/main/kotlin/fixture/variants/v0/V0.kt	transport.send(wireRequest)	SEEDED	LOCAL_BINDING,LOCAL_READ	717:729	717:734	UNSUPPORTED_EXPRESSION	NOT_REACHED	FAILED

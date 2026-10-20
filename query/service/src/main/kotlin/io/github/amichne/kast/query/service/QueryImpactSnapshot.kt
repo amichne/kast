@@ -19,6 +19,8 @@ import io.github.amichne.kast.relation.contract.RepresentationPropagationFailure
 import io.github.amichne.kast.relation.contract.RepresentationRule
 import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowWorkReceipt
+import io.github.amichne.kast.relation.contract.ValueModelApplication
+import io.github.amichne.kast.relation.contract.ValueProducerOrigin
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueTransfer
 
@@ -60,11 +62,44 @@ internal data class QueryImpactRoute(
                 }
         }
 
+    fun modeledValue(
+        application: ValueModelApplication
+    ): Refinement<QueryImpactRoute, RepresentationPropagationFailure> {
+        return when (val current = representation) {
+            QueryImpactRepresentation.NotModeled -> {
+                if (site.basis != application.source.basis)
+                    return Refinement.Rejected(RepresentationPropagationFailure.BASIS_MISMATCH)
+                if (site != application.source)
+                    return Refinement.Rejected(RepresentationPropagationFailure.SITE_MISMATCH)
+                Refinement.Refined(copy(steps = steps + QueryImpactStep.ModeledValue(application)))
+            }
+            is QueryImpactRepresentation.Present ->
+                when (val next = current.evidence.modeledValue(application)) {
+                    is Refinement.Rejected -> next
+                    is Refinement.Refined ->
+                        Refinement.Refined(
+                            copy(
+                                steps = steps + QueryImpactStep.ModeledValue(application),
+                                representation = QueryImpactRepresentation.Present(next.value),
+                            )
+                        )
+                }
+        }
+    }
+
     companion object {
         fun initial(producer: QueryImpactProducer, source: QueryImpactSource): List<QueryImpactRoute> {
+            val invocation =
+                when (val origin = producer.origin) {
+                    is ValueProducerOrigin.Declared -> origin.invocation
+                    is ValueProducerOrigin.SourceFunction ->
+                        return listOf(
+                            QueryImpactRoute(producer.site, emptyList(), QueryImpactRepresentation.NotModeled)
+                        )
+                }
             val evidence =
                 source.representationModels.filterIsInstance<RepresentationRule.Origin>().mapNotNull { rule ->
-                    when (val origin = RepresentationEvidence.origin(producer.site, producer.invocation, rule)) {
+                    when (val origin = RepresentationEvidence.origin(producer.site, invocation, rule)) {
                         is Refinement.Rejected -> null
                         is Refinement.Refined -> origin.value
                     }

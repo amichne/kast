@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueModeledApplicationAdmissionOrderTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T13:43:43.884Z" hostname="Austins-MacBook-Pro.local" time="0.017">
+  <properties/>
+  <testcase name="wrong selected call rejects for source mismatch despite a tiny byte grant()" classname="io.github.amichne.kast.relation.contract.ValueModeledApplicationAdmissionOrderTest" time="0.011"/>
+  <testcase name="the same tiny byte grant still refuses a correctly bound application for capacity()" classname="io.github.amichne.kast.relation.contract.ValueModeledApplicationAdmissionOrderTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

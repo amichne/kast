@@ -53,5 +53,10 @@
     "counter": "QUERY_RETENTION_RESULT_CAPACITY_EXCEEDED",
     "contributor": "NONE",
     "count": 1
+  },
+  {
+    "counter": "QUERY_RETENTION_PREVIEW_ROW_IDENTITY_REJECTED",
+    "contributor": "NONE",
+    "count": 1
   }
 ]

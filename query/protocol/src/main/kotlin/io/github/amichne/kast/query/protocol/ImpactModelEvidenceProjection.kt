@@ -9,6 +9,7 @@ import io.github.amichne.kast.protocol.contract.ImpactBoundaryRuleDocument
 import io.github.amichne.kast.protocol.contract.ImpactBoundaryTerminalDocument
 import io.github.amichne.kast.protocol.contract.ImpactBranchCompletionDocument
 import io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument
+import io.github.amichne.kast.protocol.contract.ImpactInterpolationScalarKindDocument
 import io.github.amichne.kast.protocol.contract.ImpactRepresentationApplicationDocument
 import io.github.amichne.kast.protocol.contract.ImpactRepresentationBranchDocument
 import io.github.amichne.kast.protocol.contract.ImpactRepresentationCurrentDocument
@@ -20,6 +21,8 @@ import io.github.amichne.kast.protocol.contract.ImpactRepresentationUnknownDocum
 import io.github.amichne.kast.protocol.contract.ImpactTransferEvidenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactTransferKindDocument
 import io.github.amichne.kast.protocol.contract.ImpactTryBranchAlternativeDocument
+import io.github.amichne.kast.protocol.contract.ImpactUnguardedTransferEvidenceDocument
+import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.reason
 import io.github.amichne.kast.relation.contract.BoundaryArrival
 import io.github.amichne.kast.relation.contract.BoundaryCompatibilityAssumption
@@ -33,6 +36,9 @@ import io.github.amichne.kast.relation.contract.RepresentationHistory
 import io.github.amichne.kast.relation.contract.RepresentationModelApplication
 import io.github.amichne.kast.relation.contract.RepresentationRule
 import io.github.amichne.kast.relation.contract.RepresentationUnknownReason
+import io.github.amichne.kast.relation.contract.ValueInterpolationScalarKind
+import io.github.amichne.kast.relation.contract.ValueModelApplication
+import io.github.amichne.kast.relation.contract.ValueSourceTransfer
 import io.github.amichne.kast.relation.contract.ValueTransfer
 import io.github.amichne.kast.relation.contract.ValueTransferEvidence
 import io.github.amichne.kast.relation.contract.ValueTransferKind
@@ -71,29 +77,66 @@ internal fun RepresentationRule.impactDocument(): ImpactProjected<ImpactRepresen
         }
     }
 
-internal fun ValueTransfer.impactDocument(): ImpactProjected<ImpactCompilerTransferDocument> =
-    source.impactDocument().impactZip(target.impactDocument()).impactZip(evidence.impactDocument()).impactMap {
-        (sites, evidence) ->
-        val (source, target) = sites
-        ImpactCompilerTransferDocument(
-            source,
-            target,
-            when (kind) {
-                ValueTransferKind.LOCAL_BINDING -> ImpactTransferKindDocument.LOCAL_BINDING
-                ValueTransferKind.LOCAL_READ -> ImpactTransferKindDocument.LOCAL_READ
-                ValueTransferKind.ARGUMENT -> ImpactTransferKindDocument.ARGUMENT
-                ValueTransferKind.RETURN -> ImpactTransferKindDocument.RETURN
-                ValueTransferKind.PROPERTY_ASSIGNMENT -> ImpactTransferKindDocument.PROPERTY_ASSIGNMENT
-                ValueTransferKind.BRANCH_ALTERNATIVE -> ImpactTransferKindDocument.BRANCH_ALTERNATIVE
-                ValueTransferKind.WRAPPER_RETURN -> ImpactTransferKindDocument.WRAPPER_RETURN
-            },
-            evidence,
-        )
-    }
+internal fun ValueTransfer.impactDocument(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactCompilerTransferDocument> =
+    source
+        .impactDocument(references)
+        .impactZip(target.impactDocument(references))
+        .impactZip(evidence.impactDocument(references))
+        .impactMap { (sites, evidence) ->
+            val (source, target) = sites
+            ImpactCompilerTransferDocument(
+                source,
+                target,
+                when (kind) {
+                    ValueTransferKind.LOCAL_BINDING -> ImpactTransferKindDocument.LOCAL_BINDING
+                    ValueTransferKind.LOCAL_READ -> ImpactTransferKindDocument.LOCAL_READ
+                    ValueTransferKind.ARGUMENT -> ImpactTransferKindDocument.ARGUMENT
+                    ValueTransferKind.RECEIVER -> ImpactTransferKindDocument.RECEIVER
+                    ValueTransferKind.RETURN -> ImpactTransferKindDocument.RETURN
+                    ValueTransferKind.PROPERTY_ASSIGNMENT -> ImpactTransferKindDocument.PROPERTY_ASSIGNMENT
+                    ValueTransferKind.BRANCH_ALTERNATIVE -> ImpactTransferKindDocument.BRANCH_ALTERNATIVE
+                    ValueTransferKind.DERIVATION -> ImpactTransferKindDocument.DERIVATION
+                    ValueTransferKind.WRAPPER_RETURN -> ImpactTransferKindDocument.WRAPPER_RETURN
+                    ValueTransferKind.SOURCE_CALL_ENTRY -> ImpactTransferKindDocument.SOURCE_CALL_ENTRY
+                    ValueTransferKind.SOURCE_CALL_RETURN -> ImpactTransferKindDocument.SOURCE_CALL_RETURN
+                    ValueTransferKind.FIELD_READ -> ImpactTransferKindDocument.FIELD_READ
+                    ValueTransferKind.CONSTRUCTOR_FIELD -> ImpactTransferKindDocument.CONSTRUCTOR_FIELD
+                },
+                evidence,
+            )
+        }
 
-private fun ValueTransferEvidence.impactDocument(): ImpactProjected<ImpactTransferEvidenceDocument> =
+private fun ValueTransferEvidence.impactDocument(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactTransferEvidenceDocument> =
     when (this) {
+        is ValueTransferEvidence.Guarded ->
+            delegate.impactDocument(references).impactZip(added.impactDocument(references)).impactThen {
+                (delegate, added) ->
+                if (delegate is ImpactUnguardedTransferEvidenceDocument)
+                    Refinement.Refined(ImpactTransferEvidenceDocument.Guarded(delegate, added))
+                else Refinement.Rejected(ImpactPathProjectionFailure.DOMAIN_PROJECTION_REJECTED)
+            }
         ValueTransferEvidence.Direct -> Refinement.Refined(ImpactTransferEvidenceDocument.Direct)
+        is ValueSourceTransfer -> operation.impactDocument(references).impactMap(ImpactTransferEvidenceDocument::Source)
+        is ValueTransferEvidence.StringInterpolation ->
+            templateRange.impactDocument().impactZip(entryRange.impactDocument()).impactThen { (template, entry) ->
+                when (val index = ProtocolOffset.parse(entryIndex.value)) {
+                    is Refinement.Refined ->
+                        Refinement.Refined(
+                            ImpactTransferEvidenceDocument.StringInterpolation(
+                                template,
+                                entry,
+                                index.value,
+                                scalarKind.impactDocument(),
+                            )
+                        )
+                    is Refinement.Rejected ->
+                        Refinement.Rejected(ImpactPathProjectionFailure.DOMAIN_PROJECTION_REJECTED)
+                }
+            }
         is ValueTransferEvidence.NormalBranchResult ->
             tryRange.impactDocument().impactZip(branchRange.impactDocument()).impactMap { (enclosing, branch) ->
                 ImpactTransferEvidenceDocument.NormalBranchResult(
@@ -109,15 +152,17 @@ private fun ValueTransferEvidence.impactDocument(): ImpactProjected<ImpactTransf
             }
     }
 
-internal fun RepresentationModelApplication.impactDocument(): ImpactProjected<ImpactRepresentationApplicationDocument> {
+internal fun RepresentationModelApplication.impactDocument(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactRepresentationApplicationDocument> {
     val rule =
         when (this) {
             is RepresentationModelApplication.Transfer -> rule
             is RepresentationModelApplication.Transformation -> rule
         }
     return source
-        .impactDocument()
-        .impactZip(target.impactDocument())
+        .impactDocument(references)
+        .impactZip(target.impactDocument(references))
         .impactZip(invocation.impactDocument())
         .impactZip(reference.impactDocument())
         .impactZip(rule.impactDocument())
@@ -132,11 +177,13 @@ internal fun RepresentationModelApplication.impactDocument(): ImpactProjected<Im
         }
 }
 
-internal fun BoundaryModel.impactDocument(): ImpactProjected<ImpactBoundaryRuleDocument> =
-    reference.rule.value.impactId().impactZip(source.impactDocument()).impactThen { (id, source) ->
+internal fun BoundaryModel.impactDocument(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactBoundaryRuleDocument> =
+    reference.rule.value.impactId().impactZip(source.impactDocument(references)).impactThen { (id, source) ->
         when (this) {
             is BoundaryModel.Continuation ->
-                target.impactDocument().impactThen { target ->
+                target.impactDocument(references).impactThen { target ->
                     assumptions
                         .sortedBy { it.ordinal }
                         .map {
@@ -168,9 +215,11 @@ internal fun BoundaryTerminalMeaning.impactDocument(): ImpactBoundaryTerminalDoc
         BoundaryTerminalMeaning.REVIEWED_RETENTION -> ImpactBoundaryTerminalDocument.REVIEWED_RETENTION
     }
 
-internal fun BoundaryObligation.impactDocument(): ImpactProjected<ImpactBoundaryObligationDocument> =
+internal fun BoundaryObligation.impactDocument(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactBoundaryObligationDocument> =
     position
-        .impactDocument()
+        .impactDocument(references)
         .impactZip(
             required
                 .sortedBy { it.ordinal }
@@ -192,11 +241,13 @@ internal fun BoundaryObligation.impactDocument(): ImpactProjected<ImpactBoundary
         )
         .impactMap { (position, required) -> ImpactBoundaryObligationDocument(position, required) }
 
-internal fun BoundaryArrival.Connected.impactDocument(): ImpactProjected<ImpactBoundaryConnectionDocument> =
+internal fun BoundaryArrival.Connected.impactDocument(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactBoundaryConnectionDocument> =
     model.reference
         .impactDocument()
-        .impactZip(model.impactDocument())
-        .impactZip(obligations.impactEach { it.impactDocument() })
+        .impactZip(model.impactDocument(references))
+        .impactZip(obligations.impactEach { it.impactDocument(references) })
         .impactMap { (model, obligations) ->
             ImpactBoundaryConnectionDocument(
                 model.first,
@@ -205,14 +256,16 @@ internal fun BoundaryArrival.Connected.impactDocument(): ImpactProjected<ImpactB
             )
         }
 
-internal fun RepresentationEvidence.impactDocument(): ImpactProjected<ImpactRepresentationEvidenceDocument.Present> =
+internal fun RepresentationEvidence.impactDocument(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactRepresentationEvidenceDocument.Present> =
     site
-        .impactDocument()
+        .impactDocument(references)
         .impactZip(
             branches.impactEach { branch ->
                 branch.current
                     .impactDocument()
-                    .impactZip(branch.history.impactEach { it.impactDocument() })
+                    .impactZip(branch.history.impactEach { it.impactDocument(references) })
                     .impactMap { (current, history) -> ImpactRepresentationBranchDocument(current, history) }
             }
         )
@@ -244,13 +297,15 @@ internal fun io.github.amichne.kast.relation.contract.RepresentationState.impact
         .impactZip(id.value.impactId())
         .impactMap { (domain, state) -> ImpactRepresentationStateDocument(domain.first, domain.second, state) }
 
-private fun RepresentationHistory.impactDocument(): ImpactProjected<ImpactRepresentationHistoryDocument> =
+private fun RepresentationHistory.impactDocument(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactRepresentationHistoryDocument> =
     when (this) {
         is RepresentationHistory.Origin ->
             reference
                 .impactDocument()
                 .impactZip(rule.impactDocument())
-                .impactZip(output.impactDocument())
+                .impactZip(output.impactDocument(references))
                 .impactZip(invocation.impactDocument())
                 .impactMap { (origin, invocation) ->
                     ImpactRepresentationHistoryDocument.Origin(
@@ -261,19 +316,35 @@ private fun RepresentationHistory.impactDocument(): ImpactProjected<ImpactRepres
                     )
                 }
         is RepresentationHistory.CompilerTransfer ->
-            transfer.impactDocument().impactMap(ImpactRepresentationHistoryDocument::CompilerTransfer)
+            transfer.impactDocument(references).impactMap(ImpactRepresentationHistoryDocument::CompilerTransfer)
         is RepresentationModelApplication ->
-            impactDocument().impactMap(ImpactRepresentationHistoryDocument::ModeledApplication)
+            impactDocument(references).impactMap(ImpactRepresentationHistoryDocument::ModeledApplication)
+        is ValueModelApplication ->
+            impactDocument(references).impactMap(ImpactRepresentationHistoryDocument::ModeledValue)
         is RepresentationHistory.Unmodeled ->
-            source.impactDocument().impactZip(target.impactDocument()).impactMap { (source, target) ->
+            source.impactDocument(references).impactZip(target.impactDocument(references)).impactMap { (source, target)
+                ->
                 ImpactRepresentationHistoryDocument.Unmodeled(source, target)
             }
         is RepresentationHistory.BoundaryModel ->
             reference
                 .impactDocument()
-                .impactZip(source.impactDocument())
-                .impactZip(target.impactDocument())
+                .impactZip(source.impactDocument(references))
+                .impactZip(target.impactDocument(references))
                 .impactMap { (source, target) ->
                     ImpactRepresentationHistoryDocument.BoundaryModel(source.first, source.second, target)
                 }
+    }
+
+private fun ValueInterpolationScalarKind.impactDocument(): ImpactInterpolationScalarKindDocument =
+    when (this) {
+        ValueInterpolationScalarKind.STRING -> ImpactInterpolationScalarKindDocument.STRING
+        ValueInterpolationScalarKind.BOOLEAN -> ImpactInterpolationScalarKindDocument.BOOLEAN
+        ValueInterpolationScalarKind.CHAR -> ImpactInterpolationScalarKindDocument.CHAR
+        ValueInterpolationScalarKind.BYTE -> ImpactInterpolationScalarKindDocument.BYTE
+        ValueInterpolationScalarKind.SHORT -> ImpactInterpolationScalarKindDocument.SHORT
+        ValueInterpolationScalarKind.INT -> ImpactInterpolationScalarKindDocument.INT
+        ValueInterpolationScalarKind.LONG -> ImpactInterpolationScalarKindDocument.LONG
+        ValueInterpolationScalarKind.FLOAT -> ImpactInterpolationScalarKindDocument.FLOAT
+        ValueInterpolationScalarKind.DOUBLE -> ImpactInterpolationScalarKindDocument.DOUBLE
     }

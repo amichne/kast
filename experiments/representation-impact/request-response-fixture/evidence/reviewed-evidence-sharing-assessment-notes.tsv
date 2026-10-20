@@ -1,0 +1,3 @@
+tool	rule	location	disposition	reason
+assess_text	Slopsentral.Grade	results/reviewed-evidence-sharing-oracle.md:1	RETAINED_ADVISORY	Exact proof and allocation terms preserve the assertion scope. No comprehension claim.
+kotlin-horizontalization-check	package-size-and-prefix-clusters	relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract	RETAINED_ADVISORY	Two files form one test unit and reuse current package fixtures. No production ownership or command changes.

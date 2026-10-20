@@ -1,0 +1,159 @@
+package io.github.amichne.kast.runtime.hosted
+
+import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.SourceLessCallable
+import io.github.amichne.kast.relation.contract.ValueCallFrame
+import io.github.amichne.kast.relation.contract.ValueCallOccurrence
+import io.github.amichne.kast.relation.contract.ValueCallTarget
+import io.github.amichne.kast.relation.contract.ValueCallbackTarget
+import io.github.amichne.kast.relation.contract.ValueExecutionBody
+import io.github.amichne.kast.relation.contract.ValueExecutionOwner
+import io.github.amichne.kast.relation.contract.ValueFormalParameter
+import io.github.amichne.kast.relation.contract.ValueFormalPosition
+import io.github.amichne.kast.relation.contract.ValueFunctionInvocation
+import io.github.amichne.kast.relation.contract.ValueInvocation
+import io.github.amichne.kast.relation.contract.ValuePathSegment
+import io.github.amichne.kast.relation.contract.ValuePredicate
+import io.github.amichne.kast.relation.contract.ValueReviewedCallbackTarget
+import io.github.amichne.kast.relation.contract.ValueRole
+import io.github.amichne.kast.relation.contract.ValueSite
+import java.util.IdentityHashMap
+
+/** Physical counts diagnose storage. Full callback proofs distinguish equal identities with different scopes. */
+internal fun recordPacketValueProofAllocation(source: ValueSite) {
+    val meter = PacketValueProofAllocation()
+    meter.site(source)
+    println(
+        "PACKET_VALUE_PROOF_ALLOCATION physicalSites=${meter.sites.size} " +
+            "physicalFrames=${meter.frames.size} physicalCallbackFrames=${meter.callbackFrames} " +
+            "distinctFullCallbackProofs=${meter.callbackProofs.size} " +
+            "physicalEndpoints=${meter.endpoints.size} distinctFullEndpointProofs=${meter.endpointProofs.size} " +
+            "complete=${meter.complete}"
+    )
+}
+
+private class PacketValueProofAllocation {
+    val sites = IdentityHashMap<ValueSite, Unit>()
+    val frames = IdentityHashMap<ValueCallFrame, Unit>()
+    val callbackProofs = mutableSetOf<PacketCallbackProof>()
+    val endpoints = IdentityHashMap<RelationEndpoint, Unit>()
+    val endpointProofs = mutableListOf<RelationEndpoint>()
+    var callbackFrames = 0
+        private set
+
+    var complete = true
+        private set
+
+    fun site(value: ValueSite) {
+        if (sites.containsKey(value)) return
+        if (sites.size >= MAX_RECORDS) {
+            complete = false
+            return
+        }
+        sites[value] = Unit
+        endpoint(value.enclosing)
+        execution(value.executionOwner)
+        value.valuePath.segments.filterIsInstance<ValuePathSegment.Field>().forEach { endpoint(it.field.declaration) }
+        role(value.role)
+        value.callStack.frames.forEach(::frame)
+        value.predicates.entries.forEach {
+            site(it.subject.occurrence)
+            if (it is ValuePredicate.Subtype) endpoint(it.resolvedType)
+        }
+    }
+
+    private fun endpoint(value: RelationEndpoint) {
+        if (endpoints.containsKey(value)) return
+        if (endpoints.size >= MAX_RECORDS) {
+            complete = false
+            return
+        }
+        endpoints[value] = Unit
+        // Counts use all proof fields, the fingerprint and the representation variant.
+        if (
+            endpointProofs.none {
+                it::class == value::class && it.fingerprint == value.fingerprint && it.hasSameProofAs(value)
+            }
+        )
+            endpointProofs += value
+    }
+
+    private fun execution(value: ValueExecutionOwner) {
+        endpoint(value.enclosing)
+    }
+
+    private fun invocation(value: ValueCallOccurrence) {
+        endpoint(value.enclosing)
+        execution(value.executionOwner)
+        if (value is ValueInvocation) endpoint(value.callable)
+    }
+
+    private fun parameter(value: ValueFormalParameter) {
+        endpoint(value.callable)
+        execution(value.executionOwner)
+    }
+
+    private fun role(value: ValueRole) {
+        when (value) {
+            is ValueRole.Argument -> invocation(value.call)
+            is ValueRole.Receiver -> invocation(value.call)
+            is ValueRole.FunctionArgument -> invocation(value.call)
+            is ValueRole.Formal -> (value.position as? ValueFormalPosition.Parameter)?.let { parameter(it.parameter) }
+            ValueRole.ExpressionResult,
+            ValueRole.LocalBinding,
+            ValueRole.LocalRead,
+            ValueRole.Return,
+            ValueRole.PropertyAssignment -> Unit
+        }
+    }
+
+    private fun frame(value: ValueCallFrame) {
+        if (frames.containsKey(value)) return
+        if (frames.size >= MAX_RECORDS) {
+            complete = false
+            return
+        }
+        frames[value] = Unit
+        invocation(value.invocation)
+        execution(value.callee)
+        when (val target = value.target) {
+            ValueCallTarget.Direct -> Unit
+            is ValueReviewedCallbackTarget -> {
+                invocation(target.binding.invocation)
+                parameter(target.formal)
+            }
+            is ValueCallbackTarget -> complete = false
+            is ValueCallTarget.Implementation -> complete = false
+        }
+        val target = value.target as? ValueCallbackTarget ?: return
+        callbackFrames++
+        val invocation = value.invocation as ValueFunctionInvocation
+        callbackProofs +=
+            PacketCallbackProof(
+                invocationOwner = invocation.enclosing,
+                invocationRange = invocation.range,
+                builtin = invocation.callable,
+                executionOwner = invocation.executionOwner.enclosing,
+                executionBody = invocation.executionOwner.body,
+                calleeOwner = value.callee.enclosing,
+                calleeBody = value.callee.body,
+                target = target,
+            )
+        frame(target.supplyingFrame)
+    }
+
+    private companion object {
+        const val MAX_RECORDS = 4096
+    }
+}
+
+private data class PacketCallbackProof(
+    val invocationOwner: RelationEndpoint,
+    val invocationRange: io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange,
+    val builtin: SourceLessCallable,
+    val executionOwner: RelationEndpoint,
+    val executionBody: ValueExecutionBody,
+    val calleeOwner: RelationEndpoint,
+    val calleeBody: ValueExecutionBody,
+    val target: ValueCallbackTarget,
+)

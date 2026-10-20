@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueSiteContractTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T01:58:01.307Z" hostname="Austins-MacBook-Pro.local" time="0.052">
+  <properties/>
+  <testcase name="callable sharing preserves invocation identity and excludes different scope file and authority()" classname="io.github.amichne.kast.relation.contract.ValueSiteContractTest" time="0.045"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

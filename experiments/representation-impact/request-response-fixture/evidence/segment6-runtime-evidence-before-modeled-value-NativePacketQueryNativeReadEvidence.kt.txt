@@ -1,0 +1,88 @@
+package io.github.amichne.kast.runtime.hosted
+
+import io.github.amichne.kast.relation.contract.ValueCallTarget
+import io.github.amichne.kast.relation.contract.ValueCallbackTarget
+import io.github.amichne.kast.relation.contract.ValueFlowRead
+import io.github.amichne.kast.relation.contract.ValueFlowRequest
+import io.github.amichne.kast.relation.contract.ValueFlowStep
+import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
+import io.github.amichne.kast.relation.contract.ValueSourceOperation
+import io.github.amichne.kast.relation.contract.ValueSourceTransfer
+import io.github.amichne.kast.relation.contract.ValueTransfer
+import io.github.amichne.kast.relation.contract.ValueTransferEvidence
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadGauge
+
+/** Only callback entry and byte refusals produce finite receipts from the actual native port. */
+internal fun recordPacketNativeRead(request: ValueFlowRequest, read: ValueFlowRead, counters: NativeTraceCounters) {
+    val step =
+        when (read) {
+            is ValueFlowRead.Observed -> read.step
+            is ValueFlowRead.Suspended -> read.step
+            is ValueFlowRead.Rejected -> {
+                recordRejectedRead(request, read)
+                return
+            }
+            is ValueFlowRead.ContractRejected -> return
+        }
+    step.transfers.forEach(::recordCallbackEntry)
+    if (step.obligations.none { it.cause == ValueFlowUnsupportedCause.BYTE_LIMIT_REACHED }) return
+    recordByteRejection(counters)
+    val source = request.source
+    val base =
+        ValueFlowStep.detachedByteCount(
+                source = source,
+                domain = step.domain,
+                transfers = emptyList(),
+                obligations = emptyList(),
+            )
+            .value
+    println(
+        "PACKET_NATIVE_BYTES range=${source.range} role=${source.role::class.simpleName} " +
+            "source=${source.retainedBytes} base=$base available=${request.budget.returnedBytes.value} " +
+            "response=${step.retainedBytes} pathDepth=${source.valuePath.depth} " +
+            "stackDepth=${source.callStack.frames.size} predicates=${source.predicates.entries.size} " +
+            "work=${step.examinedWorkUnits.value} transfers=${step.transfers.map { it.kind }} " +
+            "causes=${step.obligations.map { it.cause }}"
+    )
+    source.callStack.frames.forEachIndexed { index, frame ->
+        println("PACKET_NATIVE_FRAME index=$index range=${frame.invocation.range} kind=${frame.target.receipt()}")
+    }
+}
+
+private fun recordRejectedRead(request: ValueFlowRequest, read: ValueFlowRead.Rejected) {
+    println(
+        "PACKET_NATIVE_READ_REJECTED range=${request.source.range} " +
+            "role=${request.source.role::class.simpleName} cause=${read.cause} " +
+            "sourceBytes=${request.source.retainedBytes} allowance=${request.budget.returnedBytes.value} " +
+            "work=${read.examinedWorkUnits.value} workLimit=${request.budget.resources.workUnitLimit.value} " +
+            "consumed=${request.remainder?.consumed?.size ?: 0} emitted=${request.remainder?.emitted?.size ?: 0}"
+    )
+}
+
+private fun recordByteRejection(counters: NativeTraceCounters) {
+    println(
+        "PACKET_NATIVE_BYTE_REFUSAL " +
+            "candidate=${checkNotNull(counters[IntellijReadGauge.VALUE_FLOW_BYTE_REJECTION_CANDIDATE_BYTES])} " +
+            "reserve=${checkNotNull(counters[IntellijReadGauge.VALUE_FLOW_BYTE_REJECTION_OBLIGATION_RESERVE_BYTES])} " +
+            "allowance=${checkNotNull(counters[IntellijReadGauge.VALUE_FLOW_BYTE_REJECTION_ALLOWANCE])}"
+    )
+}
+
+private fun ValueCallTarget.receipt(): String =
+    when (this) {
+        ValueCallTarget.Direct -> "DIRECT"
+        is ValueCallTarget.Implementation -> "IMPLEMENTATION"
+        is ValueCallbackTarget -> "CALLBACK:${flow.retainedBytes}"
+    }
+
+private fun recordCallbackEntry(transfer: ValueTransfer) {
+    val evidence = (transfer.evidence as? ValueTransferEvidence.Guarded)?.delegate ?: transfer.evidence
+    val entry = (evidence as? ValueSourceTransfer)?.operation as? ValueSourceOperation.Enter ?: return
+    val callback = entry.frame.target as? ValueCallbackTarget ?: return
+    println(
+        "PACKET_NATIVE_CALLBACK selected=${callback.selected.occurrence.range} " +
+            "supplier=${callback.supplyingFrame.invocation.range} target=${transfer.target.range} " +
+            "targetOwner=${transfer.target.executionOwner.body::class.simpleName} " +
+            "predicates=${transfer.target.predicates.entries.size}"
+    )
+}

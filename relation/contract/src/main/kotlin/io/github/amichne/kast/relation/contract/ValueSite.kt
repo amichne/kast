@@ -41,34 +41,46 @@ internal constructor(
     val basis: SemanticReadIdentity,
     val range: ExactDeclarationTextRange,
     val callable: ValueDeclarationIdentity,
-)
+    val execution: ValueExecutionIdentity,
+) : ValueCallIdentity
 
 enum class ValueInvocationFailure {
     BASIS_MISMATCH,
     ANCHOR_OUTSIDE_OWNER,
     NOT_CALLABLE,
+    EXECUTION_OWNER_MISMATCH,
+    ANCHOR_OUTSIDE_EXECUTION_OWNER,
 }
 
 class ValueInvocation
 private constructor(
-    val enclosing: RelationEndpoint,
-    val range: ExactDeclarationTextRange,
+    override val enclosing: RelationEndpoint,
+    override val range: ExactDeclarationTextRange,
     val callable: RelationEndpoint,
-) {
-    val basis: SemanticReadIdentity = enclosing.lease.identity
-    val identity =
-        ValueInvocationIdentity(enclosing.valueDeclarationIdentity(), basis, range, callable.valueDeclarationIdentity())
+    override val executionOwner: ValueExecutionOwner,
+    override val signature: CanonicalCompilerCallableSignature,
+) : ValueCallOccurrence {
+    override val basis: SemanticReadIdentity = enclosing.lease.identity
+    override val identity =
+        ValueInvocationIdentity(
+            enclosing.valueDeclarationIdentity(),
+            basis,
+            range,
+            callable.valueDeclarationIdentity(),
+            executionOwner.identity,
+        )
 
     /** The exact native-confirmed invocation carries its result anchor; deriving it performs no semantic work. */
-    fun resultSite(): ValueSite = ValueSite.invocationResult(this)
+    override fun resultSite(): ValueSite = ValueSite.invocationResult(this)
 
     internal fun shareCallableEvidence(
-        callables: MutableMap<RelationEndpoint.Resolved, RelationEndpoint.Resolved>
+        callables: MutableMap<RelationEndpoint.Resolved, ValueInvocation>
     ): ValueInvocation {
         val resolved = callable as? RelationEndpoint.Resolved ?: return this
-        val shared = callables.getOrPut(resolved) { resolved }
+        val shared = callables.getOrPut(resolved) { this }
         // Full endpoint equality includes authority, scope, constraints and every compiler evidence field.
-        return if (shared === resolved) this else ValueInvocation(enclosing, range, shared)
+        return if (shared.callable === callable) this
+        else ValueInvocation(enclosing, range, shared.callable, executionOwner, shared.signature)
     }
 
     companion object {
@@ -77,16 +89,23 @@ private constructor(
             enclosing: RelationEndpoint,
             range: ExactDeclarationTextRange,
             callable: RelationEndpoint,
-        ): Refinement<ValueInvocation, ValueInvocationFailure> =
-            when {
+            executionOwner: ValueExecutionOwner = ValueExecutionOwner.declaration(enclosing),
+        ): Refinement<ValueInvocation, ValueInvocationFailure> {
+            val signature = callable.signature
+            return when {
                 enclosing.lease.identity != callable.lease.identity ->
                     Refinement.Rejected(ValueInvocationFailure.BASIS_MISMATCH)
                 !enclosing.range.containsValueRange(range) ->
                     Refinement.Rejected(ValueInvocationFailure.ANCHOR_OUTSIDE_OWNER)
-                callable.signature !is CanonicalCompilerCallableSignature ->
+                signature !is CanonicalCompilerCallableSignature ->
                     Refinement.Rejected(ValueInvocationFailure.NOT_CALLABLE)
-                else -> Refinement.Refined(ValueInvocation(enclosing, range, callable))
+                !executionOwner.belongsTo(enclosing) ->
+                    Refinement.Rejected(ValueInvocationFailure.EXECUTION_OWNER_MISMATCH)
+                !executionOwner.range.containsValueRange(range) ->
+                    Refinement.Rejected(ValueInvocationFailure.ANCHOR_OUTSIDE_EXECUTION_OWNER)
+                else -> Refinement.Refined(ValueInvocation(enclosing, range, callable, executionOwner, signature))
             }
+        }
     }
 
     override fun equals(other: Any?): Boolean = other is ValueInvocation && identity == other.identity
@@ -101,7 +120,22 @@ sealed interface ValueRole {
 
     data object LocalRead : ValueRole
 
-    data class Argument(val call: ValueInvocation, val position: ValueArgumentPosition) : ValueRole
+    sealed interface ActualArgument : ValueRole {
+        val call: ValueCallOccurrence
+        val position: ValueArgumentPosition
+    }
+
+    data class Argument(override val call: ValueInvocation, override val position: ValueArgumentPosition) :
+        ActualArgument
+
+    data class Receiver(val call: ValueInvocation, val kind: ValueReceiverKind) : ValueRole
+
+    data class FunctionArgument(
+        override val call: ValueFunctionInvocation,
+        override val position: ValueArgumentPosition,
+    ) : ActualArgument
+
+    data class Formal(val position: ValueFormalPosition) : ValueRole
 
     data object Return : ValueRole
 
@@ -114,6 +148,10 @@ internal constructor(
     val basis: SemanticReadIdentity,
     val range: ExactDeclarationTextRange,
     val role: ValueRole,
+    val execution: ValueExecutionIdentity,
+    val valuePath: ValueAccessPath,
+    val callStack: ValueCallStack,
+    val predicates: ValuePredicates,
 )
 
 enum class ValueSiteFailure {
@@ -121,6 +159,11 @@ enum class ValueSiteFailure {
     INVOCATION_OWNER_MISMATCH,
     ARGUMENT_OUTSIDE_INVOCATION,
     INVALID_ARGUMENT_POSITION,
+    EXECUTION_OWNER_MISMATCH,
+    ANCHOR_OUTSIDE_EXECUTION_OWNER,
+    RECEIVER_OUTSIDE_INVOCATION,
+    STATE_BASIS_MISMATCH,
+    FORMAL_OWNER_MISMATCH,
 }
 
 /** Detached value occurrence. A range parse alone never establishes this native semantic fact. */
@@ -129,22 +172,69 @@ private constructor(
     val enclosing: RelationEndpoint,
     val range: ExactDeclarationTextRange,
     val role: ValueRole,
+    val executionOwner: ValueExecutionOwner,
+    val valuePath: ValueAccessPath,
+    val callStack: ValueCallStack,
+    val predicates: ValuePredicates,
 ) {
     val retainedBytes: Long
         get() = valueSiteStorageBytes(this)
 
     val basis: SemanticReadIdentity = enclosing.lease.identity
-    val identity = ValueSiteIdentity(enclosing.valueDeclarationIdentity(), basis, range, role)
+    val identity =
+        ValueSiteIdentity(
+            enclosing.valueDeclarationIdentity(),
+            basis,
+            range,
+            role,
+            executionOwner.identity,
+            valuePath,
+            callStack,
+            predicates,
+        )
 
-    internal fun shareCallableEvidence(
-        callables: MutableMap<RelationEndpoint.Resolved, RelationEndpoint.Resolved>
-    ): ValueSite =
+    /** Carries already admitted provenance through an occurrence without another compiler lookup. */
+    fun withState(
+        valuePath: ValueAccessPath = this.valuePath,
+        callStack: ValueCallStack = this.callStack,
+        predicates: ValuePredicates = this.predicates,
+    ): Refinement<ValueSite, ValueSiteFailure> =
+        if (!valuePath.matchesBasis(basis) || !callStack.matchesBasis(basis) || !predicates.matchesBasis(basis))
+            Refinement.Rejected(ValueSiteFailure.STATE_BASIS_MISMATCH)
+        else Refinement.Refined(ValueSite(enclosing, range, role, executionOwner, valuePath, callStack, predicates))
+
+    internal fun shareCallableEvidence(shareInvocation: (ValueInvocation) -> ValueInvocation): ValueSite =
         when (val current = role) {
             is ValueRole.Argument -> {
-                val shared = current.call.shareCallableEvidence(callables)
+                val shared = shareInvocation(current.call)
                 if (shared === current.call) this
-                else ValueSite(enclosing, range, ValueRole.Argument(shared, current.position))
+                else
+                    ValueSite(
+                        enclosing,
+                        range,
+                        ValueRole.Argument(shared, current.position),
+                        executionOwner,
+                        valuePath,
+                        callStack,
+                        predicates,
+                    )
             }
+            is ValueRole.Receiver -> {
+                val shared = shareInvocation(current.call)
+                if (shared === current.call) this
+                else
+                    ValueSite(
+                        enclosing,
+                        range,
+                        ValueRole.Receiver(shared, current.kind),
+                        executionOwner,
+                        valuePath,
+                        callStack,
+                        predicates,
+                    )
+            }
+            is ValueRole.FunctionArgument,
+            is ValueRole.Formal,
             ValueRole.ExpressionResult,
             ValueRole.LocalBinding,
             ValueRole.LocalRead,
@@ -153,38 +243,111 @@ private constructor(
         }
 
     companion object {
-        internal fun invocationResult(invocation: ValueInvocation): ValueSite =
-            ValueSite(invocation.enclosing, invocation.range, ValueRole.ExpressionResult)
+        internal fun invocationResult(invocation: ValueCallOccurrence): ValueSite =
+            ValueSite(
+                invocation.enclosing,
+                invocation.range,
+                ValueRole.ExpressionResult,
+                invocation.executionOwner,
+                ValueAccessPath.Whole,
+                ValueCallStack.Empty,
+                ValuePredicates.Empty,
+            )
 
         /** Called after K2 confirms this role in this exact containing declaration on its admitted basis. */
         fun fromCompiler(
             enclosing: RelationEndpoint,
             range: ExactDeclarationTextRange,
             role: ValueRole,
+            executionOwner: ValueExecutionOwner = ValueExecutionOwner.declaration(enclosing),
+            valuePath: ValueAccessPath = ValueAccessPath.Whole,
+            callStack: ValueCallStack = ValueCallStack.Empty,
+            predicates: ValuePredicates = ValuePredicates.Empty,
         ): Refinement<ValueSite, ValueSiteFailure> {
             if (!enclosing.range.containsValueRange(range))
                 return Refinement.Rejected(ValueSiteFailure.ANCHOR_OUTSIDE_OWNER)
+            if (!executionOwner.belongsTo(enclosing))
+                return Refinement.Rejected(ValueSiteFailure.EXECUTION_OWNER_MISMATCH)
+            if (!executionOwner.range.containsValueRange(range))
+                return Refinement.Rejected(ValueSiteFailure.ANCHOR_OUTSIDE_EXECUTION_OWNER)
+            if (
+                !valuePath.matchesBasis(enclosing.lease.identity) ||
+                    !callStack.matchesBasis(enclosing.lease.identity) ||
+                    !predicates.matchesBasis(enclosing.lease.identity)
+            )
+                return Refinement.Rejected(ValueSiteFailure.STATE_BASIS_MISMATCH)
+            when (val admitted = admitRole(enclosing, range, role, executionOwner)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return admitted
+            }
+            return Refinement.Refined(
+                ValueSite(enclosing, range, role, executionOwner, valuePath, callStack, predicates)
+            )
+        }
+
+        private fun admitRole(
+            enclosing: RelationEndpoint,
+            range: ExactDeclarationTextRange,
+            role: ValueRole,
+            executionOwner: ValueExecutionOwner,
+        ): Refinement<Unit, ValueSiteFailure> =
             when (role) {
-                is ValueRole.Argument -> {
-                    if (
-                        role.call.enclosing.valueDeclarationIdentity() != enclosing.valueDeclarationIdentity() ||
-                            role.call.basis != enclosing.lease.identity
-                    )
-                        return Refinement.Rejected(ValueSiteFailure.INVOCATION_OWNER_MISMATCH)
-                    if (!role.call.range.containsValueRange(range))
-                        return Refinement.Rejected(ValueSiteFailure.ARGUMENT_OUTSIDE_INVOCATION)
-                    val signature = role.call.callable.signature as CanonicalCompilerCallableSignature
-                    if (role.position.value !in signature.valueParameters.indices)
-                        return Refinement.Rejected(ValueSiteFailure.INVALID_ARGUMENT_POSITION)
-                }
+                is ValueRole.Argument ->
+                    when {
+                        !role.call.matchesOwner(enclosing, executionOwner) ->
+                            Refinement.Rejected(ValueSiteFailure.INVOCATION_OWNER_MISMATCH)
+                        !role.call.range.containsValueRange(range) ->
+                            Refinement.Rejected(ValueSiteFailure.ARGUMENT_OUTSIDE_INVOCATION)
+                        role.position.value !in role.call.signature.valueParameters.indices ->
+                            Refinement.Rejected(ValueSiteFailure.INVALID_ARGUMENT_POSITION)
+                        else -> Refinement.Refined(Unit)
+                    }
+                is ValueRole.Receiver ->
+                    when {
+                        !role.call.matchesOwner(enclosing, executionOwner) ->
+                            Refinement.Rejected(ValueSiteFailure.INVOCATION_OWNER_MISMATCH)
+                        !role.call.range.containsValueRange(range) ->
+                            Refinement.Rejected(ValueSiteFailure.RECEIVER_OUTSIDE_INVOCATION)
+                        else -> Refinement.Refined(Unit)
+                    }
+                is ValueRole.FunctionArgument ->
+                    when {
+                        !role.call.matchesOwner(enclosing, executionOwner) ->
+                            Refinement.Rejected(ValueSiteFailure.INVOCATION_OWNER_MISMATCH)
+                        !role.call.range.containsValueRange(range) ->
+                            Refinement.Rejected(ValueSiteFailure.ARGUMENT_OUTSIDE_INVOCATION)
+                        role.position.value !in role.call.signature.valueParameters.indices ->
+                            Refinement.Rejected(ValueSiteFailure.INVALID_ARGUMENT_POSITION)
+                        else -> Refinement.Refined(Unit)
+                    }
+                is ValueRole.Formal -> admitFormal(role.position, range, executionOwner)
                 ValueRole.ExpressionResult,
                 ValueRole.LocalBinding,
                 ValueRole.LocalRead,
                 ValueRole.Return,
-                ValueRole.PropertyAssignment -> Unit
+                ValueRole.PropertyAssignment -> Refinement.Refined(Unit)
             }
-            return Refinement.Refined(ValueSite(enclosing, range, role))
-        }
+
+        private fun admitFormal(
+            position: ValueFormalPosition,
+            range: ExactDeclarationTextRange,
+            executionOwner: ValueExecutionOwner,
+        ): Refinement<Unit, ValueSiteFailure> =
+            when (position) {
+                is ValueFormalPosition.Parameter ->
+                    if (position.parameter.executionOwner == executionOwner && position.parameter.range == range)
+                        Refinement.Refined(Unit)
+                    else Refinement.Rejected(ValueSiteFailure.FORMAL_OWNER_MISMATCH)
+                is ValueFormalPosition.Receiver -> Refinement.Refined(Unit)
+            }
+
+        private fun ValueCallOccurrence.matchesOwner(
+            enclosing: RelationEndpoint,
+            executionOwner: ValueExecutionOwner,
+        ): Boolean =
+            this.enclosing.valueDeclarationIdentity() == enclosing.valueDeclarationIdentity() &&
+                basis == enclosing.lease.identity &&
+                this.executionOwner == executionOwner
     }
 
     override fun equals(other: Any?): Boolean = other is ValueSite && identity == other.identity

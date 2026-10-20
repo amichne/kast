@@ -1,0 +1,70 @@
+package io.github.amichne.kast.relation.contract
+
+import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.kernel.ResourceBudget
+import io.github.amichne.kast.kernel.ResultLimit
+import io.github.amichne.kast.kernel.WorkUnitLimit
+import io.github.amichne.kast.symbol.contract.SymbolSelector
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotSame
+import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Test
+
+class ValueFlowSourceAliasStorageTest {
+    @Test
+    fun `a transfer source alias uses the existing payload while a detached equal source charges it`() {
+        val owner = flowEndpoint("investigate", 0, 200) as RelationEndpoint.Resolved
+        val source = ValueSite.fromCompiler(owner, flowRange(20, 35), ValueRole.LocalRead).flowRefined()
+        val detached = ValueSite.fromCompiler(owner, source.range, source.role).flowRefined()
+        val target = ValueSite.fromCompiler(owner, flowRange(10, 180), ValueRole.ExpressionResult).flowRefined()
+        val proof =
+            ValueTransferEvidence.NormalBranchResult.fromCompiler(
+                    target.range,
+                    flowRange(15, 70),
+                    ValueTryBranchAlternative.TryBody,
+                )
+                .flowRefined()
+        val sharedEdge =
+            ValueTransfer.fromCompiler(source, target, ValueTransferKind.BRANCH_ALTERNATIVE, proof).flowRefined()
+        val detachedEdge =
+            ValueTransfer.fromCompiler(detached, target, ValueTransferKind.BRANCH_ALTERNATIVE, proof).flowRefined()
+        val domain = domain(owner)
+        val base = ValueFlowStep.detachedByteCount(source, domain, emptyList(), emptyList()).value
+        val shared = ValueFlowStep.detachedByteCount(source, domain, listOf(sharedEdge), emptyList()).value
+        val separate = ValueFlowStep.detachedByteCount(source, domain, listOf(detachedEdge), emptyList()).value
+        assertEquals(source, detached)
+        assertNotSame(source, detached)
+        assertSame(source, sharedEdge.source)
+        assertSame(detached, detachedEdge.source)
+        assertSame(target, sharedEdge.target)
+        assertSame(proof, sharedEdge.evidence)
+        assertEquals(source.retainedBytes, separate - shared)
+        assertEquals(2048L + target.retainedBytes + 4096L, shared - base)
+        val refusal = ValueFlowObligation(source, ValueFlowUnsupportedCause.BYTE_LIMIT_REACHED)
+        val refused = ValueFlowStep.detachedByteCount(source, domain, listOf(sharedEdge), listOf(refusal)).value
+        assertEquals(2048L, refused - shared)
+    }
+
+    @Test
+    fun `native detached byte arithmetic saturates instead of wrapping`() {
+        assertEquals(Long.MAX_VALUE, Long.MAX_VALUE.addBytes(1L))
+        assertEquals(Long.MAX_VALUE, (Long.MAX_VALUE - 1L).addBytes(2L))
+        assertEquals(Long.MAX_VALUE - 1L, (Long.MAX_VALUE / 2L).multiplyBytes(2L))
+        assertEquals(Long.MAX_VALUE, (Long.MAX_VALUE / 2L + 1L).multiplyBytes(2L))
+    }
+
+    private fun domain(owner: RelationEndpoint.Resolved): RelationRequest =
+        RelationRequest.start(
+            SymbolSelector.issue(owner.lease, owner.scope, owner.evidence),
+            RelationMeaning.References,
+            RelationBudget(
+                ResourceBudget(
+                    ResultLimit.parse(32).flowRefined(),
+                    WorkUnitLimit.parse(128).flowRefined(),
+                    ElapsedTimeLimitMillis.parse(1000).flowRefined(),
+                ),
+                RelationByteLimit.parse(100_000).flowRefined(),
+            ),
+            RelationSearchBoundary.WORKSPACE_EXPANSION,
+        )
+}

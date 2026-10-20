@@ -34,6 +34,19 @@ internal fun CallbackInvocationFlow.canonicalProjection(includeOwnerExecution: B
     obligations(obligations)
 }
 
+internal fun CallbackInvocationFlow.hasSameCallbackQuestion(other: CallbackInvocationFlow): Boolean {
+    val bound = binding as? CallbackBindingEvidence.Bound ?: return false
+    val otherBound = other.binding as? CallbackBindingEvidence.Bound ?: return false
+    return basis == other.basis &&
+        bound.binding.invocation.identity == otherBound.binding.invocation.identity &&
+        callbackQuestionCanonical() == other.callbackQuestionCanonical()
+}
+
+private fun CallbackInvocationFlow.callbackQuestionCanonical(): String = buildString {
+    body(body)
+    binding(binding)
+}
+
 internal fun CallbackBodyBinding.canonicalProjection(includeOwnerExecution: Boolean = true): String = buildString {
     ownerBinding(this@canonicalProjection, includeOwnerExecution)
 }
@@ -83,25 +96,6 @@ private fun StringBuilder.forwarding(forwarding: CallbackParameterForwarding) {
     }
 }
 
-private fun StringBuilder.transferEvidence(evidence: ValueTransferEvidence) {
-    when (evidence) {
-        ValueTransferEvidence.Direct -> field("DIRECT")
-        is ValueTransferEvidence.NormalBranchResult -> {
-            field("NORMAL_BRANCH_RESULT")
-            range(evidence.tryRange)
-            range(evidence.branchRange)
-            when (val alternative = evidence.alternative) {
-                ValueTryBranchAlternative.TryBody -> field("TRY_BODY")
-                is ValueTryBranchAlternative.CatchBody -> {
-                    field("CATCH_BODY")
-                    field(alternative.index.value.toString())
-                }
-            }
-            field("NORMAL_COMPLETION")
-        }
-    }
-}
-
 private fun StringBuilder.ownerBinding(owner: CallbackBodyBinding, includeOwnerExecution: Boolean) {
     body(owner.body)
     when (val supply = owner.supply) {
@@ -143,25 +137,6 @@ private fun StringBuilder.ownerBinding(owner: CallbackBodyBinding, includeOwnerE
 private fun StringBuilder.obligations(obligations: Set<CallbackInvocationFlowCause>) {
     field(obligations.size.toString())
     obligations.sortedBy { it.ordinal }.forEach { field(it.name) }
-}
-
-private fun StringBuilder.site(site: ValueSite) {
-    endpoint(site.enclosing)
-    range(site.range)
-    when (val role = site.role) {
-        ValueRole.ExpressionResult -> field("EXPRESSION_RESULT")
-        ValueRole.LocalBinding -> field("LOCAL_BINDING")
-        ValueRole.LocalRead -> field("LOCAL_READ")
-        ValueRole.Return -> field("RETURN")
-        ValueRole.PropertyAssignment -> field("PROPERTY_ASSIGNMENT")
-        is ValueRole.Argument -> {
-            field("ARGUMENT")
-            endpoint(role.call.enclosing)
-            endpoint(role.call.callable)
-            range(role.call.range)
-            field(role.position.value.toString())
-        }
-    }
 }
 
 internal fun StringBuilder.body(body: RelationCallableBody) {

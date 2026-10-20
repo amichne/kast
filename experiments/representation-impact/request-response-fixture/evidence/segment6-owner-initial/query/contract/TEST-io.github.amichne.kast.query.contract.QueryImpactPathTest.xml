@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryImpactPathTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:17.747Z" hostname="Austins-MacBook-Pro.local" time="0.003">
+  <properties/>
+  <testcase name="modeled cross repository path retains separate bases and unresolved downstream boundary()" classname="io.github.amichne.kast.query.contract.QueryImpactPathTest" time="0.002"/>
+  <testcase name="two routes to the same destination remain distinct report paths()" classname="io.github.amichne.kast.query.contract.QueryImpactPathTest" time="0.0"/>
+  <testcase name="a path cannot attach a disconnected compiler edge even within the same declaration()" classname="io.github.amichne.kast.query.contract.QueryImpactPathTest" time="0.001"/>
+  <testcase name="domain exhaustion cannot become terminal accounting while outgoing flow remains()" classname="io.github.amichne.kast.query.contract.QueryImpactPathTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

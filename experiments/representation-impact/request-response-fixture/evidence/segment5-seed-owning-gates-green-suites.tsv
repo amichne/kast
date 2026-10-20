@@ -1,0 +1,6 @@
+owner	tests	failures	errors	skipped	report_sha256
+relation/contract	386	0	0	0	c3a3455f3534c12c5fe3c71087dc38248ee5010d293212c9be64887a4f75f238
+protocol/contract	173	0	0	0	c4c77a64fbe1b10bdb4fd36fd26e32586b08adacc706e06cc829b384447fcf9c
+query/contract	117	0	0	0	758130e20e0b4997d70331926e00b32f5afbe17ae6b7a865e0bb855186f827aa
+query/protocol	376	0	0	0	3b30f014fc003ed2e60278395aa4ecea6ff609fe961cfddb7efaab6f44936cba
+query/service	190	0	0	0	6d042ea0dbbdb125a2a54b79ec15e2cb285c2ee650ff46bf30d20ffe13137262

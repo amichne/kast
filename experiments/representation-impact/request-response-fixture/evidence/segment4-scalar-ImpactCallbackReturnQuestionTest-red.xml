@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactCallbackReturnQuestionTest" tests="6" skipped="0" failures="2" errors="0" timestamp="2026-10-20T05:26:36.620Z" hostname="Austins-MacBook-Pro.local" time="0.104">
+  <properties/>
+  <testcase name="a callback return cannot substitute another execution owner()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackReturnQuestionTest" time="0.078"/>
+  <testcase name="a callback return rejects another body supplier or basis()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackReturnQuestionTest" time="0.005"/>
+  <testcase name="an unavailable callback return cannot substitute another execution owner()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackReturnQuestionTest" time="0.005">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;false&gt; but was: &lt;true&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;false&gt; but was: &lt;true&gt;
+	at org.junit.jupiter.api.Assertions.assertFalse(Assertions.java:257)
+	at io.github.amichne.kast.protocol.contract.ImpactCallbackReturnQuestionTest.an unavailable callback return cannot substitute another execution owner(ImpactCallbackReturnQuestionTest.kt:50)
+</failure>
+  </testcase>
+  <testcase name="a qualified zero answer keeps its exact callback return question()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackReturnQuestionTest" time="0.001"/>
+  <testcase name="a rejected callback return cannot substitute another execution owner()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackReturnQuestionTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;false&gt; but was: &lt;true&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;false&gt; but was: &lt;true&gt;
+	at org.junit.jupiter.api.Assertions.assertFalse(Assertions.java:257)
+	at io.github.amichne.kast.protocol.contract.ImpactCallbackReturnQuestionTest.a rejected callback return cannot substitute another execution owner(ImpactCallbackReturnQuestionTest.kt:58)
+</failure>
+  </testcase>
+  <testcase name="a supplying occurrence cannot substitute another invocation execution owner()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackReturnQuestionTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

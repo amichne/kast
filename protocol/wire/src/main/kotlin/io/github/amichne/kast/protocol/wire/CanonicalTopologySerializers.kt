@@ -14,6 +14,10 @@ import io.github.amichne.kast.protocol.contract.TopologyCoverageSourceHash
 import io.github.amichne.kast.protocol.contract.TopologyCoverageSourceRootEvidence
 import io.github.amichne.kast.protocol.contract.TopologyCoverageSourceRootProvenance
 import io.github.amichne.kast.protocol.contract.TopologyCoverageWorkspaceEvidence
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.combineConverted
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocumentConversion
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

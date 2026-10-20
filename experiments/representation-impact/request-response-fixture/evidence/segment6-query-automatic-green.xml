@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.service.QueryImpactAutomaticValueExecutionTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T13:44:25.762Z" hostname="Austins-MacBook-Pro.local" time="0.198">
+  <properties/>
+  <testcase name="automatic application does not erase an independent external receiver obligation()" classname="io.github.amichne.kast.query.service.QueryImpactAutomaticValueExecutionTest" time="0.167"/>
+  <testcase name="automatic receiver model reaches opaque sink without supplied models or representation state()" classname="io.github.amichne.kast.query.service.QueryImpactAutomaticValueExecutionTest" time="0.008"/>
+  <testcase name="opaque receiver without an application stops before a result read()" classname="io.github.amichne.kast.query.service.QueryImpactAutomaticValueExecutionTest" time="0.004"/>
+  <testcase name="automatic receiver model preserves the origin history while weakening known representation()" classname="io.github.amichne.kast.query.service.QueryImpactAutomaticValueExecutionTest" time="0.011"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

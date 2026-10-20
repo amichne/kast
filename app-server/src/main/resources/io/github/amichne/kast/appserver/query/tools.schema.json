@@ -1414,146 +1414,7 @@
                         "additionalProperties": false,
                         "properties": {
                           "site": {
-                            "type": "object",
-                            "additionalProperties": false,
-                            "properties": {
-                              "enclosing": {
-                                "$ref": "#/$defs/ImpactDeclarationReference"
-                              },
-                              "range": {
-                                "$ref": "#/$defs/ImpactSourceRange"
-                              },
-                              "role": {
-                                "anyOf": [
-                                  {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                      "type": {
-                                        "enum": [
-                                          "ARGUMENT"
-                                        ],
-                                        "type": "string",
-                                        "default": "ARGUMENT"
-                                      },
-                                      "invocation": {
-                                        "type": "object",
-                                        "additionalProperties": false,
-                                        "properties": {
-                                          "range": {
-                                            "$ref": "#/$defs/ImpactSourceRange"
-                                          },
-                                          "callable": {
-                                            "$ref": "#/$defs/ImpactDeclarationReference"
-                                          }
-                                        },
-                                        "required": [
-                                          "range",
-                                          "callable"
-                                        ]
-                                      },
-                                      "index": {
-                                        "type": "integer",
-                                        "minimum": 0
-                                      }
-                                    },
-                                    "required": [
-                                      "type",
-                                      "invocation",
-                                      "index"
-                                    ]
-                                  },
-                                  {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                      "type": {
-                                        "enum": [
-                                          "EXPRESSION_RESULT"
-                                        ],
-                                        "type": "string",
-                                        "default": "EXPRESSION_RESULT"
-                                      }
-                                    },
-                                    "required": [
-                                      "type"
-                                    ]
-                                  },
-                                  {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                      "type": {
-                                        "enum": [
-                                          "LOCAL_BINDING"
-                                        ],
-                                        "type": "string",
-                                        "default": "LOCAL_BINDING"
-                                      }
-                                    },
-                                    "required": [
-                                      "type"
-                                    ]
-                                  },
-                                  {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                      "type": {
-                                        "enum": [
-                                          "LOCAL_READ"
-                                        ],
-                                        "type": "string",
-                                        "default": "LOCAL_READ"
-                                      }
-                                    },
-                                    "required": [
-                                      "type"
-                                    ]
-                                  },
-                                  {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                      "type": {
-                                        "enum": [
-                                          "PROPERTY_ASSIGNMENT"
-                                        ],
-                                        "type": "string",
-                                        "default": "PROPERTY_ASSIGNMENT"
-                                      }
-                                    },
-                                    "required": [
-                                      "type"
-                                    ]
-                                  },
-                                  {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                      "type": {
-                                        "enum": [
-                                          "RETURN"
-                                        ],
-                                        "type": "string",
-                                        "default": "RETURN"
-                                      }
-                                    },
-                                    "required": [
-                                      "type"
-                                    ]
-                                  }
-                                ],
-                                "discriminator": {
-                                  "propertyName": "type"
-                                }
-                              }
-                            },
-                            "required": [
-                              "enclosing",
-                              "range",
-                              "role"
-                            ]
+                            "$ref": "#/$defs/ImpactRequestedSite"
                           },
                           "kind": {
                             "type": "string",
@@ -1603,146 +1464,7 @@
                         "additionalProperties": false,
                         "properties": {
                           "site": {
-                            "type": "object",
-                            "additionalProperties": false,
-                            "properties": {
-                              "enclosing": {
-                                "$ref": "#/$defs/ImpactDeclarationReference"
-                              },
-                              "range": {
-                                "$ref": "#/$defs/ImpactSourceRange"
-                              },
-                              "role": {
-                                "anyOf": [
-                                  {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                      "type": {
-                                        "enum": [
-                                          "ARGUMENT"
-                                        ],
-                                        "type": "string",
-                                        "default": "ARGUMENT"
-                                      },
-                                      "invocation": {
-                                        "type": "object",
-                                        "additionalProperties": false,
-                                        "properties": {
-                                          "range": {
-                                            "$ref": "#/$defs/ImpactSourceRange"
-                                          },
-                                          "callable": {
-                                            "$ref": "#/$defs/ImpactDeclarationReference"
-                                          }
-                                        },
-                                        "required": [
-                                          "range",
-                                          "callable"
-                                        ]
-                                      },
-                                      "index": {
-                                        "type": "integer",
-                                        "minimum": 0
-                                      }
-                                    },
-                                    "required": [
-                                      "type",
-                                      "invocation",
-                                      "index"
-                                    ]
-                                  },
-                                  {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                      "type": {
-                                        "enum": [
-                                          "EXPRESSION_RESULT"
-                                        ],
-                                        "type": "string",
-                                        "default": "EXPRESSION_RESULT"
-                                      }
-                                    },
-                                    "required": [
-                                      "type"
-                                    ]
-                                  },
-                                  {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                      "type": {
-                                        "enum": [
-                                          "LOCAL_BINDING"
-                                        ],
-                                        "type": "string",
-                                        "default": "LOCAL_BINDING"
-                                      }
-                                    },
-                                    "required": [
-                                      "type"
-                                    ]
-                                  },
-                                  {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                      "type": {
-                                        "enum": [
-                                          "LOCAL_READ"
-                                        ],
-                                        "type": "string",
-                                        "default": "LOCAL_READ"
-                                      }
-                                    },
-                                    "required": [
-                                      "type"
-                                    ]
-                                  },
-                                  {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                      "type": {
-                                        "enum": [
-                                          "PROPERTY_ASSIGNMENT"
-                                        ],
-                                        "type": "string",
-                                        "default": "PROPERTY_ASSIGNMENT"
-                                      }
-                                    },
-                                    "required": [
-                                      "type"
-                                    ]
-                                  },
-                                  {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                      "type": {
-                                        "enum": [
-                                          "RETURN"
-                                        ],
-                                        "type": "string",
-                                        "default": "RETURN"
-                                      }
-                                    },
-                                    "required": [
-                                      "type"
-                                    ]
-                                  }
-                                ],
-                                "discriminator": {
-                                  "propertyName": "type"
-                                }
-                              }
-                            },
-                            "required": [
-                              "enclosing",
-                              "range",
-                              "role"
-                            ]
+                            "$ref": "#/$defs/ImpactRequestedSite"
                           },
                           "kind": {
                             "type": "string",
@@ -1830,146 +1552,7 @@
                         "additionalProperties": false,
                         "properties": {
                           "site": {
-                            "type": "object",
-                            "additionalProperties": false,
-                            "properties": {
-                              "enclosing": {
-                                "$ref": "#/$defs/ImpactDeclarationReference"
-                              },
-                              "range": {
-                                "$ref": "#/$defs/ImpactSourceRange"
-                              },
-                              "role": {
-                                "anyOf": [
-                                  {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                      "type": {
-                                        "enum": [
-                                          "ARGUMENT"
-                                        ],
-                                        "type": "string",
-                                        "default": "ARGUMENT"
-                                      },
-                                      "invocation": {
-                                        "type": "object",
-                                        "additionalProperties": false,
-                                        "properties": {
-                                          "range": {
-                                            "$ref": "#/$defs/ImpactSourceRange"
-                                          },
-                                          "callable": {
-                                            "$ref": "#/$defs/ImpactDeclarationReference"
-                                          }
-                                        },
-                                        "required": [
-                                          "range",
-                                          "callable"
-                                        ]
-                                      },
-                                      "index": {
-                                        "type": "integer",
-                                        "minimum": 0
-                                      }
-                                    },
-                                    "required": [
-                                      "type",
-                                      "invocation",
-                                      "index"
-                                    ]
-                                  },
-                                  {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                      "type": {
-                                        "enum": [
-                                          "EXPRESSION_RESULT"
-                                        ],
-                                        "type": "string",
-                                        "default": "EXPRESSION_RESULT"
-                                      }
-                                    },
-                                    "required": [
-                                      "type"
-                                    ]
-                                  },
-                                  {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                      "type": {
-                                        "enum": [
-                                          "LOCAL_BINDING"
-                                        ],
-                                        "type": "string",
-                                        "default": "LOCAL_BINDING"
-                                      }
-                                    },
-                                    "required": [
-                                      "type"
-                                    ]
-                                  },
-                                  {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                      "type": {
-                                        "enum": [
-                                          "LOCAL_READ"
-                                        ],
-                                        "type": "string",
-                                        "default": "LOCAL_READ"
-                                      }
-                                    },
-                                    "required": [
-                                      "type"
-                                    ]
-                                  },
-                                  {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                      "type": {
-                                        "enum": [
-                                          "PROPERTY_ASSIGNMENT"
-                                        ],
-                                        "type": "string",
-                                        "default": "PROPERTY_ASSIGNMENT"
-                                      }
-                                    },
-                                    "required": [
-                                      "type"
-                                    ]
-                                  },
-                                  {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                      "type": {
-                                        "enum": [
-                                          "RETURN"
-                                        ],
-                                        "type": "string",
-                                        "default": "RETURN"
-                                      }
-                                    },
-                                    "required": [
-                                      "type"
-                                    ]
-                                  }
-                                ],
-                                "discriminator": {
-                                  "propertyName": "type"
-                                }
-                              }
-                            },
-                            "required": [
-                              "enclosing",
-                              "range",
-                              "role"
-                            ]
+                            "$ref": "#/$defs/ImpactRequestedSite"
                           },
                           "kind": {
                             "type": "string",
@@ -2125,61 +1708,7 @@
                         "pattern": "^[A-Za-z0-9._:/-]{1,128}$"
                       },
                       "input": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "properties": {
-                          "declaration": {
-                            "$ref": "#/$defs/ImpactDeclarationReference"
-                          },
-                          "position": {
-                            "anyOf": [
-                              {
-                                "type": "object",
-                                "additionalProperties": false,
-                                "properties": {
-                                  "type": {
-                                    "enum": [
-                                      "ARGUMENT"
-                                    ],
-                                    "type": "string",
-                                    "default": "ARGUMENT"
-                                  },
-                                  "index": {
-                                    "type": "integer",
-                                    "minimum": 0
-                                  }
-                                },
-                                "required": [
-                                  "type",
-                                  "index"
-                                ]
-                              },
-                              {
-                                "type": "object",
-                                "additionalProperties": false,
-                                "properties": {
-                                  "type": {
-                                    "enum": [
-                                      "RESULT"
-                                    ],
-                                    "type": "string",
-                                    "default": "RESULT"
-                                  }
-                                },
-                                "required": [
-                                  "type"
-                                ]
-                              }
-                            ],
-                            "discriminator": {
-                              "propertyName": "type"
-                            }
-                          }
-                        },
-                        "required": [
-                          "declaration",
-                          "position"
-                        ]
+                        "$ref": "#/$defs/ImpactModelPosition"
                       },
                       "state": {
                         "type": "string",
@@ -2213,61 +1742,7 @@
                         "pattern": "^[A-Za-z0-9._:/-]{1,128}$"
                       },
                       "output": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "properties": {
-                          "declaration": {
-                            "$ref": "#/$defs/ImpactDeclarationReference"
-                          },
-                          "position": {
-                            "anyOf": [
-                              {
-                                "type": "object",
-                                "additionalProperties": false,
-                                "properties": {
-                                  "type": {
-                                    "enum": [
-                                      "ARGUMENT"
-                                    ],
-                                    "type": "string",
-                                    "default": "ARGUMENT"
-                                  },
-                                  "index": {
-                                    "type": "integer",
-                                    "minimum": 0
-                                  }
-                                },
-                                "required": [
-                                  "type",
-                                  "index"
-                                ]
-                              },
-                              {
-                                "type": "object",
-                                "additionalProperties": false,
-                                "properties": {
-                                  "type": {
-                                    "enum": [
-                                      "RESULT"
-                                    ],
-                                    "type": "string",
-                                    "default": "RESULT"
-                                  }
-                                },
-                                "required": [
-                                  "type"
-                                ]
-                              }
-                            ],
-                            "discriminator": {
-                              "propertyName": "type"
-                            }
-                          }
-                        },
-                        "required": [
-                          "declaration",
-                          "position"
-                        ]
+                        "$ref": "#/$defs/ImpactModelPosition"
                       },
                       "state": {
                         "type": "string",
@@ -2301,118 +1776,10 @@
                         "pattern": "^[A-Za-z0-9._:/-]{1,128}$"
                       },
                       "input": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "properties": {
-                          "declaration": {
-                            "$ref": "#/$defs/ImpactDeclarationReference"
-                          },
-                          "position": {
-                            "anyOf": [
-                              {
-                                "type": "object",
-                                "additionalProperties": false,
-                                "properties": {
-                                  "type": {
-                                    "enum": [
-                                      "ARGUMENT"
-                                    ],
-                                    "type": "string",
-                                    "default": "ARGUMENT"
-                                  },
-                                  "index": {
-                                    "type": "integer",
-                                    "minimum": 0
-                                  }
-                                },
-                                "required": [
-                                  "type",
-                                  "index"
-                                ]
-                              },
-                              {
-                                "type": "object",
-                                "additionalProperties": false,
-                                "properties": {
-                                  "type": {
-                                    "enum": [
-                                      "RESULT"
-                                    ],
-                                    "type": "string",
-                                    "default": "RESULT"
-                                  }
-                                },
-                                "required": [
-                                  "type"
-                                ]
-                              }
-                            ],
-                            "discriminator": {
-                              "propertyName": "type"
-                            }
-                          }
-                        },
-                        "required": [
-                          "declaration",
-                          "position"
-                        ]
+                        "$ref": "#/$defs/ImpactModelPosition"
                       },
                       "output": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "properties": {
-                          "declaration": {
-                            "$ref": "#/$defs/ImpactDeclarationReference"
-                          },
-                          "position": {
-                            "anyOf": [
-                              {
-                                "type": "object",
-                                "additionalProperties": false,
-                                "properties": {
-                                  "type": {
-                                    "enum": [
-                                      "ARGUMENT"
-                                    ],
-                                    "type": "string",
-                                    "default": "ARGUMENT"
-                                  },
-                                  "index": {
-                                    "type": "integer",
-                                    "minimum": 0
-                                  }
-                                },
-                                "required": [
-                                  "type",
-                                  "index"
-                                ]
-                              },
-                              {
-                                "type": "object",
-                                "additionalProperties": false,
-                                "properties": {
-                                  "type": {
-                                    "enum": [
-                                      "RESULT"
-                                    ],
-                                    "type": "string",
-                                    "default": "RESULT"
-                                  }
-                                },
-                                "required": [
-                                  "type"
-                                ]
-                              }
-                            ],
-                            "discriminator": {
-                              "propertyName": "type"
-                            }
-                          }
-                        },
-                        "required": [
-                          "declaration",
-                          "position"
-                        ]
+                        "$ref": "#/$defs/ImpactModelPosition"
                       }
                     },
                     "required": [
@@ -2440,118 +1807,10 @@
                         "pattern": "^[A-Za-z0-9._:/-]{1,128}$"
                       },
                       "input": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "properties": {
-                          "declaration": {
-                            "$ref": "#/$defs/ImpactDeclarationReference"
-                          },
-                          "position": {
-                            "anyOf": [
-                              {
-                                "type": "object",
-                                "additionalProperties": false,
-                                "properties": {
-                                  "type": {
-                                    "enum": [
-                                      "ARGUMENT"
-                                    ],
-                                    "type": "string",
-                                    "default": "ARGUMENT"
-                                  },
-                                  "index": {
-                                    "type": "integer",
-                                    "minimum": 0
-                                  }
-                                },
-                                "required": [
-                                  "type",
-                                  "index"
-                                ]
-                              },
-                              {
-                                "type": "object",
-                                "additionalProperties": false,
-                                "properties": {
-                                  "type": {
-                                    "enum": [
-                                      "RESULT"
-                                    ],
-                                    "type": "string",
-                                    "default": "RESULT"
-                                  }
-                                },
-                                "required": [
-                                  "type"
-                                ]
-                              }
-                            ],
-                            "discriminator": {
-                              "propertyName": "type"
-                            }
-                          }
-                        },
-                        "required": [
-                          "declaration",
-                          "position"
-                        ]
+                        "$ref": "#/$defs/ImpactModelPosition"
                       },
                       "output": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "properties": {
-                          "declaration": {
-                            "$ref": "#/$defs/ImpactDeclarationReference"
-                          },
-                          "position": {
-                            "anyOf": [
-                              {
-                                "type": "object",
-                                "additionalProperties": false,
-                                "properties": {
-                                  "type": {
-                                    "enum": [
-                                      "ARGUMENT"
-                                    ],
-                                    "type": "string",
-                                    "default": "ARGUMENT"
-                                  },
-                                  "index": {
-                                    "type": "integer",
-                                    "minimum": 0
-                                  }
-                                },
-                                "required": [
-                                  "type",
-                                  "index"
-                                ]
-                              },
-                              {
-                                "type": "object",
-                                "additionalProperties": false,
-                                "properties": {
-                                  "type": {
-                                    "enum": [
-                                      "RESULT"
-                                    ],
-                                    "type": "string",
-                                    "default": "RESULT"
-                                  }
-                                },
-                                "required": [
-                                  "type"
-                                ]
-                              }
-                            ],
-                            "discriminator": {
-                              "propertyName": "type"
-                            }
-                          }
-                        },
-                        "required": [
-                          "declaration",
-                          "position"
-                        ]
+                        "$ref": "#/$defs/ImpactModelPosition"
                       },
                       "from": {
                         "type": "string",
@@ -2853,20 +2112,7 @@
                   "default": "ARGUMENT"
                 },
                 "invocation": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "properties": {
-                    "range": {
-                      "$ref": "#/$defs/ImpactSourceRange"
-                    },
-                    "callable": {
-                      "$ref": "#/$defs/ImpactDeclarationReference"
-                    }
-                  },
-                  "required": [
-                    "range",
-                    "callable"
-                  ]
+                  "$ref": "#/$defs/ImpactInvocationReference"
                 },
                 "index": {
                   "type": "integer",
@@ -2877,6 +2123,58 @@
                 "type",
                 "invocation",
                 "index"
+              ]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "enum": [
+                    "RECEIVER"
+                  ],
+                  "type": "string",
+                  "default": "RECEIVER"
+                },
+                "invocation": {
+                  "$ref": "#/$defs/ImpactInvocationReference"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "DISPATCH",
+                    "EXTENSION"
+                  ],
+                  "examples": [
+                    "DISPATCH",
+                    "EXTENSION"
+                  ]
+                }
+              },
+              "required": [
+                "type",
+                "invocation",
+                "kind"
+              ]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "FORMAL"
+                  ],
+                  "default": "FORMAL"
+                },
+                "position": {
+                  "$ref": "#/$defs/ImpactFormalPosition"
+                }
+              },
+              "required": [
+                "type",
+                "position"
               ]
             },
             {
@@ -2963,6 +2261,39 @@
           "discriminator": {
             "propertyName": "type"
           }
+        },
+        "executionOwner": {
+          "$ref": "#/$defs/ImpactExecutionOwner",
+          "default": {
+            "type": "DECLARATION"
+          }
+        },
+        "valuePath": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ImpactValuePathSegment"
+          },
+          "maxItems": 8,
+          "default": []
+        },
+        "callStack": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ImpactCallFrame"
+          },
+          "maxItems": 32,
+          "default": []
+        },
+        "predicates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {},
+            "required": []
+          },
+          "maxItems": 0,
+          "default": []
         }
       },
       "required": [
@@ -3189,6 +2520,387 @@
         "end"
       ],
       "x-kotlin-type": "io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument"
+    },
+    "ImpactExecutionOwner": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "DECLARATION"
+              ],
+              "default": "DECLARATION"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "ANONYMOUS"
+              ],
+              "default": "ANONYMOUS"
+            },
+            "body": {
+              "$ref": "#/$defs/ImpactDeclarationReference"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ]
+        }
+      ],
+      "discriminator": {
+        "propertyName": "type"
+      },
+      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.ImpactExecutionOwnerDocument",
+      "description": "K2 execution owner inside the exact selected lexical host. Omission selects the declaration owner.",
+      "examples": [
+        {
+          "type": "DECLARATION"
+        }
+      ]
+    },
+    "ImpactInvocationReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "range": {
+          "$ref": "#/$defs/ImpactSourceRange"
+        },
+        "callable": {
+          "$ref": "#/$defs/ImpactDeclarationReference"
+        },
+        "executionOwner": {
+          "$ref": "#/$defs/ImpactExecutionOwner",
+          "default": {
+            "type": "DECLARATION"
+          }
+        }
+      },
+      "required": [
+        "range",
+        "callable"
+      ],
+      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument"
+    },
+    "ImpactFormalParameter": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "callable": {
+          "$ref": "#/$defs/ImpactDeclarationReference"
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "range": {
+          "$ref": "#/$defs/ImpactSourceRange"
+        },
+        "executionOwner": {
+          "$ref": "#/$defs/ImpactExecutionOwner",
+          "default": {
+            "type": "DECLARATION"
+          }
+        },
+        "origin": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "DECLARED"
+              ],
+              "default": "DECLARED"
+            },
+            "range": {
+              "$ref": "#/$defs/ImpactSourceRange"
+            }
+          },
+          "required": [
+            "type",
+            "range"
+          ]
+        }
+      },
+      "required": [
+        "callable",
+        "index",
+        "name",
+        "range"
+      ],
+      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.ImpactFormalParameterDocument"
+    },
+    "ImpactFormalPosition": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "PARAMETER"
+              ],
+              "default": "PARAMETER"
+            },
+            "parameter": {
+              "$ref": "#/$defs/ImpactFormalParameter"
+            }
+          },
+          "required": [
+            "type",
+            "parameter"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "RECEIVER"
+              ],
+              "default": "RECEIVER"
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "DISPATCH",
+                "EXTENSION"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "kind"
+          ]
+        }
+      ],
+      "discriminator": {
+        "propertyName": "type"
+      },
+      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.ImpactFormalPositionDocument"
+    },
+    "ImpactValuePathSegment": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "FIELD"
+              ],
+              "default": "FIELD"
+            },
+            "declaration": {
+              "$ref": "#/$defs/ImpactDeclarationReference"
+            }
+          },
+          "required": [
+            "type",
+            "declaration"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "ANY_ELEMENT"
+              ],
+              "default": "ANY_ELEMENT"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "ELEMENT"
+              ],
+              "default": "ELEMENT"
+            },
+            "index": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "type",
+            "index"
+          ]
+        }
+      ],
+      "discriminator": {
+        "propertyName": "type"
+      },
+      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.ImpactValuePathSegmentDocument"
+    },
+    "ImpactExecutionReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enclosing": {
+          "$ref": "#/$defs/ImpactDeclarationReference"
+        },
+        "executionOwner": {
+          "$ref": "#/$defs/ImpactExecutionOwner",
+          "default": {
+            "type": "DECLARATION"
+          }
+        }
+      },
+      "required": [
+        "enclosing"
+      ],
+      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.ImpactExecutionReferenceDocument"
+    },
+    "ImpactCallFrame": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enclosing": {
+          "$ref": "#/$defs/ImpactDeclarationReference"
+        },
+        "invocation": {
+          "$ref": "#/$defs/ImpactDeclaredCallOccurrence"
+        },
+        "callee": {
+          "$ref": "#/$defs/ImpactExecutionReference"
+        },
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "DIRECT"
+              ],
+              "default": "DIRECT"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "default": {
+            "type": "DIRECT"
+          }
+        }
+      },
+      "required": [
+        "enclosing",
+        "invocation",
+        "callee"
+      ],
+      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.ImpactCallFrameDocument"
+    },
+    "ImpactDeclaredCallOccurrence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "DECLARED"
+          ],
+          "default": "DECLARED"
+        },
+        "invocation": {
+          "$ref": "#/$defs/ImpactInvocationReference"
+        }
+      },
+      "required": [
+        "type",
+        "invocation"
+      ],
+      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.ImpactCallOccurrenceDocument"
+    },
+    "ImpactModelPosition": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "declaration": {
+          "$ref": "#/$defs/ImpactDeclarationReference"
+        },
+        "position": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "enum": [
+                    "ARGUMENT"
+                  ],
+                  "type": "string",
+                  "default": "ARGUMENT"
+                },
+                "index": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "type",
+                "index"
+              ]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "enum": [
+                    "RESULT"
+                  ],
+                  "type": "string",
+                  "default": "RESULT"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            }
+          ],
+          "discriminator": {
+            "propertyName": "type"
+          }
+        }
+      },
+      "required": [
+        "declaration",
+        "position"
+      ],
+      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.ImpactCallablePositionDocument"
     }
   },
   "tools": [

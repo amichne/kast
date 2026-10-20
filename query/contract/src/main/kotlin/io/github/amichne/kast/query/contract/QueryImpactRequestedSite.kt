@@ -24,6 +24,8 @@ private constructor(
     val site: ValueSite
         get() = proof.site
 
+    val selection: QueryImpactSiteSelection = QueryImpactSiteSelection.fromNative(proof.site)
+
     companion object {
         fun admit(
             request: ValueSiteRevalidationRequest,

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.runtime.hosted.NativePacketQueryTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T02:10:37.750Z" hostname="Austins-MacBook-Pro.local" time="6.748">
+  <properties/>
+  <testcase name="testPrimaryConstructorPropertyKeepsItsExactCompilerIdentity" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryTest" time="6.738"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[[   1248]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1248]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.runtime.hosted.NativePacketQueryTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-20T03:26:53.809Z" hostname="Austins-MacBook-Pro.local" time="2.668">
+  <properties/>
+  <testcase name="testIncomingEmittedWitnessesDoNotInventRequestArguments" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryTest" time="0.689"/>
+  <testcase name="testOutgoingEmittedWitnessesDoNotInventTheResponseReturn" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryTest" time="0.512"/>
+  <testcase name="testOriginalConstructorOutgoingReachesTheExactTransportArgument" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryTest" time="0.496"/>
+  <testcase name="testOpaqueSendIncomingReachesTheExactFeatureResponseField" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryTest" time="0.527"/>
+  <testcase name="testPrimaryConstructorPropertyKeepsItsExactCompilerIdentity" classname="io.github.amichne.kast.runtime.hosted.NativePacketQueryTest" time="0.444"/>
+  <system-out><![CDATA[PACKET_QUERY_CAPTURE outgoing=false nativeFlowReads=14 retainedReadDelta=0 paths=1
+PACKET_QUERY_CAPTURE outgoing=true nativeFlowReads=12 retainedReadDelta=0 paths=1
+PACKET_QUERY_CAPTURE outgoing=true nativeFlowReads=12 retainedReadDelta=0 paths=1
+PACKET_QUERY_CAPTURE outgoing=false nativeFlowReads=14 retainedReadDelta=0 paths=1
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

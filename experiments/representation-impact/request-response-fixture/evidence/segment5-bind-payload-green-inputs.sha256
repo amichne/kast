@@ -1,0 +1,3 @@
+32f40ccbae3446f9cb1f2bbb2a9721a407328ba35d7e5005a3725010a62904c2  relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueGuardedField.kt
+d3474582c8e86c8607a262f700fb3f4f04364cc3d418fafeacd21c8abb9e5766  relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueSourceReceiver.kt
+b3d8da92d978ed409065489e7b2e83e80068869d41404f48e3a561498d837761  relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketBindPayloadTest.kt

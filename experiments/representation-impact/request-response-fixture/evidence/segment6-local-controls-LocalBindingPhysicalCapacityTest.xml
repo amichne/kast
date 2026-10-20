@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.LocalBindingPhysicalCapacityTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T12:29:47.674Z" hostname="Austins-MacBook-Pro.local" time="0.092">
+  <properties/>
+  <testcase name="an insufficient grant rejects before role admission or enumeration()" classname="io.github.amichne.kast.relation.contract.LocalBindingPhysicalCapacityTest" time="0.062"/>
+  <testcase name="a refused candidate leaves its address unconsumed after earlier progress()" classname="io.github.amichne.kast.relation.contract.LocalBindingPhysicalCapacityTest" time="0.014"/>
+  <testcase name="a detached equal stack pays its payload and retries without proof loss()" classname="io.github.amichne.kast.relation.contract.LocalBindingPhysicalCapacityTest" time="0.004"/>
+  <testcase name="shared local-read state fits a native-scale grant and keeps exact progress()" classname="io.github.amichne.kast.relation.contract.LocalBindingPhysicalCapacityTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

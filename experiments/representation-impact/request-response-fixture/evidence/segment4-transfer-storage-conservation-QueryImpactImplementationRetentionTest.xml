@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryImpactImplementationRetentionTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T06:52:36.056Z" hostname="Austins-MacBook-Pro.local" time="0.032">
+  <properties/>
+  <testcase name="zero-fact dispatch obligation cannot lose its evidence in a retained path()" classname="io.github.amichne.kast.query.contract.QueryImpactImplementationRetentionTest" time="0.022"/>
+  <testcase name="frame retention visits every strongly owned target proof()" classname="io.github.amichne.kast.query.contract.QueryImpactImplementationRetentionTest" time="0.007"/>
+  <testcase name="zero-fact unresolved obligation retention visits its qualified dispatch()" classname="io.github.amichne.kast.query.contract.QueryImpactImplementationRetentionTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

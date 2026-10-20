@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketConcretePathTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-20T03:15:22.669Z" hostname="Austins-MacBook-Pro.local" time="12.975">
+  <properties/>
+  <testcase name="testV2IncomingReachesTheFeatureReturn" classname="io.github.amichne.kast.relation.intellij.NativePacketConcretePathTest" time="7.591"/>
+  <testcase name="testV0OutgoingReachesOnlyTheOpaqueRequestArgument" classname="io.github.amichne.kast.relation.intellij.NativePacketConcretePathTest" time="1.1"/>
+  <testcase name="testV8IncomingReachesTheFeatureReturn" classname="io.github.amichne.kast.relation.intellij.NativePacketConcretePathTest" time="0.722"/>
+  <testcase name="testV8OutgoingReachesOnlyTheOpaqueRequestArgument" classname="io.github.amichne.kast.relation.intellij.NativePacketConcretePathTest" time="0.548"/>
+  <testcase name="testV3OutgoingReachesOnlyTheOpaqueRequestArgument" classname="io.github.amichne.kast.relation.intellij.NativePacketConcretePathTest" time="0.487"/>
+  <testcase name="testV1IncomingReachesTheFeatureReturn" classname="io.github.amichne.kast.relation.intellij.NativePacketConcretePathTest" time="0.543"/>
+  <testcase name="testV3IncomingReachesTheFeatureReturn" classname="io.github.amichne.kast.relation.intellij.NativePacketConcretePathTest" time="0.464"/>
+  <testcase name="testV2OutgoingReachesOnlyTheOpaqueRequestArgument" classname="io.github.amichne.kast.relation.intellij.NativePacketConcretePathTest" time="0.516"/>
+  <testcase name="testV1OutgoingReachesOnlyTheOpaqueRequestArgument" classname="io.github.amichne.kast.relation.intellij.NativePacketConcretePathTest" time="0.517"/>
+  <testcase name="testV0IncomingReachesTheFeatureReturn" classname="io.github.amichne.kast.relation.intellij.NativePacketConcretePathTest" time="0.475"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[[   1250]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1251]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

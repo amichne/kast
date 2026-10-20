@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactValueStateShapeTest" tests="6" skipped="0" failures="3" errors="0" timestamp="2026-10-20T04:14:32.416Z" hostname="Austins-MacBook-Pro.local" time="0.101">
+  <properties/>
+  <testcase name="constructor storage names its declared formal and rejects a sibling field()" classname="io.github.amichne.kast.protocol.contract.ImpactValueStateShapeTest" time="0.019"/>
+  <testcase name="implicit formals keep the exact anonymous execution body and reject contradictory origin()" classname="io.github.amichne.kast.protocol.contract.ImpactValueStateShapeTest" time="0.008">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;false&gt; but was: &lt;true&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;false&gt; but was: &lt;true&gt;
+	at org.junit.jupiter.api.Assertions.assertFalse(Assertions.java:257)
+	at io.github.amichne.kast.protocol.contract.ImpactValueStateShapeTest.implicit formals keep the exact anonymous execution body and reject contradictory origin(ImpactValueStateShapeTest.kt:34)
+</failure>
+  </testcase>
+  <testcase name="source entry and matched return preserve field and exact invocation context()" classname="io.github.amichne.kast.protocol.contract.ImpactValueStateShapeTest" time="0.05">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[enclosing, range, role, executionOwner, valuePath, callStack]&gt; but was: &lt;[enclosing, range, role, executionOwner, valuePath, callStack, predicates]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[enclosing, range, role, executionOwner, valuePath, callStack]&gt; but was: &lt;[enclosing, range, role, executionOwner, valuePath, callStack, predicates]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.protocol.contract.ImpactValueStateShapeTest.assertFormalShape(ImpactValueStateShapeTest.kt:108)
+	at io.github.amichne.kast.protocol.contract.ImpactValueStateShapeTest.source entry and matched return preserve field and exact invocation context(ImpactValueStateShapeTest.kt:103)
+</failure>
+  </testcase>
+  <testcase name="field reads reject another field and a field from another semantic basis()" classname="io.github.amichne.kast.protocol.contract.ImpactValueStateShapeTest" time="0.001"/>
+  <testcase name="predicate subject and resolved subtype keep the exact semantic basis()" classname="io.github.amichne.kast.protocol.contract.ImpactValueStateShapeTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;false&gt; but was: &lt;true&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;false&gt; but was: &lt;true&gt;
+	at org.junit.jupiter.api.Assertions.assertFalse(Assertions.java:257)
+	at io.github.amichne.kast.protocol.contract.ImpactValueStateShapeTest.predicate subject and resolved subtype keep the exact semantic basis(ImpactValueStateShapeTest.kt:52)
+</failure>
+  </testcase>
+  <testcase name="bounded state rejects excess depth repeated call frames and foreign callee basis()" classname="io.github.amichne.kast.protocol.contract.ImpactValueStateShapeTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

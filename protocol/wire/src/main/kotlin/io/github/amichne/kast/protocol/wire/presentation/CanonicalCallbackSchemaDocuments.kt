@@ -1,22 +1,24 @@
 package io.github.amichne.kast.protocol.wire.presentation
 
-import io.github.amichne.kast.protocol.wire.QueryCallbackBindingWireDocument
-import io.github.amichne.kast.protocol.wire.QueryCallbackBodyWireDocument
-import io.github.amichne.kast.protocol.wire.QueryCallbackCallableWireDocument
-import io.github.amichne.kast.protocol.wire.QueryCallbackFactoryBodyCallWireDocument
-import io.github.amichne.kast.protocol.wire.QueryCallbackFactoryBodyCallsWireDocument
-import io.github.amichne.kast.protocol.wire.QueryCallbackFactoryCaptureWireDocument
-import io.github.amichne.kast.protocol.wire.QueryCallbackFactoryWireDocument
-import io.github.amichne.kast.protocol.wire.QueryCallbackFlowWireDocument
-import io.github.amichne.kast.protocol.wire.QueryCallbackForwardingEvidenceWireDocument
-import io.github.amichne.kast.protocol.wire.QueryCallbackInvocationWireDocument
-import io.github.amichne.kast.protocol.wire.QueryCallbackParameterIdentityWireDocument
-import io.github.amichne.kast.protocol.wire.QueryCallbackParameterSupplierWireDocument
+import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBindingWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBodyWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackCallableWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackFactoryBodyCallWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackFactoryBodyCallsWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackFactoryCaptureWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackFactoryWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackFlowWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackForwardingEvidenceWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackParameterIdentityWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackParameterSupplierWireDocument
+import io.github.amichne.kast.protocol.contract.QueryExcludedCompilerTargetWireDocument
+import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackFlowWireDocument
+import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackValueNodeWireDocument
+import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackValueWireDocument
 import io.github.amichne.kast.protocol.wire.QueryCallbackSupplierInventoryWireDocument
 import io.github.amichne.kast.protocol.wire.QueryCallbackSupplierPartitionWireDocument
-import io.github.amichne.kast.protocol.wire.QueryImmutableCallbackFlowWireDocument
-import io.github.amichne.kast.protocol.wire.QueryImmutableCallbackValueNodeWireDocument
-import io.github.amichne.kast.protocol.wire.QueryImmutableCallbackValueWireDocument
 import io.github.amichne.kast.protocol.wire.QueryNamedCallbackReferenceWireDocument
 import kotlinx.serialization.KSerializer
 
@@ -26,7 +28,7 @@ object CanonicalCallbackSchemaDocuments {
         get() =
             mapOf(
                 "compilerSymbolEvidence" to
-                    io.github.amichne.kast.protocol.wire.CompilerSymbolEvidenceWireDocument.serializer(),
+                    io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceWireDocument.serializer(),
                 "immutableCallbackValue" to QueryImmutableCallbackValueWireDocument.serializer(),
                 "immutableCallbackValueNode" to QueryImmutableCallbackValueNodeWireDocument.serializer(),
                 "immutableCallbackFlow" to QueryImmutableCallbackFlowWireDocument.serializer(),
@@ -43,7 +45,7 @@ object CanonicalCallbackSchemaDocuments {
                 "callbackBinding" to QueryCallbackBindingWireDocument.serializer(),
                 "callbackObservedFlow" to QueryCallbackFlowWireDocument.Observed.serializer(),
                 "callbackCompilerTarget" to
-                    io.github.amichne.kast.protocol.wire.QueryExcludedCompilerTargetWireDocument.serializer(),
+                    io.github.amichne.kast.protocol.contract.QueryExcludedCompilerTargetWireDocument.serializer(),
                 "callbackInvocation" to QueryCallbackInvocationWireDocument.serializer(),
                 "callbackFormal" to QueryCallbackParameterIdentityWireDocument.serializer(),
                 "callbackForwardingEvidence" to QueryCallbackForwardingEvidenceWireDocument.serializer(),

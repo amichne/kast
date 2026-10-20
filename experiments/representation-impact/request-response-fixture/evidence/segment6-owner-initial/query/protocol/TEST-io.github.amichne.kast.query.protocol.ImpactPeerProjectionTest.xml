@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactPeerProjectionTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.826Z" hostname="Austins-MacBook-Pro.local" time="0.005">
+  <properties/>
+  <testcase name="used peer terminal and unused model retain the same completed proof without source basis replacement()" classname="io.github.amichne.kast.query.protocol.ImpactPeerProjectionTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

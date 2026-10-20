@@ -1,0 +1,285 @@
+@file:OptIn(org.jetbrains.kotlin.analysis.api.KaExperimentalApi::class)
+
+package io.github.amichne.kast.runtime.hosted
+
+import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiManager
+import com.intellij.psi.PsiNamedElement
+import com.intellij.psi.util.PsiTreeUtil
+import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactEvidenceRevisionDocument
+import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
+import io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument
+import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryImpactDeclarationDocument
+import io.github.amichne.kast.protocol.contract.QueryImpactProducerDocument
+import io.github.amichne.kast.query.protocol.ExactSelectorIssuance
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoverySelection
+import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
+import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
+import io.github.amichne.kast.symbol.contract.SymbolResolutionCompilation
+import io.github.amichne.kast.symbol.contract.SymbolResolutionRequest
+import io.github.amichne.kast.symbol.contract.SymbolSearchScope
+import io.github.amichne.kast.symbol.contract.SymbolSelector
+import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
+import org.jetbrains.kotlin.analysis.api.components.KaDiagnosticCheckerFilter
+import org.jetbrains.kotlin.analysis.api.diagnostics.KaSeverity
+import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtClass
+import org.jetbrains.kotlin.psi.KtClassOrObject
+import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
+import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
+import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtFunctionLiteral
+import org.jetbrains.kotlin.psi.KtLambdaExpression
+import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtReturnExpression
+import org.jetbrains.kotlin.psi.KtStringTemplateExpression
+
+/** Every position comes from frozen source and every named declaration uses the real exact-symbol port. */
+internal class NativePacketCompositeQuerySource(
+    private val project: Project,
+    private val files: Map<String, VirtualFile>,
+    private val services: NativePacketQueryServices,
+) {
+    private val scope =
+        SymbolSearchScope.Workspace(
+            SymbolSourceKindPolicy.PRODUCTION_ONLY,
+            SymbolGeneratedSourcePolicy.EXCLUDE,
+            SymbolLibraryPolicy.EXCLUDE,
+        )
+
+    fun assertNoErrors() = read {
+        files.keys.forEach { path ->
+            val file = psi(path)
+            val errors =
+                IntellijReadObservation.None.observedAnalyze(file) {
+                    file
+                        .collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
+                        .filter { it.severity == KaSeverity.ERROR }
+                        .map { it.factoryName }
+                }
+            check(errors.isEmpty()) { "Composite source prerequisite $path: $errors" }
+        }
+    }
+
+    suspend fun declaration(path: String, owner: String, member: String): SymbolSelector {
+        val selected = read {
+            val declaration: PsiNamedElement =
+                if (member == "<init>") checkNotNull(klass(path, owner).primaryConstructor)
+                else function(path, owner, member)
+            candidate(path, declaration, if (member == "<init>") owner else member)
+        }
+        return resolve(selected).also {
+            check(it.kind == if (member == "<init>") CompilerSymbolKind.CONSTRUCTOR else CompilerSymbolKind.FUNCTION)
+        }
+    }
+
+    suspend fun field(path: String, owner: String, name: String): ImpactDeclarationReferenceDocument =
+        reference(property(path, owner, name))
+
+    suspend fun type(path: String, owner: String): ImpactDeclarationReferenceDocument {
+        val selected = read { candidate(path, klass(path, owner), owner) }
+        return reference(resolve(selected).also { check(it.kind == CompilerSymbolKind.CLASSLIKE) })
+    }
+
+    suspend fun producerS2() =
+        QueryImpactProducerDocument(
+            token(declaration(CLIENT, "OffersClientImpl", "readOffers")),
+            token(declaration(WIRE, "Call", "execute")),
+            invocation(path = CLIENT, owner = "OffersClientImpl", method = "readOffers", callee = "execute"),
+        )
+
+    suspend fun producerS3() =
+        QueryImpactProducerDocument(
+            token(declaration(WIRE, "Call", "execute")),
+            token(property(WIRE, "Call", "adapt")),
+            invocation(path = WIRE, owner = "Call", method = "execute", callee = "adapt"),
+        )
+
+    suspend fun s3Declarations() =
+        requestedDeclarations() +
+            listOf(
+                    property(WIRE, "Call", "adapt"),
+                    declaration(WIRE, "Logger", "info"),
+                    declaration(CLIENT, "", "toLogLine"),
+                )
+                .map { QueryImpactDeclarationDocument(token(it), reference(it)) }
+
+    suspend fun requestedDeclarations() =
+        listOf(
+                declaration(FEATURE, "OffersProcessorImpl", "getOffer"),
+                declaration(CLIENT, "OffersClientImpl", "readOffers"),
+                declaration(CLIENT, "OffersClient", "readOffers"),
+                declaration(WIRE, "Call", "execute"),
+            )
+            .map { QueryImpactDeclarationDocument(token(it), reference(it)) }
+
+    fun invocation(path: String, owner: String, method: String, callee: String): ImpactSourceRangeDocument = read {
+        val call = call(path = path, owner = owner, method = method, callee = callee)
+        val qualified = call.parent as? KtDotQualifiedExpression
+        range(if (qualified?.selectorExpression == call) qualified else call)
+    }
+
+    fun returnRange(path: String, owner: String, method: String) = read {
+        range(checkNotNull(function(path, owner, method).bodyExpression))
+    }
+
+    fun returnOperand(path: String, owner: String, method: String) = read {
+        val returned =
+            PsiTreeUtil.collectElementsOfType(function(path, owner, method), KtReturnExpression::class.java).single()
+        range(checkNotNull(returned.returnedExpression))
+    }
+
+    fun parameterRange(path: String, owner: String, method: String, index: Int) = read {
+        range(function(path, owner, method).valueParameters[index])
+    }
+
+    fun logBody(): KtFunctionLiteral = read {
+        val execute = call(path = CLIENT, owner = "OffersClientImpl", method = "readOffers", callee = "execute")
+        (execute.valueArguments.single().getArgumentExpression() as KtLambdaExpression).functionLiteral
+    }
+
+    fun logTemplate(field: String) = read {
+        val helper = function(CLIENT, "", "toLogLine")
+        range(
+            PsiTreeUtil.collectElementsOfType(helper, KtStringTemplateExpression::class.java).single {
+                it.text.contains("value.$field")
+            }
+        )
+    }
+
+    fun responseBinding() = read {
+        val body = function(FEATURE, "OffersProcessorImpl", "getOffer")
+        val entry =
+            PsiTreeUtil.collectElementsOfType(body, KtDestructuringDeclaration::class.java)
+                .flatMap { it.entries }
+                .single { it.name == "response" }
+        range(entry)
+    }
+
+    fun mapErrorBody(): KtFunctionLiteral = read {
+        val mapped = call(path = CLIENT, owner = "OffersClientImpl", method = "readOffers", callee = "mapError")
+        checkNotNull(mapped.lambdaArguments.single().getLambdaExpression()).functionLiteral
+    }
+
+    fun noOfferBody(): KtFunctionLiteral = read {
+        val required =
+            call(path = FEATURE, owner = "OffersProcessorImpl", method = "getOffer", callee = "requireNotNull")
+        checkNotNull(required.lambdaArguments.single().getLambdaExpression()).functionLiteral
+    }
+
+    fun mapBodyRange() = read {
+        val literal =
+            PsiTreeUtil.collectElementsOfType(psi(CLIENT), KtLambdaExpression::class.java)
+                .single { it.bodyExpression?.statements?.singleOrNull()?.text == "it.body.toClientResponse()" }
+                .functionLiteral
+        range(literal)
+    }
+
+    fun transformArgumentRange() = read {
+        val transform = call(path = OUTCOME, owner = "Outcome", method = "map", callee = "transform")
+        range(checkNotNull(transform.valueArguments.single().getArgumentExpression()))
+    }
+
+    fun sequentialBody(): KtFunctionLiteral = read {
+        checkNotNull(
+                call(path = FEATURE, owner = "OffersProcessorImpl", method = "getOffer", callee = "sequential")
+                    .lambdaArguments
+                    .single()
+                    .getLambdaExpression()
+            )
+            .functionLiteral
+    }
+
+    fun reference(selector: SymbolSelector) =
+        ImpactDeclarationReferenceDocument(
+            basis =
+                ImpactSemanticBasisDocument.Published(
+                    packetQueryText(services.lease.workspaceRoot.value),
+                    ImpactEvidenceRevisionDocument.parse(services.lease.generation.value).packetQueryRefined(),
+                ),
+            file = packetQueryText(selector.file.stableValue),
+            range =
+                ImpactSourceRangeDocument(
+                    packetQueryOffset(selector.range.startInclusive),
+                    packetQueryOffset(selector.range.endExclusive),
+                ),
+            compilerIdentity = packetQueryText(selector.compilerIdentity.value),
+        )
+
+    private suspend fun resolve(selected: SymbolDiscoverySelection): SymbolSelector {
+        val result = services.symbols.exact.resolve(SymbolResolutionRequest(selected))
+        check(result is SymbolResolutionCompilation.Resolved) { "Composite exact-symbol prerequisite: $result" }
+        return result.selector
+    }
+
+    private suspend fun property(path: String, owner: String, name: String): SymbolSelector {
+        val selected = read {
+            candidate(path, klass(path, owner).primaryConstructorParameters.single { it.name == name }, name)
+        }
+        return resolve(selected).also { check(it.kind == CompilerSymbolKind.PROPERTY) }
+    }
+
+    private fun token(selector: SymbolSelector): ProtocolText {
+        val issued = services.references.issueExact(selector)
+        check(issued is ExactSelectorIssuance.Issued) { "Composite selector issuance prerequisite: $issued" }
+        return issued.selector
+    }
+
+    private fun candidate(path: String, declaration: PsiNamedElement, name: String): SymbolDiscoverySelection {
+        val file = checkNotNull(files[path])
+        val candidate =
+            SymbolDiscoveryCandidate.fromBoundary(
+                    kind = SymbolDiscoveryKind.SYMBOL,
+                    rawName = name,
+                    lease = services.lease,
+                    nativePath = file.toNioPath(),
+                    virtualFileUrl = file.url,
+                    rawOffset = declaration.textRange.startOffset,
+                )
+                .packetQueryRefined()
+        return SymbolDiscoverySelection.restore(services.lease, scope, candidate).packetQueryRefined()
+    }
+
+    private fun function(path: String, owner: String, name: String): KtNamedFunction {
+        val declarations = if (owner.isEmpty()) psi(path).declarations else classOrObject(path, owner).declarations
+        return declarations.filterIsInstance<KtNamedFunction>().single { it.name == name }
+    }
+
+    private fun klass(path: String, name: String) = classOrObject(path, name) as KtClass
+
+    private fun classOrObject(path: String, name: String) =
+        PsiTreeUtil.collectElementsOfType(psi(path), KtClassOrObject::class.java).single { it.name == name }
+
+    private fun call(path: String, owner: String, method: String, callee: String) =
+        PsiTreeUtil.collectElementsOfType(function(path, owner, method), KtCallExpression::class.java).single {
+            it.calleeExpression?.text == callee
+        }
+
+    private fun psi(path: String) = PsiManager.getInstance(project).findFile(checkNotNull(files[path])) as KtFile
+
+    private fun range(element: PsiElement) =
+        ImpactSourceRangeDocument(
+            packetQueryOffset(element.textRange.startOffset),
+            packetQueryOffset(element.textRange.endOffset),
+        )
+
+    private fun <T> read(block: () -> T): T = ReadAction.compute<T, RuntimeException>(block)
+
+    companion object {
+        const val CLIENT = "src/main/kotlin/fixture/client/OffersClient.kt"
+        const val WIRE = "src/main/kotlin/fixture/wire/OffersApi.kt"
+        const val OUTCOME = "src/main/kotlin/fixture/outcome/Outcome.kt"
+        const val FEATURE = "src/main/kotlin/fixture/feature/OffersProcessor.kt"
+        val PATHS = listOf(OUTCOME, WIRE, CLIENT, FEATURE)
+    }
+}

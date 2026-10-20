@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.wire.ImpactWitnessWireTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T06:17:52.285Z" hostname="Austins-MacBook-Pro.local" time="0.011">
+  <properties/>
+  <testcase name="witness records preserve exact producer and obligation identities in independent wire and CLI shapes()" classname="io.github.amichne.kast.protocol.wire.ImpactWitnessWireTest" time="0.011"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

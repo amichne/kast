@@ -1,0 +1,41 @@
+package io.github.amichne.kast.protocol.contract
+
+internal fun ImpactSourceOperationDocument.SeedCallbackEnter.admitsSeedCallbackEntry(
+    source: ImpactValueSiteReferenceDocument,
+    target: ImpactValueSiteReferenceDocument,
+    kind: ImpactTransferKindDocument,
+): Boolean {
+    val callback = frame.target as? ImpactCallTargetDocument.Callback ?: return false
+    val actual = source.role as? ImpactValueRoleDocument.FunctionArgument ?: return false
+    val invoked = frame.invocation as? ImpactCallOccurrenceDocument.Function ?: return false
+    return kind == ImpactTransferKindDocument.SOURCE_CALL_ENTRY &&
+        frame.admits(source.enclosing.basis) &&
+        source.callStack.values.isEmpty() &&
+        source.enclosing == frame.enclosing &&
+        source.executionOwner == invoked.invocation.executionOwner &&
+        actual.invocation == invoked.invocation &&
+        frame.admitsSeedTarget(target, position) &&
+        position.matchesSeedActual(actual, frame) &&
+        source.valuePath == target.valuePath &&
+        listOf(callback.supplyingFrame.asFrame(), frame).hasSameFrames(target.callStack.values)
+}
+
+private fun ImpactCallFrameDocument.admitsSeedTarget(
+    target: ImpactValueSiteReferenceDocument,
+    position: ImpactFormalPositionDocument,
+): Boolean = target.isIn(callee) && target.role == ImpactValueRoleDocument.Formal(position) && position.admits(target)
+
+private fun ImpactFormalPositionDocument.matchesSeedActual(
+    actual: ImpactValueRoleDocument.FunctionArgument,
+    frame: ImpactCallFrameDocument,
+): Boolean =
+    when (this) {
+        is ImpactFormalPositionDocument.Parameter ->
+            parameter.callable == frame.callee.enclosing &&
+                parameter.executionOwner == frame.callee.executionOwner &&
+                actual.index.value == parameter.index.value + frame.callbackReceiverCount()
+        is ImpactFormalPositionDocument.Receiver ->
+            kind == ImpactReceiverKindDocument.EXTENSION &&
+                actual.index.value == 0 &&
+                frame.callbackReceiverCount() == 1
+    }

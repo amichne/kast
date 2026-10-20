@@ -24,13 +24,16 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class ImpactRejectedReadReceiptTest {
+    private val projectionReferences = CanonicalQueryReferences()
+
     @Test
     fun `rejected read witness encodes its actual grant with and without a suspended prefix`() {
         val f = ImpactWitnessPresentationFixture(resumedBinding = true)
         for (preservePrefix in listOf(false, true)) {
             val ledger = rejectedLedger(f, preservePrefix)
             val view = QueryImpactWitnessView.create(ledger, QueryImpactWitnessSection.READ_REJECTIONS, 0, 1).value()
-            val projection = QueryRows.ImpactWitness.of(view).projectWitnessItems() as QueryProjection.Projected
+            val projection =
+                QueryRows.ImpactWitness.of(view).projectWitnessItems(projectionReferences) as QueryProjection.Projected
             val witness = (projection.values.single() as QueryResultItemDocument.ImpactWitness).item.witness
             val encoded = Json.encodeToJsonElement(ImpactWitnessDocument.serializer(), witness).jsonObject
             assertEquals(setOf("type", "rejection", "receipts"), encoded.keys)

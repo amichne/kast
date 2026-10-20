@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.CanonicalQueryRetentionProtocolTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.397Z" hostname="Austins-MacBook-Pro.local" time="0.01">
+  <properties/>
+  <testcase name="retained result draining cannot recreate an evicted producer checkpoint()" classname="io.github.amichne.kast.query.protocol.CanonicalQueryRetentionProtocolTest" time="0.002"/>
+  <testcase name="retained empty result is readable without another semantic execution()" classname="io.github.amichne.kast.query.protocol.CanonicalQueryRetentionProtocolTest" time="0.002"/>
+  <testcase name="opaque checkpoint binds query and snapshot while allowing fresh page budget()" classname="io.github.amichne.kast.query.protocol.CanonicalQueryRetentionProtocolTest" time="0.003"/>
+  <testcase name="internal evaluator page never captures or issues retained output()" classname="io.github.amichne.kast.query.protocol.CanonicalQueryRetentionProtocolTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

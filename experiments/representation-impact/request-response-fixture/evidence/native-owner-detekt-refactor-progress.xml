@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="4.3">
+<file name="relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueReceiverFields.kt">
+	<error line="77" column="17" severity="error" message="The function receiverField appears to be too complex based on Cognitive Complexity (complexity: 13). Defined maximum allowed complexity for methods is set to &apos;12&apos;" source="detekt.CognitiveComplexMethod" />
+</file>
+</checkstyle>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueCallbackFrameOracleTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-20T03:55:56.135Z" hostname="Austins-MacBook-Pro.local" time="0.082">
+  <properties/>
+  <testcase name="an invoke absent from the bound flow cannot supply a callback frame()" classname="io.github.amichne.kast.relation.contract.ValueCallbackFrameOracleTest" time="0.06"/>
+  <testcase name="a named direct call cannot use lexical containment to enter an anonymous body()" classname="io.github.amichne.kast.relation.contract.ValueCallbackFrameOracleTest" time="0.004"/>
+  <testcase name="a same named invoke outside Kotlin FunctionN is not a builtin function invocation()" classname="io.github.amichne.kast.relation.contract.ValueCallbackFrameOracleTest" time="0.002"/>
+  <testcase name="the same builtin callable at another range cannot substitute for the selected invoke()" classname="io.github.amichne.kast.relation.contract.ValueCallbackFrameOracleTest" time="0.002"/>
+  <testcase name="foreign callback body flow or supplying frame rejects before frame admission()" classname="io.github.amichne.kast.relation.contract.ValueCallbackFrameOracleTest" time="0.002"/>
+  <testcase name="a callback frame keeps the exact bound flow selected invoke and supplying frame()" classname="io.github.amichne.kast.relation.contract.ValueCallbackFrameOracleTest" time="0.002"/>
+  <testcase name="a sibling anonymous body cannot substitute for the supplied body()" classname="io.github.amichne.kast.relation.contract.ValueCallbackFrameOracleTest" time="0.001"/>
+  <testcase name="a second supplier of the same mapper cannot consume the first suppliers callback proof()" classname="io.github.amichne.kast.relation.contract.ValueCallbackFrameOracleTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -3,6 +3,7 @@ package io.github.amichne.kast.query.contract
 import io.github.amichne.kast.relation.contract.BoundaryModel
 import io.github.amichne.kast.relation.contract.ConsumerRepresentationEvidence
 import io.github.amichne.kast.relation.contract.RepresentationRule
+import io.github.amichne.kast.relation.contract.ValueProducerOrigin
 import io.github.amichne.kast.relation.contract.ValueSiteRoleClaim
 import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.SymbolSelector
@@ -32,6 +33,7 @@ internal fun QueryImpactStep.storageBytes(g: QueryImpactRetainedGraph): Long =
         when (this) {
             is QueryImpactStep.Compiler -> transfer.storageBytes(g)
             is QueryImpactStep.ModeledRepresentation -> application.storageBytes(g)
+            is QueryImpactStep.ModeledValue -> application.storageBytes(g)
             is QueryImpactStep.ModeledBoundary -> connection.storageBytes(g)
         }
     }
@@ -56,7 +58,7 @@ private fun QueryImpactTerminal.storageBytes(g: QueryImpactRetainedGraph): Long 
             is QueryImpactTerminal.ModeledTerminal -> boundary.storageBytes(g)
             is QueryImpactTerminal.Unresolved.ExecutionStop -> stop.storageBytes(g)
             is QueryImpactTerminal.Unresolved.ReadRejected -> rejection.storageBytes(g)
-            is QueryImpactTerminal.Unresolved.Flow -> g.node(obligation) { obligation.site.storageBytes(g) }
+            is QueryImpactTerminal.Unresolved.Flow -> obligation.storageBytes(g)
             is QueryImpactTerminal.Unresolved.Boundary -> boundary.storageBytes(g)
             is QueryImpactTerminal.Unresolved.PeerContinuation ->
                 boundary.storageBytes(g).saturatedAdd(connection.storageBytes(g))
@@ -114,7 +116,7 @@ internal fun QueryImpactSource.storageBytes(g: QueryImpactRetainedGraph): Long =
 
 internal fun QueryImpactProducer.storageBytes(g: QueryImpactRetainedGraph): Long =
     g.node(this) {
-        site.storageBytes(g).saturatedAdd(invocation.storageBytes(g))
+        site.storageBytes(g).saturatedAdd(origin.storageBytes(g))
     }
 
 internal fun QueryImpactReadRejection.storageBytes(g: QueryImpactRetainedGraph): Long =
@@ -147,6 +149,7 @@ private fun QueryImpactExecutionStop.storageBytes(g: QueryImpactRetainedGraph): 
 internal fun QueryImpactRequestedSite.storageBytes(g: QueryImpactRetainedGraph): Long =
     g.node(this) {
         g.node(proof) { site.storageBytes(g) }
+            .saturatedAdd(g.node(selection) { selection.site.storageBytes(g) })
             .saturatedAdd(
                 g.node(request) {
                     request.enclosing
@@ -159,6 +162,11 @@ internal fun QueryImpactRequestedSite.storageBytes(g: QueryImpactRetainedGraph):
                                         role.expectedCallable
                                             .storageBytes(g)
                                             .saturatedAdd(g.node(role.invocationAnchor) { 0L })
+                                    is ValueSiteRoleClaim.Receiver ->
+                                        role.expectedCallable
+                                            .storageBytes(g)
+                                            .saturatedAdd(g.node(role.invocationAnchor) { 0L })
+                                            .saturatedAdd(g.node(role.kind) { 0L })
                                     ValueSiteRoleClaim.ExpressionResult,
                                     ValueSiteRoleClaim.LocalBinding,
                                     ValueSiteRoleClaim.LocalRead,
@@ -224,6 +232,25 @@ internal fun QueryImpactPeerSiteAdmission.storageBytes(g: QueryImpactRetainedGra
                 g.node(acquisition) {
                     g.node(acquisition.completedAuthority) { 0L }
                         .saturatedAdd(g.node(acquisition.grant) { g.node(acquisition.grant.resources) { 0L } })
+                }
+            )
+    }
+
+private fun ValueProducerOrigin.storageBytes(g: QueryImpactRetainedGraph): Long =
+    g.node(this) {
+        invocation
+            .storageBytes(g)
+            .saturatedAdd(
+                when (this) {
+                    is ValueProducerOrigin.Declared -> 0L
+                    is ValueProducerOrigin.SourceFunction ->
+                        g.node(property) { property.endpoint.storageBytes(g) }
+                            .saturatedAdd(
+                                g.node(reference) {
+                                    g.node(reference.file) { g.text(reference.file.stableValue) }
+                                        .saturatedAdd(g.node(reference.range) { 0L })
+                                }
+                            )
                 }
             )
     }

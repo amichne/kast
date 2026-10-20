@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="4.3">
+<file name="relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketCompositeOriginTest.kt">
+	<error line="121" column="54" severity="error" message="The implicit `it` should not be used in a multiline lambda. Consider giving your parameter a readable and descriptive name." source="detekt.MultilineLambdaItParameter" />
+	<error line="113" column="98" severity="error" message="This expression contains a magic number. Consider defining it to a well named constant." source="detekt.MagicNumber" />
+	<error line="114" column="75" severity="error" message="This expression contains a magic number. Consider defining it to a well named constant." source="detekt.MagicNumber" />
+	<error line="48" column="1" severity="error" message="Line detected, which is longer than the defined maximum line length in the code style." source="detekt.MaxLineLength" />
+	<error line="49" column="1" severity="error" message="Line detected, which is longer than the defined maximum line length in the code style." source="detekt.MaxLineLength" />
+	<error line="83" column="1" severity="error" message="Line detected, which is longer than the defined maximum line length in the code style." source="detekt.MaxLineLength" />
+	<error line="119" column="1" severity="error" message="Line detected, which is longer than the defined maximum line length in the code style." source="detekt.MaxLineLength" />
+	<error line="129" column="1" severity="error" message="Line detected, which is longer than the defined maximum line length in the code style." source="detekt.MaxLineLength" />
+	<error line="130" column="1" severity="error" message="Line detected, which is longer than the defined maximum line length in the code style." source="detekt.MaxLineLength" />
+	<error line="134" column="1" severity="error" message="Line detected, which is longer than the defined maximum line length in the code style." source="detekt.MaxLineLength" />
+	<error line="139" column="1" severity="error" message="Line detected, which is longer than the defined maximum line length in the code style." source="detekt.MaxLineLength" />
+	<error line="156" column="1" severity="error" message="Line detected, which is longer than the defined maximum line length in the code style." source="detekt.MaxLineLength" />
+	<error line="105" column="34" severity="error" message="Function parameter `fixture` is unused." source="detekt.UnusedParameter" />
+</file>
+</checkstyle>

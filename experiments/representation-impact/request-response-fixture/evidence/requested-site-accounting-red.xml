@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryImpactSiteSelectionTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-20T01:29:34.984Z" hostname="Austins-MacBook-Pro.local" time="0.078">
+  <properties/>
+  <testcase name="requested occurrences preserve both entered mapper routes and their actual value states()" classname="io.github.amichne.kast.query.contract.QueryImpactSiteSelectionTest" time="0.067">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected type, expected: &lt;io.github.amichne.kast.query.contract.QueryImpactSiteOutcome.Reached&gt; but was: &lt;io.github.amichne.kast.query.contract.QueryImpactSiteOutcome.RelationshipUnproven&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected type, expected: &lt;io.github.amichne.kast.query.contract.QueryImpactSiteOutcome.Reached&gt; but was: &lt;io.github.amichne.kast.query.contract.QueryImpactSiteOutcome.RelationshipUnproven&gt;
+	at org.junit.jupiter.api.Assertions.assertInstanceOf(Assertions.java:3699)
+	at io.github.amichne.kast.query.contract.QueryImpactSiteSelectionTest.requested occurrences preserve both entered mapper routes and their actual value states(QueryImpactSiteSelectionTest.kt:22)
+</failure>
+  </testcase>
+  <testcase name="field specific native selection keeps exact value equality and cannot match a sibling field()" classname="io.github.amichne.kast.query.contract.QueryImpactSiteSelectionTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.RepresentationCollectionInsertionOracleTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T19:11:05.392Z" hostname="Austins-MacBook-Pro.local" time="0.177">
+  <properties/>
+  <testcase name="insertion remains model history and introduces no argument to result compiler transfer()" classname="io.github.amichne.kast.relation.contract.RepresentationCollectionInsertionOracleTest" time="0.154"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

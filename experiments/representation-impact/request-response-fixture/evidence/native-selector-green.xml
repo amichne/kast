@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketValueFlowTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T01:10:23.930Z" hostname="Austins-MacBook-Pro.local" time="8.678">
+  <properties/>
+  <testcase name="testS2SelectorWithWrongCallableRejects" classname="io.github.amichne.kast.relation.intellij.NativePacketValueFlowTest" time="6.516"/>
+  <testcase name="testS2SelectorOnlyRangeSharesTheCanonicalInvocation" classname="io.github.amichne.kast.relation.intellij.NativePacketValueFlowTest" time="1.24"/>
+  <testcase name="testS2PartialCalleeRangeRejects" classname="io.github.amichne.kast.relation.intellij.NativePacketValueFlowTest" time="0.914"/>
+  <system-out><![CDATA[PACKET_SEED	owner=Available(value=fixture.client.OffersClientImpl.readOffers)	ownerRange=ExactDeclarationTextRange(startInclusive=673, endExclusive=1147)	callable=Available(value=fixture.wire.OffersApi.readOffers)	callableRange=ExactDeclarationTextRange(startInclusive=939, endExclusive=1064)	selected=ExactDeclarationTextRange(startInclusive=898, endExclusive=954)	outcome=REJECTED CALLABLE_MISMATCH
+PACKET_SEED	owner=Available(value=fixture.client.OffersClientImpl.readOffers)	ownerRange=ExactDeclarationTextRange(startInclusive=673, endExclusive=1147)	callable=Available(value=fixture.wire.Call.execute)	callableRange=ExactDeclarationTextRange(startInclusive=650, endExclusive=829)	selected=ExactDeclarationTextRange(startInclusive=769, endExclusive=954)	outcome=SEEDED canonical=ExactDeclarationTextRange(startInclusive=769, endExclusive=954)
+PACKET_SEED	owner=Available(value=fixture.client.OffersClientImpl.readOffers)	ownerRange=ExactDeclarationTextRange(startInclusive=673, endExclusive=1147)	callable=Available(value=fixture.wire.Call.execute)	callableRange=ExactDeclarationTextRange(startInclusive=650, endExclusive=829)	selected=ExactDeclarationTextRange(startInclusive=898, endExclusive=954)	outcome=SEEDED canonical=ExactDeclarationTextRange(startInclusive=769, endExclusive=954)
+PACKET_SEED	owner=Available(value=fixture.client.OffersClientImpl.readOffers)	ownerRange=ExactDeclarationTextRange(startInclusive=673, endExclusive=1147)	callable=Available(value=fixture.wire.Call.execute)	callableRange=ExactDeclarationTextRange(startInclusive=650, endExclusive=829)	selected=ExactDeclarationTextRange(startInclusive=898, endExclusive=905)	outcome=REJECTED UNSUPPORTED_INVOCATION
+]]></system-out>
+  <system-err><![CDATA[[    812]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[    813]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

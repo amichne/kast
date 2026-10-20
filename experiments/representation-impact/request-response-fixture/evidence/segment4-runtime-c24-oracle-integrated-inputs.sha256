@@ -1,0 +1,3 @@
+449dafa78d5bd47beac8a852dabcb0c4ad6d65ea1dd2c956daff078cdccfa88a  runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketCompositeQueryErrorFacts.kt
+9d60d1f806f460a4964b38eb9f8855ae8a5fe451e32011226cd50b2ead3e81a4  runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketCompositeQueryErrorOracle.kt
+c2c471da0800e6ef06230e1ea0c3ba1a3ea5bd9c79f404f302142d71b4d32da3  runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketCompositeQueryErrorSelectors.kt

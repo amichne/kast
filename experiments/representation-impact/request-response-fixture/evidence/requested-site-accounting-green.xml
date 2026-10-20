@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryImpactSiteSelectionTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T01:30:11.182Z" hostname="Austins-MacBook-Pro.local" time="0.088">
+  <properties/>
+  <testcase name="requested occurrences preserve both entered mapper routes and their actual value states()" classname="io.github.amichne.kast.query.contract.QueryImpactSiteSelectionTest" time="0.074"/>
+  <testcase name="field specific native selection keeps exact value equality and cannot match a sibling field()" classname="io.github.amichne.kast.query.contract.QueryImpactSiteSelectionTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

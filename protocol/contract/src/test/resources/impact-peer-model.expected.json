@@ -32,7 +32,13 @@
         },
         "role": {
           "type": "EXPRESSION_RESULT"
-        }
+        },
+        "executionOwner": {
+          "type": "DECLARATION"
+        },
+        "valuePath": [],
+        "callStack": [],
+        "predicates": []
       },
       "kind": "PERSISTENCE",
       "contract": {
@@ -65,7 +71,13 @@
         },
         "role": {
           "type": "EXPRESSION_RESULT"
-        }
+        },
+        "executionOwner": {
+          "type": "DECLARATION"
+        },
+        "valuePath": [],
+        "callStack": [],
+        "predicates": []
       },
       "kind": "PERSISTENCE",
       "contract": {

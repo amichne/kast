@@ -75,10 +75,12 @@ internal fun CallbackInvocationFlowCause.protocolCallbackDocument(): QueryCallba
         CallbackInvocationFlowCause.TIME_LIMIT_REACHED -> QueryCallbackFlowCauseDocument.TIME_LIMIT_REACHED
         CallbackInvocationFlowCause.RESULT_LIMIT_REACHED -> QueryCallbackFlowCauseDocument.RESULT_LIMIT_REACHED
         CallbackInvocationFlowCause.BYTE_LIMIT_REACHED -> QueryCallbackFlowCauseDocument.BYTE_LIMIT_REACHED
+        CallbackInvocationFlowCause.PROOF_LIMIT_REACHED -> QueryCallbackFlowCauseDocument.PROOF_LIMIT_REACHED
     }
 
 internal fun CallbackInvocationFlowFailure.protocolCallbackDocument(): QueryCallbackFlowFailureDocument =
     when (this) {
+        CallbackInvocationFlowFailure.PROOF_LIMIT_REACHED -> QueryCallbackFlowFailureDocument.PROOF_LIMIT_REACHED
         CallbackInvocationFlowFailure.INVALID_SCAN_PROOF -> QueryCallbackFlowFailureDocument.INVALID_SCAN_PROOF
         CallbackInvocationFlowFailure.INVALID_DEPENDENCY_CONTRACT ->
             QueryCallbackFlowFailureDocument.INVALID_DEPENDENCY_CONTRACT

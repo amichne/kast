@@ -208,7 +208,12 @@ internal class QueryInvocationProjection(
             val presentationEvidence =
                 when (
                     val selected =
-                        invocationAccounting(executionResultRows(execution), witnessOutput, preview.items.values.size)
+                        invocationAccounting(
+                            authority,
+                            executionResultRows(execution),
+                            witnessOutput,
+                            preview.items.values.size,
+                        )
                 ) {
                     is Refinement.Refined -> selected.value?.let { evidence.copy(impactAccounting = it) } ?: evidence
                     is Refinement.Rejected -> return OperationOutcome.Rejected(selected.failure)
@@ -292,21 +297,14 @@ internal class QueryInvocationProjection(
         ): Refinement<List<QueryResultItemDocument>, QueryRunRejection> {
             if (witnessOutput != null)
                 return invocationWitnessPreview(
+                    authority,
                     executionResultRows(execution),
                     witnessOutput,
                     retained,
                     minOf(policy.previewRows.value, MAX_PROTOCOL_ITEMS, count),
                 )
-            return when (
-                val identified =
-                    identifyRows(
-                        accumulated.items.take(minOf(policy.previewRows.value, MAX_PROTOCOL_ITEMS)),
-                        retained?.rowIds?.take(minOf(policy.previewRows.value, MAX_PROTOCOL_ITEMS)),
-                    )
-            ) {
-                is QueryProjection.Projected -> Refinement.Refined(identified.values)
-                QueryProjection.Rejected -> contractFailure()
-            }
+            val items = accumulated.items.take(minOf(policy.previewRows.value, MAX_PROTOCOL_ITEMS))
+            return invocationPreviewRows(items, executionResultRows(execution), retained, observation)
         }
 
         private fun preview(issuance: QueryResultIssuance.Issued?): Refinement<InvocationPreview, QueryRunRejection> {

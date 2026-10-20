@@ -1,0 +1,64 @@
+{
+  "comprehension": {
+    "type": "NOT_ASSESSED"
+  },
+  "documents": [
+    {
+      "findings": [
+        {
+          "category": "READABILITY",
+          "line": 1,
+          "message": "Estimated Flesch-Kincaid grade 65.59 exceeds the shared advisory target of 8.",
+          "rule": "Slopsentral.Grade",
+          "severity": "warning",
+          "span": [
+            1,
+            1
+          ],
+          "type": "FINDING"
+        },
+        {
+          "category": "STRUCTURE",
+          "line": 1,
+          "message": "Long sentence: 46 words.",
+          "rule": "Slopsentral.LongSentence",
+          "severity": "warning",
+          "span": [
+            1,
+            5
+          ],
+          "type": "FINDING"
+        },
+        {
+          "category": "STRUCTURE",
+          "line": 3,
+          "message": "Long sentence: 236 words.",
+          "rule": "Slopsentral.LongSentence",
+          "severity": "warning",
+          "span": [
+            172,
+            174
+          ],
+          "type": "FINDING"
+        }
+      ],
+      "metrics": {
+        "estimatedSyllables": 621,
+        "fleschKincaidGrade": 65.59,
+        "sentences": 2,
+        "words": 284,
+        "wordsPerSentence": 142.0
+      },
+      "path": "/tmp/kast-segment6-contract-compatibility.txt",
+      "sourceSha256": "4d56c95e2a3e791b4c6dc376c539d0e630ebae83e9e95ffad118cfdd668db68c",
+      "type": "DOCUMENT_ASSESSMENT"
+    }
+  ],
+  "engine": {
+    "policySha256": "0a7cc8bb61ff2eb3ea13957b54d752e90d48cf41d936de789143b650d55ea277",
+    "type": "VALE",
+    "version": "3.24.0"
+  },
+  "schemaVersion": 2,
+  "type": "ASSESSED"
+}

@@ -1,0 +1,172 @@
+@file:OptIn(org.jetbrains.kotlin.analysis.api.KaExperimentalApi::class)
+
+package io.github.amichne.kast.runtime.hosted
+
+import com.intellij.openapi.application.ReadAction
+import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactExecutionOwnerDocument
+import io.github.amichne.kast.protocol.contract.ImpactExecutionReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactReceiverKindDocument
+import io.github.amichne.kast.protocol.contract.ImpactSourceKindDocument
+import io.github.amichne.kast.protocol.contract.ImpactSourceOwnershipDocument
+import io.github.amichne.kast.protocol.contract.ImpactSourceProvenanceDocument
+import io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument
+import io.github.amichne.kast.protocol.contract.ImpactSourceRootDocument
+import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
+import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
+import io.github.amichne.kast.relation.contract.RelationCallableBody
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
+import io.github.amichne.kast.symbol.contract.SymbolSelector
+import io.github.amichne.kast.workspace.contract.ModelOwnedSourceRoot
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
+import org.jetbrains.kotlin.psi.KtFunctionLiteral
+
+/** Source lookup completes before the value-flow capture. It never reads an emitted path. */
+internal suspend fun NativePacketCompositeQueryCase.successFacts(): NativePacketCompositeQueryFacts {
+    val context = sourceContext()
+    return NativePacketCompositeQueryFacts(
+        executeReceiver = context.executeReceiver,
+        successType = source.type(OUTCOME, "Success"),
+        errorType = source.type(OUTCOME, "Error"),
+        mapImplicitBody = source.mapBodyRange(),
+        transformInvoke = source.invocation(path = OUTCOME, owner = "Outcome", method = "map", callee = "transform"),
+        transformArgument = source.transformArgumentRange(),
+        mapInvocation = (context.executeReceiver.role as ImpactValueRoleDocument.Receiver).invocation,
+        mapErrorInvocation =
+            ImpactInvocationReferenceDocument(
+                source.clientCall("mapError"),
+                source.reference(source.declaration(OUTCOME, "Outcome", "mapError")),
+            ),
+        mapper = source.reference(source.declaration(CLIENT, "", "toClientResponse")),
+        envelopeBody = source.field(WIRE, "Envelope", "body"),
+        wireLinks = source.field(WIRE, "WireResponse", "links"),
+        clientLinks = source.field(CLIENT, "ClientResponse", "links"),
+        successValue = source.field(OUTCOME, "Success", "value"),
+        clientMethod = context.client,
+        clientReturn = source.returnRange(CLIENT, "OffersClientImpl", "readOffers"),
+        callerFrame = context.callerFrame,
+        sequentialBody = context.sequentialBody,
+        responseBinding = source.responseBinding(),
+        component1 = source.reference(source.declaration(OUTCOME, "OutcomeScope", "component1")),
+        bind = source.reference(source.declaration(OUTCOME, "OutcomeScope", "bind")),
+        firstOrNullResult = source.featureCall("firstOrNull"),
+        featureConstructor = source.reference(source.declaration(FEATURE, "FeatureResponse", "<init>")),
+        featureLink = source.field(FEATURE, "FeatureResponse", "link"),
+        featureResult = source.featureCall("FeatureResponse"),
+        getOfferReturn = context.getOfferReturn,
+        apiReadOffers = source.reference(source.declaration(WIRE, "OffersApi", "readOffers")),
+        wireConstructor = source.reference(source.declaration(WIRE, "WireRequest", "<init>")),
+        headerBuild = source.reference(source.declaration(CLIENT, "HeaderBuilder", "build")),
+    )
+}
+
+private suspend fun NativePacketCompositeQueryCase.sourceContext(): CompositeQuerySourceContext {
+    val client = source.reference(source.declaration(CLIENT, "OffersClientImpl", "readOffers"))
+    val featureSelector = source.declaration(FEATURE, "OffersProcessorImpl", "getOffer")
+    val feature = source.reference(featureSelector)
+    val map = source.reference(source.declaration(OUTCOME, "Outcome", "map"))
+    val mapCall = ImpactInvocationReferenceDocument(source.clientCall("map"), map)
+    val caller =
+        ImpactInvocationReferenceDocument(
+            range = source.featureCall("readOffers"),
+            callable = source.reference(source.declaration(CLIENT, "OffersClient", "readOffers")),
+            executionOwner = source.sequentialOwner(featureSelector),
+        )
+    val frame =
+        NativePacketQueryFrameOracle(
+            enclosing = feature,
+            invocation = caller,
+            callee = ImpactExecutionReferenceDocument(client),
+            ownership = compositeOwnership(client, root),
+        )
+    return CompositeQuerySourceContext(
+        client = client,
+        executeReceiver =
+            ImpactValueSiteReferenceDocument(
+                client,
+                source.clientCall("execute"),
+                ImpactValueRoleDocument.Receiver(mapCall, ImpactReceiverKindDocument.DISPATCH),
+            ),
+        callerFrame = frame,
+        sequentialBody = (caller.executionOwner as ImpactExecutionOwnerDocument.Anonymous).body.range,
+        getOfferReturn =
+            ImpactValueSiteReferenceDocument(
+                feature,
+                source.returnRange(FEATURE, "OffersProcessorImpl", "getOffer"),
+                ImpactValueRoleDocument.Return,
+            ),
+    )
+}
+
+private data class CompositeQuerySourceContext(
+    val client: ImpactDeclarationReferenceDocument,
+    val executeReceiver: ImpactValueSiteReferenceDocument,
+    val callerFrame: NativePacketQueryFrameOracle,
+    val sequentialBody: ImpactSourceRangeDocument,
+    val getOfferReturn: ImpactValueSiteReferenceDocument,
+)
+
+private fun NativePacketCompositeQuerySource.featureCall(callee: String) =
+    invocation(path = FEATURE, owner = "OffersProcessorImpl", method = "getOffer", callee = callee)
+
+private fun NativePacketCompositeQuerySource.clientCall(callee: String) =
+    invocation(path = CLIENT, owner = "OffersClientImpl", method = "readOffers", callee = callee)
+
+private fun NativePacketCompositeQuerySource.sequentialOwner(host: SymbolSelector): ImpactExecutionOwnerDocument =
+    anonymousOwner(host, sequentialBody())
+
+internal fun NativePacketCompositeQuerySource.anonymousOwner(
+    host: SymbolSelector,
+    literal: KtFunctionLiteral,
+): ImpactExecutionOwnerDocument =
+    ReadAction.compute<ImpactExecutionOwnerDocument, RuntimeException> {
+        val exact =
+            ExactDeclarationTextRange.parse(literal.textRange.startOffset, literal.textRange.endOffset)
+                .packetQueryRefined()
+        val signature =
+            IntellijReadObservation.None.observedAnalyze(literal) {
+                val symbol = literal.symbol
+                CanonicalCompilerSignature.function(
+                        rawQualifiedIdentity = RelationCallableBody.Anonymous.sourceIdentity(host.file, exact),
+                        rawReceiverType = symbol.receiverParameter?.returnType?.toString(),
+                        rawContextReceiverTypes = symbol.contextReceivers.map { it.type.toString() },
+                        rawValueParameterTypes = symbol.valueParameters.map { it.returnType.toString() },
+                        rawTypeParameterCount = 0,
+                    )
+                    .packetQueryRefined() as CanonicalCompilerSignature.Function
+            }
+        val body = RelationCallableBody.Anonymous.fromCompiler(host.file, exact, signature).packetQueryRefined()
+        ImpactExecutionOwnerDocument.Anonymous(
+            reference(host)
+                .copy(
+                    range =
+                        ImpactSourceRangeDocument(
+                            packetQueryOffset(exact.startInclusive),
+                            packetQueryOffset(exact.endExclusive),
+                        ),
+                    compilerIdentity = packetQueryText(body.compilerIdentity.value),
+                )
+        )
+    }
+
+private fun compositeOwnership(declaration: ImpactDeclarationReferenceDocument, root: ModelOwnedSourceRoot) =
+    ImpactSourceOwnershipDocument(
+        declaration,
+        ImpactSourceRootDocument(
+            module = packetQueryText(root.module.value),
+            buildRoot = packetQueryText(root.project.buildRoot.value),
+            projectPath = packetQueryText(root.project.projectPath.value),
+            sourceSet = packetQueryText(root.sourceSet.value),
+            sourceRoot = packetQueryText(root.sourceRoot.value),
+            sourceKind = ImpactSourceKindDocument.PRODUCTION,
+            provenance = ImpactSourceProvenanceDocument.AUTHORED,
+        ),
+    )
+
+private const val CLIENT = NativePacketCompositeQuerySource.CLIENT
+private const val WIRE = NativePacketCompositeQuerySource.WIRE
+private const val OUTCOME = NativePacketCompositeQuerySource.OUTCOME
+private const val FEATURE = NativePacketCompositeQuerySource.FEATURE

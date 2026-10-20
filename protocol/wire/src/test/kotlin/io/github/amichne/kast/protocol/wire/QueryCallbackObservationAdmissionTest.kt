@@ -1,8 +1,13 @@
 package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.QueryCallbackBindingWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBodyWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackCallableDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackCallableWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackFlowWireDocument
+import io.github.amichne.kast.protocol.contract.QueryExcludedCompilerTargetWireDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint
@@ -10,7 +15,12 @@ import io.github.amichne.kast.protocol.contract.QueryRelationRequestedDomainDocu
 import io.github.amichne.kast.protocol.contract.QuerySemanticScopeDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationOccurrenceDocument
+import io.github.amichne.kast.protocol.contract.RelationOccurrenceWireDocument
 import io.github.amichne.kast.protocol.contract.RelationProviderDocument
+import io.github.amichne.kast.protocol.contract.SourceRangeWireDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals

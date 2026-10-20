@@ -1,0 +1,337 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Calculating task graph as no cached configuration is available for tasks: :relation:contract:test --tests *SourceFunctionProducerSeedTest --tests *ValueSiteContractTest --tests *ValueExecutionOwnerContractTest :protocol:contract:test --tests *SourceFunctionProducerDocumentTest :query:protocol:test --tests *SourceFunctionProducerAdmissionTest --tests *QueryImpactSourceAdmissionTest
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :kernel:compileJava NO-SOURCE
+> Task :relation:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+> Task :relation:contract:compileKotlin
+> Task :relation:contract:compileJava NO-SOURCE
+> Task :relation:contract:processResources NO-SOURCE
+> Task :relation:contract:classes UP-TO-DATE
+> Task :relation:contract:jar
+> Task :kernel:processResources NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar UP-TO-DATE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesKotlin UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesJava NO-SOURCE
+> Task :relation:contract:compileTestKotlin
+> Task :relation:contract:compileTestJava NO-SOURCE
+> Task :relation:contract:processTestResources NO-SOURCE
+> Task :relation:contract:testClasses UP-TO-DATE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :workspace:contract:processTestFixturesResources NO-SOURCE
+> Task :workspace:contract:testFixturesClasses UP-TO-DATE
+> Task :workspace:contract:testFixturesJar UP-TO-DATE
+> Task :relation:contract:test
+> Task :protocol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:contract:compileKotlin
+> Task :protocol:contract:compileJava NO-SOURCE
+> Task :protocol:contract:processResources UP-TO-DATE
+> Task :protocol:contract:classes UP-TO-DATE
+> Task :protocol:contract:jar
+> Task :protocol:contract:compileTestKotlin
+> Task :protocol:contract:compileTestJava NO-SOURCE
+> Task :protocol:contract:processTestResources UP-TO-DATE
+> Task :protocol:contract:testClasses UP-TO-DATE
+> Task :protocol:contract:test
+> Task :diagnostic:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :diagnostic:contract:compileKotlin UP-TO-DATE
+> Task :diagnostic:contract:compileJava NO-SOURCE
+> Task :query:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:contract:compileKotlin UP-TO-DATE
+> Task :source:contract:compileJava NO-SOURCE
+> Task :traversal:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :traversal:contract:compileKotlin
+> Task :traversal:contract:compileJava NO-SOURCE
+> Task :query:contract:compileKotlin
+> Task :query:contract:compileJava NO-SOURCE
+> Task :query:protocol:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :query:protocol:compileKotlin
+> Task :query:protocol:compileJava NO-SOURCE
+> Task :query:protocol:processResources NO-SOURCE
+> Task :query:protocol:classes UP-TO-DATE
+> Task :query:protocol:jar
+> Task :query:protocol:compileTestFixturesKotlin
+> Task :query:protocol:compileTestFixturesJava NO-SOURCE
+> Task :query:protocol:processTestFixturesResources NO-SOURCE
+> Task :query:protocol:testFixturesClasses UP-TO-DATE
+> Task :query:protocol:testFixturesJar UP-TO-DATE
+> Task :diagnostic:contract:processResources NO-SOURCE
+> Task :diagnostic:contract:classes UP-TO-DATE
+> Task :diagnostic:contract:jar UP-TO-DATE
+> Task :protocol:registry:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:registry:compileKotlin
+> Task :protocol:registry:compileJava NO-SOURCE
+> Task :protocol:registry:processResources NO-SOURCE
+> Task :protocol:registry:classes UP-TO-DATE
+> Task :protocol:registry:jar UP-TO-DATE
+> Task :protocol:wire:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:wire:compileKotlin
+> Task :protocol:wire:compileJava NO-SOURCE
+> Task :protocol:wire:processResources NO-SOURCE
+> Task :protocol:wire:classes UP-TO-DATE
+> Task :protocol:wire:jar UP-TO-DATE
+> Task :query:contract:processResources NO-SOURCE
+> Task :query:contract:classes UP-TO-DATE
+> Task :query:contract:jar
+> Task :query:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :query:service:compileKotlin
+> Task :query:service:compileJava NO-SOURCE
+
+> Task :query:protocol:compileTestKotlin FAILED
+e: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactAccountingProjectionTest.kt:371:66 Argument type mismatch: actual type is 'ValueCallOccurrence', but 'ValueInvocation' was expected.
+e: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessPresentationTest.kt:90:50 None of the following candidates is applicable:
+
+fun QueryImpactLedger.impactDocument(references: QueryReferenceAuthority, pageCount: QueryDiscoveryCountDocument, status: ImpactAccountingStatusDocument, view: ImpactAccountingViewDocument): Refinement<ImpactAccountingDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun QueryImpactLedger.impactDocument(references: QueryReferenceAuthority, pageCount: QueryDiscoveryCountDocument, status: ImpactAccountingStatusDocument, view: ImpactAccountingViewDocument): Refinement<ImpactAccountingDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun QueryValuePathAccountingStatus.impactDocument(): Refinement<ImpactAccountingStatusDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun QueryValuePathAccountingStatus.impactDocument(): Refinement<ImpactAccountingStatusDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun QueryImpactClosure.impactDocument(): Refinement<ImpactClosureDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun QueryImpactClosure.impactDocument(): Refinement<ImpactClosureDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueFunctionInvocation.impactDocument(): Refinement<ImpactFunctionInvocationReferenceDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueFunctionInvocation.impactDocument(): Refinement<ImpactFunctionInvocationReferenceDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun QueryImpactExecutionStop.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactExecutionStopDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun QueryImpactExecutionStop.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactExecutionStopDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueFlowUnsupportedCause.impactDocument(): ImpactFlowUnsupportedDocument:
+  Candidate 'fun ValueFlowUnsupportedCause.impactDocument(): ImpactFlowUnsupportedDocument' is inapplicable because of a receiver type mismatch.
+
+fun RelationRequest.impactDocument(): Refinement<ImpactFlowDomainDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun RelationRequest.impactDocument(): Refinement<ImpactFlowDomainDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun RelationReadPosition.impactDocument(): Refinement<ImpactFlowReadPositionDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun RelationReadPosition.impactDocument(): Refinement<ImpactFlowReadPositionDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun SemanticReadIdentity.impactDocument(): Refinement<ImpactSemanticBasisDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun SemanticReadIdentity.impactDocument(): Refinement<ImpactSemanticBasisDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ExactDeclarationTextRange.impactDocument(): Refinement<ImpactSourceRangeDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ExactDeclarationTextRange.impactDocument(): Refinement<ImpactSourceRangeDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueSiteIdentity.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactValueSiteReferenceDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueSiteIdentity.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactValueSiteReferenceDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueSite.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactValueSiteReferenceDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueSite.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactValueSiteReferenceDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueInvocation.impactDocument(): Refinement<ImpactInvocationReferenceDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueInvocation.impactDocument(): Refinement<ImpactInvocationReferenceDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueDeclarationIdentity.impactDocument(basis: SemanticReadIdentity): Refinement<ImpactDeclarationReferenceDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueDeclarationIdentity.impactDocument(basis: SemanticReadIdentity): Refinement<ImpactDeclarationReferenceDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueExecutionIdentity.impactDocument(): Refinement<ImpactExecutionOwnerDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueExecutionIdentity.impactDocument(): Refinement<ImpactExecutionOwnerDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueRole.impactDocument(): Refinement<ImpactValueRoleDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueRole.impactDocument(): Refinement<ImpactValueRoleDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ContractModelIdentity.impactDocument(): Refinement<ImpactModelIdentityDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ContractModelIdentity.impactDocument(): Refinement<ImpactModelIdentityDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ModelRuleReference.impactDocument(): Refinement<ImpactRuleReferenceDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ModelRuleReference.impactDocument(): Refinement<ImpactRuleReferenceDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ExactModelCallablePosition.impactDocument(): Refinement<ImpactCallablePositionDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ExactModelCallablePosition.impactDocument(): Refinement<ImpactCallablePositionDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun BoundaryPosition.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactBoundaryPositionDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun BoundaryPosition.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactBoundaryPositionDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun BoundaryPositionReference.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactBoundaryPositionDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun BoundaryPositionReference.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactBoundaryPositionDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueSourceOwnership.impactDocument(): Refinement<ImpactSourceOwnershipDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueSourceOwnership.impactDocument(): Refinement<ImpactSourceOwnershipDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ModelOwnedSourceRoot.impactDocument(): Refinement<ImpactSourceRootDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ModelOwnedSourceRoot.impactDocument(): Refinement<ImpactSourceRootDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueCallTarget.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactCallTargetDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueCallTarget.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactCallTargetDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueFlowObligationEvidence.impactDocument(references: QueryReferenceAuthority, basis: SemanticReadAuthority): Refinement<ImpactFlowObligationEvidenceDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueFlowObligationEvidence.impactDocument(references: QueryReferenceAuthority, basis: SemanticReadAuthority): Refinement<ImpactFlowObligationEvidenceDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueImplementationDispatch.impactDocument(): Refinement<ImpactImplementationDispatchDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueImplementationDispatch.impactDocument(): Refinement<ImpactImplementationDispatchDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueImplementationCoverage.impactDocument(): Refinement<ImpactImplementationCoverageDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueImplementationCoverage.impactDocument(): Refinement<ImpactImplementationCoverageDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun RepresentationRule.impactDocument(): Refinement<ImpactRepresentationRuleDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun RepresentationRule.impactDocument(): Refinement<ImpactRepresentationRuleDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueTransfer.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactCompilerTransferDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueTransfer.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactCompilerTransferDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueTransferEvidence.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactTransferEvidenceDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueTransferEvidence.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactTransferEvidenceDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun RepresentationModelApplication.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactRepresentationApplicationDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun RepresentationModelApplication.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactRepresentationApplicationDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun BoundaryModel.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactBoundaryRuleDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun BoundaryModel.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactBoundaryRuleDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun BoundaryTerminalMeaning.impactDocument(): ImpactBoundaryTerminalDocument:
+  Candidate 'fun BoundaryTerminalMeaning.impactDocument(): ImpactBoundaryTerminalDocument' is inapplicable because of a receiver type mismatch.
+
+fun BoundaryObligation.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactBoundaryObligationDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun BoundaryObligation.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactBoundaryObligationDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun BoundaryArrival.Connected.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactBoundaryConnectionDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun BoundaryArrival.Connected.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactBoundaryConnectionDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun RepresentationEvidence.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactRepresentationEvidenceDocument.Present, ImpactPathProjectionFailure>:
+  Candidate 'fun RepresentationEvidence.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactRepresentationEvidenceDocument.Present, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun RepresentationCurrent.impactDocument(): Refinement<ImpactRepresentationCurrentDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun RepresentationCurrent.impactDocument(): Refinement<ImpactRepresentationCurrentDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun RepresentationState.impactDocument(): Refinement<ImpactRepresentationStateDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun RepresentationState.impactDocument(): Refinement<ImpactRepresentationStateDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun RepresentationHistory.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactRepresentationHistoryDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun RepresentationHistory.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactRepresentationHistoryDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun QueryImpactPeerSiteAdmission.impactDocument(): Refinement<ImpactPeerSiteAdmissionDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun QueryImpactPeerSiteAdmission.impactDocument(): Refinement<ImpactPeerSiteAdmissionDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun QueryImpactPeerAcquisitionReceipt.impactDocument(): Refinement<ImpactPeerAcquisitionReceiptDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun QueryImpactPeerAcquisitionReceipt.impactDocument(): Refinement<ImpactPeerAcquisitionReceiptDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun QueryImpactPeerContinuationReason.impactDocument(): ImpactPeerContinuationReasonDocument:
+  Candidate 'fun QueryImpactPeerContinuationReason.impactDocument(): ImpactPeerContinuationReasonDocument' is inapplicable because of a receiver type mismatch.
+
+fun ValuePredicates.impactDocument(references: QueryReferenceAuthority): Refinement<BoundedProtocolList<ImpactValuePredicateDocument>, ImpactPathProjectionFailure>:
+  Candidate 'fun ValuePredicates.impactDocument(references: QueryReferenceAuthority): Refinement<BoundedProtocolList<ImpactValuePredicateDocument>, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun QueryImpactReadRejection.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactReadRejectionDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun QueryImpactReadRejection.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactReadRejectionDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueFlowRejection.impactDocument(): ImpactNativeReadRejectionDocument:
+  Candidate 'fun ValueFlowRejection.impactDocument(): ImpactNativeReadRejectionDocument' is inapplicable because of a receiver type mismatch.
+
+fun ValueFlowStepFailure.impactDocument(): ImpactReadContractRejectionDocument:
+  Candidate 'fun ValueFlowStepFailure.impactDocument(): ImpactReadContractRejectionDocument' is inapplicable because of a receiver type mismatch.
+
+fun ValueModelApplication.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactValueModelApplicationDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueModelApplication.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactValueModelApplicationDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun SelectedElementCondition.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactValueModelConditionDocument.SelectedElement, ImpactPathProjectionFailure>:
+  Candidate 'fun SelectedElementCondition.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactValueModelConditionDocument.SelectedElement, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ReviewedLibraryBinding.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactReviewedLibraryBindingDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ReviewedLibraryBinding.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactReviewedLibraryBindingDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ReviewedValueModel.impactDocument(): Refinement<ImpactReviewedValueModelDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ReviewedValueModel.impactDocument(): Refinement<ImpactReviewedValueModelDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ReviewedLibraryArtifact.impactDocument(): Refinement<ImpactReviewedArtifactDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ReviewedLibraryArtifact.impactDocument(): Refinement<ImpactReviewedArtifactDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun LibraryArtifactObservation.impactDocument(): Refinement<ImpactLibraryArtifactDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun LibraryArtifactObservation.impactDocument(): Refinement<ImpactLibraryArtifactDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueAccessPath.impactDocument(): Refinement<BoundedProtocolList<ImpactValuePathSegmentDocument>, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueAccessPath.impactDocument(): Refinement<BoundedProtocolList<ImpactValuePathSegmentDocument>, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueCallStack.impactDocument(references: QueryReferenceAuthority): Refinement<BoundedProtocolList<ImpactCallFrameDocument>, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueCallStack.impactDocument(references: QueryReferenceAuthority): Refinement<BoundedProtocolList<ImpactCallFrameDocument>, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueCallFrame.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactCallFrameDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueCallFrame.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactCallFrameDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueExecutionOwner.impactDocument(): Refinement<ImpactExecutionReferenceDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueExecutionOwner.impactDocument(): Refinement<ImpactExecutionReferenceDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueFormalParameter.impactDocument(): Refinement<ImpactFormalParameterDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueFormalParameter.impactDocument(): Refinement<ImpactFormalParameterDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueFormalPosition.impactDocument(): Refinement<ImpactFormalPositionDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueFormalPosition.impactDocument(): Refinement<ImpactFormalPositionDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueReceiverKind.impactDocument(): ImpactReceiverKindDocument:
+  Candidate 'fun ValueReceiverKind.impactDocument(): ImpactReceiverKindDocument' is inapplicable because of a receiver type mismatch.
+
+fun ValueSourceOperation.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactSourceOperationDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueSourceOperation.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactSourceOperationDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun ValueConstructorStorage.impactDocument(): Refinement<ImpactConstructorStorageDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun ValueConstructorStorage.impactDocument(): Refinement<ImpactConstructorStorageDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun QueryImpactWitnessEntry.impactDocument(references: QueryReferenceAuthority, originalRowId: QueryResultRowReference?, originalPathRowIds: List<QueryResultRowReference>?): Refinement<ImpactWitnessDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun QueryImpactWitnessEntry.impactDocument(references: QueryReferenceAuthority, originalRowId: QueryResultRowReference?, originalPathRowIds: List<QueryResultRowReference>?): Refinement<ImpactWitnessDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun QueryImpactPath.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactPathDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun QueryImpactPath.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactPathDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun QueryImpactStep.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactPathStepDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun QueryImpactStep.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactPathStepDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+
+fun QueryImpactTerminal.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactPathTerminalDocument, ImpactPathProjectionFailure>:
+  Candidate 'fun QueryImpactTerminal.impactDocument(references: QueryReferenceAuthority): Refinement<ImpactPathTerminalDocument, ImpactPathProjectionFailure>' is inapplicable because of a receiver type mismatch.
+e: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedModeledValueOracleCase.kt:124:63 Argument type mismatch: actual type is 'ValueCallOccurrence', but 'ValueInvocation' was expected.
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-20-12-03-11-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':query:protocol:compileTestKotlin' (registered by plugin 'org.jetbrains.kotlin.jvm').
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.btapi.BuildToolsApiCompilationWork
+   > Kotlin compiler: ARGUMENT_TYPE_MISMATCH
+       Kotlin compiler error
+         Argument type mismatch: actual type is 'ValueCallOccurrence', but 'ValueInvocation' was expected.
+         Location: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactAccountingProjectionTest.kt:371
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 36s
+44 actionable tasks: 18 executed, 26 up-to-date
+Configuration cache entry stored.

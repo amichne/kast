@@ -1,0 +1,40 @@
+{
+  "comprehension": {
+    "type": "NOT_ASSESSED"
+  },
+  "documents": [
+    {
+      "findings": [
+        {
+          "category": "READABILITY",
+          "line": 1,
+          "message": "Estimated Flesch-Kincaid grade 9.95 exceeds the shared advisory target of 8.",
+          "rule": "Slopsentral.Grade",
+          "severity": "warning",
+          "span": [
+            1,
+            1
+          ],
+          "type": "FINDING"
+        }
+      ],
+      "metrics": {
+        "estimatedSyllables": 136,
+        "fleschKincaidGrade": 9.95,
+        "sentences": 8,
+        "words": 73,
+        "wordsPerSentence": 9.12
+      },
+      "path": "/Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/experiments/representation-impact/request-response-fixture/results/oracle-integration-findings.md",
+      "sourceSha256": "6ac82cc2530ba71a8a171195318a2fef80786eb0c744f40267afa6d90ecb710d",
+      "type": "DOCUMENT_ASSESSMENT"
+    }
+  ],
+  "engine": {
+    "policySha256": "0a7cc8bb61ff2eb3ea13957b54d752e90d48cf41d936de789143b650d55ea277",
+    "type": "VALE",
+    "version": "3.24.0"
+  },
+  "schemaVersion": 2,
+  "type": "ASSESSED"
+}

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactSiteAccountingValidationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:20.598Z" hostname="Austins-MacBook-Pro.local" time="0.004">
+  <properties/>
+  <testcase name="unmatched requested site requires original relationship obligation and cannot claim completion()" classname="io.github.amichne.kast.protocol.contract.ImpactSiteAccountingValidationTest" time="0.002"/>
+  <testcase name="exclusions retain exact explicit domain and distinct original row identities()" classname="io.github.amichne.kast.protocol.contract.ImpactSiteAccountingValidationTest" time="0.0"/>
+  <testcase name="site identity ordinal and whole requested universe cannot be substituted in retained witness()" classname="io.github.amichne.kast.protocol.contract.ImpactSiteAccountingValidationTest" time="0.0"/>
+  <testcase name="reached links require nonempty unique original ordinals and recorded admission work within grant()" classname="io.github.amichne.kast.protocol.contract.ImpactSiteAccountingValidationTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactReceiverKindContractTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T11:47:36.012Z" hostname="Austins-MacBook-Pro.local" time="0.099">
+  <properties/>
+  <testcase name="the other receiver slot never matches exact value identity()" classname="io.github.amichne.kast.protocol.contract.ImpactReceiverKindContractTest" time="0.023"/>
+  <testcase name="encoded receiver role requires its exact kind and rejects missing or unknown values()" classname="io.github.amichne.kast.protocol.contract.ImpactReceiverKindContractTest" time="0.059"/>
+  <testcase name="source entry admits only the matching receiver slot of the same invocation()" classname="io.github.amichne.kast.protocol.contract.ImpactReceiverKindContractTest" time="0.01"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

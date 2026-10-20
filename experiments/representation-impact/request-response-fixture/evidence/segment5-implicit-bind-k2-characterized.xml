@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketImplicitBindProbeTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T07:17:55.384Z" hostname="Austins-MacBook-Pro.local" time="7.152">
+  <properties/>
+  <testcase name="testOriginalImplicitBindKeepsItsActualCompilerReceiverSlots" classname="io.github.amichne.kast.relation.intellij.NativePacketImplicitBindProbeTest" time="7.143"/>
+  <system-out><![CDATA[IMPLICIT_BIND_DECLARED callable=fixture.outcome.OutcomeScope.bind receiver=Present(type=CanonicalCompilerType(value=fixture/outcome/Outcome<E,S>)) parameters=[] contexts=[] typeParameters=1
+IMPLICIT_BIND_ACTUAL call=ExactDeclarationTextRange(startInclusive=1137, endExclusive=1143) host=ExactDeclarationTextRange(startInclusive=1088, endExclusive=1143) diagnosticReceiver=fixture/outcome/Outcome<E, S> diagnosticResult=S argumentCount=0
+IMPLICIT_BIND_RECEIVER slot=EXTENSION kind=IMPLICIT subtype=KaFirReceiverParameterSymbol psiRange=ExactDeclarationTextRange(startInclusive=1105, endExclusive=1118) origin=SOURCE isComponentExtension=true isComponentDispatch=false receiverOwnerIsComponent=true diagnosticType=fixture/outcome/Outcome<E, S>
+IMPLICIT_BIND_RECEIVER_SYMBOL slot=EXTENSION status=LOCAL_REJECTED cause=UnsupportedDeclaration
+IMPLICIT_BIND_RECEIVER slot=DISPATCH kind=IMPLICIT subtype=KaFirNamedClassSymbol psiRange=ExactDeclarationTextRange(startInclusive=1037, endExclusive=1349) origin=SOURCE isComponentExtension=false isComponentDispatch=true receiverOwnerIsComponent=false diagnosticType=fixture/outcome/OutcomeScope<E>
+IMPLICIT_BIND_RECEIVER_SYMBOL slot=DISPATCH status=PROJECTED identity=canonical-signature-sha256-v1|d94ccfc7d3ab43a857178ca114a14bd846c07c612416359926a0b78e5b7cf1c5
+IMPLICIT_BIND_RESULT capture=COMPLETE adapter_slot_admission=NOT_RUN full_C27=NOT_RUN
+]]></system-out>
+  <system-err><![CDATA[[   1238]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1238]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

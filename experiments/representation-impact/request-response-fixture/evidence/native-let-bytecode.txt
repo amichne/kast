@@ -1,0 +1,10 @@
+  private static final <T, R> R let(T, kotlin.jvm.functions.Function1<? super T, ? extends R>);
+    Code:
+         0: aload_1
+         1: ldc           #47                 // String block
+         3: invokestatic  #22                 // Method kotlin/jvm/internal/Intrinsics.checkNotNullParameter:(Ljava/lang/Object;Ljava/lang/String;)V
+         6: aload_1
+         7: aload_0
+         8: invokeinterface #61,  2           // InterfaceMethod kotlin/jvm/functions/Function1.invoke:(Ljava/lang/Object;)Ljava/lang/Object;
+        13: areturn
+

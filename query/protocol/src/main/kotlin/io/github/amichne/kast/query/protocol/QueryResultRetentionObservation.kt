@@ -1,5 +1,6 @@
 package io.github.amichne.kast.query.protocol
 
+import io.github.amichne.kast.query.contract.QueryCount
 import io.github.amichne.kast.query.contract.QueryRetainedResultFailure
 
 /** Finite effect receipts contain no source, paths, handles, or arbitrary reason strings. */
@@ -17,6 +18,9 @@ sealed interface QueryResultRetentionEvidence {
     data class CaptureRejected(val cause: QueryRetainedResultFailure) : QueryResultRetentionEvidence
 
     data class Issuance(val outcome: QueryResultRetentionIssue) : QueryResultRetentionEvidence
+
+    data class PreviewRowIdentityRejected(val itemCount: QueryCount, val identityCount: QueryCount) :
+        QueryResultRetentionEvidence
 }
 
 fun interface QueryResultRetentionObservation {

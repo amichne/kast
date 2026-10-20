@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="4.3">
+<file name="protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactValueModelValidation.kt">
+	<error line="6" column="50" severity="error" message="The function admitsValueModel appears to be too complex based on Cognitive Complexity (complexity: 14). Defined maximum allowed complexity for methods is set to &apos;12&apos;" source="detekt.CognitiveComplexMethod" />
+	<error line="30" column="50" severity="error" message="The function admits appears to be too complex based on Cognitive Complexity (complexity: 14). Defined maximum allowed complexity for methods is set to &apos;12&apos;" source="detekt.CognitiveComplexMethod" />
+	<error line="6" column="50" severity="error" message="The function admitsValueModel appears to be too complex based on Cyclomatic Complexity (complexity: 21). The maximum allowed complexity for methods is set to &apos;12&apos;" source="detekt.CyclomaticComplexMethod" />
+	<error line="30" column="50" severity="error" message="The function admits appears to be too complex based on Cyclomatic Complexity (complexity: 17). The maximum allowed complexity for methods is set to &apos;12&apos;" source="detekt.CyclomaticComplexMethod" />
+</file>
+</checkstyle>

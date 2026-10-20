@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.CanonicalSourceIssuanceTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.407Z" hostname="Austins-MacBook-Pro.local" time="0.134">
+  <properties/>
+  <testcase name="source retains every exact authority rejection without executing provider in either format()" classname="io.github.amichne.kast.query.protocol.CanonicalSourceIssuanceTest" time="0.077"/>
+  <testcase name="inline fallback and issuance rejection retain their existing semantics()" classname="io.github.amichne.kast.query.protocol.CanonicalSourceIssuanceTest" time="0.049"/>
+  <testcase name="source declaration and repeated targets retain issued candidate transport()" classname="io.github.amichne.kast.query.protocol.CanonicalSourceIssuanceTest" time="0.007"/>
+  <system-out><![CDATA[source-fixture transport=false expanded=11621 compact=8195
+source-fixture transport=true expanded=10451 compact=7025
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -5,28 +5,26 @@ package io.github.amichne.kast.protocol.wire
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ProtocolCollectionConstraint
 import io.github.amichne.kast.protocol.contract.QueryCallbackBindingDocument
-import io.github.amichne.kast.protocol.contract.QueryCallbackReferenceReceiverDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBindingWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackCallableWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackForwardingEvidenceWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackReferenceReceiverWireDocument
+import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackFlowWireDocument
 import io.github.amichne.kast.protocol.contract.QueryNamedCallbackReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryNamedCallbackReferenceFlowDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.callbackWire
+import io.github.amichne.kast.protocol.contract.combineConverted
+import io.github.amichne.kast.protocol.contract.convertEach
+import io.github.amichne.kast.protocol.contract.flatMapConverted
+import io.github.amichne.kast.protocol.contract.immutableFlowWire
+import io.github.amichne.kast.protocol.contract.mapConverted
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocumentConversion
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
-
-@Serializable
-@JsonClassDiscriminator("type")
-internal sealed interface QueryCallbackReferenceReceiverWireDocument {
-    @Serializable @SerialName("ABSENT") data object Absent : QueryCallbackReferenceReceiverWireDocument
-
-    @Serializable @SerialName("UNBOUND") data object Unbound : QueryCallbackReferenceReceiverWireDocument
-
-    @Serializable
-    @SerialName("BOUND")
-    data class Bound(val occurrence: RelationOccurrenceWireDocument) : QueryCallbackReferenceReceiverWireDocument
-
-    @Serializable
-    @SerialName("IMPLICIT")
-    data class Implicit(val declaration: QueryCallbackCallableWireDocument) : QueryCallbackReferenceReceiverWireDocument
-}
 
 @Serializable
 @JsonClassDiscriminator("type")
@@ -90,27 +88,15 @@ internal fun QueryNamedCallbackReferenceDocument.callbackWire() =
         },
     )
 
-internal fun QueryCallbackReferenceReceiverDocument.callbackWire(): QueryCallbackReferenceReceiverWireDocument =
-    when (this) {
-        QueryCallbackReferenceReceiverDocument.Absent -> QueryCallbackReferenceReceiverWireDocument.Absent
-        QueryCallbackReferenceReceiverDocument.Unbound -> QueryCallbackReferenceReceiverWireDocument.Unbound
-        is QueryCallbackReferenceReceiverDocument.Bound ->
-            QueryCallbackReferenceReceiverWireDocument.Bound(occurrence.callbackWire())
-        is QueryCallbackReferenceReceiverDocument.Implicit ->
-            QueryCallbackReferenceReceiverWireDocument.Implicit(declaration.callbackWire())
-    }
-
-internal fun QueryCallbackReferenceReceiverWireDocument.toContract():
-    WireDocumentConversion<QueryCallbackReferenceReceiverDocument> =
-    when (this) {
-        QueryCallbackReferenceReceiverWireDocument.Absent ->
-            WireDocumentConversion.Converted(QueryCallbackReferenceReceiverDocument.Absent)
-        QueryCallbackReferenceReceiverWireDocument.Unbound ->
-            WireDocumentConversion.Converted(QueryCallbackReferenceReceiverDocument.Unbound)
-        is QueryCallbackReferenceReceiverWireDocument.Bound ->
-            occurrence.toContract().mapConverted { QueryCallbackReferenceReceiverDocument.Bound(it) }
-        is QueryCallbackReferenceReceiverWireDocument.Implicit ->
-            declaration.toContract().mapConverted { QueryCallbackReferenceReceiverDocument.Implicit(it) }
+internal fun QueryNamedCallbackReferenceWireDocument.toContract():
+    WireDocumentConversion<QueryNamedCallbackReferenceDocument> =
+    combineConverted(
+        target.toContract(),
+        dispatchReceiver.toContract(),
+        extensionReceiver.toContract(),
+        flow.toContract(),
+    ) { target, dispatch, extension, flow ->
+        QueryNamedCallbackReferenceDocument(target, dispatch, extension, flow)
     }
 
 private fun QueryNamedCallbackReferenceFlowWireDocument.toContract():
@@ -141,15 +127,4 @@ private fun QueryNamedCallbackReferenceFlowWireDocument.toContract():
                             }
                         }
             }
-    }
-
-internal fun QueryNamedCallbackReferenceWireDocument.toContract():
-    WireDocumentConversion<QueryNamedCallbackReferenceDocument> =
-    combineConverted(
-        target.toContract(),
-        dispatchReceiver.toContract(),
-        extensionReceiver.toContract(),
-        flow.toContract(),
-    ) { target, dispatch, extension, flow ->
-        QueryNamedCallbackReferenceDocument(target, dispatch, extension, flow)
     }

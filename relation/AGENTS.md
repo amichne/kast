@@ -4,8 +4,8 @@ title: "Kast relation"
 description: "Defines one-hop semantic relationships, callback evidence, and value-flow facts with compiler-backed IntelliJ adapters."
 resource: "repo://relation"
 tags: [kast, navigation]
-timestamp: "2026-10-18T22:46:32Z"
-source_revision: e37b2d25a75abc47a4d8487e579f97ec36ca8cad
+timestamp: "2026-10-20T12:54:00Z"
+source_revision: 543509a7f4d22d6ec850f52b70c898bca478c37d
 code_sources:
   - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteCallbackSourceRelation.kt
   - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteNamedCallbackSourceReference.kt
@@ -15,6 +15,8 @@ code_sources:
   - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationReferenceOccurrence.kt
   - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationRequest.kt
   - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationModel.kt
+  - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ReviewedValueModel.kt
+  - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueModelApplication.kt
   - path: relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlow.kt
   - path: relation/intellij/build.gradle.kts
   - path: relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackInvocationFlow.kt
@@ -44,6 +46,8 @@ Defines one-hop semantic relationships, callback evidence, and value-flow facts 
 - [CompleteNamedCallbackSourceReference.kt](contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteNamedCallbackSourceReference.kt) - exact callable references independent of execution completeness.
 - [ValueFlow.kt](contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlow.kt) - bounded one-hop transfers and unresolved obligations.
 - [RepresentationModel.kt](contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationModel.kt) - reviewed representation models.
+- [ReviewedValueModel.kt](contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ReviewedValueModel.kt) - reviewed library artifacts and exact compiler bindings.
+- [ValueModelApplication.kt](contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueModelApplication.kt) - conditional collection projections with exact call provenance.
 - [RelationService.kt](service/src/main/kotlin/io/github/amichne/kast/relation/service/RelationService.kt) - authority admission before and after compiler work.
 - [IntellijK2RelationSearch.kt](intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2RelationSearch.kt) - native relationship search.
 - [IntellijCallbackInvocationFlow.kt](intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackInvocationFlow.kt) - native callback invocation evidence.
@@ -66,4 +70,5 @@ Defines one-hop semantic relationships, callback evidence, and value-flow facts 
 - For missing callers, trace lexical ownership, callback supply, compiler bindings, and graph qualifications.
 - For reuse, trace dependency continuity in topology and fresh endpoint admission here.
 - The query engine owns multi-hop scheduling, paging, and branch conservation. Relation supplies one-hop facts.
+- Keep automatic value models separate from supplied representation rules. A collection selection grants no compiler-established non-null fact.
 - Read the [root guide](../AGENTS.md) for engineering rules and optional OpenWiki retrieval.

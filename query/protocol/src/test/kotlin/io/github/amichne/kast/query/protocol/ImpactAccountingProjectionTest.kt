@@ -60,6 +60,7 @@ import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueInvocation
+import io.github.amichne.kast.relation.contract.ValueProducerOrigin
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
@@ -78,25 +79,35 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class ImpactAccountingProjectionTest {
+    private val projectionReferences = CanonicalQueryReferences()
+
     @Test
     fun `ordinary rows and connectivity only paths report distinct explicit accounting`() {
         assertEquals(
             ImpactAccountingDocument.NotApplicable,
-            QueryRows.Symbols.of(emptyList()).impactAccountingDocument().refined(),
+            QueryRows.Symbols.of(emptyList()).impactAccountingDocument(references = projectionReferences).refined(),
         )
         val fixture = Fixture()
-        val accounting = QueryRows.ValuePaths.of(fixture.ledger.paths).impactAccountingDocument().refined()
+        val accounting =
+            QueryRows.ValuePaths.of(fixture.ledger.paths)
+                .impactAccountingDocument(references = projectionReferences)
+                .refined()
         assertEquals(ImpactAccountingDocument.EvidenceOnly(count(2)), accounting)
     }
 
     @Test
     fun `investigated pages preserve original ledger counts exact seeds model references and closure`() {
         val fixture = Fixture()
-        val full = fixture.rows.impactAccountingDocument().refined() as ImpactAccountingDocument.Investigated
+        val full =
+            fixture.rows.impactAccountingDocument(references = projectionReferences).refined()
+                as ImpactAccountingDocument.Investigated
         assertEquals(2L, full.pagePathCount.value)
         assertEquals(2L, full.originalObservationCount.value)
         assertEquals(2L, full.originalPathCount.value)
-        assertEquals(fixture.ledger.seeds.map { it.impactDocument().refined() }, full.seeds.values)
+        assertEquals(
+            fixture.ledger.seeds.map { it.impactDocument(references = projectionReferences).refined() },
+            full.seeds.values,
+        )
         assertEquals(ImpactRequestedBoundaryDocument.Workspace, full.requestedDomain)
         assertEquals(ImpactFlowSemanticsDocument.KOTLIN_FORWARD_V1, full.semantics)
         assertEquals(
@@ -106,8 +117,11 @@ class ImpactAccountingProjectionTest {
         assertEquals(listOf(fixture.boundary.reference.impactDocument().refined()), full.boundaryModelReferences.values)
         assertEquals(ImpactAccountingStatusDocument.Conserved, full.status)
         val page =
-            fixture.rows.selectRows(listOf(1)).refined().impactAccountingDocument().refined()
-                as ImpactAccountingDocument.Investigated
+            fixture.rows
+                .selectRows(listOf(1))
+                .refined()
+                .impactAccountingDocument(references = projectionReferences)
+                .refined() as ImpactAccountingDocument.Investigated
         assertEquals(1L, page.pagePathCount.value)
         assertEquals(full.seeds, page.seeds)
         assertEquals(full.originalObservationCount, page.originalObservationCount)
@@ -118,14 +132,19 @@ class ImpactAccountingProjectionTest {
     @Test
     fun `selected page retains unresolved obligation from original investigation`() {
         val fixture = Fixture(unresolved = true)
-        val full = fixture.rows.impactAccountingDocument().refined() as ImpactAccountingDocument.Investigated
+        val full =
+            fixture.rows.impactAccountingDocument(references = projectionReferences).refined()
+                as ImpactAccountingDocument.Investigated
         assertEquals(
             listOf(ImpactRequiredObligationDocument.NATIVE_FLOW),
             (full.status as ImpactAccountingStatusDocument.Unresolved).required.values,
         )
         val page =
-            fixture.rows.selectRows(listOf(1)).refined().impactAccountingDocument().refined()
-                as ImpactAccountingDocument.Investigated
+            fixture.rows
+                .selectRows(listOf(1))
+                .refined()
+                .impactAccountingDocument(references = projectionReferences)
+                .refined() as ImpactAccountingDocument.Investigated
         assertEquals(
             listOf(ImpactRequiredObligationDocument.NATIVE_FLOW),
             ((page.status as ImpactAccountingStatusDocument.SelectedSubset).originalClosure
@@ -168,8 +187,10 @@ class ImpactAccountingProjectionTest {
                 )
                 .refined()
         val accounting =
-            QueryRows.ValuePaths.fromInvestigation(ledger).refined().impactAccountingDocument().refined()
-                as ImpactAccountingDocument.Investigated
+            QueryRows.ValuePaths.fromInvestigation(ledger)
+                .refined()
+                .impactAccountingDocument(references = projectionReferences)
+                .refined() as ImpactAccountingDocument.Investigated
         assertEquals(0L, accounting.originalObservationCount.value)
         assertEquals(1L, accounting.originalReadRejectionCount.value)
         assertEquals(1L, accounting.originalPathCount.value)
@@ -195,7 +216,9 @@ class ImpactAccountingProjectionTest {
                 SymbolDiscoverySourceSets.Exact.from(setOf(WorkspaceSourceSetName.parse("main").refined())).refined(),
             )
         val fixture = Fixture(requestedDomain = explicit)
-        val accounting = fixture.rows.impactAccountingDocument().refined() as ImpactAccountingDocument.Investigated
+        val accounting =
+            fixture.rows.impactAccountingDocument(references = projectionReferences).refined()
+                as ImpactAccountingDocument.Investigated
         val projected = accounting.requestedDomain as ImpactRequestedBoundaryDocument.SourceDomain
         assertEquals(QuerySemanticScopeDocument.Workspace, projected.domain.scope)
         assertEquals(
@@ -215,7 +238,7 @@ class ImpactAccountingProjectionTest {
                     ValueFlowRejection.OUTSIDE_DOMAIN,
                     RelationWorkCount.parse(1).refined(),
                 )
-                .impactDocument()
+                .impactDocument(references = projectionReferences)
                 .refined() as ImpactReadRejectionDocument.Native
         assertEquals(projected, rejection.domain)
     }
@@ -224,7 +247,8 @@ class ImpactAccountingProjectionTest {
     fun `model witness section retains complete original reviewed rules in stable order`() {
         val fixture = Fixture()
         val view = QueryImpactWitnessView.create(fixture.ledger, QueryImpactWitnessSection.MODELS, 0, 2).refined()
-        val projected = QueryRows.ImpactWitness.of(view).projectWitnessItems() as QueryProjection.Projected
+        val projected =
+            QueryRows.ImpactWitness.of(view).projectWitnessItems(projectionReferences) as QueryProjection.Projected
         val records = projected.values.map { (it as QueryResultItemDocument.ImpactWitness).item }
         assertEquals(listOf(0L, 1L), records.map { it.ordinal.value })
         val representation = records[0].witness as ImpactWitnessDocument.RepresentationModel
@@ -232,9 +256,9 @@ class ImpactAccountingProjectionTest {
         assertEquals(fixture.origin.reference.impactDocument().refined(), representation.reference)
         assertEquals(fixture.origin.impactDocument().refined(), representation.rule)
         assertEquals(fixture.boundary.reference.impactDocument().refined(), boundary.reference)
-        assertEquals(fixture.boundary.impactDocument().refined(), boundary.rule)
+        assertEquals(fixture.boundary.impactDocument(references = projectionReferences).refined(), boundary.rule)
         val accounting =
-            QueryRows.ImpactWitness.of(view).impactAccountingDocument().refined()
+            QueryRows.ImpactWitness.of(view).impactAccountingDocument(references = projectionReferences).refined()
                 as ImpactAccountingDocument.Investigated
         assertEquals(ImpactAccountingStatusDocument.SelectedSubset(ImpactClosureDocument.Discharged), accounting.status)
         assertEquals(2L, accounting.originalPathCount.value)
@@ -345,7 +369,12 @@ class ImpactAccountingProjectionTest {
             val producer = producers.single { it.site == observation.source }
             val representation =
                 QueryImpactRepresentation.Present(
-                    RepresentationEvidence.origin(producer.site, producer.invocation, origin).refined()
+                    RepresentationEvidence.origin(
+                            producer.site,
+                            (producer.origin as ValueProducerOrigin.Declared).invocation,
+                            origin,
+                        )
+                        .refined()
                 )
             terminals(observation).map { terminal ->
                 QueryImpactPath.fromEvidence(observation.source, emptyList(), representation, terminal).refined()

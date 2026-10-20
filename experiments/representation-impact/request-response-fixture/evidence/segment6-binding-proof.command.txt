@@ -1,0 +1,1 @@
+mise exec -- ./gradlew --no-daemon --max-workers=1 :relation:contract:test --tests '*ValueModelApplicationBindingProofTest' --console=plain

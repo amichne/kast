@@ -28,15 +28,16 @@ private constructor(
 
     companion object {
         fun admit(
+            references: QueryReferenceAuthority,
             selections: List<QueryImpactPeerSelection>,
             admissions: List<QueryImpactPeerSiteAdmission>,
         ): Refinement<ImpactPeerSourceEvidence, QueryRunRejection> {
             if (admissions.map { it.site }.distinct().size != admissions.size)
                 return impactFailure(QueryImpactSourceFailureCode.DUPLICATE_PEER_BOUNDARY)
-            if (admissions.any { proof -> selections.none { it.site.matchesSite(proof.site) } })
+            if (admissions.any { proof -> selections.none { it.site.matchesSite(proof.site, references) } })
                 return impactFailure(QueryImpactSourceFailureCode.UNDECLARED_PEER_BOUNDARY)
             for (selected in selections) {
-                if (admissions.none { selected.site.matchesSite(it.site) })
+                if (admissions.none { selected.site.matchesSite(it.site, references) })
                     return impactFailure(
                         QueryImpactSourceFailureCode.BOUNDARY_BASIS_MISMATCH,
                         selected.modelPosition.value,

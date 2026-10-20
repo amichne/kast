@@ -1,0 +1,25 @@
+{
+  "kind": "POLICY_SETUP_REPAIR",
+  "prior_build_seconds": 50,
+  "prior_compile": "PASSED",
+  "prior_detekt": "FAILED_TWO_FINDINGS",
+  "prior_assertions": "NOT_RUN",
+  "semantic_changes": false,
+  "suppression_or_threshold_changes": false,
+  "formatter_exit": 0,
+  "repairs": [
+    {
+      "path": "relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketSingleListInsertionFacts.kt",
+      "before_sha256": "c5dbde09c8a3182156325f89147ba66e4b5b3c88d772ebc8e0e641c5910ccb26",
+      "after_sha256": "47e211587ea4e4ecfb744b879b407fd3b51cd529bc3ef3ed9a6bb23ebf75758f",
+      "reverse_expanded_predicate_tokens_and_order": "PASSED"
+    },
+    {
+      "path": "relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketSingleListInsertionSource.kt",
+      "before_sha256": "bbf7651f4b733a14bf3f2f2e1cdebdb4f590ec233fcc5f07ca2d0559d2c5ad8f",
+      "after_sha256": "849ab8eeea3a79b6b61b9d6f8d7fb973328ac8ad4d38ca8ba5bcb5b8b31d7282",
+      "reverse_expanded_predicate_tokens_and_order": "PASSED"
+    }
+  ],
+  "gradle": "NOT_RUN_BY_FIXTURE_OWNER"
+}

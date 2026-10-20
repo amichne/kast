@@ -40,6 +40,8 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadGauge
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadGaugeValue
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import io.github.amichne.kast.workspace.intellij.read.IntellijSemanticSourceFileAdmission
@@ -169,6 +171,7 @@ internal class NativeScopedTraceFixture(
 
 internal class NativeTraceCounters : IntellijReadObservation {
     private val counts = mutableMapOf<IntellijReadCounter, Long>()
+    private val gauges = mutableMapOf<IntellijReadGauge, IntellijReadGaugeValue>()
     val terminations = mutableListOf<IntellijReadTermination>()
 
     override fun count(counter: IntellijReadCounter, contributor: IntellijReadContributor, amount: Int) {
@@ -179,7 +182,19 @@ internal class NativeTraceCounters : IntellijReadObservation {
         terminations += reason
     }
 
+    override fun measure(gauge: IntellijReadGauge, value: IntellijReadGaugeValue) {
+        gauges[gauge] = value
+    }
+
+    operator fun get(gauge: IntellijReadGauge): Long? = gauges[gauge]?.value
+
     operator fun get(counter: IntellijReadCounter): Long = counts[counter] ?: 0L
+
+    fun resetValueFlowByteRefusal() {
+        gauges.remove(IntellijReadGauge.VALUE_FLOW_BYTE_REJECTION_CANDIDATE_BYTES)
+        gauges.remove(IntellijReadGauge.VALUE_FLOW_BYTE_REJECTION_OBLIGATION_RESERVE_BYTES)
+        gauges.remove(IntellijReadGauge.VALUE_FLOW_BYTE_REJECTION_ALLOWANCE)
+    }
 
     fun snapshot(): Map<IntellijReadCounter, Long> = counts.toMap()
 }

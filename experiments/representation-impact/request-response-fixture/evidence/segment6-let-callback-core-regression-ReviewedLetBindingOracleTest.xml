@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ReviewedLetBindingOracleTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T16:48:05.603Z" hostname="Austins-MacBook-Pro.local" time="0.084">
+  <properties/>
+  <testcase name="a reviewed let receiver cannot acquire collection selection()" classname="io.github.amichne.kast.relation.contract.ReviewedLetBindingOracleTest" time="0.072"/>
+  <testcase name="exact let binding keeps its distinct overload and reviewed artifact proof()" classname="io.github.amichne.kast.relation.contract.ReviewedLetBindingOracleTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

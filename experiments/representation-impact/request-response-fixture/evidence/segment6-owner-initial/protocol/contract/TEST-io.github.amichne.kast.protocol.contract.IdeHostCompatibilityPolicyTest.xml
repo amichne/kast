@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicyTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:20.054Z" hostname="Austins-MacBook-Pro.local" time="0.017">
+  <properties/>
+  <testcase name="IDEA and Kotlin builds outside 262 retain typed mismatches()" classname="io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicyTest" time="0.002"/>
+  <testcase name="release line compatibility retains implementation provenance and checks the exact contract()" classname="io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicyTest" time="0.003"/>
+  <testcase name="capability equality rejects a subset and reordered evidence()" classname="io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicyTest" time="0.001"/>
+  <testcase name="a release line prefix cannot admit malformed build identities()" classname="io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicyTest" time="0.001"/>
+  <testcase name="262 builds are admitted with their observed identities retained()" classname="io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicyTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

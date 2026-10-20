@@ -1,0 +1,40 @@
+{
+  "classification": "FIXTURE_SETUP_REPAIR",
+  "reason": "The reused endpoint helper hardcodes firstOrNull raw identity and rejected the independent listOf signature.",
+  "repaired_fields": [
+    "rawName=listOf",
+    "rawQualifiedIdentity=kotlin.collections.listOf"
+  ],
+  "preserved": [
+    "signature",
+    "assumed file",
+    "assumed declaration range",
+    "scope",
+    "constraints",
+    "lease",
+    "artifact metadata",
+    "expected target",
+    "expected failure causes",
+    "assertion tokens and order"
+  ],
+  "existing_firstOrNull_helper": "UNCHANGED",
+  "files": [
+    {
+      "path": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/SingleListModelOracleCase.kt",
+      "before_sha256": "1cae3582c115e35205fbcc6fceeec1335fb55303547ab0fc915d17583cbbc51b",
+      "after_sha256": "d5bb8d9c1e73b766f74627f3d294a438eaf4df2f6217771b830e3cba1b500803",
+      "expected_assertion_tokens_and_order": "UNCHANGED",
+      "setup_change": "explicit insertion-owned listOf endpoint"
+    },
+    {
+      "path": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ReviewedSingleElementListOracleTest.kt",
+      "before_sha256": "62d6c676a33e9f2906f2bdeeb6430daa03a2040268725233a9fbf9820f86c3a5",
+      "after_sha256": "e9f0be7f01d7e448d06e96fb1c64eee9f33bb0b09812efa9482f468952aaeb9e",
+      "expected_assertion_tokens_and_order": "UNCHANGED",
+      "setup_change": "explicit insertion-owned listOf endpoint"
+    }
+  ],
+  "formatter": "PASSED",
+  "compile": "NOT_RUN",
+  "gradle": "NOT_RUN"
+}

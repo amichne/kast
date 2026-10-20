@@ -13,7 +13,7 @@ internal fun CallbackParameterSupplier.projectCallbackSupplier(
     val selected =
         when (val selected = selection) {
             is CallbackSupplierSelection.Explicit ->
-                when (val argument = selected.argument.impactDocument()) {
+                when (val argument = selected.argument.impactDocument(projection.authority)) {
                     is Refinement.Refined -> QueryCallbackSupplierSelectionDocument.Explicit(argument.value)
                     is Refinement.Rejected -> return null
                 }

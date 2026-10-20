@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-20T19:11:05.616Z" hostname="Austins-MacBook-Pro.local" time="0.05">
+  <properties/>
+  <testcase name="seven incoming segments permit the eighth insertion segment()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest" time="0.01"/>
+  <testcase name="eight incoming segments preserve an exact depth refusal without truncation()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest" time="0.001"/>
+  <testcase name="an expression result cannot impersonate the fixed actual argument()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest" time="0.013"/>
+  <testcase name="argument one for the exact fixed overload rejects before model application()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest" time="0.009"/>
+  <testcase name="single element review pins the fixed overload rule and exact reviewed artifact()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest" time="0.005"/>
+  <testcase name="insertion keeps the incoming resolved field suffix after element zero()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest" time="0.002"/>
+  <testcase name="whole actual argument zero supplies only the exact result element zero()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest" time="0.003"/>
+  <testcase name="insertion preserves an existing exact nonnull predicate without adding another fact()" classname="io.github.amichne.kast.relation.contract.ValueCollectionInsertionOracleTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

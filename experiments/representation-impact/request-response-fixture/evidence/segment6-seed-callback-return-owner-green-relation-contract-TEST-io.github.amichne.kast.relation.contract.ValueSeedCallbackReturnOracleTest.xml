@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnOracleTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-10-20T19:56:29.497Z" hostname="Austins-MacBook-Pro.local" time="0.006">
+  <properties/>
+  <testcase name="the result cannot keep an extra active callback frame()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnOracleTest" time="0.001"/>
+  <testcase name="direct evidence cannot forge the seed callback return()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnOracleTest" time="0.0"/>
+  <testcase name="an empty stack return reaches the actual invoke and preserves the selected supplier()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnOracleTest" time="0.0"/>
+  <testcase name="the result cannot move to another real builtin invoke occurrence()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnOracleTest" time="0.001"/>
+  <testcase name="a reviewed library callback frame cannot masquerade as a source callback proof()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnOracleTest" time="0.001"/>
+  <testcase name="an active callback uses ordinary return rather than the seed operation()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnOracleTest" time="0.0"/>
+  <testcase name="a selected qualified callback keeps the exact raw qualifications in its return proof()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnOracleTest" time="0.0"/>
+  <testcase name="another proven supplier cannot replace the target stack of the selected route()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnOracleTest" time="0.0"/>
+  <testcase name="the seed return cannot discard the supplying frame()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnOracleTest" time="0.0"/>
+  <testcase name="a callback frame alone cannot replace the actual supplier()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnOracleTest" time="0.0"/>
+  <testcase name="a named direct frame cannot masquerade as a source callback proof()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnOracleTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

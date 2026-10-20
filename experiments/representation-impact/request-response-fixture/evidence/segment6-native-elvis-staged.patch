@@ -1,0 +1,248 @@
+--- relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowNative.kt
++++ relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowNative.kt
+@@ -17,6 +17,7 @@
+ import io.github.amichne.kast.relation.contract.ValueTransferKind
+ import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+ import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
++import org.jetbrains.kotlin.psi.KtBinaryExpression
+ import org.jetbrains.kotlin.psi.KtBlockExpression
+ import org.jetbrains.kotlin.psi.KtContainerNodeForControlStructureBody
+ import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
+@@ -241,6 +242,7 @@
+             is KtValueArgument -> argument(expression, parent)
+             is KtQualifiedExpression -> receiver(expression, parent)
+             is KtReturnExpression -> returnDestination(expression, parent)
++            is KtBinaryExpression -> elvisDestination(expression, parent)
+             is KtThrowExpression -> {
+                 observation.count(IntellijReadCounter.VALUE_FLOW_ABRUPT_REJECTIONS)
+                 unresolved(ValueFlowUnsupportedCause.ABRUPT_COMPLETION)
+@@ -254,6 +256,17 @@
+             }
+             is KtBlockExpression -> blockDestination(expression, parent)
+             else -> unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
++        }
++    }
++
++    private fun elvisDestination(expression: KtExpression, branch: KtBinaryExpression) {
++        when (val result = nativeElvisResult(request.source, expression, branch, observation)) {
++            is Refinement.Refined ->
++                when (val value = result.value) {
++                    NativeElvisResult.Unselected -> Unit
++                    is NativeElvisResult.Transfer -> retained.adopt(Refinement.Refined(value.value))
++                }
++            is Refinement.Rejected -> unresolved(result.failure)
+         }
+     }
+ 
+--- relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueAnonymousReturn.kt
++++ relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueAnonymousReturn.kt
+@@ -89,18 +89,25 @@
+     observation.observedAnalyze(branch) {
+         val source = expression.expressionType ?: return@observedAnalyze unsupportedBranch()
+         val target = branch.expressionType ?: return@observedAnalyze unsupportedBranch()
+-        when (nativeCompilerTypeProof(listOf(source, target))) {
+-            NativeCompilerTypeProof.ADMITTED -> Unit
+-            NativeCompilerTypeProof.WORK_LIMIT_REACHED ->
+-                return@observedAnalyze Refinement.Rejected(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
+-            NativeCompilerTypeProof.ERROR_TYPE,
+-            NativeCompilerTypeProof.UNSUPPORTED_TYPE -> return@observedAnalyze unsupportedBranch()
+-        }
+-        when (val normal = branchValueType(source)) {
+-            is Refinement.Refined -> branchValueType(target)
+-            is Refinement.Rejected -> normal
+-        }
++        normalBranchValueTypes(source, target)
+     }
++
++internal fun KaSession.normalBranchValueTypes(
++    source: KaType,
++    target: KaType,
++): Refinement<Unit, ValueFlowUnsupportedCause> {
++    when (nativeCompilerTypeProof(listOf(source, target))) {
++        NativeCompilerTypeProof.ADMITTED -> Unit
++        NativeCompilerTypeProof.WORK_LIMIT_REACHED ->
++            return Refinement.Rejected(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
++        NativeCompilerTypeProof.ERROR_TYPE,
++        NativeCompilerTypeProof.UNSUPPORTED_TYPE -> return unsupportedBranch()
++    }
++    return when (val normal = branchValueType(source)) {
++        is Refinement.Refined -> branchValueType(target)
++        is Refinement.Rejected -> normal
++    }
++}
+ 
+ private fun KaSession.branchValueType(type: KaType): Refinement<Unit, ValueFlowUnsupportedCause> =
+     when (type) {
+--- /dev/null
++++ relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueElvisResult.kt
+@@ -0,0 +1,170 @@
++@file:OptIn(org.jetbrains.kotlin.analysis.api.KaExperimentalApi::class)
++
++package io.github.amichne.kast.relation.intellij
++
++import io.github.amichne.kast.kernel.Refinement
++import io.github.amichne.kast.relation.contract.ValueAccessPath
++import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
++import io.github.amichne.kast.relation.contract.ValuePredicate
++import io.github.amichne.kast.relation.contract.ValuePredicateSubject
++import io.github.amichne.kast.relation.contract.ValuePredicates
++import io.github.amichne.kast.relation.contract.ValueRole
++import io.github.amichne.kast.relation.contract.ValueSite
++import io.github.amichne.kast.relation.contract.ValueTransfer
++import io.github.amichne.kast.relation.contract.ValueTransferEvidence
++import io.github.amichne.kast.relation.contract.ValueTransferKind
++import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
++import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
++import org.jetbrains.kotlin.analysis.api.types.KaClassType
++import org.jetbrains.kotlin.analysis.api.types.KaType
++import org.jetbrains.kotlin.lexer.KtTokens
++import org.jetbrains.kotlin.psi.KtBinaryExpression
++import org.jetbrains.kotlin.psi.KtExpression
++import org.jetbrains.kotlin.psi.KtTryExpression
++
++internal sealed interface NativeElvisResult {
++    data object Unselected : NativeElvisResult
++
++    data class Transfer(val value: ValueTransfer) : NativeElvisResult
++}
++
++private enum class NativeElvisOperand {
++    LEFT,
++    RIGHT,
++    NULL_ONLY_LEFT,
++}
++
++/** The selected operand supplies the Elvis result. The left condition names the exact whole operand. */
++internal fun nativeElvisResult(
++    source: ValueSite,
++    expression: KtExpression,
++    branch: KtBinaryExpression,
++    observation: IntellijReadObservation,
++): Refinement<NativeElvisResult, ValueFlowUnsupportedCause> {
++    if (source.range != sourceValueRange(expression)) return unsupportedElvis()
++    return when (val selected = nativeElvisOperand(expression, branch, observation)) {
++        is Refinement.Refined ->
++            when (selected.value) {
++                NativeElvisOperand.NULL_ONLY_LEFT -> Refinement.Refined(NativeElvisResult.Unselected)
++                NativeElvisOperand.LEFT -> leftElvisResult(source, branch)
++                NativeElvisOperand.RIGHT ->
++                    elvisTransfer(
++                        source = source,
++                        branch = branch,
++                        predicates = source.predicates,
++                        evidence = ValueTransferEvidence.Direct,
++                    )
++            }
++        is Refinement.Rejected -> selected
++    }
++}
++
++private fun nativeElvisOperand(
++    expression: KtExpression,
++    branch: KtBinaryExpression,
++    observation: IntellijReadObservation,
++): Refinement<NativeElvisOperand, ValueFlowUnsupportedCause> {
++    val position =
++        when (val value = elvisOperandSyntax(expression, branch)) {
++            is Refinement.Refined -> value.value
++            is Refinement.Rejected -> return value
++        }
++    if (expression is KtTryExpression && expression.finallyBlock != null)
++        return Refinement.Rejected(ValueFlowUnsupportedCause.FINALLY_UNSUPPORTED)
++    return observation.observedAnalyze(branch) {
++        val source = expression.expressionType ?: return@observedAnalyze unsupportedElvis()
++        val target = branch.expressionType ?: return@observedAnalyze unsupportedElvis()
++        when (val normal = normalBranchValueTypes(source, target)) {
++            is Refinement.Refined -> Unit
++            is Refinement.Rejected -> return@observedAnalyze normal
++        }
++        Refinement.Refined(selectedElvisOperand(position, source))
++    }
++}
++
++private fun elvisOperandSyntax(
++    expression: KtExpression,
++    branch: KtBinaryExpression,
++): Refinement<NativeElvisOperand, ValueFlowUnsupportedCause> {
++    if (branch.operationToken != KtTokens.ELVIS || branch.left == null || branch.right == null)
++        return unsupportedElvis()
++    return when {
++        branch.left === expression -> Refinement.Refined(NativeElvisOperand.LEFT)
++        branch.right === expression -> Refinement.Refined(NativeElvisOperand.RIGHT)
++        else -> unsupportedElvis()
++    }
++}
++
++private fun selectedElvisOperand(position: NativeElvisOperand, source: KaType): NativeElvisOperand {
++    if (position != NativeElvisOperand.LEFT || source !is KaClassType) return position
++    return if (source.classId.asSingleFqName().asString() == "kotlin.Nothing" && source.isMarkedNullable)
++        NativeElvisOperand.NULL_ONLY_LEFT
++    else position
++}
++
++private fun leftElvisResult(
++    source: ValueSite,
++    branch: KtBinaryExpression,
++): Refinement<NativeElvisResult, ValueFlowUnsupportedCause> {
++    val whole =
++        when (val value = source.withState(valuePath = ValueAccessPath.Whole)) {
++            is Refinement.Refined -> value.value
++            is Refinement.Rejected -> return unsupportedElvis()
++        }
++    val predicate = ValuePredicate.NonNull.fromCompiler(ValuePredicateSubject.fromCompiler(whole))
++    val added =
++        when (val value = ValuePredicates.fromCompiler(listOf(predicate))) {
++            is Refinement.Refined -> value.value
++            is Refinement.Rejected -> return Refinement.Rejected(value.failure.nativePredicateCause())
++        }
++    val predicates =
++        when (val value = source.predicates.plus(added.entries)) {
++            is Refinement.Refined -> value.value
++            is Refinement.Rejected -> return Refinement.Rejected(value.failure.nativePredicateCause())
++        }
++    val evidence =
++        when (val value = ValueTransferEvidence.Guarded.fromCompiler(ValueTransferEvidence.Direct, added)) {
++            is Refinement.Refined -> value.value
++            is Refinement.Rejected -> return Refinement.Rejected(value.failure.nativePredicateCause())
++        }
++    return elvisTransfer(source = source, branch = branch, predicates = predicates, evidence = evidence)
++}
++
++private fun elvisTransfer(
++    source: ValueSite,
++    branch: KtBinaryExpression,
++    predicates: ValuePredicates,
++    evidence: ValueTransferEvidence,
++): Refinement<NativeElvisResult, ValueFlowUnsupportedCause> {
++    val target =
++        when (
++            val value =
++                ValueSite.fromCompiler(
++                    enclosing = source.enclosing,
++                    range = sourceValueRange(branch),
++                    role = ValueRole.ExpressionResult,
++                    executionOwner = source.executionOwner,
++                    valuePath = source.valuePath,
++                    callStack = source.callStack,
++                    predicates = predicates,
++                )
++        ) {
++            is Refinement.Refined -> value.value
++            is Refinement.Rejected -> return unsupportedElvis()
++        }
++    return when (
++        val value =
++            ValueTransfer.fromCompiler(
++                source = source,
++                target = target,
++                kind = ValueTransferKind.BRANCH_ALTERNATIVE,
++                evidence = evidence,
++            )
++    ) {
++        is Refinement.Refined -> Refinement.Refined(NativeElvisResult.Transfer(value.value))
++        is Refinement.Rejected -> unsupportedElvis()
++    }
++}
++
++private fun <T> unsupportedElvis(): Refinement<T, ValueFlowUnsupportedCause> =
++    Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)

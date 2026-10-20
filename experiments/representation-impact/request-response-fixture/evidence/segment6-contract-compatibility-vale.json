@@ -1,0 +1,230 @@
+{
+  "/tmp/kast-segment6-contract-compatibility.txt": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        5
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 46 words.",
+      "Severity": "warning",
+      "Match": "claim",
+      "Line": 1
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 65.59 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "Kast"
+        ]
+      },
+      "Suggestions": [
+        "Kast"
+      ],
+      "Span": [
+        107,
+        110
+      ],
+      "Check": "Vale.Terms",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'Kast' instead of 'kast'.",
+      "Severity": "error",
+      "Match": "kast",
+      "Line": 3
+    },
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        172,
+        174
+      ],
+      "Check": "Slopsentral.LongSentence",
+      "Description": "",
+      "Link": "",
+      "Message": "Long sentence: 236 words.",
+      "Severity": "warning",
+      "Match": "The",
+      "Line": 3
+    },
+    {
+      "Action": {
+        "Name": "suggest",
+        "Params": [
+          "spellings"
+        ]
+      },
+      "Suggestions": [],
+      "Span": [
+        26,
+        40
+      ],
+      "Check": "Vale.Spelling",
+      "Description": "",
+      "Link": "",
+      "Message": "Did you really mean 'contractVersion'?",
+      "Severity": "error",
+      "Match": "contractVersion",
+      "Line": 4
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "Kast"
+        ]
+      },
+      "Suggestions": [
+        "Kast"
+      ],
+      "Span": [
+        104,
+        107
+      ],
+      "Check": "Vale.Terms",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'Kast' instead of 'kast'.",
+      "Severity": "error",
+      "Match": "kast",
+      "Line": 5
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "Kast"
+        ]
+      },
+      "Suggestions": [
+        "Kast"
+      ],
+      "Span": [
+        106,
+        109
+      ],
+      "Check": "Vale.Terms",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'Kast' instead of 'kast'.",
+      "Severity": "error",
+      "Match": "kast",
+      "Line": 6
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "Kast"
+        ]
+      },
+      "Suggestions": [
+        "Kast"
+      ],
+      "Span": [
+        120,
+        123
+      ],
+      "Check": "Vale.Terms",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'Kast' instead of 'kast'.",
+      "Severity": "error",
+      "Match": "kast",
+      "Line": 10
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "Kast"
+        ]
+      },
+      "Suggestions": [
+        "Kast"
+      ],
+      "Span": [
+        124,
+        127
+      ],
+      "Check": "Vale.Terms",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'Kast' instead of 'kast'.",
+      "Severity": "error",
+      "Match": "kast",
+      "Line": 11
+    },
+    {
+      "Action": {
+        "Name": "replace",
+        "Params": [
+          "Kast"
+        ]
+      },
+      "Suggestions": [
+        "Kast"
+      ],
+      "Span": [
+        118,
+        121
+      ],
+      "Check": "Vale.Terms",
+      "Description": "",
+      "Link": "",
+      "Message": "Use 'Kast' instead of 'kast'.",
+      "Severity": "error",
+      "Match": "kast",
+      "Line": 12
+    },
+    {
+      "Action": {
+        "Name": "suggest",
+        "Params": [
+          "spellings"
+        ]
+      },
+      "Suggestions": [],
+      "Span": [
+        236,
+        246
+      ],
+      "Check": "Vale.Spelling",
+      "Description": "",
+      "Link": "",
+      "Message": "Did you really mean 'deserialize'?",
+      "Severity": "error",
+      "Match": "deserialize",
+      "Line": 12
+    }
+  ]
+}

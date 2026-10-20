@@ -1,0 +1,167 @@
+{
+  "status": "STAGED_NOT_ENROLLED_NOT_COMPILED_NOT_RUN",
+  "mechanism": "pure detached interpolation evidence, transfer admission, representation provenance",
+  "native_claims": [],
+  "assumed_input_authority": "Existing issued endpoint and site helpers plus explicit finite scalar kind. Real K2 owns syntax, parent and actual scalar-type proof.",
+  "fixed_example": {
+    "template": [
+      20,
+      100
+    ],
+    "entry": [
+      30,
+      60
+    ],
+    "source": [
+      40,
+      45
+    ],
+    "source_role": "LocalRead or ExpressionResult",
+    "target_role": "ExpressionResult",
+    "source_path": "Whole",
+    "target_path": "Whole",
+    "source_and_target_context": "same full declaration and execution proof, call stack, predicates"
+  },
+  "new_facts": "NONE. No NonNull or representation identity follows from interpolation.",
+  "row_count": 20,
+  "rows": [
+    {
+      "id": "D01",
+      "selector": "ValueStringDerivationOracleTest.entry index accepts zero and maximum Int but rejects negative input",
+      "expected": "index0 and Int.MAX_VALUE admitted, negative rejected",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "D02",
+      "selector": "ValueStringDerivationOracleTest.each admitted scalar kind keeps its exact template entry and index",
+      "expected": "all nine scalar kinds preserve exact templateRange, entryRange, entryIndex and scalarKind",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "D03",
+      "selector": "ValueStringDerivationOracleTest.whole LocalRead scalar derives the exact whole template with all state",
+      "expected": "LocalRead Whole to exact template ExpressionResult Whole preserves source, target, execution, stack and predicates",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "D04",
+      "selector": "ValueStringDerivationOracleTest.whole expression scalar also derives the template",
+      "expected": "ExpressionResult Whole scalar admits same template",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "D05",
+      "selector": "ValueStringDerivationOracleTest.entry must lie strictly inside the template",
+      "expected": "entry equal to template, either shared delimiter, or outside template rejects",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "D06",
+      "selector": "ValueStringDerivationOracleTest.direct evidence cannot assert a derivation",
+      "expected": "Direct evidence rejects DERIVATION",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "D07",
+      "selector": "ValueStringDerivationOracleTest.interpolation evidence cannot assert an ordinary transfer kind",
+      "expected": "StringInterpolation evidence rejects every ordinary transfer kind",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "D08",
+      "selector": "ValueStringDerivationOracleTest.another template or an input outside the exact entry cannot borrow interpolation evidence",
+      "expected": "different template or input outside exact entry rejects",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "D09",
+      "selector": "ValueStringDerivationOracleTest.another entry in the same template cannot borrow the scalar occurrence",
+      "expected": "another entry and index in same template cannot admit original scalar occurrence",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "D10",
+      "selector": "ValueStringDerivationOracleTest.a field path and non-scalar source role cannot become a whole template",
+      "expected": "source or target nested field path and invalid source or target role reject",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "D11",
+      "selector": "ValueStringDerivationContextOracleTest.a different declaration cannot receive the same range as a string derivation",
+      "expected": "different declaration rejects with all other target state preserved",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "D12",
+      "selector": "ValueStringDerivationContextOracleTest.a changed scope with identical declaration metadata cannot receive the derivation",
+      "expected": "changed source scope with same declaration identity and range rejects",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "D13",
+      "selector": "ValueStringDerivationContextOracleTest.a different anonymous body under the same host cannot receive the derivation",
+      "expected": "different anonymous body under same host rejects",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "D14",
+      "selector": "ValueStringDerivationContextOracleTest.a fresh basis cannot receive an older interpolation transfer",
+      "expected": "foreign basis rejects with BASIS_MISMATCH",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "D15",
+      "selector": "ValueStringDerivationContextOracleTest.a missing frame or another same-callee invocation cannot receive the derivation",
+      "expected": "missing frame or another invocation of same callee rejects",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "D16",
+      "selector": "ValueStringDerivationContextOracleTest.derivation cannot erase a predicate or invent an unrelated predicate",
+      "expected": "removed or unrelated added predicate rejects",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "D17",
+      "selector": "RepresentationStringDerivationOracleTest.string derivation weakens known representation and keeps the exact compiler transfer history",
+      "expected": "Known becomes Unknown(UNMODELED_TRANSFORMATION), exact CompilerTransfer history appended and target state preserved",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "D18",
+      "selector": "RepresentationStringDerivationOracleTest.string derivation preserves a preexisting unknown reason",
+      "expected": "preexisting Unknown(INPUT_STATE_NOT_ESTABLISHED) reason survives, exact history appended",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "D19",
+      "selector": "RepresentationStringDerivationOracleTest.interpolation stays compiler history and never becomes a reviewed representation application",
+      "expected": "interpolation remains CompilerTransfer history and creates no Model history",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "D20",
+      "selector": "RepresentationStringDerivationOracleTest.another scalar occurrence cannot borrow the origin representation for derivation",
+      "expected": "another scalar source occurrence rejects representation propagation with SITE_MISMATCH",
+      "status": "NOT_RUN"
+    }
+  ],
+  "validation": {
+    "cached_ktfmt0.64": "PASSED",
+    "line_limit120": "PASSED",
+    "compilation": "NOT_RUN",
+    "detekt": "NOT_RUN",
+    "gradle": "NOT_RUN",
+    "assertions": "NOT_RUN"
+  },
+  "scope_review": {
+    "guides": [
+      "relation/AGENTS.md",
+      "experiments/representation-impact/request-response-fixture/AGENTS.md"
+    ],
+    "active_sources_changed": false,
+    "production_changed": false,
+    "new_commands_or_rules": false,
+    "guide_change": "NONE_NEEDED"
+  }
+}

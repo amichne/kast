@@ -12,6 +12,7 @@ import io.github.amichne.kast.protocol.contract.TopologyCoverageQualifiedIdentit
 import io.github.amichne.kast.protocol.contract.TopologyCoverageSourceRootProvenance
 import io.github.amichne.kast.protocol.contract.TopologyCoverageSymbol
 import io.github.amichne.kast.protocol.contract.TopologyCoverageSymbolKind
+import io.github.amichne.kast.protocol.contract.node
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator

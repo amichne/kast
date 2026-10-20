@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactFindingShapeTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T06:17:51.096Z" hostname="Austins-MacBook-Pro.local" time="0.131">
+  <properties/>
+  <testcase name="missing original identity unknown discriminator and unknown finite cause fail raw decoding()" classname="io.github.amichne.kast.protocol.contract.ImpactFindingShapeTest" time="0.072"/>
+  <testcase name="nonmodeled representation preserves its required closed discriminator()" classname="io.github.amichne.kast.protocol.contract.ImpactFindingShapeTest" time="0.007"/>
+  <testcase name="all compact terminal variants preserve independent finite shapes and original rejection work()" classname="io.github.amichne.kast.protocol.contract.ImpactFindingShapeTest" time="0.016"/>
+  <testcase name="finding emits required original path identity current alternatives and ordered compact provenance()" classname="io.github.amichne.kast.protocol.contract.ImpactFindingShapeTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

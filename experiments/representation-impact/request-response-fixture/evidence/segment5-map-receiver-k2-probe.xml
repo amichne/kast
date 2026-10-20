@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketMapReceiverProbeTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:19:40.242Z" hostname="Austins-MacBook-Pro.local" time="7.867">
+  <properties/>
+  <testcase name="testOriginalMapDispatchReceiverIsTheExactExecuteResult" classname="io.github.amichne.kast.relation.intellij.NativePacketMapReceiverProbeTest" time="7.859"/>
+  <system-out><![CDATA[MAP_RECEIVER_SLOT extension=NONE dispatch=EXPLICIT dispatchRange=769:954 origin=SOURCE
+MAP_RECEIVER_PROBE status=ACTUAL_K2_DISPATCH execute=769:954 map=769:989 value_flow=NOT_RUN
+]]></system-out>
+  <system-err><![CDATA[[   1332]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1332]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

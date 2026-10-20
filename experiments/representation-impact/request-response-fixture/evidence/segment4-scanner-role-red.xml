@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.LocalBindingRoleAdmissionTest" tests="2" skipped="0" failures="2" errors="0" timestamp="2026-10-20T04:55:10.381Z" hostname="Austins-MacBook-Pro.local" time="0.074">
+  <properties/>
+  <testcase name="role proof follows cancellation and deadline within its existing work unit()" classname="io.github.amichne.kast.relation.contract.LocalBindingRoleAdmissionTest" time="0.063">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[role, enumerate]&gt; but was: &lt;[enumerate]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[role, enumerate]&gt; but was: &lt;[enumerate]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.relation.contract.LocalBindingRoleAdmissionTest.role proof follows cancellation and deadline within its existing work unit(LocalBindingRoleAdmissionTest.kt:51)
+</failure>
+  </testcase>
+  <testcase name="rejected role records its exact cause without enumerating candidates()" classname="io.github.amichne.kast.relation.contract.LocalBindingRoleAdmissionTest" time="0.004">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;0&gt; but was: &lt;1&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;0&gt; but was: &lt;1&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:569)
+	at io.github.amichne.kast.relation.contract.LocalBindingRoleAdmissionTest.rejected role records its exact cause without enumerating candidates(LocalBindingRoleAdmissionTest.kt:23)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

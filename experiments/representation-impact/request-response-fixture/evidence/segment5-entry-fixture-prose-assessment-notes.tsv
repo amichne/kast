@@ -1,0 +1,5 @@
+artifact	status	rule	line	reason
+AGENTS.md	ASSESSED	Slopsentral.Grade	1	Grade11.46 keeps exact manifest names and separate runtime/compiler claims. Sentence mean8.10. Glossary IN_SCOPE. Comprehension NOT_ASSESSED.
+README.md	ASSESSED	Slopsentral.Grade	1	Grade10.17 keeps exact source owners and qualification terms. Sentence mean10.12. Glossary OUT_OF_SCOPE. Comprehension NOT_ASSESSED.
+AGENTS.md,README.md	PASSED_WITH_ADVISORY	repository Vale3.24.0	1	Both direct repository procedures returned exit0 with the same Grade advisory. No diction or terminology findings.
+relation/AGENTS.md	REVIEWED	scope ownership	0	The existing native source owner and focused command stay accurate. No child guide is necessary.

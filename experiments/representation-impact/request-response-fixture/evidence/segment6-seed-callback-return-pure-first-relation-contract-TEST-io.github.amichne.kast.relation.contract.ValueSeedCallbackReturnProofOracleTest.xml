@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnProofOracleTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-20T19:54:17.533Z" hostname="Austins-MacBook-Pro.local" time="0.012">
+  <properties/>
+  <testcase name="the target needs the exact expression result role()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnProofOracleTest" time="0.001"/>
+  <testcase name="the target cannot erase the returned field path()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnProofOracleTest" time="0.001"/>
+  <testcase name="the same invoke identity cannot substitute another full result scope()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnProofOracleTest" time="0.001"/>
+  <testcase name="the target cannot erase the scoped predicate()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnProofOracleTest" time="0.001"/>
+  <testcase name="a foreign callback proof cannot authorize two local sites()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnProofOracleTest" time="0.001"/>
+  <testcase name="the callback seed operation cannot authorize another transfer kind()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnProofOracleTest" time="0.001"/>
+  <testcase name="the same callback identity cannot substitute another full source scope()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnProofOracleTest" time="0.001"/>
+  <testcase name="another genuine anonymous body cannot return through the selected frame()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnProofOracleTest" time="0.0"/>
+  <testcase name="a foreign result basis keeps the exact basis rejection()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnProofOracleTest" time="0.001"/>
+  <testcase name="an ordinary expression cannot masquerade as a normal callback return()" classname="io.github.amichne.kast.relation.contract.ValueSeedCallbackReturnProofOracleTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

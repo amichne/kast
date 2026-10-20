@@ -1,0 +1,13 @@
+--- experiments/representation-impact/request-response-fixture/drafts/segment5/NativePacketDestructuringProbeReceiver.kt
++++ relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/DestructuringReceiverSlot.kt
+@@ -38,10 +38,6 @@
+                 else -> println("DESTRUCTURING_ORIGINAL slot=$slot kind=OTHER_OR_NESTED_SMART_CAST")
+             }
+         }
+-        else ->
+-            println(
+-                "DESTRUCTURING_RECEIVER slot=$slot kind=OTHER subtype=${receiver.javaClass.simpleName.take(MAX_NAME)}"
+-            )
+     }
+ }
+ 

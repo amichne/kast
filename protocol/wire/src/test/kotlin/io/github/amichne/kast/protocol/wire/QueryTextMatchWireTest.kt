@@ -22,8 +22,12 @@ import io.github.amichne.kast.protocol.contract.QueryScopeDocument
 import io.github.amichne.kast.protocol.contract.QueryTextMatchDocument
 import io.github.amichne.kast.protocol.contract.SourceLineNumberDocument
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
+import io.github.amichne.kast.protocol.contract.SourceRangeWireDocument
 import io.github.amichne.kast.protocol.contract.SymbolIdDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement

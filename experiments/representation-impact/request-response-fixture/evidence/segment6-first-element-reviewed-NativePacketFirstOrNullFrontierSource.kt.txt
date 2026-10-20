@@ -1,0 +1,188 @@
+@file:OptIn(org.jetbrains.kotlin.analysis.api.KaExperimentalApi::class)
+
+package io.github.amichne.kast.relation.intellij
+
+import com.intellij.openapi.application.PathManager
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiManager
+import com.intellij.psi.PsiNamedElement
+import com.intellij.psi.util.PsiTreeUtil
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.RelationMeaning
+import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.relation.contract.RelationSearchBoundary
+import io.github.amichne.kast.relation.contract.ValueExecutionOwner
+import io.github.amichne.kast.relation.contract.ValueReceiverKind
+import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
+import io.github.amichne.kast.symbol.contract.SymbolGeneratedSourcePolicy
+import io.github.amichne.kast.symbol.contract.SymbolLibraryPolicy
+import io.github.amichne.kast.symbol.contract.SymbolSearchScope
+import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
+import java.nio.file.Files
+import java.nio.file.Path
+import java.security.MessageDigest
+import java.util.HexFormat
+import java.util.jar.JarFile
+import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertTrue
+import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
+import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
+import org.jetbrains.kotlin.psi.KtFile
+
+/** Supplemental positions use real native receiver admission. The original S2 request remains unchanged. */
+internal class NativePacketFirstOrNullFrontierSource(
+    private val project: Project,
+    private val base: VirtualFile,
+    private val fixture: NativePacketValueFixture,
+) {
+    val boundary =
+        RelationSearchBoundary.Explicit(
+            SymbolSearchScope.Workspace(
+                SymbolSourceKindPolicy.PRODUCTION_ONLY,
+                SymbolGeneratedSourcePolicy.EXCLUDE,
+                SymbolLibraryPolicy.INCLUDE,
+            )
+        )
+
+    fun original(): ValueSite {
+        val expected = NativePacketDestructuringProbeSource(project, base, fixture).expectation()
+        val qualified = qualified(FEATURE, "response.links.firstOrNull()")
+        assertEquals(RECEIVER_START, qualified.receiverExpression.textRange.startOffset)
+        assertEquals(RECEIVER_END, qualified.receiverExpression.textRange.endOffset)
+        assertEquals(CALL_END, qualified.textRange.endOffset)
+        return receiver(qualified, expected.executionOwner, library = true)
+    }
+
+    fun sourceDefined(): ValueSite {
+        val selected = fixture.callableDeclaration(PacketDeclaration(CONTROL, "", "sourceDefinedFirstOrNull"))
+        val owner = ValueExecutionOwner.declaration(RelationEndpoint.subject(selected))
+        return receiver(qualified(CONTROL, "values.firstOrNull()"), owner, library = false)
+    }
+
+    private fun receiver(qualified: KtDotQualifiedExpression, owner: ValueExecutionOwner, library: Boolean): ValueSite {
+        val domain =
+            RelationRequest.start(
+                subject = owner.enclosing,
+                meaning = RelationMeaning.References,
+                budget = fixture.budget,
+                boundary = boundary,
+            )
+        val prepared = IntellijValueFlowCompilerAdapter().prepare(project, domain, fixture.model)
+        assertTrue(
+            "Supplemental receiver scope did not admit",
+            prepared is IntellijValueFlowCompilerAdapter.Prepared.Ready,
+        )
+        val ready = prepared as IntellijValueFlowCompilerAdapter.Prepared.Ready
+        val role =
+            nativeValueReceiver(
+                expression = qualified.receiverExpression,
+                qualified = qualified,
+                scope = ready.scope,
+                projection = ready.projection,
+                executionOwner = owner,
+            )
+        assertTrue("The actual K2 receiver did not admit", role is Refinement.Refined)
+        val receiver = (role as Refinement.Refined).value
+        val binding = assertBinding(qualified, library)
+        assertEquals(ValueReceiverKind.EXTENSION, receiver.kind)
+        assertEquals(binding.identity, receiver.call.callable.compilerIdentity)
+        assertEquals(binding.signature, receiver.call.callable.signature)
+        assertEquals(binding.file, receiver.call.callable.file)
+        return ValueSite.fromCompiler(
+                enclosing = owner.enclosing,
+                range = range(qualified.receiverExpression),
+                role = receiver,
+                executionOwner = owner,
+            )
+            .nativeRefined()
+    }
+
+    private fun assertBinding(qualified: KtDotQualifiedExpression, library: Boolean): FirstOrNullBinding {
+        val call = qualified.selectorExpression as KtCallExpression
+        return IntellijReadObservation.None.observedAnalyze(call) {
+            val symbol = checkNotNull(call.resolveCall()).signature.symbol
+            val projected = symbol.compilerProjection(this)
+            assertTrue(projected is IntellijCompilerProjectionResult.Projected)
+            val signature = (projected as IntellijCompilerProjectionResult.Projected).projection.signature
+            val identity =
+                if (library) "kotlin.collections.firstOrNull" else "fixture.controls.firstelement.firstOrNull"
+            val expected =
+                CanonicalCompilerSignature.function(
+                        rawQualifiedIdentity = identity,
+                        rawReceiverType =
+                            if (library) "kotlin/collections/List<T>" else "kotlin/collections/List<kotlin/String>",
+                        rawContextReceiverTypes = emptyList(),
+                        rawValueParameterTypes = emptyList(),
+                        rawTypeParameterCount = if (library) 1 else 0,
+                    )
+                    .nativeRefined() as CanonicalCompilerSignature.Function
+            assertEquals(expected, signature)
+            assertEquals(if (library) KaSymbolOrigin.LIBRARY else KaSymbolOrigin.SOURCE, symbol.origin)
+            if (library) assertArtifact(symbol.containingModule, symbol.psi)
+            println(
+                "FIRST_OR_NULL_BINDING library=$library identity=${projected.projection.identity.value} " +
+                    "callable=$identity receiver=${expected.receiver} " +
+                    "parameterCount=${expected.valueParameters.size} " +
+                    "contextCount=${expected.contextReceivers.size} typeParameters=${expected.typeParameterCount.value}"
+            )
+            val declaration = symbol.psi as PsiNamedElement
+            val exact = IntellijK2RelationProjection(project, fixture.lease.workspaceRoot).project(declaration)
+            assertTrue(exact is IntellijRelationDeclarationProjection.Projected)
+            FirstOrNullBinding(
+                projected.projection.identity,
+                expected,
+                (exact as IntellijRelationDeclarationProjection.Projected).evidence.file,
+            )
+        }
+    }
+
+    private fun assertArtifact(module: KaModule, declaration: PsiElement?) {
+        val jar = Path.of(PathManager.getHomePath(), "plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar")
+        val digest = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(jar)))
+        val version = JarFile(jar.toFile()).use { it.manifest.mainAttributes.getValue("Implementation-Version") }
+        assertEquals("0ae12504a5040ebaf37703908483420d1a5624dd1d93f357665f8c77c848a01e", digest)
+        assertEquals("2.3.20-release-208", version)
+        val artifact =
+            packetLibraryArtifactAffiliation(module, declaration, jar.toAbsolutePath().normalize().toString())
+        assertTrue(artifact.artifactRoot in artifact.moduleRoots)
+        assertTrue(artifact.containsDeclaration)
+        val projected =
+            IntellijK2RelationProjection(project, fixture.lease.workspaceRoot).project(declaration as PsiNamedElement)
+        assertTrue(projected is IntellijRelationDeclarationProjection.Projected)
+        val file = (projected as IntellijRelationDeclarationProjection.Projected).evidence.file
+        assertTrue(file is SymbolDiscoveryFileIdentity.External)
+        assertEquals(artifact.declarationUrl, (file as SymbolDiscoveryFileIdentity.External).url.value)
+        println("FIRST_OR_NULL_ARTIFACT version=$version sha256=$digest virtualRoot=${artifact.artifactRoot}")
+    }
+
+    private fun qualified(path: String, text: String): KtDotQualifiedExpression {
+        val relative = "src/" + path.removePrefix("src/main/kotlin/")
+        val file = checkNotNull(base.findFileByRelativePath(relative))
+        val psi = PsiManager.getInstance(project).findFile(file) as KtFile
+        return PsiTreeUtil.collectElementsOfType(psi, KtDotQualifiedExpression::class.java).single { it.text == text }
+    }
+
+    companion object {
+        const val CONTROL = "src/main/kotlin/fixture/controls/FirstElementModelControls.kt"
+        private const val FEATURE = "src/main/kotlin/fixture/feature/OffersProcessor.kt"
+        private const val RECEIVER_START = 939
+        private const val RECEIVER_END = 953
+        private const val CALL_END = 967
+    }
+}
+
+private data class FirstOrNullBinding(
+    val identity: CompilerSymbolIdentity,
+    val signature: CanonicalCompilerSignature,
+    val file: SymbolDiscoveryFileIdentity,
+)

@@ -1,0 +1,5 @@
+Structural output admission preserves represented facts without native scope or compiler authority.
+
+Detached output shapes preserve explicit callback returns without compiler authority.
+
+Each incoming reference costs 8 bytes. The distinct operation costs 512, and its frame reference costs 8.

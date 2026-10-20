@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.appserver.query.PublicImpactReceiverKindContractTest" tests="2" skipped="0" failures="2" errors="0" timestamp="2026-10-20T11:43:46.071Z" hostname="Austins-MacBook-Pro.local" time="0.303">
+  <properties/>
+  <testcase name="public receiver intent preserves both explicit kinds()" classname="io.github.amichne.kast.appserver.query.PublicImpactReceiverKindContractTest" time="0.278">
+    <failure message="java.lang.IllegalStateException: SchemaRejected" type="java.lang.IllegalStateException">java.lang.IllegalStateException: SchemaRejected
+	at io.github.amichne.kast.appserver.query.PublicImpactReceiverKindContractTestKt.value(PublicImpactReceiverKindContractTest.kt:79)
+	at io.github.amichne.kast.appserver.query.PublicImpactReceiverKindContractTestKt.access$value(PublicImpactReceiverKindContractTest.kt:1)
+	at io.github.amichne.kast.appserver.query.PublicImpactReceiverKindContractTest.public receiver intent preserves both explicit kinds(PublicImpactReceiverKindContractTest.kt:32)
+</failure>
+  </testcase>
+  <testcase name="public receiver intent rejects omitted and unknown kinds in the schema()" classname="io.github.amichne.kast.appserver.query.PublicImpactReceiverKindContractTest" time="0.015">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=SchemaRejected)&gt; but was: &lt;Rejected(failure=SyntaxRejected)&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=SchemaRejected)&gt; but was: &lt;Rejected(failure=SyntaxRejected)&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.appserver.query.PublicImpactReceiverKindContractTest.public receiver intent rejects omitted and unknown kinds in the schema(PublicImpactReceiverKindContractTest.kt:44)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+]]></system-err>
+</testsuite>

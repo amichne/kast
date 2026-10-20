@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueCallbackObligationOracleTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T03:55:56.218Z" hostname="Austins-MacBook-Pro.local" time="0.021">
+  <properties/>
+  <testcase name="a local callback question rejects a foreign flow basis()" classname="io.github.amichne.kast.relation.contract.ValueCallbackObligationOracleTest" time="0.002"/>
+  <testcase name="a zero invocation flow keeps its exact cause and source without a positive transfer()" classname="io.github.amichne.kast.relation.contract.ValueCallbackObligationOracleTest" time="0.011"/>
+  <testcase name="a callback question needs the exact active supplying frame()" classname="io.github.amichne.kast.relation.contract.ValueCallbackObligationOracleTest" time="0.001"/>
+  <testcase name="a callback return keeps only the flow of its own active callback frame()" classname="io.github.amichne.kast.relation.contract.ValueCallbackObligationOracleTest" time="0.002"/>
+  <testcase name="an ordinary unresolved callback cause cannot manufacture captured flow evidence()" classname="io.github.amichne.kast.relation.contract.ValueCallbackObligationOracleTest" time="0.001"/>
+  <testcase name="a qualified nonempty callback flow keeps each selected invocation and original cause()" classname="io.github.amichne.kast.relation.contract.ValueCallbackObligationOracleTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

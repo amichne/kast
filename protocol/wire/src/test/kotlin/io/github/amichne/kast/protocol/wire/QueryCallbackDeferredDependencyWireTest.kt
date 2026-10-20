@@ -1,7 +1,11 @@
 package io.github.amichne.kast.protocol.wire
 
+import io.github.amichne.kast.protocol.contract.QueryCallbackBindingWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBodyWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationScanDocument
 import io.github.amichne.kast.protocol.contract.QueryDeferredDependencyModelDocument
+import io.github.amichne.kast.protocol.contract.QueryKotlinLazyBinaryWireDocument
+import io.github.amichne.kast.protocol.contract.callbackWire
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals

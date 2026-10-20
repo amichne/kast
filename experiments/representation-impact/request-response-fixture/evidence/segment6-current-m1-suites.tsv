@@ -1,0 +1,4 @@
+suite	tests	failures	errors	skipped	xml_sha256
+io.github.amichne.kast.runtime.hosted.NativePacketQueryImplementationTest	2	0	0	0	085406baaf40465d6840a6c67405b43823f889281ff4b6a24b195945eaac00ba
+io.github.amichne.kast.runtime.hosted.NativePacketQueryTest	5	0	0	0	4bff73297fd8eee7b5f6f7d48406f56983402f777805e6e4a429b554d50d3c73
+io.github.amichne.kast.runtime.hosted.NativePacketQueryVariantTest	6	0	0	0	059d3fcb09c12394977ef248ee064941844e5c65c4d99ec8f5798bff7e737330

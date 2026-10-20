@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketCompositeOriginTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T16:06:59.058Z" hostname="Austins-MacBook-Pro.local" time="7.3">
+  <properties/>
+  <testcase name="testOriginalS3K2ResolvesAdaptPropertyAsTheBuiltinInvokeReceiver" classname="io.github.amichne.kast.relation.intellij.NativePacketCompositeOriginTest" time="6.194"/>
+  <testcase name="testOriginalS3PropertySeedAdmitsTheExactAdaptInvocation" classname="io.github.amichne.kast.relation.intellij.NativePacketCompositeOriginTest" time="1.098"/>
+  <system-out><![CDATA[S3_K2_STAGE anchor=ExactDeclarationTextRange(startInclusive=761, endExclusive=768) symbol=KaFirNamedFunctionSymbol receiver=KaBaseExplicitReceiverValue
+S3_NATIVE_IDENTITY anchor=ExactDeclarationTextRange(startInclusive=761, endExclusive=768) property=canonical-signature-sha256-v1|94573ce64e98c189690a24b4a25fed391cc1722e44397b85e28d98645dee973f propertyRange=ExactDeclarationTextRange(startInclusive=594, endExclusive=642) builtin=canonical-signature-sha256-v1|c4a16519af50f5015e793f7da11a481a74f35a32f6edfdb5ae16aa78dc84399c origin=LIBRARY module=BUILTINS receiver=ExactDeclarationTextRange(startInclusive=761, endExclusive=766)
+S3_ADMISSION anchor=ExactDeclarationTextRange(startInclusive=761, endExclusive=768) property=ExactDeclarationTextRange(startInclusive=594, endExclusive=642) result=Seeded(seed=io.github.amichne.kast.relation.contract.ValueProducerSeed@cbd9494, examinedWorkUnits=RelationWorkCount(value=3))
+S3_RESULT row=C3.1 stage=seed-admission remaining=origin-binding,C3.2,C3.3 status=NOT_RUN
+]]></system-out>
+  <system-err><![CDATA[[   1666]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1666]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

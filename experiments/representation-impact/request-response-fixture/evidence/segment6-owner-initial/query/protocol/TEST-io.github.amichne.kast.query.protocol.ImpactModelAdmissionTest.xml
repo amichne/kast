@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactModelAdmissionTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.812Z" hostname="Austins-MacBook-Pro.local" time="0.01">
+  <properties/>
+  <testcase name="old generation and unavailable formal argument reject with precise causes()" classname="io.github.amichne.kast.query.protocol.ImpactModelAdmissionTest" time="0.004"/>
+  <testcase name="scope only repeated current witnesses preserve rule equality()" classname="io.github.amichne.kast.query.protocol.ImpactModelAdmissionTest" time="0.001"/>
+  <testcase name="boundary syntax binds separate exact repository bases and refuses missing same name target()" classname="io.github.amichne.kast.query.protocol.ImpactModelAdmissionTest" time="0.003"/>
+  <testcase name="all four rules preserve exact current callable and model identity()" classname="io.github.amichne.kast.query.protocol.ImpactModelAdmissionTest" time="0.001"/>
+  <testcase name="same signature in another file cannot replace exact declared callable()" classname="io.github.amichne.kast.query.protocol.ImpactModelAdmissionTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

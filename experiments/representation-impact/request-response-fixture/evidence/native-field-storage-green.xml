@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketFieldStorageTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T02:03:35.433Z" hostname="Austins-MacBook-Pro.local" time="9.457">
+  <properties/>
+  <testcase name="testAbstractPropertyHasNoProvenStorage" classname="io.github.amichne.kast.relation.intellij.NativePacketFieldStorageTest" time="7.122"/>
+  <testcase name="testComputedPropertyKeepsItsFrontier" classname="io.github.amichne.kast.relation.intellij.NativePacketFieldStorageTest" time="0.944"/>
+  <testcase name="testMutablePropertyKeepsItsFrontier" classname="io.github.amichne.kast.relation.intellij.NativePacketFieldStorageTest" time="0.817"/>
+  <testcase name="testStoredPropertyProjectsTheField" classname="io.github.amichne.kast.relation.intellij.NativePacketFieldStorageTest" time="0.56"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[[   1168]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1168]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

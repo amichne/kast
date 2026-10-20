@@ -1,0 +1,137 @@
+
+Welcome to Gradle 9.8.1!
+
+Here are the highlights of this release:
+ - Java 27 support
+ - Maven mirror settings reuse
+ - Linked problem locations in build output
+
+For more details see https://docs.gradle.org/9.8.1/release-notes.html
+
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Calculating task graph as no cached configuration is available for tasks: :relation:intellij:spotlessKotlinApply :relation:intellij:nativeFixtureTest --tests *NativePacketS3SeedCallbackTest
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :relation:intellij:spotlessKotlin UP-TO-DATE
+> Task :relation:intellij:spotlessKotlinApply UP-TO-DATE
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :kernel:compileJava NO-SOURCE
+> Task :protocol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+> Task :protocol:contract:compileKotlin UP-TO-DATE
+> Task :protocol:contract:compileJava NO-SOURCE
+> Task :relation:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:contract:compileKotlin UP-TO-DATE
+> Task :relation:contract:compileJava NO-SOURCE
+> Task :relation:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:intellij:extractRelationKotlinPlugin
+> Task :workspace:intellij-read:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:intellij-read:extractWorkspaceReadIdeaDistribution FROM-CACHE
+> Task :workspace:intellij-read:compileKotlin UP-TO-DATE
+> Task :workspace:intellij-read:compileJava NO-SOURCE
+> Task :relation:intellij:compileKotlin UP-TO-DATE
+> Task :relation:intellij:compileJava NO-SOURCE
+> Task :relation:intellij:processResources NO-SOURCE
+> Task :relation:intellij:classes UP-TO-DATE
+> Task :relation:intellij:jar UP-TO-DATE
+> Task :kernel:processResources NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar UP-TO-DATE
+> Task :protocol:contract:processResources UP-TO-DATE
+> Task :protocol:contract:classes UP-TO-DATE
+> Task :protocol:contract:jar UP-TO-DATE
+> Task :relation:contract:processResources NO-SOURCE
+> Task :relation:contract:classes UP-TO-DATE
+> Task :relation:contract:jar UP-TO-DATE
+> Task :relation:intellij:extractNativeTestIdea UP-TO-DATE
+> Task :relation:intellij:compileNativeTestKotlin UP-TO-DATE
+> Task :relation:intellij:compileNativeTestJava NO-SOURCE
+> Task :relation:intellij:detektNativeTest
+> Task :relation:intellij:processNativeTestResources UP-TO-DATE
+> Task :relation:intellij:nativeTestClasses UP-TO-DATE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar UP-TO-DATE
+> Task :workspace:intellij-read:processResources NO-SOURCE
+> Task :workspace:intellij-read:classes UP-TO-DATE
+> Task :workspace:intellij-read:jar UP-TO-DATE
+
+> Task :relation:intellij:nativeFixtureTest
+
+NativePacketS3SeedCallbackTest > testOriginalEmptyStackLogArgumentEntersItsActualSuppliedImplicitFormal FAILED
+    junit.framework.AssertionFailedError: Original empty-stack log793:799 needs its actual supplier925:943. Causes=[CALLBACK_FLOW_UNPROVEN]; callback return/logger payload=NOT_REACHED expected:<1> but was:<0>
+        at app//junit.framework.Assert.fail(Assert.java:57)
+        at app//junit.framework.Assert.failNotEquals(Assert.java:329)
+        at app//junit.framework.Assert.assertEquals(Assert.java:78)
+        at app//junit.framework.Assert.assertEquals(Assert.java:234)
+        at app//junit.framework.TestCase.assertEquals(TestCase.java:377)
+        at app//io.github.amichne.kast.relation.intellij.NativePacketS3SeedCallbackTest.testOriginalEmptyStackLogArgumentEntersItsActualSuppliedImplicitFormal(NativePacketS3SeedCallbackTest.kt:25)
+
+Oct 20, 2026 1:40:39 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: Index dispose started
+Oct 20, 2026 1:40:39 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: StubIndexExtension-s were unloaded
+Oct 20, 2026 1:40:39 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: Start shutting down /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/system/index/rep.names
+Oct 20, 2026 1:40:39 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: Finished shutting down /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/system/index/rep.names
+Oct 20, 2026 1:40:39 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: Index dispose completed in 239ms.
+Oct 20, 2026 1:40:39 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: VFS disconnect started
+Oct 20, 2026 1:40:39 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: VFS closing
+Oct 20, 2026 1:40:39 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: VFS disconnect completed in 1 ms.
+
+> Task :relation:intellij:nativeFixtureTest
+
+4 tests completed, 1 failed
+
+> Task :relation:intellij:nativeFixtureTest FAILED
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-20-13-40-40-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':relation:intellij:nativeFixtureTest'.
+> There were failing tests. See the report at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/reports/tests/nativeFixtureTest/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 1m 32s
+34 actionable tasks: 3 executed, 1 from cache, 30 up-to-date
+Configuration cache entry stored.

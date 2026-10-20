@@ -33,6 +33,7 @@ private data class ImpactSourceModels(
 )
 
 internal fun bindImpactSourceModels(
+    references: QueryReferenceAuthority,
     evidence: ImpactSourceModelEvidence,
     modelSyntax: List<AdmittedImpactModelSyntax>,
     domain: RelationSearchBoundary,
@@ -40,7 +41,7 @@ internal fun bindImpactSourceModels(
     budget: QueryBudget,
 ): Refinement<QueryImpactSourceAdmission, QueryRunRejection> {
     val models =
-        when (val admitted = admitModels(modelSyntax, evidence)) {
+        when (val admitted = admitModels(references, modelSyntax, evidence)) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return admitted
         }
@@ -68,6 +69,7 @@ internal fun bindImpactSourceModels(
 }
 
 private fun admitModels(
+    references: QueryReferenceAuthority,
     modelSyntax: List<AdmittedImpactModelSyntax>,
     evidence: ImpactSourceModelEvidence,
 ): Refinement<ImpactSourceModels, QueryRunRejection> {
@@ -83,7 +85,7 @@ private fun admitModels(
                     is Refinement.Rejected -> return impactFailure(bound.failure.impactFailure(), position)
                 }
             is ImpactModelDocument.Boundary ->
-                when (val bound = admitBoundaryModels(syntax, evidence, position)) {
+                when (val bound = admitBoundaryModels(references, syntax, evidence, position)) {
                     is Refinement.Refined -> {
                         boundaries += bound.value.boundaries
                         peers += bound.value.peers
@@ -96,12 +98,13 @@ private fun admitModels(
 }
 
 private fun admitBoundaryModels(
+    references: QueryReferenceAuthority,
     syntax: AdmittedImpactModelSyntax,
     evidence: ImpactSourceModelEvidence,
     position: Int,
 ): Refinement<ImpactSourceModels, QueryRunRejection> {
     val rules =
-        when (val bound = AdmittedBoundaryModel.admit(syntax, evidence.positions)) {
+        when (val bound = AdmittedBoundaryModel.admit(syntax, evidence.positions, references)) {
             is Refinement.Refined -> bound.value.rules
             is Refinement.Rejected -> return impactFailure(bound.failure.impactFailure(), position)
         }

@@ -25,6 +25,30 @@ import org.junit.jupiter.api.Test
 
 class ValueSiteContractTest {
     @Test
+    fun `flow obligations charge the shared source payload once and preserve distinct copies`() {
+        val owner = endpoint("investigate", 0, 200)
+        val source = ValueSite.fromCompiler(owner, range(20, 35), ValueRole.ExpressionResult).refined()
+        val copy = ValueSite.fromCompiler(owner, source.range, source.role).refined()
+        val domain = domain(source)
+        val base = ValueFlowStep.detachedByteCount(source, domain, emptyList(), emptyList()).value
+        val first = ValueFlowObligation(source, ValueFlowUnsupportedCause.EXTERNAL_CALL)
+        val second = ValueFlowObligation(source, ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+        val one = ValueFlowStep.detachedByteCount(source, domain, emptyList(), listOf(first)).value
+        val shared = ValueFlowStep.detachedByteCount(source, domain, emptyList(), listOf(first, second)).value
+        val detached =
+            ValueFlowStep.detachedByteCount(
+                    source,
+                    domain,
+                    emptyList(),
+                    listOf(first, ValueFlowObligation(copy, second.cause)),
+                )
+                .value
+        assertEquals(2048L, one - base)
+        assertEquals(2048L, shared - one)
+        assertEquals(2048L + 4L * 8L, detached - shared)
+    }
+
+    @Test
     fun `normal branch result preserves exact conditional provenance and cannot become a catch fallback`() {
         val owner = endpoint("investigate", 0, 200)
         val source = ValueSite.fromCompiler(owner, range(20, 35), ValueRole.ExpressionResult).refined()
@@ -113,12 +137,15 @@ class ValueSiteContractTest {
         for ((index, candidate) in copies.withIndex()) {
             val owner = endpoint("investigate", 0, 200, generation = if (index == 2) 2 else 1)
             val invocation = ValueInvocation.fromCompiler(owner, range(20, 50), candidate).refined()
-            val pool = linkedMapOf(original to original)
+            val originalCall =
+                ValueInvocation.fromCompiler(endpoint("investigate", 0, 200), range(20, 50), original).refined()
+            val pool = linkedMapOf(original to originalCall)
             val shared = invocation.shareCallableEvidence(pool)
             assertEquals(invocation.identity, shared.identity)
             assertSame(owner, shared.enclosing)
             assertSame(invocation.range, shared.range)
             assertSame(if (index == 0) original else candidate, shared.callable)
+            assertSame(shared.callable.signature, shared.signature)
             assertSame(owner.valueIdentity, shared.identity.owner)
             assertSame(shared.callable.valueIdentity, shared.identity.callable)
         }

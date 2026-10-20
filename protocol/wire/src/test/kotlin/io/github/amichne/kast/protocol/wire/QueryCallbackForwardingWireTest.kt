@@ -7,6 +7,7 @@ import io.github.amichne.kast.protocol.contract.ImpactTransferKindDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
+import io.github.amichne.kast.protocol.contract.QueryCallbackBindingWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationScanDocument
 import kotlinx.serialization.json.jsonArray

@@ -1,0 +1,349 @@
+package io.github.amichne.kast.relation.contract
+
+import io.github.amichne.kast.kernel.Refinement
+import java.util.Collections
+
+/** The deliberately finite first compiler-supported transfer domain. */
+enum class ValueTransferKind {
+    LOCAL_BINDING,
+    LOCAL_READ,
+    ARGUMENT,
+    RECEIVER,
+    RETURN,
+    PROPERTY_ASSIGNMENT,
+    BRANCH_ALTERNATIVE,
+    WRAPPER_RETURN,
+    SOURCE_CALL_ENTRY,
+    SOURCE_CALL_RETURN,
+    FIELD_READ,
+    CONSTRUCTOR_FIELD,
+}
+
+enum class ValueTransferFailure {
+    EVIDENCE_MISMATCH,
+    BASIS_MISMATCH,
+    ROLE_MISMATCH,
+    SELF_EDGE,
+}
+
+/** A native-confirmed transfer. Model continuations are a separate evidence type. */
+class ValueTransfer
+private constructor(
+    val source: ValueSite,
+    val target: ValueSite,
+    val kind: ValueTransferKind,
+    val evidence: ValueTransferEvidence,
+) {
+    internal fun shareCallableEvidence(shareSite: (ValueSite) -> ValueSite): ValueTransfer {
+        val sharedSource = shareSite(source)
+        val sharedTarget = shareSite(target)
+        return if (sharedSource === source && sharedTarget === target) this
+        else ValueTransfer(sharedSource, sharedTarget, kind, evidence)
+    }
+
+    companion object {
+        /** The native adapter owns semantic confirmation; this constructor preserves its detached invariants. */
+        fun fromCompiler(
+            source: ValueSite,
+            target: ValueSite,
+            kind: ValueTransferKind,
+            evidence: ValueTransferEvidence = ValueTransferEvidence.Direct,
+        ): Refinement<ValueTransfer, ValueTransferFailure> {
+            if (source.basis != target.basis) return Refinement.Rejected(ValueTransferFailure.BASIS_MISMATCH)
+            if (source.identity == target.identity) return Refinement.Rejected(ValueTransferFailure.SELF_EDGE)
+            if (!evidence.admits(source, target, kind))
+                return Refinement.Rejected(ValueTransferFailure.EVIDENCE_MISMATCH)
+            val rolesMatch = kind.admitsRoles(source, target)
+            return if (rolesMatch) Refinement.Refined(ValueTransfer(source, target, kind, evidence))
+            else Refinement.Rejected(ValueTransferFailure.ROLE_MISMATCH)
+        }
+    }
+
+    override fun equals(other: Any?): Boolean =
+        other is ValueTransfer &&
+            source == other.source &&
+            target == other.target &&
+            kind == other.kind &&
+            evidence == other.evidence
+
+    override fun hashCode(): Int =
+        31 * (31 * (31 * source.hashCode() + target.hashCode()) + kind.hashCode()) + evidence.hashCode()
+}
+
+enum class ValueFlowUnsupportedCause {
+    FINALLY_UNSUPPORTED,
+    ABRUPT_COMPLETION,
+    EXTERNAL_CALL,
+    UNMODELED_CALL,
+    MUTABLE_CONTROL_FLOW,
+    UNSUPPORTED_EXPRESSION,
+    UNRESOLVED_REFERENCE,
+    UNSUPPORTED_PROPERTY,
+    UNSUPPORTED_RETURN,
+    NESTED_EXECUTION,
+    OUTSIDE_DOMAIN,
+    RESULT_LIMIT_REACHED,
+    WORK_LIMIT_REACHED,
+    TIME_LIMIT_REACHED,
+    BYTE_LIMIT_REACHED,
+    ACCESS_PATH_DEPTH_EXCEEDED,
+    CALL_CONTEXT_DEPTH_EXCEEDED,
+    RECURSIVE_SOURCE_CALL,
+    PREDICATE_LIMIT_REACHED,
+    CALLBACK_FLOW_UNPROVEN,
+    CALLBACK_PROOF_LIMIT_REACHED,
+}
+
+/** A single exact input must account for every discovered supported output and every unsupported arrival. */
+class ValueFlowStep
+private constructor(
+    val source: ValueSite,
+    val domain: RelationRequest,
+    val transfers: List<ValueTransfer>,
+    val obligations: List<ValueFlowObligation>,
+    val terminal: ValueFlowTerminal,
+    val examinedWorkUnits: RelationWorkCount,
+    val receipts: List<ValueFlowWorkReceipt>,
+    val applications: List<ValueModelApplication>,
+) {
+    val retainedBytes: Long =
+        detachedByteCount(source, domain, transfers, obligations, applications = applications)
+            .value
+            .addBytes((receipts.size - 1L).multiplyBytes(4096L))
+
+    fun returnedByteCount(remainder: LocalBindingReadRemainder? = null): RelationByteCount =
+        when (
+            val count =
+                RelationByteCount.parse(
+                    detachedByteCount(source, domain, transfers, obligations, remainder, applications)
+                        .value
+                        .addBytes((receipts.size - 1L).multiplyBytes(4096L))
+                )
+        ) {
+            is Refinement.Refined -> count.value
+            is Refinement.Rejected -> error("Saturating returned byte count cannot be negative")
+        }
+
+    /**
+     * Physically shares full callable proofs and keeps shared site references coherent. Every invocation identity,
+     * role, range, branch, and receipt stays unchanged. The lookup is local to this pure transformation.
+     */
+    fun shareCallableEvidence(previous: Collection<ValueFlowStep>): ValueFlowStep {
+        val sharing = ValueFlowEvidenceSharing(previous)
+        val sharedApplications = sharing.applications(applications)
+        val sharedSource = sharing.site(source)
+        val sharedTransfers = transfers.map { it.shareCallableEvidence(sharing::site) }
+        val sharedObligations = obligations.map { it.shareCallableEvidence(sharing::site) }
+        if (
+            sharedSource === source &&
+                transfers.zip(sharedTransfers).all { (a, b) -> a === b } &&
+                obligations.zip(sharedObligations).all { (a, b) -> a === b } &&
+                applications.zip(sharedApplications).all { (a, b) -> a === b }
+        )
+            return this
+        val candidate =
+            ValueFlowStep(
+                sharedSource,
+                domain,
+                Collections.unmodifiableList(sharedTransfers),
+                Collections.unmodifiableList(sharedObligations),
+                terminal,
+                examinedWorkUnits,
+                receipts,
+                if (sharedApplications.isEmpty()) emptyList() else Collections.unmodifiableList(sharedApplications),
+            )
+        return if (candidate.retainedBytes <= retainedBytes) candidate else this
+    }
+
+    /** Only a retained unfinished read can accumulate a freshly validated page; receipts stay page-local. */
+    fun append(page: ValueFlowStep): Refinement<ValueFlowStep, ValueFlowStepFailure> {
+        if (terminal != ValueFlowTerminal.ResourceSuspended || page.receipts.size != 1)
+            return Refinement.Rejected(ValueFlowStepFailure.INVALID_PROGRESS)
+        if (page.source != source) return Refinement.Rejected(ValueFlowStepFailure.SOURCE_MISMATCH)
+        if (page.domain.boundary != domain.boundary) return Refinement.Rejected(ValueFlowStepFailure.DOMAIN_MISMATCH)
+        if (page.transfers.any { it in transfers }) return Refinement.Rejected(ValueFlowStepFailure.INVALID_PROGRESS)
+        if (page.applications.any { it in applications })
+            return Refinement.Rejected(ValueFlowStepFailure.INVALID_PROGRESS)
+        val allReceipts = Collections.unmodifiableList(receipts + page.receipts)
+        val work =
+            allReceipts.fold(0L) { total, receipt ->
+                if (receipt.examinedWorkUnits.value > Long.MAX_VALUE - total) Long.MAX_VALUE
+                else total + receipt.examinedWorkUnits.value
+            }
+        val allObligations = (obligations + page.obligations).distinct()
+        val end =
+            if (page.terminal == ValueFlowTerminal.ResourceSuspended) page.terminal
+            else if (allObligations.isEmpty()) ValueFlowTerminal.SupportedDomainExhausted
+            else ValueFlowTerminal.Unresolved
+        return Refinement.Refined(
+            ValueFlowStep(
+                source,
+                domain,
+                Collections.unmodifiableList(transfers + page.transfers),
+                Collections.unmodifiableList(allObligations),
+                end,
+                (RelationWorkCount.parse(work) as Refinement.Refined).value,
+                allReceipts,
+                immutableApplications(applications, page.applications),
+            )
+        )
+    }
+
+    companion object {
+        /** Conservative detached capacity; final wire bytes remain the query presentation owner's budget. */
+        fun detachedByteCount(
+            source: ValueSite,
+            domain: RelationRequest,
+            transfers: List<ValueTransfer>,
+            obligations: List<ValueFlowObligation>,
+            remainder: LocalBindingReadRemainder? = null,
+            applications: List<ValueModelApplication> = emptyList(),
+        ): RelationByteCount = valueFlowStorageBytes(source, domain, transfers, obligations, remainder, applications)
+
+        fun fromCompiler(
+            source: ValueSite,
+            transfers: List<ValueTransfer>,
+            obligations: List<ValueFlowObligation>,
+            terminal: ValueFlowTerminal,
+            domain: RelationRequest,
+            examinedWorkUnits: RelationWorkCount,
+            remainder: LocalBindingReadRemainder? = null,
+            applications: List<ValueModelApplication> = emptyList(),
+        ): Refinement<ValueFlowStep, ValueFlowStepFailure> {
+            when (val admitted = remainder.admitValueFlow(source, domain)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return admitted
+            }
+            if (!validValueFlowProgress(source, transfers, applications, terminal))
+                return Refinement.Rejected(ValueFlowStepFailure.INVALID_PROGRESS)
+            if (transfers.size.toLong() + applications.size > domain.budget.resources.resultLimit.value)
+                return Refinement.Rejected(ValueFlowStepFailure.RESULT_LIMIT_EXCEEDED)
+            when (val admitted = admitValueFlowSources(source, transfers, applications, obligations)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return admitted
+            }
+            if (
+                detachedByteCount(source, domain, transfers, obligations, remainder, applications).value >
+                    domain.budget.returnedBytes.value
+            )
+                return Refinement.Rejected(ValueFlowStepFailure.DETACHED_CAPACITY_EXCEEDED)
+            if (examinedWorkUnits.value > domain.budget.resources.workUnitLimit.value)
+                return Refinement.Rejected(ValueFlowStepFailure.WORK_LIMIT_EXCEEDED)
+            when (val admitted = domain.admitValueFlowSource(source)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return admitted
+            }
+            when (val admitted = terminal.admitValueFlowObligations(obligations)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return admitted
+            }
+            return Refinement.Refined(
+                ValueFlowStep(
+                    source,
+                    domain,
+                    Collections.unmodifiableList(transfers.toList()),
+                    Collections.unmodifiableList(obligations.toList()),
+                    terminal,
+                    examinedWorkUnits,
+                    listOf(
+                        ValueFlowWorkReceipt(
+                            domain,
+                            examinedWorkUnits,
+                            (RelationResultCount.parse(transfers.size + applications.size) as Refinement.Refined).value,
+                            detachedByteCount(source, domain, transfers, obligations, remainder, applications),
+                        )
+                    ),
+                    immutableApplications(applications),
+                )
+            )
+        }
+    }
+}
+
+private fun immutableApplications(
+    first: List<ValueModelApplication>,
+    second: List<ValueModelApplication> = emptyList(),
+): List<ValueModelApplication> =
+    if (first.isEmpty() && second.isEmpty()) emptyList() else Collections.unmodifiableList(first + second)
+
+enum class ValueFlowTerminal {
+    SupportedDomainExhausted,
+    Unresolved,
+    ResourceSuspended,
+}
+
+enum class ValueFlowStepFailure {
+    INVALID_PROGRESS,
+    WORK_LIMIT_EXCEEDED,
+    RESULT_LIMIT_EXCEEDED,
+    DETACHED_CAPACITY_EXCEEDED,
+    DOMAIN_MISMATCH,
+    SOURCE_MISMATCH,
+    BASIS_MISMATCH,
+    UNRESOLVED_OBLIGATIONS,
+    MISSING_OBLIGATION,
+}
+
+enum class ValueFlowRejection {
+    STALE_SITE,
+    OUTSIDE_DOMAIN,
+    OWNER_UNAVAILABLE,
+    AUTHORITY_MOVED,
+    UNSUPPORTED_SEED,
+    UNRESOLVED_SEED,
+    NATIVE_UNAVAILABLE,
+    GRANT_TOO_SMALL,
+    NESTED_EXECUTION,
+}
+
+sealed interface ValueFlowRead {
+    data class Observed(val step: ValueFlowStep) : ValueFlowRead
+
+    data class Suspended(
+        val step: ValueFlowStep,
+        val remainder: LocalBindingReadRemainder,
+        val cause: ValueFlowSuspensionCause,
+    ) : ValueFlowRead
+
+    data class Rejected(val cause: ValueFlowRejection, val examinedWorkUnits: RelationWorkCount) : ValueFlowRead
+
+    /** A failed detached invariant retains its exact finite cause instead of becoming native unavailability. */
+    data class ContractRejected(val cause: ValueFlowStepFailure, val examinedWorkUnits: RelationWorkCount) :
+        ValueFlowRead
+}
+
+/** One-hop compiler work; existing query tasks own scheduling, grants, retention and continuations. */
+fun interface ValueFlowCompilerPort {
+    suspend fun read(request: ValueFlowRequest): ValueFlowRead
+}
+
+/** Carries the native grant and semantic expansion domain together with the exact input value. */
+data class ValueFlowRequest(
+    val source: ValueSite,
+    val budget: RelationBudget,
+    val boundary: RelationSearchBoundary,
+    val remainder: LocalBindingReadRemainder? = null,
+)
+
+private fun ValueTransferKind.admitsRoles(source: ValueSite, target: ValueSite): Boolean =
+    when (this) {
+        ValueTransferKind.LOCAL_BINDING -> target.role == ValueRole.LocalBinding
+        ValueTransferKind.LOCAL_READ ->
+            (source.role == ValueRole.LocalBinding || source.role is ValueRole.Formal) &&
+                target.role == ValueRole.LocalRead
+        ValueTransferKind.ARGUMENT -> target.role is ValueRole.Argument || target.role is ValueRole.FunctionArgument
+        ValueTransferKind.RECEIVER -> target.role is ValueRole.Receiver
+        ValueTransferKind.RETURN -> target.role == ValueRole.Return
+        ValueTransferKind.PROPERTY_ASSIGNMENT -> target.role == ValueRole.PropertyAssignment
+        ValueTransferKind.BRANCH_ALTERNATIVE -> target.role == ValueRole.ExpressionResult
+        ValueTransferKind.WRAPPER_RETURN ->
+            source.role is ValueRole.Argument &&
+                target.enclosing.valueIdentity == source.role.call.enclosing.valueIdentity &&
+                target.range == source.role.call.range &&
+                target.role == ValueRole.ExpressionResult &&
+                target.executionOwner == source.role.call.executionOwner
+        ValueTransferKind.SOURCE_CALL_ENTRY -> target.role is ValueRole.Formal
+        ValueTransferKind.SOURCE_CALL_RETURN,
+        ValueTransferKind.FIELD_READ,
+        ValueTransferKind.CONSTRUCTOR_FIELD -> target.role == ValueRole.ExpressionResult
+    }

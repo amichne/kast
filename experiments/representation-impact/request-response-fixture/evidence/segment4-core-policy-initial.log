@@ -1,0 +1,80 @@
+Calculating task graph as no cached configuration is available for tasks: :relation:contract:detekt :relation:contract:checkMainKotlinFileLength
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :relation:contract:checkMainKotlinFileLength
+
+> Task :relation:contract:detekt FAILED
+Successfully generated markdown at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/build/reports/detekt/detekt.md
+Successfully generated html at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/build/reports/detekt/detekt.html
+Successfully generated sarif at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/build/reports/detekt/detekt.sarif
+Successfully generated checkstyle at file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/build/reports/detekt/detekt.xml
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt:310:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueCallbackTarget.kt:35:17 This condition is too complex (9). The defined maximum number of allowed conditions is set to '3' [ComplexCondition]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueCallbackTarget.kt:21:13 The function fromCompiler appears to be too complex based on Cyclomatic Complexity (complexity: 19). The maximum allowed complexity for methods is set to '12' [CyclomaticComplexMethod]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueCallbackTarget.kt:39:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueCallbackTarget.kt:44:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlow.kt:48:13 The function fromCompiler appears to be too complex based on Cyclomatic Complexity (complexity: 13). The maximum allowed complexity for methods is set to '12' [CyclomaticComplexMethod]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlow.kt:64:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueSite.kt:317:25 This condition is too complex (4). The defined maximum number of allowed conditions is set to '3' [ComplexCondition]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueSite.kt:216:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueSite.kt:255:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueSite.kt:262:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueSourceTransfer.kt:93:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueAnonymousFormalOracleTest.kt:98:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueAnonymousFormalOracleTest.kt:107:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueAnonymousFormalOracleTest.kt:119:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueCallbackFrameOracleTest.kt:44:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueCallbackFrameOracleTest.kt:63:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueCallbackFrameOracleTest.kt:125:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueCallbackOracleFixture.kt:7:16 The file name 'ValueCallbackOracleFixture' does not match the name of the single top-level declaration 'ValueCallbackOracleCase'. [MatchingDeclarationName]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueCallbackOracleFixture.kt:37:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueCallbackOracleFixture.kt:66:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueCallbackOracleFixture.kt:94:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueCallbackTransferOracleTest.kt:88:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueGuardedTransferOracleTest.kt:107:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValuePredicateOracleTest.kt:18:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValuePredicateOracleTest.kt:35:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValuePredicateOracleTest.kt:36:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValuePredicateOracleTest.kt:40:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValuePredicateOracleTest.kt:41:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+e: /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValuePredicateOracleTest.kt:82:1 Line detected, which is longer than the defined maximum line length in the code style. [MaxLineLength]
+
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-19-23-41-03-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':relation:contract:detekt'.
+> Analysis failed with 30 issues.
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 2s
+12 actionable tasks: 2 executed, 10 up-to-date
+Configuration cache entry stored.

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactPeerAccountingTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:20.535Z" hostname="Austins-MacBook-Pro.local" time="0.013">
+  <properties/>
+  <testcase name="unused peer model witness retains exact original model and independent completed target proof()" classname="io.github.amichne.kast.protocol.contract.ImpactPeerAccountingTest" time="0.004"/>
+  <testcase name="foreign model or terminal cannot omit completed peer receipt by using ordinary alternatives()" classname="io.github.amichne.kast.protocol.contract.ImpactPeerAccountingTest" time="0.005"/>
+  <testcase name="only final reviewed peer edge can retain foreign basis and closure remains unresolved()" classname="io.github.amichne.kast.protocol.contract.ImpactPeerAccountingTest" time="0.001"/>
+  <testcase name="compact peer finding requires target destination and final ordered boundary provenance()" classname="io.github.amichne.kast.protocol.contract.ImpactPeerAccountingTest" time="0.0"/>
+  <testcase name="foreign compiler prefix or foreign earlier provenance cannot borrow final peer receipt()" classname="io.github.amichne.kast.protocol.contract.ImpactPeerAccountingTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,138 @@
+package io.github.amichne.kast.relation.intellij
+
+import io.github.amichne.kast.relation.contract.RelationSearchBoundary
+import io.github.amichne.kast.relation.contract.ValueFlowRead
+import io.github.amichne.kast.relation.contract.ValueFlowRequest
+import io.github.amichne.kast.relation.contract.ValueFlowStep
+import io.github.amichne.kast.relation.contract.ValueProducerSeedRead
+import io.github.amichne.kast.relation.contract.ValueProducerSeedRejection
+import io.github.amichne.kast.relation.contract.ValueProducerSeedRequest
+import io.github.amichne.kast.relation.contract.ValueRole
+import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.relation.contract.ValueTransferKind
+import kotlinx.coroutines.runBlocking
+
+/** The original S3 seed owns this fixed prefix. Later callback and caller-return reads remain bounded captures. */
+class NativePacketS3ValuePrefixTest : NativePacketValueFixtureTest() {
+    override val fixtureSdkName = "packet-s3-value-prefix-jdk"
+
+    fun testOriginalAdaptSeedFlowsIntoItsExactLogAndReturnLocalConsumers() {
+        val fixture = packetFixture(NativePacketCompositeSuccessSource.PATHS)
+        val expected = NativePacketS3ValuePrefixSource(project, getOrCreateProjectBaseDir(), fixture).facts()
+        val admitted = seed(fixture, expected.request)
+        assertTrue(
+            "C3.1 needs the original adapt761:768 property seed. Result=${seedStatus(admitted)}. " +
+                "C3.2 callback fields and C3.3 caller return remain NOT_REACHED",
+            admitted is ValueProducerSeedRead.Seeded,
+        )
+        val origin = (admitted as ValueProducerSeedRead.Seeded).seed.site
+        assertEquals(expected.request.anchor, origin.range)
+        assertEquals(ValueRole.ExpressionResult, origin.role)
+        val binding = observed(fixture, origin).transfers.single { it.kind == ValueTransferKind.LOCAL_BINDING }.target
+        assertEquals(expected.binding, binding.range)
+        assertEquals(ValueRole.LocalBinding, binding.role)
+        assertSameState(origin, binding)
+        val reads = observed(fixture, binding).transfers.filter { it.kind == ValueTransferKind.LOCAL_READ }
+        assertEquals(listOf(expected.logRead, expected.returnRead).size, reads.size)
+        assertEquals(setOf(expected.logRead, expected.returnRead), reads.map { it.target.range }.toSet())
+        reads.forEach { transfer -> assertSameState(binding, transfer.target) }
+        val log = reads.single { it.target.range == expected.logRead }.target
+        val returned = reads.single { it.target.range == expected.returnRead }.target
+        val argument = observed(fixture, log).transfers.single { it.kind == ValueTransferKind.ARGUMENT }.target
+        val function = argument.role as ValueRole.FunctionArgument
+        assertEquals(expected.logInvocation, function.call.range)
+        assertEquals("kotlin.Function1.invoke", function.call.signature.qualifiedIdentity.value)
+        assertEquals(0, function.position.value)
+        val result = observed(fixture, returned).transfers.single { it.kind == ValueTransferKind.RETURN }.target
+        assertEquals(expected.returnRead, result.range)
+        assertEquals(ValueRole.Return, result.role)
+        assertSameState(returned, result)
+        captureNext(fixture = fixture, site = argument, stage = "C3.2 log callback")
+        captureNext(fixture = fixture, site = result, stage = "C3.3 matched execute return")
+        println(
+            "S3_PREFIX_RESULT local_consumers=ASSERTED origin_capability,C3.2_fields,C3.3_caller,C3.N1=NOT_ASSERTED"
+        )
+    }
+
+    fun testOriginalAdaptInvocationRejectsTheSourceExecuteMethodAsItsExpectedOrigin() {
+        val fixture = packetFixture(NativePacketCompositeSuccessSource.PATHS)
+        val source = NativePacketS3ValuePrefixSource(project, getOrCreateProjectBaseDir(), fixture)
+        val expected = source.facts()
+        val method =
+            fixture.callableDeclaration(PacketDeclaration(NativePacketS3ValuePrefixSource.WIRE, "Call", "execute"))
+        val wrong =
+            ValueProducerSeedRequest.create(
+                    enclosing = expected.request.enclosing,
+                    anchor = expected.request.anchor,
+                    expectedCallable = method,
+                    budget = expected.request.budget,
+                    boundary = expected.request.boundary,
+                )
+                .nativeRefined()
+        assertEquals(expected.request.anchor, wrong.anchor)
+        assertEquals(expected.request.enclosing, wrong.enclosing)
+        assertEquals(ValueProducerSeedRead.Rejected(ValueProducerSeedRejection.CALLABLE_MISMATCH), seed(fixture, wrong))
+    }
+
+    private fun seed(fixture: NativePacketValueFixture, request: ValueProducerSeedRequest): ValueProducerSeedRead =
+        runBlocking {
+            IntellijValueFlowCompilerAdapter()
+                .seed(project = project, current = fixture.lease, request = request, model = fixture.model)
+        }
+
+    private fun observed(fixture: NativePacketValueFixture, site: ValueSite): ValueFlowStep {
+        val read = read(fixture, site)
+        assertTrue("S3 prefix needs an observed native read: ${readStatus(read)}", read is ValueFlowRead.Observed)
+        return (read as ValueFlowRead.Observed).step
+    }
+
+    private fun captureNext(fixture: NativePacketValueFixture, site: ValueSite, stage: String) {
+        val read = read(fixture, site)
+        println("S3_NEXT_STAGE stage=$stage status=${readStatus(read)} semantic_row=NOT_ASSERTED")
+        val step =
+            when (read) {
+                is ValueFlowRead.Observed -> read.step
+                is ValueFlowRead.Suspended -> read.step
+                is ValueFlowRead.Rejected,
+                is ValueFlowRead.ContractRejected -> null
+            }
+        if (step != null)
+            println(
+                "S3_NEXT_FRONTIER transfers=${step.transfers.map { it.kind to it.target.range }} " +
+                    "causes=${step.obligations.map { it.cause }} work=${step.examinedWorkUnits.value}"
+            )
+    }
+
+    private fun read(fixture: NativePacketValueFixture, site: ValueSite): ValueFlowRead = runBlocking {
+        IntellijValueFlowCompilerAdapter()
+            .read(
+                project = project,
+                current = fixture.lease,
+                request = ValueFlowRequest(site, fixture.budget, RelationSearchBoundary.RETAINED_SUBJECT),
+                model = fixture.model,
+            )
+    }
+
+    private fun assertSameState(source: ValueSite, target: ValueSite) {
+        assertEquals(source.enclosing, target.enclosing)
+        assertEquals(source.executionOwner, target.executionOwner)
+        assertEquals(source.valuePath, target.valuePath)
+        assertEquals(source.callStack, target.callStack)
+        assertEquals(source.predicates, target.predicates)
+    }
+
+    private fun seedStatus(read: ValueProducerSeedRead): String =
+        when (read) {
+            is ValueProducerSeedRead.Seeded -> "SEEDED:${read.examinedWorkUnits.value}"
+            is ValueProducerSeedRead.Rejected -> "REJECTED:${read.cause}"
+            is ValueProducerSeedRead.ContractRejected -> "CONTRACT_REJECTED:${read.cause}"
+        }
+
+    private fun readStatus(read: ValueFlowRead): String =
+        when (read) {
+            is ValueFlowRead.Observed -> "OBSERVED"
+            is ValueFlowRead.Suspended -> "SUSPENDED"
+            is ValueFlowRead.Rejected -> "REJECTED:${read.cause}"
+            is ValueFlowRead.ContractRejected -> "CONTRACT_REJECTED:${read.cause}"
+        }
+}

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketCallbackGrantSixTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T06:59:46.142Z" hostname="Austins-MacBook-Pro.local" time="2.278">
+  <properties/>
+  <testcase name="testOriginalS2GrantSixKeepsTheExactWorkCauseAndEmitsNoCallbackEntry" classname="io.github.amichne.kast.relation.intellij.NativePacketCallbackGrantSixTest" time="1.406"/>
+  <testcase name="testOriginalS2GrantSixCapturesTheRealCallbackPhaseBeforeAdapterMapping" classname="io.github.amichne.kast.relation.intellij.NativePacketCallbackGrantSixTest" time="0.871"/>
+  <system-out><![CDATA[CALLBACK_GRANT6_ADAPTER variant=OBSERVED work=6 entries=0 causes=[WORK_LIMIT_REACHED]
+CALLBACK_GRANT6_PHASE callback=UNAVAILABLE cause=WORK_LIMIT_REACHED
+CALLBACK_GRANT6_PHASE work=6 entries=0 ledger=0
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

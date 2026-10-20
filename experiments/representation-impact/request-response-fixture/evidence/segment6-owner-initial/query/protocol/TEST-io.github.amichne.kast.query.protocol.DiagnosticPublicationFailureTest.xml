@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.DiagnosticPublicationFailureTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.676Z" hostname="Austins-MacBook-Pro.local" time="0.006">
+  <properties/>
+  <testcase name="final diagnostic publication distinguishes unavailable claim retired owner and cached page mismatch()" classname="io.github.amichne.kast.query.protocol.DiagnosticPublicationFailureTest" time="0.001"/>
+  <testcase name="cancellation drains an acquired attempt without retaining first-request ownership()" classname="io.github.amichne.kast.query.protocol.DiagnosticPublicationFailureTest" time="0.001"/>
+  <testcase name="expiry during detached fitting rejects publication and revokes hidden work()" classname="io.github.amichne.kast.query.protocol.DiagnosticPublicationFailureTest" time="0.002"/>
+  <testcase name="scan retention refusal preserves established diagnostics and exact inventory without a successor()" classname="io.github.amichne.kast.query.protocol.DiagnosticPublicationFailureTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

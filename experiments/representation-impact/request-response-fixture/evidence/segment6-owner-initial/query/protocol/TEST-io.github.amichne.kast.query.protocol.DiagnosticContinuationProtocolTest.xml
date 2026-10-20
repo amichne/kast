@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.DiagnosticContinuationProtocolTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.661Z" hostname="Austins-MacBook-Pro.local" time="0.013">
+  <properties/>
+  <testcase name="capacity is charged before token publication()" classname="io.github.amichne.kast.query.protocol.DiagnosticContinuationProtocolTest" time="0.001"/>
+  <testcase name="unchanged caller selection replays across fresh elapsed clamps()" classname="io.github.amichne.kast.query.protocol.DiagnosticContinuationProtocolTest" time="0.002"/>
+  <testcase name="resume preserves checkpoint and replay remains immutable()" classname="io.github.amichne.kast.query.protocol.DiagnosticContinuationProtocolTest" time="0.001"/>
+  <testcase name="fresh start replaces orphaned first replay without reviving evicted continuation()" classname="io.github.amichne.kast.query.protocol.DiagnosticContinuationProtocolTest" time="0.001"/>
+  <testcase name="concurrent acquisition is rejected and staged successors are invisible until commit()" classname="io.github.amichne.kast.query.protocol.DiagnosticContinuationProtocolTest" time="0.002"/>
+  <testcase name="expired and disposed checkpoints fail finitely()" classname="io.github.amichne.kast.query.protocol.DiagnosticContinuationProtocolTest" time="0.001"/>
+  <testcase name="enumeration page retains unknown total and replay does not reexecute()" classname="io.github.amichne.kast.query.protocol.DiagnosticContinuationProtocolTest" time="0.001"/>
+  <testcase name="long request identity is charged against checkpoint cap before publication()" classname="io.github.amichne.kast.query.protocol.DiagnosticContinuationProtocolTest" time="0.002"/>
+  <testcase name="mismatch and stale basis reject without additional scan()" classname="io.github.amichne.kast.query.protocol.DiagnosticContinuationProtocolTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

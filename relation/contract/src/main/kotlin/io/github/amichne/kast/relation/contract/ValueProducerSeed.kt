@@ -43,36 +43,60 @@ enum class ValueProducerSeedFailure {
     CALLABLE_MISMATCH,
     ANCHOR_MISMATCH,
     ROLE_MISMATCH,
+    EXECUTION_OWNER_MISMATCH,
 }
 
 /**
  * Actual invocation identity P and its result site remain separate from source syntax and from the expansion domain D.
  */
-class ValueProducerSeed private constructor(val site: ValueSite, val invocation: ValueInvocation) {
+class ValueProducerSeed
+private constructor(val site: ValueSite, val origin: ValueProducerOrigin, val selection: ValueInvocationSelection) {
+    val invocation: ValueCallOccurrence
+        get() = origin.invocation
+
+    val retainedBytes: Long
+        get() = valueProducerSeedStorageBytes(this)
+
+    /** Re-admits the complete producer proof against the actual request, without another native effect. */
+    fun readmit(request: ValueProducerSeedRequest): Refinement<ValueProducerSeed, ValueProducerSeedFailure> =
+        admit(request, site, origin, selection)
+
     companion object {
         fun fromCompiler(
             request: ValueProducerSeedRequest,
             site: ValueSite,
             invocation: ValueInvocation,
+            selection: ValueInvocationSelection = ValueInvocationSelection.exact(invocation),
         ): Refinement<ValueProducerSeed, ValueProducerSeedFailure> =
-            when {
-                site.basis != request.enclosing.lease.identity || invocation.basis != site.basis ->
-                    Refinement.Rejected(ValueProducerSeedFailure.BASIS_MISMATCH)
-                !site.enclosing.sameDeclaration(request.enclosing) ||
-                    !invocation.enclosing.sameDeclaration(request.enclosing) ->
-                    Refinement.Rejected(ValueProducerSeedFailure.ENCLOSING_MISMATCH)
-                !invocation.callable.sameDeclaration(request.expectedCallable) ->
-                    Refinement.Rejected(ValueProducerSeedFailure.CALLABLE_MISMATCH)
-                site.range != request.anchor || invocation.range != request.anchor ->
-                    Refinement.Rejected(ValueProducerSeedFailure.ANCHOR_MISMATCH)
-                site.role != ValueRole.ExpressionResult -> Refinement.Rejected(ValueProducerSeedFailure.ROLE_MISMATCH)
-                else -> Refinement.Refined(ValueProducerSeed(site, invocation))
+            admit(request, site, ValueProducerOrigin.Declared(invocation), selection)
+
+        fun fromSourceFunction(
+            request: ValueProducerSeedRequest,
+            site: ValueSite,
+            origin: ValueProducerOrigin.SourceFunction,
+            selection: ValueInvocationSelection = ValueInvocationSelection.exact(origin.invocation),
+        ): Refinement<ValueProducerSeed, ValueProducerSeedFailure> = admit(request, site, origin, selection)
+
+        private fun admit(
+            request: ValueProducerSeedRequest,
+            site: ValueSite,
+            origin: ValueProducerOrigin,
+            selection: ValueInvocationSelection,
+        ): Refinement<ValueProducerSeed, ValueProducerSeedFailure> {
+            when (val admitted = admitProducerOccurrence(request, site, origin, selection)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return admitted
             }
+            if (origin is ValueProducerOrigin.SourceFunction) {
+                when (val admitted = origin.admitSeedProof(request, site, selection)) {
+                    is Refinement.Refined -> Unit
+                    is Refinement.Rejected -> return admitted
+                }
+            }
+            return Refinement.Refined(ValueProducerSeed(site, origin, selection))
+        }
     }
 }
-
-private fun RelationEndpoint.sameDeclaration(selector: SymbolSelector): Boolean =
-    compilerIdentity == selector.compilerIdentity && file == selector.file && range == selector.range
 
 enum class ValueProducerSeedRejection {
     STALE_ENCLOSING,

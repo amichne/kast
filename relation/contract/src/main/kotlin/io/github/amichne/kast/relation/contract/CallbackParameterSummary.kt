@@ -103,6 +103,8 @@ private constructor(
             scan: CallbackInvocationScan,
             forwarding: CallbackForwardingEvidence = CallbackForwardingEvidence.InvocationRoutes,
         ): Refinement<CallbackParameterSummary, CallbackInvocationFlowFailure> {
+            if (!CallbackValueProofLimits.admits(invocations, ownerBindings, forwarding))
+                return Refinement.Rejected(CallbackInvocationFlowFailure.PROOF_LIMIT_REACHED)
             if (scan != CallbackInvocationScan.EXHAUSTIVE || !admitsExhaustiveCallbackScan(obligations))
                 return Refinement.Rejected(CallbackInvocationFlowFailure.INVALID_SCAN_PROOF)
             if (invocations.distinct().size != invocations.size)

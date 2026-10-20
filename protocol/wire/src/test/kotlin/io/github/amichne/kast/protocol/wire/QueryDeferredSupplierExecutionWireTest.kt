@@ -11,7 +11,17 @@ import io.github.amichne.kast.protocol.contract.ImpactEvidenceRevisionDocument
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryCallbackAccessorKindDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBindingWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBodyWireDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackCallableWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackDependencyInvocationKindDocument
+import io.github.amichne.kast.protocol.contract.QueryDeferredDirectInvocationWireDocument
+import io.github.amichne.kast.protocol.contract.QueryDeferredSupplierExecutionWireDocument
+import io.github.amichne.kast.protocol.contract.QueryExcludedCompilerTargetWireDocument
+import io.github.amichne.kast.protocol.contract.QueryKotlinLazyBinaryWireDocument
+import io.github.amichne.kast.protocol.contract.RelationOccurrenceWireDocument
+import io.github.amichne.kast.protocol.contract.SymbolKindWireDocument
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException

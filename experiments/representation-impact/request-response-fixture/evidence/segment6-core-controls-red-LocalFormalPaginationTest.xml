@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.LocalFormalPaginationTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-20T13:35:55.226Z" hostname="Austins-MacBook-Pro.local" time="0.098">
+  <properties/>
+  <testcase name="a formal parameter page keeps one address and resumes its unconsumed neighbor()" classname="io.github.amichne.kast.relation.contract.LocalFormalPaginationTest" time="0.091">
+    <failure message="org.opentest4j.AssertionFailedError: Unexpected type, expected: &lt;io.github.amichne.kast.relation.contract.ValueFlowRead.Suspended&gt; but was: &lt;io.github.amichne.kast.relation.contract.ValueFlowRead.ContractRejected&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: Unexpected type, expected: &lt;io.github.amichne.kast.relation.contract.ValueFlowRead.Suspended&gt; but was: &lt;io.github.amichne.kast.relation.contract.ValueFlowRead.ContractRejected&gt;
+	at org.junit.jupiter.api.Assertions.assertInstanceOf(Assertions.java:3699)
+	at io.github.amichne.kast.relation.contract.LocalFormalPaginationTest.a formal parameter page keeps one address and resumes its unconsumed neighbor(LocalFormalPaginationTest.kt:16)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

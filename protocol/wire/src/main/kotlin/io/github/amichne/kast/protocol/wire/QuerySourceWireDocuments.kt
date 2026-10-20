@@ -3,6 +3,9 @@ package io.github.amichne.kast.protocol.wire
 import io.github.amichne.kast.protocol.contract.ProtocolSourceText
 import io.github.amichne.kast.protocol.contract.QuerySourceWindowDocument
 import io.github.amichne.kast.protocol.contract.SourceLineRangeDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.combineConverted
+import io.github.amichne.kast.protocol.contract.toWireDocumentConversion
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

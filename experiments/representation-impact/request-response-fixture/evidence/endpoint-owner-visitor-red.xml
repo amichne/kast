@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryImpactExecutionOwnerRetentionTest" tests="3" skipped="0" failures="1" errors="0" timestamp="2026-10-20T02:08:34.587Z" hostname="Austins-MacBook-Pro.local" time="0.088">
+  <properties/>
+  <testcase name="endpoint-only retention visits its owned execution proof()" classname="io.github.amichne.kast.query.contract.QueryImpactExecutionOwnerRetentionTest" time="0.068">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;8&gt; but was: &lt;1584&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;8&gt; but was: &lt;1584&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+	at io.github.amichne.kast.query.contract.QueryImpactExecutionOwnerRetentionTest.endpoint-only retention visits its owned execution proof(QueryImpactExecutionOwnerRetentionTest.kt:22)
+</failure>
+  </testcase>
+  <testcase name="default sites and calls share their exact admitted endpoint declaration owner()" classname="io.github.amichne.kast.query.contract.QueryImpactExecutionOwnerRetentionTest" time="0.011"/>
+  <testcase name="equal distinct admitted endpoints keep separate declaration owner objects()" classname="io.github.amichne.kast.query.contract.QueryImpactExecutionOwnerRetentionTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

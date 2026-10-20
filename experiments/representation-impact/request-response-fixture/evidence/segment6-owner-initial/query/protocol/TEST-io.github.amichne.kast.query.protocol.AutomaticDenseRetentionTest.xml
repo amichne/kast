@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.AutomaticDenseRetentionTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:25.307Z" hostname="Austins-MacBook-Pro.local" time="0.243">
+  <properties/>
+  <testcase name="dense accounting preserves finite capacity rejection under unchanged grants()" classname="io.github.amichne.kast.query.protocol.AutomaticDenseRetentionTest" time="0.077"/>
+  <testcase name="rejected page admission does not commit shared owners or lose non advancing proof()" classname="io.github.amichne.kast.query.protocol.AutomaticDenseRetentionTest" time="0.005"/>
+  <testcase name="dense capacity rejection retains an evidence only prefix without replaying providers()" classname="io.github.amichne.kast.query.protocol.AutomaticDenseRetentionTest" time="0.146"/>
+  <testcase name="production facts charge a shared inventory owner once across a matched page prefix()" classname="io.github.amichne.kast.query.protocol.AutomaticDenseRetentionTest" time="0.007"/>
+  <system-out><![CDATA[CheckpointReservation(facts=19710623, issued=12467838, request=4268, total=32182729, remaining=1371703)
+DenseCheckpoint(rows=393, required=789650, allowance=685851, components=QueryCheckpointStorageEstimate(tasks=QueryCheckpointStorageBytes(value=789650), identityRows=QueryCheckpointStorageBytes(value=0), inputs=QueryCheckpointStorageBytes(value=0), impact=QueryCheckpointStorageBytes(value=0), joins=QueryCheckpointStorageBytes(value=0)))
+DenseFacts(semantic=18217278, preview=1604082, rowCells=100608, total=19921968, inventoryReferences=20, inventoryLedger=597102, request=4268, issued=11683404, invocationTotal=31609640)
+MatchedPrefixComponents(semantic=1270450, preview=65218, rowCells=4096, inventoryOwners=1, inventoryReferences=1, inventoryLedger=596950)
+MatchedPrefixFacts(bytes=1339764, standalone=2049422, inventory=596430, providerPositions=[0], rows=[8, 8], work=[21, 0], occurrenceStarts=[100, 132, 164, 196, 228, 260, 292, 324, 356, 388, 420, 452, 484, 516, 548, 580])
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

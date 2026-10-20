@@ -1,0 +1,146 @@
+@file:OptIn(org.jetbrains.kotlin.analysis.api.KaExperimentalApi::class)
+
+package io.github.amichne.kast.relation.intellij
+
+import com.intellij.openapi.application.PathManager
+import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiManager
+import com.intellij.psi.util.PsiTreeUtil
+import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.ValueField
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
+import java.nio.file.Files
+import java.nio.file.Path
+import java.security.MessageDigest
+import java.util.jar.JarFile
+import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertFalse
+import junit.framework.TestCase.assertTrue
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
+import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtClass
+import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtQualifiedExpression
+
+/** K2 maps the actual argument to one real overload before the fixture examines the reviewed archive. */
+internal class NativePacketSingleListInsertionFacts(private val project: Project, private val base: VirtualFile) {
+    fun read(
+        input: PacketExpression,
+        expectedVararg: Boolean,
+        sourceDefined: Boolean,
+    ): SingleListInsertionFacts =
+        ReadAction.compute<SingleListInsertionFacts, RuntimeException> {
+            val file =
+                input.enclosing.file as io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity.Workspace
+            val relative = base.toNioPath().relativize(Path.of(file.path.value)).toString()
+            val virtual = checkNotNull(base.findFileByRelativePath(relative))
+            val psi = PsiManager.getInstance(project).findFile(virtual) as KtFile
+            val expression =
+                PsiTreeUtil.collectElementsOfType(psi, KtExpression::class.java).single { range(it) == input.anchor }
+            val call = checkNotNull(PsiTreeUtil.getParentOfType(expression, KtCallExpression::class.java, true))
+            val invoked = (call.parent as? KtQualifiedExpression)?.takeIf { it.selectorExpression === call } ?: call
+            IntellijReadObservation.None.observedAnalyze(call) {
+                val resolved = checkNotNull(call.resolveCall())
+                val symbol = resolved.signature.symbol
+                assertEquals(if (sourceDefined) KaSymbolOrigin.SOURCE else KaSymbolOrigin.LIBRARY, symbol.origin)
+                val parameter = checkNotNull(resolved.valueArgumentMapping[expression]).symbol
+                assertEquals(symbol.valueParameters.single(), parameter)
+                assertEquals(expectedVararg, parameter.isVararg)
+                if (!expectedVararg) assertEquals("element", parameter.name.asString())
+                val projection = symbol.compilerProjection(this) as IntellijCompilerProjectionResult.Projected
+                val declaration = projection.projection
+                val signature = declaration.signature as CanonicalCompilerSignature.Function
+                assertEquals(1, signature.typeParameterCount.value)
+                if (sourceDefined) {
+                    assertFalse(signature.qualifiedIdentity.value == "kotlin.collections.listOf")
+                    SingleListInsertionFacts(
+                        invocationRange = range(invoked),
+                        identity = declaration.identity,
+                        signature = signature,
+                        artifactRoot = null,
+                        declarationUrl = null,
+                    )
+                } else {
+                    assertEquals("kotlin.collections.listOf", signature.qualifiedIdentity.value)
+                    assertEquals(null, resolved.extensionReceiver)
+                    assertEquals(null, resolved.dispatchReceiver)
+                    if (!expectedVararg) assertEquals(listOf("T"), signature.valueParameters.map { it.value })
+                    val artifact = artifact(symbol.containingModule, symbol.psi)
+                    SingleListInsertionFacts(
+                        invocationRange = range(invoked),
+                        identity = declaration.identity,
+                        signature = signature,
+                        artifactRoot = artifact.artifactRoot,
+                        declarationUrl = artifact.declarationUrl,
+                    )
+                }
+            }
+        }
+
+    fun payload(fixture: NativePacketValueFixture): ValueField =
+        ReadAction.compute<ValueField, RuntimeException> {
+            val file = checkNotNull(base.findFileByRelativePath("src/fixture/controls/SingleListInsertionControls.kt"))
+            val psi = PsiManager.getInstance(project).findFile(file) as KtFile
+            val box = PsiTreeUtil.collectElementsOfType(psi, KtClass::class.java).single { it.name == "InsertionBox" }
+            val property = box.primaryConstructorParameters.single()
+            val projection =
+                IntellijK2RelationProjection(project, fixture.lease.workspaceRoot).project(property)
+                    as IntellijRelationDeclarationProjection.Projected
+            val endpoint =
+                RelationEndpoint.resolve(
+                        lease = fixture.lease,
+                        scope =
+                            fixture
+                                .callableDeclaration(
+                                    PacketDeclaration(
+                                        NativePacketSingleListInsertionSource.CONTROL,
+                                        "SingleListInsertionControls",
+                                        "fixed",
+                                    )
+                                )
+                                .scope,
+                        evidence = projection.evidence,
+                    )
+                    .nativeRefined()
+            ValueField.fromCompiler(endpoint).nativeRefined()
+        }
+
+    private fun artifact(
+        module: org.jetbrains.kotlin.analysis.api.projectStructure.KaModule,
+        declaration: com.intellij.psi.PsiElement?,
+    ): NativePacketLibraryArtifactAffiliation {
+        val jar = Path.of(PathManager.getHomePath(), "plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar")
+        assertEquals(
+            BINARY_SHA256,
+            java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(jar))),
+        )
+        JarFile(jar.toFile()).use {
+            assertEquals(VERSION, it.manifest.mainAttributes.getValue("Implementation-Version"))
+        }
+        val affiliation = packetLibraryArtifactAffiliation(module, declaration, jar.toString())
+        assertTrue(affiliation.containsDeclaration)
+        assertTrue(affiliation.artifactRoot in affiliation.moduleRoots)
+        return affiliation
+    }
+
+    companion object {
+        const val BINARY_SHA256 = "0ae12504a5040ebaf37703908483420d1a5624dd1d93f357665f8c77c848a01e"
+        const val SOURCE_SHA256 = "5c9707bb04725260c2c03d88a218dd4ea87749aefcc4663e71afa9559430f661"
+        const val VERSION = "2.3.20-release-208"
+    }
+}
+
+internal data class SingleListInsertionFacts(
+    val invocationRange: ExactDeclarationTextRange,
+    val identity: CompilerSymbolIdentity,
+    val signature: CanonicalCompilerSignature.Function,
+    val artifactRoot: String?,
+    val declarationUrl: String?,
+)

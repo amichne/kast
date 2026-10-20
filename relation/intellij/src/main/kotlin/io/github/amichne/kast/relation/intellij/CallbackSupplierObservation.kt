@@ -41,4 +41,5 @@ internal fun CallbackInvocationFlowCause.supplierTermination(): IntellijReadTerm
         CallbackInvocationFlowCause.RESULT_LIMIT_REACHED ->
             IntellijReadTermination.CALLBACK_SUPPLIER_RESULT_LIMIT_REACHED
         CallbackInvocationFlowCause.BYTE_LIMIT_REACHED -> IntellijReadTermination.CALLBACK_SUPPLIER_BYTE_LIMIT_REACHED
+        CallbackInvocationFlowCause.PROOF_LIMIT_REACHED -> IntellijReadTermination.CALLBACK_SUPPLIER_PROOF_LIMIT_REACHED
     }

@@ -8,6 +8,12 @@ import io.github.amichne.kast.protocol.contract.ProtocolStringConstraint
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryTextMatchDocument
 import io.github.amichne.kast.protocol.contract.SourceLineNumberDocument
+import io.github.amichne.kast.protocol.contract.SourceRangeWireDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.flatMapConverted
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
+import io.github.amichne.kast.protocol.contract.toWireDocumentConversion
 import kotlinx.serialization.Serializable
 
 @Serializable

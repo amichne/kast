@@ -1,0 +1,297 @@
+--- a/runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketQueryFixture.kt
++++ b/runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketQueryFixture.kt
+@@ -42,30 +42,46 @@
+         return NativePacketQueryCase(prepared.services, original)
+     }
+ 
+-    fun prepareComposite(): NativePacketCompositeQueryCase {
+-        val inputs = NativePacketCompositeQuerySource.PATHS.map { PacketQuerySourceInput(it, "initial-freeze.sha256") }
+-        val prepared = prepareFiles(inputs)
++    fun prepareComposite(): NativePacketCompositeQueryCase =
++        prepareCompositeInputs(NativePacketCompositeQuerySource.PATHS)
++
++    fun prepareCompositeWithEcho(): NativePacketCompositeQueryCase =
++        prepareCompositeInputs(NativePacketCompositeQuerySource.PATHS + ECHO)
++
++    private fun prepareCompositeInputs(paths: List<String>): NativePacketCompositeQueryCase {
++        val prepared = prepareFiles(paths.map { PacketQuerySourceInput(it, "initial-freeze.sha256") })
+         val source = NativePacketCompositeQuerySource(project, prepared.files, prepared.services)
+         source.assertNoErrors()
+-        return NativePacketCompositeQueryCase(prepared.services, source, prepared.model.sourceRoots.single())
++        return NativePacketCompositeQueryCase(
++            services = prepared.services,
++            source = source,
++            root = prepared.model.sourceRoots.single { it.sourceSet.value == "main" },
++            testRoot = prepared.model.sourceRoots.singleOrNull { it.sourceSet.value == "test" },
++        )
+     }
+ 
+     private fun prepareFiles(inputs: List<PacketQuerySourceInput>): PreparedPacketQuerySources {
+         lateinit var source: VirtualFile
++        var testSource: VirtualFile? = null
++        val hasTestSources = inputs.any { it.path.startsWith("src/test/kotlin/") }
+         val files = linkedMapOf<String, VirtualFile>()
+         ApplicationManager.getApplication().invokeAndWait {
+             source =
+                 WriteCommandAction.writeCommandAction(project).compute<VirtualFile, RuntimeException> {
+-                    base.createChildDirectory(this, "src")
++                    val container = base.createChildDirectory(this, "src")
++                    if (hasTestSources) {
++                        testSource = container.createChildDirectory(this, "test")
++                        container.createChildDirectory(this, "main")
++                    } else container
+                 }
+-            prepareModule(source)
++            prepareModule(source, testSource)
+             WriteCommandAction.runWriteCommandAction(project) {
+-                inputs.forEach { input -> files[input.path] = copyFrozenSource(source, input) }
++                inputs.forEach { input -> files[input.path] = copyFrozenSource(source, testSource, input) }
+             }
+             PsiDocumentManager.getInstance(project).commitAllDocuments()
+             IndexingTestUtil.waitUntilIndexesAreReady(project)
+         }
+-        val model = model(source)
++        val model = model(source, testSource)
+         val services =
+             NativePacketQueryServices(
+                 project = project,
+@@ -76,10 +92,12 @@
+         return PreparedPacketQuerySources(files, model, services)
+     }
+ 
+-    private fun prepareModule(source: VirtualFile) {
++    private fun prepareModule(source: VirtualFile, testSource: VirtualFile?) {
+         ModuleRootModificationUtil.updateModel(module) { roots ->
+             roots.sdk = sdk
+-            roots.addContentEntry(base).addSourceFolder(source, false)
++            val content = roots.addContentEntry(base)
++            content.addSourceFolder(source, false)
++            testSource?.let { content.addSourceFolder(it, true) }
+             val library = roots.moduleLibraryTable.createLibrary("packet-query-stdlib")
+             val libraryRoots = library.modifiableModel
+             val jar = Path.of(PathManager.getHomePath(), "plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar")
+@@ -89,9 +107,14 @@
+         }
+     }
+ 
+-    private fun copyFrozenSource(source: VirtualFile, input: PacketQuerySourceInput): VirtualFile {
+-        var directory = source
+-        val relative = input.path.removePrefix("src/main/kotlin/")
++    private fun copyFrozenSource(
++        source: VirtualFile,
++        testSource: VirtualFile?,
++        input: PacketQuerySourceInput,
++    ): VirtualFile {
++        val isTest = input.path.startsWith("src/test/kotlin/")
++        var directory = if (isTest) checkNotNull(testSource) else source
++        val relative = input.path.removePrefix(if (isTest) "src/test/kotlin/" else "src/main/kotlin/")
+         relative.substringBeforeLast('/').split('/').forEach { name ->
+             directory = directory.findChild(name) ?: directory.createChildDirectory(this, name)
+         }
+@@ -100,22 +123,15 @@
+         }
+     }
+ 
+-    private fun model(source: VirtualFile): WorkspaceSearchScopeModel {
++    private fun model(source: VirtualFile, testSource: VirtualFile?): WorkspaceSearchScopeModel {
+         val root = CanonicalWorkspaceRoot.fromCanonicalPath(base.toNioPath()).packetQueryRefined()
+         val compiled =
+             WorkspaceSearchScopeModel.compile(
+                 root,
+                 ImportedWorkspaceModelState.COMPLETE,
+-                listOf(
+-                    WorkspaceSourceRootBoundary(
+-                        ideaModuleName = module.name,
+-                        linkedBuildRoot = base.toNioPath(),
+-                        gradleProjectPath = ":packet",
+-                        sourceSetName = "main",
+-                        sourceRoot = source.toNioPath(),
+-                        sourceKind = WorkspaceSourceRootKind.PRODUCTION,
+-                        provenance = WorkspaceSourceRootProvenance.AUTHORED,
+-                    )
++                listOfNotNull(
++                    sourceRoot(source, "main", WorkspaceSourceRootKind.PRODUCTION),
++                    testSource?.let { sourceRoot(it, "test", WorkspaceSourceRootKind.TEST) },
+                 ),
+             )
+         check(compiled is WorkspaceSearchScopeModelCompilation.Compiled) {
+@@ -123,6 +139,17 @@
+         }
+         return compiled.model
+     }
++
++    private fun sourceRoot(source: VirtualFile, sourceSet: String, kind: WorkspaceSourceRootKind) =
++        WorkspaceSourceRootBoundary(
++            ideaModuleName = module.name,
++            linkedBuildRoot = base.toNioPath(),
++            gradleProjectPath = ":packet",
++            sourceSetName = sourceSet,
++            sourceRoot = source.toNioPath(),
++            sourceKind = kind,
++            provenance = WorkspaceSourceRootProvenance.AUTHORED,
++        )
+ 
+     private fun frozenSource(input: PacketQuerySourceInput): ByteArray {
+         val packet =
+@@ -134,6 +161,10 @@
+         val actual = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes))
+         check(expected == actual) { "Original packet source differs from the immutable freeze: $path" }
+         return bytes
++    }
++
++    private companion object {
++        const val ECHO = "src/test/kotlin/fixture/client/EchoOffersClient.kt"
+     }
+ }
+ 
+@@ -161,4 +192,5 @@
+     val services: NativePacketQueryServices,
+     val source: NativePacketCompositeQuerySource,
+     val root: io.github.amichne.kast.workspace.contract.ModelOwnedSourceRoot,
++    val testRoot: io.github.amichne.kast.workspace.contract.ModelOwnedSourceRoot? = null,
+ )
+--- a/runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketCompositeQuerySource.kt
++++ b/runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketCompositeQuerySource.kt
+@@ -71,12 +71,22 @@
+         }
+     }
+ 
+-    suspend fun declaration(path: String, owner: String, member: String): SymbolSelector {
++    suspend fun declaration(
++        path: String,
++        owner: String,
++        member: String,
++        sourcePolicy: SymbolSourceKindPolicy = SymbolSourceKindPolicy.PRODUCTION_ONLY,
++    ): SymbolSelector {
+         val selected = read {
+             val declaration: PsiNamedElement =
+                 if (member == "<init>") checkNotNull(klass(path, owner).primaryConstructor)
+                 else function(path, owner, member)
+-            candidate(path, declaration, if (member == "<init>") owner else member)
++            candidate(
++                path = path,
++                declaration = declaration,
++                name = if (member == "<init>") owner else member,
++                sourcePolicy = sourcePolicy,
++            )
+         }
+         return resolve(selected).also {
+             check(it.kind == if (member == "<init>") CompilerSymbolKind.CONSTRUCTOR else CompilerSymbolKind.FUNCTION)
+@@ -90,6 +100,23 @@
+         val selected = read { candidate(path, klass(path, owner), owner) }
+         return reference(resolve(selected).also { check(it.kind == CompilerSymbolKind.CLASSLIKE) })
+     }
++
++    suspend fun producerS1() =
++        QueryImpactProducerDocument(
++            token(declaration(FEATURE, "OffersProcessorImpl", "getOffer")),
++            token(declaration(CLIENT, "ClientRequest", "<init>")),
++            invocation(path = FEATURE, owner = "OffersProcessorImpl", method = "getOffer", callee = "ClientRequest"),
++        )
++
++    suspend fun s1Declarations() =
++        requestedDeclarations() +
++            listOf(
++                    declaration(WIRE, "OffersApi", "readOffers"),
++                    declaration(CLIENT, "", "toWireRequest"),
++                    declaration(CLIENT, "ClientRequest", "<init>"),
++                    declaration(WIRE, "WireRequest", "<init>"),
++                )
++                .map { QueryImpactDeclarationDocument(token(it), reference(it)) }
+ 
+     suspend fun producerS2() =
+         QueryImpactProducerDocument(
+@@ -127,6 +154,16 @@
+         val call = call(path = path, owner = owner, method = method, callee = callee)
+         val qualified = call.parent as? KtDotQualifiedExpression
+         range(if (qualified?.selectorExpression == call) qualified else call)
++    }
++
++    fun argumentRange(path: String, owner: String, method: String, callee: String, index: Int) = read {
++        range(
++            checkNotNull(
++                call(path = path, owner = owner, method = method, callee = callee)
++                    .valueArguments[index]
++                    .getArgumentExpression()
++            )
++        )
+     }
+ 
+     fun returnRange(path: String, owner: String, method: String) = read {
+@@ -235,7 +272,12 @@
+         return issued.selector
+     }
+ 
+-    private fun candidate(path: String, declaration: PsiNamedElement, name: String): SymbolDiscoverySelection {
++    private fun candidate(
++        path: String,
++        declaration: PsiNamedElement,
++        name: String,
++        sourcePolicy: SymbolSourceKindPolicy = SymbolSourceKindPolicy.PRODUCTION_ONLY,
++    ): SymbolDiscoverySelection {
+         val file = checkNotNull(files[path])
+         val candidate =
+             SymbolDiscoveryCandidate.fromBoundary(
+@@ -247,7 +289,8 @@
+                     rawOffset = declaration.textRange.startOffset,
+                 )
+                 .packetQueryRefined()
+-        return SymbolDiscoverySelection.restore(services.lease, scope, candidate).packetQueryRefined()
++        return SymbolDiscoverySelection.restore(services.lease, scope.copy(sourceKinds = sourcePolicy), candidate)
++            .packetQueryRefined()
+     }
+ 
+     private fun function(path: String, owner: String, name: String): KtNamedFunction {
+--- a/runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketQueryCapture.kt
++++ b/runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketQueryCapture.kt
+@@ -5,10 +5,6 @@
+ import io.github.amichne.kast.protocol.contract.ImpactPathDocument
+ import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
+ import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
+-import io.github.amichne.kast.protocol.contract.QueryContainmentDocument
+-import io.github.amichne.kast.protocol.contract.QueryDirectoryScopeDocument
+-import io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument
+-import io.github.amichne.kast.protocol.contract.QueryDiscoverySourcePolicyDocument
+ import io.github.amichne.kast.protocol.contract.QueryExecutionBudgetDocument
+ import io.github.amichne.kast.protocol.contract.QueryExecutionDocument
+ import io.github.amichne.kast.protocol.contract.QueryExecutionKindDocument
+@@ -46,10 +42,11 @@
+         targets: List<ImpactValueSiteReferenceDocument>,
+         outgoing: Boolean,
+         declarations: List<QueryImpactDeclarationDocument>,
++        domain: QueryExpansionScopeDocument.Sources = NativePacketCompositeQueryPolicy.PRODUCTION.domain,
+     ): List<ImpactPathDocument> {
+         val outcome =
+             services.protocol.execute(
+-                request = request(producer, targets, declarations),
++                request = request(producer = producer, targets = targets, declarations = declarations, domain = domain),
+                 lease = services.lease,
+                 budget = budget,
+                 policy = policy,
+@@ -127,6 +124,7 @@
+         producer: QueryImpactProducerDocument,
+         targets: List<ImpactValueSiteReferenceDocument>,
+         declarations: List<QueryImpactDeclarationDocument>,
++        domain: QueryExpansionScopeDocument.Sources,
+     ) =
+         QueryRunRequest.Run(
+             from =
+@@ -134,17 +132,7 @@
+                     QueryImpactSourceDocument(
+                         seeds = packetQueryList(listOf(producer)),
+                         declarations = packetQueryList(declarations),
+-                        domain =
+-                            QueryExpansionScopeDocument.Sources(
+-                                sourceSets = packetQueryList(listOf(packetQueryText("main"))),
+-                                directory =
+-                                    QueryDirectoryScopeDocument(
+-                                        packetQueryText("src"),
+-                                        QueryContainmentDocument.DESCENDANTS,
+-                                    ),
+-                                sourcePolicy = QueryDiscoverySourcePolicyDocument.PRODUCTION_ONLY,
+-                                generatedSources = QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
+-                            ),
++                        domain = domain,
+                         flow = QueryImpactFlowDocument.KOTLIN_FORWARD_V1,
+                         models = packetQueryList(emptyList()),
+                         requestedSites = packetQueryList(targets),

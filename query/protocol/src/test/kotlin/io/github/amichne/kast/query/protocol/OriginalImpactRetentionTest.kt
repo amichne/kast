@@ -2,6 +2,7 @@ package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
 import io.github.amichne.kast.protocol.contract.ImpactAccountingDocument
 import io.github.amichne.kast.protocol.contract.ImpactAccountingStatusDocument
@@ -9,6 +10,7 @@ import io.github.amichne.kast.protocol.contract.ImpactClosureDocument
 import io.github.amichne.kast.protocol.contract.ImpactRequiredObligationDocument
 import io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
+import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionBudgetDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionDocument
 import io.github.amichne.kast.protocol.contract.QueryExecutionKindDocument
@@ -17,14 +19,17 @@ import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryImpactFlowDocument
 import io.github.amichne.kast.protocol.contract.QueryImpactProducerDocument
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceDocument
+import io.github.amichne.kast.protocol.contract.QueryInvocationStop
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryQuestionDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryRetentionModeDocument
 import io.github.amichne.kast.protocol.contract.QueryRunQualification
+import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryRunResult
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryContinuationState
@@ -63,6 +68,44 @@ import org.junit.jupiter.api.Test
 
 /** Starting facts are detached contract evidence; these tests establish no native compiler behavior. */
 class OriginalImpactRetentionTest {
+    private val projectionReferences = CanonicalQueryReferences()
+
+    @Test
+    fun `initial invocation keeps original paths when no path row fits its execution page`() = runTest {
+        assertInvocationSelection(emptyList())
+    }
+
+    @Test
+    fun `initial invocation gives a non-prefix selection its original row identity`() = runTest {
+        assertInvocationSelection(listOf(2))
+    }
+
+    @Test
+    fun `initial invocation keeps complete row identity order`() = runTest {
+        assertInvocationSelection(listOf(0, 1, 2))
+    }
+
+    private suspend fun assertInvocationSelection(indices: List<Int>) {
+        val fixture = Fixture()
+        val outcome = fixture.project(indices) as OperationOutcome.Rejected
+        val reason =
+            assertInstanceOf(
+                QueryRunRejection.CompletionUnproven::class.java,
+                outcome.reason,
+                "receipts=${fixture.observed}",
+            )
+        val retained = assertInstanceOf(QueryCompletionEvidenceDocument.Retained::class.java, reason.evidence)
+        val restored =
+            fixture.store.restoreResult(retained.result, fixture.symbols.authority) as QueryResultRestoration.Restored
+        assertEquals(3, restored.result.rowCount)
+        assertEquals(indices.map { restored.rowIds[it] }, retained.preview.values.map { it.rowId })
+        assertEquals(
+            indices.map { fixture.ledger.paths[it].impactDocument(projectionReferences).value() },
+            retained.preview.values.map { (it as QueryResultItemDocument.ValuePath).path },
+        )
+        assertEquals(3, fixture.read(retained.result).evidence.payload.items.values.size)
+    }
+
     @Test
     fun `original investigated paths remain readable even when execution emitted no rows`() = runTest {
         val fixture = Fixture()
@@ -71,7 +114,10 @@ class OriginalImpactRetentionTest {
             fixture.store.restoreResult(issued.reference, fixture.symbols.authority) as QueryResultRestoration.Restored
         assertEquals(3, restored.result.rowCount)
         val page = fixture.read(issued.reference)
-        assertEquals(fixture.ledger.paths.map { it.impactDocument().value() }, page.evidence.payload.paths())
+        assertEquals(
+            fixture.ledger.paths.map { it.impactDocument(references = projectionReferences).value() },
+            page.evidence.payload.paths(),
+        )
         assertEquals(issued.rowIds, page.evidence.payload.items.values.map { it.rowId })
         fixture.assertOriginalEvidence(page.evidence.payload)
     }
@@ -86,7 +132,10 @@ class OriginalImpactRetentionTest {
         assertEquals(issued.rowIds, first.evidence.payload.items.values.map { it.rowId })
         val suffix = fixture.read(issued.reference, 2)
         assertEquals(listOf(issued.rowIds[2]), suffix.evidence.payload.items.values.map { it.rowId })
-        assertEquals(listOf(fixture.ledger.paths[2].impactDocument().value()), suffix.evidence.payload.paths())
+        assertEquals(
+            listOf(fixture.ledger.paths[2].impactDocument(references = projectionReferences).value()),
+            suffix.evidence.payload.paths(),
+        )
         fixture.assertOriginalEvidence(first.evidence.payload)
     }
 
@@ -101,7 +150,10 @@ class OriginalImpactRetentionTest {
                 as QueryResultRestoration.Restored
         assertEquals(1, restored.result.rowCount)
         val read = fixture.read(selected.reference).evidence.payload
-        assertEquals(listOf(fixture.ledger.paths[2].impactDocument().value()), read.paths())
+        assertEquals(
+            listOf(fixture.ledger.paths[2].impactDocument(references = projectionReferences).value()),
+            read.paths(),
+        )
         assertEquals(selected.rowIds, read.items.values.map { it.rowId })
         assertEquals(source, read.question.from)
         assertNull(read.nextCursor)
@@ -111,7 +163,8 @@ class OriginalImpactRetentionTest {
         assertEquals(listOf(ImpactRequiredObligationDocument.NATIVE_FLOW), originalClosure.required.values)
     }
 
-    private class Fixture {
+    internal class Fixture {
+        private val projectionReferences = CanonicalQueryReferences()
         val symbols = RelationPagingFixture.published()
         val store = QueryStateStore(clock = { 0 })
         private val sites = listOf(0, 2, 4).map(::site)
@@ -120,6 +173,7 @@ class OriginalImpactRetentionTest {
         private val rows = QueryRows.ValuePaths.fromInvestigation(ledger).value()
         private val request = request()
         private var semanticExecutions = 0
+        val observed = mutableListOf<QueryResultRetentionEvidence>()
         private val protocol =
             CanonicalQueryProtocol(
                 QueryOperations {
@@ -161,6 +215,34 @@ class OriginalImpactRetentionTest {
                 QueryContinuationState.Terminal(QueryTerminalReason.OUTPUT_ITEM_TOO_LARGE),
             )
 
+        suspend fun project(indices: List<Int>): QueryPublishedPage {
+            val execution = execution(indices)
+            val items = previewItems(indices)
+            val claim = (store.acquireInitial(symbols.authority) as QueryInitialAcquisition.Acquired).claim
+            val policy =
+                QueryInvocationPolicy(
+                    ResultLimit.parse(100).value(),
+                    QueryByteLimit.parse(1_000_000).value(),
+                    QueryByteLimit.parse(4_000_000).value(),
+                    CanonicalQueryCliDocuments::previewBytes,
+                )
+            return QueryPagePublication(store, QueryExecutionPublication.Immediate).execute(claim) {
+                QueryInvocationProjection(symbols.references, store, QueryResultRetentionObservation(observed::add))
+                    .project(
+                        request,
+                        symbols.authority,
+                        AccumulatedSymbolQuery(execution, items, QueryInvocationStop.TERMINAL_INCOMPLETE, null),
+                        policy,
+                        claim,
+                    )
+            }
+        }
+
+        fun previewItems(indices: List<Int>) =
+            (QueryItemProjector(symbols.references).projectItems(request.output, execution(indices).result.rows)
+                    as QueryProjection.Projected)
+                .values
+
         suspend fun read(
             reference: io.github.amichne.kast.protocol.contract.QueryResultReference,
             cursor: Int = 0,
@@ -184,7 +266,10 @@ class OriginalImpactRetentionTest {
             assertEquals(3L, accounting.pagePathCount.value)
             val status = assertInstanceOf(ImpactAccountingStatusDocument.Unresolved::class.java, accounting.status)
             assertEquals(listOf(ImpactRequiredObligationDocument.NATIVE_FLOW), status.required.values)
-            assertEquals(sites.map { it.impactDocument().value() }, accounting.seeds.values)
+            assertEquals(
+                sites.map { it.impactDocument(references = projectionReferences).value() },
+                accounting.seeds.values,
+            )
         }
 
         private fun site(offset: Int): ValueSite =

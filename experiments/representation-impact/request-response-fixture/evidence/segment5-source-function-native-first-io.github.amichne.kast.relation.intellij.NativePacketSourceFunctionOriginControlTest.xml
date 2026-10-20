@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketSourceFunctionOriginControlTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T16:07:11.437Z" hostname="Austins-MacBook-Pro.local" time="2.819">
+  <properties/>
+  <testcase name="testTheActuallyReassignedMutableSupplierCannotAcquireAnImmutableSourceOrigin" classname="io.github.amichne.kast.relation.intellij.NativePacketSourceFunctionOriginControlTest" time="0.759"/>
+  <testcase name="testTheSameTypedSiblingKeepsItsOwnAdmittedPropertyOrigin" classname="io.github.amichne.kast.relation.intellij.NativePacketSourceFunctionOriginControlTest" time="0.676"/>
+  <testcase name="testTheSameTypedWrongExpectedPropertyRejectsTheActualPrimaryCall" classname="io.github.amichne.kast.relation.intellij.NativePacketSourceFunctionOriginControlTest" time="0.693"/>
+  <testcase name="testTwoActualCallsKeepTheirOwnInvocationAndReferenceToTheSameProperty" classname="io.github.amichne.kast.relation.intellij.NativePacketSourceFunctionOriginControlTest" time="0.691"/>
+  <system-out><![CDATA[SOURCE_FUNCTION_CONTROL_K2 supplier=mutableSupplier call=ExactDeclarationTextRange(startInclusive=652, endExclusive=669) reference=ExactDeclarationTextRange(startInclusive=652, endExclusive=667) isVal=false
+SOURCE_FUNCTION_CONTROL_K2 supplier=siblingSupplier call=ExactDeclarationTextRange(startInclusive=486, endExclusive=503) reference=ExactDeclarationTextRange(startInclusive=486, endExclusive=501) isVal=true
+SOURCE_FUNCTION_CONTROL_K2 supplier=primarySupplier call=ExactDeclarationTextRange(startInclusive=379, endExclusive=396) reference=ExactDeclarationTextRange(startInclusive=379, endExclusive=394) isVal=true
+SOURCE_FUNCTION_CONTROL_K2 supplier=primarySupplier call=ExactDeclarationTextRange(startInclusive=379, endExclusive=396) reference=ExactDeclarationTextRange(startInclusive=379, endExclusive=394) isVal=true
+SOURCE_FUNCTION_CONTROL_K2 supplier=primarySupplier call=ExactDeclarationTextRange(startInclusive=412, endExclusive=429) reference=ExactDeclarationTextRange(startInclusive=412, endExclusive=427) isVal=true
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

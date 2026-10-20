@@ -7,9 +7,10 @@ import io.github.amichne.kast.protocol.contract.QueryBindingCellDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryResultRowReference
 import io.github.amichne.kast.protocol.contract.RelationFactDocument
+import io.github.amichne.kast.protocol.contract.SymbolKindWireDocument
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import io.github.amichne.kast.protocol.wire.QueryTextMatchWireDocument
 import io.github.amichne.kast.protocol.wire.RelationReferenceOccurrenceWireDocument
-import io.github.amichne.kast.protocol.wire.SymbolKindWireDocument
 import io.github.amichne.kast.protocol.wire.toWireDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

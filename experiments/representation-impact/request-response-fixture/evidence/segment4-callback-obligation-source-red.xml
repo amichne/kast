@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactCallbackIdentityTest" tests="5" skipped="0" failures="1" errors="0" timestamp="2026-10-20T04:26:14.837Z" hostname="Austins-MacBook-Pro.local" time="0.027">
+  <properties/>
+  <testcase name="callback identity preserves exact formal position and selected invoke()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackIdentityTest" time="0.004"/>
+  <testcase name="callback identity preserves unresolved qualification and scan proof()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackIdentityTest" time="0.001"/>
+  <testcase name="callback identity preserves body compiler identity and semantic basis()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackIdentityTest" time="0.001"/>
+  <testcase name="renewed candidate handles preserve the exact callback frame identity()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackIdentityTest" time="0.001"/>
+  <testcase name="callback obligation keeps its exact supplying frame and source role()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackIdentityTest" time="0.02">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;false&gt; but was: &lt;true&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;false&gt; but was: &lt;true&gt;
+	at org.junit.jupiter.api.Assertions.assertFalse(Assertions.java:257)
+	at io.github.amichne.kast.protocol.contract.ImpactCallbackIdentityTest.callback obligation keeps its exact supplying frame and source role(ImpactCallbackIdentityTest.kt:23)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

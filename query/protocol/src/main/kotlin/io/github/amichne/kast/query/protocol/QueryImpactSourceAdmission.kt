@@ -9,6 +9,7 @@ import io.github.amichne.kast.protocol.contract.QueryImpactSourceDocument
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureCode
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
+import io.github.amichne.kast.protocol.contract.admitsExecutionOwner
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryImpactSource
 import io.github.amichne.kast.relation.contract.RelationBudget
@@ -53,7 +54,7 @@ internal suspend fun QueryImpactSourceDocument.admitImpact(
             is Refinement.Refined -> admitted.value
         }
     val peers =
-        when (val admitted = admitPeers(lease, peerAdmissions, budget)) {
+        when (val admitted = admitPeers(authority, lease, peerAdmissions, budget)) {
             is Refinement.Rejected -> return admitted
             is Refinement.Refined -> admitted.value
         }
@@ -78,6 +79,7 @@ private fun QueryImpactSourceDocument.admitModelSyntax():
 }
 
 private fun QueryImpactSourceDocument.admitPeers(
+    authority: QueryReferenceAuthority,
     lease: SemanticReadAuthority,
     peerAdmissions: List<io.github.amichne.kast.query.contract.QueryImpactPeerSiteAdmission>,
     budget: QueryBudget,
@@ -86,7 +88,7 @@ private fun QueryImpactSourceDocument.admitPeers(
         when (val selected = selectPeerSites(lease)) {
             is Refinement.Rejected -> return selected
             is Refinement.Refined ->
-                when (val admitted = ImpactPeerSourceEvidence.admit(selected.value, peerAdmissions)) {
+                when (val admitted = ImpactPeerSourceEvidence.admit(authority, selected.value, peerAdmissions)) {
                     is Refinement.Rejected -> return admitted
                     is Refinement.Refined -> admitted.value
                 }
@@ -178,10 +180,15 @@ internal fun QueryImpactSourceDocument.admitSiteClaims(
     basisFailure: QueryImpactSourceFailureCode,
 ): Refinement<Unit, QueryRunRejection> {
     for ((position, declared) in sites.withIndex()) {
+        if (!declared.admitsExecutionOwner())
+            return impactFailure(QueryImpactSourceFailureCode.OWNER_MISMATCH, position)
         val claims =
             listOf(declared.enclosing) +
                 when (val role = declared.role) {
                     is ImpactValueRoleDocument.Argument -> listOf(role.invocation.callable)
+                    is ImpactValueRoleDocument.Receiver -> listOf(role.invocation.callable)
+                    is ImpactValueRoleDocument.FunctionArgument,
+                    is ImpactValueRoleDocument.Formal -> emptyList()
                     ImpactValueRoleDocument.ExpressionResult,
                     ImpactValueRoleDocument.LocalBinding,
                     ImpactValueRoleDocument.LocalRead,

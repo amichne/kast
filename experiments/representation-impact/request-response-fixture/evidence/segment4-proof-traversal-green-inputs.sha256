@@ -1,0 +1,6 @@
+92068f1a29ddcb21efbd1d40b874c444c0ac0c7db1b14fa0a6192c52c5f7d336  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/CallbackValueProofLimitTest.kt
+224350f45a4425495f8239f1eb5d366bd0a788c41d0bbf68b61b990aa2e8f9c7  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/LocalBindingTraversalAdmissionTest.kt
+08913e83679180e358a40c7d256808bcac94c8aa23d7bdc61440cf3ea5ff3e9a  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackValueProofLimits.kt
+14cf59a9b0e975bbdc43bb689785d138e356bb5d98130427593cf3b97c0b735c  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackInvocationFlow.kt
+5ab35d4372f95d9beecceae65d1bb8e98a935d68b458bc5f941cb08ed84cdecb  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ImmutableCallbackInvocationFlow.kt
+e51da174939bec5b691fa7fb7ac8feb3106c16010bf2c6ac7ea91fa5c2554f15  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/LocalBindingReferenceScan.kt

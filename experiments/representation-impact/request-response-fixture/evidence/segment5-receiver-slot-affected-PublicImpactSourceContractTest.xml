@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.appserver.query.PublicImpactSourceContractTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-20T11:47:42.552Z" hostname="Austins-MacBook-Pro.local" time="0.047">
+  <properties/>
+  <testcase name="anonymous receiver reference preserves its body through public admission and rejects an unknown owner()" classname="io.github.amichne.kast.appserver.query.PublicImpactSourceContractTest" time="0.004"/>
+  <testcase name="impact witness run lowers the original investigation without a completion input()" classname="io.github.amichne.kast.appserver.query.PublicImpactSourceContractTest" time="0.005"/>
+  <testcase name="optional requested sites preserve exact native role claims and null omission means empty universe()" classname="io.github.amichne.kast.appserver.query.PublicImpactSourceContractTest" time="0.002"/>
+  <testcase name="value paths read uses the existing retained result route()" classname="io.github.amichne.kast.appserver.query.PublicImpactSourceContractTest" time="0.005"/>
+  <testcase name="formal field intent preserves resolved declarations and rejects an unknown path segment()" classname="io.github.amichne.kast.appserver.query.PublicImpactSourceContractTest" time="0.005"/>
+  <testcase name="impact syntax rejects omitted model vocabulary unknown flow and missing callable identity()" classname="io.github.amichne.kast.appserver.query.PublicImpactSourceContractTest" time="0.003"/>
+  <testcase name="omitted requested universe uses empty default and unknown target role fails schema admission()" classname="io.github.amichne.kast.appserver.query.PublicImpactSourceContractTest" time="0.002"/>
+  <testcase name="each impact witness section lowers only through retained read result()" classname="io.github.amichne.kast.appserver.query.PublicImpactSourceContractTest" time="0.003"/>
+  <testcase name="public impact question preserves seed callable domain flow and supplied representation model()" classname="io.github.amichne.kast.appserver.query.PublicImpactSourceContractTest" time="0.014"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

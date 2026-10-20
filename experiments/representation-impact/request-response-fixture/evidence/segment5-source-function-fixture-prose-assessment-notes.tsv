@@ -1,0 +1,3 @@
+artifact	status	rule	line	reason
+AGENTS.md	ASSESSED	Slopsentral.Grade	1	Keep exact manifest identifiers and established compiler terms. Comprehension is NOT_ASSESSED.
+README.md	ASSESSED	Slopsentral.Grade	1	Keep exact manifest identifiers and source distinctions. Terminology is OUT_OF_SCOPE. Comprehension is NOT_ASSESSED.

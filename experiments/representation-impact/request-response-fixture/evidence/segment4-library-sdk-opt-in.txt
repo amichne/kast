@@ -1,0 +1,150 @@
+  public abstract org.jetbrains.kotlin.analysis.api.resolution.KaSingleOrMultiCall resolveCall(org.jetbrains.kotlin.resolution.KtResolvableCall);
+    descriptor: (Lorg/jetbrains/kotlin/resolution/KtResolvableCall;)Lorg/jetbrains/kotlin/analysis/api/resolution/KaSingleOrMultiCall;
+    flags: (0x0401) ACC_PUBLIC, ACC_ABSTRACT
+    RuntimeVisibleAnnotations:
+      0: #9()
+        org.jetbrains.kotlin.analysis.api.KaExperimentalApi
+    RuntimeInvisibleAnnotations:
+      0: #10()
+        org.jetbrains.annotations.Nullable
+    RuntimeInvisibleParameterAnnotations:
+      parameter 0:
+        0: #11()
+          org.jetbrains.annotations.NotNull
+
+Classfile jar:file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/idea/plugins/Kotlin/lib/kotlinc.kotlin-compiler-common.jar!/org/jetbrains/kotlin/resolution/KtResolvableCall.class
+  Last modified Nov 30, 1979; size 592 bytes
+  SHA-256 checksum 2c55ec0e4be81c80c8a570ada412127a9ba79808e1647e00f2cb9129409a050f
+  Compiled from "KtResolvable.kt"
+public interface org.jetbrains.kotlin.resolution.KtResolvableCall extends org.jetbrains.kotlin.resolution.KtResolvable
+  minor version: 0
+  major version: 52
+  flags: (0x0601) ACC_PUBLIC, ACC_INTERFACE, ACC_ABSTRACT
+  this_class: #2                          // org/jetbrains/kotlin/resolution/KtResolvableCall
+  super_class: #4                         // java/lang/Object
+  interfaces: 1, fields: 0, methods: 0, attributes: 2
+Constant pool:
+   #1 = Utf8               org/jetbrains/kotlin/resolution/KtResolvableCall
+   #2 = Class              #1             // org/jetbrains/kotlin/resolution/KtResolvableCall
+   #3 = Utf8               java/lang/Object
+   #4 = Class              #3             // java/lang/Object
+   #5 = Utf8               org/jetbrains/kotlin/resolution/KtResolvable
+   #6 = Class              #5             // org/jetbrains/kotlin/resolution/KtResolvable
+   #7 = Utf8               Lorg/jetbrains/kotlin/psi/KtExperimentalApi;
+   #8 = Utf8               Lkotlin/Metadata;
+   #9 = Utf8               mv
+  #10 = Integer            2
+  #11 = Integer            4
+  #12 = Integer            0
+  #13 = Utf8               k
+  #14 = Integer            1
+  #15 = Utf8               xi
+  #16 = Integer            48
+  #17 = Utf8               d1
+  #18 = Utf8               \u0000\u000e\n\u0002\u0018\u0002\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\bg\u0018\u00002\u00020\u0001Ê\u0001\u0002\b\u0003ø\u0001\u0000\u0082\u0002\u0006\n\u0004\b!0\u0001¨\u0006\u0002À\u0006\u0001
+  #19 = Utf8               d2
+  #20 = Utf8               Lorg/jetbrains/kotlin/resolution/KtResolvableCall;
+  #21 = Utf8               Lorg/jetbrains/kotlin/resolution/KtResolvable;
+  #22 = Utf8               org.jetbrains.kotlin:psi-api
+  #23 = Utf8               KtResolvable.kt
+  #24 = Utf8               SourceFile
+  #25 = Utf8               RuntimeVisibleAnnotations
+{
+}
+SourceFile: "KtResolvable.kt"
+RuntimeVisibleAnnotations:
+  0: #7()
+    org.jetbrains.kotlin.psi.KtExperimentalApi
+  1: #8(#9=[I#10,I#11,I#12],#13=I#14,#15=I#16,#17=[s#18],#19=[s#20,s#21,s#22,s#7])
+    kotlin.Metadata(
+      mv=[2,4,0]
+      k=1
+      xi=48
+      d1=["\u0000\u000e\n\u0002\u0018\u0002\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\bg\u0018\u00002\u00020\u0001Ê\u0001\u0002\b\u0003ø\u0001\u0000\u0082\u0002\u0006\n\u0004\b!0\u0001¨\u0006\u0002À\u0006\u0001"]
+      d2=["Lorg/jetbrains/kotlin/resolution/KtResolvableCall;","Lorg/jetbrains/kotlin/resolution/KtResolvable;","org.jetbrains.kotlin:psi-api","Lorg/jetbrains/kotlin/psi/KtExperimentalApi;"]
+    )
+Classfile jar:file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/idea/plugins/Kotlin/lib/kotlinc.kotlin-compiler-common.jar!/org/jetbrains/kotlin/psi/KtExperimentalApi.class
+  Last modified Nov 30, 1979; size 1091 bytes
+  SHA-256 checksum fd81736b123ba23535129249757059e0b7fc54eb75c2966b1bee977af1a4f0b5
+  Compiled from "annotations.kt"
+public interface org.jetbrains.kotlin.psi.KtExperimentalApi extends java.lang.annotation.Annotation
+  minor version: 0
+  major version: 52
+  flags: (0x2601) ACC_PUBLIC, ACC_INTERFACE, ACC_ABSTRACT, ACC_ANNOTATION
+  this_class: #2                          // org/jetbrains/kotlin/psi/KtExperimentalApi
+  super_class: #4                         // java/lang/Object
+  interfaces: 1, fields: 0, methods: 0, attributes: 3
+Constant pool:
+   #1 = Utf8               org/jetbrains/kotlin/psi/KtExperimentalApi
+   #2 = Class              #1             // org/jetbrains/kotlin/psi/KtExperimentalApi
+   #3 = Utf8               java/lang/Object
+   #4 = Class              #3             // java/lang/Object
+   #5 = Utf8               java/lang/annotation/Annotation
+   #6 = Class              #5             // java/lang/annotation/Annotation
+   #7 = Utf8               Lkotlin/annotation/Target;
+   #8 = Utf8               allowedTargets
+   #9 = Utf8               Lkotlin/annotation/AnnotationTarget;
+  #10 = Utf8               CLASS
+  #11 = Utf8               PROPERTY
+  #12 = Utf8               CONSTRUCTOR
+  #13 = Utf8               FUNCTION
+  #14 = Utf8               TYPEALIAS
+  #15 = Utf8               Lkotlin/RequiresOptIn;
+  #16 = Utf8               message
+  #17 = Utf8               Experimental API with no compatibility guarantees
+  #18 = Utf8               Ljava/lang/annotation/Retention;
+  #19 = Utf8               value
+  #20 = Utf8               Ljava/lang/annotation/RetentionPolicy;
+  #21 = Utf8               RUNTIME
+  #22 = Utf8               Ljava/lang/annotation/Target;
+  #23 = Utf8               Ljava/lang/annotation/ElementType;
+  #24 = Utf8               TYPE
+  #25 = Utf8               METHOD
+  #26 = Utf8               Lkotlin/Metadata;
+  #27 = Utf8               mv
+  #28 = Integer            2
+  #29 = Integer            4
+  #30 = Integer            0
+  #31 = Utf8               k
+  #32 = Integer            1
+  #33 = Utf8               xi
+  #34 = Integer            48
+  #35 = Utf8               d1
+  #36 = Utf8               \u0000 \n\u0002\u0018\u0002\n\u0002\u0010\u001b\n\u0000\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0002\b\u0005\n\u0002\u0018\u0002\n\u0002\b\u0002\b\u0087\u0002\u0018\u00002\u00020\u0001B\u0000Ê\u00012\b\u0003\u0012.\b\u0004\u0012*\b\fJ\u0006\b\n0\u00058\u0006J\u0006\b\n0\u00058\u0007J\u0006\b\n0\u00058\bJ\u0006\b\n0\u00058\tJ\u0006\b\n0\u00058\nÊ\u0001\f\b\u000b\u0012\b\b\f\u0012\u0004\b\b(\r¨\u0006\u0002
+  #37 = Utf8               d2
+  #38 = Utf8               Lorg/jetbrains/kotlin/psi/KtExperimentalApi;
+  #39 = Utf8
+  #40 = Utf8               org.jetbrains.kotlin:psi-api
+  #41 = Utf8               annotations.kt
+  #42 = Utf8               SourceFile
+  #43 = Utf8               RuntimeVisibleAnnotations
+  #44 = Utf8               RuntimeInvisibleAnnotations
+{
+}
+SourceFile: "annotations.kt"
+RuntimeVisibleAnnotations:
+  0: #7(#8=[e#9.#10,e#9.#11,e#9.#12,e#9.#13,e#9.#14])
+    kotlin.annotation.Target(
+      allowedTargets=[Lkotlin/annotation/AnnotationTarget;.CLASS,Lkotlin/annotation/AnnotationTarget;.PROPERTY,Lkotlin/annotation/AnnotationTarget;.CONSTRUCTOR,Lkotlin/annotation/AnnotationTarget;.FUNCTION,Lkotlin/annotation/AnnotationTarget;.TYPEALIAS]
+    )
+  1: #18(#19=e#20.#21)
+    java.lang.annotation.Retention(
+      value=Ljava/lang/annotation/RetentionPolicy;.RUNTIME
+    )
+  2: #22(#19=[e#23.#24,e#23.#25,e#23.#12])
+    java.lang.annotation.Target(
+      value=[Ljava/lang/annotation/ElementType;.TYPE,Ljava/lang/annotation/ElementType;.METHOD,Ljava/lang/annotation/ElementType;.CONSTRUCTOR]
+    )
+  3: #26(#27=[I#28,I#29,I#30],#31=I#32,#33=I#34,#35=[s#36],#37=[s#38,s#39,s#40,s#7,s#8,s#9,s#10,s#11,s#12,s#13,s#14,s#15,s#16,s#17])
+    kotlin.Metadata(
+      mv=[2,4,0]
+      k=1
+      xi=48
+      d1=["\u0000 \n\u0002\u0018\u0002\n\u0002\u0010\u001b\n\u0000\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0002\b\u0005\n\u0002\u0018\u0002\n\u0002\b\u0002\b\u0087\u0002\u0018\u00002\u00020\u0001B\u0000Ê\u00012\b\u0003\u0012.\b\u0004\u0012*\b\fJ\u0006\b\n0\u00058\u0006J\u0006\b\n0\u00058\u0007J\u0006\b\n0\u00058\bJ\u0006\b\n0\u00058\tJ\u0006\b\n0\u00058\nÊ\u0001\f\b\u000b\u0012\b\b\f\u0012\u0004\b\b(\r¨\u0006\u0002"]
+      d2=["Lorg/jetbrains/kotlin/psi/KtExperimentalApi;","","org.jetbrains.kotlin:psi-api","Lkotlin/annotation/Target;","allowedTargets","Lkotlin/annotation/AnnotationTarget;","CLASS","PROPERTY","CONSTRUCTOR","FUNCTION","TYPEALIAS","Lkotlin/RequiresOptIn;","message","Experimental API with no compatibility guarantees"]
+    )
+RuntimeInvisibleAnnotations:
+  0: #15(#16=s#17)
+    kotlin.RequiresOptIn(
+      message="Experimental API with no compatibility guarantees"
+    )

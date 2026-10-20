@@ -1,0 +1,17 @@
+fact	source	lines_or_entry	value
+plugin_source_identity	/Users/amichne/.gradle/caches/modules-2/files-2.1/dev.detekt/detekt-gradle-plugin/2.0.0-alpha.6/5721dddd3884f36ee7153bf6ff90163567b45ffa/detekt-gradle-plugin-2.0.0-alpha.6-sources.jar	SHA256	acb97def0f7ad07d9647c8eeb93a5493d64995e808a12f86b6c2c78eb6097678
+required_check_attachment	detekt-gradle-plugin-2.0.0-alpha.6-sources.jar	dev/detekt/gradle/internal/DetektPlain.kt:19-28	check dependsOn detekt
+type_resolved_registration	detekt-gradle-plugin-2.0.0-alpha.6-sources.jar	dev/detekt/gradle/plugin/internal/SharedTasks.kt:18-74	detektMain/Test registered with compilation classpath; no check attachment
+product_gate	build.gradle.kts	429-453	productBuildGate dependsOn each project check
+repository_quality	build-logic/src/main/kotlin/kast.kotlin-quality.gradle.kts	56-62	explicit Spotless/main-length/test-length dependencies; comment about type-resolved aggregate is inaccurate
+actual_owning_receipt	experiments/representation-impact/request-response-fixture/evidence/segment4-contract-check.log	22;62	detekt and check ran; detektMain/Test absent
+actual_capacity_gate	experiments/representation-impact/request-response-fixture/evidence/segment6-local-final.log	47	plain detekt passed
+extra_gate	experiments/representation-impact/request-response-fixture/evidence/segment6-model22-green.log	210;218-219	detektMain FAILED;143 issues; outside current required task graph
+baseline_change	config/detekt/baselines/relation/contract	NONE	NOT_CHANGED
+extra_gate_rule_count	experiments/representation-impact/request-response-fixture/evidence/segment6-model22-green.log	HasPlatformType	1
+extra_gate_rule_count	experiments/representation-impact/request-response-fixture/evidence/segment6-model22-green.log	ImplicitDefaultLocale	1
+extra_gate_rule_count	experiments/representation-impact/request-response-fixture/evidence/segment6-model22-green.log	LongParameterList	19
+extra_gate_rule_count	experiments/representation-impact/request-response-fixture/evidence/segment6-model22-green.log	MultilineLambdaItParameter	11
+extra_gate_rule_count	experiments/representation-impact/request-response-fixture/evidence/segment6-model22-green.log	NamedArguments	109
+extra_gate_rule_count	experiments/representation-impact/request-response-fixture/evidence/segment6-model22-green.log	NestedScopeFunctions	1
+extra_gate_rule_count	experiments/representation-impact/request-response-fixture/evidence/segment6-model22-green.log	NoNameShadowing	1

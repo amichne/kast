@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactCallbackReturnQuestionTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T05:23:16.686Z" hostname="Austins-MacBook-Pro.local" time="0.081">
+  <properties/>
+  <testcase name="a callback return cannot substitute another execution owner()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackReturnQuestionTest" time="0.065"/>
+  <testcase name="a callback return rejects another body supplier or basis()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackReturnQuestionTest" time="0.005"/>
+  <testcase name="a qualified zero answer keeps its exact callback return question()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackReturnQuestionTest" time="0.001"/>
+  <testcase name="a supplying occurrence cannot substitute another invocation execution owner()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackReturnQuestionTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

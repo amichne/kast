@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.DiagnosticAdmissionExpiryTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.637Z" hostname="Austins-MacBook-Pro.local" time="0.024">
+  <properties/>
+  <testcase name="active replay cannot deduplicate a fresh request against expired facts()" classname="io.github.amichne.kast.query.protocol.DiagnosticAdmissionExpiryTest" time="0.013"/>
+  <testcase name="active replay cannot admit its expired output successor()" classname="io.github.amichne.kast.query.protocol.DiagnosticAdmissionExpiryTest" time="0.007"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

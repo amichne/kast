@@ -1,0 +1,4 @@
+stage	command	status	expected	observed
+RED	mise exec -- ./gradlew :app-server:test --tests '*PublicImpactSourceContractTest.formal field intent*' --no-daemon --max-workers=1 --console=plain	FAILED	FORMAL and FIELD intent admits, unknown segment rejects	SchemaRejected for valid typed intent, 1 test 1 failure
+GREEN	mise exec -- ./gradlew :app-server:test --tests '*PublicImpactSourceContractTest.formal field intent*' --no-daemon --max-workers=1 --console=plain	PASSED	FORMAL and FIELD intent admits, unknown segment rejects	1 test, 0 failures/errors/skips
+AFFECTED	mise exec -- ./gradlew :app-server:test --tests '*PublicImpactSourceContractTest' --no-daemon --max-workers=1 --console=plain	PASSED	All original and new public source-contract assertions pass	9 tests, 0 failures/errors/skips; generator24 pass

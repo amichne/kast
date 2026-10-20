@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryOutputIdentityTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.432Z" hostname="Austins-MacBook-Pro.local" time="0.003">
+  <properties/>
+  <testcase name="detached output identity excludes caller grants on all four axes()" classname="io.github.amichne.kast.query.protocol.QueryOutputIdentityTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

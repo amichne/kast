@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketFirstOrNullApplicationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T15:18:38.970Z" hostname="Austins-MacBook-Pro.local" time="9.272">
+  <properties/>
+  <testcase name="testOriginalAnyElementGetsConditionalReviewedSelection" classname="io.github.amichne.kast.relation.intellij.NativePacketFirstOrNullApplicationTest" time="6.571"/>
+  <testcase name="testOriginalElementZeroGetsConditionalReviewedSelection" classname="io.github.amichne.kast.relation.intellij.NativePacketFirstOrNullApplicationTest" time="1.27"/>
+  <testcase name="testSourceDefinedSameNameGetsNoReviewedSelection" classname="io.github.amichne.kast.relation.intellij.NativePacketFirstOrNullApplicationTest" time="0.466"/>
+  <testcase name="testOriginalElementOneGetsNoReviewedSelection" classname="io.github.amichne.kast.relation.intellij.NativePacketFirstOrNullApplicationTest" time="0.957"/>
+  <system-out><![CDATA[DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+FIRST_OR_NULL_ARTIFACT version=2.3.20-release-208 sha256=0ae12504a5040ebaf37703908483420d1a5624dd1d93f357665f8c77c848a01e virtualRoot=jar:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/idea/plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar!/
+FIRST_OR_NULL_BINDING library=true identity=canonical-signature-sha256-v1|89eb817fb2a84e662aa1a766097e194fdac214f8031f7bf42776bc675f4d5550 callable=kotlin.collections.firstOrNull receiver=Present(type=CanonicalCompilerType(value=kotlin/collections/List<T>)) parameterCount=0 contextCount=0 typeParameters=1
+FIRST_OR_NULL_APPLICATION row=ORIGINAL_ANY_ELEMENT applications=1 originalS2=UNCHANGED
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+FIRST_OR_NULL_ARTIFACT version=2.3.20-release-208 sha256=0ae12504a5040ebaf37703908483420d1a5624dd1d93f357665f8c77c848a01e virtualRoot=jar:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/idea/plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar!/
+FIRST_OR_NULL_BINDING library=true identity=canonical-signature-sha256-v1|89eb817fb2a84e662aa1a766097e194fdac214f8031f7bf42776bc675f4d5550 callable=kotlin.collections.firstOrNull receiver=Present(type=CanonicalCompilerType(value=kotlin/collections/List<T>)) parameterCount=0 contextCount=0 typeParameters=1
+FIRST_OR_NULL_APPLICATION row=ORIGINAL_ELEMENT_ZERO applications=1 originalS2=UNCHANGED
+FIRST_OR_NULL_BINDING library=false identity=canonical-signature-sha256-v1|832d7f50b7644a85907a7135b6dc04af44b57ee509899fb5dff899b687730f86 callable=fixture.controls.firstelement.firstOrNull receiver=Present(type=CanonicalCompilerType(value=kotlin/collections/List<kotlin/String>)) parameterCount=0 contextCount=0 typeParameters=0
+FIRST_OR_NULL_APPLICATION row=SOURCE_SAME_NAME applications=0 originalS2=UNCHANGED
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+FIRST_OR_NULL_ARTIFACT version=2.3.20-release-208 sha256=0ae12504a5040ebaf37703908483420d1a5624dd1d93f357665f8c77c848a01e virtualRoot=jar:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/idea/plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar!/
+FIRST_OR_NULL_BINDING library=true identity=canonical-signature-sha256-v1|89eb817fb2a84e662aa1a766097e194fdac214f8031f7bf42776bc675f4d5550 callable=kotlin.collections.firstOrNull receiver=Present(type=CanonicalCompilerType(value=kotlin/collections/List<T>)) parameterCount=0 contextCount=0 typeParameters=1
+FIRST_OR_NULL_APPLICATION row=ORIGINAL_ELEMENT_ONE applications=0 originalS2=UNCHANGED
+]]></system-out>
+  <system-err><![CDATA[[   1093]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1093]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

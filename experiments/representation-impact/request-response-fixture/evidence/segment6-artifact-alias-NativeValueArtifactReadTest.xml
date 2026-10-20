@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativeValueArtifactReadTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-20T15:20:18.792Z" hostname="Austins-MacBook-Pro.local" time="0.059">
+  <properties/>
+  <testcase name="reviewed digest precedes manifest and reads stay chunk bounded()" classname="io.github.amichne.kast.relation.intellij.NativeValueArtifactReadTest" time="0.038"/>
+  <testcase name="missing implementation version remains unavailable()" classname="io.github.amichne.kast.relation.intellij.NativeValueArtifactReadTest" time="0.004"/>
+  <testcase name="cancellation propagates and closes the already admitted stream()" classname="io.github.amichne.kast.relation.intellij.NativeValueArtifactReadTest" time="0.001"/>
+  <testcase name="changed archive identity rejects otherwise reviewed content()" classname="io.github.amichne.kast.relation.intellij.NativeValueArtifactReadTest" time="0.002"/>
+  <testcase name="work refusal prevents chunk reads and all later artifact effects()" classname="io.github.amichne.kast.relation.intellij.NativeValueArtifactReadTest" time="0.001"/>
+  <testcase name="unreviewed bytes never open the manifest()" classname="io.github.amichne.kast.relation.intellij.NativeValueArtifactReadTest" time="0.0"/>
+  <testcase name="oversized manifest metadata is rejected without unbounded retention()" classname="io.github.amichne.kast.relation.intellij.NativeValueArtifactReadTest" time="0.003"/>
+  <testcase name="archive stream failure stays unavailable()" classname="io.github.amichne.kast.relation.intellij.NativeValueArtifactReadTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

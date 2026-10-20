@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactPresentationRejectionTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.835Z" hostname="Austins-MacBook-Pro.local" time="0.019">
+  <properties/>
+  <testcase name="each local impact failure preserves its exact finite public cause()" classname="io.github.amichne.kast.query.protocol.ImpactPresentationRejectionTest" time="0.006"/>
+  <testcase name="oversized retained path preserves collection cause from item projection to public rejected outcome()" classname="io.github.amichne.kast.query.protocol.ImpactPresentationRejectionTest" time="0.013"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

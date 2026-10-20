@@ -46,6 +46,8 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class QueryImpactBranchProjectionTest {
+    private val projectionReferences = CanonicalQueryReferences()
+
     @Test
     fun `normal branch proof survives path representation history`() {
         val b = BranchFixture()
@@ -58,7 +60,7 @@ class QueryImpactBranchProjectionTest {
                         terminal,
                     )
                     .refined()
-            val document = path.impactDocument().refined()
+            val document = path.impactDocument(references = projectionReferences).refined()
             val proof =
                 (document.steps.values.single() as ImpactPathStepDocument.Compiler).transfer.evidence
                     as ImpactTransferEvidenceDocument.NormalBranchResult
@@ -112,12 +114,13 @@ class QueryImpactBranchProjectionTest {
                     )
                     .refined()
             val view = QueryImpactWitnessView.create(ledger, QueryImpactWitnessSection.NATIVE_READS, 1, 2).refined()
-            val page = QueryRows.ImpactWitness.of(view).projectWitnessItems() as QueryProjection.Projected
+            val page =
+                QueryRows.ImpactWitness.of(view).projectWitnessItems(projectionReferences) as QueryProjection.Projected
             val witness =
                 (page.values.single() as QueryResultItemDocument.ImpactWitness).item.witness
                     as ImpactWitnessDocument.CompilerTransfer
             assertEquals(proof, witness.transfer.evidence)
-            assertEquals(page, QueryRows.ImpactWitness.of(view).projectWitnessItems())
+            assertEquals(page, QueryRows.ImpactWitness.of(view).projectWitnessItems(projectionReferences))
         }
     }
 

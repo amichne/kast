@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.RepresentationModeledValueOracleTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-20T13:18:48.284Z" hostname="Austins-MacBook-Pro.local" time="0.1">
+  <properties/>
+  <testcase name="another invocation at the same receiver range cannot borrow its provenance()" classname="io.github.amichne.kast.relation.contract.RepresentationModeledValueOracleTest" time="0.073"/>
+  <testcase name="automatic element selection weakens known representation without claiming identity()" classname="io.github.amichne.kast.relation.contract.RepresentationModeledValueOracleTest" time="0.006"/>
+  <testcase name="selected suffix and exact local condition survive the provenance projection()" classname="io.github.amichne.kast.relation.contract.RepresentationModeledValueOracleTest" time="0.002"/>
+  <testcase name="a stale application rejects with its basis mismatch()" classname="io.github.amichne.kast.relation.contract.RepresentationModeledValueOracleTest" time="0.003"/>
+  <testcase name="a prior unknown input reason survives automatic value selection()" classname="io.github.amichne.kast.relation.contract.RepresentationModeledValueOracleTest" time="0.003"/>
+  <testcase name="the same location without its exact predicates cannot borrow guarded provenance()" classname="io.github.amichne.kast.relation.contract.RepresentationModeledValueOracleTest" time="0.001"/>
+  <testcase name="automatic application stays distinct from compiler flow and supplied representation rules()" classname="io.github.amichne.kast.relation.contract.RepresentationModeledValueOracleTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

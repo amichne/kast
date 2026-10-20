@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketCallbackGrantSixTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T05:54:48.601Z" hostname="Austins-MacBook-Pro.local" time="9.222">
+  <properties/>
+  <testcase name="testOriginalS2GrantSixKeepsTheExactWorkCauseAndEmitsNoCallbackEntry" classname="io.github.amichne.kast.relation.intellij.NativePacketCallbackGrantSixTest" time="7.714"/>
+  <testcase name="testOriginalS2GrantSixCapturesTheRealCallbackPhaseBeforeAdapterMapping" classname="io.github.amichne.kast.relation.intellij.NativePacketCallbackGrantSixTest" time="1.501"/>
+  <system-out><![CDATA[CALLBACK_GRANT6_ADAPTER variant=OBSERVED work=6 entries=0 causes=[WORK_LIMIT_REACHED]
+CALLBACK_GRANT6_PHASE callback=OBSERVED binding=UNAVAILABLE rawCause=WORK_LIMIT_REACHED scan=INCOMPLETE invocations=0 selected=0 causes=[WORK_LIMIT_REACHED]
+CALLBACK_GRANT6_PHASE central=REJECTED cause=SOURCE_MISMATCH
+CALLBACK_GRANT6_PHASE status=CHARACTERIZED cause_assertion=NOT_RUN
+CALLBACK_GRANT6_PHASE work=6 entries=0 ledger=0
+]]></system-out>
+  <system-err><![CDATA[[   1090]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1090]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

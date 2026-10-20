@@ -1,0 +1,8 @@
+112: @kotlin.internal.InlineOnly
+113: @IgnorableReturnValue
+114: public inline fun <T, R> T.let(block: (T) -> R): R {
+115:     contract {
+116:         callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+117:     }
+118:     return block(this)
+119: }

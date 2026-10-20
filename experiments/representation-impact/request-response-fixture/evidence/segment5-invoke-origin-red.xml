@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueFunctionInvocationOriginOracleTest" tests="4" skipped="0" failures="2" errors="0" timestamp="2026-10-20T04:20:29.173Z" hostname="Austins-MacBook-Pro.local" time="0.061">
+  <properties/>
+  <testcase name="a Java library origin in a builtin module cannot impersonate builtin invoke()" classname="io.github.amichne.kast.relation.contract.ValueFunctionInvocationOriginOracleTest" time="0.049">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=NOT_BUILTIN_INVOKE)&gt; but was: &lt;Refined(value=io.github.amichne.kast.relation.contract.ValueFunctionInvocation@a26f1bf3)&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=NOT_BUILTIN_INVOKE)&gt; but was: &lt;Refined(value=io.github.amichne.kast.relation.contract.ValueFunctionInvocation@a26f1bf3)&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.relation.contract.ValueFunctionInvocationOriginOracleTest.a Java library origin in a builtin module cannot impersonate builtin invoke(ValueFunctionInvocationOriginOracleTest.kt:34)
+</failure>
+  </testcase>
+  <testcase name="a source origin cannot impersonate builtin Function1 invoke()" classname="io.github.amichne.kast.relation.contract.ValueFunctionInvocationOriginOracleTest" time="0.004">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=NOT_BUILTIN_INVOKE)&gt; but was: &lt;Refined(value=io.github.amichne.kast.relation.contract.ValueFunctionInvocation@aefca073)&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=NOT_BUILTIN_INVOKE)&gt; but was: &lt;Refined(value=io.github.amichne.kast.relation.contract.ValueFunctionInvocation@aefca073)&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.relation.contract.ValueFunctionInvocationOriginOracleTest.a source origin cannot impersonate builtin Function1 invoke(ValueFunctionInvocationOriginOracleTest.kt:10)
+</failure>
+  </testcase>
+  <testcase name="the same canonical signature with a library origin admits the builtin invoke()" classname="io.github.amichne.kast.relation.contract.ValueFunctionInvocationOriginOracleTest" time="0.001"/>
+  <testcase name="a Java library origin in a library module cannot impersonate builtin invoke()" classname="io.github.amichne.kast.relation.contract.ValueFunctionInvocationOriginOracleTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

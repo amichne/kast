@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryEvidenceTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.168Z" hostname="Austins-MacBook-Pro.local" time="0.062">
+  <properties/>
+  <testcase name="large complete observation sequence remains complete through independent row and evidence reads()" classname="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryEvidenceTest" time="0.036"/>
+  <testcase name="rejected accumulated failures drain in order without losing original terminal limitations()" classname="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryEvidenceTest" time="0.022"/>
+  <testcase name="evidence retention failure preserves rejected original coverage and explicit unavailable evidence()" classname="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryEvidenceTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

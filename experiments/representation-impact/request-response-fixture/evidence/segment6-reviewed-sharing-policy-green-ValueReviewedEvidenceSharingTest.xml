@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueReviewedEvidenceSharingTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T17:36:45.424Z" hostname="Austins-MacBook-Pro.local" time="0.049">
+  <properties/>
+  <testcase name="the same callable identity with another exact scope stays distinct(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueReviewedEvidenceSharingTest" time="0.024">
+    <properties>
+      <property name="scope.before" value="source=206310209 application=2054787417 applicationSource=206310209 callable=369333979 signature=1798861270 bindingCallable=369333979 bindingSignature=1798861270 policyBytes=85528"/>
+      <property name="scope.after" value="source=206310209 application=2054787417 applicationSource=206310209 callable=369333979 signature=1798861270 bindingCallable=369333979 bindingSignature=1798861270 policyBytes=85528"/>
+    </properties>
+  </testcase>
+  <testcase name="another artifact module cannot borrow an older reviewed binding(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueReviewedEvidenceSharingTest" time="0.008">
+    <properties>
+      <property name="artifact.before" value="source=2053349061 application=1717136008 applicationSource=2053349061 callable=2771454 signature=1015659282 bindingCallable=2771454 bindingSignature=1015659282 policyBytes=91492"/>
+      <property name="artifact.after" value="source=1273895132 application=1098737173 applicationSource=1273895132 callable=589016913 signature=1220813917 bindingCallable=589016913 bindingSignature=1220813917 policyBytes=91492"/>
+    </properties>
+  </testcase>
+  <testcase name="let sharing conserves semantic proof qualifications and native receipts(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueReviewedEvidenceSharingTest" time="0.004">
+    <properties>
+      <property name="scope.let.invoke-block-value.before" value="source=1499825229 application=81269359 applicationSource=1499825229 callable=1285072597 signature=704387627 bindingCallable=1285072597 bindingSignature=704387627 policyBytes=91480"/>
+      <property name="scope.let.invoke-block-value.after" value="source=1559788797 application=666312528 applicationSource=1559788797 callable=1704535540 signature=1292570580 bindingCallable=1704535540 bindingSignature=1292570580 policyBytes=91480"/>
+    </properties>
+  </testcase>
+  <testcase name="first-or-null sharing conserves semantic proof qualifications and native receipts(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueReviewedEvidenceSharingTest" time="0.003">
+    <properties>
+      <property name="collections.list.firstOrNull.select-zero.before" value="source=1286580650 application=540206885 applicationSource=1286580650 callable=10001825 signature=584157293 bindingCallable=10001825 bindingSignature=584157293 policyBytes=85528"/>
+      <property name="collections.list.firstOrNull.select-zero.after" value="source=929482343 application=995531141 applicationSource=929482343 callable=1340634558 signature=2113273959 bindingCallable=1340634558 bindingSignature=2113273959 policyBytes=85528"/>
+    </properties>
+  </testcase>
+  <testcase name="first-or-null sharing keeps one physical source and complete callable proof(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueReviewedEvidenceSharingTest" time="0.006">
+    <properties>
+      <property name="physical-collections.list.firstOrNull.select-zero.before" value="source=1449987177 application=353580491 applicationSource=1449987177 callable=2007138812 signature=2025955363 bindingCallable=2007138812 bindingSignature=2025955363 policyBytes=85528"/>
+      <property name="physical-collections.list.firstOrNull.select-zero.after" value="source=1313618488 application=1472759652 applicationSource=1313618488 callable=1096343229 signature=1890318768 bindingCallable=1096343229 bindingSignature=1890318768 policyBytes=85528"/>
+    </properties>
+  </testcase>
+  <testcase name="let sharing keeps one physical source and complete callable proof(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueReviewedEvidenceSharingTest" time="0.003">
+    <properties>
+      <property name="physical-scope.let.invoke-block-value.before" value="source=142261320 application=1014824123 applicationSource=142261320 callable=703644914 signature=389247924 bindingCallable=703644914 bindingSignature=389247924 policyBytes=91480"/>
+      <property name="physical-scope.let.invoke-block-value.after" value="source=620412175 application=1968298538 applicationSource=620412175 callable=613281005 signature=1087440001 bindingCallable=613281005 bindingSignature=1087440001 policyBytes=91480"/>
+    </properties>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

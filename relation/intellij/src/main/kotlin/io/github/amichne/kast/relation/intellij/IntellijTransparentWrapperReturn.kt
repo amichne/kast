@@ -7,6 +7,7 @@ import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtBlockExpression
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
@@ -24,6 +25,8 @@ internal fun nativeTransparentWrapperReturn(
             is IntellijRelationSubjectLookup.Found -> native.declaration as? KtNamedFunction
             is IntellijRelationSubjectLookup.Rejected -> null
         } ?: return Refinement.Rejected(ValueFlowUnsupportedCause.UNMODELED_CALL)
+    val final = projection.observation.observedAnalyze(callable) { callable.symbol.modality == KaSymbolModality.FINAL }
+    if (!final) return Refinement.Rejected(ValueFlowUnsupportedCause.UNMODELED_CALL)
     val parameter =
         callable.valueParameters.getOrNull(argument.position.value)
             ?: return Refinement.Rejected(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)

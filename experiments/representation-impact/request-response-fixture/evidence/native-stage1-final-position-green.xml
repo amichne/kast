@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketValuePositionTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T01:14:51.417Z" hostname="Austins-MacBook-Pro.local" time="3.636">
+  <properties/>
+  <testcase name="testWrongConstructorCallableRejects" classname="io.github.amichne.kast.relation.intellij.NativePacketValuePositionTest" time="0.399"/>
+  <testcase name="testV8SendRequestKeepsDeclaredPositionZero" classname="io.github.amichne.kast.relation.intellij.NativePacketValuePositionTest" time="0.422"/>
+  <testcase name="testV8ConstructorDestinationKeepsDeclaredPositionOne" classname="io.github.amichne.kast.relation.intellij.NativePacketValuePositionTest" time="0.425"/>
+  <testcase name="testFreshRoleReadReacquiresTheAnonymousExecutionOwner" classname="io.github.amichne.kast.relation.intellij.NativePacketValuePositionTest" time="0.781"/>
+  <testcase name="testFreshReadRejectsTheLexicalHostAsNestedExecutionOwner" classname="io.github.amichne.kast.relation.intellij.NativePacketValuePositionTest" time="0.804"/>
+  <testcase name="testQualifiedReceiverKeepsTheNextCallResultUnproven" classname="io.github.amichne.kast.relation.intellij.NativePacketValuePositionTest" time="0.803"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

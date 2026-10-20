@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.CallbackCompositionDepthTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T04:46:44.859Z" hostname="Austins-MacBook-Pro.local" time="0.115">
+  <properties/>
+  <testcase name="observed and immutable owners share one depth allowance across both transitions()" classname="io.github.amichne.kast.relation.contract.CallbackCompositionDepthTest" time="0.061"/>
+  <testcase name="observed owner composition admits 64 bodies and qualifies the next body()" classname="io.github.amichne.kast.relation.contract.CallbackCompositionDepthTest" time="0.015"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

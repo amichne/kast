@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QuerySourceFunctionProducerProofTest" tests="3" skipped="0" failures="2" errors="0" timestamp="2026-10-20T16:13:36.123Z" hostname="Austins-MacBook-Pro.local" time="0.078">
+  <properties/>
+  <testcase name="same site identity cannot replace the execution enclosing proof()" classname="io.github.amichne.kast.query.contract.QuerySourceFunctionProducerProofTest" time="0.064">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=NOT_INVOCATION_RESULT)&gt; but was: &lt;Refined(value=io.github.amichne.kast.query.contract.QueryImpactProducer@4fbb001b)&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=NOT_INVOCATION_RESULT)&gt; but was: &lt;Refined(value=io.github.amichne.kast.query.contract.QueryImpactProducer@4fbb001b)&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.query.contract.QuerySourceFunctionProducerProofTest.same site identity cannot replace the execution enclosing proof(QuerySourceFunctionProducerProofTest.kt:68)
+</failure>
+  </testcase>
+  <testcase name="the actual source function result conserves its full origin()" classname="io.github.amichne.kast.query.contract.QuerySourceFunctionProducerProofTest" time="0.005"/>
+  <testcase name="same site identity cannot replace the enclosing scope proof()" classname="io.github.amichne.kast.query.contract.QuerySourceFunctionProducerProofTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=NOT_INVOCATION_RESULT)&gt; but was: &lt;Refined(value=io.github.amichne.kast.query.contract.QueryImpactProducer@3af37506)&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=NOT_INVOCATION_RESULT)&gt; but was: &lt;Refined(value=io.github.amichne.kast.query.contract.QueryImpactProducer@3af37506)&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.query.contract.QuerySourceFunctionProducerProofTest.same site identity cannot replace the enclosing scope proof(QuerySourceFunctionProducerProofTest.kt:50)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

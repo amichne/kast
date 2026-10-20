@@ -39,6 +39,7 @@ internal fun ValueProducerSeedFailure.impactFailure(): QueryImpactSourceFailureC
         ValueProducerSeedFailure.CALLABLE_MISMATCH -> QueryImpactSourceFailureCode.CALLABLE_MISMATCH
         ValueProducerSeedFailure.ANCHOR_MISMATCH -> QueryImpactSourceFailureCode.ANCHOR_MISMATCH
         ValueProducerSeedFailure.ROLE_MISMATCH -> QueryImpactSourceFailureCode.ROLE_MISMATCH
+        ValueProducerSeedFailure.EXECUTION_OWNER_MISMATCH -> QueryImpactSourceFailureCode.OWNER_MISMATCH
     }
 
 internal fun QueryExpansionScopeFailure.impactFailure(): QueryImpactSourceFailureCode =

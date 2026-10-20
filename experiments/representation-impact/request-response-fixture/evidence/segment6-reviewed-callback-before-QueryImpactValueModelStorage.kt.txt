@@ -1,0 +1,51 @@
+package io.github.amichne.kast.query.contract
+
+import io.github.amichne.kast.relation.contract.LibraryArtifactObservation
+import io.github.amichne.kast.relation.contract.ReviewedLibraryArtifact
+import io.github.amichne.kast.relation.contract.ReviewedLibraryBinding
+import io.github.amichne.kast.relation.contract.ReviewedValueModel
+import io.github.amichne.kast.relation.contract.SelectedElementCondition
+import io.github.amichne.kast.relation.contract.ValueModelApplication
+
+internal fun ValueModelApplication.storageBytes(g: QueryImpactRetainedGraph): Long =
+    g.node(this) {
+        source
+            .storageBytes(g)
+            .saturatedAdd(target.storageBytes(g))
+            .saturatedAdd(binding.storageBytes(g))
+            .saturatedAdd(
+                when (this) {
+                    is ValueModelApplication.CollectionSelection -> condition.storageBytes(g)
+                }
+            )
+    }
+
+private fun ReviewedLibraryBinding.storageBytes(g: QueryImpactRetainedGraph): Long =
+    g.node(this) {
+        invocation.storageBytes(g).saturatedAdd(model.storageBytes(g)).saturatedAdd(artifact.storageBytes(g))
+    }
+
+private fun ReviewedValueModel.storageBytes(g: QueryImpactRetainedGraph): Long =
+    g.node(this) {
+        reference.storageBytes(g).saturatedAdd(artifact.storageBytes(g)).saturatedAdd(callable.storageBytes(g))
+    }
+
+private fun ReviewedLibraryArtifact.storageBytes(g: QueryImpactRetainedGraph): Long =
+    g.node(this) {
+        g.text(binaryDigest.value).saturatedAdd(g.text(sourceDigest.value)).saturatedAdd(g.text(version.value))
+    }
+
+private fun LibraryArtifactObservation.storageBytes(g: QueryImpactRetainedGraph): Long =
+    g.node(this) {
+        g.node(basis) { 0L }
+            .saturatedAdd(g.text(root.value))
+            .saturatedAdd(g.text(moduleName.value))
+            .saturatedAdd(g.text(binaryDigest.value))
+            .saturatedAdd(g.text(version.value))
+            .saturatedAdd(g.node(origin) { 0L })
+    }
+
+private fun SelectedElementCondition.storageBytes(g: QueryImpactRetainedGraph): Long =
+    g.node(this) {
+        receiver.storageBytes(g).saturatedAdd(result.storageBytes(g)).saturatedAdd(g.node(index) { 0L })
+    }

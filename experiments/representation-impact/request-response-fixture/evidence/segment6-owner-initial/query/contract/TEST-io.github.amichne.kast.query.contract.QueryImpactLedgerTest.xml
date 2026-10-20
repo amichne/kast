@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryImpactLedgerTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:17.720Z" hostname="Austins-MacBook-Pro.local" time="0.014">
+  <properties/>
+  <testcase name="a rejected resume must conserve every transfer and obligation from its suspended prefix()" classname="io.github.amichne.kast.query.contract.QueryImpactLedgerTest" time="0.003"/>
+  <testcase name="rejected read retains exact cause and cannot discharge native coverage()" classname="io.github.amichne.kast.query.contract.QueryImpactLedgerTest" time="0.001"/>
+  <testcase name="cycle cutoff proves exact repeated route and cannot attach to a different path()" classname="io.github.amichne.kast.query.contract.QueryImpactLedgerTest" time="0.001"/>
+  <testcase name="missing seed and native observation remain finite failures()" classname="io.github.amichne.kast.query.contract.QueryImpactLedgerTest" time="0.0"/>
+  <testcase name="capacity cutoff requires exceeded grant and preserves execution obligation()" classname="io.github.amichne.kast.query.contract.QueryImpactLedgerTest" time="0.001"/>
+  <testcase name="native obligation cannot disappear or produce discharged closure()" classname="io.github.amichne.kast.query.contract.QueryImpactLedgerTest" time="0.001"/>
+  <testcase name="dropping one route cannot establish complete accounting()" classname="io.github.amichne.kast.query.contract.QueryImpactLedgerTest" time="0.0"/>
+  <testcase name="site-only structural evidence cannot establish full producer identity()" classname="io.github.amichne.kast.query.contract.QueryImpactLedgerTest" time="0.0"/>
+  <testcase name="observation outside retained routes cannot disappear from accounting()" classname="io.github.amichne.kast.query.contract.QueryImpactLedgerTest" time="0.0"/>
+  <testcase name="all branches to shared destination retain separate path accounting()" classname="io.github.amichne.kast.query.contract.QueryImpactLedgerTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

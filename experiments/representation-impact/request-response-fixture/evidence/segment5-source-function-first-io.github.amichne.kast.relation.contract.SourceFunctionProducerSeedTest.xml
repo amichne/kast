@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.SourceFunctionProducerSeedTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-20T16:02:53.337Z" hostname="Austins-MacBook-Pro.local" time="0.073">
+  <properties/>
+  <testcase name="ordinary invoke identity cannot replace full enclosing or execution proof()" classname="io.github.amichne.kast.relation.contract.SourceFunctionProducerSeedTest" time="0.048"/>
+  <testcase name="source function origin rejects a foreign basis and nonproperty declaration()" classname="io.github.amichne.kast.relation.contract.SourceFunctionProducerSeedTest" time="0.004"/>
+  <testcase name="declared producer factory keeps its original typed origin()" classname="io.github.amichne.kast.relation.contract.SourceFunctionProducerSeedTest" time="0.002"/>
+  <testcase name="source function readmission rejects another expected property or source method()" classname="io.github.amichne.kast.relation.contract.SourceFunctionProducerSeedTest" time="0.001"/>
+  <testcase name="equal full endpoint proofs remain admissible as separate objects()" classname="io.github.amichne.kast.relation.contract.SourceFunctionProducerSeedTest" time="0.001"/>
+  <testcase name="source function seed cannot substitute another invocation selection or receiver range()" classname="io.github.amichne.kast.relation.contract.SourceFunctionProducerSeedTest" time="0.001"/>
+  <testcase name="source function seed keeps the actual builtin property reference and selected anchor()" classname="io.github.amichne.kast.relation.contract.SourceFunctionProducerSeedTest" time="0.006"/>
+  <testcase name="property scope is part of the admitted source function proof()" classname="io.github.amichne.kast.relation.contract.SourceFunctionProducerSeedTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

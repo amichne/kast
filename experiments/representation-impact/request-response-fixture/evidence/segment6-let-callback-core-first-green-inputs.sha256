@@ -1,0 +1,12 @@
+31fb5ac65cac7a98a22002c483118d55bfc978d85944b00631e99988dcdf38d5  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackValueProofLimits.kt
+647c162db743f6614c56aa799d414c130b59a3e47664c87c9f1b1d03489c2c16  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueCallBinding.kt
+cbece512dbef5d3d817a3904b6cd025777b8b16cabe4bc60518ba1ff4270d044  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlowFootprint.kt
+8ffc0eb496664cd82e8b3cee1702d80e1b0713202458b53bee119436e20fc24c  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlowStorage.kt
+ae73aa567b3852a649d6154446e3f7b5abc73d541a50835d6c1c4f5567482ce3  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueImplementationFootprint.kt
+adcffb4f4aac2b00d3441ba465809d21035709b8bf231a0f914b05d69f7bcffb  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueModelApplication.kt
+9f67e9ece03b0e50a4e798c5def37c98915d1e872da37c5dc182ee192d176185  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueReviewedCallbackTarget.kt
+5ae5a91e64c2bc9c37fbc15dda85ef7c41232342f2c49f8dcd667e51d1a25e38  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueScopeCallbackApplication.kt
+13e100795cd1ba2391fa47fd5623cfd577247dd283ee41ec8b885b5577b626f4  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueSourceTransfer.kt
+1d4884a93bbaaa29d735fd20226ab76d0a854c4f9d81f162fd1767d7f88b1ee9  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueStateEvidence.kt
+b5b171f0d1cdf2b41885d2c48077b77507311c173d5d4d32564f244ece61a9db  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueLetCallbackOracleCase.kt
+1bf0cdb64c15e96444a627a7b6276424a7ec14c0c9e6361d834867e381daa0d1  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueLetCallbackOracleTest.kt

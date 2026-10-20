@@ -1,0 +1,42 @@
+{
+  "experiments/representation-impact/request-response-fixture/evidence/segment5-root-authored-prose.md": [
+    {
+      "Action": {
+        "Name": "",
+        "Params": null
+      },
+      "Suggestions": [],
+      "Span": [
+        1,
+        1
+      ],
+      "Check": "Slopsentral.Grade",
+      "Description": "",
+      "Link": "https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests",
+      "Message": "Estimated Flesch-Kincaid grade 9.84 exceeds the shared advisory target of 8.",
+      "Severity": "warning",
+      "Match": "",
+      "Line": 1
+    },
+    {
+      "Action": {
+        "Name": "suggest",
+        "Params": [
+          "spellings"
+        ]
+      },
+      "Suggestions": [],
+      "Span": [
+        87,
+        92
+      ],
+      "Check": "Vale.Spelling",
+      "Description": "",
+      "Link": "",
+      "Message": "Did you really mean 'Detekt'?",
+      "Severity": "error",
+      "Match": "Detekt",
+      "Line": 15
+    }
+  ]
+}

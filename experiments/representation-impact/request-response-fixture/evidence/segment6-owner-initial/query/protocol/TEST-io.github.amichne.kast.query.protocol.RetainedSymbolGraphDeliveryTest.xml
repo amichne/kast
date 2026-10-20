@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.RetainedSymbolGraphDeliveryTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:31.325Z" hostname="Austins-MacBook-Pro.local" time="0.06">
+  <properties/>
+  <testcase name="minimal symbol fields preserve 53 compact exact connection occurrences()" classname="io.github.amichne.kast.query.protocol.RetainedSymbolGraphDeliveryTest" time="0.033"/>
+  <testcase name="requested unavailable source preserves current field selection and finite blockers through wire()" classname="io.github.amichne.kast.query.protocol.RetainedSymbolGraphDeliveryTest" time="0.027"/>
+  <system-out><![CDATA[D3 SYMBOLS baseline full_bytes=450604 compact_bytes=79092 connections=53
+D3 SYMBOLS connection_variants={reference-backed=53}
+D3 SYMBOLS connection_variants={reference-backed=47, direct=6}
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

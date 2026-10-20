@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactSeedCallbackEntryProjectionTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T17:49:16.369Z" hostname="Austins-MacBook-Pro.local" time="0.236">
+  <properties/>
+  <testcase name="seed projection preserves flow qualification and rejects an unknown operation tag()" classname="io.github.amichne.kast.query.protocol.ImpactSeedCallbackEntryProjectionTest" time="0.2"/>
+  <testcase name="seed operation rejects another actual invoke and supplying call()" classname="io.github.amichne.kast.query.protocol.ImpactSeedCallbackEntryProjectionTest" time="0.01"/>
+  <testcase name="seed operation rejects a nonempty source missing supplier and opaque target()" classname="io.github.amichne.kast.query.protocol.ImpactSeedCallbackEntryProjectionTest" time="0.009"/>
+  <testcase name="empty-stack callback seed encodes its distinct operation and both genuine frames()" classname="io.github.amichne.kast.query.protocol.ImpactSeedCallbackEntryProjectionTest" time="0.009"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

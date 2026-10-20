@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest" tests="10" skipped="0" failures="4" errors="0" timestamp="2026-10-20T12:47:44.383Z" hostname="Austins-MacBook-Pro.local" time="0.019">
+  <properties/>
+  <testcase name="a different leading field cannot masquerade as an element()" classname="io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest" time="0.002"/>
+  <testcase name="the result role cannot masquerade as the list receiver()" classname="io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest" time="0.001"/>
+  <testcase name="element one does not reach the first result()" classname="io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest" time="0.002"/>
+  <testcase name="another occurrence of the same callable cannot borrow the invocation binding()" classname="io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest" time="0.001"/>
+  <testcase name="element zero selects its exact field suffix()" classname="io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest" time="0.002">
+    <failure message="org.opentest4j.AssertionFailedError: The reviewed zero selection must apply: RULE_NOT_APPLIED ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: The reviewed zero selection must apply: RULE_NOT_APPLIED ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:232)
+	at io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest.assertSelection(ValueCollectionSelectionOracleTest.kt:108)
+	at io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest.element zero selects its exact field suffix(ValueCollectionSelectionOracleTest.kt:21)
+</failure>
+  </testcase>
+  <testcase name="a stale receiver cannot borrow a fresh binding()" classname="io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest" time="0.002"/>
+  <testcase name="selection keeps an existing exact nonnull subject without inventing a result fact()" classname="io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest" time="0.003">
+    <failure message="org.opentest4j.AssertionFailedError: The reviewed zero selection must apply: RULE_NOT_APPLIED ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: The reviewed zero selection must apply: RULE_NOT_APPLIED ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:232)
+	at io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest.assertSelection(ValueCollectionSelectionOracleTest.kt:108)
+	at io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest.selection keeps an existing exact nonnull subject without inventing a result fact(ValueCollectionSelectionOracleTest.kt:91)
+</failure>
+  </testcase>
+  <testcase name="abstract element selects zero condition without a claim about every element()" classname="io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: The reviewed zero selection must apply: RULE_NOT_APPLIED ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: The reviewed zero selection must apply: RULE_NOT_APPLIED ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:232)
+	at io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest.assertSelection(ValueCollectionSelectionOracleTest.kt:108)
+	at io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest.abstract element selects zero condition without a claim about every element(ValueCollectionSelectionOracleTest.kt:28)
+</failure>
+  </testcase>
+  <testcase name="whole list selects a conditional whole result with exact callback context()" classname="io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest" time="0.001">
+    <failure message="org.opentest4j.AssertionFailedError: The reviewed zero selection must apply: RULE_NOT_APPLIED ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: The reviewed zero selection must apply: RULE_NOT_APPLIED ==&gt; expected: &lt;true&gt; but was: &lt;false&gt;
+	at org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:232)
+	at io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest.assertSelection(ValueCollectionSelectionOracleTest.kt:108)
+	at io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest.whole list selects a conditional whole result with exact callback context(ValueCollectionSelectionOracleTest.kt:14)
+</failure>
+  </testcase>
+  <testcase name="dispatch slot cannot borrow the extension selection()" classname="io.github.amichne.kast.relation.contract.ValueCollectionSelectionOracleTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

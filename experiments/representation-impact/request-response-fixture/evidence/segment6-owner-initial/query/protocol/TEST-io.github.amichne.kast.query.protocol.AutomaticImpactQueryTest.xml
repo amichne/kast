@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.AutomaticImpactQueryTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:25.850Z" hostname="Austins-MacBook-Pro.local" time="0.173">
+  <properties/>
+  <testcase name="strict witness derives original finding identities and preserves the question without semantic replay()" classname="io.github.amichne.kast.query.protocol.AutomaticImpactQueryTest" time="0.111"/>
+  <testcase name="strict retained original value paths complete across pages without new semantic reads()" classname="io.github.amichne.kast.query.protocol.AutomaticImpactQueryTest" time="0.011"/>
+  <testcase name="strict original impact completion is independent of presentation page grant()" classname="io.github.amichne.kast.query.protocol.AutomaticImpactQueryTest" time="0.012"/>
+  <testcase name="stopping before the final presentation page preserves original accounting but rejects completion()" classname="io.github.amichne.kast.query.protocol.AutomaticImpactQueryTest" time="0.021"/>
+  <testcase name="unresolved native flow rejects strict completion and retains original obligations()" classname="io.github.amichne.kast.query.protocol.AutomaticImpactQueryTest" time="0.015"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

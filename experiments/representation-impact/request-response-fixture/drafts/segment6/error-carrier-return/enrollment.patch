@@ -1,0 +1,21 @@
+--- a/runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketCompositeQuerySource.kt
++++ b/runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketCompositeQuerySource.kt
+@@
++    fun mapErrorBody(): KtFunctionLiteral = read {
++        val mapped = call(path = CLIENT, owner = "OffersClientImpl", method = "readOffers", callee = "mapError")
++        checkNotNull(mapped.lambdaArguments.single().getLambdaExpression()).functionLiteral
++    }
++
+     fun mapBodyRange() = read {
+--- a/runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketCompositeQueryTest.kt
++++ b/runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketCompositeQueryTest.kt
+@@
++    fun testOriginalS2ErrorRowsShareOneRetainedCarrierRouteThroughC26() = runBlocking {
++        prepare().assertErrorReturnsThroughC25C26()
++    }
++
++    fun testOriginalS2ErrorReturnsForbidSuccessCarrierAndCrossCallWitnesses() = runBlocking {
++        prepare().assertErrorReturnForbiddenWitnesses()
++    }
++
+     private fun prepare(): NativePacketCompositeQueryCase {

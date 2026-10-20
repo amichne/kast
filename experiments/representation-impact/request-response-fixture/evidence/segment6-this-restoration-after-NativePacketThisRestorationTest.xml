@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketThisRestorationTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T16:19:38.407Z" hostname="Austins-MacBook-Pro.local" time="1.458">
+  <properties/>
+  <testcase name="testOriginalNullableThisRestoresItsSemanticExpressionAfterExactK2SafeNavigation" classname="io.github.amichne.kast.relation.intellij.NativePacketThisRestorationTest" time="0.503"/>
+  <testcase name="testOriginalOrdinaryNameReferenceKeepsItsOwnSemanticExpression" classname="io.github.amichne.kast.relation.intellij.NativePacketThisRestorationTest" time="0.483"/>
+  <testcase name="testOriginalBindThisRestoresItsSemanticExpressionWithTheExactExtensionSymbol" classname="io.github.amichne.kast.relation.intellij.NativePacketThisRestorationTest" time="0.472"/>
+  <system-out><![CDATA[THIS_RESTORATION_K2 checked=1622:1626 safe_navigation=TRUE extension=EXACT let=EXACT
+THIS_RESTORATION checked=ExactDeclarationTextRange(startInclusive=1622, endExclusive=1626) actual_class=KtThisExpression actual_parent=KtSafeQualifiedExpression actual_range=ExactDeclarationTextRange(startInclusive=1622, endExclusive=1626) expected_class=KtThisExpression guard_and_let_transport=NOT_ASSERTED
+THIS_RESTORATION checked=ExactDeclarationTextRange(startInclusive=1650, endExclusive=1652) actual_class=KtNameReferenceExpression actual_parent=KtValueArgument actual_range=ExactDeclarationTextRange(startInclusive=1650, endExclusive=1652) expected_class=KtNameReferenceExpression guard_and_let_transport=NOT_ASSERTED
+THIS_RESTORATION_K2 checked=1189:1193 extension=EXACT distinct_dispatch=TRUE
+THIS_RESTORATION checked=ExactDeclarationTextRange(startInclusive=1189, endExclusive=1193) actual_class=KtThisExpression actual_parent=KtWhenExpression actual_range=ExactDeclarationTextRange(startInclusive=1189, endExclusive=1193) expected_class=KtThisExpression guard_and_let_transport=NOT_ASSERTED
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -11,6 +11,7 @@ import io.github.amichne.kast.relation.contract.RepresentationModelApplication
 import io.github.amichne.kast.relation.contract.ValueFlowObligation
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
+import io.github.amichne.kast.relation.contract.ValueModelApplication
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueTransfer
 import io.github.amichne.kast.symbol.contract.SymbolSearchScope
@@ -30,6 +31,14 @@ sealed interface QueryImpactStep {
     }
 
     data class ModeledRepresentation(val application: RepresentationModelApplication) : QueryImpactStep {
+        override val source: ValueSite
+            get() = application.source
+
+        override val target: ValueSite
+            get() = application.target
+    }
+
+    data class ModeledValue(val application: ValueModelApplication) : QueryImpactStep {
         override val source: ValueSite
             get() = application.source
 
@@ -173,13 +182,15 @@ sealed interface QueryImpactTerminal {
 
         companion object {
             fun admit(observation: ValueFlowStep): Refinement<SupportedDomainEnd, QueryImpactPathFailure> =
-                if (
-                    observation.terminal == ValueFlowTerminal.SupportedDomainExhausted &&
-                        observation.transfers.isEmpty() &&
-                        observation.obligations.isEmpty()
-                )
-                    Refinement.Refined(SupportedDomainEnd(observation))
-                else Refinement.Rejected(QueryImpactPathFailure.TERMINAL_UNPROVEN)
+                when {
+                    observation.terminal != ValueFlowTerminal.SupportedDomainExhausted ->
+                        Refinement.Rejected(QueryImpactPathFailure.TERMINAL_UNPROVEN)
+                    observation.transfers.isNotEmpty() ||
+                        observation.applications.isNotEmpty() ||
+                        observation.obligations.isNotEmpty() ->
+                        Refinement.Rejected(QueryImpactPathFailure.TERMINAL_UNPROVEN)
+                    else -> Refinement.Refined(SupportedDomainEnd(observation))
+                }
         }
     }
 
@@ -271,6 +282,7 @@ private fun List<RepresentationHistory>.supports(producer: ValueSite, steps: Lis
                 step is QueryImpactStep.Compiler && history.transfer == step.transfer
             is RepresentationModelApplication ->
                 step is QueryImpactStep.ModeledRepresentation && history == step.application
+            is ValueModelApplication -> step is QueryImpactStep.ModeledValue && history == step.application
             is RepresentationHistory.BoundaryModel ->
                 step is QueryImpactStep.ModeledBoundary &&
                     history.reference == step.connection.model.reference &&

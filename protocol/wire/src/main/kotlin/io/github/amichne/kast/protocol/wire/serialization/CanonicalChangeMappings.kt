@@ -18,6 +18,12 @@ import io.github.amichne.kast.protocol.contract.ChangeRecoverRejection
 import io.github.amichne.kast.protocol.contract.ChangeRecoverResult
 import io.github.amichne.kast.protocol.contract.ChangeRecoveryDocumentState
 import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.combineConverted
+import io.github.amichne.kast.protocol.contract.convertEach
+import io.github.amichne.kast.protocol.contract.flatMapConverted
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocumentConversion
 
 internal fun ChangeApplyResult.toSerializableDocument(): ChangeApplyResultDocument =
     when (this) {

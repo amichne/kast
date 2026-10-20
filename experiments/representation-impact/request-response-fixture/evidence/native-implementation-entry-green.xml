@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketImplementationTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T02:45:29.263Z" hostname="Austins-MacBook-Pro.local" time="9.6">
+  <properties/>
+  <testcase name="testCombinedScopeKeepsEachImplementationFrame" classname="io.github.amichne.kast.relation.intellij.NativePacketImplementationTest" time="7.244"/>
+  <testcase name="testV1CombinedEntersTheConcreteImplementation" classname="io.github.amichne.kast.relation.intellij.NativePacketImplementationTest" time="0.999"/>
+  <testcase name="testV1ProductionEntersTheConcreteImplementation" classname="io.github.amichne.kast.relation.intellij.NativePacketImplementationTest" time="0.793"/>
+  <testcase name="testDefaultBodyCannotBypassTheConstantOverride" classname="io.github.amichne.kast.relation.intellij.NativePacketImplementationTest" time="0.554"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[[   1214]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1215]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

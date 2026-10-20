@@ -1,0 +1,109 @@
+package io.github.amichne.kast.query.contract
+
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.ValueExecutionOwner
+import io.github.amichne.kast.relation.contract.ValueInvocation
+import io.github.amichne.kast.relation.contract.ValueProducerOrigin
+import io.github.amichne.kast.relation.contract.ValueReceiverKind
+import io.github.amichne.kast.relation.contract.ValueRole
+import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotSame
+import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Test
+
+class QueryImpactExecutionOwnerRetentionTest {
+    @Test
+    fun `receiver site storage visits its exact slot kind`() {
+        val f = QueryImpactLedgerFixture()
+        for (kind in ValueReceiverKind.entries) {
+            val site =
+                ValueSite.fromCompiler(
+                        f.owner,
+                        f.producer.range,
+                        ValueRole.Receiver((f.producerWitness.origin as ValueProducerOrigin.Declared).invocation, kind),
+                    )
+                    .value()
+            val graph = QueryImpactRetainedGraph()
+            site.storageBytes(graph)
+            assertEquals(8L, graph.node(kind) { error("Receiver kind was not visited") })
+        }
+    }
+
+    @Test
+    fun `endpoint-only retention visits its owned execution proof`() {
+        val f = QueryImpactLedgerFixture()
+        val graph = QueryImpactRetainedGraph()
+        f.owner.storageBytes(graph)
+
+        assertEquals(8L, f.owner.valueExecutionOwner.storageBytes(graph))
+        assertEquals(
+            8L,
+            graph.node(f.owner.valueExecutionOwner.identity) { error("Execution identity was not visited") },
+        )
+    }
+
+    @Test
+    fun `default sites and calls share their exact admitted endpoint declaration owner`() {
+        val f = QueryImpactLedgerFixture()
+        val owner = ValueExecutionOwner.declaration(f.owner)
+        val sites =
+            (1..150).map { offset ->
+                ValueSite.fromCompiler(f.owner, range(offset, offset + 1), ValueRole.LocalRead).value()
+            }
+        val calls =
+            listOf(20, 40).map { offset ->
+                ValueInvocation.fromCompiler(f.owner, range(offset, offset + 5), f.owner).value()
+            }
+        val shared = sites.map { site ->
+            ValueSite.fromCompiler(
+                    enclosing = f.owner,
+                    range = site.range,
+                    role = site.role,
+                    executionOwner = owner,
+                )
+                .value()
+        }
+        val defaultGraph = QueryImpactRetainedGraph()
+        val sharedGraph = QueryImpactRetainedGraph()
+        val defaultBytes = sites.sumOf { defaultGraph.site(it) }
+        val sharedBytes = shared.sumOf { sharedGraph.site(it) }
+
+        for (site in sites) {
+            assertSame(
+                owner,
+                site.executionOwner,
+                "defaultBytes=$defaultBytes explicitSharedBytes=$sharedBytes sites=${sites.size}",
+            )
+            assertSame(owner.identity, site.identity.execution)
+        }
+        for (call in calls) {
+            assertSame(owner, call.executionOwner)
+            assertSame(owner.identity, call.identity.execution)
+            assertSame(owner, call.resultSite().executionOwner)
+        }
+        assertEquals(sharedBytes, defaultBytes)
+    }
+
+    @Test
+    fun `equal distinct admitted endpoints keep separate declaration owner objects`() {
+        val f = QueryImpactLedgerFixture()
+        val copy = RelationEndpoint.resolve(f.lease, f.scope, f.evidence).value()
+        assertEquals(f.owner, copy)
+        assertNotSame(f.owner, copy)
+        val first = ValueExecutionOwner.declaration(f.owner)
+        val second = ValueExecutionOwner.declaration(copy)
+
+        assertEquals(first, second)
+        assertNotSame(first, second)
+        assertNotSame(first.identity, second.identity)
+        assertSame(first, ValueExecutionOwner.declaration(f.owner))
+        assertSame(second, ValueExecutionOwner.declaration(copy))
+    }
+}
+
+private fun range(start: Int, end: Int) = ExactDeclarationTextRange.parse(start, end).value()
+
+private fun <T> Refinement<T, *>.value(): T = (this as Refinement.Refined).value

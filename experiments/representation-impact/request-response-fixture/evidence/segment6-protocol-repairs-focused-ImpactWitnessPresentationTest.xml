@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:23:42.632Z" hostname="Austins-MacBook-Pro.local" time="0.322">
+  <properties/>
+  <testcase name="same retained result and section preserve stable ordinals empty sections and cursor bounds()" classname="io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest" time="0.149"/>
+  <testcase name="read result exposes original producer invocation and flattened native records without replay()" classname="io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest" time="0.118"/>
+  <testcase name="path fitting preserves complete original closure through its retained presentation window()" classname="io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest" time="0.017"/>
+  <testcase name="resumed native witness exposes each actual grant separately from accumulated work()" classname="io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest" time="0.022"/>
+  <testcase name="connectivity only retained paths cannot manufacture original witness ledger()" classname="io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest" time="0.003"/>
+  <testcase name="witness fitting preserves ledger counts and section ordinals across prefix and suffix()" classname="io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

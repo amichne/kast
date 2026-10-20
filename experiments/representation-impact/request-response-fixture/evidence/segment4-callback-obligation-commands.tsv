@@ -1,0 +1,3 @@
+result	log	command
+PASSED 22 tests 0 failures 0 errors 0 skips 16 seconds	segment4-callback-obligation-first.log	mise exec -- ./gradlew --no-daemon --max-workers=1 :relation:contract:spotlessApply :relation:contract:test --tests '*ValueCallbackObligationOracleTest' --tests '*ValueCallbackFrameOracleTest' --tests '*ValueCallbackTransferOracleTest' --tests '*ValueReceiverCallbackOracleTest' --console=plain
+PASSED policy 12 seconds	segment4-callback-obligation-policy.log	mise exec -- ./gradlew --no-daemon --max-workers=1 :relation:contract:detekt :relation:contract:checkTestKotlinFileLength :relation:contract:spotlessCheck --console=plain

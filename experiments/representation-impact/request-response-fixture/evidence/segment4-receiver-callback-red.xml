@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueReceiverCallbackOracleTest" tests="4" skipped="0" failures="3" errors="0" timestamp="2026-10-20T03:48:23.105Z" hostname="Austins-MacBook-Pro.local" time="0.078">
+  <properties/>
+  <testcase name="ordinary argument one cannot substitute for the anonymous extension receiver()" classname="io.github.amichne.kast.relation.contract.ValueReceiverCallbackOracleTest" time="0.059"/>
+  <testcase name="builtin argument one enters ordinary parameter zero after the receiver slot()" classname="io.github.amichne.kast.relation.contract.ValueReceiverCallbackOracleTest" time="0.007">
+    <failure message="java.lang.IllegalStateException: Fixture fact rejected: EVIDENCE_MISMATCH" type="java.lang.IllegalStateException">java.lang.IllegalStateException: Fixture fact rejected: EVIDENCE_MISMATCH
+	at io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTestKt.flowRefined(ValueSourceFlowOracleTest.kt:413)
+	at io.github.amichne.kast.relation.contract.ValueReceiverCallbackOracleTest.builtin argument one enters ordinary parameter zero after the receiver slot(ValueReceiverCallbackOracleTest.kt:25)
+</failure>
+  </testcase>
+  <testcase name="builtin argument zero enters the anonymous extension receiver()" classname="io.github.amichne.kast.relation.contract.ValueReceiverCallbackOracleTest" time="0.002">
+    <failure message="java.lang.IllegalStateException: Fixture fact rejected: EVIDENCE_MISMATCH" type="java.lang.IllegalStateException">java.lang.IllegalStateException: Fixture fact rejected: EVIDENCE_MISMATCH
+	at io.github.amichne.kast.relation.contract.ValueSourceFlowOracleTestKt.flowRefined(ValueSourceFlowOracleTest.kt:413)
+	at io.github.amichne.kast.relation.contract.ValueReceiverCallbackOracleTest.builtin argument zero enters the anonymous extension receiver(ValueReceiverCallbackOracleTest.kt:15)
+</failure>
+  </testcase>
+  <testcase name="receiver argument zero cannot substitute for ordinary parameter zero()" classname="io.github.amichne.kast.relation.contract.ValueReceiverCallbackOracleTest" time="0.003">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=EVIDENCE_MISMATCH)&gt; but was: &lt;Refined(value=io.github.amichne.kast.relation.contract.ValueTransfer@2ba333da)&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=EVIDENCE_MISMATCH)&gt; but was: &lt;Refined(value=io.github.amichne.kast.relation.contract.ValueTransfer@2ba333da)&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.relation.contract.ValueReceiverCallbackOracleTest.receiver argument zero cannot substitute for ordinary parameter zero(ValueReceiverCallbackOracleTest.kt:43)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

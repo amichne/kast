@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T18:31:25.817Z" hostname="Austins-MacBook-Pro.local" time="0.164">
+  <properties/>
+  <testcase name="a declaration-kind constraint cannot borrow an unrestricted endpoint()" classname="io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest" time="0.107"/>
+  <testcase name="another semantic basis cannot borrow an older full proof()" classname="io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest" time="0.02"/>
+  <testcase name="full equal subject selectors keep fingerprints and all semantic facts(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest" time="0.015">
+    <properties>
+      <property name="before.sourceBytes" value="59032"/>
+      <property name="after.sourceBytes" value="44764"/>
+      <property name="before.stepBytes" value="82318"/>
+      <property name="after.stepBytes" value="66314"/>
+      <property name="before.physicalEndpoints" value="25"/>
+      <property name="after.physicalEndpoints" value="6"/>
+    </properties>
+  </testcase>
+  <testcase name="subject and resolved representations cannot replace one another()" classname="io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest" time="0.007"/>
+  <testcase name="selector restoration rejects a foreign scope under an unchanged fingerprint()" classname="io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest" time="0.003"/>
+  <testcase name="full selector sharing compacts the source without replacing it with a resolved endpoint(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest" time="0.004">
+    <properties>
+      <property name="before.sourceBytes" value="59032"/>
+      <property name="after.sourceBytes" value="44764"/>
+      <property name="before.stepBytes" value="82318"/>
+      <property name="after.stepBytes" value="66314"/>
+      <property name="before.physicalEndpoints" value="25"/>
+      <property name="after.physicalEndpoints" value="6"/>
+    </properties>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

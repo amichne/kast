@@ -1,0 +1,17 @@
+...............F........
+======================================================================
+FAIL: test_shared_refs_preserve_the_expanded_query_contract (__main__.PublicQueryGenerationTest.test_shared_refs_preserve_the_expanded_query_contract)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/packaging/test-public-query-generation.py", line 118, in test_shared_refs_preserve_the_expanded_query_contract
+    self.assertEqual(digest, hashlib.sha256(encoded.encode()).hexdigest(), name)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '6a23ba349697051de415e3602b8f00233113657cc3cac328ce7cf8e2e3876b53' != 'abc0cc503fe21234da6522ce5abe791621cd21d0a85dd8a94000226055fb5e32'
+- 6a23ba349697051de415e3602b8f00233113657cc3cac328ce7cf8e2e3876b53
++ abc0cc503fe21234da6522ce5abe791621cd21d0a85dd8a94000226055fb5e32
+ : query_symbols.parameters.json
+
+----------------------------------------------------------------------
+Ran 24 tests in 0.172s
+
+FAILED (failures=1)

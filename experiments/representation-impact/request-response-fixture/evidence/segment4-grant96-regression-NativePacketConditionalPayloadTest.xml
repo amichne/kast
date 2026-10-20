@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketConditionalPayloadTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T06:59:49.628Z" hostname="Austins-MacBook-Pro.local" time="1.361">
+  <properties/>
+  <testcase name="testConstantCallbackAdmitsTheRealUnusedImplicitFormalWithoutAnInputPayloadResultEdge" classname="io.github.amichne.kast.relation.intellij.NativePacketConditionalPayloadTest" time="0.459"/>
+  <testcase name="testRenamedCarrierPreservesTheConditionalPayloadThroughItsSuppliedIdentityAndReplacementStorage" classname="io.github.amichne.kast.relation.intellij.NativePacketConditionalPayloadTest" time="0.427"/>
+  <testcase name="testFieldSpecificInputEmitsNoSameTypedRejectedPayloadWitness" classname="io.github.amichne.kast.relation.intellij.NativePacketConditionalPayloadTest" time="0.475"/>
+  <system-out><![CDATA[CONDITIONAL_PAYLOAD_STAGE row=convert receiver source=ExactDeclarationTextRange(startInclusive=1037, endExclusive=1043) transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=1037, endExclusive=1043))] frontier=[]
+CONDITIONAL_PAYLOAD_STAGE row=convert formal source=ExactDeclarationTextRange(startInclusive=1037, endExclusive=1043) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=296, endExclusive=461))] frontier=[]
+CONDITIONAL_PAYLOAD_STAGE row=Accepted.payload selection source=ExactDeclarationTextRange(startInclusive=296, endExclusive=461) transfers=[(FIELD_READ, ExactDeclarationTextRange(startInclusive=405, endExclusive=412))] frontier=[]
+CONDITIONAL_PAYLOAD_STAGE row=builtin operation argument source=ExactDeclarationTextRange(startInclusive=405, endExclusive=412) transfers=[(ARGUMENT, ExactDeclarationTextRange(startInclusive=405, endExclusive=412))] frontier=[]
+CONDITIONAL_PAYLOAD_STAGE row=supplied implicit formal source=ExactDeclarationTextRange(startInclusive=405, endExclusive=412) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=1052, endExclusive=1066))] frontier=[]
+CONDITIONAL_PAYLOAD_STAGE row=constant unused implicit formal source=ExactDeclarationTextRange(startInclusive=1052, endExclusive=1066) transfers=[] frontier=[]
+CONDITIONAL_PAYLOAD_RESULT control=constant-no-input-result status=ASSERTED
+CONDITIONAL_PAYLOAD_STAGE row=convert receiver source=ExactDeclarationTextRange(startInclusive=939, endExclusive=945) transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=939, endExclusive=945))] frontier=[]
+CONDITIONAL_PAYLOAD_STAGE row=convert formal source=ExactDeclarationTextRange(startInclusive=939, endExclusive=945) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=296, endExclusive=461))] frontier=[]
+CONDITIONAL_PAYLOAD_STAGE row=Accepted.payload selection source=ExactDeclarationTextRange(startInclusive=296, endExclusive=461) transfers=[(FIELD_READ, ExactDeclarationTextRange(startInclusive=405, endExclusive=412))] frontier=[]
+CONDITIONAL_PAYLOAD_STAGE row=builtin operation argument source=ExactDeclarationTextRange(startInclusive=405, endExclusive=412) transfers=[(ARGUMENT, ExactDeclarationTextRange(startInclusive=405, endExclusive=412))] frontier=[]
+CONDITIONAL_PAYLOAD_STAGE row=supplied implicit formal source=ExactDeclarationTextRange(startInclusive=405, endExclusive=412) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=954, endExclusive=960))] frontier=[]
+CONDITIONAL_PAYLOAD_STAGE row=identity implicit read source=ExactDeclarationTextRange(startInclusive=954, endExclusive=960) transfers=[(LOCAL_READ, ExactDeclarationTextRange(startInclusive=956, endExclusive=958))] frontier=[]
+CONDITIONAL_PAYLOAD_STAGE row=identity anonymous result source=ExactDeclarationTextRange(startInclusive=956, endExclusive=958) transfers=[(RETURN, ExactDeclarationTextRange(startInclusive=956, endExclusive=958))] frontier=[]
+CONDITIONAL_PAYLOAD_STAGE row=matched builtin return source=ExactDeclarationTextRange(startInclusive=956, endExclusive=958) transfers=[(SOURCE_CALL_RETURN, ExactDeclarationTextRange(startInclusive=395, endExclusive=413))] frontier=[]
+CONDITIONAL_PAYLOAD_STAGE row=accepted factory argument source=ExactDeclarationTextRange(startInclusive=395, endExclusive=413) transfers=[(ARGUMENT, ExactDeclarationTextRange(startInclusive=395, endExclusive=413))] frontier=[]
+CONDITIONAL_PAYLOAD_STAGE row=accepted factory formal source=ExactDeclarationTextRange(startInclusive=395, endExclusive=413) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=689, endExclusive=699))] frontier=[]
+CONDITIONAL_PAYLOAD_STAGE row=accepted factory payload source=ExactDeclarationTextRange(startInclusive=689, endExclusive=699) transfers=[(LOCAL_READ, ExactDeclarationTextRange(startInclusive=732, endExclusive=739))] frontier=[]
+CONDITIONAL_PAYLOAD_STAGE row=replacement constructor argument source=ExactDeclarationTextRange(startInclusive=732, endExclusive=739) transfers=[(ARGUMENT, ExactDeclarationTextRange(startInclusive=732, endExclusive=739))] frontier=[]
+CONDITIONAL_PAYLOAD_STAGE row=replacement Accepted.payload source=ExactDeclarationTextRange(startInclusive=732, endExclusive=739) transfers=[(CONSTRUCTOR_FIELD, ExactDeclarationTextRange(startInclusive=723, endExclusive=740))] frontier=[]
+CONDITIONAL_PAYLOAD_RESULT control=renamed-identity status=ASSERTED later=NOT_RUN
+CONDITIONAL_PAYLOAD_STAGE row=convert receiver source=ExactDeclarationTextRange(startInclusive=939, endExclusive=945) transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=939, endExclusive=945))] frontier=[]
+CONDITIONAL_PAYLOAD_STAGE row=convert formal source=ExactDeclarationTextRange(startInclusive=939, endExclusive=945) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=296, endExclusive=461))] frontier=[]
+CONDITIONAL_PAYLOAD_STAGE row=Accepted.payload selection source=ExactDeclarationTextRange(startInclusive=296, endExclusive=461) transfers=[(FIELD_READ, ExactDeclarationTextRange(startInclusive=405, endExclusive=412))] frontier=[]
+CONDITIONAL_PAYLOAD_RESULT control=sibling-field-exclusion status=ASSERTED
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

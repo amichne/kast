@@ -1,0 +1,142 @@
+module	class	test	status
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactFindingShapeTest	missing original identity unknown discriminator and unknown finite cause fail raw decoding()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactFindingShapeTest	nonmodeled representation preserves its required closed discriminator()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactFindingShapeTest	all compact terminal variants preserve independent finite shapes and original rejection work()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactFindingShapeTest	finding emits required original path identity current alternatives and ordered compact provenance()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactImplementationPeerIdentityTest	reviewed peer rule accepts the same qualified call with fresh work observations()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactImplementationPeerIdentityTest	peer obligations and representation history keep exact positions without freezing work observations()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactImplementationShapeTest	zero-fact qualified evidence survives native witness admission and refuses a substituted call()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactImplementationShapeTest	implementation target encodes its full exact proof and direct default stays explicit()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactImplementationShapeTest	implementation frame rejects another callable owner domain or semantic basis()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactImplementationShapeTest	call identity ignores work observations while changed coverage cannot discharge a return()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactModelIngressTest	persisted retention terminal cannot be attached to a serialization boundary()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactModelIngressTest	unknown fields discriminators and quoted numeric identities reject at raw ingress()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactModelIngressTest	boundary continuation retains independent published bases and explicit assumptions()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactModelIngressTest	all four representation rules encode with required CAPS_CASE discriminator and exact identity()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactModelIngressTest	duplicate rule IDs undeclared representation and result input remain finite syntax failures()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactPeerAccountingTest	unused peer model witness retains exact original model and independent completed target proof()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactPeerAccountingTest	foreign model or terminal cannot omit completed peer receipt by using ordinary alternatives()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactPeerAccountingTest	only final reviewed peer edge can retain foreign basis and closure remains unresolved()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactPeerAccountingTest	compact peer finding requires target destination and final ordered boundary provenance()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactPeerAccountingTest	foreign compiler prefix or foreign earlier provenance cannot borrow final peer receipt()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactPeerAdmissionValidationTest	completed peer basis remains distinct from source and exact target claim()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactPeerAdmissionValidationTest	completed peer receipt rejects work time and selected allowance contradictions before publication()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactPeerNativeWitnessValidationTest	native and rejected read receipts cannot hide a foreign authority()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactPeerNativeWitnessValidationTest	compact source finding cannot hide foreign domain end inside a source destination()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactPeerNativeWitnessValidationTest	producer invocation cannot hide a foreign execution body behind a source callable()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactPeerNativeWitnessValidationTest	ordinary native witness alternatives cannot claim peer basis as source compiler proof()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactPeerShapeTest	path and compact finding preserve full independent peer receipt and required unresolved reason()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactPeerShapeTest	missing peer receipt reason or unknown finite cause fails raw decoding()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactPeerShapeTest	unused reviewed peer model retains its completed native target receipt in models witness()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactPeerShapeTest	every finite peer proof failure preserves cause position and explicit recovery()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactPeerSourceBasisValidationTest	foreign requested site cannot become an ordinary source claim through matching question()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactPeerSourceBasisValidationTest	foreign second seed cannot borrow the first source basis()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactValueStateShapeTest	constructor storage names its declared formal and rejects a sibling field()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactValueStateShapeTest	source entry and matched return preserve field and exact invocation context()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactValueStateShapeTest	field reads reject another field and a field from another semantic basis()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.ImpactValueStateShapeTest	bounded state rejects excess depth repeated call frames and foreign callee basis()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.QueryCompletionContractTest	canonical run has no completion input and question encodes fixed proof()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.QueryCompletionContractTest	complete only has required explicit discriminator and model()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.QueryCompletionContractTest	original qualifications retain a nonempty canonical limitation set()	passed
+protocol/contract	io.github.amichne.kast.protocol.contract.QueryCompletionContractTest	canonical run rejects every supplied completion field()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactExecutionOwnerRetentionTest	endpoint-only retention visits its owned execution proof()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactExecutionOwnerRetentionTest	default sites and calls share their exact admitted endpoint declaration owner()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactExecutionOwnerRetentionTest	equal distinct admitted endpoints keep separate declaration owner objects()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactFindingTest	selected finding ordinal remains the original path ordinal()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactFindingTest	finding construction refuses an ordinal outside the original ledger()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactFindingTest	finding view preserves original identities for distinct routes to the same destination()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactImplementationRetentionTest	zero-fact dispatch obligation cannot lose its evidence in a retained path()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactImplementationRetentionTest	frame retention visits every strongly owned target proof()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactImplementationRetentionTest	zero-fact unresolved obligation retention visits its qualified dispatch()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactModelConservationTest	origin models for another exact callable stay retained without creating routes()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactModelConservationTest	unvisited boundary model stays retained without creating a route()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactModelConservationTest	execution cutoff retains incompleteness before applying boundary models()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactModelConservationTest	native branches cannot borrow conservation from another origin route()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactModelConservationTest	every applicable origin model requires its own retained route()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactModelConservationTest	every applicable boundary alternative retains its obligations()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactPeerLedgerTest	retained source rows preserve exact peer proof and cannot be captured under peer authority()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactPeerLedgerTest	independent peer native observations cannot merge into source investigation ledger()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactPeerLedgerTest	peer endpoint cannot discharge an independent mutable source obligation()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactPeerLedgerTest	peer terminal requires its original registered wrapper()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactPeerLedgerTest	peer endpoint cannot replace a source compiler sibling()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactPeerLedgerTest	unused peer model retains admission in its original model ordinal without creating a route()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactPeerLedgerTest	ordinary downstream boundary cannot borrow completed peer endpoint exception()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactPeerLedgerTest	guarded peer endpoint is conserved without an invented peer native read()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactSiteAccountingTest	requested native sites preserve both proven routes and an unmatched relationship obligation()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactSiteAccountingTest	another domain or another exact native site cannot count as requested scope exclusion()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactSiteAccountingTest	native selection receipt rejects substituted occurrence and excess work()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactSiteAccountingTest	duplicate native targets fail closed and unmatched obligations forbid complete execution()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactSiteAccountingTest	positive exits preserve both original path ordinals and mixed reached partition()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactSiteSelectionTest	requested occurrences preserve both entered mapper routes and their actual value states()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryImpactSiteSelectionTest	field specific native selection keeps exact value equality and cannot match a sibling field()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryValuePathRetentionTest	retained anonymous execution preserves exact body identity and consumes its storage()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryValuePathRetentionTest	qualified paths snapshot rows and selection preserves exact route and qualification()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryValuePathRetentionTest	unused ledger models retain their full byte charge and cannot smuggle a foreign basis()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryValuePathRetentionTest	connected terminal paths cannot construct complete investigation without an expansion ledger()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryValuePathRetentionTest	discharged full ledger admits complete while selection retains the ledger with weaker rows()	passed
+query/contract	io.github.amichne.kast.query.contract.QueryValuePathRetentionTest	foreign value path basis rejects capture and exact payload growth consumes retention bytes()	passed
+query/protocol	io.github.amichne.kast.query.protocol.AutomaticImpactQueryTest	strict witness derives original finding identities and preserves the question without semantic replay()	passed
+query/protocol	io.github.amichne.kast.query.protocol.AutomaticImpactQueryTest	strict retained original value paths complete across pages without new semantic reads()	passed
+query/protocol	io.github.amichne.kast.query.protocol.AutomaticImpactQueryTest	strict original impact completion is independent of presentation page grant()	passed
+query/protocol	io.github.amichne.kast.query.protocol.AutomaticImpactQueryTest	stopping before the final presentation page preserves original accounting but rejects completion()	passed
+query/protocol	io.github.amichne.kast.query.protocol.AutomaticImpactQueryTest	unresolved native flow rejects strict completion and retains original obligations()	passed
+query/protocol	io.github.amichne.kast.query.protocol.CanonicalQueryRetentionProtocolTest	retained result draining cannot recreate an evicted producer checkpoint()	passed
+query/protocol	io.github.amichne.kast.query.protocol.CanonicalQueryRetentionProtocolTest	retained empty result is readable without another semantic execution()	passed
+query/protocol	io.github.amichne.kast.query.protocol.CanonicalQueryRetentionProtocolTest	opaque checkpoint binds query and snapshot while allowing fresh page budget()	passed
+query/protocol	io.github.amichne.kast.query.protocol.CanonicalQueryRetentionProtocolTest	internal evaluator page never captures or issues retained output()	passed
+query/protocol	io.github.amichne.kast.query.protocol.CompleteOnlyCallbackQueryTest	failed callback identifies exact source subject while proven rows remain evidence only()	passed
+query/protocol	io.github.amichne.kast.query.protocol.CompleteOnlyCallbackQueryTest	walk callback obligations cannot bypass complete only policy()	passed
+query/protocol	io.github.amichne.kast.query.protocol.CompleteOnlyCallbackQueryTest	complete callback graph without result membership cannot become a complete empty answer()	passed
+query/protocol	io.github.amichne.kast.query.protocol.CompleteOnlyCallbackQueryTest	unresolved callback obligations survive graph rejection metadata()	passed
+query/protocol	io.github.amichne.kast.query.protocol.CompleteOnlyCallbackQueryTest	rejected raw complete callback evidence cannot be read as an accepted answer()	passed
+query/protocol	io.github.amichne.kast.query.protocol.CompleteOnlyCallbackQueryTest	exhaustive bound callback graph admits complete static answer()	passed
+query/protocol	io.github.amichne.kast.query.protocol.CompleteOnlyCallbackQueryTest	unavailable retention preserves exact known callback cause in encoded rejection()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactExecutionOwnerProjectionTest	receiver transfers preserve the exact invocation and anonymous owner()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactExecutionOwnerProjectionTest	foreign or misplaced anonymous bodies fail structural admission()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactExecutionOwnerProjectionTest	declaration execution is explicit in output and old references keep their declaration meaning()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactExecutionOwnerProjectionTest	anonymous invocation and result preserve the source body and reject another execution owner()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactFindingPresentationTest	admitted one finding grant bounds construction before projection and preserves original links()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactFindingPresentationTest	finding cursor drain preserves large view links closure and required compact encoded shape()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactFindingPresentationTest	finding projection rejects absent or mismatched original row count before constructing documents()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactFindingPresentationTest	compact retained findings link both original routes to full path rows without semantic replay()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactImplementationTargetProjectionTest	zero-fact incomplete dispatch remains evidence on its unresolved path()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactImplementationTargetProjectionTest	incomplete implementation coverage keeps its limit instead of claiming exhaustion()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactImplementationTargetProjectionTest	implementation frame preserves the static call all targets and imported source owner()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactImplementationTargetProjectionTest	fresh work observations preserve matched return identity without erasing either observation()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactModelAdmissionTest	old generation and unavailable formal argument reject with precise causes()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactModelAdmissionTest	scope only repeated current witnesses preserve rule equality()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactModelAdmissionTest	boundary syntax binds separate exact repository bases and refuses missing same name target()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactModelAdmissionTest	all four rules preserve exact current callable and model identity()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactModelAdmissionTest	same signature in another file cannot replace exact declared callable()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactPeerProjectionTest	used peer terminal and unused model retain the same completed proof without source basis replacement()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactSiteAccountingPresentationTest	site cursor pages preserve original ordinal identity native receipts and encoded finite outcome()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactSiteAccountingPresentationTest	requested sites retain both original route links and unknown relationship without provider replay()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactSourceValueProjectionTest	native entry and return projection preserves the exact field formal and call frame()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactSourceValueProjectionTest	caller supplied nonempty value state cannot become native revalidation evidence()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest	same retained result and section preserve stable ordinals empty sections and cursor bounds()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest	read result exposes original producer invocation and flattened native records without replay()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest	path fitting preserves complete original closure through its retained presentation window()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest	resumed native witness exposes each actual grant separately from accumulated work()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest	connectivity only retained paths cannot manufacture original witness ledger()	passed
+query/protocol	io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest	witness fitting preserves ledger counts and section ordinals across prefix and suffix()	passed
+query/protocol	io.github.amichne.kast.query.protocol.QueryImpactPeerCanonicalRetentionTest	peer path and completed proof remain qualified and expandable without compiler replay()	passed
+query/protocol	io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest	requested sites reuse exact model site native receipts once and preserve original question order()	passed
+query/protocol	io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest	native requested site failures preserve finite cause and abort without following target reads()	passed
+query/protocol	io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest	foreign requested native claim rejects before all native effects()	passed
+query/protocol	io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest	requested native proof remains charged within explicit small checkpoint grant()	passed
+query/protocol	io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest	duplicate requested sites reject before all native effects()	passed
+query/protocol	io.github.amichne.kast.query.protocol.QueryImpactRequestedSiteAdmissionTest	native anonymous owner must match the supplied requested site owner()	passed
+query/protocol	io.github.amichne.kast.query.protocol.QueryImpactSourceRetentionTest	retained impact question and automatic checkpoint keep seed proof without reacquiring it()	passed
+query/service	io.github.amichne.kast.query.service.QueryImpactModelStateConservationTest	whole argument model cannot transform an unmodeled element contribution()	passed
+query/service	io.github.amichne.kast.query.service.QueryImpactModelStateConservationTest	whole argument model cannot accept an output that erases source call state()	passed
+query/service	io.github.amichne.kast.query.service.QueryImpactModelStateConservationTest	identity model result preserves the actual nonempty source call stack()	passed
+query/service	io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest	shared modeled branch prefixes finish within existing checkpoint capacity with every path intact()	passed
+query/service	io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest	repeated root references are charged without removing an evidence row()	passed
+query/service	io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest	dense repeated callable evidence retains every flow obligation within default checkpoint capacity()	passed
+query/service	io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest	expired presentation permission rejects before semantic effects()	passed
+query/service	io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest	storage distinguishes shared proof objects from physically distinct equal declarations()	passed
+query/service	io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest	standalone output keeps conservative byte protection()	passed
+query/service	io.github.amichne.kast.query.service.QueryImpactStorageAdmissionTest	paired presentation leaves storage charge for checkpoint ownership()	passed
+protocol/wire	io.github.amichne.kast.protocol.wire.ImpactPathWireTest	wire and CLI retain complete canonical VALUE_PATH payload and required discriminators()	passed
+protocol/wire	io.github.amichne.kast.protocol.wire.ImpactPathWireTest	retained row identity survives wire and CLI without becoming a live selector()	passed
+protocol/wire	io.github.amichne.kast.protocol.wire.ImpactWitnessWireTest	witness records preserve exact producer and obligation identities in independent wire and CLI shapes()	passed

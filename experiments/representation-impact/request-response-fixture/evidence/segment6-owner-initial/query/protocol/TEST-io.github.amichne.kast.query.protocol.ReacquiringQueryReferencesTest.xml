@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ReacquiringQueryReferencesTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.765Z" hostname="Austins-MacBook-Pro.local" time="0.006">
+  <properties/>
+  <testcase name="stale authority acquisition reports its finite reason while current references need no acquisition()" classname="io.github.amichne.kast.query.protocol.ReacquiringQueryReferencesTest" time="0.002"/>
+  <testcase name="fresh reads reacquire once but strict restoration cannot use that authority()" classname="io.github.amichne.kast.query.protocol.ReacquiringQueryReferencesTest" time="0.002"/>
+  <testcase name="failed acquisition is cached and never issues a handle from another authority()" classname="io.github.amichne.kast.query.protocol.ReacquiringQueryReferencesTest" time="0.001"/>
+  <testcase name="malformed and foreign authority never trigger a search()" classname="io.github.amichne.kast.query.protocol.ReacquiringQueryReferencesTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

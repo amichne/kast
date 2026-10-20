@@ -1,0 +1,507 @@
+--- relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijSourceValueProjection.kt
++++ relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijSourceValueProjection.kt
+@@ -9,6 +9,7 @@
+ import io.github.amichne.kast.relation.contract.ValueArgumentPosition
+ import io.github.amichne.kast.relation.contract.ValueCallBindingFailure
+ import io.github.amichne.kast.relation.contract.ValueCallFrame
++import io.github.amichne.kast.relation.contract.ValueCallStack
+ import io.github.amichne.kast.relation.contract.ValueExecutionOwner
+ import io.github.amichne.kast.relation.contract.ValueField
+ import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
+@@ -129,6 +130,15 @@
+             is Refinement.Refined -> value.value
+             is Refinement.Rejected -> return Refinement.Rejected(value.failure.nativeCallCause())
+         }
++    return sourceFormalTarget(source, formal, frame, stack)
++}
++
++internal fun sourceFormalTarget(
++    source: ValueSite,
++    formal: ValueFormalPosition,
++    frame: ValueCallFrame,
++    stack: ValueCallStack,
++): Refinement<ValueSite, ValueFlowUnsupportedCause> {
+     val range =
+         when (formal) {
+             is ValueFormalPosition.Parameter -> formal.parameter.range
+@@ -291,7 +301,7 @@
+ private fun sourceRejected(): Refinement.Rejected<ValueFlowUnsupportedCause> =
+     Refinement.Rejected(ValueFlowUnsupportedCause.UNMODELED_CALL)
+ 
+-private fun ValueCallBindingFailure.nativeCallCause(): ValueFlowUnsupportedCause =
++internal fun ValueCallBindingFailure.nativeCallCause(): ValueFlowUnsupportedCause =
+     when (this) {
+         ValueCallBindingFailure.DEPTH_EXCEEDED -> ValueFlowUnsupportedCause.CALL_CONTEXT_DEPTH_EXCEEDED
+         ValueCallBindingFailure.RECURSIVE_CALL -> ValueFlowUnsupportedCause.RECURSIVE_SOURCE_CALL
+--- relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueArgumentFlow.kt
++++ relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueArgumentFlow.kt
+@@ -1,6 +1,7 @@
+ package io.github.amichne.kast.relation.intellij
+ 
+ import io.github.amichne.kast.kernel.Refinement
++import io.github.amichne.kast.relation.contract.ValueCallStack
+ import io.github.amichne.kast.relation.contract.ValueFlowRejection
+ import io.github.amichne.kast.relation.contract.ValueFlowRequest
+ import io.github.amichne.kast.relation.contract.ValueImplementationCoverage
+@@ -19,8 +20,11 @@
+ ) {
+     fun read(): Refinement<Unit, ValueFlowRejection> {
+         val role = request.source.role
+-        if (role is ValueRole.FunctionArgument)
++        if (role is ValueRole.FunctionArgument) {
++            if (request.source.callStack == ValueCallStack.Empty)
++                return NativeValueSeedCallbackFlow(request, scope, projection, allowance, retained, permit).read()
+             return NativeValueCallbackFlow(request, role, scope, projection, allowance, retained, permit).read()
++        }
+         val dispatch =
+             NativeValueImplementationDispatch(
+                     request = request,
+--- relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueCallbackFlow.kt
++++ relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueCallbackFlow.kt
+@@ -11,7 +11,10 @@
+ import io.github.amichne.kast.relation.contract.ValueFlowRejection
+ import io.github.amichne.kast.relation.contract.ValueFlowRequest
+ import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
++import io.github.amichne.kast.relation.contract.ValueFormalPosition
+ import io.github.amichne.kast.relation.contract.ValueRole
++import io.github.amichne.kast.relation.contract.ValueSite
++import io.github.amichne.kast.relation.contract.ValueTransfer
+ 
+ internal sealed interface NativeValueCallbackObservation {
+     data class Read(
+@@ -74,10 +77,18 @@
+     internal fun consume(observed: NativeValueCallbackObservation): Refinement<Unit, ValueFlowRejection> =
+         when (observed) {
+             is NativeValueCallbackObservation.SupplyRefused -> retained.unavailableCallback(observed.cause)
+-            is NativeValueCallbackObservation.Read -> consumeRead(observed)
+-        }
+-
+-    private fun consumeRead(observed: NativeValueCallbackObservation.Read): Refinement<Unit, ValueFlowRejection> {
++            is NativeValueCallbackObservation.Read ->
++                consumeRead(observed, ::nativeSourceEntry, retained::unresolvedCallback)
++        }
++
++    internal fun consumeSeed(observed: NativeValueCallbackObservation.Read): Refinement<Unit, ValueFlowRejection> =
++        consumeRead(observed, ::nativeSeedCallbackEntry, retained::unresolvedSeedCallback)
++
++    private fun consumeRead(
++        observed: NativeValueCallbackObservation.Read,
++        enter: (ValueSite, ValueCallFrame, ValueFormalPosition) -> Refinement<ValueTransfer, ValueFlowUnsupportedCause>,
++        question: (CallbackInvocationFlow) -> Refinement<Unit, ValueFlowRejection>,
++    ): Refinement<Unit, ValueFlowRejection> {
+         val preparation = observed.preparation
+         if (preparation is NativeValueCallbackEntryPreparation.Refused) {
+             when (val recorded = retained.unavailableCallback(preparation.cause)) {
+@@ -86,7 +97,8 @@
+             }
+         }
+         return when (val read = observed.callback) {
+-            is CallbackInvocationFlowRead.Observed -> consumeFlow(observed.supply, read.flow, preparation)
++            is CallbackInvocationFlowRead.Observed ->
++                consumeFlow(observed.supply, read.flow, preparation, enter, question)
+             is CallbackInvocationFlowRead.Unavailable -> retained.unavailableCallback(read.cause)
+             is CallbackInvocationFlowRead.Immutable -> {
+                 retained.unresolved(ValueFlowUnsupportedCause.UNMODELED_CALL)
+@@ -100,6 +112,8 @@
+         supply: NativeValueCallbackSupply,
+         flow: CallbackInvocationFlow,
+         preparation: NativeValueCallbackEntryPreparation,
++        enter: (ValueSite, ValueCallFrame, ValueFormalPosition) -> Refinement<ValueTransfer, ValueFlowUnsupportedCause>,
++        question: (CallbackInvocationFlow) -> Refinement<Unit, ValueFlowRejection>,
+     ): Refinement<Unit, ValueFlowRejection> =
+         when (val binding = flow.binding) {
+             is CallbackBindingEvidence.Unavailable -> unavailable(binding, flow)
+@@ -107,7 +121,7 @@
+             is CallbackBindingEvidence.Default,
+             is CallbackBindingEvidence.Direct,
+             is CallbackBindingEvidence.DependencyContract,
+-            is CallbackBindingEvidence.DeferredDependency -> entries(supply, flow, preparation)
++            is CallbackBindingEvidence.DeferredDependency -> entries(supply, flow, preparation, enter, question)
+         }
+ 
+     private fun unavailable(
+@@ -127,13 +141,15 @@
+         supply: NativeValueCallbackSupply,
+         flow: CallbackInvocationFlow,
+         preparation: NativeValueCallbackEntryPreparation,
++        enter: (ValueSite, ValueCallFrame, ValueFormalPosition) -> Refinement<ValueTransfer, ValueFlowUnsupportedCause>,
++        question: (CallbackInvocationFlow) -> Refinement<Unit, ValueFlowRejection>,
+     ): Refinement<Unit, ValueFlowRejection> {
+         val selected =
+             flow.invocations.filter {
+                 it.occurrence.range == role.call.range && it.occurrence.file == role.call.enclosing.file
+             }
+         if (selected.isEmpty() || flow.obligations.isNotEmpty() || flow.scan != CallbackInvocationScan.EXHAUSTIVE) {
+-            when (val value = retained.unresolvedCallback(flow)) {
++            when (val value = question(flow)) {
+                 is Refinement.Refined -> Unit
+                 is Refinement.Rejected -> return value
+             }
+@@ -145,7 +161,7 @@
+                 is NativeValueCallbackEntryPreparation.Refused -> return Refinement.Refined(Unit)
+                 is NativeValueCallbackEntryPreparation.Unsupported -> {
+                     retained.unresolved(preparation.cause)
+-                    return retained.unresolvedCallback(flow)
++                    return question(flow)
+                 }
+             }
+         if (prepared.body != flow.body) return Refinement.Rejected(ValueFlowRejection.STALE_SITE)
+@@ -165,12 +181,12 @@
+                         supply.supplyingFrame,
+                     )
+             ) {
+-                is Refinement.Refined -> retained.adopt(nativeSourceEntry(request.source, frame.value, prepared.formal))
++                is Refinement.Refined -> retained.adopt(enter(request.source, frame.value, prepared.formal))
+                 is Refinement.Rejected -> {
+                     if (frame.failure == ValueCallBindingFailure.CALLBACK_PROOF_LIMIT_REACHED)
+                         retained.unresolved(ValueFlowUnsupportedCause.CALLBACK_PROOF_LIMIT_REACHED)
+                     else
+-                        when (val value = retained.unresolvedCallback(flow)) {
++                        when (val value = question(flow)) {
+                             is Refinement.Refined -> Unit
+                             is Refinement.Rejected -> return value
+                         }
+--- relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueCallbackSupply.kt
++++ relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueCallbackSupply.kt
+@@ -34,6 +34,16 @@
+         val frame = source.callStack.frames.lastOrNull() ?: return unavailable()
+         if (frame.callee != role.call.executionOwner) return unavailable()
+         val supplyingCall = frame.invocation as? ValueInvocation ?: return unavailable()
++        val formal =
++            when (val value = readFormal()) {
++                is Refinement.Refined -> value.value
++                is Refinement.Rejected -> return value
++            }
++        if (formal.formal.callable.valueIdentity != frame.callee.enclosing.valueIdentity) return unavailable()
++        return suppliedLiteral(supplyingCall, formal, frame)
++    }
++
++    internal fun readFormal(): Refinement<NativeCallbackSupplierFormal.Found, CallbackInvocationFlowCause> {
+         when (val allowed = context.permit()) {
+             is Refinement.Refined -> Unit
+             is Refinement.Rejected -> return allowed
+@@ -60,11 +70,10 @@
+                 is Refinement.Refined -> value.value as? NativeCallbackSupplierFormal.Found ?: return unavailable()
+                 is Refinement.Rejected -> return value
+             }
+-        if (formal.formal.callable.valueIdentity != frame.callee.enclosing.valueIdentity) return unavailable()
+-        return suppliedLiteral(supplyingCall, formal, frame)
++        return Refinement.Refined(formal)
+     }
+ 
+-    private fun suppliedLiteral(
++    internal fun suppliedLiteral(
+         invocation: ValueInvocation,
+         formal: NativeCallbackSupplierFormal.Found,
+         frame: ValueCallFrame,
+--- relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueFlowTransfers.kt
++++ relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueFlowTransfers.kt
+@@ -195,6 +195,15 @@
+         return recordEvidence(obligation)
+     }
+ 
++    fun unresolvedSeedCallback(flow: CallbackInvocationFlow): Refinement<Unit, ValueFlowRejection> {
++        val obligation =
++            when (val value = ValueFlowObligation.fromSeedCallback(request.source, flow)) {
++                is Refinement.Refined -> value.value
++                is Refinement.Rejected -> return Refinement.Rejected(ValueFlowRejection.STALE_SITE)
++            }
++        return recordEvidence(obligation)
++    }
++
+     fun unavailableCallback(cause: CallbackInvocationFlowCause): Refinement<Unit, ValueFlowRejection> {
+         val obligation =
+             when (val value = nativeValueCallbackUnavailable(request.source, cause)) {
+--- /dev/null
++++ relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueSeedCallbackEntry.kt
+@@ -0,0 +1,46 @@
++package io.github.amichne.kast.relation.intellij
++
++import io.github.amichne.kast.kernel.Refinement
++import io.github.amichne.kast.relation.contract.ValueCallFrame
++import io.github.amichne.kast.relation.contract.ValueCallStack
++import io.github.amichne.kast.relation.contract.ValueCallbackTarget
++import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
++import io.github.amichne.kast.relation.contract.ValueFormalPosition
++import io.github.amichne.kast.relation.contract.ValueSite
++import io.github.amichne.kast.relation.contract.ValueSourceOperation
++import io.github.amichne.kast.relation.contract.ValueTransfer
++import io.github.amichne.kast.relation.contract.ValueTransferKind
++
++/** The seed stays context-free. Compiler supplier proof establishes both frames on the exact callback target. */
++internal fun nativeSeedCallbackEntry(
++    source: ValueSite,
++    frame: ValueCallFrame,
++    formal: ValueFormalPosition,
++): Refinement<ValueTransfer, ValueFlowUnsupportedCause> {
++    if (source.callStack != ValueCallStack.Empty) return rejectedSeedEntry()
++    val callback = frame.target as? ValueCallbackTarget ?: return rejectedSeedEntry()
++    val supplied =
++        when (val value = source.callStack.enter(callback.supplyingFrame)) {
++            is Refinement.Refined -> value.value
++            is Refinement.Rejected -> return Refinement.Rejected(value.failure.nativeCallCause())
++        }
++    val stack =
++        when (val value = supplied.enter(frame)) {
++            is Refinement.Refined -> value.value
++            is Refinement.Rejected -> return Refinement.Rejected(value.failure.nativeCallCause())
++        }
++    val target =
++        when (val value = sourceFormalTarget(source, formal, frame, stack)) {
++            is Refinement.Refined -> value.value
++            is Refinement.Rejected -> return value
++        }
++    return sourceTransfer(
++        source = source,
++        target = target,
++        kind = ValueTransferKind.SOURCE_CALL_ENTRY,
++        operation = ValueSourceOperation.SeedCallbackEnter(frame, formal),
++    )
++}
++
++private fun rejectedSeedEntry(): Refinement.Rejected<ValueFlowUnsupportedCause> =
++    Refinement.Rejected(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
+--- /dev/null
++++ relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueSeedCallbackFlow.kt
+@@ -0,0 +1,136 @@
++@file:OptIn(org.jetbrains.kotlin.analysis.api.KaExperimentalApi::class)
++
++package io.github.amichne.kast.relation.intellij
++
++import io.github.amichne.kast.kernel.Refinement
++import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
++import io.github.amichne.kast.relation.contract.CallbackParameterSupplier
++import io.github.amichne.kast.relation.contract.CallbackSupplierInventoryEvidence
++import io.github.amichne.kast.relation.contract.CompleteCallbackSupplierInventory
++import io.github.amichne.kast.relation.contract.ValueExecutionBody
++import io.github.amichne.kast.relation.contract.ValueFlowRejection
++import io.github.amichne.kast.relation.contract.ValueFlowRequest
++import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
++import io.github.amichne.kast.relation.contract.ValueRole
++import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
++import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
++
++/** Empty-stack callback entry reuses the existing finite supplier closure under the one native allowance. */
++internal class NativeValueSeedCallbackFlow(
++    private val request: ValueFlowRequest,
++    private val scope: CompiledRelationScope,
++    private val projection: IntellijK2RelationProjection,
++    private val allowance: IntellijRelationAllowance,
++    private val retained: NativeValueFlowTransfers,
++    private val permit: () -> Boolean,
++) {
++    private val role = request.source.role as ValueRole.FunctionArgument
++    private val context =
++        IntellijCallbackFlowContext(
++            scope = scope,
++            projection = projection,
++            admitWork = { allowance.admitCallbackWork(request.budget.resources) },
++            observation = projection.observation,
++            callbackExpiry = ::expiry,
++        )
++    private val summaries = CallbackParameterSummaries(request.budget, projection.observation)
++    private val supplies = NativeValueCallbackSupplies(request.source, role, scope, projection, context)
++
++    fun read(): Refinement<Unit, ValueFlowRejection> {
++        if (request.source.executionOwner.body != ValueExecutionBody.Declaration)
++            return retained.unavailableCallback(CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION)
++        val formal =
++            when (val value = supplies.readFormal()) {
++                is Refinement.Refined -> value.value
++                is Refinement.Rejected -> return retained.unavailableCallback(value.failure)
++            }
++        if (formal.formal.callable.valueIdentity != request.source.enclosing.valueIdentity)
++            return retained.unavailableCallback(CallbackInvocationFlowCause.UNRESOLVED_PARAMETER_REFERENCE)
++        when (val allowed = context.permit()) {
++            is Refinement.Refined -> Unit
++            is Refinement.Rejected -> return retained.unavailableCallback(allowed.failure)
++        }
++        val final =
++            projection.observation.observedAnalyze(formal.function) {
++                formal.function.symbol.modality == KaSymbolModality.FINAL
++            }
++        if (!final) return retained.unavailableCallback(CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY)
++        return when (
++            val inventory =
++                IntellijCallbackSupplierInventory(context, summaries)
++                    .read(formal.formal, formal.function, formal.parameter)
++        ) {
++            is CallbackSupplierInventoryEvidence.Exhaustive -> entries(inventory.inventory, formal)
++            is CallbackSupplierInventoryEvidence.Unavailable -> retained.unavailableCallback(inventory.cause)
++        }
++    }
++
++    private fun entries(
++        inventory: CompleteCallbackSupplierInventory,
++        formal: NativeCallbackSupplierFormal.Found,
++    ): Refinement<Unit, ValueFlowRejection> {
++        val partition =
++            inventory.partitions.singleOrNull { it.formal == formal.formal }
++                ?: return retained.unavailableCallback(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
++        if (partition.incoming.isNotEmpty()) {
++            when (
++                val recorded = retained.unavailableCallback(CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY)
++            ) {
++                is Refinement.Refined -> Unit
++                is Refinement.Rejected -> return recorded
++            }
++        }
++        if (partition.suppliers.isEmpty()) {
++            if (partition.incoming.isNotEmpty()) return Refinement.Refined(Unit)
++            return retained.unavailableCallback(CallbackInvocationFlowCause.NO_INVOCATION_PROVEN)
++        }
++        val selected = NativeValueSeedCallbackSupplies(request.source, scope, projection, context, supplies)
++        val flow = NativeValueCallbackFlow(request, role, scope, projection, allowance, retained, permit)
++        for (supplier in partition.suppliers) {
++            if (retained.resultCount >= request.budget.resources.resultLimit.value) {
++                retained.unresolved(ValueFlowUnsupportedCause.RESULT_LIMIT_REACHED)
++                return Refinement.Refined(Unit)
++            }
++            when (val result = consumeSupplier(supplier, formal, selected, flow)) {
++                is Refinement.Refined -> Unit
++                is Refinement.Rejected -> return result
++            }
++        }
++        return Refinement.Refined(Unit)
++    }
++
++    private fun consumeSupplier(
++        supplier: CallbackParameterSupplier,
++        formal: NativeCallbackSupplierFormal.Found,
++        selected: NativeValueSeedCallbackSupplies,
++        flow: NativeValueCallbackFlow,
++    ): Refinement<Unit, ValueFlowRejection> =
++        when (val value = selected.read(supplier, formal)) {
++            is Refinement.Refined -> flow.consumeSeed(observe(value.value))
++            is Refinement.Rejected -> retained.unavailableCallback(value.failure)
++        }
++
++    private fun observe(supply: NativeValueCallbackSupply): NativeValueCallbackObservation.Read {
++        val preparation =
++            when (val allowed = context.permit()) {
++                is Refinement.Refined ->
++                    nativePrepareCallbackEntry(supply, role, scope, projection.observation, request.source.basis)
++                is Refinement.Rejected -> NativeValueCallbackEntryPreparation.Refused(allowed.failure)
++            }
++        val callback =
++            readCallbackInvocationFlow(
++                boundary = supply.literal,
++                lexicalOwner = supply.lexicalOwner,
++                scope = scope,
++                projection = projection,
++                admitWork = { allowance.admitCallbackWork(request.budget.resources) },
++                summaries = summaries,
++                callbackExpiry = ::expiry,
++            )
++        return NativeValueCallbackObservation.Read(supply, callback, preparation)
++    }
++
++    private fun expiry(): CallbackExpiryAdmission =
++        if (allowance.elapsedLimitReached(request.budget.resources)) CallbackExpiryAdmission.EXPIRED
++        else CallbackExpiryAdmission.CURRENT
++}
+--- /dev/null
++++ relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueSeedCallbackSupplies.kt
+@@ -0,0 +1,102 @@
++package io.github.amichne.kast.relation.intellij
++
++import io.github.amichne.kast.kernel.Refinement
++import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
++import io.github.amichne.kast.relation.contract.CallbackParameterSupplier
++import io.github.amichne.kast.relation.contract.CallbackSupplierSelection
++import io.github.amichne.kast.relation.contract.ImmutableCallbackValueOrigin
++import io.github.amichne.kast.relation.contract.RelationCallableBody
++import io.github.amichne.kast.relation.contract.ValueCallFrame
++import io.github.amichne.kast.relation.contract.ValueInvocation
++import io.github.amichne.kast.relation.contract.ValueSite
++
++/** The inventory chooses a real supplying call. Fresh native owners reacquire that call and its actual literal. */
++internal class NativeValueSeedCallbackSupplies(
++    private val source: ValueSite,
++    private val scope: CompiledRelationScope,
++    private val projection: IntellijK2RelationProjection,
++    private val context: IntellijCallbackFlowContext,
++    private val supplies: NativeValueCallbackSupplies,
++) {
++    private val frames = NativeValueCallerFrames(source, scope, projection)
++
++    fun read(
++        supplier: CallbackParameterSupplier,
++        formal: NativeCallbackSupplierFormal.Found,
++    ): Refinement<NativeValueCallbackSupply, CallbackInvocationFlowCause> {
++        val origin =
++            when (val value = origin(supplier, formal)) {
++                is Refinement.Refined -> value.value
++                is Refinement.Rejected -> return value
++            }
++        val frame =
++            when (val value = frame(supplier.binding.invocation)) {
++                is Refinement.Refined -> value.value
++                is Refinement.Rejected -> return value
++            }
++        val supply =
++            when (val value = supplies.suppliedLiteral(supplier.binding.invocation, formal, frame)) {
++                is Refinement.Refined -> value.value
++                is Refinement.Rejected -> return value
++            }
++        return confirm(supply, origin)
++    }
++
++    private fun origin(
++        supplier: CallbackParameterSupplier,
++        formal: NativeCallbackSupplierFormal.Found,
++    ): Refinement<RelationCallableBody.Anonymous, CallbackInvocationFlowCause> {
++        if (supplier.selection !is CallbackSupplierSelection.Explicit) return unsupportedSeedSupply()
++        val origin = supplier.value.origin as? ImmutableCallbackValueOrigin.Anonymous ?: return unsupportedSeedSupply()
++        if (supplier.formal != formal.formal) return unsupportedSeedSupply()
++        if (origin.body.file != supplier.binding.invocation.enclosing.file) return unsupportedSeedSupply()
++        return Refinement.Refined(origin.body)
++    }
++
++    private fun confirm(
++        supply: NativeValueCallbackSupply,
++        expected: RelationCallableBody.Anonymous,
++    ): Refinement<NativeValueCallbackSupply, CallbackInvocationFlowCause> {
++        if (sourceValueRange(supply.literal) != expected.range) return unsupportedSeedSupply()
++        when (val allowed = context.permit()) {
++            is Refinement.Refined -> Unit
++            is Refinement.Rejected -> return allowed
++        }
++        val fresh = context.anonymous(supply.literal) ?: return unsupportedSeedSupply()
++        if (fresh != expected) return unsupportedSeedSupply()
++        return Refinement.Refined(supply)
++    }
++
++    private fun frame(expected: ValueInvocation): Refinement<ValueCallFrame, CallbackInvocationFlowCause> {
++        when (val allowed = context.permit()) {
++            is Refinement.Refined -> Unit
++            is Refinement.Rejected -> return allowed
++        }
++        val host =
++            when (val value = projection.subject(scope, expected.enclosing)) {
++                is IntellijRelationSubjectLookup.Found -> value
++                is IntellijRelationSubjectLookup.Rejected -> return unsupportedSeedSupply()
++            }
++        val call = host.declaration.exactValueElement(expected.range).asCallbackCall() ?: return unsupportedSeedSupply()
++        val fresh =
++            when (val value = frames.invocation(call, host.declaration, expected.enclosing)) {
++                is Refinement.Refined -> value.value
++                is Refinement.Rejected -> return unsupportedSeedSupply()
++            }
++        if (!sameInvocation(expected, fresh)) return unsupportedSeedSupply()
++        return when (val value = frames.frame(fresh, NativeValueCallerTarget.Direct(source.enclosing))) {
++            is Refinement.Refined -> value
++            is Refinement.Rejected -> unsupportedSeedSupply()
++        }
++    }
++
++    private fun sameInvocation(expected: ValueInvocation, fresh: ValueInvocation): Boolean {
++        if (expected != fresh || expected.enclosing != fresh.enclosing || expected.callable != fresh.callable)
++            return false
++        return expected.executionOwner.enclosing == fresh.executionOwner.enclosing &&
++            expected.executionOwner.body == fresh.executionOwner.body
++    }
++}
++
++private fun <T> unsupportedSeedSupply(): Refinement<T, CallbackInvocationFlowCause> =
++    Refinement.Rejected(CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY)

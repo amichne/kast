@@ -1,0 +1,4 @@
+4ab970874d81726b2bcd6ba462d79a54e8bc706bcdb23f8340340da855e57a48  relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowNative.kt
+c23441d16377dcf6b2db943c0be37a39420310202bf2db4a7088cae712aae356  relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueSourceReceiver.kt
+cfd89994f57d753bf2dab9204e7280da4480968b1a09ec24974e4588c166dc4c  relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueDestructuringReceiver.kt
+6a4fdea32eb612c0a9e13708c16497bbff1706dbc020dbda8622177da44cef3f  relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketDestructuringEntryTest.kt

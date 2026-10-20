@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketCallbackGrantOrderingTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T06:58:36.980Z" hostname="Austins-MacBook-Pro.local" time="8.769">
+  <properties/>
+  <testcase name="testOriginalS2Grant96DoesNotOpenK2AfterTheQualifiedWorkRefusal" classname="io.github.amichne.kast.relation.intellij.NativePacketCallbackGrantOrderingTest" time="7.389"/>
+  <testcase name="testOriginalS2Grant127EntersTheGenuineImplicitCallbackFormal" classname="io.github.amichne.kast.relation.intellij.NativePacketCallbackGrantOrderingTest" time="1.373"/>
+  <system-out><![CDATA[CALLBACK_GRANT96_REFUSAL binding=BOUND scan=INCOMPLETE invocations=1 selected=1 causes=[WORK_LIMIT_REACHED] work=96
+CALLBACK_GRANT96_PHASE work=96 k2=19 k2AfterRefusal=0 entries=[SOURCE_CALL_ENTRY] sessionWork=[0, 3, 3, 4, 4, 4, 5, 5, 6, 6, 7, 8, 8, 8, 8, 8, 96, 96, 96] causes=[CALLBACK_FLOW_UNPROVEN]
+CALLBACK_GRANT96_FLOW bound=true scan=INCOMPLETE invocations=1 selected=1 causes=[WORK_LIMIT_REACHED]
+CALLBACK_GRANT127_ADAPTER work=127 entries=[SOURCE_CALL_ENTRY]
+]]></system-out>
+  <system-err><![CDATA[[   1363]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1363]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

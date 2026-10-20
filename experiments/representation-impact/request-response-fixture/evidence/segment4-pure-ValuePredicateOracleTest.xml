@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValuePredicateOracleTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-20T03:43:47.401Z" hostname="Austins-MacBook-Pro.local" time="0.007">
+  <properties/>
+  <testcase name="subtype guard rejects a foreign class basis before it changes the local subject()" classname="io.github.amichne.kast.relation.contract.ValuePredicateOracleTest" time="0.0"/>
+  <testcase name="subtype guard needs a resolved class instead of a same named function()" classname="io.github.amichne.kast.relation.contract.ValuePredicateOracleTest" time="0.0"/>
+  <testcase name="predicate subject snapshots the exact value without recursively copying its conjunction()" classname="io.github.amichne.kast.relation.contract.ValuePredicateOracleTest" time="0.001"/>
+  <testcase name="foreign predicates cannot enter a local conjunction or value state()" classname="io.github.amichne.kast.relation.contract.ValuePredicateOracleTest" time="0.001"/>
+  <testcase name="sixteen distinct predicates fit and a seventeenth rejects without changing existing facts()" classname="io.github.amichne.kast.relation.contract.ValuePredicateOracleTest" time="0.002"/>
+  <testcase name="same resolved subtype on another value remains a distinct predicate and value state()" classname="io.github.amichne.kast.relation.contract.ValuePredicateOracleTest" time="0.001"/>
+  <testcase name="same callee occurrence in two invocation contexts keeps distinct predicates()" classname="io.github.amichne.kast.relation.contract.ValuePredicateOracleTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

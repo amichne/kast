@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryStateLifetimeTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.744Z" hostname="Austins-MacBook-Pro.local" time="0.008">
+  <properties/>
+  <testcase name="a younger output cannot extend its older upstream checkpoint lifetime()" classname="io.github.amichne.kast.query.protocol.QueryStateLifetimeTest" time="0.002"/>
+  <testcase name="a younger retained output expires with its oldest dependency()" classname="io.github.amichne.kast.query.protocol.QueryStateLifetimeTest" time="0.001"/>
+  <testcase name="initial result input stays pinned through eviction expiry and release()" classname="io.github.amichne.kast.query.protocol.QueryStateLifetimeTest" time="0.001"/>
+  <testcase name="an active input pin cannot admit an expired result to a new request()" classname="io.github.amichne.kast.query.protocol.QueryStateLifetimeTest" time="0.001"/>
+  <testcase name="a younger published checkpoint expires with its oldest dependency()" classname="io.github.amichne.kast.query.protocol.QueryStateLifetimeTest" time="0.001"/>
+  <testcase name="a replay claim pins its expired dependency graph until cancellation releases ownership()" classname="io.github.amichne.kast.query.protocol.QueryStateLifetimeTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

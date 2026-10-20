@@ -1,0 +1,3 @@
+29baaaa8238d6707cf5f506abe63e1d9d46d55fb9951f6e1b9a090cc217ff21a  query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactAccountingProjectionTest.kt
+57053ae0bdde6f2cbf83adcf87900df536b047746b9eb841e07c9669c855eb44  query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessPresentationTest.kt
+32cb5d4af932ba98901f7abdfc6ffdc60808dd3cfe6c833b5c460244790c1761  query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedModeledValueOracleCase.kt

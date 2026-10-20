@@ -1,0 +1,17 @@
+--- a/runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketCompositeQuerySource.kt
++++ b/runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketCompositeQuerySource.kt
+@@
++    fun noOfferBody(): KtFunctionLiteral = read {
++        val required = call(path = FEATURE, owner = "OffersProcessorImpl", method = "getOffer", callee = "requireNotNull")
++        checkNotNull(required.lambdaArguments.single().getLambdaExpression()).functionLiteral
++    }
++
+     fun mapBodyRange() = read {
+--- a/runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketCompositeQueryTest.kt
++++ b/runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketCompositeQueryTest.kt
+@@
++    fun testOriginalS2EmittedInputWitnessesNeverAcquireTheLiteralNoOfferReason() = runBlocking {
++        prepare().assertNoS2InputAtTheNoOfferConstant()
++    }
++
+     private fun prepare(): NativePacketCompositeQueryCase {

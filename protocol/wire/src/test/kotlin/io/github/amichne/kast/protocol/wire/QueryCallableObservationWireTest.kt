@@ -6,6 +6,7 @@ import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.QueryCallableObservationDocument
 import io.github.amichne.kast.protocol.contract.QueryCallableTargetDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackBodyDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackBodyWireDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackParameterIdentityDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryInclusionPolicyDocument
 import io.github.amichne.kast.protocol.contract.QueryReferenceDocument
@@ -18,8 +19,14 @@ import io.github.amichne.kast.protocol.contract.QuerySourceLessCallableModuleKin
 import io.github.amichne.kast.protocol.contract.QuerySourceLessCallableOriginDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
 import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
+import io.github.amichne.kast.protocol.contract.RelationOccurrenceWireDocument
 import io.github.amichne.kast.protocol.contract.RelationProviderDocument
+import io.github.amichne.kast.protocol.contract.SourceRangeWireDocument
 import io.github.amichne.kast.protocol.contract.SymbolKindDocument
+import io.github.amichne.kast.protocol.contract.SymbolKindWireDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject

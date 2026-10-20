@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.runtime.hosted.NativePacketS1QueryTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T19:27:27.869Z" hostname="Austins-MacBook-Pro.local" time="1.441">
+  <properties/>
+  <testcase name="testOriginalS1ProductionWitnessesForbidResponseLogAndFieldSubstitution" classname="io.github.amichne.kast.runtime.hosted.NativePacketS1QueryTest" time="0.732"/>
+  <testcase name="testOriginalS1RowsC11ThroughC14ReachTheExactOpaqueBodyArgument" classname="io.github.amichne.kast.runtime.hosted.NativePacketS1QueryTest" time="0.709"/>
+  <system-out><![CDATA[PACKET_QUERY_CAPTURE outgoing=true nativeFlowReads=20 retainedReadDelta=0 paths=2
+PACKET_QUERY_PATH index=0 steps=10 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS1ProductionWitnessesForbidResponseLogAndFieldSubstitution_3KyKcZ1sNy67PuMon62FPjki2xK/src/fixture/client/OffersClient.kt range=1257:1279 role=ExpressionResult pathDepth=0 terminal=FLOW:UNSUPPORTED_EXPRESSION evidence=None
+PACKET_QUERY_PATH index=1 steps=13 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS1ProductionWitnessesForbidResponseLogAndFieldSubstitution_3KyKcZ1sNy67PuMon62FPjki2xK/src/fixture/client/OffersClient.kt range=863:886 role=Argument pathDepth=1 terminal=FLOW:EXTERNAL_CALL evidence=ImplementationDispatch
+PACKET_QUERY_CAPTURE outgoing=true nativeFlowReads=20 retainedReadDelta=0 paths=2
+PACKET_QUERY_PATH index=0 steps=10 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS1RowsC11ThroughC14ReachTheExactOpaqueBodyArgument_3KyKcfdDPtkzFD7CNl6LJ51Yaay/src/fixture/client/OffersClient.kt range=1257:1279 role=ExpressionResult pathDepth=0 terminal=FLOW:UNSUPPORTED_EXPRESSION evidence=None
+PACKET_QUERY_PATH index=1 steps=13 file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_OriginalS1RowsC11ThroughC14ReachTheExactOpaqueBodyArgument_3KyKcfdDPtkzFD7CNl6LJ51Yaay/src/fixture/client/OffersClient.kt range=863:886 role=Argument pathDepth=1 terminal=FLOW:EXTERNAL_CALL evidence=ImplementationDispatch
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

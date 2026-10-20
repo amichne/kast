@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactValueModelStructureTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:20.610Z" hostname="Austins-MacBook-Pro.local" time="0.029">
+  <properties/>
+  <testcase name="self-consistent output structure grants no claim of registry membership()" classname="io.github.amichne.kast.protocol.contract.ImpactValueModelStructureTest" time="0.017"/>
+  <testcase name="scalar failures keep exact finite presentation names()" classname="io.github.amichne.kast.protocol.contract.ImpactValueModelStructureTest" time="0.008"/>
+  <testcase name="actual artifact review and semantic basis cannot contradict one another()" classname="io.github.amichne.kast.protocol.contract.ImpactValueModelStructureTest" time="0.001"/>
+  <testcase name="consistent exact source context and artifact fields admit output structure()" classname="io.github.amichne.kast.protocol.contract.ImpactValueModelStructureTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

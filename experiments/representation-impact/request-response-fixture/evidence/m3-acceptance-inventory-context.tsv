@@ -1,0 +1,12 @@
+field	value
+inventory_time_utc	2026-10-20T17:00:36.191164+00:00
+checkout_revision	543509a7f4d22d6ec850f52b70c898bca478c37d
+implementation_identity	working_tree_changes;HEAD_alone_is_not_transitive_executed_source_identity
+original_query_receipt_start_utc	2026-10-20T16:40:10.319Z
+native_Let_receipt_start_utc	2026-10-20T16:50:11.665Z
+historical_M1_latest_query_receipt_utc	2026-10-20T03:26:53.809Z
+inventory_Gradle	NOT_RUN
+fixture_guide_scope	REVIEWED_NO_CHANGE;report_and_evidence_owners_unchanged
+prose_Vale	PASSED_exit0_with_Grade_advisory
+prose_assessment	ASSESSED_exit1;Grade11.06;glossaryCHECKED;terminologyOUT_OF_SCOPE;comprehensionNOT_ASSESSED
+prose_advisory_reason	exact_source_and_protocol_identifiers_preserve_needed_precision

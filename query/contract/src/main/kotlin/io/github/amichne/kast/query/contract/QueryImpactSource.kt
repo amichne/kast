@@ -2,11 +2,14 @@ package io.github.amichne.kast.query.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.BoundaryModel
+import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RepresentationRule
+import io.github.amichne.kast.relation.contract.ValueCallOccurrence
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowStepFailure
 import io.github.amichne.kast.relation.contract.ValueInvocation
+import io.github.amichne.kast.relation.contract.ValueProducerOrigin
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import java.util.Collections
@@ -16,16 +19,51 @@ enum class QueryImpactProducerFailure {
 }
 
 /** A seed retains the compiler-confirmed invocation which produced this exact expression result. */
-class QueryImpactProducer private constructor(val site: ValueSite, val invocation: ValueInvocation) {
+class QueryImpactProducer private constructor(val site: ValueSite, val origin: ValueProducerOrigin) {
+    val invocation: ValueCallOccurrence
+        get() = origin.invocation
+
     companion object {
         fun admit(
             site: ValueSite,
             invocation: ValueInvocation,
         ): Refinement<QueryImpactProducer, QueryImpactProducerFailure> =
-            if (site != invocation.resultSite()) Refinement.Rejected(QueryImpactProducerFailure.NOT_INVOCATION_RESULT)
-            else Refinement.Refined(QueryImpactProducer(site, invocation))
+            admit(site, ValueProducerOrigin.Declared(invocation))
+
+        fun admit(
+            site: ValueSite,
+            origin: ValueProducerOrigin,
+        ): Refinement<QueryImpactProducer, QueryImpactProducerFailure> =
+            if (site != origin.invocation.resultSite() || !origin.matchesProducerProof(site))
+                Refinement.Rejected(QueryImpactProducerFailure.NOT_INVOCATION_RESULT)
+            else Refinement.Refined(QueryImpactProducer(site, origin))
     }
 }
+
+private fun ValueProducerOrigin.matchesProducerProof(site: ValueSite): Boolean =
+    when (this) {
+        is ValueProducerOrigin.Declared -> true
+        is ValueProducerOrigin.SourceFunction ->
+            site.enclosing.sameProducerProof(invocation.enclosing) &&
+                site.executionOwner.enclosing.sameProducerProof(invocation.executionOwner.enclosing) &&
+                site.executionOwner.body == invocation.executionOwner.body
+    }
+
+private fun RelationEndpoint.sameProducerProof(other: RelationEndpoint): Boolean =
+    lease == other.lease &&
+        scope == other.scope &&
+        constraints == other.constraints &&
+        fingerprint == other.fingerprint &&
+        sameProducerDeclaration(other)
+
+private fun RelationEndpoint.sameProducerDeclaration(other: RelationEndpoint): Boolean =
+    file == other.file &&
+        range == other.range &&
+        name == other.name &&
+        qualifiedIdentity == other.qualifiedIdentity &&
+        kind == other.kind &&
+        signature == other.signature &&
+        compilerIdentity == other.compilerIdentity
 
 enum class QueryImpactSourceFailure {
     EMPTY_PRODUCERS,
@@ -110,4 +148,4 @@ private constructor(
 }
 
 private fun QueryImpactProducer.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
-    site.hasForeignBasis(lease) || invocation.hasForeignBasis(lease)
+    site.hasForeignBasis(lease) || origin.hasForeignBasis(lease)

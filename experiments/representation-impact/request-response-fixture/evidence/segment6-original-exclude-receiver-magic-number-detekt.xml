@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="4.3">
+<file name="relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketReviewedReceiverSource.kt">
+	<error line="67" column="36" severity="error" message="This expression contains a magic number. Consider defining it to a well named constant." source="detekt.MagicNumber" />
+	<error line="67" column="41" severity="error" message="This expression contains a magic number. Consider defining it to a well named constant." source="detekt.MagicNumber" />
+	<error line="68" column="36" severity="error" message="This expression contains a magic number. Consider defining it to a well named constant." source="detekt.MagicNumber" />
+	<error line="68" column="41" severity="error" message="This expression contains a magic number. Consider defining it to a well named constant." source="detekt.MagicNumber" />
+	<error line="69" column="36" severity="error" message="This expression contains a magic number. Consider defining it to a well named constant." source="detekt.MagicNumber" />
+	<error line="69" column="41" severity="error" message="This expression contains a magic number. Consider defining it to a well named constant." source="detekt.MagicNumber" />
+</file>
+</checkstyle>

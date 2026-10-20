@@ -1,0 +1,175 @@
+Starting a Gradle Daemon (subsequent builds will be faster)
+Calculating task graph as no cached configuration is available for tasks: :protocol:contract:test --tests *ImpactReceiverKindContractTest :app-server:test --tests *PublicImpactReceiverKindContractTest
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:contract:processResources UP-TO-DATE
+> Task :kernel:processResources NO-SOURCE
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :kernel:compileJava NO-SOURCE
+> Task :protocol:contract:processTestResources
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar UP-TO-DATE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :app-server:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+
+> Task :app-server:verifyPublicQueryGeneratorRules
+........................
+----------------------------------------------------------------------
+Ran 24 tests in 0.185s
+
+OK
+
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar UP-TO-DATE
+
+> Task :app-server:verifyPublicQueryGeneration
+Checked 28 public tool artifacts
+
+> Task :distribution:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :distribution:contract:compileKotlin UP-TO-DATE
+> Task :distribution:contract:compileJava NO-SOURCE
+> Task :distribution:managed:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :distribution:managed:compileKotlin UP-TO-DATE
+> Task :distribution:managed:compileJava NO-SOURCE
+> Task :protocol:registry:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:wire:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app-server:processResources
+> Task :app-server:processTestFixturesResources NO-SOURCE
+> Task :workspace:contract:compileTestFixturesKotlin UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesJava NO-SOURCE
+> Task :app-server:processTestResources UP-TO-DATE
+> Task :distribution:contract:processResources UP-TO-DATE
+> Task :distribution:contract:classes UP-TO-DATE
+> Task :distribution:contract:jar UP-TO-DATE
+> Task :distribution:managed:processResources NO-SOURCE
+> Task :distribution:managed:classes UP-TO-DATE
+> Task :distribution:managed:jar UP-TO-DATE
+> Task :protocol:registry:processResources NO-SOURCE
+> Task :protocol:wire:processResources NO-SOURCE
+> Task :workspace:contract:processTestFixturesResources NO-SOURCE
+> Task :workspace:contract:testFixturesClasses UP-TO-DATE
+> Task :workspace:contract:testFixturesJar UP-TO-DATE
+
+> Task :protocol:contract:compileKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackFactoryReturnDocument.kt:17:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryImmutableCallbackFlowDocument.kt:29:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryImmutableCallbackValueDocument.kt:24:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackFactoryReturnDocument.kt:17:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryImmutableCallbackFlowDocument.kt:29:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryImmutableCallbackValueDocument.kt:24:1 Annotation 'kotlin.ConsistentCopyVisibility' is redundant.
+
+> Task :protocol:contract:compileJava NO-SOURCE
+> Task :protocol:contract:classes UP-TO-DATE
+> Task :protocol:contract:jar
+> Task :protocol:registry:compileKotlin
+> Task :protocol:registry:compileJava NO-SOURCE
+> Task :protocol:wire:compileKotlin
+> Task :protocol:wire:compileJava NO-SOURCE
+> Task :protocol:contract:compileTestKotlin
+> Task :protocol:contract:compileTestJava NO-SOURCE
+> Task :protocol:contract:testClasses
+
+> Task :protocol:contract:test FAILED
+
+ImpactReceiverKindContractTest > source entry admits only the matching receiver slot of the same invocation() FAILED
+    org.opentest4j.AssertionFailedError: expected: <false> but was: <true>
+        at app//org.junit.jupiter.api.Assertions.assertFalse(Assertions.java:257)
+        at app//io.github.amichne.kast.protocol.contract.ImpactReceiverKindContractTest.source entry admits only the matching receiver slot of the same invocation(ImpactReceiverKindContractTest.kt:21)
+
+3 tests completed, 1 failed
+
+> Task :protocol:registry:classes UP-TO-DATE
+> Task :protocol:registry:jar UP-TO-DATE
+> Task :protocol:wire:classes UP-TO-DATE
+> Task :protocol:wire:jar UP-TO-DATE
+> Task :app-server:compileKotlin
+> Task :app-server:compileJava NO-SOURCE
+> Task :app-server:classes
+> Task :app-server:jar
+> Task :app-server:compileTestFixturesKotlin UP-TO-DATE
+> Task :app-server:compileTestFixturesJava NO-SOURCE
+> Task :app-server:testFixturesClasses UP-TO-DATE
+> Task :app-server:testFixturesJar UP-TO-DATE
+
+> Task :app-server:compileTestKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicImpactSourceContractTest.kt:282:23 Redundant creation of Json format. Creating instances for each use can be slow.
+
+> Task :app-server:compileTestJava NO-SOURCE
+> Task :app-server:testClasses UP-TO-DATE
+
+> Task :app-server:test
+
+PublicImpactReceiverKindContractTest > public receiver intent preserves both explicit kinds() FAILED
+    java.lang.IllegalStateException: SchemaRejected
+        at io.github.amichne.kast.appserver.query.PublicImpactReceiverKindContractTestKt.value(PublicImpactReceiverKindContractTest.kt:79)
+        at io.github.amichne.kast.appserver.query.PublicImpactReceiverKindContractTestKt.access$value(PublicImpactReceiverKindContractTest.kt:1)
+        at io.github.amichne.kast.appserver.query.PublicImpactReceiverKindContractTest.public receiver intent preserves both explicit kinds(PublicImpactReceiverKindContractTest.kt:32)
+
+PublicImpactReceiverKindContractTest > public receiver intent rejects omitted and unknown kinds in the schema() FAILED
+    org.opentest4j.AssertionFailedError: expected: <Rejected(failure=SchemaRejected)> but was: <Rejected(failure=SyntaxRejected)>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+        at app//io.github.amichne.kast.appserver.query.PublicImpactReceiverKindContractTest.public receiver intent rejects omitted and unknown kinds in the schema(PublicImpactReceiverKindContractTest.kt:44)
+
+2 tests completed, 2 failed
+
+> Task :app-server:test FAILED
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-20-07-43-46-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/problems/problems-report.html
+
+FAILURE: Build completed with 2 failures.
+
+1: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':protocol:contract:test'.
+> There were failing tests. See the report at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/protocol/contract/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+==============================================================================
+
+2: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':app-server:test'.
+> There were failing tests. See the report at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/app-server/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+==============================================================================
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 31s
+43 actionable tasks: 14 executed, 29 up-to-date
+Configuration cache entry stored.

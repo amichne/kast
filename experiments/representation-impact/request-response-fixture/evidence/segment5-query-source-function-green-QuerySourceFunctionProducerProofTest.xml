@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QuerySourceFunctionProducerProofTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T16:22:12.919Z" hostname="Austins-MacBook-Pro.local" time="0.074">
+  <properties/>
+  <testcase name="same site identity cannot replace the execution enclosing proof()" classname="io.github.amichne.kast.query.contract.QuerySourceFunctionProducerProofTest" time="0.06"/>
+  <testcase name="the actual source function result conserves its full origin()" classname="io.github.amichne.kast.query.contract.QuerySourceFunctionProducerProofTest" time="0.003"/>
+  <testcase name="same site identity cannot replace the enclosing scope proof()" classname="io.github.amichne.kast.query.contract.QuerySourceFunctionProducerProofTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

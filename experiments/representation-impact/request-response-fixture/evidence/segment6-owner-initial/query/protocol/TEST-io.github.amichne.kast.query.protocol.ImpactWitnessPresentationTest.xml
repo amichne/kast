@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest" tests="6" skipped="0" failures="1" errors="0" timestamp="2026-10-20T14:11:26.917Z" hostname="Austins-MacBook-Pro.local" time="0.022">
+  <properties/>
+  <testcase name="same retained result and section preserve stable ordinals empty sections and cursor bounds()" classname="io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest" time="0.001"/>
+  <testcase name="read result exposes original producer invocation and flattened native records without replay()" classname="io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest" time="0.004"/>
+  <testcase name="path fitting preserves complete original closure through its retained presentation window()" classname="io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest" time="0.003"/>
+  <testcase name="resumed native witness exposes each actual grant separately from accumulated work()" classname="io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest" time="0.009">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[type, observationOrdinal, source, domain, examinedWorkUnits, retainedBytes, terminal, transferCount, obligationCount, receipts]&gt; but was: &lt;[type, observationOrdinal, source, domain, examinedWorkUnits, retainedBytes, terminal, transferCount, obligationCount, receipts, applicationCount]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[type, observationOrdinal, source, domain, examinedWorkUnits, retainedBytes, terminal, transferCount, obligationCount, receipts]&gt; but was: &lt;[type, observationOrdinal, source, domain, examinedWorkUnits, retainedBytes, terminal, transferCount, obligationCount, receipts, applicationCount]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest$resumed native witness exposes each actual grant separately from accumulated work$1.invokeSuspend(ImpactWitnessPresentationTest.kt:289)
+	at io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest$resumed native witness exposes each actual grant separately from accumulated work$1.invoke(ImpactWitnessPresentationTest.kt)
+	at io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest$resumed native witness exposes each actual grant separately from accumulated work$1.invoke(ImpactWitnessPresentationTest.kt)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt$runTest$2$1$1.invokeSuspend(TestBuilders.kt:317)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.test.TestDispatcher.processEvent$kotlinx_coroutines_test(TestDispatcher.kt:24)
+	at kotlinx.coroutines.test.TestCoroutineScheduler.tryRunNextTaskUnless$kotlinx_coroutines_test(TestCoroutineScheduler.kt:98)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt$runTest$2$1$workRunner$1.invokeSuspend(TestBuilders.kt:326)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:256)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:54)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlockingImpl(Builders.kt:30)
+	at kotlinx.coroutines.BuildersKt.runBlockingImpl(Unknown Source)
+	at kotlinx.coroutines.BuildersKt__Builders_concurrentKt.runBlockingK(Builders.concurrent.kt:172)
+	at kotlinx.coroutines.BuildersKt.runBlockingK(Unknown Source)
+	at kotlinx.coroutines.BuildersKt__Builders_concurrentKt.runBlockingK$default(Builders.concurrent.kt:157)
+	at kotlinx.coroutines.BuildersKt.runBlockingK$default(Unknown Source)
+	at kotlinx.coroutines.test.TestBuildersJvmKt.createTestResult(TestBuildersJvm.kt:10)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:309)
+	at kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:1)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:167)
+	at kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0(TestBuilders.kt:1)
+	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt.runTest-8Mi8wO0$default(TestBuilders.kt:159)
+	at kotlinx.coroutines.test.TestBuildersKt.runTest-8Mi8wO0$default(TestBuilders.kt:1)
+	at io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest.resumed native witness exposes each actual grant separately from accumulated work(ImpactWitnessPresentationTest.kt:270)
+</failure>
+  </testcase>
+  <testcase name="connectivity only retained paths cannot manufacture original witness ledger()" classname="io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest" time="0.001"/>
+  <testcase name="witness fitting preserves ledger counts and section ordinals across prefix and suffix()" classname="io.github.amichne.kast.query.protocol.ImpactWitnessPresentationTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

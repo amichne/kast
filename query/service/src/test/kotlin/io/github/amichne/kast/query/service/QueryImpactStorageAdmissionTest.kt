@@ -31,6 +31,7 @@ import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.relation.contract.ValueFlowObligation
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueInvocation
+import io.github.amichne.kast.relation.contract.ValueProducerOrigin
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueTransferKind
@@ -228,7 +229,10 @@ class QueryImpactStorageAdmissionTest {
         val state = (domain.state(id("ENCRYPTED")) as Refinement.Refined).value
         return (RepresentationRule.Origin.admit(
                 ModelRuleReference(model, id("origin")),
-                f.bind(f.producer.invocation.callable, ModelValuePosition.Result),
+                f.bind(
+                    (f.producer.origin as ValueProducerOrigin.Declared).invocation.callable,
+                    ModelValuePosition.Result,
+                ),
                 state,
             ) as Refinement.Refined)
             .value

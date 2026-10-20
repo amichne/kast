@@ -1,0 +1,5 @@
+5480d96eb54801b9a5c9708cc58bc9db796d1b039dbcb739b6f6e1e0c16e5707  query/contract/src/test/kotlin/io/github/amichne/kast/query/contract/QueryImpactExecutionOwnerRetentionTest.kt
+1ef4fb86fd05318e2dfdf73042906cacb6791f9e1790d53c6f242ce1135b2271  query/contract/src/test/kotlin/io/github/amichne/kast/query/contract/QueryImpactImplementationRetentionTest.kt
+6da6ba051605db75d7be16066a47efd57facf2d5599b87ed3119948041f50e42  query/contract/src/test/kotlin/io/github/amichne/kast/query/contract/QueryImpactModelConservationTest.kt
+cc56e4478cf3275a407219ee4d19573c27d79431df374e95fa66a47446a16026  query/contract/src/test/kotlin/io/github/amichne/kast/query/contract/QueryImpactRepresentationConservationTest.kt
+04827a43dbdfc23c89f67a2420f0d3d558c89439f781a2442cf03715d7ff48f6  query/contract/src/test/kotlin/io/github/amichne/kast/query/contract/QueryImpactTransferStorageTest.kt

@@ -1,0 +1,3 @@
+4af52cdffe7fcdfeb39886dce3d341f6f627ecfdf5685c182085cd8811f66e67  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueReviewedSharingCase.kt
+0cf5ff3839769d1bc9b17a7c5eb732eaabbbb6740c142075ca582ad2af2dbfee  relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract/ValueReviewedEvidenceSharingTest.kt
+3e52272c4e97ec0084f1a1d4d2a15e5fd8eb42cab10f9dda284ca45327205ae9  experiments/representation-impact/request-response-fixture/results/reviewed-evidence-sharing-oracle.md

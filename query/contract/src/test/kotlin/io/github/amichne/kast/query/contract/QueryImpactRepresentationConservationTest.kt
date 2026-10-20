@@ -18,6 +18,7 @@ import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.relation.contract.ValueFlowObligation
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueInvocation
+import io.github.amichne.kast.relation.contract.ValueProducerOrigin
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueTransfer
@@ -115,7 +116,11 @@ class QueryImpactRepresentationConservationTest {
         private val origin =
             RepresentationRule.Origin.admit(rule("origin"), bind(base.owner, ModelValuePosition.Result), state).value()
         val arrival =
-            RepresentationEvidence.origin(base.producer, base.producerWitness.invocation, origin)
+            RepresentationEvidence.origin(
+                    base.producer,
+                    (base.producerWitness.origin as ValueProducerOrigin.Declared).invocation,
+                    origin,
+                )
                 .value()
                 .transfer(edge)
                 .value()

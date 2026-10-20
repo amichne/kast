@@ -1,0 +1,119 @@
+@file:OptIn(org.jetbrains.kotlin.analysis.api.KaExperimentalApi::class)
+
+package io.github.amichne.kast.relation.intellij
+
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
+import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
+import org.jetbrains.kotlin.analysis.api.KaSession
+import org.jetbrains.kotlin.analysis.api.types.KaClassType
+import org.jetbrains.kotlin.analysis.api.types.KaType
+import org.jetbrains.kotlin.analysis.api.types.KaTypeParameterType
+import org.jetbrains.kotlin.psi.KtBlockExpression
+import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtFunctionLiteral
+import org.jetbrains.kotlin.psi.KtReturnExpression
+import org.jetbrains.kotlin.psi.KtTryExpression
+
+internal sealed interface NativeAnonymousValueReturn {
+    data object Normal : NativeAnonymousValueReturn
+
+    data object Discarded : NativeAnonymousValueReturn
+
+    data class Unsupported(val cause: ValueFlowUnsupportedCause) : NativeAnonymousValueReturn
+}
+
+/** Syntax selects a candidate; K2 proves result use or the exact local return target under the admitted body. */
+internal fun nativeAnonymousValueReturn(
+    expression: KtExpression,
+    owner: KtFunctionLiteral,
+    observation: IntellijReadObservation,
+): NativeAnonymousValueReturn {
+    if (expression is KtTryExpression && expression.finallyBlock != null)
+        return NativeAnonymousValueReturn.Unsupported(ValueFlowUnsupportedCause.FINALLY_UNSUPPORTED)
+    return observation.observedAnalyze(expression) {
+        when (val parent = expression.parent) {
+            is KtBlockExpression -> {
+                if (parent !== owner.bodyExpression) return@observedAnalyze anonymousUnavailable()
+                if (!expression.isUsedAsResultOfLambda) return@observedAnalyze NativeAnonymousValueReturn.Discarded
+            }
+            is KtReturnExpression -> {
+                if (parent.returnedExpression !== expression) return@observedAnalyze anonymousUnavailable()
+                val target =
+                    parent.resolveSymbol()
+                        ?: return@observedAnalyze NativeAnonymousValueReturn.Unsupported(
+                            ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE
+                        )
+                if (target != owner.symbol)
+                    return@observedAnalyze NativeAnonymousValueReturn.Unsupported(
+                        ValueFlowUnsupportedCause.ABRUPT_COMPLETION
+                    )
+            }
+            else -> return@observedAnalyze anonymousUnavailable()
+        }
+        val sourceType = expression.expressionType ?: return@observedAnalyze anonymousUnavailable()
+        normalAnonymousResult(sourceType, owner.symbol.returnType)
+    }
+}
+
+private fun KaSession.normalAnonymousResult(source: KaType, target: KaType): NativeAnonymousValueReturn {
+    when (nativeCompilerTypeProof(listOf(source, target))) {
+        NativeCompilerTypeProof.ADMITTED -> Unit
+        NativeCompilerTypeProof.WORK_LIMIT_REACHED ->
+            return NativeAnonymousValueReturn.Unsupported(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
+        NativeCompilerTypeProof.ERROR_TYPE,
+        NativeCompilerTypeProof.UNSUPPORTED_TYPE -> return anonymousUnavailable()
+    }
+    for (type in listOf(source, target)) {
+        if (type is KaClassType) {
+            when (type.classId.asSingleFqName().asString()) {
+                "kotlin.Unit" -> return anonymousUnavailable()
+                "kotlin.Nothing" ->
+                    if (!type.isMarkedNullable)
+                        return NativeAnonymousValueReturn.Unsupported(ValueFlowUnsupportedCause.ABRUPT_COMPLETION)
+            }
+        }
+    }
+    return NativeAnonymousValueReturn.Normal
+}
+
+private fun anonymousUnavailable() =
+    NativeAnonymousValueReturn.Unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+
+internal fun nativeBranchCarriesValue(
+    expression: KtExpression,
+    branch: KtExpression,
+    observation: IntellijReadObservation,
+): Refinement<Unit, ValueFlowUnsupportedCause> =
+    observation.observedAnalyze(branch) {
+        val source = expression.expressionType ?: return@observedAnalyze unsupportedBranch()
+        val target = branch.expressionType ?: return@observedAnalyze unsupportedBranch()
+        when (nativeCompilerTypeProof(listOf(source, target))) {
+            NativeCompilerTypeProof.ADMITTED -> Unit
+            NativeCompilerTypeProof.WORK_LIMIT_REACHED ->
+                return@observedAnalyze Refinement.Rejected(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
+            NativeCompilerTypeProof.ERROR_TYPE,
+            NativeCompilerTypeProof.UNSUPPORTED_TYPE -> return@observedAnalyze unsupportedBranch()
+        }
+        when (val normal = branchValueType(source)) {
+            is Refinement.Refined -> branchValueType(target)
+            is Refinement.Rejected -> normal
+        }
+    }
+
+private fun KaSession.branchValueType(type: KaType): Refinement<Unit, ValueFlowUnsupportedCause> =
+    when (type) {
+        is KaClassType ->
+            when (type.classId.asSingleFqName().asString()) {
+                "kotlin.Unit" -> unsupportedBranch()
+                "kotlin.Nothing" ->
+                    if (type.isMarkedNullable) Refinement.Refined(Unit)
+                    else Refinement.Rejected(ValueFlowUnsupportedCause.ABRUPT_COMPLETION)
+                else -> Refinement.Refined(Unit)
+            }
+        is KaTypeParameterType -> Refinement.Refined(Unit)
+        else -> unsupportedBranch()
+    }
+
+private fun unsupportedBranch() = Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)

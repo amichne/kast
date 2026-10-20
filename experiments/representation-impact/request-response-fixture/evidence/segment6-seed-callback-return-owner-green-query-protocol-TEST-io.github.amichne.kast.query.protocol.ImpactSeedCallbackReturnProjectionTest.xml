@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactSeedCallbackReturnProjectionTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T19:56:41.915Z" hostname="Austins-MacBook-Pro.local" time="0.002">
+  <properties/>
+  <testcase name="a genuine empty callback return keeps full evidence and its supplying context through projection()" classname="io.github.amichne.kast.query.protocol.ImpactSeedCallbackReturnProjectionTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

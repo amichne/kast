@@ -1,0 +1,185 @@
+package io.github.amichne.kast.relation.intellij
+
+import com.intellij.openapi.application.ReadAction
+import io.github.amichne.kast.relation.contract.ValueCallFrame
+import io.github.amichne.kast.relation.contract.ValueExecutionOwner
+import io.github.amichne.kast.relation.contract.ValueFlowRead
+import io.github.amichne.kast.relation.contract.ValueFlowRequest
+import io.github.amichne.kast.relation.contract.ValueFlowStep
+import io.github.amichne.kast.relation.contract.ValueFlowTerminal
+import io.github.amichne.kast.relation.contract.ValueFormalPosition
+import io.github.amichne.kast.relation.contract.ValuePathSegment
+import io.github.amichne.kast.relation.contract.ValuePredicate
+import io.github.amichne.kast.relation.contract.ValueReceiverKind
+import io.github.amichne.kast.relation.contract.ValueRole
+import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.relation.contract.ValueTransferKind
+import kotlinx.coroutines.runBlocking
+
+/** These captures characterize native frontiers. The separate expected rows await reviewed model applications. */
+class NativePacketFirstOrNullFrontierTest : NativePacketValueFixtureTest() {
+    override val fixtureSdkName = "packet-first-or-null-frontier-jdk"
+
+    fun testOriginalElementZeroReceiverNativeFrontier() =
+        capture(NativePacketFirstOrNullModelRows.Row.ORIGINAL_ELEMENT_ZERO)
+
+    fun testOriginalAnyElementReceiverNativeFrontier() =
+        capture(NativePacketFirstOrNullModelRows.Row.ORIGINAL_ANY_ELEMENT)
+
+    fun testOriginalElementOneReceiverNativeFrontier() =
+        capture(NativePacketFirstOrNullModelRows.Row.ORIGINAL_ELEMENT_ONE)
+
+    fun testSourceDefinedSameNameReceiverNativeFrontier() =
+        capture(NativePacketFirstOrNullModelRows.Row.SOURCE_SAME_NAME)
+
+    private fun capture(row: NativePacketFirstOrNullModelRows.Row) {
+        val paths =
+            if (row == NativePacketFirstOrNullModelRows.Row.SOURCE_SAME_NAME)
+                listOf(NativePacketFirstOrNullFrontierSource.CONTROL)
+            else NativePacketCompositeSuccessSource.PATHS
+        val fixture = packetFixture(paths)
+        val expected = NativePacketFirstOrNullFrontierSource(project, getOrCreateProjectBaseDir(), fixture)
+        println(
+            "FIRST_OR_NULL_SCOPE kind=SUPPLEMENTAL_POSITION sourcePolicy=PRODUCTION_ONLY " +
+                "libraryPolicy=INCLUDE original_S2=UNCHANGED"
+        )
+        val source =
+            ReadAction.compute<ValueSite, RuntimeException> {
+                val receiver =
+                    if (row == NativePacketFirstOrNullModelRows.Row.SOURCE_SAME_NAME) expected.sourceDefined()
+                    else expected.original()
+                receiver.withState(valuePath = NativePacketFirstOrNullModelRows.inputPath(row)).nativeRefined()
+            }
+        val read = runBlocking {
+            IntellijValueFlowCompilerAdapter()
+                .read(
+                    project = project,
+                    current = fixture.lease,
+                    request = ValueFlowRequest(source, fixture.budget, expected.boundary),
+                    model = fixture.model,
+                )
+        }
+        record(read)
+        assertTrue(
+            "The grounded supplemental receiver did not return a native frontier",
+            read is ValueFlowRead.Observed,
+        )
+        val step = (read as ValueFlowRead.Observed).step
+        assertEquals(source, step.source)
+        step.transfers.forEach { recordSite(it.target) }
+        if (row == NativePacketFirstOrNullModelRows.Row.SOURCE_SAME_NAME) assertSourceControl(fixture, expected, step)
+        recordExpected(row, source)
+    }
+
+    private fun recordExpected(row: NativePacketFirstOrNullModelRows.Row, source: ValueSite) {
+        val target =
+            when (val result = NativePacketFirstOrNullModelRows.requiredResult(row, source)) {
+                is NativePacketFirstOrNullModelRows.Result.Selected -> "SELECTED:${result.site.range}"
+                NativePacketFirstOrNullModelRows.Result.NoApplication -> "NO_APPLICATION"
+            }
+        println(
+            "FIRST_OR_NULL_EXPECTED row=$row condition=${NativePacketFirstOrNullModelRows.condition(row)} " +
+                "result=$target suffix=WHOLE addedNonNull=false model_assertion=NOT_RUN"
+        )
+    }
+
+    private fun assertSourceControl(
+        fixture: NativePacketValueFixture,
+        expected: NativePacketFirstOrNullFrontierSource,
+        step: ValueFlowStep,
+    ) {
+        assertEquals(listOf(ValueTransferKind.SOURCE_CALL_ENTRY), step.transfers.map { it.kind })
+        val formal = step.transfers.single().target
+        assertEquals(ValueRole.Formal(ValueFormalPosition.Receiver(ValueReceiverKind.EXTENSION)), formal.role)
+        val call = (step.source.role as ValueRole.Receiver).call
+        val owner = ValueExecutionOwner.declaration(call.callable)
+        val frame = ValueCallFrame.direct(call, owner).nativeRefined()
+        assertEquals(owner, formal.executionOwner)
+        assertEquals(owner.range, formal.range)
+        assertEquals(step.source.callStack.frames + frame, formal.callStack.frames)
+        assertEquals(step.source.valuePath, formal.valuePath)
+        assertEquals(step.source.predicates, formal.predicates)
+        val result = runBlocking {
+            IntellijValueFlowCompilerAdapter()
+                .read(
+                    project = project,
+                    current = fixture.lease,
+                    request = ValueFlowRequest(formal, fixture.budget, expected.boundary),
+                    model = fixture.model,
+                )
+        }
+        record(result)
+        assertTrue("The genuine source receiver did not produce an exhaustion result", result is ValueFlowRead.Observed)
+        val exhausted = (result as ValueFlowRead.Observed).step
+        assertTrue(exhausted.transfers.isEmpty())
+        assertTrue(exhausted.obligations.isEmpty())
+        assertEquals(ValueFlowTerminal.SupportedDomainExhausted, exhausted.terminal)
+    }
+
+    private fun record(read: ValueFlowRead) {
+        when (read) {
+            is ValueFlowRead.Observed ->
+                println(
+                    "FIRST_OR_NULL_NATIVE variant=OBSERVED transfers=${read.step.transfers.map { it.kind }} " +
+                        "causes=${read.step.obligations.map { it.cause }} work=${read.step.examinedWorkUnits.value}"
+                )
+            is ValueFlowRead.Rejected ->
+                println(
+                    "FIRST_OR_NULL_NATIVE variant=REJECTED cause=${read.cause} work=${read.examinedWorkUnits.value}"
+                )
+            is ValueFlowRead.ContractRejected ->
+                println(
+                    "FIRST_OR_NULL_NATIVE variant=CONTRACT_REJECTED cause=${read.cause} " +
+                        "work=${read.examinedWorkUnits.value}"
+                )
+            is ValueFlowRead.Suspended ->
+                println(
+                    "FIRST_OR_NULL_NATIVE variant=SUSPENDED cause=${read.cause} " +
+                        "work=${read.step.examinedWorkUnits.value}"
+                )
+        }
+    }
+
+    private fun recordSite(site: ValueSite) {
+        val path =
+            site.valuePath.segments.map { segment ->
+                when (segment) {
+                    ValuePathSegment.AnyElement -> "ANY_ELEMENT"
+                    is ValuePathSegment.Element -> "ELEMENT:${segment.index.value}"
+                    is ValuePathSegment.Field -> "FIELD:${segment.field.identity.compiler.value}"
+                }
+            }
+        println(
+            "FIRST_OR_NULL_TARGET range=${site.range} owner=${site.enclosing.compilerIdentity.value} " +
+                "body=${site.executionOwner.identity.body.compiler.value} path=$path role=${role(site.role)} " +
+                "predicateCount=${site.predicates.entries.size} " +
+                "frames=${site.callStack.frames.map { it.invocation.range }}"
+        )
+        site.predicates.entries.forEach { predicate ->
+            val subject = predicate.subject.occurrence
+            val kind =
+                when (predicate) {
+                    is ValuePredicate.NonNull -> "NON_NULL"
+                    is ValuePredicate.Subtype -> "SUBTYPE:${predicate.resolvedType.compilerIdentity.value}"
+                }
+            println(
+                "FIRST_OR_NULL_PREDICATE kind=$kind range=${subject.range} role=${role(subject.role)} " +
+                    "body=${subject.executionOwner.identity.body.compiler.value} " +
+                    "frames=${subject.callStack.frames.map { it.invocation.range }}"
+            )
+        }
+    }
+
+    private fun role(role: ValueRole): String =
+        when (role) {
+            ValueRole.ExpressionResult -> "EXPRESSION_RESULT"
+            ValueRole.LocalBinding -> "LOCAL_BINDING"
+            ValueRole.LocalRead -> "LOCAL_READ"
+            is ValueRole.Argument -> "ARGUMENT:${role.position.value}"
+            is ValueRole.Receiver -> "RECEIVER:${role.kind}"
+            is ValueRole.FunctionArgument -> "FUNCTION_ARGUMENT:${role.position.value}"
+            is ValueRole.Formal -> "FORMAL:${role.position}"
+            ValueRole.Return -> "RETURN"
+            ValueRole.PropertyAssignment -> "PROPERTY_ASSIGNMENT"
+        }
+}

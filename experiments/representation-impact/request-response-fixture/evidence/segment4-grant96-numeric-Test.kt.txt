@@ -1,0 +1,112 @@
+package io.github.amichne.kast.relation.intellij
+
+import com.intellij.openapi.application.readAction
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.CallbackBindingEvidence
+import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
+import io.github.amichne.kast.relation.contract.CallbackInvocationScan
+import io.github.amichne.kast.relation.contract.RelationSearchBoundary
+import io.github.amichne.kast.relation.contract.ValueFlowObligationEvidence
+import io.github.amichne.kast.relation.contract.ValueFlowRead
+import io.github.amichne.kast.relation.contract.ValueFlowRequest
+import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
+import io.github.amichne.kast.relation.contract.ValueFormalOrigin
+import io.github.amichne.kast.relation.contract.ValueFormalPosition
+import io.github.amichne.kast.relation.contract.ValueRole
+import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.relation.contract.ValueTransfer
+import io.github.amichne.kast.relation.contract.ValueTransferKind
+import kotlinx.coroutines.runBlocking
+
+/** The fixed phase grant protects K2 order. The separate adapter control protects callback admission. */
+class NativePacketCallbackGrantOrderingTest : NativePacketValueFixtureTest() {
+    override val fixtureSdkName = "packet-callback-grant-ordering-jdk"
+
+    fun testOriginalS2Grant96DoesNotOpenK2AfterTheOriginalAllowanceExhausts() = runBlocking {
+        val fixture = packetFixture(NativePacketCompositeSuccessSource.PATHS)
+        val expected = NativePacketCompositeSuccessSource(project, getOrCreateProjectBaseDir(), fixture)
+        val helper = NativePacketCallbackGrantFixture(project, fixture, expected)
+        val argument = helper.originalArgument()
+        val request =
+            ValueFlowRequest(argument, helper.budget(QUALIFIED_GRANT), RelationSearchBoundary.RETAINED_SUBJECT)
+        val phase = readAction { NativePacketCallbackGrantOrderingPhase(fixture, request).read(project) }
+        assertQualifiedPhase(phase, argument)
+        assertEquals(
+            "The exhausted phase opened a K2 session after its original work grant",
+            0,
+            phase.exhaustedSessions,
+        )
+        assertImplicitEntry(transfers = phase.transfers, source = argument, expected = expected)
+    }
+
+    fun testOriginalS2Grant127EntersTheGenuineImplicitCallbackFormal() {
+        val fixture = packetFixture(NativePacketCompositeSuccessSource.PATHS)
+        val expected = NativePacketCompositeSuccessSource(project, getOrCreateProjectBaseDir(), fixture)
+        val helper = NativePacketCallbackGrantFixture(project, fixture, expected)
+        val argument = helper.originalArgument()
+        val result = helper.read(argument, helper.budget(FULL_GRANT))
+        assertTrue("Full127 callback prerequisite failed", result is ValueFlowRead.Observed)
+        val step = (result as ValueFlowRead.Observed).step
+        println(
+            "CALLBACK_GRANT127_ADAPTER work=${step.examinedWorkUnits.value} entries=${step.transfers.map { it.kind }}"
+        )
+        assertTrue(step.obligations.isEmpty())
+        assertEquals(FULL_GRANT, step.examinedWorkUnits.value)
+        assertImplicitEntry(transfers = step.transfers, source = argument, expected = expected)
+    }
+
+    private fun assertImplicitEntry(
+        transfers: List<ValueTransfer>,
+        source: ValueSite,
+        expected: NativePacketCompositeSuccessSource,
+    ) {
+        assertEquals(listOf(ValueTransferKind.SOURCE_CALL_ENTRY), transfers.map { it.kind })
+        assertEquals(source, transfers.single().source)
+        val target = transfers.single().target
+        val formal = (target.role as ValueRole.Formal).position as ValueFormalPosition.Parameter
+        assertEquals(expected.implicitIt().body, target.range)
+        assertEquals(target.executionOwner, formal.parameter.executionOwner)
+        assertEquals("it", formal.parameter.name.value)
+        assertEquals(0, formal.parameter.position.value)
+        assertEquals(ValueFormalOrigin.Implicit, formal.parameter.origin)
+        assertEquals(source.callStack.frames.size + 1, target.callStack.frames.size)
+        assertEquals(source.callStack.frames, target.callStack.frames.dropLast(1))
+        assertEquals(source.valuePath, target.valuePath)
+        assertEquals(source.predicates, target.predicates)
+    }
+
+    private fun assertQualifiedPhase(phase: GrantOrderingCapture, source: ValueSite) {
+        println(
+            "CALLBACK_GRANT96_PHASE work=${phase.work} k2=${phase.sessions} " +
+                "k2AfterExhaustion=${phase.exhaustedSessions} entries=${phase.transfers.map { it.kind }} " +
+                "sessionWork=${phase.sessionWork} " +
+                "causes=${phase.obligations.map { it.cause }}"
+        )
+        assertTrue("The callback phase rejected its admitted source", phase.result is Refinement.Refined)
+        assertEquals(QUALIFIED_GRANT, phase.work)
+        assertTrue(phase.obligations.all { it.site == source })
+        assertTrue(phase.obligations.any { it.cause == ValueFlowUnsupportedCause.CALLBACK_FLOW_UNPROVEN })
+        val evidence = phase.obligations.mapNotNull { it.evidence as? ValueFlowObligationEvidence.CallbackFlow }
+        assertEquals(1, evidence.size)
+        val flow = evidence.single().flow
+        val invocation = (source.role as ValueRole.FunctionArgument).call
+        val selected =
+            flow.invocations.count {
+                it.occurrence.range == invocation.range && it.occurrence.file == source.enclosing.file
+            }
+        println(
+            "CALLBACK_GRANT96_FLOW bound=${flow.binding is CallbackBindingEvidence.Bound} scan=${flow.scan} " +
+                "invocations=${flow.invocations.size} selected=$selected causes=${flow.obligations}"
+        )
+        assertTrue(flow.binding is CallbackBindingEvidence.Bound)
+        assertEquals(CallbackInvocationScan.INCOMPLETE, flow.scan)
+        assertEquals(1, flow.invocations.size)
+        assertEquals(1, selected)
+        assertEquals(setOf(CallbackInvocationFlowCause.WORK_LIMIT_REACHED), flow.obligations)
+    }
+
+    private companion object {
+        const val QUALIFIED_GRANT = 96L
+        const val FULL_GRANT = 127L
+    }
+}

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactValueModelProjectionTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T16:54:40.605Z" hostname="Austins-MacBook-Pro.local" time="0.262">
+  <properties/>
+  <testcase name="unknown applications and malformed artifact primitives reject decoded output()" classname="io.github.amichne.kast.query.protocol.ImpactValueModelProjectionTest" time="0.231"/>
+  <testcase name="typed application output keeps actual and reviewed artifact proof with conditional whole projection()" classname="io.github.amichne.kast.query.protocol.ImpactValueModelProjectionTest" time="0.025"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

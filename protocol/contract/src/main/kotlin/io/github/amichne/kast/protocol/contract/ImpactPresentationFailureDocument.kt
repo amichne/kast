@@ -65,6 +65,10 @@ sealed interface ImpactPresentationFailureDocument {
     data class Model(val cause: ImpactPresentationModelCause) : ImpactPresentationFailureDocument
 
     @Serializable
+    @SerialName("VALUE_MODEL")
+    data class ValueModel(val cause: ImpactValueModelPrimitiveFailure) : ImpactPresentationFailureDocument
+
+    @Serializable
     @SerialName("COLLECTION")
     data class Collection(val cause: ImpactPresentationCollectionCause) : ImpactPresentationFailureDocument
 

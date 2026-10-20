@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.AutomaticBindingCapacityTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:24.715Z" hostname="Austins-MacBook-Pro.local" time="0.278">
+  <properties/>
+  <testcase name="unobserved binding cancellation retains exact cause without executing a page()" classname="io.github.amichne.kast.query.protocol.AutomaticBindingCapacityTest" time="0.103"/>
+  <testcase name="first binding page capacity stop preserves its joined row family()" classname="io.github.amichne.kast.query.protocol.AutomaticBindingCapacityTest" time="0.094"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

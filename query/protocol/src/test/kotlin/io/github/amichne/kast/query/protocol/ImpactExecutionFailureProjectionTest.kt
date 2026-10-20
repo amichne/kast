@@ -55,6 +55,8 @@ class ImpactExecutionFailureProjectionTest {
                     ImpactExecutionFailureDocument.Path(ImpactExecutionPathCause.TERMINAL_UNPROVEN),
                 QueryImpactExecutionFailure.Ledger(QueryImpactLedgerFailure.MISSING_BRANCH) to
                     ImpactExecutionFailureDocument.Ledger(ImpactExecutionLedgerCause.MISSING_BRANCH),
+                QueryImpactExecutionFailure.Ledger(QueryImpactLedgerFailure.UNPROVEN_MODELED_VALUE_STEP) to
+                    ImpactExecutionFailureDocument.Ledger(ImpactExecutionLedgerCause.UNPROVEN_MODELED_VALUE_STEP),
                 QueryImpactExecutionFailure.Accounting(QueryValuePathAccountingFailure.DUPLICATE_PATH) to
                     ImpactExecutionFailureDocument.Accounting(ImpactExecutionAccountingCause.DUPLICATE_PATH),
                 QueryImpactExecutionFailure.Representation(RepresentationPropagationFailure.CALLABLE_MISMATCH) to

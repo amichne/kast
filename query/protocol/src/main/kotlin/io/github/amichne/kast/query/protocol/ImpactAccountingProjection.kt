@@ -19,7 +19,9 @@ import io.github.amichne.kast.query.contract.QueryValuePathAccountingStatus
 import io.github.amichne.kast.query.contract.accountingStatus
 
 /** The immutable ledger is the sole authority for original counts, closure, seeds and reviewed model references. */
-internal fun QueryRows.impactAccountingDocument(): ImpactProjected<ImpactAccountingDocument> =
+internal fun QueryRows.impactAccountingDocument(
+    references: QueryReferenceAuthority
+): ImpactProjected<ImpactAccountingDocument> =
     when (this) {
         is QueryRows.Symbols,
         is QueryRows.Occurrences,
@@ -31,7 +33,12 @@ internal fun QueryRows.impactAccountingDocument(): ImpactProjected<ImpactAccount
                         Refinement.Refined(ImpactAccountingDocument.EvidenceOnly(pageCount))
                     is QueryValuePathAccounting.Investigated ->
                         accountingStatus.impactDocument().impactThen { status ->
-                            accounting.ledger.impactDocument(pageCount, status, ImpactAccountingViewDocument.Paths)
+                            accounting.ledger.impactDocument(
+                                references,
+                                pageCount,
+                                status,
+                                ImpactAccountingViewDocument.Paths,
+                            )
                         }
                 }
             }
@@ -43,6 +50,7 @@ internal fun QueryRows.impactAccountingDocument(): ImpactProjected<ImpactAccount
                     view.ledger.closure.impactDocument().impactThen { closure ->
                         count(0).impactThen { zero ->
                             view.ledger.impactDocument(
+                                references,
                                 zero,
                                 ImpactAccountingStatusDocument.SelectedSubset(closure),
                                 ImpactAccountingViewDocument.Witness(
@@ -58,13 +66,14 @@ internal fun QueryRows.impactAccountingDocument(): ImpactProjected<ImpactAccount
     }
 
 private fun QueryImpactLedger.impactDocument(
+    references: QueryReferenceAuthority,
     pageCount: QueryDiscoveryCountDocument,
     status: ImpactAccountingStatusDocument,
     view: ImpactAccountingViewDocument,
 ): ImpactProjected<ImpactAccountingDocument> =
     domain.impactRequestedBoundary().impactThen { requestedDomain ->
         seeds
-            .impactEach { it.impactDocument() }
+            .impactEach { it.impactDocument(references) }
             .impactThen { seeds ->
                 representationModels
                     .impactEach { it.reference.impactDocument() }
@@ -75,7 +84,7 @@ private fun QueryImpactLedger.impactDocument(
                                 count(readRejections.size)
                                     .impactZip(count(observations.size))
                                     .impactZip(count(paths.size))
-                                    .impactZip(requestedSites.impactEach { it.site.impactDocument() })
+                                    .impactZip(requestedSites.impactEach { it.site.impactDocument(references) })
                                     .impactMap { (totals, requested) ->
                                         val (counts, paths) = totals
                                         ImpactAccountingDocument.Investigated(

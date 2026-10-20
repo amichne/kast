@@ -200,6 +200,8 @@ class QueryImpactBoundarySourceAdmissionTest {
 
         inner class Native(private val rejection: ValueFlowRejection?) : ValueProducerSeedCompilerPort {
             val grants = mutableListOf<Long>()
+            val byteGrants = mutableListOf<Long>()
+            val sites = mutableListOf<ValueSite>()
             val positions = mutableListOf<ExactDeclarationTextRange>()
             private var seeds = 0
             private var declarations = 0
@@ -208,6 +210,7 @@ class QueryImpactBoundarySourceAdmissionTest {
                 assertEquals(0, seeds++)
                 assertEquals(range(20, 35), request.anchor)
                 grants += request.budget.resources.workUnitLimit.value
+                byteGrants += request.budget.returnedBytes.value
                 val invocation = ValueInvocation.fromCompiler(owner, range(20, 35), callable).refined()
                 return ValueProducerSeedRead.Seeded(
                     ValueProducerSeed.fromCompiler(request, invocation.resultSite(), invocation).refined(),
@@ -222,6 +225,7 @@ class QueryImpactBoundarySourceAdmissionTest {
                 assertEquals(0, declarations++)
                 assertEquals(owner.file, selector.file)
                 grants += budget.resources.workUnitLimit.value
+                byteGrants += budget.returnedBytes.value
                 return ValueModelDeclarationRead.Revalidated(
                     RevalidatedRelationEndpoint.validate(owner, owner.evidence).refined(),
                     work(1),
@@ -234,9 +238,11 @@ class QueryImpactBoundarySourceAdmissionTest {
                 assertEquals(expected, request.anchor)
                 assertEquals(ValueSiteRoleClaim.ExpressionResult, request.role)
                 grants += request.budget.resources.workUnitLimit.value
+                byteGrants += request.budget.returnedBytes.value
                 positions += expected
                 if (rejection != null) return ValueModelSiteRead.Rejected(rejection)
                 val site = ValueSite.fromCompiler(owner, expected, ValueRole.ExpressionResult).refined()
+                sites += site
                 return ValueModelSiteRead.Revalidated(
                     RevalidatedValueSite.fromCompiler(request, site).refined(),
                     work(2),

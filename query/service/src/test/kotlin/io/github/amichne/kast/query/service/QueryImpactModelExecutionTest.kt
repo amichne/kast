@@ -28,6 +28,7 @@ import io.github.amichne.kast.relation.contract.RepresentationState
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueInvocation
+import io.github.amichne.kast.relation.contract.ValueProducerOrigin
 import io.github.amichne.kast.relation.contract.ValueTransferKind
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -149,7 +150,10 @@ class QueryImpactModelExecutionTest {
         val origin =
             RepresentationRule.Origin.admit(
                     rule("origin"),
-                    f.bind(f.producer.invocation.callable, ModelValuePosition.Result),
+                    f.bind(
+                        (f.producer.origin as ValueProducerOrigin.Declared).invocation.callable,
+                        ModelValuePosition.Result,
+                    ),
                     hiped,
                 )
                 .value()

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketBindBranchTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T13:03:23.677Z" hostname="Austins-MacBook-Pro.local" time="9.173">
+  <properties/>
+  <testcase name="testOriginalBindBranchUsesItsActualSourceTypeParameterS" classname="io.github.amichne.kast.relation.intellij.NativePacketBindBranchTest" time="7.445"/>
+  <testcase name="testOriginalBindSuccessValueReachesItsGenericWhenResultWithExactState" classname="io.github.amichne.kast.relation.intellij.NativePacketBindBranchTest" time="1.717"/>
+  <system-out><![CDATA[BIND_BRANCH_TYPE source=ExactDeclarationTextRange(startInclusive=1227, endExclusive=1232) target=ExactDeclarationTextRange(startInclusive=1183, endExclusive=1284) sourceKind=TYPE_PARAMETER targetKind=TYPE_PARAMETER parameter=S origin=SOURCE sourceIsOwnParameter=true targetIsOwnParameter=true concreteInstantiation=NOT_ASSERTED
+BIND_BRANCH_TYPE capture=COMPLETE transfer=NOT_RUN concrete_nonunit_instantiation=NOT_ASSERTED
+BIND_BRANCH_TYPE source=ExactDeclarationTextRange(startInclusive=1227, endExclusive=1232) target=ExactDeclarationTextRange(startInclusive=1183, endExclusive=1284) sourceKind=TYPE_PARAMETER targetKind=TYPE_PARAMETER parameter=S origin=SOURCE sourceIsOwnParameter=true targetIsOwnParameter=true concreteInstantiation=NOT_ASSERTED
+COMPOSITE_SUCCESS_STAGE row=C2.1 receiver source=ExactDeclarationTextRange(startInclusive=769, endExclusive=954) transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=769, endExclusive=954))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 map formal source=ExactDeclarationTextRange(startInclusive=769, endExclusive=954) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=289, endExclusive=439))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 Success.value source=ExactDeclarationTextRange(startInclusive=289, endExclusive=439) transfers=[(FIELD_READ, ExactDeclarationTextRange(startInclusive=393, endExclusive=398)), (FIELD_READ, ExactDeclarationTextRange(startInclusive=427, endExclusive=432))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 builtin argument source=ExactDeclarationTextRange(startInclusive=393, endExclusive=398) transfers=[(ARGUMENT, ExactDeclarationTextRange(startInclusive=393, endExclusive=398))] frontier=[]
+COMPOSITE_SUCCESS_STAGE row=C2.1 callback formal source=ExactDeclarationTextRange(startInclusive=393, endExclusive=398) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=959, endExclusive=989))] frontier=[]
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=818, endExclusive=917) pathDepth=2 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=806, endExclusive=814))] causes=[] work=4
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) pathDepth=2 transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=1088, endExclusive=1143))] causes=[] work=2
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1088, endExclusive=1143) pathDepth=2 transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=1137, endExclusive=1143))] causes=[] work=3
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1137, endExclusive=1143) pathDepth=2 transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=1149, endExclusive=1284))] causes=[] work=2
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1149, endExclusive=1284) pathDepth=2 transfers=[(FIELD_READ, ExactDeclarationTextRange(startInclusive=1227, endExclusive=1232))] causes=[] work=6
+BIND_BRANCH_SETUP kind=CONTROLLED_TRACKED_INITIALIZER guard=ORIGINAL_S2_NATIVE_PREFIX
+BIND_BRANCH_STAGE source=ExactDeclarationTextRange(startInclusive=1227, endExclusive=1232) pathDepth=1 transfers=[(BRANCH_ALTERNATIVE, ExactDeclarationTextRange(startInclusive=1183, endExclusive=1284))] causes=[] work=3
+BIND_BRANCH_RESULT row=C2.7 stage=generic-when-result matched_return,C2.8,C2.9=NOT_RUN
+]]></system-out>
+  <system-err><![CDATA[[   1201]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1202]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

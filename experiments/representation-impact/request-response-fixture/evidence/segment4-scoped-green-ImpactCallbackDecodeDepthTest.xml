@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactCallbackDecodeDepthTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-20T06:17:51.246Z" hostname="Austins-MacBook-Pro.local" time="0.193">
+  <properties/>
+  <testcase name="bounded input cannot bypass the callback depth limit through callable transfer frames()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackDecodeDepthTest" time="0.059"/>
+  <testcase name="omitted direct targets cannot hide an overcount callback proof()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackDecodeDepthTest" time="0.029"/>
+  <testcase name="988 expanded frame occurrences decode even when direct frames share one object()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackDecodeDepthTest" time="0.08"/>
+  <testcase name="1022 expanded frame occurrences exceed the document count limit()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackDecodeDepthTest" time="0.016"/>
+  <testcase name="small callback frame trees decode with full typed invocation evidence()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackDecodeDepthTest" time="0.003"/>
+  <testcase name="an omitted owner execution remains a required-field decode failure()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackDecodeDepthTest" time="0.004"/>
+  <testcase name="a small direct frame admits the omitted default target()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackDecodeDepthTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryDependencyContractProjectionTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.305Z" hostname="Austins-MacBook-Pro.local" time="0.004">
+  <properties/>
+  <testcase name="dependency target projection preserves evidence when external source handles are forbidden()" classname="io.github.amichne.kast.query.protocol.QueryDependencyContractProjectionTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

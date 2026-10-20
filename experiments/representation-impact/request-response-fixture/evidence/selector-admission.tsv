@@ -1,0 +1,9 @@
+phase	case	owner	owner_range	callable	callable_range	selected_range	canonical_range	outcome	status
+RED	S2.full	fixture.client.OffersClientImpl.readOffers	673:1147	fixture.wire.Call.execute	650:829	769:954	769:954	SEEDED	PASSED
+RED	S2.selector	fixture.client.OffersClientImpl.readOffers	673:1147	fixture.wire.Call.execute	650:829	898:954	NOT_REACHED	ANCHOR_MISMATCH	FAILED
+RED	S2.selector_wrong_callable	fixture.client.OffersClientImpl.readOffers	673:1147	fixture.wire.OffersApi.readOffers	939:1064	898:954	NOT_REACHED	ANCHOR_MISMATCH	FAILED
+RED	S2.partial_callee	fixture.client.OffersClientImpl.readOffers	673:1147	fixture.wire.Call.execute	650:829	898:905	NOT_REACHED	UNSUPPORTED_INVOCATION	PASSED
+GREEN	S2.full	fixture.client.OffersClientImpl.readOffers	673:1147	fixture.wire.Call.execute	650:829	769:954	769:954	SEEDED EXACT	PASSED
+GREEN	S2.selector	fixture.client.OffersClientImpl.readOffers	673:1147	fixture.wire.Call.execute	650:829	898:954	769:954	SEEDED QUALIFIED_SELECTOR	PASSED
+GREEN	S2.selector_wrong_callable	fixture.client.OffersClientImpl.readOffers	673:1147	fixture.wire.OffersApi.readOffers	939:1064	898:954	NOT_REACHED	CALLABLE_MISMATCH	PASSED
+GREEN	S2.partial_callee	fixture.client.OffersClientImpl.readOffers	673:1147	fixture.wire.Call.execute	650:829	898:905	NOT_REACHED	UNSUPPORTED_INVOCATION	PASSED

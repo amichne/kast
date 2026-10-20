@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketLibraryBodyReadTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T12:57:58.859Z" hostname="Austins-MacBook-Pro.local" time="9.163">
+  <properties/>
+  <testcase name="testGenuineSourceSameNameUnusedReceiverFormalStillExhaustsSupported" classname="io.github.amichne.kast.relation.intellij.NativePacketLibraryBodyReadTest" time="5.861"/>
+  <testcase name="testCompiledListOfValueParameterFormalKeepsAnExternalBodyObligation" classname="io.github.amichne.kast.relation.intellij.NativePacketLibraryBodyReadTest" time="2.032"/>
+  <testcase name="testCompiledFirstOrNullReceiverFormalKeepsAnExternalBodyObligation" classname="io.github.amichne.kast.relation.intellij.NativePacketLibraryBodyReadTest" time="1.262"/>
+  <system-out><![CDATA[FIRST_OR_NULL_BINDING library=false identity=canonical-signature-sha256-v1|832d7f50b7644a85907a7135b6dc04af44b57ee509899fb5dff899b687730f86 callable=fixture.controls.firstelement.firstOrNull receiver=Present(type=CanonicalCompilerType(value=kotlin/collections/List<kotlin/String>)) parameterCount=0 contextCount=0 typeParameters=0
+LIBRARY_BODY_READ_FRONTIER source=ExactDeclarationTextRange(startInclusive=161, endExclusive=167) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=39, endExclusive=97))] causes=[] terminal=SupportedDomainExhausted work=2
+LIBRARY_BODY_READ_AUTHORITY compiled=false function=ExactDeclarationTextRange(startInclusive=39, endExclusive=97) body=ExactDeclarationTextRange(startInclusive=81, endExclusive=97) file=/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/unitTest_GenuineSourceSameNameUnusedReceiverFormalStillExhaustsSupported_3KxZFoZsHuWhaVWBKfw8hU3ABgB/src/fixture/controls/FirstElementModelControls.kt
+LIBRARY_BODY_READ_FRONTIER source=ExactDeclarationTextRange(startInclusive=39, endExclusive=97) transfers=[] causes=[] terminal=SupportedDomainExhausted work=2
+LIBRARY_BODY_READ_FRONTIER source=ExactDeclarationTextRange(startInclusive=341, endExclusive=360) transfers=[(ARGUMENT, ExactDeclarationTextRange(startInclusive=341, endExclusive=360))] causes=[] terminal=SupportedDomainExhausted work=3
+LIBRARY_BODY_READ_FRONTIER source=ExactDeclarationTextRange(startInclusive=341, endExclusive=360) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=164, endExclusive=174))] causes=[] terminal=SupportedDomainExhausted work=2
+LIBRARY_BODY_READ_AUTHORITY compiled=true function=ExactDeclarationTextRange(startInclusive=142, endExclusive=227) body=ExactDeclarationTextRange(startInclusive=204, endExclusive=227) file=jar:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/idea/plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar!/kotlin/collections/CollectionsKt.class
+LIBRARY_BODY_READ_FRONTIER source=ExactDeclarationTextRange(startInclusive=164, endExclusive=174) transfers=[] causes=[EXTERNAL_CALL] terminal=Unresolved work=2
+DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+FIRST_OR_NULL_ARTIFACT version=2.3.20-release-208 sha256=0ae12504a5040ebaf37703908483420d1a5624dd1d93f357665f8c77c848a01e virtualRoot=jar:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/idea/plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar!/
+FIRST_OR_NULL_BINDING library=true identity=canonical-signature-sha256-v1|89eb817fb2a84e662aa1a766097e194fdac214f8031f7bf42776bc675f4d5550 callable=kotlin.collections.firstOrNull receiver=Present(type=CanonicalCompilerType(value=kotlin/collections/List<T>)) parameterCount=0 contextCount=0 typeParameters=1
+LIBRARY_BODY_READ_FRONTIER source=ExactDeclarationTextRange(startInclusive=939, endExclusive=953) transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=22846, endExclusive=22929))] causes=[] terminal=SupportedDomainExhausted work=2
+LIBRARY_BODY_READ_AUTHORITY compiled=true function=ExactDeclarationTextRange(startInclusive=22846, endExclusive=22929) body=ExactDeclarationTextRange(startInclusive=22906, endExclusive=22929) file=jar:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/idea/plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar!/kotlin/collections/CollectionsKt.class
+LIBRARY_BODY_READ_FRONTIER source=ExactDeclarationTextRange(startInclusive=22846, endExclusive=22929) transfers=[] causes=[EXTERNAL_CALL] terminal=Unresolved work=2
+]]></system-out>
+  <system-err><![CDATA[[   1073]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1074]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

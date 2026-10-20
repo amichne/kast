@@ -2,12 +2,12 @@ package io.github.amichne.kast.protocol.wire.presentation
 
 import io.github.amichne.kast.protocol.contract.ProtocolStringConstraint
 import io.github.amichne.kast.protocol.contract.QueryResultReference
+import io.github.amichne.kast.protocol.contract.RelationOccurrenceWireDocument
+import io.github.amichne.kast.protocol.contract.SourceRangeWireDocument
+import io.github.amichne.kast.protocol.contract.SymbolKindWireDocument
 import io.github.amichne.kast.protocol.wire.RelationFactCoverageWireDocument
 import io.github.amichne.kast.protocol.wire.RelationKindWireDocument
-import io.github.amichne.kast.protocol.wire.RelationOccurrenceWireDocument
 import io.github.amichne.kast.protocol.wire.RelationProvenanceWireDocument
-import io.github.amichne.kast.protocol.wire.SourceRangeWireDocument
-import io.github.amichne.kast.protocol.wire.SymbolKindWireDocument
 import io.github.amichne.kast.protocol.wire.SymbolWireDocument
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

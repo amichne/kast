@@ -31,7 +31,15 @@ import io.github.amichne.kast.protocol.contract.QuerySourceFailureDocument
 import io.github.amichne.kast.protocol.contract.QuerySourceRejectionReason
 import io.github.amichne.kast.protocol.contract.QueryWalkObservationDocument
 import io.github.amichne.kast.protocol.contract.ReferenceAuthorityMismatch
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.combineConverted
+import io.github.amichne.kast.protocol.contract.convertEach
+import io.github.amichne.kast.protocol.contract.flatMapConverted
+import io.github.amichne.kast.protocol.contract.mapConverted
 import io.github.amichne.kast.protocol.contract.reason
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
+import io.github.amichne.kast.protocol.contract.toWireDocumentConversion
 import io.github.amichne.kast.protocol.contract.validateImpactAccounting
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

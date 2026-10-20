@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.AutomaticDensePrivateLifetimeTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:25.037Z" hostname="Austins-MacBook-Pro.local" time="0.27">
+  <properties/>
+  <testcase name="dense private replay release reduces issued owners under unchanged finite grants()" classname="io.github.amichne.kast.query.protocol.AutomaticDensePrivateLifetimeTest" time="0.268"/>
+  <system-out><![CDATA[DensePrivateLifetime(rows=633, calls=32, maxEntries=1, facts=31362371, issued=989406, request=4268, checkpointRequired=789650, checkpointAllowance=599193)
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

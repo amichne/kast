@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryCallbackGraphCauseProjectionTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.259Z" hostname="Austins-MacBook-Pro.local" time="0.003">
+  <properties/>
+  <testcase name="proof limits keep their finite callback and impact wire names()" classname="io.github.amichne.kast.query.protocol.QueryCallbackGraphCauseProjectionTest" time="0.001"/>
+  <testcase name="admitted named policies cannot become unproven policy failure documents()" classname="io.github.amichne.kast.query.protocol.QueryCallbackGraphCauseProjectionTest" time="0.002"/>
+  <testcase name="try completion refusals retain exact callback cause()" classname="io.github.amichne.kast.query.protocol.QueryCallbackGraphCauseProjectionTest" time="0.0"/>
+  <testcase name="known unavailable and invalid flow causes survive exhaustive projection()" classname="io.github.amichne.kast.query.protocol.QueryCallbackGraphCauseProjectionTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

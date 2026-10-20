@@ -1,0 +1,24 @@
+{
+  "examinedGuides": [
+    "runtime/AGENTS.md",
+    "runtime/hosted/NATIVE_FIXTURES.md",
+    "experiments/representation-impact/request-response-fixture/AGENTS.md"
+  ],
+  "sourceEdits": "runtime native fixture consumers and detached assertions only",
+  "commandsChanged": false,
+  "localRulesChanged": false,
+  "productionOwnershipChanged": false,
+  "existingOwnersExtended": [
+    "NativePacketQueryCapture",
+    "NativePacketCompositeQuerySource",
+    "NativePacketQueryFixture"
+  ],
+  "newCoordinator": false,
+  "guideChanges": "NONE_NEEDED",
+  "originalManifests": 10,
+  "frozenManifestRows": 28,
+  "manifestRows": "PASSED",
+  "activeSources": "FROZEN",
+  "proseArtifactsChanged": [],
+  "proseAssessment": "NOT_NEEDED_NO_AUTHORED_PROSE_CHANGE"
+}

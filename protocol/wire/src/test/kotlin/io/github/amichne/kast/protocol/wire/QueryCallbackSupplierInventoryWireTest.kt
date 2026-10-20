@@ -7,6 +7,8 @@ import io.github.amichne.kast.protocol.contract.QueryCallbackFlowDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackParameterIdentityDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackSupplierInventoryDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackSupplierPartitionDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.toContract
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray

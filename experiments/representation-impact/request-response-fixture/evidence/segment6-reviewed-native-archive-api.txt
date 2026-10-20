@@ -1,0 +1,65 @@
+COMPILE DEPENDENCY
+/Users/amichne/.gradle/caches/modules-2/files-2.1/com.jetbrains.intellij.platform/analysis/262.9437.185/13f291588c237467e527b56a6dedbb07777efe97/analysis-262.9437.185.jar
+SHA256 f3bb5ff776cd8f61469beb017b9f1d3d3a84ce8975f5c2940304a2ae01bddb19
+
+PUBLIC API
+Compiled from "ArchiveFileSystem.java"
+public abstract class com.intellij.openapi.vfs.newvfs.ArchiveFileSystem extends com.intellij.openapi.vfs.newvfs.NewVirtualFileSystem implements com.intellij.openapi.vfs.newvfs.persistent.BatchingFileSystem {
+  public com.intellij.openapi.vfs.newvfs.ArchiveFileSystem();
+  public com.intellij.openapi.vfs.VirtualFile getRootByLocal(com.intellij.openapi.vfs.VirtualFile);
+  public java.lang.String getRootPathByLocal(com.intellij.openapi.vfs.VirtualFile);
+  public com.intellij.openapi.vfs.VirtualFile getRootByEntry(com.intellij.openapi.vfs.VirtualFile);
+  public com.intellij.openapi.vfs.VirtualFile getLocalByEntry(com.intellij.openapi.vfs.VirtualFile);
+  public com.intellij.openapi.vfs.VirtualFile copyFile(java.lang.Object, com.intellij.openapi.vfs.VirtualFile, com.intellij.openapi.vfs.VirtualFile, java.lang.String) throws java.io.IOException;
+  public com.intellij.openapi.vfs.VirtualFile createChildDirectory(java.lang.Object, com.intellij.openapi.vfs.VirtualFile, java.lang.String) throws java.io.IOException;
+  public com.intellij.openapi.vfs.VirtualFile createChildFile(java.lang.Object, com.intellij.openapi.vfs.VirtualFile, java.lang.String) throws java.io.IOException;
+  public void deleteFile(java.lang.Object, com.intellij.openapi.vfs.VirtualFile) throws java.io.IOException;
+  public void moveFile(java.lang.Object, com.intellij.openapi.vfs.VirtualFile, com.intellij.openapi.vfs.VirtualFile) throws java.io.IOException;
+  public void renameFile(java.lang.Object, com.intellij.openapi.vfs.VirtualFile, java.lang.String) throws java.io.IOException;
+  public com.intellij.openapi.util.io.FileAttributes getAttributes(com.intellij.openapi.vfs.VirtualFile);
+  public java.util.Map<java.lang.String, com.intellij.openapi.util.io.FileAttributes> listWithAttributes(com.intellij.openapi.vfs.VirtualFile, java.util.Set<java.lang.String>);
+  public com.intellij.openapi.util.io.FileAttributes getArchiveRootAttributes(com.intellij.openapi.vfs.VirtualFile);
+  public java.lang.String[] list(com.intellij.openapi.vfs.VirtualFile);
+  public boolean exists(com.intellij.openapi.vfs.VirtualFile);
+  public boolean isDirectory(com.intellij.openapi.vfs.VirtualFile);
+  public boolean isWritable(com.intellij.openapi.vfs.VirtualFile);
+  public long getTimeStamp(com.intellij.openapi.vfs.VirtualFile);
+  public long getLength(com.intellij.openapi.vfs.VirtualFile);
+  public byte[] contentsToByteArray(com.intellij.openapi.vfs.VirtualFile) throws java.io.IOException;
+  public java.io.InputStream getInputStream(com.intellij.openapi.vfs.VirtualFile) throws java.io.IOException;
+  public void setTimeStamp(com.intellij.openapi.vfs.VirtualFile, long) throws java.io.IOException;
+  public void setWritable(com.intellij.openapi.vfs.VirtualFile, boolean) throws java.io.IOException;
+  public java.io.OutputStream getOutputStream(com.intellij.openapi.vfs.VirtualFile, java.lang.Object, long, long) throws java.io.IOException;
+  public com.intellij.openapi.vfs.VirtualFile findLocalByRootPath(java.lang.String);
+  public final void clearArchiveCache(com.intellij.openapi.vfs.VirtualFile);
+  public static java.lang.String getLocalPath(com.intellij.openapi.vfs.newvfs.ArchiveFileSystem, java.lang.String);
+  public static java.lang.String composeRootPath(com.intellij.openapi.vfs.newvfs.ArchiveFileSystem, java.lang.String);
+}
+
+PINNED SOURCE
+/Users/amichne/.gradle/caches/modules-2/files-2.1/com.jetbrains.intellij.platform/analysis/262.9437.185/72601343c0302777201e52691f527063e16eb903/analysis-262.9437.185-sources.jar
+SHA256 17208a8fcedd9ed74c08496312b85a43961e5e3ad93d4c12c6eda9131181bb59
+63:  /**
+64:   * Returns a local file of an archive which hosts a given entry file
+65:   * (i.e.: jar:///path/to/jar.jar!/resource.xml => file:///path/to/jar.jar),
+66:   * or {@code null} if the file does not belong to this file system.
+67:   */
+68:  public @Nullable VirtualFile getLocalByEntry(@NotNull VirtualFile entry) {
+69:    if (entry.getFileSystem() != this) return null;
+70:
+71:    var root = getRootByEntry(entry);
+72:    assert root != null : entry;
+73:
+74:    var local = LOCAL_FILE.get(root);
+75:    if (local == null) {
+76:      var localPath = extractLocalPath(root.getPath());
+77:      local = StandardFileSystems.local().findFileByPath(localPath);
+78:      if (local != null) LOCAL_FILE.set(root, local);
+79:    }
+80:    return local;
+81:  }
+82:
+83:  /**
+84:   * Strips any separator chars from a root path (obtained via {@link VfsUtilCore#getRootFile}) to obtain a path to a local file.
+85:   */
+86:  protected abstract @NotNull String extractLocalPath(@NotNull String rootPath);

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.RetainedGraphDeliveryMeasurementTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.788Z" hostname="Austins-MacBook-Pro.local" time="2.476">
+  <properties/>
+  <testcase name="equal emitted page allowances reduce compact bytes and repeated witnesses()" classname="io.github.amichne.kast.query.protocol.RetainedGraphDeliveryMeasurementTest" time="1.498"/>
+  <testcase name="identical canonical wire partitions preserve RPC count and decrease emitted projection bytes()" classname="io.github.amichne.kast.query.protocol.RetainedGraphDeliveryMeasurementTest" time="0.978"/>
+  <system-out><![CDATA[D3 emitted_page_cap=20000 verbose=DeliveryCount(pages=27, rows=53, observations=53, emittedBytes=481078, canonicalWireBytes=477909, emittedWitnesses=106, candidateReads=703) compact=DeliveryCount(pages=5, rows=53, observations=53, emittedBytes=85658, canonicalWireBytes=443645, emittedWitnesses=53, candidateReads=87) semantic_provider_calls=0 physical_rpcs=NOT_RUN
+D3 canonical partition evidence=/Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/protocol/build/reports/retained-graph-delivery/canonical-partitions.json
+D3 OCCURRENCES typed_reply_bytes=222573 aggregate_cap=262144 headroom=39571
+D3 canonical_page_cap=20000 identical_partitions=27 canonical_wire_bytes=477909 verbose_emitted_bytes=481078 compact_emitted_bytes=221708 verbose_witnesses=106 compact_witnesses=53 candidate_reads=703 semantic_provider_calls=0 physical_rpcs=NOT_RUN
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

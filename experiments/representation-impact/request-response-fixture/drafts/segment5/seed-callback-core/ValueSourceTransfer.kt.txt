@@ -1,0 +1,179 @@
+package io.github.amichne.kast.relation.contract
+
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerReceiver
+
+/** Source-derived transitions conserve fields and the exact call stack. */
+sealed interface ValueSourceOperation {
+    data class Enter(val frame: ValueCallFrame, val position: ValueFormalPosition) : ValueSourceOperation
+
+    /** A seed inside a source callable selects a proven supplier before callback entry. */
+    data class SeedCallbackEnter(val frame: ValueCallFrame, val position: ValueFormalPosition) : ValueSourceOperation
+
+    data class Return(val frame: ValueCallFrame) : ValueSourceOperation
+
+    /** A forward seed inside a source body has no caller frame to pop. */
+    data class SeedReturn(val frame: ValueCallFrame) : ValueSourceOperation
+
+    data class ReadField(val field: ValueField) : ValueSourceOperation
+
+    data class ConstructField(val call: ValueInvocation, val storage: ValueConstructorStorage) : ValueSourceOperation
+}
+
+class ValueSourceTransfer private constructor(val operation: ValueSourceOperation) : ValueTransferEvidence {
+    companion object {
+        fun fromCompiler(operation: ValueSourceOperation): ValueSourceTransfer = ValueSourceTransfer(operation)
+    }
+
+    internal fun admitsSource(source: ValueSite, target: ValueSite, kind: ValueTransferKind): Boolean =
+        when (val op = operation) {
+            is ValueSourceOperation.Enter ->
+                op.frame.target !is ValueReviewedCallbackTarget && admitsEntry(op, source, target, kind)
+            is ValueSourceOperation.SeedCallbackEnter -> admitsSeedCallbackEntry(op, source, target, kind)
+            is ValueSourceOperation.Return ->
+                op.frame.target !is ValueReviewedCallbackTarget &&
+                    admitsReturn(op.frame, source, target, kind) &&
+                    source.callStack.exit(op.frame).matches(target.callStack)
+            is ValueSourceOperation.SeedReturn ->
+                op.frame.target !is ValueReviewedCallbackTarget &&
+                    admitsReturn(op.frame, source, target, kind) &&
+                    source.callStack == ValueCallStack.Empty &&
+                    target.callStack == ValueCallStack.Empty
+            is ValueSourceOperation.ReadField -> admitsField(op.field, source, target, kind)
+            is ValueSourceOperation.ConstructField -> admitsConstruction(op, source, target, kind)
+        }
+
+    private fun admitsEntry(
+        op: ValueSourceOperation.Enter,
+        source: ValueSite,
+        target: ValueSite,
+        kind: ValueTransferKind,
+    ): Boolean =
+        kind == ValueTransferKind.SOURCE_CALL_ENTRY &&
+            target.executionOwner == op.frame.callee &&
+            target.role == ValueRole.Formal(op.position) &&
+            actualMatches(source, op) &&
+            source.valuePath == target.valuePath &&
+            source.callStack.enter(op.frame).matches(target.callStack)
+
+    private fun admitsSeedCallbackEntry(
+        op: ValueSourceOperation.SeedCallbackEnter,
+        source: ValueSite,
+        target: ValueSite,
+        kind: ValueTransferKind,
+    ): Boolean {
+        if (source.callStack != ValueCallStack.Empty) return false
+        val proof = op.frame.target as? ValueCallbackTarget ?: return false
+        val actual = source.role as? ValueRole.FunctionArgument ?: return false
+        if (actual.call != op.frame.invocation || source.enclosing != actual.call.enclosing) return false
+        if (actual.call.enclosing != op.frame.invocation.enclosing) return false
+        if (!sameExecutionProof(actual.call.executionOwner, op.frame.invocation.executionOwner)) return false
+        if (!sameExecutionProof(source.executionOwner, actual.call.executionOwner)) return false
+        if (!sameExecutionProof(proof.supplyingFrame.callee, actual.call.executionOwner)) return false
+        if (target.enclosing != op.frame.callee.enclosing) return false
+        if (!sameExecutionProof(target.executionOwner, op.frame.callee)) return false
+        val stack = when (val admitted = source.callStack.enter(proof.supplyingFrame)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return false
+        }
+        val contextual = when (val admitted = source.withState(callStack = stack)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return false
+        }
+        return admitsEntry(ValueSourceOperation.Enter(op.frame, op.position), contextual, target, kind)
+    }
+
+    private fun sameExecutionProof(first: ValueExecutionOwner, second: ValueExecutionOwner): Boolean =
+        first.enclosing == second.enclosing && first.body == second.body
+
+    private fun admitsReturn(
+        frame: ValueCallFrame,
+        source: ValueSite,
+        target: ValueSite,
+        kind: ValueTransferKind,
+    ): Boolean =
+        kind == ValueTransferKind.SOURCE_CALL_RETURN &&
+            source.role == ValueRole.Return &&
+            source.executionOwner == frame.callee &&
+            target.isResultOf(frame.invocation) &&
+            source.valuePath == target.valuePath
+
+    private fun admitsField(field: ValueField, source: ValueSite, target: ValueSite, kind: ValueTransferKind): Boolean =
+        kind == ValueTransferKind.FIELD_READ &&
+            source.executionOwner == target.executionOwner &&
+            field.basis == source.basis &&
+            source.callStack == target.callStack &&
+            source.valuePath.select(ValuePathSegment.Field(field)) == ValuePathSelection.Selected(target.valuePath)
+
+    private fun admitsConstruction(
+        op: ValueSourceOperation.ConstructField,
+        source: ValueSite,
+        target: ValueSite,
+        kind: ValueTransferKind,
+    ): Boolean =
+        kind == ValueTransferKind.CONSTRUCTOR_FIELD &&
+            source.role is ValueRole.Argument &&
+            source.role.call == op.call &&
+            target.isResultOf(op.call) &&
+            source.callStack == target.callStack &&
+            op.storage.constructor.valueIdentity == op.call.callable.valueIdentity &&
+            op.storage.parameter.position == source.role.position &&
+            source.valuePath.prepend(ValuePathSegment.Field(op.storage.field)).matches(target.valuePath)
+
+    private fun actualMatches(source: ValueSite, operation: ValueSourceOperation.Enter): Boolean =
+        when (val position = operation.position) {
+            is ValueFormalPosition.Parameter ->
+                position.parameter.executionOwner == operation.frame.callee &&
+                    when (val role = source.role) {
+                        is ValueRole.Argument ->
+                            role.call == operation.frame.invocation && role.position == position.parameter.position
+                        is ValueRole.FunctionArgument ->
+                            role.call == operation.frame.invocation &&
+                                role.position.value ==
+                                    position.parameter.position.value + operation.frame.callbackReceiverCount() &&
+                                callbackContextMatches(source, operation.frame)
+                        else -> false
+                    }
+            is ValueFormalPosition.Receiver -> receiverMatches(source, operation.frame, position)
+        }
+
+    private fun receiverMatches(
+        source: ValueSite,
+        frame: ValueCallFrame,
+        position: ValueFormalPosition.Receiver,
+    ): Boolean =
+        when (val role = source.role) {
+            is ValueRole.Receiver -> role.call == frame.invocation && role.kind == position.kind
+            is ValueRole.FunctionArgument ->
+                position.kind == ValueReceiverKind.EXTENSION &&
+                    role.call == frame.invocation &&
+                    callbackReceiverArgument(role, frame) &&
+                    callbackContextMatches(source, frame)
+            else -> false
+        }
+
+    private fun callbackReceiverArgument(role: ValueRole.FunctionArgument, frame: ValueCallFrame): Boolean =
+        role.position.value == 0 && frame.callbackReceiverCount() == 1
+
+    private fun ValueCallFrame.callbackReceiverCount(): Int =
+        when (val body = callee.body) {
+            ValueExecutionBody.Declaration -> 0
+            is ValueExecutionBody.Anonymous ->
+                if (body.callable.signature.receiver is CanonicalCompilerReceiver.Present) 1 else 0
+        }
+
+    private fun ValueSite.isResultOf(call: ValueCallOccurrence): Boolean =
+        enclosing.valueIdentity == call.enclosing.valueIdentity &&
+            range == call.range &&
+            role == ValueRole.ExpressionResult &&
+            executionOwner == call.executionOwner
+
+    private fun callbackContextMatches(source: ValueSite, frame: ValueCallFrame): Boolean =
+        (frame.target as? ValueCallbackTarget)?.supplyingFrame == source.callStack.frames.lastOrNull()
+
+    private fun <T, F> Refinement<T, F>.matches(expected: T): Boolean = this is Refinement.Refined && value == expected
+
+    override fun equals(other: Any?): Boolean = other is ValueSourceTransfer && operation == other.operation
+
+    override fun hashCode(): Int = operation.hashCode()
+}

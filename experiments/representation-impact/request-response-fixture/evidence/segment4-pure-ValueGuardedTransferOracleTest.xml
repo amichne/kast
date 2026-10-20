@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueGuardedTransferOracleTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T03:43:47.390Z" hostname="Austins-MacBook-Pro.local" time="0.01">
+  <properties/>
+  <testcase name="a guarded local transfer keeps the previous fact and the exact added fact()" classname="io.github.amichne.kast.relation.contract.ValueGuardedTransferOracleTest" time="0.004"/>
+  <testcase name="guard evidence cannot recursively wrap another guard()" classname="io.github.amichne.kast.relation.contract.ValueGuardedTransferOracleTest" time="0.001"/>
+  <testcase name="ordinary evidence cannot change a conjunction and a guard cannot forge a field read()" classname="io.github.amichne.kast.relation.contract.ValueGuardedTransferOracleTest" time="0.001"/>
+  <testcase name="a guarded transfer cannot invent a third fact()" classname="io.github.amichne.kast.relation.contract.ValueGuardedTransferOracleTest" time="0.001"/>
+  <testcase name="a guarded field read keeps the exact field projection and both scoped facts()" classname="io.github.amichne.kast.relation.contract.ValueGuardedTransferOracleTest" time="0.002"/>
+  <testcase name="a guarded transfer cannot drop a previous fact or the added fact()" classname="io.github.amichne.kast.relation.contract.ValueGuardedTransferOracleTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

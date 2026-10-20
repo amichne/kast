@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.263Z" hostname="Austins-MacBook-Pro.local" time="0.063">
+  <properties/>
+  <testcase name="encoded bytes bound a deterministic prefix independently of row limit()" classname="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryTest" time="0.001"/>
+  <testcase name="retention failure rejects completion with original complete coverage and no invented reference()" classname="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryTest" time="0.003"/>
+  <testcase name="terminal upstream limitation survives rejected preview and retained drainage()" classname="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryTest" time="0.004"/>
+  <testcase name="full response capacity can require retention even when its items fit inline()" classname="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryTest" time="0.002"/>
+  <testcase name="one invocation matches manual pages including an empty advancing page and repeated rows()" classname="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryTest" time="0.002"/>
+  <testcase name="accumulation exceeds the public page collection bound without weakening complete coverage()" classname="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryTest" time="0.037"/>
+  <testcase name="large complete result has bounded preview and retained reads never execute providers()" classname="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryTest" time="0.003"/>
+  <testcase name="replayed checkpoint rejects completion without appending repeated page rows()" classname="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryTest" time="0.003"/>
+  <testcase name="stale successor rejects completion and preserves earlier rows and original failure without restarting()" classname="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryTest" time="0.002"/>
+  <testcase name="unobserved work fails closed instead of being treated as zero()" classname="io.github.amichne.kast.query.protocol.AutomaticSymbolQueryTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

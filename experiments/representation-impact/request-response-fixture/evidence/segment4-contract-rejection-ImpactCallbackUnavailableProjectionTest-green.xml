@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactCallbackUnavailableProjectionTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T05:05:39.105Z" hostname="Austins-MacBook-Pro.local" time="0.014">
+  <properties/>
+  <testcase name="parameter escape keeps its raw typed evidence in encoded output()" classname="io.github.amichne.kast.query.protocol.ImpactCallbackUnavailableProjectionTest" time="0.005"/>
+  <testcase name="every closed callback refusal keeps its exact cause and outer classification()" classname="io.github.amichne.kast.query.protocol.ImpactCallbackUnavailableProjectionTest" time="0.006"/>
+  <testcase name="every callback contract rejection preserves its raw finite failure()" classname="io.github.amichne.kast.query.protocol.ImpactCallbackUnavailableProjectionTest" time="0.002"/>
+  <testcase name="a contract rejection keeps its exact type and cause in encoded output()" classname="io.github.amichne.kast.query.protocol.ImpactCallbackUnavailableProjectionTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

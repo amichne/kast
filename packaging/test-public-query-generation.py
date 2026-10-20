@@ -97,8 +97,8 @@ class PublicQueryGenerationTest(unittest.TestCase):
     def test_shared_refs_preserve_the_expanded_query_contract(self):
         # Expanded schemas pin constraints, defaults, budget guidance, and required fields.
         expected = {
-            "query_symbols.parameters.json": "a8609cefc6fcf78aae5e7c80fb7d255c3bb392f3e5329b32e3739a1b59d0d420",
-            "query_symbols.openai-parameters.json": "890f7f7c411572e4e313b9a24fec6d8b4f431d80e9c818a2e98de14484ac7703",
+            "query_symbols.parameters.json": "d5e6efaa2e4f1aef4670b927648a6bbb97789ca273b5b135306c4f162a05c079",
+            "query_symbols.openai-parameters.json": "664f9f08048e6d1258210cda8765941fa124821f653749288896fb5e62324116",
         }
         generated = generator.render_tools(self.authority)
         for name, digest in expected.items():
@@ -115,6 +115,43 @@ class PublicQueryGenerationTest(unittest.TestCase):
                 return {key: expand(value) for key, value in node.items() if key != "$defs"}
 
             encoded = json.dumps(expand(schema), sort_keys=True, separators=(",", ":"))
+            self.assertEqual(digest, hashlib.sha256(encoded.encode()).hexdigest(), name)
+
+    def test_receiver_kind_is_required_and_has_no_default(self):
+        site = self.authority["$defs"]["ImpactRequestedSite"]
+        receiver = next(
+            role for role in site["properties"]["role"]["anyOf"]
+            if role["properties"]["type"]["enum"] == ["RECEIVER"]
+        )
+        self.assertIn("kind", receiver["required"])
+        self.assertEqual(["DISPATCH", "EXTENSION"], receiver["properties"]["kind"]["enum"])
+        self.assertNotIn("default", receiver["properties"]["kind"])
+
+    def test_value_state_extensions_preserve_existing_constraints(self):
+        expected = {
+            "query_symbols.parameters.json": "a8609cefc6fcf78aae5e7c80fb7d255c3bb392f3e5329b32e3739a1b59d0d420",
+            "query_symbols.openai-parameters.json": "890f7f7c411572e4e313b9a24fec6d8b4f431d80e9c818a2e98de14484ac7703",
+        }
+        generated = generator.render_tools(self.authority)
+        for name, digest in expected.items():
+            schema = json.loads(generated[generator.RESOURCES / name])
+            definitions = schema["$defs"]
+
+            def legacy(node):
+                if isinstance(node, list):
+                    return [legacy(value) for value in node if not (
+                        isinstance(value, dict) and value.get("properties", {}).get("type", {}).get("enum") in (["RECEIVER"], ["FORMAL"])
+                    )]
+                if not isinstance(node, dict):
+                    return node
+                if "$ref" in node:
+                    return legacy(definitions[node["$ref"][len("#/$defs/"):]])
+                return {
+                    key: [value for value in child if value not in {"executionOwner", "valuePath", "callStack", "predicates"}] if key == "required" else legacy(child)
+                    for key, child in node.items() if key not in {"$defs", "executionOwner", "valuePath", "callStack", "predicates"}
+                }
+
+            encoded = json.dumps(legacy(schema), sort_keys=True, separators=(",", ":"))
             self.assertEqual(digest, hashlib.sha256(encoded.encode()).hexdigest(), name)
 
     def test_unknown_loading_policy_rejects(self):

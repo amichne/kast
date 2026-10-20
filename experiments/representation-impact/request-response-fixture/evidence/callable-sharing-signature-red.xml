@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueSiteContractTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-20T01:57:10.623Z" hostname="Austins-MacBook-Pro.local" time="0.064">
+  <properties/>
+  <testcase name="callable sharing preserves invocation identity and excludes different scope file and authority()" classname="io.github.amichne.kast.relation.contract.ValueSiteContractTest" time="0.054">
+    <failure message="org.opentest4j.AssertionFailedError: expected: io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature$Function@3a71c100&lt;Function(qualifiedIdentity=CanonicalCompilerQualifiedIdentity(value=fixture.submit), receiver=Absent, contextReceivers=[], valueParameters=[CanonicalCompilerType(value=String)], typeParameterCount=CanonicalTypeParameterCount(value=0))&gt; but was: io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature$Function@437e951d&lt;Function(qualifiedIdentity=CanonicalCompilerQualifiedIdentity(value=fixture.submit), receiver=Absent, contextReceivers=[], valueParameters=[CanonicalCompilerType(value=String)], typeParameterCount=CanonicalTypeParameterCount(value=0))&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature$Function@3a71c100&lt;Function(qualifiedIdentity=CanonicalCompilerQualifiedIdentity(value=fixture.submit), receiver=Absent, contextReceivers=[], valueParameters=[CanonicalCompilerType(value=String)], typeParameterCount=CanonicalTypeParameterCount(value=0))&gt; but was: io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature$Function@437e951d&lt;Function(qualifiedIdentity=CanonicalCompilerQualifiedIdentity(value=fixture.submit), receiver=Absent, contextReceivers=[], valueParameters=[CanonicalCompilerType(value=String)], typeParameterCount=CanonicalTypeParameterCount(value=0))&gt;
+	at org.junit.jupiter.api.Assertions.assertSame(Assertions.java:2962)
+	at io.github.amichne.kast.relation.contract.ValueSiteContractTest.callable sharing preserves invocation identity and excludes different scope file and authority(ValueSiteContractTest.kt:122)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

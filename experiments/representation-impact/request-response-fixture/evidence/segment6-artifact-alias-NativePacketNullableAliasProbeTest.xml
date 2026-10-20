@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketNullableAliasProbeTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T15:20:20.458Z" hostname="Austins-MacBook-Pro.local" time="7.465">
+  <properties/>
+  <testcase name="testOriginalElvisErrorAndBindThrowKeepTheirActualSourceBranches" classname="io.github.amichne.kast.relation.intellij.NativePacketNullableAliasProbeTest" time="6.229"/>
+  <testcase name="testOriginalRequireNotNullReceiverAndLetCallbackKeepExactCompilerAliases" classname="io.github.amichne.kast.relation.intellij.NativePacketNullableAliasProbeTest" time="1.229"/>
+  <system-out><![CDATA[NULLABLE_ELVIS left=1622:1655 right=1659:1681 errorInvoke=1673:1680 invokedFormal=EXACT_REQUIRE_ERROR_PARAMETER leftTypeDiagnostic=fixture/outcome/Outcome<kotlin/Nothing, T & Any>? rightTypeDiagnostic=fixture/outcome/Outcome<E, kotlin/Nothing>
+NULLABLE_THROW source=1261:1278 target=SOURCE.Halt type=KOTLIN_NOTHING_NON_NULL condition=K2.Outcome.Error subject=EXACT_BIND_EXTENSION
+NULLABLE_BRANCH_CAPTURE status=SOURCE_AND_K2 branch_transfer,null_fact,Halt_catch_match=NOT_RUN
+NULLABLE_CALLER callable=SOURCE.requireNotNull call=939:1020 extension=939:967 dispatch=NONE
+NULLABLE_CALLBACK_VALUE source=EXACT_IMPLICIT_IT target=SOURCE.Outcome.success.value index=0
+NULLABLE_BODY this=1622:1626 receiverSymbol=EXACT_REQUIRE_EXTENSION let=1622:1655 callback=1632:1655 it=1650:1652 implicitFormal=EXACT receiverTypeDiagnostic=T? formalTypeDiagnostic=T & Any
+NULLABLE_ALIAS_CAPTURE status=COMPILER_IDENTITIES source_alias_transfer,let_model,NonNull=NOT_RUN
+]]></system-out>
+  <system-err><![CDATA[[   1117]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1117]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

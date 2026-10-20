@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativeValueCallbackUnavailableTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T04:56:49.902Z" hostname="Austins-MacBook-Pro.local" time="0.067">
+  <properties/>
+  <testcase name="unrelated expression cannot carry unavailable callback evidence()" classname="io.github.amichne.kast.relation.intellij.NativeValueCallbackUnavailableTest" time="0.053"/>
+  <testcase name="parameter escape keeps its raw cause beside the unresolved classification()" classname="io.github.amichne.kast.relation.intellij.NativeValueCallbackUnavailableTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

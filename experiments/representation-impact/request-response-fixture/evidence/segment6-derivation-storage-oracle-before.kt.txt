@@ -1,0 +1,35 @@
+package io.github.amichne.kast.query.contract
+
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.ValueInterpolationEntryIndex
+import io.github.amichne.kast.relation.contract.ValueInterpolationScalarKind
+import io.github.amichne.kast.relation.contract.ValueTransferEvidence
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotSame
+import org.junit.jupiter.api.Test
+
+class QueryStringInterpolationStorageTest {
+    @Test
+    fun `each physical interpolation proof keeps its record while repeated references cost eight bytes`() {
+        val graph = QueryImpactRetainedGraph()
+        val evidence = evidence()
+        val distinct = evidence()
+        assertEquals(evidence, distinct)
+        assertNotSame(evidence, distinct)
+        assertEquals(512L + 4096L, evidence.storageBytes(graph))
+        assertEquals(8L, evidence.storageBytes(graph))
+        assertEquals(512L + 4096L, distinct.storageBytes(graph))
+    }
+
+    private fun evidence() =
+        ValueTransferEvidence.StringInterpolation.fromCompiler(
+                ExactDeclarationTextRange.parse(20, 50).value(),
+                ExactDeclarationTextRange.parse(25, 45).value(),
+                ValueInterpolationEntryIndex.parse(2).value(),
+                ValueInterpolationScalarKind.STRING,
+            )
+            .value()
+}
+
+private fun <T> Refinement<T, *>.value(): T = (this as Refinement.Refined).value

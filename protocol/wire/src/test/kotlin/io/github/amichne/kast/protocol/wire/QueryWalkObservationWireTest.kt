@@ -21,6 +21,9 @@ import io.github.amichne.kast.protocol.contract.TraversalLimitationDocument
 import io.github.amichne.kast.protocol.contract.TraversalPartialExpansionDocument
 import io.github.amichne.kast.protocol.contract.TraversalProgressDocument
 import io.github.amichne.kast.protocol.contract.TraversalStrategyDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject

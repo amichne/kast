@@ -1,0 +1,86 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Reusing configuration cache.
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :kernel:compileJava NO-SOURCE
+> Task :protocol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+> Task :protocol:contract:compileKotlin UP-TO-DATE
+> Task :protocol:contract:compileJava NO-SOURCE
+> Task :relation:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:contract:compileKotlin UP-TO-DATE
+> Task :relation:contract:compileJava NO-SOURCE
+> Task :relation:intellij:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:intellij:extractRelationKotlinPlugin UP-TO-DATE
+> Task :workspace:intellij-read:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:intellij-read:extractWorkspaceReadIdeaDistribution UP-TO-DATE
+> Task :workspace:intellij-read:compileKotlin
+> Task :workspace:intellij-read:compileJava NO-SOURCE
+> Task :relation:intellij:compileKotlin
+> Task :relation:intellij:compileJava NO-SOURCE
+> Task :relation:intellij:processResources NO-SOURCE
+> Task :relation:intellij:classes UP-TO-DATE
+> Task :relation:intellij:jar
+> Task :kernel:processResources NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar UP-TO-DATE
+> Task :protocol:contract:processResources UP-TO-DATE
+> Task :protocol:contract:classes UP-TO-DATE
+> Task :protocol:contract:jar UP-TO-DATE
+> Task :relation:contract:processResources NO-SOURCE
+> Task :relation:contract:classes UP-TO-DATE
+> Task :relation:contract:jar UP-TO-DATE
+> Task :relation:intellij:extractNativeTestIdea UP-TO-DATE
+
+> Task :relation:intellij:compileNativeTestKotlin
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketBindPayloadTest.kt:124:35 'static fun <T : Any!, E : Throwable!> compute(p0: ThrowableComputable<T!, E!>): T!' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketComponentReturnTest.kt:120:20 'static fun <T : Any!, E : Throwable!> compute(p0: ThrowableComputable<T!, E!>): T!' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketCompositePayloadTest.kt:183:20 'static fun <T : Any!, E : Throwable!> compute(p0: ThrowableComputable<T!, E!>): T!' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketDestructuringEntryTest.kt:80:20 'static fun <E : Throwable!> run(p0: ThrowableRunnable<E!>): Unit' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketDestructuringEntryTest.kt:81:35 'static fun <T : Any!, E : Throwable!> compute(p0: ThrowableComputable<T!, E!>): T!' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketImplicitBindFlowTest.kt:110:20 'static fun <E : Throwable!> run(p0: ThrowableRunnable<E!>): Unit' is deprecated. Deprecated in Java.
+w: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativePacketImplicitBindFlowTest.kt:112:35 'static fun <T : Any!, E : Throwable!> compute(p0: ThrowableComputable<T!, E!>): T!' is deprecated. Deprecated in Java.
+
+> Task :relation:intellij:compileNativeTestJava NO-SOURCE
+> Task :relation:intellij:detektNativeTest
+> Task :relation:intellij:processNativeTestResources UP-TO-DATE
+> Task :relation:intellij:nativeTestClasses UP-TO-DATE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar UP-TO-DATE
+> Task :workspace:intellij-read:processResources NO-SOURCE
+> Task :workspace:intellij-read:classes UP-TO-DATE
+> Task :workspace:intellij-read:jar UP-TO-DATE
+Oct 20, 2026 4:00:49 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: Index dispose started
+Oct 20, 2026 4:00:49 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: StubIndexExtension-s were unloaded
+Oct 20, 2026 4:00:49 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: Start shutting down /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/system/index/rep.names
+Oct 20, 2026 4:00:49 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: Finished shutting down /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/intellij/build/native-test/system/index/rep.names
+Oct 20, 2026 4:00:49 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: Index dispose completed in 181ms.
+Oct 20, 2026 4:00:49 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: VFS disconnect started
+Oct 20, 2026 4:00:49 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: VFS closing
+Oct 20, 2026 4:00:49 PM com.intellij.openapi.diagnostic.AsyncLogKt logNow
+INFO: VFS disconnect completed in 1 ms.
+> Task :relation:intellij:nativeFixtureTest
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-20-16-00-50-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 1m 1s
+22 actionable tasks: 6 executed, 16 up-to-date
+Configuration cache entry reused.

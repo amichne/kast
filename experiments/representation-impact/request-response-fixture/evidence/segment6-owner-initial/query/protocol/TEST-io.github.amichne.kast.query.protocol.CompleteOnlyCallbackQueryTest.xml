@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.CompleteOnlyCallbackQueryTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.542Z" hostname="Austins-MacBook-Pro.local" time="0.054">
+  <properties/>
+  <testcase name="failed callback identifies exact source subject while proven rows remain evidence only()" classname="io.github.amichne.kast.query.protocol.CompleteOnlyCallbackQueryTest" time="0.017"/>
+  <testcase name="walk callback obligations cannot bypass complete only policy()" classname="io.github.amichne.kast.query.protocol.CompleteOnlyCallbackQueryTest" time="0.004"/>
+  <testcase name="complete callback graph without result membership cannot become a complete empty answer()" classname="io.github.amichne.kast.query.protocol.CompleteOnlyCallbackQueryTest" time="0.017"/>
+  <testcase name="unresolved callback obligations survive graph rejection metadata()" classname="io.github.amichne.kast.query.protocol.CompleteOnlyCallbackQueryTest" time="0.004"/>
+  <testcase name="rejected raw complete callback evidence cannot be read as an accepted answer()" classname="io.github.amichne.kast.query.protocol.CompleteOnlyCallbackQueryTest" time="0.003"/>
+  <testcase name="exhaustive bound callback graph admits complete static answer()" classname="io.github.amichne.kast.query.protocol.CompleteOnlyCallbackQueryTest" time="0.003"/>
+  <testcase name="unavailable retention preserves exact known callback cause in encoded rejection()" classname="io.github.amichne.kast.query.protocol.CompleteOnlyCallbackQueryTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

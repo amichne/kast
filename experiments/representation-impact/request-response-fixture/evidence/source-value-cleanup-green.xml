@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactSourceValueProjectionTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T03:07:10.448Z" hostname="Austins-MacBook-Pro.local" time="0.092">
+  <properties/>
+  <testcase name="native entry and return projection preserves the exact field formal and call frame()" classname="io.github.amichne.kast.query.protocol.ImpactSourceValueProjectionTest" time="0.074"/>
+  <testcase name="caller supplied nonempty value state cannot become native revalidation evidence()" classname="io.github.amichne.kast.query.protocol.ImpactSourceValueProjectionTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

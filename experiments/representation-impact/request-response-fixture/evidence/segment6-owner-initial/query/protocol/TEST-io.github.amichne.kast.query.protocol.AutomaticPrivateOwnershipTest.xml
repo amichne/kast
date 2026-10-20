@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.AutomaticPrivateOwnershipTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.050Z" hostname="Austins-MacBook-Pro.local" time="0.012">
+  <properties/>
+  <testcase name="reused public checkpoint exposes a branching replay chain that survives private cleanup()" classname="io.github.amichne.kast.query.protocol.AutomaticPrivateOwnershipTest" time="0.006"/>
+  <testcase name="private checkpoint cannot be reissued publicly under the same semantic identity()" classname="io.github.amichne.kast.query.protocol.AutomaticPrivateOwnershipTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

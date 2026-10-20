@@ -1,0 +1,88 @@
+{
+  "procedures": [
+    {
+      "cwd": "/Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast",
+      "command": "mise exec -- vale --no-global --config=.vale.ini --output=JSON experiments/representation-impact/request-response-fixture/AGENTS.md",
+      "first_exit": 1,
+      "final_exit": 0,
+      "report": "segment6-interpolation-guide.vale.json"
+    },
+    {
+      "cwd": "/Users/amichne/.codex/plugins/cache/slopsentral/repository-knowledge/3.1.0/skills/controlled-technical-writing",
+      "command": "uv run --locked --script scripts/assess_text.py --vale-bin /Users/amichne/.local/share/mise/installs/vale/3.24.0/vale --glossary /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/docs/glossary.json /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/experiments/representation-impact/request-response-fixture/AGENTS.md",
+      "first_exit": 1,
+      "final_exit": 1,
+      "report": "segment6-interpolation-guide.assessment.json",
+      "result": "ASSESSED with readability advisory"
+    },
+    {
+      "cwd": "/Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast",
+      "command": "mise exec -- vale --no-global --config=.vale.ini --output=JSON experiments/representation-impact/request-response-fixture/README.md",
+      "first_exit": 1,
+      "final_exit": 0,
+      "report": "segment6-interpolation-readme.vale.json"
+    },
+    {
+      "cwd": "/Users/amichne/.codex/plugins/cache/slopsentral/repository-knowledge/3.1.0/skills/controlled-technical-writing",
+      "command": "uv run --locked --script scripts/assess_text.py --vale-bin /Users/amichne/.local/share/mise/installs/vale/3.24.0/vale --glossary /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/docs/glossary.json /Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/experiments/representation-impact/request-response-fixture/README.md",
+      "first_exit": 1,
+      "final_exit": 1,
+      "report": "segment6-interpolation-readme.assessment.json",
+      "result": "ASSESSED with readability advisory"
+    }
+  ],
+  "results": {
+    "guide": {
+      "type": "ASSESSED",
+      "vale": "PASSED",
+      "grade": 11.97,
+      "findings": [
+        {
+          "category": "READABILITY",
+          "line": 1,
+          "message": "Estimated Flesch-Kincaid grade 11.97 exceeds the shared advisory target of 8.",
+          "rule": "Slopsentral.Grade",
+          "severity": "warning",
+          "span": [
+            1,
+            1
+          ],
+          "type": "FINDING"
+        }
+      ],
+      "reason": "Keep source-backed technical names, paths, manifests, and exact commands. No prose comprehension claim.",
+      "glossary": "CHECKED",
+      "comprehension": "NOT_ASSESSED"
+    },
+    "readme": {
+      "type": "ASSESSED",
+      "vale": "PASSED",
+      "grade": 10.63,
+      "findings": [
+        {
+          "category": "READABILITY",
+          "line": 1,
+          "message": "Estimated Flesch-Kincaid grade 10.63 exceeds the shared advisory target of 8.",
+          "rule": "Slopsentral.Grade",
+          "severity": "warning",
+          "span": [
+            1,
+            1
+          ],
+          "type": "FINDING"
+        }
+      ],
+      "reason": "Keep source-backed technical names, paths, manifests, and exact commands. No prose comprehension claim.",
+      "glossary": "CHECKED",
+      "comprehension": "NOT_ASSESSED"
+    }
+  },
+  "first_issue": "Vale.Spelling nullable replaced only in new prose with precise source type String?",
+  "scope_review": {
+    "guide": "experiments/representation-impact/request-response-fixture/AGENTS.md",
+    "change": "New supplemental manifest12 enrollment facts and existing procedure count only",
+    "commands_changed": false,
+    "ownership_changed": false,
+    "new_child_guide": false
+  }
+}

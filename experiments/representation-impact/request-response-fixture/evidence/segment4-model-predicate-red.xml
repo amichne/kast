@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.service.QueryImpactModelStateConservationTest" tests="4" skipped="0" failures="1" errors="0" timestamp="2026-10-20T04:12:24.887Z" hostname="Austins-MacBook-Pro.local" time="0.078">
+  <properties/>
+  <testcase name="whole argument model cannot transform an unmodeled element contribution()" classname="io.github.amichne.kast.query.service.QueryImpactModelStateConservationTest" time="0.058"/>
+  <testcase name="whole argument model cannot accept an output that erases source call state()" classname="io.github.amichne.kast.query.service.QueryImpactModelStateConservationTest" time="0.003"/>
+  <testcase name="identity model result preserves the actual nonempty source call stack()" classname="io.github.amichne.kast.query.service.QueryImpactModelStateConservationTest" time="0.003"/>
+  <testcase name="identity model keeps the exact predicate conjunction with the source call context()" classname="io.github.amichne.kast.query.service.QueryImpactModelStateConservationTest" time="0.007">
+    <failure message="java.lang.ClassCastException: class io.github.amichne.kast.kernel.Refinement$Rejected cannot be cast to class io.github.amichne.kast.kernel.Refinement$Refined (io.github.amichne.kast.kernel.Refinement$Rejected and io.github.amichne.kast.kernel.Refinement$Refined are in unnamed module of loader 'app')" type="java.lang.ClassCastException">java.lang.ClassCastException: class io.github.amichne.kast.kernel.Refinement$Rejected cannot be cast to class io.github.amichne.kast.kernel.Refinement$Refined (io.github.amichne.kast.kernel.Refinement$Rejected and io.github.amichne.kast.kernel.Refinement$Refined are in unnamed module of loader 'app')
+	at io.github.amichne.kast.query.service.QueryImpactModelStateConservationTestKt.value(QueryImpactModelStateConservationTest.kt:208)
+	at io.github.amichne.kast.query.service.QueryImpactModelStateConservationTestKt.access$value(QueryImpactModelStateConservationTest.kt:1)
+	at io.github.amichne.kast.query.service.QueryImpactModelStateConservationTest.identity model keeps the exact predicate conjunction with the source call context(QueryImpactModelStateConservationTest.kt:81)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

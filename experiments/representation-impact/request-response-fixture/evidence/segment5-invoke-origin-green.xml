@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueFunctionInvocationOriginOracleTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T04:21:31.860Z" hostname="Austins-MacBook-Pro.local" time="0.054">
+  <properties/>
+  <testcase name="a Java library origin in a builtin module cannot impersonate builtin invoke()" classname="io.github.amichne.kast.relation.contract.ValueFunctionInvocationOriginOracleTest" time="0.04"/>
+  <testcase name="a source origin cannot impersonate builtin Function1 invoke()" classname="io.github.amichne.kast.relation.contract.ValueFunctionInvocationOriginOracleTest" time="0.003"/>
+  <testcase name="the same canonical signature with a library origin admits the builtin invoke()" classname="io.github.amichne.kast.relation.contract.ValueFunctionInvocationOriginOracleTest" time="0.001"/>
+  <testcase name="a Java library origin in a library module cannot impersonate builtin invoke()" classname="io.github.amichne.kast.relation.contract.ValueFunctionInvocationOriginOracleTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

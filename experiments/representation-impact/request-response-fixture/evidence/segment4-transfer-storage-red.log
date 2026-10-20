@@ -1,0 +1,104 @@
+Calculating task graph as no cached configuration is available for tasks: :query:contract:test --tests *QueryImpactTransferStorageTest
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :query:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :source:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :traversal:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :query:contract:processResources NO-SOURCE
+> Task :kernel:processResources NO-SOURCE
+> Task :query:contract:processTestResources NO-SOURCE
+> Task :relation:contract:processResources NO-SOURCE
+> Task :source:contract:processResources NO-SOURCE
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :traversal:contract:processResources NO-SOURCE
+> Task :kernel:compileJava NO-SOURCE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar UP-TO-DATE
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar UP-TO-DATE
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+> Task :relation:contract:compileKotlin UP-TO-DATE
+> Task :source:contract:compileKotlin UP-TO-DATE
+> Task :relation:contract:compileJava NO-SOURCE
+> Task :source:contract:compileJava NO-SOURCE
+> Task :relation:contract:classes UP-TO-DATE
+> Task :relation:contract:jar UP-TO-DATE
+> Task :source:contract:classes UP-TO-DATE
+> Task :traversal:contract:compileKotlin UP-TO-DATE
+> Task :source:contract:jar UP-TO-DATE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :traversal:contract:compileJava NO-SOURCE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :traversal:contract:classes UP-TO-DATE
+> Task :traversal:contract:jar UP-TO-DATE
+> Task :query:contract:compileKotlin UP-TO-DATE
+> Task :query:contract:compileJava NO-SOURCE
+> Task :query:contract:classes UP-TO-DATE
+> Task :query:contract:jar UP-TO-DATE
+> Task :query:contract:compileTestKotlin
+> Task :query:contract:compileTestJava NO-SOURCE
+> Task :query:contract:testClasses UP-TO-DATE
+
+> Task :query:contract:test FAILED
+
+QueryImpactTransferStorageTest > source evidence charges its wrapper and existing operation reference() FAILED
+    org.opentest4j.AssertionFailedError: expected: <528> but was: <12442>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+        at app//io.github.amichne.kast.query.contract.QueryImpactTransferStorageTest.source evidence charges its wrapper and existing operation reference(QueryImpactTransferStorageTest.kt:30)
+
+QueryImpactTransferStorageTest > transfer shares the same evidence owner and keeps the public storage multiplier() FAILED
+    org.opentest4j.AssertionFailedError: expected: <1064> but was: <12978>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+        at app//io.github.amichne.kast.query.contract.QueryImpactTransferStorageTest.transfer shares the same evidence owner and keeps the public storage multiplier(QueryImpactTransferStorageTest.kt:63)
+
+QueryImpactTransferStorageTest > guard evidence charges its wrapper and both existing field references() FAILED
+    org.opentest4j.AssertionFailedError: expected: <536> but was: <17104>
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+        at app//io.github.amichne.kast.query.contract.QueryImpactTransferStorageTest.guard evidence charges its wrapper and both existing field references(QueryImpactTransferStorageTest.kt:51)
+
+5 tests completed, 3 failed
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-20-02-51-13-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':query:contract:test'.
+> There were failing tests. See the report at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/query/contract/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 2s
+26 actionable tasks: 2 executed, 24 up-to-date
+Configuration cache entry stored.

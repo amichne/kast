@@ -1,0 +1,24 @@
+{
+  "formatter": "ktfmt0.64/KOTLINLANG_FORMAT/maxWidth120",
+  "exit": 0,
+  "input_hashes": {
+    "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketCompositeQueryPolicy.kt": "daecdffef7201e6fb9669fda89734f2a77217804f504a4709dc460c08d1d792a",
+    "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketS1QueryFacts.kt": "b03804b9cea9ab7bbbf96f0f2d895a0d9a7cabea58b730579c7fdd8a357ec417",
+    "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketS1QueryOracle.kt": "3ec06bbff2987742d760c4df8552fdbb1af827da8acc3bd3a93698cd95f4b4cd",
+    "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketS1QueryTest.kt": "e61b574fe686a9bf5c7f7cb60ae33835341d8bfc541dd308556082845650f6f2",
+    "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketT1DispatchOracle.kt": "fc8dcd2740642b712ce1560ad94e5eff81ae40514e4ac3fb0b7c5110dfcd0426",
+    "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketT1QueryFacts.kt": "8bf474abd72d1a795c603b07f8af2e78d800bafc771dd6c731f37179002c5c03",
+    "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketT1QueryOracle.kt": "95738006d9fdf561d93651c4d7af98a29f8889be8333583e254665f72f713c8a",
+    "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketT1QueryTest.kt": "a5696ea899fe8a7e0101befdfd6381a276ec6368d7657a3f82cbb86332c85238",
+    "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketT1ValueConditions.kt": "830bee302258e6eeaecf989107244be9fd5bea8a2906d0e699bf89a4ffa1bdde",
+    "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketQueryCapture.kt": "ea65a2168552bbe1c71ea9238e0f3bdbbda4f7626e1faa6e12f27392471a638d",
+    "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketCompositeQuerySource.kt": "2810c3d0dc1486a68f25ef7f3ca524d27d50015b1beae64c1a4314add7260d8a",
+    "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketQueryFixture.kt": "b860a2bee66f7b1e6b695e9746211573b89ba3b82f57692e315ed1ded2514841",
+    "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketS3QueryCallbackOracle.kt": "42083017c73e5038844d31e9a5dd8aa022e1f099d1e1d1bdc26321d75c20e000"
+  },
+  "format_changes": [
+    "runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketS3QueryCallbackOracle.kt"
+  ],
+  "gradle": "NOT_RUN",
+  "assertions": "NOT_RUN"
+}

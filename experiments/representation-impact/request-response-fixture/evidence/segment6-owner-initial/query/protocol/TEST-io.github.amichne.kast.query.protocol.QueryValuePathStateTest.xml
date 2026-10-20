@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryValuePathStateTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.761Z" hostname="Austins-MacBook-Pro.local" time="0.004">
+  <properties/>
+  <testcase name="single store restores exact path rows and stable row identities without semantic execution()" classname="io.github.amichne.kast.query.protocol.QueryValuePathStateTest" time="0.001"/>
+  <testcase name="value path storage obeys quota and rejects stale basis without changing original retained rows()" classname="io.github.amichne.kast.query.protocol.QueryValuePathStateTest" time="0.0"/>
+  <testcase name="value path presentation slices retained rows with the original identity and qualification()" classname="io.github.amichne.kast.query.protocol.QueryValuePathStateTest" time="0.001"/>
+  <testcase name="last presentation slice cannot claim complete investigation from a conserved original ledger()" classname="io.github.amichne.kast.query.protocol.QueryValuePathStateTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

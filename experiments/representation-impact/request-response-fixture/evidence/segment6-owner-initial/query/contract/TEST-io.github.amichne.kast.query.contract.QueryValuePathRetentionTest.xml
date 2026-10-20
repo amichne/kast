@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryValuePathRetentionTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:17.906Z" hostname="Austins-MacBook-Pro.local" time="0.009">
+  <properties/>
+  <testcase name="retained anonymous execution preserves exact body identity and consumes its storage()" classname="io.github.amichne.kast.query.contract.QueryValuePathRetentionTest" time="0.002"/>
+  <testcase name="qualified paths snapshot rows and selection preserves exact route and qualification()" classname="io.github.amichne.kast.query.contract.QueryValuePathRetentionTest" time="0.001"/>
+  <testcase name="unused ledger models retain their full byte charge and cannot smuggle a foreign basis()" classname="io.github.amichne.kast.query.contract.QueryValuePathRetentionTest" time="0.003"/>
+  <testcase name="connected terminal paths cannot construct complete investigation without an expansion ledger()" classname="io.github.amichne.kast.query.contract.QueryValuePathRetentionTest" time="0.001"/>
+  <testcase name="discharged full ledger admits complete while selection retains the ledger with weaker rows()" classname="io.github.amichne.kast.query.contract.QueryValuePathRetentionTest" time="0.001"/>
+  <testcase name="foreign value path basis rejects capture and exact payload growth consumes retention bytes()" classname="io.github.amichne.kast.query.contract.QueryValuePathRetentionTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

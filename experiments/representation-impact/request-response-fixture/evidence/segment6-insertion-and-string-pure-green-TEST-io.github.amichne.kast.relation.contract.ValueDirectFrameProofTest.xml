@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueDirectFrameProofTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-20T19:11:05.691Z" hostname="Austins-MacBook-Pro.local" time="0.051">
+  <properties/>
+  <testcase name="same frame identity cannot borrow a different scope from any endpoint position()" classname="io.github.amichne.kast.relation.contract.ValueDirectFrameProofTest" time="0.006"/>
+  <testcase name="same frame identity cannot borrow different constraints from any endpoint position()" classname="io.github.amichne.kast.relation.contract.ValueDirectFrameProofTest" time="0.003"/>
+  <testcase name="equal distinct endpoints preserve direct full proof without a shared object()" classname="io.github.amichne.kast.relation.contract.ValueDirectFrameProofTest" time="0.001"/>
+  <testcase name="callback implementation and reviewed frames cannot claim direct proof even against themselves()" classname="io.github.amichne.kast.relation.contract.ValueDirectFrameProofTest" time="0.032"/>
+  <testcase name="direct stacks compare every frame in order and permit two empty stacks()" classname="io.github.amichne.kast.relation.contract.ValueDirectFrameProofTest" time="0.0"/>
+  <testcase name="basis body and actual call range remain necessary proof facts()" classname="io.github.amichne.kast.relation.contract.ValueDirectFrameProofTest" time="0.001"/>
+  <testcase name="subject and resolved endpoints can prove the same direct frame()" classname="io.github.amichne.kast.relation.contract.ValueDirectFrameProofTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

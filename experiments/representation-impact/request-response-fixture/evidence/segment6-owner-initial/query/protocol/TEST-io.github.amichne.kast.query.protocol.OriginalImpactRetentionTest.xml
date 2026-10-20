@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.944Z" hostname="Austins-MacBook-Pro.local" time="0.022">
+  <properties/>
+  <testcase name="initial invocation keeps original paths when no path row fits its execution page()" classname="io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest" time="0.004"/>
+  <testcase name="original investigated paths remain readable even when execution emitted no rows()" classname="io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest" time="0.002"/>
+  <testcase name="initial invocation gives a non-prefix selection its original row identity()" classname="io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest" time="0.004"/>
+  <testcase name="initial invocation keeps complete row identity order()" classname="io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest" time="0.003"/>
+  <testcase name="original row identities survive repeated reads and cursor selection()" classname="io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest" time="0.004"/>
+  <testcase name="generic selected result capture preserves only the explicit selection()" classname="io.github.amichne.kast.query.protocol.OriginalImpactRetentionTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

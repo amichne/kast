@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.QueryCompletionContractTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:20.716Z" hostname="Austins-MacBook-Pro.local" time="0.027">
+  <properties/>
+  <testcase name="canonical run has no completion input and question encodes fixed proof()" classname="io.github.amichne.kast.protocol.contract.QueryCompletionContractTest" time="0.018"/>
+  <testcase name="complete only has required explicit discriminator and model()" classname="io.github.amichne.kast.protocol.contract.QueryCompletionContractTest" time="0.0"/>
+  <testcase name="original qualifications retain a nonempty canonical limitation set()" classname="io.github.amichne.kast.protocol.contract.QueryCompletionContractTest" time="0.005"/>
+  <testcase name="canonical run rejects every supplied completion field()" classname="io.github.amichne.kast.protocol.contract.QueryCompletionContractTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

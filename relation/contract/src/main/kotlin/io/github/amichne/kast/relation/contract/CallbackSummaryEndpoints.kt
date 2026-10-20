@@ -6,6 +6,11 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 fun CallbackParameterSummary.requiredCompilerDeclarations(): Set<CompilerGroundedSymbolEvidence> =
     CallbackSummaryEndpoints.declarations(this)
 
+fun CallbackInvocationFlow.requiredRelationEndpoints(): List<RelationEndpoint> = CallbackSummaryEndpoints.collect(this)
+
+fun CallbackInvocationFlow.requiredCompilerDeclarations(): Set<CompilerGroundedSymbolEvidence> =
+    CallbackSummaryEndpoints.declarations(this)
+
 internal class CallbackSummaryEndpoints private constructor() {
     private val endpoints = linkedSetOf<RelationEndpoint>()
     private val files = linkedSetOf<SymbolDiscoveryFileIdentity>()
@@ -23,8 +28,12 @@ internal class CallbackSummaryEndpoints private constructor() {
 
     private fun site(value: ValueSite) {
         endpoint(value.enclosing)
+        value.stateEndpoints().forEach(::endpoint)
         when (val role = value.role) {
             is ValueRole.Argument -> call(role.call)
+            is ValueRole.Receiver -> call(role.call)
+            is ValueRole.FunctionArgument -> endpoint(role.call.enclosing)
+            is ValueRole.Formal -> Unit
             ValueRole.ExpressionResult,
             ValueRole.LocalBinding,
             ValueRole.LocalRead,
@@ -169,6 +178,12 @@ internal class CallbackSummaryEndpoints private constructor() {
 
         fun collect(summary: CallbackParameterSummary): List<RelationEndpoint> =
             CallbackSummaryEndpoints().also { it.summary(summary) }.endpoints.toList()
+
+        fun collect(flow: CallbackInvocationFlow): List<RelationEndpoint> =
+            CallbackSummaryEndpoints().also { it.flow(flow) }.endpoints.toList()
+
+        fun declarations(flow: CallbackInvocationFlow): Set<CompilerGroundedSymbolEvidence> =
+            CallbackSummaryEndpoints().also { it.flow(flow) }.declarations.toSet()
 
         fun declarations(summary: CallbackParameterSummary): Set<CompilerGroundedSymbolEvidence> =
             CallbackSummaryEndpoints().also { it.summary(summary) }.declarations.toSet()

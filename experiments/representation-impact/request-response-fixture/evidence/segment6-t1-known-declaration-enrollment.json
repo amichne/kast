@@ -1,0 +1,29 @@
+{
+  "status": "ENROLLED_NOT_RUN",
+  "new_request_snapshot": true,
+  "same_request_product_green": false,
+  "base_hashes": {
+    "NativePacketT1QueryTest.kt": "a5696ea899fe8a7e0101befdfd6381a276ec6368d7657a3f82cbb86332c85238",
+    "NativePacketT1DispatchOracle.kt": "fc8dcd2740642b712ce1560ad94e5eff81ae40514e4ac3fb0b7c5110dfcd0426",
+    "NativePacketCompositeQuerySource.kt": "2810c3d0dc1486a68f25ef7f3ca524d27d50015b1beae64c1a4314add7260d8a"
+  },
+  "active_hashes": {
+    "NativePacketT1QueryTest.kt": "35589d79b0d239f2c312663712b7c9a66626cdd6e0ae3af36c9c8fc7e3aa7235",
+    "NativePacketT1DispatchOracle.kt": "5dd5a67a0eb1190bd74598fe9f7ee4751bf6529d667fd8d3eefed927bd3b710b",
+    "NativePacketCompositeQuerySource.kt": "c2d8f4a01a5af68f1665d198fa04be362676a8d09d80187b40385b99d29dc501"
+  },
+  "receipt": "experiments/representation-impact/request-response-fixture/evidence/segment6-t1-known-declaration-active-inputs.sha256",
+  "receipt_sha256": "15fb6472efca0cac9014a6e63653c6fc96a1aaa769e96a1ee203be2ff629924a",
+  "known_positive_selector": "*NativePacketT1QueryTest.testOriginalS1ProductionReportsTheExactKnownEchoExclusion",
+  "no_known_control_selector": "*NativePacketT1QueryTest.testOriginalS1ProductionWithoutAKnownDeclarationKeepsTheExactSelectedDomain",
+  "procedure": "mise exec -- ./gradlew --no-daemon --max-workers=1 :runtime:hosted:nativeFixtureTest --tests '*NativePacketT1QueryTest.testOriginalS1ProductionReportsTheExactKnownEchoExclusion' --console=plain",
+  "expected_first_missing_obligation": "Fresh compiler-proved known Echo IMPLEMENTATIONS exclusion under unchanged production domain. Explicit declaration is only a locator.",
+  "checks": {
+    "staged_sha256": "PASSED",
+    "active_base_sha256": "PASSED",
+    "copy_identity": "PASSED",
+    "gradle": "NOT_RUN",
+    "kotlin_horizontalization": "NOT_RUN_serialized_root_lane"
+  },
+  "frozen_active_roots": true
+}

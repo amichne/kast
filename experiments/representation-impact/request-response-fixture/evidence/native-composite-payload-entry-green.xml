@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketCompositePayloadTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T04:24:37.873Z" hostname="Austins-MacBook-Pro.local" time="9.508">
+  <properties/>
+  <testcase name="testOriginalMapFormalProjectsDistinctSuccessAndErrorFieldsWithScopedGuards" classname="io.github.amichne.kast.relation.intellij.NativePacketCompositePayloadTest" time="7.93"/>
+  <testcase name="testOriginalSuccessPayloadEntersTheSuppliedImplicitItThroughBuiltinInvoke" classname="io.github.amichne.kast.relation.intellij.NativePacketCompositePayloadTest" time="1.567"/>
+  <system-out><![CDATA[COMPOSITE_PAYLOAD_STAGE source=ExactDeclarationTextRange(startInclusive=769, endExclusive=954) role=ExpressionResult transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=769, endExclusive=954))] frontier=[]
+COMPOSITE_PAYLOAD_STAGE source=ExactDeclarationTextRange(startInclusive=769, endExclusive=954) role=Receiver transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=289, endExclusive=439))] frontier=[]
+COMPOSITE_PAYLOAD_STAGE source=ExactDeclarationTextRange(startInclusive=289, endExclusive=439) role=Formal transfers=[(FIELD_READ, ExactDeclarationTextRange(startInclusive=393, endExclusive=398)), (FIELD_READ, ExactDeclarationTextRange(startInclusive=427, endExclusive=432))] frontier=[]
+COMPOSITE_RESULT row=C2.1 stage=scoped-payload-fields remaining=C2.2-C2.10 status=NOT_RUN
+COMPOSITE_PAYLOAD_STAGE source=ExactDeclarationTextRange(startInclusive=769, endExclusive=954) role=ExpressionResult transfers=[(RECEIVER, ExactDeclarationTextRange(startInclusive=769, endExclusive=954))] frontier=[]
+COMPOSITE_PAYLOAD_STAGE source=ExactDeclarationTextRange(startInclusive=769, endExclusive=954) role=Receiver transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=289, endExclusive=439))] frontier=[]
+COMPOSITE_PAYLOAD_STAGE source=ExactDeclarationTextRange(startInclusive=289, endExclusive=439) role=Formal transfers=[(FIELD_READ, ExactDeclarationTextRange(startInclusive=393, endExclusive=398)), (FIELD_READ, ExactDeclarationTextRange(startInclusive=427, endExclusive=432))] frontier=[]
+COMPOSITE_PAYLOAD_STAGE source=ExactDeclarationTextRange(startInclusive=393, endExclusive=398) role=ExpressionResult transfers=[(ARGUMENT, ExactDeclarationTextRange(startInclusive=393, endExclusive=398))] frontier=[]
+COMPOSITE_PAYLOAD_STAGE source=ExactDeclarationTextRange(startInclusive=393, endExclusive=398) role=FunctionArgument transfers=[(SOURCE_CALL_ENTRY, ExactDeclarationTextRange(startInclusive=959, endExclusive=989))] frontier=[]
+COMPOSITE_RESULT row=C2.1 stage=implicit-callback-formal remaining=C2.2-C2.10 status=NOT_RUN
+]]></system-out>
+  <system-err><![CDATA[[   1290]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1290]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

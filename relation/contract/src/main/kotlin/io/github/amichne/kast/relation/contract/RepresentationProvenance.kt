@@ -150,8 +150,53 @@ class RepresentationEvidence private constructor(val site: ValueSite, val branch
     fun transfer(transfer: ValueTransfer): Refinement<RepresentationEvidence, RepresentationPropagationFailure> {
         if (site.identity != transfer.source.identity)
             return Refinement.Rejected(RepresentationPropagationFailure.SITE_MISMATCH)
+        val changesRepresentedValue =
+            transfer.kind == ValueTransferKind.FIELD_READ || transfer.kind == ValueTransferKind.CONSTRUCTOR_FIELD
         return Refinement.Refined(
-            create(transfer.target, branches.map { it.withHistory(RepresentationHistory.CompilerTransfer(transfer)) })
+            create(
+                transfer.target,
+                branches.map { branch ->
+                    branch.withHistory(
+                        RepresentationHistory.CompilerTransfer(transfer),
+                        when {
+                            changesRepresentedValue ->
+                                RepresentationCurrent.Unknown(RepresentationUnknownReason.UNMODELED_TRANSFORMATION)
+                            transfer.kind == ValueTransferKind.DERIVATION ->
+                                when (val current = branch.current) {
+                                    is RepresentationCurrent.Known ->
+                                        RepresentationCurrent.Unknown(
+                                            RepresentationUnknownReason.UNMODELED_TRANSFORMATION
+                                        )
+                                    is RepresentationCurrent.Unknown -> current
+                                }
+                            else -> branch.current
+                        },
+                    )
+                },
+            )
+        )
+    }
+
+    fun modeledValue(
+        application: ValueModelApplication
+    ): Refinement<RepresentationEvidence, RepresentationPropagationFailure> {
+        if (site.basis != application.source.basis)
+            return Refinement.Rejected(RepresentationPropagationFailure.BASIS_MISMATCH)
+        if (site.identity != application.source.identity)
+            return Refinement.Rejected(RepresentationPropagationFailure.SITE_MISMATCH)
+        return Refinement.Refined(
+            create(
+                application.target,
+                branches.map { branch ->
+                    val next =
+                        when (val current = branch.current) {
+                            is RepresentationCurrent.Known ->
+                                RepresentationCurrent.Unknown(RepresentationUnknownReason.UNMODELED_TRANSFORMATION)
+                            is RepresentationCurrent.Unknown -> current
+                        }
+                    branch.withHistory(application, next)
+                },
+            )
         )
     }
 
@@ -295,6 +340,8 @@ private fun admitModelCall(
     val inputRole = input.role
     if (inputRole !is ValueRole.Argument || inputRole.call.identity != invocation.identity)
         return Refinement.Rejected(RepresentationPropagationFailure.SITE_MISMATCH)
+    if (input.callStack != output.callStack || input.predicates != output.predicates)
+        return Refinement.Rejected(RepresentationPropagationFailure.SITE_MISMATCH)
     return admitOutputPosition(output, invocation, boundOutput)
 }
 
@@ -304,6 +351,8 @@ private fun admitInputPosition(
 ): Refinement<Unit, RepresentationPropagationFailure> {
     if (site.basis != binding.endpoint.lease.identity)
         return Refinement.Rejected(RepresentationPropagationFailure.BASIS_MISMATCH)
+    if (site.valuePath != ValueAccessPath.Whole)
+        return Refinement.Rejected(RepresentationPropagationFailure.POSITION_MISMATCH)
     val role = site.role
     if (role !is ValueRole.Argument) return Refinement.Rejected(RepresentationPropagationFailure.POSITION_MISMATCH)
     if (binding.position != ModelValuePosition.Argument(role.position))
@@ -323,8 +372,11 @@ private fun admitOutputPosition(
             Refinement.Rejected(RepresentationPropagationFailure.BASIS_MISMATCH)
         site.role != ValueRole.ExpressionResult ||
             site.range != invocation.range ||
+            site.executionOwner != invocation.executionOwner ||
             !site.enclosing.sameModelCallable(invocation.enclosing) ->
             Refinement.Rejected(RepresentationPropagationFailure.SITE_MISMATCH)
+        site.valuePath != ValueAccessPath.Whole ->
+            Refinement.Rejected(RepresentationPropagationFailure.POSITION_MISMATCH)
         binding.position != ModelValuePosition.Result ->
             Refinement.Rejected(RepresentationPropagationFailure.POSITION_MISMATCH)
         !binding.endpoint.sameModelCallable(invocation.callable) ->

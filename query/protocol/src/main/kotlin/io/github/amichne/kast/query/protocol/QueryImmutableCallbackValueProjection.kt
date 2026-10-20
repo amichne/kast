@@ -13,12 +13,12 @@ internal fun ImmutableCallbackValue.projectImmutableValue(
 ): QueryImmutableCallbackValueDocument? {
     val projected = origin.projectOrigin(projection) ?: return null
     val projectedSource =
-        when (val result = source.impactDocument()) {
+        when (val result = source.impactDocument(projection.authority)) {
             is Refinement.Refined -> result.value
             is Refinement.Rejected -> return null
         }
     val projectedDestination =
-        when (val result = destination.impactDocument()) {
+        when (val result = destination.impactDocument(projection.authority)) {
             is Refinement.Refined -> result.value
             is Refinement.Rejected -> return null
         }
@@ -27,7 +27,7 @@ internal fun ImmutableCallbackValue.projectImmutableValue(
             val result =
                 BoundedProtocolList.create(
                     transfers.map {
-                        when (val result = it.impactDocument()) {
+                        when (val result = it.impactDocument(projection.authority)) {
                             is Refinement.Refined -> result.value
                             is Refinement.Rejected -> return null
                         }

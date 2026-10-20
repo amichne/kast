@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryEvidenceOutputOwnershipTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.327Z" hostname="Austins-MacBook-Pro.local" time="0.003">
+  <properties/>
+  <testcase name="evidence only successors reduce immutable output without another semantic execution()" classname="io.github.amichne.kast.query.protocol.QueryEvidenceOutputOwnershipTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

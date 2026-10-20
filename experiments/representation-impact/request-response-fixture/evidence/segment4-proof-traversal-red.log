@@ -1,0 +1,69 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Reusing configuration cache.
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :kernel:compileJava NO-SOURCE
+> Task :relation:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+> Task :relation:contract:compileKotlin UP-TO-DATE
+> Task :relation:contract:compileJava NO-SOURCE
+> Task :relation:contract:processResources NO-SOURCE
+> Task :relation:contract:classes UP-TO-DATE
+> Task :relation:contract:jar UP-TO-DATE
+> Task :kernel:processResources NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar UP-TO-DATE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesKotlin UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesJava NO-SOURCE
+> Task :relation:contract:compileTestKotlin
+> Task :relation:contract:compileTestJava NO-SOURCE
+> Task :relation:contract:processTestResources NO-SOURCE
+> Task :relation:contract:testClasses UP-TO-DATE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :workspace:contract:processTestFixturesResources NO-SOURCE
+> Task :workspace:contract:testFixturesClasses UP-TO-DATE
+> Task :workspace:contract:testFixturesJar UP-TO-DATE
+
+> Task :relation:contract:test FAILED
+
+CallbackValueProofLimitTest > a callback proof rejects 1020 expanded frames before canonicalization() FAILED
+    org.opentest4j.AssertionFailedError: Unexpected type, expected: <io.github.amichne.kast.kernel.Refinement.Rejected> but was: <io.github.amichne.kast.kernel.Refinement.Refined>
+        at app//org.junit.jupiter.api.Assertions.assertInstanceOf(Assertions.java:3699)
+        at app//io.github.amichne.kast.relation.contract.CallbackValueProofLimitTest.a callback proof rejects 1020 expanded frames before canonicalization(CallbackValueProofLimitTest.kt:15)
+
+LocalBindingTraversalAdmissionTest > candidate-free enumeration propagates cancellation before exhaustion() FAILED
+    org.opentest4j.AssertionFailedError: Expected java.util.concurrent.CancellationException to be thrown, but nothing was thrown.
+        at app//org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3234)
+        at app//io.github.amichne.kast.relation.contract.LocalBindingTraversalAdmissionTest.candidate-free enumeration propagates cancellation before exhaustion(LocalBindingTraversalAdmissionTest.kt:33)
+
+LocalBindingTraversalAdmissionTest > candidate-free enumeration that reaches the deadline remains suspended() FAILED
+    org.opentest4j.AssertionFailedError: Unexpected type, expected: <io.github.amichne.kast.relation.contract.ValueFlowRead.Suspended> but was: <io.github.amichne.kast.relation.contract.ValueFlowRead.Observed>
+        at app//org.junit.jupiter.api.Assertions.assertInstanceOf(Assertions.java:3699)
+        at app//io.github.amichne.kast.relation.contract.LocalBindingTraversalAdmissionTest.candidate-free enumeration that reaches the deadline remains suspended(LocalBindingTraversalAdmissionTest.kt:20)
+
+5 tests completed, 3 failed
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-20-00-34-52-0.txt
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':relation:contract:test'.
+> There were failing tests. See the report at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 9s
+12 actionable tasks: 2 executed, 10 up-to-date
+Configuration cache entry reused.

@@ -1,0 +1,488 @@
+{
+  "findings": [
+    {
+      "evidence": {
+        "directKotlinFiles": 174
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.07,
+        "files": [
+          "CallbackBodyReads.kt",
+          "CallbackBodyScanOutcome.kt",
+          "CallbackCoverageStage.kt",
+          "CallbackEvidenceAccess.kt",
+          "CallbackExpiryAdmission.kt",
+          "CallbackFlowRetention.kt",
+          "CallbackFormalWorklist.kt",
+          "CallbackParameterSummaries.kt",
+          "CallbackRetainedRecords.kt",
+          "CallbackSummaryReuse.kt",
+          "CallbackSupplierObservation.kt",
+          "CallbackValueRoutes.kt",
+          "CallbackWorkAdmission.kt"
+        ],
+        "prefix": "Callback"
+      },
+      "message": "prefix cluster 'Callback' appears in 13 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "ImmutableCallbackEnumeration.kt",
+          "ImmutableCallbackOwnerReads.kt",
+          "ImmutableCallbackTryResult.kt"
+        ],
+        "prefix": "Immutable"
+      },
+      "message": "prefix cluster 'Immutable' appears in 3 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "ImmutableCallbackEnumeration.kt",
+          "ImmutableCallbackOwnerReads.kt",
+          "ImmutableCallbackTryResult.kt"
+        ],
+        "prefix": "Immutable Callback"
+      },
+      "message": "prefix cluster 'Immutable Callback' appears in 3 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.53,
+        "files": [
+          "IntellijAnonymousCallableBody.kt",
+          "IntellijCallableObservationEmitter.kt",
+          "IntellijCallbackBindingReader.kt",
+          "IntellijCallbackCallerProjection.kt",
+          "IntellijCallbackDeclaredSupplyReader.kt",
+          "IntellijCallbackDependencyContract.kt",
+          "IntellijCallbackFactoryCalls.kt",
+          "IntellijCallbackFactoryReturn.kt",
+          "IntellijCallbackFlowContext.kt",
+          "IntellijCallbackFlowRead.kt",
+          "IntellijCallbackFlowScan.kt",
+          "IntellijCallbackForwardingReader.kt",
+          "IntellijCallbackInvocationFlow.kt",
+          "IntellijCallbackLambdaSupply.kt",
+          "IntellijCallbackObservationProjection.kt",
+          "IntellijCallbackOwnerBindingReader.kt",
+          "IntellijCallbackParameterSummaryReader.kt",
+          "IntellijCallbackResultProjection.kt",
+          "IntellijCallbackSummaryReadmission.kt",
+          "IntellijCallbackSupplierCalls.kt",
+          "IntellijCallbackSupplierFormal.kt",
+          "IntellijCallbackSupplierInventory.kt",
+          "IntellijCallbackSupplierValues.kt",
+          "IntellijCalleeInventory.kt",
+          "IntellijClassConstructionConfirmation.kt",
+          "IntellijCompilerTypeProof.kt",
+          "IntellijDeferredSupplierExecution.kt",
+          "IntellijDefinitionInventory.kt",
+          "IntellijDirectCallbackFlow.kt",
+          "IntellijFactoryBodyCalls.kt",
+          "IntellijFactoryCaptureAudit.kt",
+          "IntellijFactoryCaptureValues.kt",
+          "IntellijFactoryCapturedInvocations.kt",
+          "IntellijImmutableCallbackAliasUses.kt",
+          "IntellijImmutableCallbackFlowReader.kt",
+          "IntellijImmutableCallbackSupplyUses.kt",
+          "IntellijImmutableCallbackValueResolver.kt",
+          "IntellijK2CallOwnership.kt",
+          "IntellijK2RelationProjection.kt",
+          "IntellijK2RelationSearch.kt",
+          "IntellijK2SymbolIdentity.kt",
+          "IntellijKotlinLazyBinaryEvidence.kt",
+          "IntellijLocalBindingReads.kt",
+          "IntellijLocalDeclarationAnchors.kt",
+          "IntellijLocalRelationAddress.kt",
+          "IntellijLocalRelationOwnerSignature.kt",
+          "IntellijLocalRelationProjection.kt",
+          "IntellijLocalRelationTypeFacts.kt",
+          "IntellijNamedCallbackObservationEmitter.kt",
+          "IntellijNamedCallbackReference.kt",
+          "IntellijNamedRelationReadmission.kt",
+          "IntellijOccurrenceProvenance.kt",
+          "IntellijReferenceContext.kt",
+          "IntellijReferenceInventory.kt",
+          "IntellijReferenceInventoryReuse.kt",
+          "IntellijReferenceOccurrenceEmitter.kt",
+          "IntellijRelationAllowance.kt",
+          "IntellijRelationCollectionState.kt",
+          "IntellijRelationCollector.kt",
+          "IntellijRelationCompilerAdapter.kt",
+          "IntellijRelationDefinition.kt",
+          "IntellijRelationEvidenceBuffer.kt",
+          "IntellijRelationFactEmitter.kt",
+          "IntellijRelationFileProjection.kt",
+          "IntellijRelationInventory.kt",
+          "IntellijRelationLocators.kt",
+          "IntellijRelationNativeSymbol.kt",
+          "IntellijRelationOmissionObservation.kt",
+          "IntellijRelationOmissionSample.kt",
+          "IntellijRelationPackageAdmission.kt",
+          "IntellijRelationPageCompletion.kt",
+          "IntellijRelationPlan.kt",
+          "IntellijRelationProjectionResults.kt",
+          "IntellijRelationProviderItems.kt",
+          "IntellijRelationScopeCompiler.kt",
+          "IntellijRelationTargetObservation.kt",
+          "IntellijResolvedCallableEvidence.kt",
+          "IntellijResolvedCallableObservation.kt",
+          "IntellijRetainedRelationRead.kt",
+          "IntellijSelectedCallbackInvocation.kt",
+          "IntellijSelectedCallbackSupplies.kt",
+          "IntellijSourceValueProjection.kt",
+          "IntellijTransparentWrapperReturn.kt",
+          "IntellijUnavailableCallbackSupply.kt",
+          "IntellijValueArgumentProjection.kt",
+          "IntellijValueConstructorProjection.kt",
+          "IntellijValueFlowCompilerAdapter.kt",
+          "IntellijValueFlowNative.kt",
+          "IntellijValueInvocationAnchor.kt",
+          "IntellijValueProducerSeedNative.kt",
+          "IntellijValueReceiverProjection.kt",
+          "IntellijValueSiteRevalidationNative.kt"
+        ],
+        "prefix": "Intellij"
+      },
+      "message": "prefix cluster 'Intellij' appears in 92 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.12,
+        "files": [
+          "IntellijCallbackBindingReader.kt",
+          "IntellijCallbackCallerProjection.kt",
+          "IntellijCallbackDeclaredSupplyReader.kt",
+          "IntellijCallbackDependencyContract.kt",
+          "IntellijCallbackFactoryCalls.kt",
+          "IntellijCallbackFactoryReturn.kt",
+          "IntellijCallbackFlowContext.kt",
+          "IntellijCallbackFlowRead.kt",
+          "IntellijCallbackFlowScan.kt",
+          "IntellijCallbackForwardingReader.kt",
+          "IntellijCallbackInvocationFlow.kt",
+          "IntellijCallbackLambdaSupply.kt",
+          "IntellijCallbackObservationProjection.kt",
+          "IntellijCallbackOwnerBindingReader.kt",
+          "IntellijCallbackParameterSummaryReader.kt",
+          "IntellijCallbackResultProjection.kt",
+          "IntellijCallbackSummaryReadmission.kt",
+          "IntellijCallbackSupplierCalls.kt",
+          "IntellijCallbackSupplierFormal.kt",
+          "IntellijCallbackSupplierInventory.kt",
+          "IntellijCallbackSupplierValues.kt"
+        ],
+        "prefix": "Intellij Callback"
+      },
+      "message": "prefix cluster 'Intellij Callback' appears in 21 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "IntellijFactoryBodyCalls.kt",
+          "IntellijFactoryCaptureAudit.kt",
+          "IntellijFactoryCaptureValues.kt",
+          "IntellijFactoryCapturedInvocations.kt"
+        ],
+        "prefix": "Intellij Factory"
+      },
+      "message": "prefix cluster 'Intellij Factory' appears in 4 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "IntellijImmutableCallbackAliasUses.kt",
+          "IntellijImmutableCallbackFlowReader.kt",
+          "IntellijImmutableCallbackSupplyUses.kt",
+          "IntellijImmutableCallbackValueResolver.kt"
+        ],
+        "prefix": "Intellij Immutable"
+      },
+      "message": "prefix cluster 'Intellij Immutable' appears in 4 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "IntellijK2CallOwnership.kt",
+          "IntellijK2RelationProjection.kt",
+          "IntellijK2RelationSearch.kt",
+          "IntellijK2SymbolIdentity.kt"
+        ],
+        "prefix": "Intellij K"
+      },
+      "message": "prefix cluster 'Intellij K' appears in 4 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "IntellijLocalBindingReads.kt",
+          "IntellijLocalDeclarationAnchors.kt",
+          "IntellijLocalRelationAddress.kt",
+          "IntellijLocalRelationOwnerSignature.kt",
+          "IntellijLocalRelationProjection.kt",
+          "IntellijLocalRelationTypeFacts.kt"
+        ],
+        "prefix": "Intellij Local"
+      },
+      "message": "prefix cluster 'Intellij Local' appears in 6 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "IntellijNamedCallbackObservationEmitter.kt",
+          "IntellijNamedCallbackReference.kt",
+          "IntellijNamedRelationReadmission.kt"
+        ],
+        "prefix": "Intellij Named"
+      },
+      "message": "prefix cluster 'Intellij Named' appears in 3 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "IntellijReferenceContext.kt",
+          "IntellijReferenceInventory.kt",
+          "IntellijReferenceInventoryReuse.kt",
+          "IntellijReferenceOccurrenceEmitter.kt"
+        ],
+        "prefix": "Intellij Reference"
+      },
+      "message": "prefix cluster 'Intellij Reference' appears in 4 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.11,
+        "files": [
+          "IntellijRelationAllowance.kt",
+          "IntellijRelationCollectionState.kt",
+          "IntellijRelationCollector.kt",
+          "IntellijRelationCompilerAdapter.kt",
+          "IntellijRelationDefinition.kt",
+          "IntellijRelationEvidenceBuffer.kt",
+          "IntellijRelationFactEmitter.kt",
+          "IntellijRelationFileProjection.kt",
+          "IntellijRelationInventory.kt",
+          "IntellijRelationLocators.kt",
+          "IntellijRelationNativeSymbol.kt",
+          "IntellijRelationOmissionObservation.kt",
+          "IntellijRelationOmissionSample.kt",
+          "IntellijRelationPackageAdmission.kt",
+          "IntellijRelationPageCompletion.kt",
+          "IntellijRelationPlan.kt",
+          "IntellijRelationProjectionResults.kt",
+          "IntellijRelationProviderItems.kt",
+          "IntellijRelationScopeCompiler.kt",
+          "IntellijRelationTargetObservation.kt"
+        ],
+        "prefix": "Intellij Relation"
+      },
+      "message": "prefix cluster 'Intellij Relation' appears in 20 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "IntellijValueArgumentProjection.kt",
+          "IntellijValueConstructorProjection.kt",
+          "IntellijValueFlowCompilerAdapter.kt",
+          "IntellijValueFlowNative.kt",
+          "IntellijValueInvocationAnchor.kt",
+          "IntellijValueProducerSeedNative.kt",
+          "IntellijValueReceiverProjection.kt",
+          "IntellijValueSiteRevalidationNative.kt"
+        ],
+        "prefix": "Intellij Value"
+      },
+      "message": "prefix cluster 'Intellij Value' appears in 8 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.28,
+        "files": [
+          "NativeCallbackFactoryReturns.kt",
+          "NativeCompilerTypeProof.kt",
+          "NativeImplicitParameterReferences.kt",
+          "NativeRelationSearchScope.kt",
+          "NativeTryBranchResult.kt",
+          "NativeValueAnonymousReturn.kt",
+          "NativeValueArgumentBinding.kt",
+          "NativeValueArgumentFlow.kt",
+          "NativeValueArtifactRead.kt",
+          "NativeValueArtifactVirtualFile.kt",
+          "NativeValueCallbackCause.kt",
+          "NativeValueCallbackEntryPreparation.kt",
+          "NativeValueCallbackFlow.kt",
+          "NativeValueCallbackFormal.kt",
+          "NativeValueCallbackReturn.kt",
+          "NativeValueCallbackSupply.kt",
+          "NativeValueCallerFrames.kt",
+          "NativeValueCallerNonNull.kt",
+          "NativeValueCallerReferences.kt",
+          "NativeValueDestructuringReceiver.kt",
+          "NativeValueElvisResult.kt",
+          "NativeValueExecution.kt",
+          "NativeValueFieldRead.kt",
+          "NativeValueFlowCapacity.kt",
+          "NativeValueFlowTransfers.kt",
+          "NativeValueFunctionArgument.kt",
+          "NativeValueGuardedField.kt",
+          "NativeValueImplementationDispatch.kt",
+          "NativeValueImplementationFailure.kt",
+          "NativeValueImplicitReceiverCalls.kt",
+          "NativeValueOwnership.kt",
+          "NativeValueReceiverGuard.kt",
+          "NativeValueReceiverReads.kt",
+          "NativeValueReturnFlow.kt",
+          "NativeValueReviewedArtifact.kt",
+          "NativeValueReviewedCall.kt",
+          "NativeValueReviewedCallbacks.kt",
+          "NativeValueReviewedModels.kt",
+          "NativeValueReviewedNavigation.kt",
+          "NativeValueSeedCallbackEntry.kt",
+          "NativeValueSeedCallbackFlow.kt",
+          "NativeValueSeedCallbackReturn.kt",
+          "NativeValueSeedCallbackSupplies.kt",
+          "NativeValueSiteRestorationFailure.kt",
+          "NativeValueSourceFunctionSeed.kt",
+          "NativeValueSourceReceiver.kt",
+          "NativeValueSourceReturns.kt",
+          "NativeValueStringInterpolation.kt"
+        ],
+        "prefix": "Native"
+      },
+      "message": "prefix cluster 'Native' appears in 48 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.25,
+        "files": [
+          "NativeValueAnonymousReturn.kt",
+          "NativeValueArgumentBinding.kt",
+          "NativeValueArgumentFlow.kt",
+          "NativeValueArtifactRead.kt",
+          "NativeValueArtifactVirtualFile.kt",
+          "NativeValueCallbackCause.kt",
+          "NativeValueCallbackEntryPreparation.kt",
+          "NativeValueCallbackFlow.kt",
+          "NativeValueCallbackFormal.kt",
+          "NativeValueCallbackReturn.kt",
+          "NativeValueCallbackSupply.kt",
+          "NativeValueCallerFrames.kt",
+          "NativeValueCallerNonNull.kt",
+          "NativeValueCallerReferences.kt",
+          "NativeValueDestructuringReceiver.kt",
+          "NativeValueElvisResult.kt",
+          "NativeValueExecution.kt",
+          "NativeValueFieldRead.kt",
+          "NativeValueFlowCapacity.kt",
+          "NativeValueFlowTransfers.kt",
+          "NativeValueFunctionArgument.kt",
+          "NativeValueGuardedField.kt",
+          "NativeValueImplementationDispatch.kt",
+          "NativeValueImplementationFailure.kt",
+          "NativeValueImplicitReceiverCalls.kt",
+          "NativeValueOwnership.kt",
+          "NativeValueReceiverGuard.kt",
+          "NativeValueReceiverReads.kt",
+          "NativeValueReturnFlow.kt",
+          "NativeValueReviewedArtifact.kt",
+          "NativeValueReviewedCall.kt",
+          "NativeValueReviewedCallbacks.kt",
+          "NativeValueReviewedModels.kt",
+          "NativeValueReviewedNavigation.kt",
+          "NativeValueSeedCallbackEntry.kt",
+          "NativeValueSeedCallbackFlow.kt",
+          "NativeValueSeedCallbackReturn.kt",
+          "NativeValueSeedCallbackSupplies.kt",
+          "NativeValueSiteRestorationFailure.kt",
+          "NativeValueSourceFunctionSeed.kt",
+          "NativeValueSourceReceiver.kt",
+          "NativeValueSourceReturns.kt",
+          "NativeValueStringInterpolation.kt"
+        ],
+        "prefix": "Native Value"
+      },
+      "message": "prefix cluster 'Native Value' appears in 43 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "RelationFileEnumeration.kt",
+          "RelationFileEnumerationPlan.kt",
+          "RelationFileInventory.kt",
+          "RelationLocalOwnerCallableIdentity.kt",
+          "RelationLocalOwnerCallableIdentityObservation.kt",
+          "RelationProviderScopeObservation.kt",
+          "RelationSourceDomainMembership.kt",
+          "RelationSourceRootIndex.kt"
+        ],
+        "prefix": "Relation"
+      },
+      "message": "prefix cluster 'Relation' appears in 8 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "RelationFileEnumeration.kt",
+          "RelationFileEnumerationPlan.kt",
+          "RelationFileInventory.kt"
+        ],
+        "prefix": "Relation File"
+      },
+      "message": "prefix cluster 'Relation File' appears in 3 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    }
+  ],
+  "ok": true,
+  "status": "advisory"
+}

@@ -2,6 +2,7 @@
 
 package io.github.amichne.kast.protocol.wire
 
+import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceWireDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
@@ -11,6 +12,15 @@ import io.github.amichne.kast.protocol.contract.TopologyCoverageNode
 import io.github.amichne.kast.protocol.contract.TopologyCoverageQualifiedIdentity
 import io.github.amichne.kast.protocol.contract.TopologyCoverageSymbol
 import io.github.amichne.kast.protocol.contract.TopologyCoverageSymbolKind
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.combineConverted
+import io.github.amichne.kast.protocol.contract.convertEach
+import io.github.amichne.kast.protocol.contract.flatMapConverted
+import io.github.amichne.kast.protocol.contract.mapConverted
+import io.github.amichne.kast.protocol.contract.node
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
+import io.github.amichne.kast.protocol.contract.toWireDocumentConversion
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator

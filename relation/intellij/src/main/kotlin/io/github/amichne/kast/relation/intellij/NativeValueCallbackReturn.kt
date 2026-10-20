@@ -1,0 +1,244 @@
+package io.github.amichne.kast.relation.intellij
+
+import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.CallbackInvocationFlow
+import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
+import io.github.amichne.kast.relation.contract.CallbackInvocationFlowFailure
+import io.github.amichne.kast.relation.contract.CallbackInvocationFlowRead
+import io.github.amichne.kast.relation.contract.CallbackInvocationScan
+import io.github.amichne.kast.relation.contract.RelationCallableBody
+import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.ValueCallBindingFailure
+import io.github.amichne.kast.relation.contract.ValueCallFrame
+import io.github.amichne.kast.relation.contract.ValueCallbackTarget
+import io.github.amichne.kast.relation.contract.ValueExecutionBody
+import io.github.amichne.kast.relation.contract.ValueFlowRequest
+import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
+import io.github.amichne.kast.relation.contract.ValueFunctionInvocation
+import io.github.amichne.kast.relation.contract.ValueTransfer
+import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
+import org.jetbrains.kotlin.psi.KtFunction
+
+/** Fresh compiler proof refines the active callback frame; only its existing return owner can pop that frame. */
+internal class NativeValueCallbackReturn(
+    private val request: ValueFlowRequest,
+    private val scope: CompiledRelationScope,
+    private val projection: IntellijK2RelationProjection,
+    private val allowance: IntellijRelationAllowance,
+) {
+    private val context =
+        IntellijCallbackFlowContext(
+            scope = scope,
+            projection = projection,
+            admitWork = { allowance.admitCallbackWork(request.budget.resources) },
+            observation = projection.observation,
+            callbackExpiry = ::expiry,
+        )
+
+    fun read(
+        expected: ValueCallFrame,
+        consume: (NativeValueReturnEffect) -> Boolean,
+        matched: (ValueCallFrame) -> Refinement<ValueTransfer, ValueFlowUnsupportedCause>,
+    ): Boolean {
+        val target = expected.target as? ValueCallbackTarget ?: return consume(unsupported())
+        val invocation = expected.invocation as? ValueFunctionInvocation ?: return consume(unsupported())
+        if (request.source.callStack.frames.dropLast(1).lastOrNull() != target.supplyingFrame)
+            return consume(unsupported())
+        val question = NativeCallbackReturnQuestion(expected, target)
+        val prepared =
+            when (val value = prepare(invocation)) {
+                is Refinement.Refined -> value.value
+                is Refinement.Rejected -> return consume(value.failure)
+            }
+        return when (
+            val fresh =
+                readCallbackInvocationFlow(
+                    boundary = prepared.callback.literal,
+                    lexicalOwner = prepared.callback.lexicalOwner,
+                    scope = scope,
+                    projection = projection,
+                    admitWork = { allowance.admitCallbackWork(request.budget.resources) },
+                    summaries = CallbackParameterSummaries(request.budget, projection.observation),
+                    callbackExpiry = ::expiry,
+                )
+        ) {
+            is CallbackInvocationFlowRead.Observed -> observed(question, prepared, fresh.flow, consume, matched)
+            is CallbackInvocationFlowRead.Unavailable ->
+                consume(NativeValueReturnEffect.CallbackUnavailable(fresh.cause))
+            is CallbackInvocationFlowRead.ContractRejected ->
+                consume(NativeValueReturnEffect.CallbackContractRejected(fresh.cause))
+            is CallbackInvocationFlowRead.Immutable -> consume(unsupported(ValueFlowUnsupportedCause.UNMODELED_CALL))
+        }
+    }
+
+    private fun observed(
+        question: NativeCallbackReturnQuestion,
+        prepared: NativeCallbackReturnPreparation,
+        flow: CallbackInvocationFlow,
+        consume: (NativeValueReturnEffect) -> Boolean,
+        matched: (ValueCallFrame) -> Refinement<ValueTransfer, ValueFlowUnsupportedCause>,
+    ): Boolean {
+        if (flow.body != prepared.callback.body || flow.basis != request.source.basis) return consume(unsupported())
+        val selected = flow.invocations.singleOrNull { it == question.target.selected }
+        val qualified = flow.obligations.isNotEmpty() || flow.scan != CallbackInvocationScan.EXHAUSTIVE
+        if (qualified || selected == null) {
+            if (!consume(NativeValueReturnEffect.CallbackFlow(flow))) return false
+        }
+        if (selected == null) return true
+        val frame =
+            when (
+                val value =
+                    ValueCallFrame.callback(
+                        invocation = prepared.invocation,
+                        callee = request.source.executionOwner,
+                        flow = flow,
+                        selected = selected,
+                        supplyingFrame = question.target.supplyingFrame,
+                    )
+            ) {
+                is Refinement.Refined -> value.value
+                is Refinement.Rejected ->
+                    return if (value.failure == ValueCallBindingFailure.CALLBACK_PROOF_LIMIT_REACHED)
+                        consume(
+                            NativeValueReturnEffect.CallbackContractRejected(
+                                CallbackInvocationFlowFailure.PROOF_LIMIT_REACHED
+                            )
+                        )
+                    else consume(NativeValueReturnEffect.CallbackFlow(flow))
+            }
+        if (frame != question.frame) return consume(NativeValueReturnEffect.CallbackFlow(flow))
+        return consume(NativeValueReturnEffect.Transfer(matched(frame)))
+    }
+
+    private fun prepare(
+        invocation: ValueFunctionInvocation
+    ): Refinement<NativeCallbackReturnPreparation, NativeValueReturnEffect> {
+        val fresh =
+            when (val value = freshInvocation(invocation)) {
+                is Refinement.Refined -> value.value
+                is Refinement.Rejected -> return value
+            }
+        val callback =
+            when (val value = callbackBody()) {
+                is Refinement.Refined -> value.value
+                is Refinement.Rejected -> return value
+            }
+        return Refinement.Refined(NativeCallbackReturnPreparation(fresh, callback))
+    }
+
+    private fun freshInvocation(
+        invocation: ValueFunctionInvocation
+    ): Refinement<ValueFunctionInvocation, NativeValueReturnEffect> {
+        val fresh =
+            when (val value = restoreInvocation(invocation.enclosing, invocation.range)) {
+                is Refinement.Refined -> value.value
+                is Refinement.Rejected -> return value
+            }
+        if (fresh != invocation) return returnRejected()
+        return Refinement.Refined(fresh)
+    }
+
+    internal fun restoreInvocation(
+        enclosing: RelationEndpoint,
+        range: ExactDeclarationTextRange,
+    ): Refinement<ValueFunctionInvocation, NativeValueReturnEffect> {
+        when (val allowed = permit()) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return allowed
+        }
+        val caller =
+            when (val value = projection.subject(scope, enclosing)) {
+                is IntellijRelationSubjectLookup.Found -> value
+                is IntellijRelationSubjectLookup.Rejected -> return returnRejected()
+            }
+        val call = caller.declaration.exactValueElement(range).asCallbackCall() ?: return returnRejected()
+        val execution =
+            when (
+                val value =
+                    nativeValueExecutionOwner(
+                        element = call.valueInvocationExpression(),
+                        host = caller.declaration,
+                        enclosing = enclosing,
+                        scope = scope,
+                        observation = projection.observation,
+                    )
+            ) {
+                is Refinement.Refined -> value.value.owner
+                is Refinement.Rejected -> return returnRejected()
+            }
+        val callable =
+            when (val value = nativeBuiltinCallable(call, projection.observation)) {
+                is Refinement.Refined -> value.value
+                is Refinement.Rejected -> return returnRejected()
+            }
+        val fresh =
+            when (val value = nativeFunctionInvocation(call, callable, execution)) {
+                is Refinement.Refined -> value.value
+                is Refinement.Rejected -> return Refinement.Rejected(NativeValueReturnEffect.Transfer(value))
+            }
+        return Refinement.Refined(fresh)
+    }
+
+    internal fun callbackBody(): Refinement<NativeCallbackReturnBody, NativeValueReturnEffect> {
+        when (val allowed = permit()) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return allowed
+        }
+        val host =
+            when (val value = projection.subject(scope, request.source.enclosing)) {
+                is IntellijRelationSubjectLookup.Found -> value
+                is IntellijRelationSubjectLookup.Rejected -> return returnRejected()
+            }
+        val literal =
+            host.declaration.exactValueElement(request.source.executionOwner.range) as? KtFunction
+                ?: return returnRejected()
+        when (val value = context.providerSite { literal.containingFile.virtualFile }) {
+            is Refinement.Rejected -> return unavailable(value.failure)
+            is Refinement.Refined ->
+                when (value.value) {
+                    RelationProviderScopeAdmission.ADMITTED -> Unit
+                    RelationProviderScopeAdmission.SOURCE_DOMAIN_EXCLUDED ->
+                        return unavailable(CallbackInvocationFlowCause.OUTSIDE_DOMAIN)
+                    RelationProviderScopeAdmission.LIBRARY_POLICY_EXCLUDED ->
+                        return unavailable(CallbackInvocationFlowCause.EXTERNAL_CALLABLE)
+                    RelationProviderScopeAdmission.UNAVAILABLE -> return returnRejected()
+                }
+        }
+        val body = context.anonymous(literal) ?: return returnRejected()
+        if ((request.source.executionOwner.body as? ValueExecutionBody.Anonymous)?.callable != body)
+            return returnRejected()
+        return Refinement.Refined(NativeCallbackReturnBody(literal, host.evidence, body))
+    }
+
+    private fun permit(): Refinement<Unit, NativeValueReturnEffect> =
+        when (val allowed = context.permit()) {
+            is Refinement.Refined -> allowed
+            is Refinement.Rejected -> unavailable(allowed.failure)
+        }
+
+    private fun expiry(): CallbackExpiryAdmission =
+        if (allowance.elapsedLimitReached(request.budget.resources)) CallbackExpiryAdmission.EXPIRED
+        else CallbackExpiryAdmission.CURRENT
+}
+
+private data class NativeCallbackReturnPreparation(
+    val invocation: ValueFunctionInvocation,
+    val callback: NativeCallbackReturnBody,
+)
+
+internal data class NativeCallbackReturnBody(
+    val literal: KtFunction,
+    val lexicalOwner: CompilerGroundedSymbolEvidence,
+    val body: RelationCallableBody.Anonymous,
+)
+
+private data class NativeCallbackReturnQuestion(val frame: ValueCallFrame, val target: ValueCallbackTarget)
+
+private fun unsupported(cause: ValueFlowUnsupportedCause = ValueFlowUnsupportedCause.UNSUPPORTED_RETURN) =
+    NativeValueReturnEffect.Transfer(Refinement.Rejected(cause))
+
+private fun returnRejected() = Refinement.Rejected(unsupported())
+
+private fun unavailable(cause: CallbackInvocationFlowCause) =
+    Refinement.Rejected(NativeValueReturnEffect.CallbackUnavailable(cause))

@@ -13,6 +13,14 @@ import io.github.amichne.kast.protocol.contract.RelationOmissionSampleRetentionD
 import io.github.amichne.kast.protocol.contract.RelationOmissionSamplesDocument
 import io.github.amichne.kast.protocol.contract.RelationProviderDocument
 import io.github.amichne.kast.protocol.contract.RelationRemediationDocument
+import io.github.amichne.kast.protocol.contract.SourceRangeWireDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.convertEach
+import io.github.amichne.kast.protocol.contract.flatMapConverted
+import io.github.amichne.kast.protocol.contract.mapConverted
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
+import io.github.amichne.kast.protocol.contract.toWireDocumentConversion
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

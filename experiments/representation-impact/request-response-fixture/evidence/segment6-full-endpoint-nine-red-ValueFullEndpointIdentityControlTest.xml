@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest" tests="6" skipped="0" failures="1" errors="0" timestamp="2026-10-20T18:22:09.921Z" hostname="Austins-MacBook-Pro.local" time="0.058">
+  <properties/>
+  <testcase name="a declaration-kind constraint cannot borrow an unrestricted endpoint()" classname="io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest" time="0.017"/>
+  <testcase name="another semantic basis cannot borrow an older full proof()" classname="io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest" time="0.018"/>
+  <testcase name="full equal subject selectors keep fingerprints and all semantic facts(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest" time="0.003">
+    <properties>
+      <property name="before.sourceBytes" value="59032"/>
+      <property name="after.sourceBytes" value="59032"/>
+      <property name="before.stepBytes" value="82318"/>
+      <property name="after.stepBytes" value="82318"/>
+      <property name="before.physicalEndpoints" value="25"/>
+      <property name="after.physicalEndpoints" value="25"/>
+    </properties>
+  </testcase>
+  <testcase name="subject and resolved representations cannot replace one another()" classname="io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest" time="0.009"/>
+  <testcase name="selector restoration rejects a foreign scope under an unchanged fingerprint()" classname="io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest" time="0.003"/>
+  <testcase name="full selector sharing compacts the source without replacing it with a resolved endpoint(TestReporter)" classname="io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest" time="0.005">
+    <properties>
+      <property name="before.sourceBytes" value="59032"/>
+      <property name="after.sourceBytes" value="59032"/>
+      <property name="before.stepBytes" value="82318"/>
+      <property name="after.stepBytes" value="82318"/>
+      <property name="before.physicalEndpoints" value="25"/>
+      <property name="after.physicalEndpoints" value="25"/>
+    </properties>
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Subject(selector=io.github.amichne.kast.symbol.contract.SymbolSelector@5c9ac4cc)&gt; but was: &lt;Subject(selector=io.github.amichne.kast.symbol.contract.SymbolSelector@4df39a88)&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Subject(selector=io.github.amichne.kast.symbol.contract.SymbolSelector@5c9ac4cc)&gt; but was: &lt;Subject(selector=io.github.amichne.kast.symbol.contract.SymbolSelector@4df39a88)&gt;
+	at org.junit.jupiter.api.Assertions.assertSame(Assertions.java:2962)
+	at io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest.full selector sharing compacts the source without replacing it with a resolved endpoint(ValueFullEndpointIdentityControlTest.kt:44)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

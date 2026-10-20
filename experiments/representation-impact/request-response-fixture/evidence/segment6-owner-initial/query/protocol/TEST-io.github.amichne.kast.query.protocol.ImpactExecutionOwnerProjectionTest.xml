@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactExecutionOwnerProjectionTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.766Z" hostname="Austins-MacBook-Pro.local" time="0.004">
+  <properties/>
+  <testcase name="receiver transfers preserve the exact invocation and anonymous owner()" classname="io.github.amichne.kast.query.protocol.ImpactExecutionOwnerProjectionTest" time="0.002"/>
+  <testcase name="foreign or misplaced anonymous bodies fail structural admission()" classname="io.github.amichne.kast.query.protocol.ImpactExecutionOwnerProjectionTest" time="0.001"/>
+  <testcase name="declaration execution is explicit in output and old references keep their declaration meaning()" classname="io.github.amichne.kast.query.protocol.ImpactExecutionOwnerProjectionTest" time="0.001"/>
+  <testcase name="anonymous invocation and result preserve the source body and reject another execution owner()" classname="io.github.amichne.kast.query.protocol.ImpactExecutionOwnerProjectionTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

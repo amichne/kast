@@ -2,6 +2,7 @@ package io.github.amichne.kast.relation.contract
 
 internal fun CallbackInvocationFlowFailure.immutableOwnerFailure(): ImmutableCallbackInvocationFlowFailure =
     when (this) {
+        CallbackInvocationFlowFailure.PROOF_LIMIT_REACHED -> ImmutableCallbackInvocationFlowFailure.PROOF_LIMIT_REACHED
         CallbackInvocationFlowFailure.BASIS_MISMATCH -> ImmutableCallbackInvocationFlowFailure.BASIS_MISMATCH
         CallbackInvocationFlowFailure.DUPLICATE_OWNER_BINDING ->
             ImmutableCallbackInvocationFlowFailure.DUPLICATE_OWNER_BINDING

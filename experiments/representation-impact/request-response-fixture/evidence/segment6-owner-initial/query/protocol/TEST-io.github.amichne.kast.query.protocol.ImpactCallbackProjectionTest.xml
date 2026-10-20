@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactCallbackProjectionTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:26.708Z" hostname="Austins-MacBook-Pro.local" time="0.041">
+  <properties/>
+  <testcase name="qualified callback flow keeps its exact obligation instead of asserting complete execution()" classname="io.github.amichne.kast.query.protocol.ImpactCallbackProjectionTest" time="0.028"/>
+  <testcase name="callback shape rejects another basis body invoke and supplying call()" classname="io.github.amichne.kast.query.protocol.ImpactCallbackProjectionTest" time="0.001"/>
+  <testcase name="native callback entry and matched return keep full function and supplier evidence()" classname="io.github.amichne.kast.query.protocol.ImpactCallbackProjectionTest" time="0.012"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

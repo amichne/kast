@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketSingleListInsertionTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-20T19:26:23.486Z" hostname="Austins-MacBook-Pro.local" time="3.865">
+  <properties/>
+  <testcase name="testSpreadArrayDoesNotUseTheSingleTModel" classname="io.github.amichne.kast.relation.intellij.NativePacketSingleListInsertionTest" time="0.484"/>
+  <testcase name="testSingleTInsertionKeepsTheIndependentlyResolvedFieldSuffix" classname="io.github.amichne.kast.relation.intellij.NativePacketSingleListInsertionTest" time="0.485"/>
+  <testcase name="testSelectedArgumentCannotSupplyTheDistinctConstantSiblingCall" classname="io.github.amichne.kast.relation.intellij.NativePacketSingleListInsertionTest" time="0.439"/>
+  <testcase name="testTwoElementVarargDoesNotUseTheSingleTModel" classname="io.github.amichne.kast.relation.intellij.NativePacketSingleListInsertionTest" time="0.447"/>
+  <testcase name="testActualEchoLibraryArgumentGetsElementZeroInsertion" classname="io.github.amichne.kast.relation.intellij.NativePacketSingleListInsertionTest" time="0.814"/>
+  <testcase name="testOriginalS1EchoDestinationAdmitsItsExactListOfArgumentUnderExclude" classname="io.github.amichne.kast.relation.intellij.NativePacketSingleListInsertionTest" time="0.803"/>
+  <testcase name="testSourceDefinedSameNameDoesNotUseTheLibraryModel" classname="io.github.amichne.kast.relation.intellij.NativePacketSingleListInsertionTest" time="0.392"/>
+  <system-out><![CDATA[SINGLE_LIST_REJECTED method=spread no_reviewed_application=ASSERTED source_flow=NOT_FORBIDDEN
+SINGLE_LIST_FIELD_SUFFIX setup=CONTROLLED_TRACKED_FIELD scalar_or_object_rendering=NOT_ASSERTED
+SINGLE_LIST_SIBLING no_emitted_witness=ASSERTED completion=NOT_ASSERTED
+SINGLE_LIST_REJECTED method=varied no_reviewed_application=ASSERTED source_flow=NOT_FORBIDDEN
+SINGLE_LIST_SUPPLEMENTAL actual_echo_argument=ASSERTED original_seed_route=NOT_ASSERTED
+SINGLE_LIST_ORIGINAL admission=ASSERTED model_application=NOT_RUN original_seed=UNCHANGED
+SINGLE_LIST_REJECTED method=source no_reviewed_application=ASSERTED source_flow=NOT_FORBIDDEN
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

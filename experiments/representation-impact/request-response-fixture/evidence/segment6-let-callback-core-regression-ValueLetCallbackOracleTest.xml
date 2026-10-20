@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueLetCallbackOracleTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-20T16:48:05.738Z" hostname="Austins-MacBook-Pro.local" time="0.014">
+  <properties/>
+  <testcase name="a formal with the same identity cannot erase its changed source scope()" classname="io.github.amichne.kast.relation.contract.ValueLetCallbackOracleTest" time="0.003"/>
+  <testcase name="reviewed callback input and return cannot acquire native source transfer provenance()" classname="io.github.amichne.kast.relation.contract.ValueLetCallbackOracleTest" time="0.005"/>
+  <testcase name="reviewed input enters the actual anonymous formal with exact state and model proof()" classname="io.github.amichne.kast.relation.contract.ValueLetCallbackOracleTest" time="0.001"/>
+  <testcase name="collection selection model cannot establish a scope callback frame()" classname="io.github.amichne.kast.relation.contract.ValueLetCallbackOracleTest" time="0.001"/>
+  <testcase name="reviewed normal return carries the returned path and pops only its matched call()" classname="io.github.amichne.kast.relation.contract.ValueLetCallbackOracleTest" time="0.001"/>
+  <testcase name="a return without the matching top frame cannot reach a reviewed result()" classname="io.github.amichne.kast.relation.contract.ValueLetCallbackOracleTest" time="0.0"/>
+  <testcase name="another argument range cannot establish the actual anonymous callback()" classname="io.github.amichne.kast.relation.contract.ValueLetCallbackOracleTest" time="0.0"/>
+  <testcase name="a return with unchanged body identity cannot erase its changed enclosing proof()" classname="io.github.amichne.kast.relation.contract.ValueLetCallbackOracleTest" time="0.001"/>
+  <testcase name="wrong call and dispatch receiver cannot borrow reviewed callback input()" classname="io.github.amichne.kast.relation.contract.ValueLetCallbackOracleTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

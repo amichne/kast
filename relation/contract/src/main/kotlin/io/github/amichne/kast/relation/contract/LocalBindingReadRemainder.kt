@@ -31,22 +31,16 @@ private constructor(
     val emitted: Set<ValueSiteIdentity>,
 ) {
     val retainedBytes: Long
-        get() = storageBytes(source, consumed.size, emitted.size)
+        get() = localBindingRemainderStorageBytes(this)
 
     companion object {
-        fun storageBytes(source: ValueSite, consumedCount: Int, emittedCount: Int): Long =
-            2048L
-                .addBytes(source.retainedBytes)
-                .addBytes(consumedCount.toLong().multiplyBytes(REFERENCE_KEY_STORAGE_BYTES))
-                .addBytes(emittedCount.toLong().multiplyBytes(source.retainedBytes))
-
         fun admit(
             source: ValueSite,
             boundary: RelationSearchBoundary,
             consumed: Set<LocalReferenceKey>,
             emitted: Set<ValueSiteIdentity>,
         ): Refinement<LocalBindingReadRemainder, ValueFlowStepFailure> {
-            if (source.role != ValueRole.LocalBinding) return Refinement.Rejected(ValueFlowStepFailure.SOURCE_MISMATCH)
+            if (!source.role.hasReferenceReads()) return Refinement.Rejected(ValueFlowStepFailure.SOURCE_MISMATCH)
             if (
                 consumed.any {
                     !source.enclosing.range.contains(it.element) || !it.element.contains(it.reference)
@@ -55,7 +49,7 @@ private constructor(
                 return Refinement.Rejected(ValueFlowStepFailure.SOURCE_MISMATCH)
             if (
                 emitted.any {
-                    it.basis != source.basis || it.owner != source.identity.owner || it.role != ValueRole.LocalRead
+                    !it.matchesReferenceSource(source)
                 }
             )
                 return Refinement.Rejected(ValueFlowStepFailure.BASIS_MISMATCH)
@@ -70,6 +64,18 @@ private constructor(
         }
     }
 }
+
+internal fun ValueRole.hasReferenceReads(): Boolean =
+    this == ValueRole.LocalBinding || (this is ValueRole.Formal && position is ValueFormalPosition.Parameter)
+
+private fun ValueSiteIdentity.matchesReferenceSource(source: ValueSite): Boolean =
+    matchesReferenceIdentity(source) && matchesReferenceState(source)
+
+private fun ValueSiteIdentity.matchesReferenceIdentity(source: ValueSite): Boolean =
+    basis == source.basis && owner == source.identity.owner && role == ValueRole.LocalRead
+
+private fun ValueSiteIdentity.matchesReferenceState(source: ValueSite): Boolean =
+    execution == source.executionOwner.identity && valuePath == source.valuePath && callStack == source.callStack
 
 enum class ValueFlowSuspensionCause {
     WORK_LIMIT_REACHED,
@@ -110,4 +116,3 @@ private fun ExactDeclarationTextRange.contains(other: ExactDeclarationTextRange)
     startInclusive <= other.startInclusive && endExclusive >= other.endExclusive
 
 private const val MAXIMUM_REFERENCE_KIND_LENGTH = 256
-private const val REFERENCE_KEY_STORAGE_BYTES = 1024L

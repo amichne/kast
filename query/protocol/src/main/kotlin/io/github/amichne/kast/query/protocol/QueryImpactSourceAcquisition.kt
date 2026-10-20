@@ -1,7 +1,6 @@
 package io.github.amichne.kast.query.protocol
 
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.AdmittedImpactModelSyntax
 import io.github.amichne.kast.protocol.contract.ImpactBoundaryPositionDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
@@ -19,12 +18,10 @@ import io.github.amichne.kast.query.contract.QueryImpactRetainedGraph
 import io.github.amichne.kast.query.contract.QueryImpactSource
 import io.github.amichne.kast.relation.contract.BoundaryPosition
 import io.github.amichne.kast.relation.contract.RelationBudget
-import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueModelDeclarationRead
-import io.github.amichne.kast.relation.contract.ValueProducerSeed
 import io.github.amichne.kast.relation.contract.ValueProducerSeedCompilerPort
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRead
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRequest
@@ -51,41 +48,10 @@ internal class QueryImpactSourceAcquisition(
     private val currentPositions = mutableListOf<BoundaryPosition>()
     private val sites = mutableMapOf<ImpactValueSiteReferenceDocument, QueryImpactRequestedSite>()
     private val requestedSites = mutableListOf<QueryImpactRequestedSite>()
+    private val requestedSiteStorage = QueryImpactRetainedGraph()
 
-    private suspend fun remaining(position: Int): Refinement<RelationBudget, QueryRunRejection> {
-        val current =
-            when (val observed = authority.remainingReadBudget(budget.resources)) {
-                is Refinement.Refined -> observed.value
-                is Refinement.Rejected ->
-                    return impactFailure(
-                        when (observed.failure) {
-                            ReadReacquisitionBudgetFailure.WORK_LIMIT_REACHED ->
-                                QueryImpactSourceFailureCode.WORK_LIMIT_REACHED
-                            ReadReacquisitionBudgetFailure.TIME_LIMIT_REACHED ->
-                                QueryImpactSourceFailureCode.TIME_LIMIT_REACHED
-                        },
-                        position,
-                    )
-            }
-        val work =
-            when (
-                val admitted =
-                    WorkUnitLimit.parse(
-                        minOf(current.workUnitLimit.value, budget.resources.workUnitLimit.value - examinedWork)
-                    )
-            ) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected ->
-                    return impactFailure(QueryImpactSourceFailureCode.WORK_LIMIT_REACHED, position)
-            }
-        val bytes =
-            when (val admitted = RelationByteLimit.parse(budget.checkpointBytes.value - retainedBytes)) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected ->
-                    return impactFailure(QueryImpactSourceFailureCode.BYTE_LIMIT_REACHED, position)
-            }
-        return Refinement.Refined(RelationBudget(current.copy(workUnitLimit = work), bytes))
-    }
+    private suspend fun remaining(position: Int): Refinement<RelationBudget, QueryRunRejection> =
+        remainingImpactReadBudget(authority, budget, examinedWork, retainedBytes, position)
 
     suspend fun acquireSeeds(seeds: List<QueryImpactProducerDocument>): Refinement<Unit, QueryRunRejection> {
         for ((position, seed) in seeds.withIndex()) when (val admitted = acquireSeed(seed, position)) {
@@ -154,11 +120,11 @@ internal class QueryImpactSourceAcquisition(
             return impactFailure(QueryImpactSourceFailureCode.WORK_RECEIPT_EXCEEDS_GRANT, position)
         examinedWork += observed.examinedWorkUnits.value
         // An adapter cannot substitute a proof admitted against a different seed request.
-        when (val bound = ValueProducerSeed.fromCompiler(request, observed.seed.site, observed.seed.invocation)) {
+        when (val bound = observed.seed.readmit(request)) {
             is Refinement.Refined -> Unit
             is Refinement.Rejected -> return impactFailure(bound.failure.impactFailure(), position)
         }
-        when (val producer = QueryImpactProducer.admit(observed.seed.site, observed.seed.invocation)) {
+        when (val producer = QueryImpactProducer.admit(observed.seed.site, observed.seed.origin)) {
             is Refinement.Refined -> producers += producer.value
             is Refinement.Rejected -> return impactFailure(QueryImpactSourceFailureCode.ROLE_MISMATCH, position)
         }
@@ -240,7 +206,7 @@ internal class QueryImpactSourceAcquisition(
             val site =
                 when (
                     val cached =
-                        peers?.admissions?.singleOrNull { declared.site.matchesSite(it.site) }?.selection
+                        peers?.admissions?.singleOrNull { declared.site.matchesSite(it.site, authority) }?.selection
                             ?: sites[declared.site]
                 ) {
                     null ->
@@ -253,7 +219,7 @@ internal class QueryImpactSourceAcquisition(
                         }
                     else -> cached
                 }
-            when (val admitted = declared.attachToNative(site.site)) {
+            when (val admitted = declared.attachToNative(site.site, authority)) {
                 is Refinement.Refined -> currentPositions += admitted.value
                 is Refinement.Rejected -> return impactFailure(admitted.failure.impactFailure(), position)
             }
@@ -301,13 +267,15 @@ internal class QueryImpactSourceAcquisition(
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return admitted
             }
+        if (!declared.matchesSite(proof.site, authority))
+            return impactFailure(QueryImpactSourceFailureCode.OWNER_MISMATCH, position)
         examinedWork += proof.examinedWorkUnits.value
         retainedBytes =
             saturatingImpactAdmissionCount(
                 retainedBytes,
                 when (origin) {
                     ImpactSiteAdmissionOrigin.BOUNDARY_MODEL -> proof.site.retainedBytes
-                    ImpactSiteAdmissionOrigin.REQUESTED_SITE -> QueryImpactRetainedGraph().site(proof.site)
+                    ImpactSiteAdmissionOrigin.REQUESTED_SITE -> requestedSiteStorage.site(proof.site)
                     ImpactSiteAdmissionOrigin.PEER_BOUNDARY -> QueryImpactRetainedGraph().requestedSite(proof)
                 },
             )
@@ -321,6 +289,7 @@ internal class QueryImpactSourceAcquisition(
         flow: QueryImpactFlowDocument,
     ): Refinement<QueryImpactSourceAdmission, QueryRunRejection> =
         bindImpactSourceModels(
+            authority,
             ImpactSourceModelEvidence(
                 producers.toList(),
                 current.toList(),

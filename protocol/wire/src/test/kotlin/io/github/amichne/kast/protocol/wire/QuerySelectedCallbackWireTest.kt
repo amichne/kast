@@ -15,6 +15,9 @@ import io.github.amichne.kast.protocol.contract.QueryCallbackSupplierSelectionDo
 import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackUseDocument
 import io.github.amichne.kast.protocol.contract.QueryImmutableCallbackValueDocument
 import io.github.amichne.kast.protocol.contract.SourceRangeDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals

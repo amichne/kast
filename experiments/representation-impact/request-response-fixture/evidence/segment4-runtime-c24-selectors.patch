@@ -1,0 +1,17 @@
+--- a/runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketCompositeQueryTest.kt
++++ b/runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketCompositeQueryTest.kt
+@@ -36,6 +36,14 @@
+         NativePacketCompositeQuerySuccessOracle(facts).assertForbiddenWitnesses(capture(fixture, facts))
+     }
+ 
++    fun testOriginalS2ClientErrorRowC24KeepsExactSourceFieldsAndErrorGuard() = runBlocking {
++        prepare().assertClientErrorC24Required()
++    }
++
++    fun testOriginalS2ClientErrorRowC24ForbidsDebugMessageAndSuccessWitnesses() = runBlocking {
++        prepare().assertClientErrorC24Forbidden()
++    }
++
+     private fun prepare(): NativePacketCompositeQueryCase {
+         lateinit var sdk: Sdk
+         ApplicationManager.getApplication().invokeAndWait {

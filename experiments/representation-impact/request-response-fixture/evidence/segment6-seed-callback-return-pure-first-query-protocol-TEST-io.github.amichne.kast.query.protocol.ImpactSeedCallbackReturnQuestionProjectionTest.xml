@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactSeedCallbackReturnQuestionProjectionTest" tests="2" skipped="0" failures="2" errors="0" timestamp="2026-10-20T19:54:38.500Z" hostname="Austins-MacBook-Pro.local" time="0.023">
+  <properties/>
+  <testcase name="an explicit empty return question keeps the qualified flow without proving completion()" classname="io.github.amichne.kast.query.protocol.ImpactSeedCallbackReturnQuestionProjectionTest" time="0.02">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=UNRESOLVED_OBLIGATIONS)&gt; but was: &lt;Rejected(failure=DOMAIN_MISMATCH)&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=UNRESOLVED_OBLIGATIONS)&gt; but was: &lt;Rejected(failure=DOMAIN_MISMATCH)&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.query.protocol.ImpactSeedCallbackReturnQuestionProjectionTest.assertUnresolved(ImpactSeedCallbackReturnQuestionProjectionTest.kt:101)
+	at io.github.amichne.kast.query.protocol.ImpactSeedCallbackReturnQuestionProjectionTest.an explicit empty return question keeps the qualified flow without proving completion(ImpactSeedCallbackReturnQuestionProjectionTest.kt:53)
+</failure>
+  </testcase>
+  <testcase name="an empty return keeps unavailable and rejected proof limits as finite diagnostics()" classname="io.github.amichne.kast.query.protocol.ImpactSeedCallbackReturnQuestionProjectionTest" time="0.003">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=UNRESOLVED_OBLIGATIONS)&gt; but was: &lt;Rejected(failure=DOMAIN_MISMATCH)&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;Rejected(failure=UNRESOLVED_OBLIGATIONS)&gt; but was: &lt;Rejected(failure=DOMAIN_MISMATCH)&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.query.protocol.ImpactSeedCallbackReturnQuestionProjectionTest.assertUnresolved(ImpactSeedCallbackReturnQuestionProjectionTest.kt:101)
+	at io.github.amichne.kast.query.protocol.ImpactSeedCallbackReturnQuestionProjectionTest.an empty return keeps unavailable and rejected proof limits as finite diagnostics(ImpactSeedCallbackReturnQuestionProjectionTest.kt:82)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

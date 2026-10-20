@@ -38,6 +38,16 @@ class RelationPreparationAccountingTest {
     }
 
     @Test
+    fun `a nested producer keeps the original elapsed origin`() {
+        val now = 1_000_000L
+        val original = IntellijRelationAllowance(startedAt = 0L, clockNanoseconds = { now })
+        val fresh = IntellijRelationAllowance { now }
+        assertEquals(CallbackWorkAdmission.TIME_LIMIT_REACHED, original.admitCallbackWork(budget))
+        assertEquals(0L, original.examined)
+        assertEquals(CallbackWorkAdmission.READY, fresh.admitCallbackWork(budget))
+    }
+
+    @Test
     fun `read retry receives remaining work and never resets preparation allowance`() {
         val allowance = IntellijRelationAllowance { 0L }
         allowance.chargePreparation((RelationWorkCount.parse(3) as Refinement.Refined).value)

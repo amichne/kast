@@ -30,7 +30,16 @@ import io.github.amichne.kast.protocol.contract.SourceTextByteLimitDocument
 import io.github.amichne.kast.protocol.contract.SourceTextProjectionDocument
 import io.github.amichne.kast.protocol.contract.SourceTextWithheldReasonDocument
 import io.github.amichne.kast.protocol.contract.SourceUnresolvedReasonDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.combineConverted
+import io.github.amichne.kast.protocol.contract.convertEach
+import io.github.amichne.kast.protocol.contract.flatMapConverted
+import io.github.amichne.kast.protocol.contract.flattenConverted
+import io.github.amichne.kast.protocol.contract.mapConverted
 import io.github.amichne.kast.protocol.contract.reason
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
+import io.github.amichne.kast.protocol.contract.toWireDocumentConversion
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement

@@ -4,10 +4,21 @@ package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.CompilerCallableSignatureDocument
+import io.github.amichne.kast.protocol.contract.CompilerReceiverWireDocument
 import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
+import io.github.amichne.kast.protocol.contract.CompilerSignatureWireDocument
 import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
+import io.github.amichne.kast.protocol.contract.LocalDeclarationAddressWireDocument
+import io.github.amichne.kast.protocol.contract.LocalDeclarationFileWireDocument
+import io.github.amichne.kast.protocol.contract.LocalDeclarationKindWireDocument
 import io.github.amichne.kast.protocol.contract.LocalPropertyMutabilityDocument
+import io.github.amichne.kast.protocol.contract.LocalPropertyMutabilityWireDocument
 import io.github.amichne.kast.protocol.contract.ProtocolStringConstraint
+import io.github.amichne.kast.protocol.contract.SourceRangeWireDocument
+import io.github.amichne.kast.protocol.contract.SymbolKindWireDocument
+import io.github.amichne.kast.protocol.contract.WireDocumentConversion
+import io.github.amichne.kast.protocol.contract.toContract
+import io.github.amichne.kast.protocol.contract.toWireDocument
 import io.github.amichne.kast.protocol.wire.presentation.CompilerSignatureCliDocument
 import io.github.amichne.kast.protocol.wire.presentation.LocalDeclarationAddressCliDocument
 import io.github.amichne.kast.protocol.wire.presentation.toCliDocument

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactCallbackUnavailableShapeTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T06:17:51.468Z" hostname="Austins-MacBook-Pro.local" time="0.001">
+  <properties/>
+  <testcase name="return refusal needs an actual callback frame()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackUnavailableShapeTest" time="0.0"/>
+  <testcase name="raw contract failure rejects a contradictory outer cause()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackUnavailableShapeTest" time="0.0"/>
+  <testcase name="raw callback refusal rejects a contradictory outer cause()" classname="io.github.amichne.kast.protocol.contract.ImpactCallbackUnavailableShapeTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactImplementationTargetProjectionTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T02:55:10.494Z" hostname="Austins-MacBook-Pro.local" time="0.176">
+  <properties/>
+  <testcase name="zero-fact incomplete dispatch remains evidence on its unresolved path()" classname="io.github.amichne.kast.query.protocol.ImpactImplementationTargetProjectionTest" time="0.134"/>
+  <testcase name="incomplete implementation coverage keeps its limit instead of claiming exhaustion()" classname="io.github.amichne.kast.query.protocol.ImpactImplementationTargetProjectionTest" time="0.019"/>
+  <testcase name="implementation frame preserves the static call all targets and imported source owner()" classname="io.github.amichne.kast.query.protocol.ImpactImplementationTargetProjectionTest" time="0.004"/>
+  <testcase name="fresh work observations preserve matched return identity without erasing either observation()" classname="io.github.amichne.kast.query.protocol.ImpactImplementationTargetProjectionTest" time="0.011"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

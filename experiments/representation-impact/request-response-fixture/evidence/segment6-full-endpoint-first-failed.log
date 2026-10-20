@@ -1,0 +1,102 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Calculating task graph as no cached configuration is available for tasks: :relation:contract:spotlessKotlinApply :relation:contract:test --tests *ValueFullEndpoint* --tests *ValueReviewedEvidenceSharingTest --tests *ValueReviewedReturnSharingTest
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :relation:contract:spotlessKotlin
+> Task :relation:contract:spotlessKotlinApply
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :kernel:compileJava NO-SOURCE
+> Task :relation:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+> Task :relation:contract:compileKotlin
+> Task :relation:contract:compileJava NO-SOURCE
+> Task :relation:contract:processResources NO-SOURCE
+> Task :relation:contract:classes UP-TO-DATE
+> Task :relation:contract:jar
+> Task :kernel:processResources NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar UP-TO-DATE
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesKotlin UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesJava NO-SOURCE
+> Task :relation:contract:compileTestKotlin
+> Task :relation:contract:compileTestJava NO-SOURCE
+> Task :relation:contract:processTestResources NO-SOURCE
+> Task :relation:contract:testClasses UP-TO-DATE
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :workspace:contract:processTestFixturesResources NO-SOURCE
+> Task :workspace:contract:testFixturesClasses UP-TO-DATE
+> Task :workspace:contract:testFixturesJar UP-TO-DATE
+
+> Task :relation:contract:test FAILED
+
+ValueFullEndpointIdentityControlTest > full selector sharing compacts the source without replacing it with a resolved endpoint(TestReporter) FAILED
+    org.opentest4j.AssertionFailedError: expected: <Subject(selector=io.github.amichne.kast.symbol.contract.SymbolSelector@6b667cb3)> but was: <Subject(selector=io.github.amichne.kast.symbol.contract.SymbolSelector@6f38a289)>
+        at app//org.junit.jupiter.api.Assertions.assertSame(Assertions.java:2962)
+        at app//io.github.amichne.kast.relation.contract.ValueFullEndpointIdentityControlTest.full selector sharing compacts the source without replacing it with a resolved endpoint(ValueFullEndpointIdentityControlTest.kt:44)
+
+ValueFullEndpointSharingTest > full admitted endpoint sharing compacts the source before its next native read(TestReporter) FAILED
+    org.opentest4j.AssertionFailedError: expected: io.github.amichne.kast.relation.contract.RelationEndpoint$Resolved@270b6b5e<Resolved(lease=SemanticReadLease(workspaceRoot=CanonicalWorkspaceRoot(value=/fixture), generation=EvidenceGeneration(value=1)), scope=Workspace(sourceKinds=PRODUCTION_AND_TEST, generatedSources=EXCLUDE, libraries=EXCLUDE), constraints=SymbolDiscoveryConstraints(directory=null, packageName=null, declarationKinds=null, sourceSets=All), evidence=CompilerGroundedSymbolEvidence(file=Workspace(path=CanonicalWorkspaceFilePath(value=/fixture/SourceFlow.kt)), range=ExactDeclarationTextRange(startInclusive=0, endExclusive=200), name=SymbolDiscoveryCandidateName(value=host), qualifiedIdentity=Available(value=fixture.host), kind=FUNCTION, signature=Function(qualifiedIdentity=CanonicalCompilerQualifiedIdentity(value=fixture.host), receiver=Absent, contextReceivers=[], valueParameters=[CanonicalCompilerType(value=String)], typeParameterCount=CanonicalTypeParameterCount(value=0)), compilerIdentity=CompilerSymbolIdentity(value=canonical-signature-sha256-v1|6d7561e4fed569d69a184984945eeae02aa7e9c62d16ded82b05e7d46fe61422)), fingerprint=RelationEndpointFingerprint(value=57e7d4c1a9efabff31fde1b166817124f692eff72cdd9c40554e63949cd33e8d))> but was: io.github.amichne.kast.relation.contract.RelationEndpoint$Resolved@64b7225f<Resolved(lease=SemanticReadLease(workspaceRoot=CanonicalWorkspaceRoot(value=/fixture), generation=EvidenceGeneration(value=1)), scope=Workspace(sourceKinds=PRODUCTION_AND_TEST, generatedSources=EXCLUDE, libraries=EXCLUDE), constraints=SymbolDiscoveryConstraints(directory=null, packageName=null, declarationKinds=null, sourceSets=All), evidence=CompilerGroundedSymbolEvidence(file=Workspace(path=CanonicalWorkspaceFilePath(value=/fixture/SourceFlow.kt)), range=ExactDeclarationTextRange(startInclusive=0, endExclusive=200), name=SymbolDiscoveryCandidateName(value=host), qualifiedIdentity=Available(value=fixture.host), kind=FUNCTION, signature=Function(qualifiedIdentity=CanonicalCompilerQualifiedIdentity(value=fixture.host), receiver=Absent, contextReceivers=[], valueParameters=[CanonicalCompilerType(value=String)], typeParameterCount=CanonicalTypeParameterCount(value=0)), compilerIdentity=CompilerSymbolIdentity(value=canonical-signature-sha256-v1|6d7561e4fed569d69a184984945eeae02aa7e9c62d16ded82b05e7d46fe61422)), fingerprint=RelationEndpointFingerprint(value=57e7d4c1a9efabff31fde1b166817124f692eff72cdd9c40554e63949cd33e8d))>
+        at app//org.junit.jupiter.api.Assertions.assertSame(Assertions.java:2962)
+        at app//io.github.amichne.kast.relation.contract.ValueFullEndpointSharingTest.full admitted endpoint sharing compacts the source before its next native read(ValueFullEndpointSharingTest.kt:34)
+
+ValueReviewedEvidenceSharingTest > let sharing conserves semantic proof qualifications and native receipts(TestReporter) FAILED
+    org.opentest4j.AssertionFailedError: expected: io.github.amichne.kast.relation.contract.RelationEndpoint$Resolved@ffaaaf0<Resolved(lease=SemanticReadLease(workspaceRoot=CanonicalWorkspaceRoot(value=/fixture), generation=EvidenceGeneration(value=1)), scope=Workspace(sourceKinds=PRODUCTION_AND_TEST, generatedSources=EXCLUDE, libraries=INCLUDE), constraints=SymbolDiscoveryConstraints(directory=null, packageName=null, declarationKinds=null, sourceSets=All), evidence=CompilerGroundedSymbolEvidence(file=External(url=DetachedVirtualFileUrl(value=jar:///fixture/kotlin-stdlib.jar!/kotlin/StandardKt.class)), range=ExactDeclarationTextRange(startInclusive=100, endExclusive=200), name=SymbolDiscoveryCandidateName(value=let), qualifiedIdentity=Available(value=kotlin.let), kind=FUNCTION, signature=Function(qualifiedIdentity=CanonicalCompilerQualifiedIdentity(value=kotlin.let), receiver=Present(type=CanonicalCompilerType(value=T)), contextReceivers=[], valueParameters=[CanonicalCompilerType(value=(T)->R)], typeParameterCount=CanonicalTypeParameterCount(value=2)), compilerIdentity=CompilerSymbolIdentity(value=canonical-signature-sha256-v1|d12d0d42b868138e78b9b24e3907080880bee5a8abf481fa59fb476b40c1a673)), fingerprint=RelationEndpointFingerprint(value=a17370dcab1cd9695364536e49cb184aa1ef3fe8870fd708a86e97a5a3af6655))> but was: io.github.amichne.kast.relation.contract.RelationEndpoint$Resolved@3b9632d1<Resolved(lease=SemanticReadLease(workspaceRoot=CanonicalWorkspaceRoot(value=/fixture), generation=EvidenceGeneration(value=1)), scope=Workspace(sourceKinds=PRODUCTION_AND_TEST, generatedSources=EXCLUDE, libraries=INCLUDE), constraints=SymbolDiscoveryConstraints(directory=null, packageName=null, declarationKinds=null, sourceSets=All), evidence=CompilerGroundedSymbolEvidence(file=External(url=DetachedVirtualFileUrl(value=jar:///fixture/kotlin-stdlib.jar!/kotlin/StandardKt.class)), range=ExactDeclarationTextRange(startInclusive=100, endExclusive=200), name=SymbolDiscoveryCandidateName(value=let), qualifiedIdentity=Available(value=kotlin.let), kind=FUNCTION, signature=Function(qualifiedIdentity=CanonicalCompilerQualifiedIdentity(value=kotlin.let), receiver=Present(type=CanonicalCompilerType(value=T)), contextReceivers=[], valueParameters=[CanonicalCompilerType(value=(T)->R)], typeParameterCount=CanonicalTypeParameterCount(value=2)), compilerIdentity=CompilerSymbolIdentity(value=canonical-signature-sha256-v1|d12d0d42b868138e78b9b24e3907080880bee5a8abf481fa59fb476b40c1a673)), fingerprint=RelationEndpointFingerprint(value=a17370dcab1cd9695364536e49cb184aa1ef3fe8870fd708a86e97a5a3af6655))>
+        at app//org.junit.jupiter.api.Assertions.assertSame(Assertions.java:2962)
+        at app//io.github.amichne.kast.relation.contract.ValueReviewedEvidenceSharingTest.characterize(ValueReviewedEvidenceSharingTest.kt:85)
+        at app//io.github.amichne.kast.relation.contract.ValueReviewedEvidenceSharingTest.let sharing conserves semantic proof qualifications and native receipts(ValueReviewedEvidenceSharingTest.kt:16)
+
+ValueReviewedEvidenceSharingTest > let sharing keeps one physical source and complete callable proof(TestReporter) FAILED
+    org.opentest4j.AssertionFailedError: expected: io.github.amichne.kast.relation.contract.RelationEndpoint$Resolved@fabb651<Resolved(lease=SemanticReadLease(workspaceRoot=CanonicalWorkspaceRoot(value=/fixture), generation=EvidenceGeneration(value=1)), scope=Workspace(sourceKinds=PRODUCTION_AND_TEST, generatedSources=EXCLUDE, libraries=INCLUDE), constraints=SymbolDiscoveryConstraints(directory=null, packageName=null, declarationKinds=null, sourceSets=All), evidence=CompilerGroundedSymbolEvidence(file=External(url=DetachedVirtualFileUrl(value=jar:///fixture/kotlin-stdlib.jar!/kotlin/StandardKt.class)), range=ExactDeclarationTextRange(startInclusive=100, endExclusive=200), name=SymbolDiscoveryCandidateName(value=let), qualifiedIdentity=Available(value=kotlin.let), kind=FUNCTION, signature=Function(qualifiedIdentity=CanonicalCompilerQualifiedIdentity(value=kotlin.let), receiver=Present(type=CanonicalCompilerType(value=T)), contextReceivers=[], valueParameters=[CanonicalCompilerType(value=(T)->R)], typeParameterCount=CanonicalTypeParameterCount(value=2)), compilerIdentity=CompilerSymbolIdentity(value=canonical-signature-sha256-v1|d12d0d42b868138e78b9b24e3907080880bee5a8abf481fa59fb476b40c1a673)), fingerprint=RelationEndpointFingerprint(value=a17370dcab1cd9695364536e49cb184aa1ef3fe8870fd708a86e97a5a3af6655))> but was: io.github.amichne.kast.relation.contract.RelationEndpoint$Resolved@7479b626<Resolved(lease=SemanticReadLease(workspaceRoot=CanonicalWorkspaceRoot(value=/fixture), generation=EvidenceGeneration(value=1)), scope=Workspace(sourceKinds=PRODUCTION_AND_TEST, generatedSources=EXCLUDE, libraries=INCLUDE), constraints=SymbolDiscoveryConstraints(directory=null, packageName=null, declarationKinds=null, sourceSets=All), evidence=CompilerGroundedSymbolEvidence(file=External(url=DetachedVirtualFileUrl(value=jar:///fixture/kotlin-stdlib.jar!/kotlin/StandardKt.class)), range=ExactDeclarationTextRange(startInclusive=100, endExclusive=200), name=SymbolDiscoveryCandidateName(value=let), qualifiedIdentity=Available(value=kotlin.let), kind=FUNCTION, signature=Function(qualifiedIdentity=CanonicalCompilerQualifiedIdentity(value=kotlin.let), receiver=Present(type=CanonicalCompilerType(value=T)), contextReceivers=[], valueParameters=[CanonicalCompilerType(value=(T)->R)], typeParameterCount=CanonicalTypeParameterCount(value=2)), compilerIdentity=CompilerSymbolIdentity(value=canonical-signature-sha256-v1|d12d0d42b868138e78b9b24e3907080880bee5a8abf481fa59fb476b40c1a673)), fingerprint=RelationEndpointFingerprint(value=a17370dcab1cd9695364536e49cb184aa1ef3fe8870fd708a86e97a5a3af6655))>
+        at app//org.junit.jupiter.api.Assertions.assertSame(Assertions.java:2962)
+        at app//io.github.amichne.kast.relation.contract.ValueReviewedEvidenceSharingTest.assertCoherent(ValueReviewedEvidenceSharingTest.kt:126)
+        at app//io.github.amichne.kast.relation.contract.ValueReviewedEvidenceSharingTest.let sharing keeps one physical source and complete callable proof(ValueReviewedEvidenceSharingTest.kt:66)
+
+16 tests completed, 4 failed
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-20-14-25-20-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':relation:contract:test'.
+> There were failing tests. See the report at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/relation/contract/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 16s
+24 actionable tasks: 6 executed, 18 up-to-date
+Configuration cache entry stored.

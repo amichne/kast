@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketReviewedReceiverAdmissionTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T16:35:53.142Z" hostname="Austins-MacBook-Pro.local" time="1.26">
+  <properties/>
+  <testcase name="testExcludedUnreviewedFirstKeepsTheActualExternalCallRefusal" classname="io.github.amichne.kast.relation.intellij.NativePacketReviewedReceiverAdmissionTest" time="0.497"/>
+  <testcase name="testOriginalExcludedFirstOrNullAdmitsOnlyItsExactReviewedReceiver" classname="io.github.amichne.kast.relation.intellij.NativePacketReviewedReceiverAdmissionTest" time="0.763"/>
+  <system-out><![CDATA[DESTRUCTURING_SYNTAX declaration=ExactDeclarationTextRange(startInclusive=801, endExclusive=917) entry=ExactDeclarationTextRange(startInclusive=806, endExclusive=814) initializer=ExactDeclarationTextRange(startInclusive=818, endExclusive=917)
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.RetainedModeledValueOracleTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T16:54:40.868Z" hostname="Austins-MacBook-Pro.local" time="0.251">
+  <properties/>
+  <testcase name="automatic application proof survives linked retained paths findings history and native witnesses()" classname="io.github.amichne.kast.query.protocol.RetainedModeledValueOracleTest" time="0.244"/>
+  <testcase name="retained ledger cannot substitute another actual binding or selected call()" classname="io.github.amichne.kast.query.protocol.RetainedModeledValueOracleTest" time="0.007"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

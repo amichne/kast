@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.QueryImpactPeerSelectionTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:28.377Z" hostname="Austins-MacBook-Pro.local" time="0.003">
+  <properties/>
+  <testcase name="only exact foreign continuation target declarations leave source admission()" classname="io.github.amichne.kast.query.protocol.QueryImpactPeerSelectionTest" time="0.001"/>
+  <testcase name="peer target requires its exact declaration inventory()" classname="io.github.amichne.kast.query.protocol.QueryImpactPeerSelectionTest" time="0.0"/>
+  <testcase name="peer token cannot also serve a producer or source declaration()" classname="io.github.amichne.kast.query.protocol.QueryImpactPeerSelectionTest" time="0.001"/>
+  <testcase name="same root changed epoch cannot masquerade as an independent peer()" classname="io.github.amichne.kast.query.protocol.QueryImpactPeerSelectionTest" time="0.0"/>
+  <testcase name="unrelated foreign declaration is excluded before any native acquisition()" classname="io.github.amichne.kast.query.protocol.QueryImpactPeerSelectionTest" time="0.0"/>
+  <testcase name="all local boundary rules need no peer effect()" classname="io.github.amichne.kast.query.protocol.QueryImpactPeerSelectionTest" time="0.001"/>
+  <testcase name="foreign source and independently requested sites remain forbidden()" classname="io.github.amichne.kast.query.protocol.QueryImpactPeerSelectionTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

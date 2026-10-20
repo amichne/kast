@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.contract.QueryImpactBranchLedgerTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T14:11:17.663Z" hostname="Austins-MacBook-Pro.local" time="0.003">
+  <properties/>
+  <testcase name="branch provenance and finally obligations survive ledger composition and cannot disappear from paths()" classname="io.github.amichne.kast.query.contract.QueryImpactBranchLedgerTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

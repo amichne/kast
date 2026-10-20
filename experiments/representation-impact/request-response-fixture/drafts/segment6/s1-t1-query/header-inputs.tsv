@@ -1,0 +1,7 @@
+source	start	end	meaning
+OffersClient.kt	821	841	request.sessionToken projection
+OffersClient.kt	1238	1253	constant Authorization key
+OffersClient.kt	1257	1279	Bearer value template
+OffersClient.kt	1266	1278	actual token reference in value template
+OffersClient.kt	1238	1279	exact infix kotlin.to invocation
+OffersClient.kt	1232	1280	exact single-pair kotlin.collections.mapOf invocation

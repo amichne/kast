@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.ValueFlowPhysicalStorageTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-20T07:11:13.510Z" hostname="Austins-MacBook-Pro.local" time="0.071">
+  <properties/>
+  <testcase name="a new target keeps its header and references to four shared payloads()" classname="io.github.amichne.kast.relation.contract.ValueFlowPhysicalStorageTest" time="0.052"/>
+  <testcase name="a detached equal source keeps its distinct header with shared payload references()" classname="io.github.amichne.kast.relation.contract.ValueFlowPhysicalStorageTest" time="0.003"/>
+  <testcase name="equal distinct direct frames keep their records while shared frames cost a reference()" classname="io.github.amichne.kast.relation.contract.ValueFlowPhysicalStorageTest" time="0.002"/>
+  <testcase name="equal distinct predicates keep their record and reference to the exact tested value()" classname="io.github.amichne.kast.relation.contract.ValueFlowPhysicalStorageTest" time="0.002"/>
+  <testcase name="equal distinct path segments keep their records while shared segments cost a reference()" classname="io.github.amichne.kast.relation.contract.ValueFlowPhysicalStorageTest" time="0.002"/>
+  <testcase name="equal distinct endpoints keep the full endpoint allowance()" classname="io.github.amichne.kast.relation.contract.ValueFlowPhysicalStorageTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
