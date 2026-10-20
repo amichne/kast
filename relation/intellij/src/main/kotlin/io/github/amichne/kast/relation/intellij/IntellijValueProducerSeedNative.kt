@@ -144,11 +144,13 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
             val resolved =
                 expression.call.resolveCall()
                     ?: return@observedAnalyze Refinement.Rejected(ValueProducerSeedRejection.UNRESOLVED_INVOCATION)
-            val symbol = resolved.signature.symbol
-            if (symbol !is KaNamedFunctionSymbol && symbol !is KaConstructorSymbol)
-                return@observedAnalyze Refinement.Rejected(ValueProducerSeedRejection.UNSUPPORTED_INVOCATION)
             val declaration =
-                symbol.psi as? PsiNamedElement
+                when (val symbol = resolved.signature.symbol) {
+                    is KaNamedFunctionSymbol -> symbol.psi
+                    is KaConstructorSymbol -> symbol.psi
+                    else -> null
+                }
+                    as? PsiNamedElement
                     ?: return@observedAnalyze Refinement.Rejected(ValueProducerSeedRejection.UNSUPPORTED_INVOCATION)
             if (declaration !== callable.owner)
                 return@observedAnalyze Refinement.Rejected(ValueProducerSeedRejection.CALLABLE_MISMATCH)
