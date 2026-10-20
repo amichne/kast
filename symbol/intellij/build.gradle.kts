@@ -1,5 +1,6 @@
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import support.tasks.nativefixtures.NativeFixtureJvmArguments
+import support.tasks.nativefixtures.SharedNativeFixtureIdea
 
 plugins {
     id("kast.kotlin-library")
@@ -106,15 +107,11 @@ nativeTest.runtimeClasspath += sourceSets.main.get().output
 kotlin.target.compilations.getByName("nativeTest").associateWith(kotlin.target.compilations.getByName("main"))
 
 val nativeFixtureIdeaHome = providers.gradleProperty("nativeFixtureIdeaHome")
-val nativeIdeaHome =
-    objects.directoryProperty().apply {
-        if (nativeFixtureIdeaHome.isPresent) set(project.file(nativeFixtureIdeaHome.get()))
-        else set(layout.buildDirectory.dir("native-test/idea"))
-    }
+val nativeFixtureIdea = SharedNativeFixtureIdea.select(project)
+val nativeIdeaHome = nativeFixtureIdea.home
 val extractNativeTestIdea =
-    tasks.register<Sync>("extractNativeTestIdea") {
-        from({ zipTree(symbolIdeaDistribution.singleFile) })
-        into(layout.buildDirectory.dir("native-test/idea"))
+    tasks.register("extractNativeTestIdea") {
+        dependsOn(nativeFixtureIdea.contents)
     }
 val nativeIdeaLibraries =
     files(
@@ -165,7 +162,7 @@ fun registerSymbolNativeFixtures(taskName: String, selectedClasses: List<String>
         maxParallelForks = 1
         jvmArgumentProviders.add(
             objects.newInstance<NativeFixtureJvmArguments>().apply {
-                productInfo.set(nativeIdeaHome.file("product-info.json"))
+                productInfo.set(nativeIdeaHome.map { it.file("product-info.json") })
                 pinnedBuild.set(ideaPlatformBuild)
                 osName.set(providers.systemProperty("os.name"))
             }
