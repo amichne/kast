@@ -10,17 +10,33 @@ A public `RUN` answers one fixed source question. Its output can span several re
 Execution and delivery have distinct limits because a complete answer can exceed one response's byte allowance.
 
 ```mermaid
-%%{init: {"flowchart": {"rankSpacing": 25, "nodeSpacing": 20, "padding": 10}}}%%
+%%{init: {"flowchart": {"rankSpacing": 28, "nodeSpacing": 16, "padding": 12, "curve": "basis"}}}%%
 flowchart TD
-  Q["Question and current workspace authority"] --> S["Source and ordered stages"]
-  S --> P{"Proof met?"}
-  P -->|Yes| A["Complete answer"]
-  P -->|No| R["Typed rejection and available evidence"]
-  A --> D["Fit and publish output"]
+  Q["Admitted question<br/>source, scope, and grant"] --> W["Prepare exact workspace<br/>join its current operation"]
+  W --> L["Acquire semantic lane<br/>bind current read authority"]
+  L --> S["Resolve exact source<br/>advance semantic tasks"]
+  S --> P{"Completion proof met?"}
+  P -->|Yes| A(["Complete answer"])
+  P -->|No| R["Typed rejection<br/>available evidence"]
+  A --> D["Fit and publish<br/>produced output"]
   R --> D
+  D --> O["READ_RESULT or output RESUME<br/>no semantic replay"]
+  classDef default fill:#f1f3f5,stroke:#929dab,color:#243242
+  classDef proof fill:#eaf0ff,stroke:#607bdb,color:#182a57
+  classDef stop fill:#fae8e5,stroke:#bc6258,color:#622e28
+  classDef result fill:#e5f5ee,stroke:#278160,color:#123d30
+  class L proof
+  class R stop
+  class A result
 ```
 
 Preparation proves readiness for the exact root. Each semantic read still needs current authority. [Topology](/architecture/topology) locates these owners.
+
+The diagram shows the path after workspace and lane admission succeed. Preparation or admission can reject before semantic tasks start.
+
+The interpreter keeps each operation's meaning. Direct relations read one named relationship. `TRACE` uses fixed phases, `WALK` tracks a frontier, and `IMPACT` keeps value routes.
+
+Output actions need an issued retained-result reference or output continuation. A reply without that handle does not permit the corresponding read.
 
 ## One question and one execution grant
 
@@ -53,13 +69,22 @@ The row count does not count semantic work left to do. A small result also does 
 Before a producer advances, acquisition reserves replay space and claims its token. A concurrent acquisition of that unfinished token reports `InUse`.
 
 ```mermaid
-stateDiagram-v2
-  Ready --> Running: Acquire claim and reserve space
-  Running --> PrivatePage: Produce page and staged successor
-  PrivatePage --> Published: Commit page and reachable successor
-  Published --> Published: Replay immutable page
-  Running --> Ready: Cancel and release owned allocations
-  PrivatePage --> Ready: Reject publication and release claim
+%%{init: {"flowchart": {"rankSpacing": 28, "nodeSpacing": 16, "padding": 12, "curve": "basis"}}}%%
+flowchart TD
+  Ready["Ready checkpoint"] --> Running["Claim token<br/>reserve replay space"]
+  Running -.->|Concurrent acquisition| Busy["InUse<br/>existing claim stays owned"]
+  Running --> PrivatePage["Private page<br/>staged successor"]
+  PrivatePage -->|Atomic commit| Published(["Published page<br/>reachable successor"])
+  Published -->|Replay| Published
+  Running -.->|Cancel| Cleanup["Release claim and<br/>try-owned allocations"]
+  PrivatePage -.->|Publication rejected| Cleanup
+  classDef default fill:#f1f3f5,stroke:#929dab,color:#243242
+  classDef proof fill:#eaf0ff,stroke:#607bdb,color:#182a57
+  classDef stop fill:#fae8e5,stroke:#bc6258,color:#622e28
+  classDef result fill:#e5f5ee,stroke:#278160,color:#123d30
+  class Running proof
+  class Busy,Cleanup stop
+  class Published result
 ```
 
 The page and its reachable successor become visible in one store transition. A later read of a published page replays its immutable output.
@@ -93,11 +118,11 @@ If that state is not available, start a new query. It produces a new answer. It 
 
 ## Source evidence
 
-<Accordion title="Dispatch, publication, and proof at 23828e1536">
-  - [`CanonicalQueryProtocol`](https://github.com/amichne/kast/blob/23828e1536835b5cae785b30254ac68059705926/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt) owns public action dispatch.
-  - [`QueryStateStore`](https://github.com/amichne/kast/blob/23828e1536835b5cae785b30254ac68059705926/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt) owns publication and release.
-  - [`QueryStateAcquisition`](https://github.com/amichne/kast/blob/23828e1536835b5cae785b30254ac68059705926/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateAcquisition.kt) owns token acquisition and replay capacity.
-  - [`QueryCheckpointPublicationTest`](https://github.com/amichne/kast/blob/23828e1536835b5cae785b30254ac68059705926/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointPublicationTest.kt) covers replay, concurrent acquisition, cancellation, and private result visibility.
+<Accordion title="Dispatch, publication, and proof at 722ae03fc1">
+  - [`CanonicalQueryProtocol`](https://github.com/amichne/kast/blob/722ae03fc19193f233d380ee95c221c527178767/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt) owns public action dispatch.
+  - [`QueryStateStore`](https://github.com/amichne/kast/blob/722ae03fc19193f233d380ee95c221c527178767/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateStore.kt) owns publication and release.
+  - [`QueryStateAcquisition`](https://github.com/amichne/kast/blob/722ae03fc19193f233d380ee95c221c527178767/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryStateAcquisition.kt) owns token acquisition and replay capacity.
+  - [`QueryCheckpointPublicationTest`](https://github.com/amichne/kast/blob/722ae03fc19193f233d380ee95c221c527178767/query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryCheckpointPublicationTest.kt) covers replay, concurrent acquisition, cancellation, and private result visibility.
 
   [OpenWiki's semantic-query concept](https://github.com/amichne/kast/blob/main/openwiki/flows/semantic-query.md) connects these owners to the interpreter.
 </Accordion>
