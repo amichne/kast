@@ -35,6 +35,44 @@ internal constructor(
             ),
         )
 
+    fun forRequest(
+        question: RelationRequest
+    ): io.github.amichne.kast.kernel.Refinement<
+        CompiledRelationScope,
+        io.github.amichne.kast.relation.contract.RelationCompilerRejection,
+    > =
+        when {
+            question.subject.lease.workspaceRoot != request.subject.lease.workspaceRoot ->
+                io.github.amichne.kast.kernel.Refinement.Rejected(
+                    io.github.amichne.kast.relation.contract.RelationCompilerRejection.WORKSPACE_ROOT_MISMATCH
+                )
+            question.subject.lease != request.subject.lease ->
+                io.github.amichne.kast.kernel.Refinement.Rejected(
+                    io.github.amichne.kast.relation.contract.RelationCompilerRejection.GENERATION_MOVED
+                )
+            question.boundary != request.boundary ||
+                question.searchScope != selectedScope ||
+                question.searchConstraints != constraints ->
+                io.github.amichne.kast.kernel.Refinement.Rejected(
+                    io.github.amichne.kast.relation.contract.RelationCompilerRejection.SCOPE_REJECTED
+                )
+            else ->
+                io.github.amichne.kast.kernel.Refinement.Refined(
+                    CompiledRelationScope(
+                        request = question,
+                        sourceRoots = sourceRoots,
+                        nativeScope = nativeScope,
+                        sourceDomain = sourceDomain,
+                        libraryMembership = libraryMembership,
+                        libraries = libraries,
+                        observation = observation,
+                        fileEnumerationPlan = fileEnumerationPlan,
+                        selectedScope = selectedScope,
+                        constraints = constraints,
+                    )
+                )
+        }
+
     fun prepareFileEnumeration(
         allowance: IntellijRelationAllowance,
         limits: io.github.amichne.kast.kernel.ReadLimits,
@@ -94,11 +132,13 @@ internal constructor(
         }.observed(observation)
 
     /** Captured ownership and selected paths can prove exclusion without native file effects. */
-    fun excludesKnownSource(file: SymbolDiscoveryFileIdentity): Boolean =
+    fun admitKnownSource(file: SymbolDiscoveryFileIdentity): RelationProviderScopeAdmission =
         when (file) {
             is SymbolDiscoveryFileIdentity.Workspace ->
-                sourceDomain.classifyExcluded(IntellijRelationNativePath.Absolute(Path.of(file.path.value))) ==
-                    RelationProviderScopeAdmission.SOURCE_DOMAIN_EXCLUDED
-            is SymbolDiscoveryFileIdentity.External -> false
+                sourceDomain.classifyExcluded(IntellijRelationNativePath.Absolute(Path.of(file.path.value)))
+            is SymbolDiscoveryFileIdentity.External -> RelationProviderScopeAdmission.UNAVAILABLE
         }
+
+    fun excludesKnownSource(file: SymbolDiscoveryFileIdentity): Boolean =
+        admitKnownSource(file) == RelationProviderScopeAdmission.SOURCE_DOMAIN_EXCLUDED
 }

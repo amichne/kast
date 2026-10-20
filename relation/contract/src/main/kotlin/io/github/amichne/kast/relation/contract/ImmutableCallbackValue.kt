@@ -102,6 +102,7 @@ private constructor(
 
 private fun ValueTransfer.admitsImmutableCallbackTransport(): Boolean =
     source.enclosing.valueIdentity == target.enclosing.valueIdentity &&
+        source.executionOwner == target.executionOwner &&
         when (kind) {
             ValueTransferKind.LOCAL_BINDING,
             ValueTransferKind.LOCAL_READ,
@@ -109,6 +110,11 @@ private fun ValueTransfer.admitsImmutableCallbackTransport(): Boolean =
             ValueTransferKind.BRANCH_ALTERNATIVE,
             ValueTransferKind.WRAPPER_RETURN -> true
             ValueTransferKind.RETURN,
+            ValueTransferKind.SOURCE_CALL_ENTRY,
+            ValueTransferKind.SOURCE_CALL_RETURN,
+            ValueTransferKind.FIELD_READ,
+            ValueTransferKind.CONSTRUCTOR_FIELD,
+            ValueTransferKind.RECEIVER,
             ValueTransferKind.PROPERTY_ASSIGNMENT -> false
         }
 

@@ -12,8 +12,8 @@ internal fun ImpactWitnessDocument.hasSourceBasis(basis: ImpactSemanticBasisDocu
         is ImpactWitnessDocument.NativeRead ->
             source.isOnBasis(basis) && domain.subject.basis == basis && receipts.hasSourceBasis(basis)
         is ImpactWitnessDocument.CompilerTransfer ->
-            transfer.source.isOnBasis(basis) && transfer.target.isOnBasis(basis)
-        is ImpactWitnessDocument.FlowObligation -> site.isOnBasis(basis)
+            transfer.admitsEvidence() && transfer.source.isOnBasis(basis) && transfer.target.isOnBasis(basis)
+        is ImpactWitnessDocument.FlowObligation -> site.isOnBasis(basis) && evidence.admitsObligation(site, basis)
         is ImpactWitnessDocument.ReadRejection -> rejection.hasSourceBasis(basis) && receipts.hasSourceBasis(basis)
         is ImpactWitnessDocument.SiteAccounting -> accounting.site.isOnBasis(basis)
     }
@@ -25,14 +25,17 @@ private fun BoundedProtocolList<ImpactNativeReadReceiptDocument>.hasSourceBasis(
 private fun ImpactFindingDocument.hasSourceBasis(basis: ImpactSemanticBasisDocument): Boolean =
     producer.isOnBasis(basis) &&
         destination.isOnBasis(basis) &&
-        terminal.hasSourceBasis(basis) &&
+        terminal.hasSourceBasis(basis, destination) &&
         boundaryObligations.values.all { it.position.site.isOnBasis(basis) }
 
-private fun ImpactFindingTerminalDocument.hasSourceBasis(basis: ImpactSemanticBasisDocument): Boolean =
+private fun ImpactFindingTerminalDocument.hasSourceBasis(
+    basis: ImpactSemanticBasisDocument,
+    destination: ImpactValueSiteReferenceDocument,
+): Boolean =
     when (this) {
         is ImpactFindingTerminalDocument.UnresolvedPeerContinuation -> false
+        is ImpactFindingTerminalDocument.UnresolvedFlow -> evidence.admitsObligation(destination, basis)
         is ImpactFindingTerminalDocument.Consumer,
-        is ImpactFindingTerminalDocument.UnresolvedFlow,
         is ImpactFindingTerminalDocument.ExecutionStop,
         is ImpactFindingTerminalDocument.ExplicitScopeExclusion -> true
         is ImpactFindingTerminalDocument.ModeledTerminal ->

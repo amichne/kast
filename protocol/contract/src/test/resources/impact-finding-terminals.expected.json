@@ -102,7 +102,13 @@
         },
         "role": {
           "type": "PROPERTY_ASSIGNMENT"
-        }
+        },
+        "executionOwner": {
+          "type": "DECLARATION"
+        },
+        "valuePath": [],
+        "callStack": [],
+        "predicates": []
       },
       "kind": "PERSISTENCE",
       "contract": {
@@ -135,7 +141,13 @@
             },
             "role": {
               "type": "PROPERTY_ASSIGNMENT"
-            }
+            },
+            "executionOwner": {
+              "type": "DECLARATION"
+            },
+            "valuePath": [],
+            "callStack": [],
+            "predicates": []
           },
           "kind": "PERSISTENCE",
           "contract": {
@@ -154,7 +166,10 @@
   },
   {
     "type": "UNRESOLVED_FLOW",
-    "cause": "MUTABLE_CONTROL_FLOW"
+    "cause": "MUTABLE_CONTROL_FLOW",
+    "evidence": {
+      "type": "NONE"
+    }
   },
   {
     "type": "UNRESOLVED_READ",
@@ -180,7 +195,13 @@
         },
         "role": {
           "type": "PROPERTY_ASSIGNMENT"
-        }
+        },
+        "executionOwner": {
+          "type": "DECLARATION"
+        },
+        "valuePath": [],
+        "callStack": [],
+        "predicates": []
       },
       "domain": {
         "type": "WORKSPACE"
@@ -213,7 +234,13 @@
         },
         "role": {
           "type": "PROPERTY_ASSIGNMENT"
-        }
+        },
+        "executionOwner": {
+          "type": "DECLARATION"
+        },
+        "valuePath": [],
+        "callStack": [],
+        "predicates": []
       },
       "domain": {
         "type": "WORKSPACE"
@@ -245,7 +272,13 @@
         },
         "role": {
           "type": "PROPERTY_ASSIGNMENT"
-        }
+        },
+        "executionOwner": {
+          "type": "DECLARATION"
+        },
+        "valuePath": [],
+        "callStack": [],
+        "predicates": []
       },
       "kind": "PERSISTENCE",
       "contract": {
@@ -277,7 +310,13 @@
           },
           "role": {
             "type": "PROPERTY_ASSIGNMENT"
-          }
+          },
+          "executionOwner": {
+            "type": "DECLARATION"
+          },
+          "valuePath": [],
+          "callStack": [],
+          "predicates": []
         },
         "kind": "PERSISTENCE",
         "contract": {
@@ -331,7 +370,13 @@
         },
         "role": {
           "type": "PROPERTY_ASSIGNMENT"
-        }
+        },
+        "executionOwner": {
+          "type": "DECLARATION"
+        },
+        "valuePath": [],
+        "callStack": [],
+        "predicates": []
       },
       "domain": {
         "subject": {

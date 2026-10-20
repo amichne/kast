@@ -9,8 +9,8 @@ import io.github.amichne.kast.protocol.contract.ImpactModelIdentifierDocument
 import io.github.amichne.kast.protocol.contract.ImpactModelIdentityDocument
 import io.github.amichne.kast.protocol.contract.ImpactModelValuePositionDocument
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
-import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
+import io.github.amichne.kast.protocol.contract.hasSameValueIdentity
 import io.github.amichne.kast.relation.contract.BoundaryKind
 import io.github.amichne.kast.relation.contract.BoundaryPosition
 import io.github.amichne.kast.relation.contract.ContractModelIdentity
@@ -22,7 +22,6 @@ import io.github.amichne.kast.relation.contract.ModelVersion
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
-import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.workspace.contract.SemanticReadIdentity
 
@@ -129,26 +128,11 @@ internal fun ImpactSemanticBasisDocument.matchesBasis(current: SemanticReadIdent
                 contentView.name == current.reference.contentView.name
     }
 
-internal fun ImpactValueSiteReferenceDocument.matchesSite(current: ValueSite): Boolean {
-    if (!enclosing.matchesDeclaration(current.enclosing) || !enclosing.basis.matchesBasis(current.basis)) return false
-    if (range.start.value != current.range.startInclusive || range.end.value != current.range.endExclusive) return false
-    return when (val role = role) {
-        ImpactValueRoleDocument.ExpressionResult -> current.role == ValueRole.ExpressionResult
-        ImpactValueRoleDocument.LocalBinding -> current.role == ValueRole.LocalBinding
-        ImpactValueRoleDocument.LocalRead -> current.role == ValueRole.LocalRead
-        ImpactValueRoleDocument.Return -> current.role == ValueRole.Return
-        ImpactValueRoleDocument.PropertyAssignment -> current.role == ValueRole.PropertyAssignment
-        is ImpactValueRoleDocument.Argument -> {
-            val actual = current.role
-            actual is ValueRole.Argument &&
-                role.index.value == actual.position.value &&
-                role.invocation.range.start.value == actual.call.range.startInclusive &&
-                role.invocation.range.end.value == actual.call.range.endExclusive &&
-                role.invocation.callable.matchesDeclaration(actual.call.callable) &&
-                role.invocation.callable.basis.matchesBasis(actual.call.basis)
-        }
+internal fun ImpactValueSiteReferenceDocument.matchesSite(current: ValueSite): Boolean =
+    when (val projected = current.impactDocument()) {
+        is Refinement.Refined -> hasSameValueIdentity(projected.value)
+        is Refinement.Rejected -> false
     }
-}
 
 private fun ImpactBoundaryKindDocument.matchesKind(current: BoundaryKind): Boolean =
     when (this) {

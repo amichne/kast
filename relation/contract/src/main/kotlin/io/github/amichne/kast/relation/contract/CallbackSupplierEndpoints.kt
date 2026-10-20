@@ -94,8 +94,11 @@ private class CallbackSupplierEndpoints {
 
     private fun site(value: ValueSite) {
         endpoint(value.enclosing)
+        value.stateEndpoints().forEach(::endpoint)
         when (val role = value.role) {
             is ValueRole.Argument -> call(role.call)
+            is ValueRole.Receiver -> call(role.call)
+            is ValueRole.Formal -> Unit
             ValueRole.ExpressionResult,
             ValueRole.LocalBinding,
             ValueRole.LocalRead,

@@ -49,6 +49,10 @@ internal fun ValueFlowUnsupportedCause.callbackTryFailure(): CallbackInvocationF
         ValueFlowUnsupportedCause.MUTABLE_CONTROL_FLOW -> CallbackInvocationFlowCause.STORED_CALLBACK
         ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE -> CallbackInvocationFlowCause.UNRESOLVED_PARAMETER_REFERENCE
         ValueFlowUnsupportedCause.NESTED_EXECUTION -> CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION
+        ValueFlowUnsupportedCause.ACCESS_PATH_DEPTH_EXCEEDED,
+        ValueFlowUnsupportedCause.CALL_CONTEXT_DEPTH_EXCEEDED,
+        ValueFlowUnsupportedCause.RECURSIVE_SOURCE_CALL,
+        ValueFlowUnsupportedCause.PREDICATE_LIMIT_REACHED,
         ValueFlowUnsupportedCause.UNMODELED_CALL,
         ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION,
         ValueFlowUnsupportedCause.UNSUPPORTED_PROPERTY,

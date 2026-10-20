@@ -1,5 +1,9 @@
 package io.github.amichne.kast.relation.intellij
 
+import com.intellij.openapi.progress.ProgressManager
+import io.github.amichne.kast.relation.contract.ValueFlowRequest
+import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
+
 internal enum class IntellijRelationEnumerationGrant {
     READY,
     UNAVAILABLE,
@@ -7,8 +11,12 @@ internal enum class IntellijRelationEnumerationGrant {
 }
 
 /** One invocation's accounting survives platform read-action re-entry; its facts remain attempt-local. */
-internal class IntellijRelationAllowance(private val clockNanoseconds: () -> Long) {
-    val startedAt: Long = clockNanoseconds()
+internal class IntellijRelationAllowance
+private constructor(private val clockNanoseconds: () -> Long, val startedAt: Long) {
+    constructor(clockNanoseconds: () -> Long) : this(clockNanoseconds, clockNanoseconds())
+
+    constructor(startedAt: Long, clockNanoseconds: () -> Long) : this(clockNanoseconds, startedAt)
+
     var examined: Long = 0L
         private set
 
@@ -67,7 +75,7 @@ internal class IntellijRelationAllowance(private val clockNanoseconds: () -> Lon
     }
 
     fun elapsedLimitReached(resources: io.github.amichne.kast.kernel.ResourceBudget): Boolean =
-        elapsedNanoseconds() >= resources.elapsedTimeLimit.value * NANOS_PER_MILLISECOND
+        elapsedNanoseconds() >= java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(resources.elapsedTimeLimit.value)
 
     fun admitEnumeration(
         state: IntellijRelationCollectionState,
@@ -96,4 +104,16 @@ internal class IntellijRelationAllowance(private val clockNanoseconds: () -> Lon
     private companion object {
         const val NANOS_PER_MILLISECOND = 1_000_000L
     }
+}
+
+internal fun nativeSourceScopeAllowance(
+    request: ValueFlowRequest,
+    allowance: IntellijRelationAllowance,
+    onUnsupported: (ValueFlowUnsupportedCause) -> Unit,
+): IntellijRelationProviderEnumerationAdmission {
+    ProgressManager.checkCanceled()
+    return if (allowance.elapsedLimitReached(request.budget.resources)) {
+        onUnsupported(ValueFlowUnsupportedCause.TIME_LIMIT_REACHED)
+        IntellijRelationProviderEnumerationAdmission.HALTED
+    } else IntellijRelationProviderEnumerationAdmission.READY
 }

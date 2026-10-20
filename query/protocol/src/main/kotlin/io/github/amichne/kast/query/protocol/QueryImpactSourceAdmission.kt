@@ -9,6 +9,7 @@ import io.github.amichne.kast.protocol.contract.QueryImpactSourceDocument
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureCode
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
+import io.github.amichne.kast.protocol.contract.admitsExecutionOwner
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryImpactSource
 import io.github.amichne.kast.relation.contract.RelationBudget
@@ -178,10 +179,14 @@ internal fun QueryImpactSourceDocument.admitSiteClaims(
     basisFailure: QueryImpactSourceFailureCode,
 ): Refinement<Unit, QueryRunRejection> {
     for ((position, declared) in sites.withIndex()) {
+        if (!declared.admitsExecutionOwner())
+            return impactFailure(QueryImpactSourceFailureCode.OWNER_MISMATCH, position)
         val claims =
             listOf(declared.enclosing) +
                 when (val role = declared.role) {
                     is ImpactValueRoleDocument.Argument -> listOf(role.invocation.callable)
+                    is ImpactValueRoleDocument.Receiver -> listOf(role.invocation.callable)
+                    is ImpactValueRoleDocument.Formal -> emptyList()
                     ImpactValueRoleDocument.ExpressionResult,
                     ImpactValueRoleDocument.LocalBinding,
                     ImpactValueRoleDocument.LocalRead,

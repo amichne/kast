@@ -9,6 +9,7 @@ import io.github.amichne.kast.protocol.contract.QueryDiscoveryCountDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint
 import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
 import io.github.amichne.kast.protocol.contract.RelationProviderDocument
+import io.github.amichne.kast.relation.contract.RelationContinuation
 import io.github.amichne.kast.relation.contract.RelationReadPosition
 import io.github.amichne.kast.relation.contract.RelationRequest
 
@@ -47,32 +48,34 @@ internal fun RelationRequest.impactDocument(): ImpactProjected<ImpactFlowDomainD
 private fun RelationReadPosition.impactDocument(): ImpactProjected<ImpactFlowReadPositionDocument> =
     when (this) {
         RelationReadPosition.Start -> Refinement.Refined(ImpactFlowReadPositionDocument.Start)
-        is RelationReadPosition.Resume -> {
-            val cursor = continuation.nextProviderCursor
-            QueryRelationDomainFingerprint.parse(continuation.fingerprint.value)
-                .impactFailure(ImpactPathProjectionFailure::DomainFingerprint)
-                .impactZip(
-                    QueryDiscoveryCountDocument.parse(cursor.nextPosition.value)
-                        .impactFailure(ImpactPathProjectionFailure::Count)
-                )
-                .impactZip(
-                    QueryRelationDomainFingerprint.parse(cursor.consumedPrefixDigest.value)
-                        .impactFailure(ImpactPathProjectionFailure::DomainFingerprint)
-                )
-                .impactZip(
-                    continuation.retainedLimitations
-                        .sortedBy { it.ordinal }
-                        .map { RelationLimitationDocument.valueOf(it.name) }
-                        .impactBounded()
-                )
-                .impactMap { (continuation, limitations) ->
-                    ImpactFlowReadPositionDocument.Resume(
-                        continuation.first.first,
-                        RelationProviderDocument.valueOf(cursor.provider.name),
-                        continuation.first.second,
-                        continuation.second,
-                        limitations,
-                    )
-                }
-        }
+        is RelationReadPosition.Resume -> continuation.impactResumeDocument()
     }
+
+internal fun RelationContinuation.impactResumeDocument(): ImpactProjected<ImpactFlowReadPositionDocument.Resume> {
+    val cursor = nextProviderCursor
+    return QueryRelationDomainFingerprint.parse(fingerprint.value)
+        .impactFailure(ImpactPathProjectionFailure::DomainFingerprint)
+        .impactZip(
+            QueryDiscoveryCountDocument.parse(cursor.nextPosition.value)
+                .impactFailure(ImpactPathProjectionFailure::Count)
+        )
+        .impactZip(
+            QueryRelationDomainFingerprint.parse(cursor.consumedPrefixDigest.value)
+                .impactFailure(ImpactPathProjectionFailure::DomainFingerprint)
+        )
+        .impactZip(
+            retainedLimitations
+                .sortedBy { it.ordinal }
+                .map { RelationLimitationDocument.valueOf(it.name) }
+                .impactBounded()
+        )
+        .impactMap { (continuation, limitations) ->
+            ImpactFlowReadPositionDocument.Resume(
+                continuation.first.first,
+                RelationProviderDocument.valueOf(cursor.provider.name),
+                continuation.first.second,
+                continuation.second,
+                limitations,
+            )
+        }
+}

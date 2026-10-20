@@ -59,6 +59,7 @@ private fun ImpactValueSiteReferenceDocument.validImmutableSite(): Boolean {
             range.end.value > enclosing.range.end.value
     )
         return false
+    if (!admitsExecutionOwner()) return false
     val argument = role as? ImpactValueRoleDocument.Argument ?: return true
     return argument.invocation.callable.basis == enclosing.basis &&
         argument.invocation.range.start.value >= enclosing.range.start.value &&
@@ -87,6 +88,11 @@ private fun ImpactCompilerTransferDocument.validImmutableTransfer(owner: ImpactD
                     target.range == argument.invocation.range
             }
             ImpactTransferKindDocument.RETURN,
+            ImpactTransferKindDocument.RECEIVER,
+            ImpactTransferKindDocument.SOURCE_CALL_ENTRY,
+            ImpactTransferKindDocument.SOURCE_CALL_RETURN,
+            ImpactTransferKindDocument.FIELD_READ,
+            ImpactTransferKindDocument.CONSTRUCTOR_FIELD,
             ImpactTransferKindDocument.PROPERTY_ASSIGNMENT -> false
         }
 

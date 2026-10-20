@@ -120,7 +120,7 @@ private fun ImpactBoundaryRuleDocument.validateBoundaryRule(): Refinement<Unit, 
         is ImpactBoundaryRuleDocument.Terminal -> validateBoundaryRule()
     }
 
-private fun ImpactDeclarationReferenceDocument.declarationFailure(): Refinement<Unit, ImpactModelSyntaxFailure> {
+internal fun ImpactDeclarationReferenceDocument.declarationFailure(): Refinement<Unit, ImpactModelSyntaxFailure> {
     when (val admission = basis.basisFailure()) {
         is Refinement.Refined -> Unit
         is Refinement.Rejected -> return admission
@@ -159,29 +159,48 @@ private fun ImpactValueSiteReferenceDocument.siteFailure(): Refinement<Unit, Imp
         is Refinement.Rejected -> return admission
     }
     if (!enclosing.range.contains(range)) return Refinement.Rejected(ImpactModelSyntaxFailure.INVALID_RANGE)
-    when (val role = role) {
-        is ImpactValueRoleDocument.Argument -> {
-            when (val admission = role.invocation.callable.declarationFailure()) {
-                is Refinement.Refined -> Unit
-                is Refinement.Rejected -> return admission
-            }
-            when (val admission = role.invocation.range.rangeFailure()) {
-                is Refinement.Refined -> Unit
-                is Refinement.Rejected -> return admission
-            }
-            if (
-                role.invocation.callable.basis != enclosing.basis ||
-                    !enclosing.range.contains(role.invocation.range) ||
-                    !role.invocation.range.contains(range)
-            )
-                return Refinement.Rejected(ImpactModelSyntaxFailure.INVALID_INVOCATION)
-        }
+    if (!admitsExecutionOwner()) return Refinement.Rejected(ImpactModelSyntaxFailure.INVALID_INVOCATION)
+    return when (val role = role) {
+        is ImpactValueRoleDocument.Argument -> role.siteFailure(this)
+        is ImpactValueRoleDocument.Receiver -> role.siteFailure(this)
+        is ImpactValueRoleDocument.Formal,
         ImpactValueRoleDocument.ExpressionResult,
         ImpactValueRoleDocument.LocalBinding,
         ImpactValueRoleDocument.LocalRead,
         ImpactValueRoleDocument.Return,
-        ImpactValueRoleDocument.PropertyAssignment -> Unit
+        ImpactValueRoleDocument.PropertyAssignment -> Refinement.Refined(Unit)
     }
+}
+
+private fun ImpactValueRoleDocument.Argument.siteFailure(
+    site: ImpactValueSiteReferenceDocument
+): Refinement<Unit, ImpactModelSyntaxFailure> {
+    when (val admission = invocation.callable.declarationFailure()) {
+        is Refinement.Refined -> Unit
+        is Refinement.Rejected -> return admission
+    }
+    when (val admission = invocation.range.rangeFailure()) {
+        is Refinement.Refined -> Unit
+        is Refinement.Rejected -> return admission
+    }
+    return invocation.siteFailure(site)
+}
+
+private fun ImpactValueRoleDocument.Receiver.siteFailure(
+    site: ImpactValueSiteReferenceDocument
+): Refinement<Unit, ImpactModelSyntaxFailure> {
+    when (val admission = invocation.callable.declarationFailure()) {
+        is Refinement.Refined -> Unit
+        is Refinement.Rejected -> return admission
+    }
+    return invocation.siteFailure(site)
+}
+
+private fun ImpactInvocationReferenceDocument.siteFailure(
+    site: ImpactValueSiteReferenceDocument
+): Refinement<Unit, ImpactModelSyntaxFailure> {
+    if (callable.basis != site.enclosing.basis || !site.enclosing.range.contains(range) || !range.contains(site.range))
+        return Refinement.Rejected(ImpactModelSyntaxFailure.INVALID_INVOCATION)
     return Refinement.Refined(Unit)
 }
 

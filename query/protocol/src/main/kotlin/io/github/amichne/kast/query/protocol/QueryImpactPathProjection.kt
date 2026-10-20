@@ -94,11 +94,8 @@ private fun QueryImpactTerminal.ModeledTerminal.projectModeledTerminal(): Impact
         }
 
 private fun QueryImpactTerminal.Unresolved.Flow.projectFlow(): ImpactProjected<ImpactPathTerminalDocument> =
-    site.impactDocument().impactMap {
-        ImpactPathTerminalDocument.UnresolvedFlow(
-            it,
-            obligation.cause.impactDocument(),
-        )
+    site.impactDocument().impactZip(obligation.evidence.impactDocument()).impactMap { (site, evidence) ->
+        ImpactPathTerminalDocument.UnresolvedFlow(site, obligation.cause.impactDocument(), evidence)
     }
 
 private fun QueryImpactTerminal.Unresolved.ExecutionStop.projectExecutionStop():

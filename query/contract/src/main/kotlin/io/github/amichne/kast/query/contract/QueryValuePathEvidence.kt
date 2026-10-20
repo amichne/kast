@@ -159,6 +159,10 @@ internal fun QueryImpactRequestedSite.storageBytes(g: QueryImpactRetainedGraph):
                                         role.expectedCallable
                                             .storageBytes(g)
                                             .saturatedAdd(g.node(role.invocationAnchor) { 0L })
+                                    is ValueSiteRoleClaim.Receiver ->
+                                        role.expectedCallable
+                                            .storageBytes(g)
+                                            .saturatedAdd(g.node(role.invocationAnchor) { 0L })
                                     ValueSiteRoleClaim.ExpressionResult,
                                     ValueSiteRoleClaim.LocalBinding,
                                     ValueSiteRoleClaim.LocalRead,

@@ -33,7 +33,7 @@ class LocalBindingReferenceScan<C>(
     private var suspension: ValueFlowSuspensionCause? = null
 
     fun read(): ValueFlowRead {
-        if (request.source.role != ValueRole.LocalBinding || hasForeignRemainder())
+        if (!request.source.role.hasReferenceReads() || hasForeignRemainder())
             return ValueFlowRead.ContractRejected(ValueFlowStepFailure.SOURCE_MISMATCH, count())
         // Reserve a transfer, every possible semantic obligation and a detached address before confirmation.
         if (!fitsCandidate() || request.budget.resources.workUnitLimit.value < MINIMUM_PROGRESS_WORK)

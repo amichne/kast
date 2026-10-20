@@ -12,13 +12,18 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.ValueCallTarget
+import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
+import io.github.amichne.kast.relation.contract.ValueSourceOperation
+import io.github.amichne.kast.relation.contract.ValueSourceTransfer
 import io.github.amichne.kast.relation.contract.ValueTransferKind
+import io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.workspace.contract.ImportedWorkspaceModelState
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModel
@@ -121,6 +126,34 @@ class NativeTransparentWrapperReturnTest : NativeReferenceFixtureTest() {
         assertEquals(ValueFlowTerminal.Unresolved, step.terminal)
     }
 
+    fun testOpenCallKeepsTheQualifiedConstantOverrideWithoutInputReturn() {
+        val prepared = prepareAdapterRead("callOpen", "identity")
+        val step = adapterRead(prepared).step
+        val transfer = step.transfers.single()
+        assertEquals(ValueTransferKind.SOURCE_CALL_ENTRY, transfer.kind)
+        val entered = (transfer.evidence as ValueSourceTransfer).operation as ValueSourceOperation.Enter
+        val target = entered.frame.target as ValueCallTarget.Implementation
+        assertEquals(
+            "proof.Constant.identity",
+            (target.relation.source.qualifiedIdentity as ExactDeclarationQualifiedIdentity.Available).value,
+        )
+        assertEquals(step.source.enclosing.valueIdentity, entered.frame.invocation.enclosing.valueIdentity)
+        assertEquals((step.source.role as ValueRole.Argument).call, entered.frame.invocation)
+        assertEquals(target.relation.source.valueIdentity, target.ownership.declaration)
+        assertEquals(listOf(entered.frame), transfer.target.callStack.frames)
+        assertTrue(target.dispatch.batch.facts.any { it === target.relation })
+        val qualifiedBudget =
+            RelationBudget(prepared.request.budget.resources, RelationByteLimit.parse(16_000_000L).nativeRefined())
+        val constant =
+            adapterRead(
+                    prepared.copy(request = prepared.request.copy(source = transfer.target, budget = qualifiedBudget))
+                )
+                .step
+        assertTrue(constant.transfers.isEmpty())
+        assertTrue(constant.obligations.isEmpty())
+        assertEquals(transfer.target.identity, constant.source.identity)
+    }
+
     fun testFinalCallAdapterEmitsOnlyTheMatchedWrapperResult() {
         val step = adapterRead("callFinal", "finalIdentity").step
         val transfer = step.transfers.single()
@@ -130,19 +163,23 @@ class NativeTransparentWrapperReturnTest : NativeReferenceFixtureTest() {
         assertEquals(ValueFlowTerminal.SupportedDomainExhausted, step.terminal)
     }
 
-    private fun adapterRead(caller: String, target: String): ValueFlowRead.Observed {
-        val prepared = withFixture { fixture ->
-            val source = fixture.source(caller, fixture.member("Base", target), FIRST_PARAMETER)
-            val budget =
-                RelationBudget(
-                    fixture.scope.request.budget.resources,
-                    RelationByteLimit.parse(WRAPPER_READ_BYTES).nativeRefined(),
-                )
-            PreparedWrapperRead(
-                ValueFlowRequest(source, budget, fixture.scope.request.boundary),
-                fixture.model,
+    private fun adapterRead(caller: String, target: String): ValueFlowRead.Observed =
+        adapterRead(prepareAdapterRead(caller, target))
+
+    private fun prepareAdapterRead(caller: String, target: String): PreparedWrapperRead = withFixture { fixture ->
+        val source = fixture.source(caller, fixture.member("Base", target), FIRST_PARAMETER)
+        val budget =
+            RelationBudget(
+                fixture.scope.request.budget.resources,
+                RelationByteLimit.parse(WRAPPER_READ_BYTES).nativeRefined(),
             )
-        }
+        PreparedWrapperRead(
+            ValueFlowRequest(source, budget, fixture.scope.request.boundary),
+            fixture.model,
+        )
+    }
+
+    private fun adapterRead(prepared: PreparedWrapperRead): ValueFlowRead.Observed {
         val result = runBlocking {
             IntellijValueFlowCompilerAdapter()
                 .read(
@@ -248,7 +285,7 @@ private class TransparentWrapperFixture(
             nativeValueArgument(
                     expression = expression,
                     argument = actual,
-                    enclosing = enclosing,
+                    executionOwner = ValueExecutionOwner.declaration(enclosing),
                     scope = scope,
                     projection = projection,
                 )

@@ -20,4 +20,9 @@ internal fun ValueFlowUnsupportedCause.impactDocument(): ImpactFlowUnsupportedDo
         ValueFlowUnsupportedCause.BYTE_LIMIT_REACHED -> ImpactFlowUnsupportedDocument.BYTE_LIMIT_REACHED
         ValueFlowUnsupportedCause.NESTED_EXECUTION -> ImpactFlowUnsupportedDocument.NESTED_EXECUTION
         ValueFlowUnsupportedCause.OUTSIDE_DOMAIN -> ImpactFlowUnsupportedDocument.OUTSIDE_DOMAIN
+        ValueFlowUnsupportedCause.PREDICATE_LIMIT_REACHED -> ImpactFlowUnsupportedDocument.PREDICATE_LIMIT_REACHED
+        ValueFlowUnsupportedCause.ACCESS_PATH_DEPTH_EXCEEDED -> ImpactFlowUnsupportedDocument.ACCESS_PATH_DEPTH_EXCEEDED
+        ValueFlowUnsupportedCause.CALL_CONTEXT_DEPTH_EXCEEDED ->
+            ImpactFlowUnsupportedDocument.CALL_CONTEXT_DEPTH_EXCEEDED
+        ValueFlowUnsupportedCause.RECURSIVE_SOURCE_CALL -> ImpactFlowUnsupportedDocument.RECURSIVE_SOURCE_CALL
     }

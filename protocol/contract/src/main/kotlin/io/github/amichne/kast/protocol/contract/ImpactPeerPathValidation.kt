@@ -6,7 +6,7 @@ internal fun ImpactPathDocument.hasValidPeerContinuation(sourceBasis: ImpactSema
     val last = steps.values.lastOrNull() as? ImpactPathStepDocument.ModeledBoundary ?: return false
     val connection = last.connection
     val previous = steps.values.dropLast(1).lastOrNull()?.destination() ?: producer
-    if (connection.rule.source.site != previous) return false
+    if (!connection.rule.source.site.hasSameValueIdentity(previous)) return false
     if (!producer.isOnBasis(sourceBasis) || !connection.matchesPeer(peer, sourceBasis)) return false
     if (steps.values.dropLast(1).any { !it.isOnBasis(sourceBasis) }) return false
     return representation.hasValidPeerRepresentation(peer, connection, sourceBasis)
@@ -26,7 +26,7 @@ private fun ImpactRepresentationEvidenceDocument.hasValidPeerRepresentation(
     when (this) {
         ImpactRepresentationEvidenceDocument.NotModeled -> true
         is ImpactRepresentationEvidenceDocument.Present ->
-            site == peer.target &&
+            site.hasSameValueIdentity(peer.target) &&
                 branches.values.isNotEmpty() &&
                 branches.values.all { it.history.hasValidPeerHistory(connection, sourceBasis) }
     }
@@ -36,10 +36,10 @@ private fun ImpactBoundaryConnectionDocument.matchesPeer(
     basis: ImpactSemanticBasisDocument,
 ): Boolean =
     reference == peer.reference &&
-        rule.target.site == peer.target &&
+        rule.target.site.hasSameValueIdentity(peer.target) &&
         rule.source.site.isOnBasis(basis) &&
         peer.admission.validatePeerAdmission(basis, peer.target) is io.github.amichne.kast.kernel.Refinement.Refined &&
-        obligations.values.all { it.position == rule.source }
+        obligations.values.all { it.position.hasSamePositionIdentity(rule.source) }
 
 private fun BoundedProtocolList<ImpactRepresentationHistoryDocument>.hasValidPeerHistory(
     connection: ImpactBoundaryConnectionDocument,
@@ -47,8 +47,8 @@ private fun BoundedProtocolList<ImpactRepresentationHistoryDocument>.hasValidPee
 ): Boolean {
     val last = values.lastOrNull() as? ImpactRepresentationHistoryDocument.BoundaryModel ?: return false
     return last.reference == connection.reference &&
-        last.source == connection.rule.source &&
-        last.target == connection.rule.target &&
+        last.source.hasSamePositionIdentity(connection.rule.source) &&
+        last.target.hasSamePositionIdentity(connection.rule.target) &&
         values.dropLast(1).all { it.isOnBasis(basis) }
 }
 
@@ -102,7 +102,7 @@ private fun ImpactPathTerminalDocument.isOnBasis(basis: ImpactSemanticBasisDocum
         is ImpactPathTerminalDocument.Consumer -> site.isOnBasis(basis) && rule.isOnBasis(basis)
         is ImpactPathTerminalDocument.ModeledTerminal ->
             rule.source.site.isOnBasis(basis) && obligations.values.all { it.position.site.isOnBasis(basis) }
-        is ImpactPathTerminalDocument.UnresolvedFlow -> site.isOnBasis(basis)
+        is ImpactPathTerminalDocument.UnresolvedFlow -> site.isOnBasis(basis) && evidence.admitsObligation(site, basis)
         is ImpactPathTerminalDocument.UnresolvedBoundary ->
             source.site.isOnBasis(basis) && obligation.position.site.isOnBasis(basis)
         is ImpactPathTerminalDocument.UnresolvedRead ->

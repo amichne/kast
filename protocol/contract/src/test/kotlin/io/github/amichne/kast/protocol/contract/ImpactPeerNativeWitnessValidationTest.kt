@@ -70,6 +70,23 @@ class ImpactPeerNativeWitnessValidationTest {
         )
     }
 
+    @Test
+    fun `compiler witness refuses a field transfer without its field proof`() {
+        val local =
+            ImpactCompilerTransferDocument(
+                fixture.source,
+                fixture.source,
+                ImpactTransferKindDocument.LOCAL_READ,
+            )
+        val witness = ImpactWitnessDocument.CompilerTransfer(values.count(0), values.count(0), local)
+        assertEquals(Refinement.Refined(Unit), result(witness).validateImpactAccounting())
+        val forged = witness.copy(transfer = local.copy(kind = ImpactTransferKindDocument.FIELD_READ))
+        assertEquals(
+            Refinement.Rejected(ImpactAccountingFailure.WITNESS_VIEW_MISMATCH),
+            result(forged).validateImpactAccounting(),
+        )
+    }
+
     private fun sourceNativeRead() =
         ImpactWitnessDocument.NativeRead(
             values.count(0),

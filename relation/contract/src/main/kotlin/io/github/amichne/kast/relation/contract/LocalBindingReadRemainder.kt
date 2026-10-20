@@ -46,19 +46,14 @@ private constructor(
             consumed: Set<LocalReferenceKey>,
             emitted: Set<ValueSiteIdentity>,
         ): Refinement<LocalBindingReadRemainder, ValueFlowStepFailure> {
-            if (source.role != ValueRole.LocalBinding) return Refinement.Rejected(ValueFlowStepFailure.SOURCE_MISMATCH)
+            if (!source.role.hasReferenceReads()) return Refinement.Rejected(ValueFlowStepFailure.SOURCE_MISMATCH)
             if (
                 consumed.any {
                     !source.enclosing.range.contains(it.element) || !it.element.contains(it.reference)
                 }
             )
                 return Refinement.Rejected(ValueFlowStepFailure.SOURCE_MISMATCH)
-            if (
-                emitted.any {
-                    it.basis != source.basis || it.owner != source.identity.owner || it.role != ValueRole.LocalRead
-                }
-            )
-                return Refinement.Rejected(ValueFlowStepFailure.BASIS_MISMATCH)
+            if (emitted.any { !it.isReadOf(source) }) return Refinement.Rejected(ValueFlowStepFailure.BASIS_MISMATCH)
             return Refinement.Refined(
                 LocalBindingReadRemainder(
                     source,
@@ -111,3 +106,12 @@ private fun ExactDeclarationTextRange.contains(other: ExactDeclarationTextRange)
 
 private const val MAXIMUM_REFERENCE_KIND_LENGTH = 256
 private const val REFERENCE_KEY_STORAGE_BYTES = 1024L
+
+private fun ValueSiteIdentity.isReadOf(source: ValueSite): Boolean =
+    basis == source.basis &&
+        owner == source.identity.owner &&
+        execution == source.identity.execution &&
+        valuePath == source.valuePath &&
+        callStack == source.callStack &&
+        predicates == source.predicates &&
+        role == ValueRole.LocalRead

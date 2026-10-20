@@ -20,6 +20,7 @@ import io.github.amichne.kast.protocol.contract.ImpactRepresentationUnknownDocum
 import io.github.amichne.kast.protocol.contract.ImpactTransferEvidenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactTransferKindDocument
 import io.github.amichne.kast.protocol.contract.ImpactTryBranchAlternativeDocument
+import io.github.amichne.kast.protocol.contract.ImpactUnguardedTransferEvidenceDocument
 import io.github.amichne.kast.protocol.contract.reason
 import io.github.amichne.kast.relation.contract.BoundaryArrival
 import io.github.amichne.kast.relation.contract.BoundaryCompatibilityAssumption
@@ -33,6 +34,7 @@ import io.github.amichne.kast.relation.contract.RepresentationHistory
 import io.github.amichne.kast.relation.contract.RepresentationModelApplication
 import io.github.amichne.kast.relation.contract.RepresentationRule
 import io.github.amichne.kast.relation.contract.RepresentationUnknownReason
+import io.github.amichne.kast.relation.contract.ValueSourceTransfer
 import io.github.amichne.kast.relation.contract.ValueTransfer
 import io.github.amichne.kast.relation.contract.ValueTransferEvidence
 import io.github.amichne.kast.relation.contract.ValueTransferKind
@@ -82,10 +84,15 @@ internal fun ValueTransfer.impactDocument(): ImpactProjected<ImpactCompilerTrans
                 ValueTransferKind.LOCAL_BINDING -> ImpactTransferKindDocument.LOCAL_BINDING
                 ValueTransferKind.LOCAL_READ -> ImpactTransferKindDocument.LOCAL_READ
                 ValueTransferKind.ARGUMENT -> ImpactTransferKindDocument.ARGUMENT
+                ValueTransferKind.RECEIVER -> ImpactTransferKindDocument.RECEIVER
                 ValueTransferKind.RETURN -> ImpactTransferKindDocument.RETURN
                 ValueTransferKind.PROPERTY_ASSIGNMENT -> ImpactTransferKindDocument.PROPERTY_ASSIGNMENT
                 ValueTransferKind.BRANCH_ALTERNATIVE -> ImpactTransferKindDocument.BRANCH_ALTERNATIVE
                 ValueTransferKind.WRAPPER_RETURN -> ImpactTransferKindDocument.WRAPPER_RETURN
+                ValueTransferKind.SOURCE_CALL_ENTRY -> ImpactTransferKindDocument.SOURCE_CALL_ENTRY
+                ValueTransferKind.SOURCE_CALL_RETURN -> ImpactTransferKindDocument.SOURCE_CALL_RETURN
+                ValueTransferKind.FIELD_READ -> ImpactTransferKindDocument.FIELD_READ
+                ValueTransferKind.CONSTRUCTOR_FIELD -> ImpactTransferKindDocument.CONSTRUCTOR_FIELD
             },
             evidence,
         )
@@ -93,7 +100,14 @@ internal fun ValueTransfer.impactDocument(): ImpactProjected<ImpactCompilerTrans
 
 private fun ValueTransferEvidence.impactDocument(): ImpactProjected<ImpactTransferEvidenceDocument> =
     when (this) {
+        is ValueTransferEvidence.Guarded ->
+            delegate.impactDocument().impactZip(added.impactDocument()).impactThen { (delegate, added) ->
+                if (delegate is ImpactUnguardedTransferEvidenceDocument)
+                    Refinement.Refined(ImpactTransferEvidenceDocument.Guarded(delegate, added))
+                else Refinement.Rejected(ImpactPathProjectionFailure.DOMAIN_PROJECTION_REJECTED)
+            }
         ValueTransferEvidence.Direct -> Refinement.Refined(ImpactTransferEvidenceDocument.Direct)
+        is ValueSourceTransfer -> operation.impactDocument().impactMap(ImpactTransferEvidenceDocument::Source)
         is ValueTransferEvidence.NormalBranchResult ->
             tryRange.impactDocument().impactZip(branchRange.impactDocument()).impactMap { (enclosing, branch) ->
                 ImpactTransferEvidenceDocument.NormalBranchResult(

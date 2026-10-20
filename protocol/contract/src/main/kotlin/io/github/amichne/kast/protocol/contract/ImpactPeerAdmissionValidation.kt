@@ -35,8 +35,12 @@ internal fun ImpactFlowBudgetDocument.isWithin(parent: ImpactFlowBudgetDocument)
 
 internal fun ImpactValueSiteReferenceDocument.isOnBasis(basis: ImpactSemanticBasisDocument): Boolean =
     enclosing.basis == basis &&
+        admitsExecutionOwner() &&
+        executionOwner.isOnBasis(basis) &&
         when (val position = role) {
-            is ImpactValueRoleDocument.Argument -> position.invocation.callable.basis == basis
+            is ImpactValueRoleDocument.Argument -> position.invocation.isOnBasis(basis)
+            is ImpactValueRoleDocument.Receiver -> position.invocation.isOnBasis(basis)
+            is ImpactValueRoleDocument.Formal -> true
             ImpactValueRoleDocument.ExpressionResult,
             ImpactValueRoleDocument.LocalBinding,
             ImpactValueRoleDocument.LocalRead,
