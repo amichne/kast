@@ -102,7 +102,6 @@ class SharedNativeFixtureIdeaTest {
 
     private fun runner(vararg arguments: String): GradleRunner = GradleRunner.create()
         .withProjectDir(root.toFile())
-        .withTestKitDir(root.resolve("test-kit").toFile())
         .withArguments(
             listOf(":symbol:intellij:observe", ":runtime:hosted:observe", "--configuration-cache", "--build-cache",
                 "--parallel", "--console=plain", "--max-workers=2",

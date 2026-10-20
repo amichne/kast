@@ -63,7 +63,6 @@ class ExtractIdeaDistributionCacheTest {
 
     private fun run(project: Path): TaskOutcome? = GradleRunner.create()
         .withProjectDir(project.toFile())
-        .withTestKitDir(root.resolve("test-kit").toFile())
         .withArguments("extract", "--build-cache", "--configuration-cache", "--console=plain", "--max-workers=2")
         .build().task(":extract")?.outcome
 
