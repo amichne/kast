@@ -40,6 +40,7 @@ import org.jetbrains.kotlin.analysis.api.types.KaErrorType
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.KtThisExpression
 
 sealed interface ValueSiteResolution {
     data class Found(val site: ValueSite) : ValueSiteResolution
@@ -126,10 +127,20 @@ class IntellijValueFlowCompilerAdapter(
         val expression =
             prepared.owner.exactValueElement(anchor)
                 ?: return ValueSiteResolution.Rejected(ValueFlowRejection.UNSUPPORTED_SEED)
-        when (val admitted = admittedOwnership(expression, prepared.owner)) {
-            is Refinement.Refined -> Unit
-            is Refinement.Rejected -> return ValueSiteResolution.Rejected(admitted.failure)
-        }
+        val execution =
+            when (
+                val admitted =
+                    nativeValueExecutionOwner(
+                        element = expression,
+                        host = prepared.owner,
+                        enclosing = RelationEndpoint.subject(enclosing),
+                        scope = prepared.scope,
+                        observation = observation,
+                    )
+            ) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return ValueSiteResolution.Rejected(admitted.failure)
+            }
         if (expression is KtNamedDeclaration) return ValueSiteResolution.Rejected(ValueFlowRejection.UNSUPPORTED_SEED)
         val nativeType =
             observation.observedAnalyze(expression) {
@@ -139,7 +150,13 @@ class IntellijValueFlowCompilerAdapter(
         if (nativeType == NativeValueType.UNRESOLVED)
             return ValueSiteResolution.Rejected(ValueFlowRejection.UNRESOLVED_SEED)
         return when (
-            val site = ValueSite.fromCompiler(RelationEndpoint.subject(enclosing), anchor, ValueRole.ExpressionResult)
+            val site =
+                ValueSite.fromCompiler(
+                    enclosing = RelationEndpoint.subject(enclosing),
+                    range = anchor,
+                    role = ValueRole.ExpressionResult,
+                    executionOwner = execution.owner,
+                )
         ) {
             is Refinement.Refined -> ValueSiteResolution.Found(site.value)
             is Refinement.Rejected -> ValueSiteResolution.Rejected(ValueFlowRejection.STALE_SITE)
@@ -184,15 +201,31 @@ class IntellijValueFlowCompilerAdapter(
         val source =
             prepared.owner.exactValueElement(request.source.range)
                 ?: return ValueFlowRead.Rejected(ValueFlowRejection.STALE_SITE, flowWorkCount(1))
-        when (val admitted = admittedOwnership(source, prepared.owner)) {
-            is Refinement.Refined -> Unit
-            is Refinement.Rejected -> return ValueFlowRead.Rejected(admitted.failure, flowWorkCount(1))
-        }
-        if (request.source.role == ValueRole.LocalBinding && source !is KtProperty)
+        val execution =
+            when (
+                val admitted =
+                    nativeValueExecutionOwner(
+                        element = source,
+                        host = prepared.owner,
+                        enclosing = request.source.enclosing,
+                        scope = prepared.scope,
+                        observation = observation,
+                    )
+            ) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return ValueFlowRead.Rejected(admitted.failure, flowWorkCount(1))
+            }
+        if (execution.owner != request.source.executionOwner)
+            return ValueFlowRead.Rejected(ValueFlowRejection.STALE_SITE, flowWorkCount(1))
+        if (
+            request.source.role == ValueRole.LocalBinding &&
+                source !is KtProperty &&
+                source.nativeLocalBindingMutability() is Refinement.Rejected
+        )
             return ValueFlowRead.Rejected(ValueFlowRejection.STALE_SITE, flowWorkCount(1))
         return IntellijValueFlowNative(
                 request,
-                prepared.owner,
+                execution.nativeOwner,
                 prepared.scope,
                 prepared.projection,
                 observation,
@@ -303,18 +336,21 @@ internal fun PsiElement.exactValueElement(range: ExactDeclarationTextRange): KtE
         .firstOrNull {
             it.textRange.startOffset == range.startInclusive && it.textRange.endOffset == range.endExclusive
         }
+        ?.let { expression ->
+            val semantic = expression.parent as? KtThisExpression
+            if (
+                semantic != null &&
+                    semantic.instanceReference === expression &&
+                    semantic.textRange == expression.textRange
+            )
+                semantic
+            else expression
+        }
 
 private fun flowWorkCount(count: Long): RelationWorkCount =
     when (val refined = RelationWorkCount.parse(count)) {
         is Refinement.Refined -> refined.value
         is Refinement.Rejected -> error("Native stage work count is nonnegative")
-    }
-
-private fun admittedOwnership(element: PsiElement, owner: PsiElement): Refinement<Unit, ValueFlowRejection> =
-    when (valueNativeOwnership(element, owner)) {
-        NativeValueOwnership.ADMITTED -> Refinement.Refined(Unit)
-        NativeValueOwnership.NESTED -> Refinement.Rejected(ValueFlowRejection.NESTED_EXECUTION)
-        NativeValueOwnership.UNAVAILABLE -> Refinement.Rejected(ValueFlowRejection.OWNER_UNAVAILABLE)
     }
 
 private fun RelationEndpoint.matchesDeclaration(selector: SymbolSelector): Boolean =

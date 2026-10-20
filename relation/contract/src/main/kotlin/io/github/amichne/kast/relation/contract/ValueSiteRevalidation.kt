@@ -22,6 +22,12 @@ sealed interface ValueSiteRoleClaim {
         val expectedCallable: SymbolSelector,
         val position: ValueArgumentPosition,
     ) : ValueSiteRoleClaim
+
+    data class Receiver(
+        val invocationAnchor: ExactDeclarationTextRange,
+        val expectedCallable: SymbolSelector,
+        val kind: ValueReceiverKind,
+    ) : ValueSiteRoleClaim
 }
 
 enum class ValueSiteRevalidationRequestFailure {
@@ -49,22 +55,59 @@ private constructor(
         ): Refinement<ValueSiteRevalidationRequest, ValueSiteRevalidationRequestFailure> {
             if (!enclosing.range.containsValueRange(anchor))
                 return Refinement.Rejected(ValueSiteRevalidationRequestFailure.ANCHOR_OUTSIDE_ENCLOSING)
-            if (role is ValueSiteRoleClaim.Argument) {
-                if (role.expectedCallable.lease.identity != enclosing.lease.identity)
-                    return Refinement.Rejected(ValueSiteRevalidationRequestFailure.BASIS_MISMATCH)
-                if (!enclosing.range.containsValueRange(role.invocationAnchor))
-                    return Refinement.Rejected(ValueSiteRevalidationRequestFailure.INVOCATION_OUTSIDE_ENCLOSING)
-                if (!role.invocationAnchor.containsValueRange(anchor))
-                    return Refinement.Rejected(ValueSiteRevalidationRequestFailure.ARGUMENT_OUTSIDE_INVOCATION)
-                val signature = role.expectedCallable.signature
-                if (
-                    signature !is CanonicalCompilerCallableSignature ||
-                        role.position.value !in signature.valueParameters.indices
-                )
-                    return Refinement.Rejected(ValueSiteRevalidationRequestFailure.ARGUMENT_POSITION_UNAVAILABLE)
+            when (val admitted = admitClaim(enclosing, anchor, role)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return admitted
             }
             return Refinement.Refined(ValueSiteRevalidationRequest(enclosing, anchor, role, budget))
         }
+
+        private fun admitClaim(
+            enclosing: SymbolSelector,
+            anchor: ExactDeclarationTextRange,
+            role: ValueSiteRoleClaim,
+        ): Refinement<Unit, ValueSiteRevalidationRequestFailure> =
+            when (role) {
+                is ValueSiteRoleClaim.Argument ->
+                    when (
+                        val signature = admitInvocation(enclosing, anchor, role.invocationAnchor, role.expectedCallable)
+                    ) {
+                        is Refinement.Rejected -> signature
+                        is Refinement.Refined ->
+                            if (role.position.value in signature.value.valueParameters.indices) Refinement.Refined(Unit)
+                            else Refinement.Rejected(ValueSiteRevalidationRequestFailure.ARGUMENT_POSITION_UNAVAILABLE)
+                    }
+                is ValueSiteRoleClaim.Receiver ->
+                    when (
+                        val signature = admitInvocation(enclosing, anchor, role.invocationAnchor, role.expectedCallable)
+                    ) {
+                        is Refinement.Rejected -> signature
+                        is Refinement.Refined -> Refinement.Refined(Unit)
+                    }
+                ValueSiteRoleClaim.ExpressionResult,
+                ValueSiteRoleClaim.LocalBinding,
+                ValueSiteRoleClaim.LocalRead,
+                ValueSiteRoleClaim.Return,
+                ValueSiteRoleClaim.PropertyAssignment -> Refinement.Refined(Unit)
+            }
+
+        private fun admitInvocation(
+            enclosing: SymbolSelector,
+            anchor: ExactDeclarationTextRange,
+            invocation: ExactDeclarationTextRange,
+            callable: SymbolSelector,
+        ): Refinement<CanonicalCompilerCallableSignature, ValueSiteRevalidationRequestFailure> =
+            when {
+                callable.lease.identity != enclosing.lease.identity ->
+                    Refinement.Rejected(ValueSiteRevalidationRequestFailure.BASIS_MISMATCH)
+                !enclosing.range.containsValueRange(invocation) ->
+                    Refinement.Rejected(ValueSiteRevalidationRequestFailure.INVOCATION_OUTSIDE_ENCLOSING)
+                !invocation.containsValueRange(anchor) ->
+                    Refinement.Rejected(ValueSiteRevalidationRequestFailure.ARGUMENT_OUTSIDE_INVOCATION)
+                callable.signature !is CanonicalCompilerCallableSignature ->
+                    Refinement.Rejected(ValueSiteRevalidationRequestFailure.ARGUMENT_POSITION_UNAVAILABLE)
+                else -> Refinement.Refined(callable.signature as CanonicalCompilerCallableSignature)
+            }
     }
 }
 
@@ -76,6 +119,7 @@ enum class ValueSiteRevalidationFailure {
     INVOCATION_MISMATCH,
     CALLABLE_MISMATCH,
     ARGUMENT_POSITION_MISMATCH,
+    RECEIVER_KIND_MISMATCH,
 }
 
 /** Actual native role evidence, bound to the full exact selected declaration and occurrence. */
@@ -110,6 +154,19 @@ private fun ValueSiteRoleClaim.admitRole(
         ValueSiteRoleClaim.Return -> admitSimpleRole(actual, ValueRole.Return)
         ValueSiteRoleClaim.PropertyAssignment -> admitSimpleRole(actual, ValueRole.PropertyAssignment)
         is ValueSiteRoleClaim.Argument -> admitArgument(actual, owner)
+        is ValueSiteRoleClaim.Receiver -> {
+            when {
+                actual !is ValueRole.Receiver -> Refinement.Rejected(ValueSiteRevalidationFailure.ROLE_MISMATCH)
+                actual.call.basis != owner.lease.identity ||
+                    !actual.call.enclosing.matchesSelected(owner) ||
+                    actual.call.range != invocationAnchor ->
+                    Refinement.Rejected(ValueSiteRevalidationFailure.INVOCATION_MISMATCH)
+                !actual.call.callable.matchesSelected(expectedCallable) ->
+                    Refinement.Rejected(ValueSiteRevalidationFailure.CALLABLE_MISMATCH)
+                actual.kind != kind -> Refinement.Rejected(ValueSiteRevalidationFailure.RECEIVER_KIND_MISMATCH)
+                else -> Refinement.Refined(Unit)
+            }
+        }
     }
 
 private fun admitSimpleRole(actual: ValueRole, expected: ValueRole): Refinement<Unit, ValueSiteRevalidationFailure> =

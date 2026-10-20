@@ -156,7 +156,17 @@ internal class CallbackEvidenceReadmission(private val endpoints: CallbackEndpoi
     fun call(previous: ValueInvocation): CallbackReadmission<ValueInvocation> =
         endpoints.endpoint(previous.enclosing).then { owner ->
             endpoints.endpoint(previous.callable).then { target ->
-                when (val admitted = ValueInvocation.fromCompiler(owner, previous.range, target)) {
+                val execution =
+                    when (val result = execution(previous.executionOwner, owner)) {
+                        is Refinement.Refined -> result.value
+                        is Refinement.Rejected ->
+                            return@then Refinement.Rejected(
+                                CallbackSummaryReadmissionFailure.Invocation(
+                                    ValueInvocationFailure.EXECUTION_OWNER_MISMATCH
+                                )
+                            )
+                    }
+                when (val admitted = ValueInvocation.fromCompiler(owner, previous.range, target, execution)) {
                     is Refinement.Refined -> admitted
                     is Refinement.Rejected ->
                         Refinement.Rejected(CallbackSummaryReadmissionFailure.Invocation(admitted.failure))
@@ -178,7 +188,26 @@ internal class CallbackEvidenceReadmission(private val endpoints: CallbackEndpoi
     fun site(previous: ValueSite): CallbackReadmission<ValueSite> =
         endpoints.endpoint(previous.enclosing).then { owner ->
             role(previous.role).then { role ->
-                when (val admitted = ValueSite.fromCompiler(owner, previous.range, role)) {
+                val execution =
+                    when (val result = execution(previous.executionOwner, owner)) {
+                        is Refinement.Refined -> result.value
+                        is Refinement.Rejected ->
+                            return@then Refinement.Rejected(
+                                CallbackSummaryReadmissionFailure.Site(ValueSiteFailure.EXECUTION_OWNER_MISMATCH)
+                            )
+                    }
+                when (
+                    val admitted =
+                        ValueSite.fromCompiler(
+                            owner,
+                            previous.range,
+                            role,
+                            execution,
+                            previous.valuePath,
+                            previous.callStack,
+                            previous.predicates,
+                        )
+                ) {
                     is Refinement.Refined -> admitted
                     is Refinement.Rejected ->
                         Refinement.Rejected(CallbackSummaryReadmissionFailure.Site(admitted.failure))
@@ -190,11 +219,23 @@ internal class CallbackEvidenceReadmission(private val endpoints: CallbackEndpoi
         when (previous) {
             is ValueRole.Argument ->
                 call(previous.call).then { Refinement.Refined(ValueRole.Argument(it, previous.position)) }
+            is ValueRole.Receiver ->
+                call(previous.call).then { Refinement.Refined(ValueRole.Receiver(it, previous.kind)) }
+            is ValueRole.Formal -> Refinement.Refined(previous)
             ValueRole.ExpressionResult,
             ValueRole.LocalBinding,
             ValueRole.LocalRead,
             ValueRole.Return,
             ValueRole.PropertyAssignment -> Refinement.Refined(previous)
+        }
+
+    private fun execution(
+        previous: ValueExecutionOwner,
+        owner: RelationEndpoint,
+    ): Refinement<ValueExecutionOwner, ValueExecutionOwnerFailure> =
+        when (val body = previous.body) {
+            ValueExecutionBody.Declaration -> Refinement.Refined(ValueExecutionOwner.declaration(owner))
+            is ValueExecutionBody.Anonymous -> ValueExecutionOwner.fromCompiler(owner, body.callable, previous.basis)
         }
 }
 
