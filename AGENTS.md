@@ -52,7 +52,6 @@ This guide owns repository rules and routes source investigation.
 - [Persistent snapshot evidence](docs/reviews/persistent-topology-snapshots.md) - historical contracts, offline SQLite reports, and explicit native capture limits.
 - [`diagnostic/`](diagnostic/AGENTS.md) and [`change/`](change/AGENTS.md) - compiler diagnostics and proof-carrying mutation workflows.
 - [`runtime/`](runtime/AGENTS.md) - existing-IDE plugin composition, operation dispatch, and bounded diagnostics.
-- [`indexer/`](indexer/AGENTS.md) - retirement record for the former isolated semantic sidecar.
 - [`app-server/`](app-server/AGENTS.md) - persistent coordinator, host adapters, workspace lanes, and Codex protocol integration.
 - [`cli/`](cli/AGENTS.md) - private JVM entry points, direct tools, installation workflows, and typed output projections.
 - [`copilot/`](copilot/extension.mjs) - optional agent extension over the shared tool RPC.
