@@ -2,11 +2,10 @@
 
 package io.github.amichne.kast.protocol.contract
 
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
-
-private const val MAX_IMPACT_CATCH_BRANCHES = 1024
 
 /** Detached path evidence. Completion is exclusively carried by the containing query coverage ledger. */
 @Serializable
@@ -25,55 +24,16 @@ enum class ImpactTransferKindDocument {
     LOCAL_BINDING,
     LOCAL_READ,
     ARGUMENT,
+    RECEIVER,
     RETURN,
     PROPERTY_ASSIGNMENT,
     BRANCH_ALTERNATIVE,
     WRAPPER_RETURN,
+    SOURCE_CALL_ENTRY,
+    SOURCE_CALL_RETURN,
+    FIELD_READ,
+    CONSTRUCTOR_FIELD,
 }
-
-@Serializable
-data class ImpactCompilerTransferDocument(
-    val source: ImpactValueSiteReferenceDocument,
-    val target: ImpactValueSiteReferenceDocument,
-    val kind: ImpactTransferKindDocument,
-    val evidence: ImpactTransferEvidenceDocument,
-) {
-    constructor(
-        source: ImpactValueSiteReferenceDocument,
-        target: ImpactValueSiteReferenceDocument,
-        kind: ImpactTransferKindDocument,
-    ) : this(source, target, kind, ImpactTransferEvidenceDocument.Direct)
-
-    fun admitsEvidence(): Boolean =
-        when (val proof = evidence) {
-            ImpactTransferEvidenceDocument.Direct -> true
-            is ImpactTransferEvidenceDocument.NormalBranchResult ->
-                kind == ImpactTransferKindDocument.BRANCH_ALTERNATIVE &&
-                    (source.role == ImpactValueRoleDocument.ExpressionResult ||
-                        source.role == ImpactValueRoleDocument.LocalRead) &&
-                    target.role == ImpactValueRoleDocument.ExpressionResult &&
-                    source.enclosing == target.enclosing &&
-                    proof.admitsAnchors(source.range, target.range) &&
-                    proof.alternative.admitsIndex()
-        }
-}
-
-private fun ImpactTransferEvidenceDocument.NormalBranchResult.admitsAnchors(
-    source: ImpactSourceRangeDocument,
-    target: ImpactSourceRangeDocument,
-): Boolean =
-    target == tryRange &&
-        tryRange.start.value < branchRange.start.value &&
-        branchRange.start.value < branchRange.end.value &&
-        branchRange.end.value <= tryRange.end.value &&
-        source.start.value >= branchRange.start.value &&
-        source.end.value <= branchRange.end.value
-
-private fun ImpactTryBranchAlternativeDocument.admitsIndex(): Boolean =
-    when (this) {
-        ImpactTryBranchAlternativeDocument.TryBody -> true
-        is ImpactTryBranchAlternativeDocument.CatchBody -> index in 0 until MAX_IMPACT_CATCH_BRANCHES
-    }
 
 @Serializable
 enum class ImpactBranchCompletionDocument {
@@ -92,9 +52,26 @@ sealed interface ImpactTryBranchAlternativeDocument {
 }
 
 @Serializable
+enum class ImpactInterpolationScalarKindDocument {
+    STRING,
+    BOOLEAN,
+    CHAR,
+    BYTE,
+    SHORT,
+    INT,
+    LONG,
+    FLOAT,
+    DOUBLE,
+}
+
+@Serializable
 @JsonClassDiscriminator("type")
 sealed interface ImpactTransferEvidenceDocument {
     @Serializable @SerialName("DIRECT") data object Direct : ImpactTransferEvidenceDocument
+
+    @Serializable
+    @SerialName("SOURCE")
+    data class Source(val operation: ImpactSourceOperationDocument) : ImpactTransferEvidenceDocument
 
     @Serializable
     @SerialName("NORMAL_BRANCH_RESULT")
@@ -242,6 +219,10 @@ enum class ImpactFlowUnsupportedDocument {
     BYTE_LIMIT_REACHED,
     NESTED_EXECUTION,
     OUTSIDE_DOMAIN,
+    ACCESS_PATH_DEPTH_EXCEEDED,
+    CALL_CONTEXT_DEPTH_EXCEEDED,
+    RECURSIVE_SOURCE_CALL,
+    CALLBACK_PROOF_LIMIT_REACHED,
 }
 
 @Serializable
@@ -300,8 +281,11 @@ sealed interface ImpactPathTerminalDocument {
 
     @Serializable
     @SerialName("UNRESOLVED_FLOW")
-    data class UnresolvedFlow(val site: ImpactValueSiteReferenceDocument, val cause: ImpactFlowUnsupportedDocument) :
-        ImpactPathTerminalDocument
+    data class UnresolvedFlow(
+        val site: ImpactValueSiteReferenceDocument,
+        val cause: ImpactFlowUnsupportedDocument,
+        @EncodeDefault val evidence: ImpactFlowObligationEvidenceDocument = ImpactFlowObligationEvidenceDocument.None,
+    ) : ImpactPathTerminalDocument
 
     @Serializable
     @SerialName("EXECUTION_STOP")

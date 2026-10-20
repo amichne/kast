@@ -49,20 +49,42 @@ sealed interface ValueTransferEvidence {
 
     fun admits(source: ValueSite, target: ValueSite, kind: ValueTransferKind): Boolean =
         when (this) {
-            Direct -> true
-            is NormalBranchResult ->
-                kind == ValueTransferKind.BRANCH_ALTERNATIVE &&
-                    (source.role == ValueRole.ExpressionResult || source.role == ValueRole.LocalRead) &&
-                    source.identity.owner == target.identity.owner &&
-                    target.range == tryRange &&
-                    source.range.startInclusive >= branchRange.startInclusive &&
-                    source.range.endExclusive <= branchRange.endExclusive
+            Direct ->
+                kind !in SOURCE_TRANSFER_KINDS &&
+                    source.valuePath == target.valuePath &&
+                    source.callStack == target.callStack
+            is ValueSourceTransfer -> admitsSource(source, target, kind)
+            is NormalBranchResult -> admitsNormal(source, target, kind)
         }
 
     val retainedBytes: Long
         get() =
             when (this) {
                 Direct -> 0L
+                is ValueSourceTransfer -> sourceEvidenceStorageBytes(operation)
                 is NormalBranchResult -> 4096L
             }
 }
+
+private fun ValueTransferEvidence.NormalBranchResult.admitsNormal(
+    source: ValueSite,
+    target: ValueSite,
+    kind: ValueTransferKind,
+): Boolean =
+    kind == ValueTransferKind.BRANCH_ALTERNATIVE &&
+        (source.role == ValueRole.ExpressionResult || source.role == ValueRole.LocalRead) &&
+        source.identity.owner == target.identity.owner &&
+        source.executionOwner == target.executionOwner &&
+        source.valuePath == target.valuePath &&
+        source.callStack == target.callStack &&
+        target.range == tryRange &&
+        source.range.startInclusive >= branchRange.startInclusive &&
+        source.range.endExclusive <= branchRange.endExclusive
+
+private val SOURCE_TRANSFER_KINDS =
+    setOf(
+        ValueTransferKind.SOURCE_CALL_ENTRY,
+        ValueTransferKind.SOURCE_CALL_RETURN,
+        ValueTransferKind.FIELD_READ,
+        ValueTransferKind.CONSTRUCTOR_FIELD,
+    )

@@ -7,6 +7,7 @@ import io.github.amichne.kast.protocol.contract.ImpactBoundaryPositionDocument
 import io.github.amichne.kast.protocol.contract.ImpactCallablePositionDocument
 import io.github.amichne.kast.protocol.contract.ImpactContentViewDocument
 import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactExecutionOwnerDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactModelFormatDocument
 import io.github.amichne.kast.protocol.contract.ImpactModelIdentityDocument
@@ -24,6 +25,8 @@ import io.github.amichne.kast.relation.contract.ExactModelCallablePosition
 import io.github.amichne.kast.relation.contract.ModelRuleReference
 import io.github.amichne.kast.relation.contract.ModelValuePosition
 import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.ValueDeclarationIdentity
+import io.github.amichne.kast.relation.contract.ValueExecutionIdentity
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
@@ -79,30 +82,50 @@ internal fun RelationEndpoint.impactDeclaration(): ImpactProjected<ImpactDeclara
         }
 
 internal fun ValueSiteIdentity.impactDocument(): ImpactProjected<ImpactValueSiteReferenceDocument> =
-    basis
-        .impactDocument()
-        .impactZip(owner.file.stableValue.impactText())
-        .impactZip(owner.range.impactDocument())
-        .impactZip(owner.compiler.value.impactText())
-        .impactThen { (declaration, compiler) ->
-            val enclosing =
-                ImpactDeclarationReferenceDocument(
-                    declaration.first.first,
-                    declaration.first.second,
-                    declaration.second,
-                    compiler,
-                )
-            range.impactDocument().impactZip(role.impactDocument()).impactMap { (range, role) ->
-                ImpactValueSiteReferenceDocument(enclosing, range, role)
-            }
+    owner
+        .impactDocument(basis)
+        .impactZip(range.impactDocument())
+        .impactZip(role.impactDocument())
+        .impactZip(execution.impactDocument())
+        .impactZip(valuePath.impactDocument())
+        .impactZip(callStack.impactDocument())
+        .impactMap { (state, stack) ->
+            val (core, path) = state
+            val (position, execution) = core
+            val (location, role) = position
+            ImpactValueSiteReferenceDocument(location.first, location.second, role, execution, path, stack)
         }
 
 internal fun ValueSite.impactDocument(): ImpactProjected<ImpactValueSiteReferenceDocument> = identity.impactDocument()
 
 internal fun ValueInvocation.impactDocument(): ImpactProjected<ImpactInvocationReferenceDocument> =
-    range.impactDocument().impactZip(callable.impactDeclaration()).impactMap { (range, callable) ->
-        ImpactInvocationReferenceDocument(range, callable)
-    }
+    range
+        .impactDocument()
+        .impactZip(callable.impactDeclaration())
+        .impactZip(executionOwner.identity.impactDocument())
+        .impactMap { (invocation, execution) ->
+            ImpactInvocationReferenceDocument(invocation.first, invocation.second, execution)
+        }
+
+internal fun ValueDeclarationIdentity.impactDocument(
+    basis: SemanticReadIdentity
+): ImpactProjected<ImpactDeclarationReferenceDocument> =
+    basis
+        .impactDocument()
+        .impactZip(file.stableValue.impactText())
+        .impactZip(range.impactDocument())
+        .impactZip(compiler.value.impactText())
+        .impactMap { (declaration, compiler) ->
+            ImpactDeclarationReferenceDocument(
+                declaration.first.first,
+                declaration.first.second,
+                declaration.second,
+                compiler,
+            )
+        }
+
+internal fun ValueExecutionIdentity.impactDocument(): ImpactProjected<ImpactExecutionOwnerDocument> =
+    Refinement.Refined(ImpactExecutionOwnerDocument.Declaration)
 
 private fun ValueRole.impactDocument(): ImpactProjected<ImpactValueRoleDocument> =
     when (this) {
@@ -115,6 +138,11 @@ private fun ValueRole.impactDocument(): ImpactProjected<ImpactValueRoleDocument>
             call.impactDocument().impactZip(position.value.impactOffset()).impactMap { (call, position) ->
                 ImpactValueRoleDocument.Argument(call, position)
             }
+        is ValueRole.Receiver ->
+            call.impactDocument().impactMap { invocation ->
+                ImpactValueRoleDocument.Receiver(invocation, kind.impactDocument())
+            }
+        is ValueRole.Formal -> position.impactDocument().impactMap(ImpactValueRoleDocument::Formal)
     }
 
 internal fun ContractModelIdentity.impactDocument(): ImpactProjected<ImpactModelIdentityDocument> =

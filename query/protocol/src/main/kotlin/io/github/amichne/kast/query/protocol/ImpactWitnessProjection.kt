@@ -123,12 +123,14 @@ private fun QueryImpactWitnessEntry.impactDocument(
             count(observationOrdinal.value)
                 .impactZip(count(obligationOrdinal.value))
                 .impactZip(obligation.site.impactDocument())
-                .impactMap { (position, site) ->
+                .impactZip(obligation.evidence.impactDocument())
+                .impactMap { (observed, evidence) ->
                     ImpactWitnessDocument.FlowObligation(
-                        position.first,
-                        position.second,
-                        site,
+                        observed.first.first,
+                        observed.first.second,
+                        observed.second,
                         obligation.cause.impactDocument(),
+                        evidence,
                     )
                 }
         is QueryImpactWitnessEntry.NativeRead -> projectNativeRead()

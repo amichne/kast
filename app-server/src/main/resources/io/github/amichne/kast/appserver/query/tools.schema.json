@@ -2970,7 +2970,7 @@
         "range",
         "role"
       ],
-      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument"
+      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.ImpactRequestedValueSiteDocument"
     },
     "SourceCandidateReference": {
       "type": "string",

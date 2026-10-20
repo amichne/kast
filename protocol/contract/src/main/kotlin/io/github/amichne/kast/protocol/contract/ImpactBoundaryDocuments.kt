@@ -2,6 +2,7 @@
 
 package io.github.amichne.kast.protocol.contract
 
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
@@ -10,7 +11,14 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 data class ImpactInvocationReferenceDocument(
     val range: ImpactSourceRangeDocument,
     val callable: ImpactDeclarationReferenceDocument,
+    @EncodeDefault val executionOwner: ImpactExecutionOwnerDocument = ImpactExecutionOwnerDocument.Declaration,
 )
+
+@Serializable
+@JsonClassDiscriminator("type")
+sealed interface ImpactExecutionOwnerDocument {
+    @Serializable @SerialName("DECLARATION") data object Declaration : ImpactExecutionOwnerDocument
+}
 
 @Serializable
 @JsonClassDiscriminator("type")
@@ -26,6 +34,15 @@ sealed interface ImpactValueRoleDocument {
     data class Argument(val invocation: ImpactInvocationReferenceDocument, val index: ProtocolOffset) :
         ImpactValueRoleDocument
 
+    @Serializable
+    @SerialName("RECEIVER")
+    data class Receiver(val invocation: ImpactInvocationReferenceDocument, val kind: ImpactReceiverKindDocument) :
+        ImpactValueRoleDocument
+
+    @Serializable
+    @SerialName("FORMAL")
+    data class Formal(val position: ImpactFormalPositionDocument) : ImpactValueRoleDocument
+
     @Serializable @SerialName("RETURN") data object Return : ImpactValueRoleDocument
 
     @Serializable @SerialName("PROPERTY_ASSIGNMENT") data object PropertyAssignment : ImpactValueRoleDocument
@@ -36,6 +53,13 @@ data class ImpactValueSiteReferenceDocument(
     val enclosing: ImpactDeclarationReferenceDocument,
     val range: ImpactSourceRangeDocument,
     val role: ImpactValueRoleDocument,
+    @EncodeDefault val executionOwner: ImpactExecutionOwnerDocument = ImpactExecutionOwnerDocument.Declaration,
+    @EncodeDefault
+    @ProtocolCollectionConstraint(maximumItems = 8)
+    val valuePath: BoundedProtocolList<ImpactValuePathSegmentDocument> = EmptyImpactValuePath,
+    @EncodeDefault
+    @ProtocolCollectionConstraint(maximumItems = 32)
+    val callStack: BoundedProtocolList<ImpactCallFrameDocument> = EmptyImpactCallStack,
 )
 
 @Serializable

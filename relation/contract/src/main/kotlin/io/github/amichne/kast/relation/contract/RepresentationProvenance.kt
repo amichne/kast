@@ -151,7 +151,17 @@ class RepresentationEvidence private constructor(val site: ValueSite, val branch
         if (site.identity != transfer.source.identity)
             return Refinement.Rejected(RepresentationPropagationFailure.SITE_MISMATCH)
         return Refinement.Refined(
-            create(transfer.target, branches.map { it.withHistory(RepresentationHistory.CompilerTransfer(transfer)) })
+            create(
+                transfer.target,
+                branches.map {
+                    it.withHistory(
+                        RepresentationHistory.CompilerTransfer(transfer),
+                        if (transfer.kind in setOf(ValueTransferKind.FIELD_READ, ValueTransferKind.CONSTRUCTOR_FIELD))
+                            RepresentationCurrent.Unknown(RepresentationUnknownReason.UNMODELED_TRANSFORMATION)
+                        else it.current,
+                    )
+                },
+            )
         )
     }
 

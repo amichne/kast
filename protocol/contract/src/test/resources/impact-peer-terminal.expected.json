@@ -31,7 +31,12 @@
     },
     "role": {
       "type": "EXPRESSION_RESULT"
-    }
+    },
+    "executionOwner": {
+      "type": "DECLARATION"
+    },
+    "valuePath": [],
+    "callStack": []
   },
   "admission": {
     "acquisition": {

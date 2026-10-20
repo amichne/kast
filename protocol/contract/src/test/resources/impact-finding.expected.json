@@ -28,7 +28,12 @@
         },
         "role": {
           "type": "EXPRESSION_RESULT"
-        }
+        },
+        "executionOwner": {
+          "type": "DECLARATION"
+        },
+        "valuePath": [],
+        "callStack": []
       },
       "destination": {
         "enclosing": {
@@ -50,7 +55,12 @@
         },
         "role": {
           "type": "PROPERTY_ASSIGNMENT"
-        }
+        },
+        "executionOwner": {
+          "type": "DECLARATION"
+        },
+        "valuePath": [],
+        "callStack": []
       },
       "representation": {
         "type": "PRESENT",
@@ -148,7 +158,10 @@
       },
       "terminal": {
         "type": "UNRESOLVED_FLOW",
-        "cause": "MUTABLE_CONTROL_FLOW"
+        "cause": "MUTABLE_CONTROL_FLOW",
+        "evidence": {
+          "type": "NONE"
+        }
       },
       "boundaryObligations": [
         {
@@ -173,7 +186,12 @@
               },
               "role": {
                 "type": "PROPERTY_ASSIGNMENT"
-              }
+              },
+              "executionOwner": {
+                "type": "DECLARATION"
+              },
+              "valuePath": [],
+              "callStack": []
             },
             "kind": "PERSISTENCE",
             "contract": {

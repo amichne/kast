@@ -296,6 +296,11 @@ private fun ImpactCompilerTransferDocument.validRoles(): Boolean =
         ImpactTransferKindDocument.LOCAL_READ ->
             source.role == ImpactValueRoleDocument.LocalBinding && target.role == ImpactValueRoleDocument.LocalRead
         ImpactTransferKindDocument.ARGUMENT,
+        ImpactTransferKindDocument.RECEIVER,
+        ImpactTransferKindDocument.SOURCE_CALL_ENTRY,
+        ImpactTransferKindDocument.SOURCE_CALL_RETURN,
+        ImpactTransferKindDocument.FIELD_READ,
+        ImpactTransferKindDocument.CONSTRUCTOR_FIELD,
         ImpactTransferKindDocument.RETURN,
         ImpactTransferKindDocument.PROPERTY_ASSIGNMENT,
         ImpactTransferKindDocument.BRANCH_ALTERNATIVE,

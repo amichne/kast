@@ -13,6 +13,7 @@ import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueInvocation
+import io.github.amichne.kast.relation.contract.ValueInvocationSelection
 import io.github.amichne.kast.relation.contract.ValueModelDeclarationRead
 import io.github.amichne.kast.relation.contract.ValueProducerSeed
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRead
@@ -112,7 +113,7 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
                 is Refinement.Rejected -> return ValueProducerSeedRead.Rejected(proof.failure)
                 is Refinement.Refined -> proof.value.endpoint
             }
-        return detachedSeed(request, endpoint, started)
+        return detachedSeed(request, endpoint, expression, started)
     }
 
     private fun prepareDeclaration(
@@ -160,6 +161,7 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
     private fun detachedSeed(
         request: ValueProducerSeedRequest,
         endpoint: RelationEndpoint,
+        expression: NativeSeedExpression,
         started: Long,
     ): ValueProducerSeedRead {
         if (elapsedBudgetReached(started, request.budget))
@@ -167,7 +169,11 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
         val invocation =
             when (
                 val result =
-                    ValueInvocation.fromCompiler(RelationEndpoint.subject(request.enclosing), request.anchor, endpoint)
+                    ValueInvocation.fromCompiler(
+                        RelationEndpoint.subject(request.enclosing),
+                        sourceValueRange(expression.expression),
+                        endpoint,
+                    )
             ) {
                 is Refinement.Rejected ->
                     return ValueProducerSeedRead.Rejected(ValueProducerSeedRejection.ANCHOR_MISMATCH)
@@ -176,7 +182,12 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
         val site = invocation.resultSite()
         if (site.retainedBytes > request.budget.returnedBytes.value)
             return ValueProducerSeedRead.Rejected(ValueProducerSeedRejection.BYTE_LIMIT_REACHED)
-        return when (val result = ValueProducerSeed.fromCompiler(request, site, invocation)) {
+        val selection =
+            when (val selected = ValueInvocationSelection.fromCompiler(invocation, request.anchor)) {
+                is Refinement.Refined -> selected.value
+                is Refinement.Rejected -> return ValueProducerSeedRead.ContractRejected(selected.failure)
+            }
+        return when (val result = ValueProducerSeed.fromCompiler(request, site, selection)) {
             is Refinement.Refined -> ValueProducerSeedRead.Seeded(result.value, workCount(SEED_WORK_UNITS))
             is Refinement.Rejected -> ValueProducerSeedRead.ContractRejected(result.failure)
         }
@@ -233,9 +244,12 @@ private fun exactSeedExpression(
             is KtQualifiedExpression -> expression.selectorExpression as? KtCallElement
             else -> null
         } ?: return Refinement.Rejected(ValueProducerSeedRejection.UNSUPPORTED_INVOCATION)
-    if (call.valueInvocationExpression() !== expression)
+    val canonical =
+        call.valueInvocationExpression() as? KtExpression
+            ?: return Refinement.Rejected(ValueProducerSeedRejection.ANCHOR_MISMATCH)
+    if (expression !== call && expression !== canonical)
         return Refinement.Rejected(ValueProducerSeedRejection.ANCHOR_MISMATCH)
-    return Refinement.Refined(NativeSeedExpression(expression, call))
+    return Refinement.Refined(NativeSeedExpression(canonical, call))
 }
 
 private fun projectDeclaration(

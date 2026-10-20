@@ -12,9 +12,11 @@ import io.github.amichne.kast.protocol.contract.ImpactModelIdentityDocument
 import io.github.amichne.kast.protocol.contract.ImpactModelValuePositionDocument
 import io.github.amichne.kast.protocol.contract.ImpactModelVersionDocument
 import io.github.amichne.kast.protocol.contract.ImpactRepresentationRuleDocument
+import io.github.amichne.kast.protocol.contract.ImpactRequestedInvocationDocument
+import io.github.amichne.kast.protocol.contract.ImpactRequestedRoleDocument
+import io.github.amichne.kast.protocol.contract.ImpactRequestedValueSiteDocument
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
 import io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument
-import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactWitnessSectionDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
@@ -163,8 +165,17 @@ class PublicImpactSourceContractTest {
     @Test
     fun `optional requested sites preserve exact native role claims and null omission means empty universe`() {
         val target =
-            ImpactValueSiteReferenceDocument(declarationReference(), range(10, 20), ImpactValueRoleDocument.LocalRead)
-        for (targets in listOf(null, bounded(listOf(target)))) {
+            ImpactRequestedValueSiteDocument(declarationReference(), range(10, 20), ImpactRequestedRoleDocument.LocalRead)
+        val argument =
+            ImpactRequestedValueSiteDocument(
+                declarationReference(),
+                range(10, 20),
+                ImpactRequestedRoleDocument.Argument(
+                    ImpactRequestedInvocationDocument(range(5, 25), declarationReference()),
+                    ProtocolOffset.parse(0).refined(),
+                ),
+            )
+        for (targets in listOf(null, bounded(listOf(target)), bounded(listOf(argument)))) {
             val source =
                 PublicToolImpactSource(
                     seeds = producerSeeds(),
@@ -182,7 +193,7 @@ class PublicImpactSourceContractTest {
             val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, encoded).refined()
             val run = (admitted.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
             assertEquals(
-                targets?.values.orEmpty(),
+                targets?.values.orEmpty().map { it.reference() },
                 (run.from as QueryFromDocument.Impact).investigation.requestedSites.values,
             )
         }
@@ -191,7 +202,7 @@ class PublicImpactSourceContractTest {
     @Test
     fun `omitted requested universe uses empty default and unknown target role fails schema admission`() {
         val target =
-            ImpactValueSiteReferenceDocument(declarationReference(), range(10, 20), ImpactValueRoleDocument.LocalRead)
+            ImpactRequestedValueSiteDocument(declarationReference(), range(10, 20), ImpactRequestedRoleDocument.LocalRead)
         val source =
             PublicToolImpactSource(
                 seeds = producerSeeds(),
