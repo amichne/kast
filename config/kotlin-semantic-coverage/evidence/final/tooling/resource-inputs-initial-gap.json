@@ -1,1 +1,0 @@
-{"gate":"SEMANTIC_RESOURCE_INPUTS","status":"FAIL","required_resource_count":51,"observed_resource_count":53,"issues":[{"code":"RESOURCE_UNEXPECTED","detail":"runtime/hosted/src/nativeTest/resources/semantic-owners/R4_bare_constructor_reference.kt"},{"code":"RESOURCE_UNEXPECTED","detail":"runtime/hosted/src/nativeTest/resources/semantic-owners/R4_uninvoked_outer_lambda.kt"}]}

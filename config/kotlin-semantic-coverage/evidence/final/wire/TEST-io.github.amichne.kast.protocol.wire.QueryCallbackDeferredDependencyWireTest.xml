@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.github.amichne.kast.protocol.wire.QueryCallbackDeferredDependencyWireTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-14T01:20:29.201Z" hostname="Austins-MacBook-Pro.local" time="0.011">
-  <properties/>
-  <testcase name="deferred supply encodes every class identity without an invocation count()" classname="io.github.amichne.kast.protocol.wire.QueryCallbackDeferredDependencyWireTest" time="0.004"/>
-  <testcase name="deferred document rejects invented invocations incomplete scans and mismatched identities()" classname="io.github.amichne.kast.protocol.wire.QueryCallbackDeferredDependencyWireTest" time="0.007"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

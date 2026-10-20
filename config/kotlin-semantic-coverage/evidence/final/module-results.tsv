@@ -1,8 +1,0 @@
-module	selected	passed	failed	errors	skipped
-relation/contract	151	151	0	0	0
-relation/intellij	206	206	0	0	0
-protocol/contract	108	108	0	0	0
-protocol/wire	225	225	0	0	0
-query/protocol	307	307	0	0	0
-runtime/hosted	322	322	0	0	0
-cli	424	424	0	0	0

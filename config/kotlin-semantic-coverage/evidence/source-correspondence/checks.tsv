@@ -1,7 +1,0 @@
-command	expected_exit	observed_exit	status	transcript	sha256
-uv run --locked ruff format --check .	0	0	PASS	format.txt	eee76f865de5a9f2456950f710ae5d5f9b5bd0ea02aa54f614c5eed6642a0bfd
-uv run --locked ruff check .	0	0	PASS	ruff.txt	82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18
-uv run --locked pyright	0	0	PASS	pyright.txt	73f25e6f38fc768fc2cf4e8a8032ee4cd7127c529b6f78db3a20aebdb27aa53f
-uv run --locked pytest -q	0	0	PASS	pytest.txt	a73140be5655ad6fda8a1b4528644690bbf723a3f176d68cdc1e26aa3969d87a
-uv run --locked --script inventory.py --self-test	0	0	PASS	standalone.txt	5d20d5b8f04283d74e434ab6a6b67f5c6af2bae7efed70941d954e6ed10be724
-mise exec -- ./gradlew :check verifyJsonContracts verifyKastArchitecture knowledgeImpact verifyKnowledgeBase --console=plain --no-build-cache	0	0	PASS	repository-check.txt	bbb20bb04a2ef668a7c2e215b58a28f2f4d5c0ec2819bbb4caa0a4893f34a58a

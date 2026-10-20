@@ -382,9 +382,7 @@ and Python AST declaration checks for `code_sources`. These checks prove source
 declaration presence, not compiler resolution or native execution. OpenWiki's
 Claims lifecycle separately rechecks changed evidence.
 
-The previous update log is preserved in
-[the migration history](reviews/knowledge-migration-history.md). Local native
-OpenWiki uses its private subscription login and `gpt-6-luna` setting. Pages
+Local native OpenWiki uses its private subscription login and `gpt-6-luna` setting. Pages
 written through Codex MCP use the current chat model. The optional GitHub workflow
 runs only on manual dispatch, requires its own API credential, selects Luna and
 disables telemetry and tracing. No subscription token belongs in repository
