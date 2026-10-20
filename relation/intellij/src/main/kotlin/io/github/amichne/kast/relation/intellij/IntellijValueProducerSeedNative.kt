@@ -23,6 +23,7 @@ import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadStage
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
+import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaErrorType
 import org.jetbrains.kotlin.psi.KtCallElement
@@ -143,9 +144,9 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
             val resolved =
                 expression.call.resolveCall()
                     ?: return@observedAnalyze Refinement.Rejected(ValueProducerSeedRejection.UNRESOLVED_INVOCATION)
-            val symbol =
-                resolved.signature.symbol as? KaNamedFunctionSymbol
-                    ?: return@observedAnalyze Refinement.Rejected(ValueProducerSeedRejection.UNSUPPORTED_INVOCATION)
+            val symbol = resolved.signature.symbol
+            if (symbol !is KaNamedFunctionSymbol && symbol !is KaConstructorSymbol)
+                return@observedAnalyze Refinement.Rejected(ValueProducerSeedRejection.UNSUPPORTED_INVOCATION)
             val declaration =
                 symbol.psi as? PsiNamedElement
                     ?: return@observedAnalyze Refinement.Rejected(ValueProducerSeedRejection.UNSUPPORTED_INVOCATION)
