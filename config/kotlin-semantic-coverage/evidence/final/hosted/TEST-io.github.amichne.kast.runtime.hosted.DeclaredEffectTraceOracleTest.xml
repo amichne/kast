@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.github.amichne.kast.runtime.hosted.DeclaredEffectTraceOracleTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-14T01:44:20.758Z" hostname="Austins-MacBook-Pro.local" time="0.029">
-  <properties/>
-  <testcase name="testIndependentPredicateRejectsNegativeControls" classname="io.github.amichne.kast.runtime.hosted.DeclaredEffectTraceOracleTest" time="0.024"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>
