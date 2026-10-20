@@ -3,6 +3,7 @@
 package io.github.amichne.kast.protocol.contract
 
 import io.github.amichne.kast.kernel.Refinement
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
@@ -93,6 +94,7 @@ sealed interface ImpactWitnessDocument {
         val obligationOrdinal: QueryDiscoveryCountDocument,
         val site: ImpactValueSiteReferenceDocument,
         val cause: ImpactFlowUnsupportedDocument,
+        @EncodeDefault val evidence: ImpactFlowObligationEvidenceDocument = ImpactFlowObligationEvidenceDocument.None,
     ) : ImpactWitnessDocument
 
     @Serializable
@@ -192,7 +194,10 @@ sealed interface ImpactFindingTerminalDocument {
 
     @Serializable
     @SerialName("UNRESOLVED_FLOW")
-    data class UnresolvedFlow(val cause: ImpactFlowUnsupportedDocument) : ImpactFindingTerminalDocument
+    data class UnresolvedFlow(
+        val cause: ImpactFlowUnsupportedDocument,
+        @EncodeDefault val evidence: ImpactFlowObligationEvidenceDocument = ImpactFlowObligationEvidenceDocument.None,
+    ) : ImpactFindingTerminalDocument
 
     @Serializable
     @SerialName("UNRESOLVED_READ")

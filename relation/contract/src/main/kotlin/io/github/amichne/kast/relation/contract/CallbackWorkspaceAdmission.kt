@@ -150,11 +150,17 @@ private class CallbackWorkspaceFiles {
 
     private fun site(value: ValueSite) {
         files += value.enclosing.file
+        value.stateEndpoints().forEach { files += it.file }
         when (val role = value.role) {
             is ValueRole.Argument -> {
                 files += role.call.enclosing.file
                 files += role.call.callable.file
             }
+            is ValueRole.Receiver -> {
+                files += role.call.enclosing.file
+                files += role.call.callable.file
+            }
+            is ValueRole.Formal -> Unit
             ValueRole.ExpressionResult,
             ValueRole.LocalBinding,
             ValueRole.LocalRead,

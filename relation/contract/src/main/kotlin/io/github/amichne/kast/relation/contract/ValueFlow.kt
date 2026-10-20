@@ -12,6 +12,11 @@ enum class ValueTransferKind {
     PROPERTY_ASSIGNMENT,
     BRANCH_ALTERNATIVE,
     WRAPPER_RETURN,
+    RECEIVER,
+    SOURCE_CALL_ENTRY,
+    SOURCE_CALL_RETURN,
+    FIELD_READ,
+    CONSTRUCTOR_FIELD,
 }
 
 enum class ValueTransferFailure {
@@ -50,18 +55,7 @@ private constructor(
             if (source.identity == target.identity) return Refinement.Rejected(ValueTransferFailure.SELF_EDGE)
             if (!evidence.admits(source, target, kind))
                 return Refinement.Rejected(ValueTransferFailure.EVIDENCE_MISMATCH)
-            val rolesMatch =
-                when (kind) {
-                    ValueTransferKind.LOCAL_BINDING -> target.role == ValueRole.LocalBinding
-                    ValueTransferKind.LOCAL_READ ->
-                        source.role == ValueRole.LocalBinding && target.role == ValueRole.LocalRead
-                    ValueTransferKind.ARGUMENT -> target.role is ValueRole.Argument
-                    ValueTransferKind.RETURN -> target.role == ValueRole.Return
-                    ValueTransferKind.PROPERTY_ASSIGNMENT -> target.role == ValueRole.PropertyAssignment
-                    ValueTransferKind.BRANCH_ALTERNATIVE -> target.role == ValueRole.ExpressionResult
-                    ValueTransferKind.WRAPPER_RETURN ->
-                        source.role is ValueRole.Argument && target == source.role.call.resultSite()
-                }
+            val rolesMatch = kind.admitsRoles(source, target)
             return if (rolesMatch) Refinement.Refined(ValueTransfer(source, target, kind, evidence))
             else Refinement.Rejected(ValueTransferFailure.ROLE_MISMATCH)
         }
@@ -94,10 +88,11 @@ enum class ValueFlowUnsupportedCause {
     WORK_LIMIT_REACHED,
     TIME_LIMIT_REACHED,
     BYTE_LIMIT_REACHED,
+    ACCESS_PATH_DEPTH_EXCEEDED,
+    CALL_CONTEXT_DEPTH_EXCEEDED,
+    RECURSIVE_SOURCE_CALL,
+    PREDICATE_LIMIT_REACHED,
 }
-
-/** A boundary is positive arrival evidence, never proof of absence beyond it. */
-data class ValueFlowObligation(val site: ValueSite, val cause: ValueFlowUnsupportedCause)
 
 /** A single exact input must account for every discovered supported output and every unsupported arrival. */
 class ValueFlowStep
@@ -134,7 +129,7 @@ private constructor(
         val sharedTransfers = transfers.map { it.shareCallableEvidence(callables) }
         val sharedObligations = obligations.map { obligation ->
             val sharedSite = obligation.site.shareCallableEvidence(callables)
-            if (sharedSite === obligation.site) obligation else ValueFlowObligation(sharedSite, obligation.cause)
+            if (sharedSite === obligation.site) obligation else obligation.shareCallableEvidence { sharedSite }
         }
         if (
             sharedSource === source &&
@@ -337,4 +332,27 @@ private fun ValueFlowTerminal.validateObligations(
 
 private fun validProgress(source: ValueSite, transfers: List<ValueTransfer>, terminal: ValueFlowTerminal): Boolean =
     transfers.distinct().size == transfers.size &&
-        (terminal != ValueFlowTerminal.ResourceSuspended || source.role == ValueRole.LocalBinding)
+        (terminal != ValueFlowTerminal.ResourceSuspended || source.role.hasReferenceReads())
+
+private fun ValueTransferKind.admitsRoles(source: ValueSite, target: ValueSite): Boolean =
+    when (this) {
+        ValueTransferKind.LOCAL_BINDING -> target.role == ValueRole.LocalBinding
+        ValueTransferKind.LOCAL_READ ->
+            (source.role == ValueRole.LocalBinding || source.role is ValueRole.Formal) &&
+                target.role == ValueRole.LocalRead
+        ValueTransferKind.ARGUMENT -> target.role is ValueRole.Argument
+        ValueTransferKind.RECEIVER -> target.role is ValueRole.Receiver
+        ValueTransferKind.RETURN -> target.role == ValueRole.Return
+        ValueTransferKind.PROPERTY_ASSIGNMENT -> target.role == ValueRole.PropertyAssignment
+        ValueTransferKind.BRANCH_ALTERNATIVE -> target.role == ValueRole.ExpressionResult
+        ValueTransferKind.WRAPPER_RETURN ->
+            source.role is ValueRole.Argument &&
+                target.enclosing.valueIdentity == source.role.call.enclosing.valueIdentity &&
+                target.range == source.role.call.range &&
+                target.role == ValueRole.ExpressionResult &&
+                target.executionOwner == source.role.call.executionOwner
+        ValueTransferKind.SOURCE_CALL_ENTRY -> target.role is ValueRole.Formal
+        ValueTransferKind.SOURCE_CALL_RETURN,
+        ValueTransferKind.FIELD_READ,
+        ValueTransferKind.CONSTRUCTOR_FIELD -> target.role == ValueRole.ExpressionResult
+    }

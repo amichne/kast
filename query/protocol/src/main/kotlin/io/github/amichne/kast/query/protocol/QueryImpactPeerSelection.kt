@@ -215,6 +215,8 @@ internal fun ImpactValueSiteReferenceDocument.declarationClaims(): List<ImpactDe
     listOf(enclosing) +
         when (val syntax = role) {
             is ImpactValueRoleDocument.Argument -> listOf(syntax.invocation.callable)
+            is ImpactValueRoleDocument.Receiver -> listOf(syntax.invocation.callable)
+            is ImpactValueRoleDocument.Formal -> emptyList()
             ImpactValueRoleDocument.ExpressionResult,
             ImpactValueRoleDocument.LocalBinding,
             ImpactValueRoleDocument.LocalRead,

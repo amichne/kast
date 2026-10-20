@@ -22,7 +22,9 @@ internal fun QueryImpactTerminal.findingDocument(): ImpactProjected<ImpactFindin
         is QueryImpactTerminal.ModeledTerminal -> projectFindingModeledTerminal()
         is QueryImpactTerminal.Unresolved.PeerContinuation -> projectPeerFindingTerminal()
         is QueryImpactTerminal.Unresolved.Flow ->
-            Refinement.Refined(ImpactFindingTerminalDocument.UnresolvedFlow(obligation.cause.impactDocument()))
+            obligation.evidence.impactDocument().impactMap { evidence ->
+                ImpactFindingTerminalDocument.UnresolvedFlow(obligation.cause.impactDocument(), evidence)
+            }
         is QueryImpactTerminal.Unresolved.ReadRejected ->
             rejection.impactDocument().impactMap(ImpactFindingTerminalDocument::UnresolvedRead)
         is QueryImpactTerminal.Unresolved.ExecutionStop ->

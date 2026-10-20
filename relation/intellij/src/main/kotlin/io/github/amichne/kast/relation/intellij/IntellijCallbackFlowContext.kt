@@ -17,17 +17,14 @@ import io.github.amichne.kast.relation.contract.RelationEndpointResolutionFailur
 import io.github.amichne.kast.relation.contract.RelationOccurrence
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
-import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
-import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtFunction
-import org.jetbrains.kotlin.psi.KtFunctionLiteral
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtSafeQualifiedExpression
@@ -177,43 +174,8 @@ internal class IntellijCallbackFlowContext(
     ): Refinement<io.github.amichne.kast.relation.contract.CallbackDeferredSupplier, CallbackInvocationFlowCause> =
         IntellijDeferredSupplierExecution(this).read(element, occurrence)
 
-    fun anonymous(literal: KtFunction): RelationCallableBody.Anonymous? {
-        val nativeFile = literal.containingFile?.virtualFile ?: return null
-        if (!scope.nativeScope.contains(nativeFile)) return null
-        val file =
-            when (val detached = detachRelationFile(nativeFile, scope.request.subject.lease.workspaceRoot)) {
-                is IntellijDetachedRelationFile.Found -> detached.identity
-                IntellijDetachedRelationFile.Unsupported -> return null
-            }
-        val range = range(literal) ?: return null
-        val signature =
-            observation.observedAnalyze(literal) {
-                val symbol =
-                    when (literal) {
-                        is KtFunctionLiteral -> literal.symbol
-                        is KtNamedFunction -> literal.symbol
-                        else -> null
-                    }
-                        as? KaFunctionSymbol ?: return@observedAnalyze null
-                when (
-                    val parsed =
-                        CanonicalCompilerSignature.function(
-                            rawQualifiedIdentity = RelationCallableBody.Anonymous.sourceIdentity(file, range),
-                            rawReceiverType = symbol.receiverParameter?.returnType?.toString(),
-                            rawContextReceiverTypes = symbol.contextReceivers.map { it.type.toString() },
-                            rawValueParameterTypes = symbol.valueParameters.map { it.returnType.toString() },
-                            rawTypeParameterCount = 0,
-                        )
-                ) {
-                    is Refinement.Refined -> parsed.value as CanonicalCompilerSignature.Function
-                    is Refinement.Rejected -> null
-                }
-            } ?: return null
-        return when (val admitted = RelationCallableBody.Anonymous.fromCompiler(file, range, signature)) {
-            is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> null
-        }
-    }
+    fun anonymous(literal: KtFunction): RelationCallableBody.Anonymous? =
+        nativeAnonymousCallableBody(literal, scope, observation)
 
     fun occurrence(element: PsiElement): RelationOccurrence? {
         val nativeFile = element.containingFile?.virtualFile ?: return null
