@@ -74,7 +74,15 @@ internal class IntellijValueFlowNative(
         if (!compiledFormal && element.isNativeReferenceBinding(request.source.role))
             return IntellijLocalBindingReads(request, owner, scope, observation, started, onWork).read(element)
 
-        val base = ValueFlowStep.detachedByteCount(request.source, scope.request, emptyList(), emptyList()).value
+        val base =
+            ValueFlowStep.detachedByteCount(
+                    source = request.source,
+                    domain = scope.request,
+                    transfers = emptyList(),
+                    obligations = emptyList(),
+                    knownDeclarations = request.knownDeclarations,
+                )
+                .value
         val reserved = reservedValueObligationBytes()
         if (base > request.budget.returnedBytes.value || reserved > request.budget.returnedBytes.value - base) {
             recordValueFlowByteRejection(
@@ -106,6 +114,7 @@ internal class IntellijValueFlowNative(
                     scope.request,
                     nativeWorkCount(),
                     applications = retained.applications,
+                    knownDeclarations = request.knownDeclarations,
                 )
         ) {
             is Refinement.Refined -> ValueFlowRead.Observed(step.value)

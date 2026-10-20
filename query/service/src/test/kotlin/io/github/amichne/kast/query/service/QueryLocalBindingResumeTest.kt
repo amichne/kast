@@ -45,8 +45,13 @@ class QueryLocalBindingResumeTest {
     @Test
     fun `draining a binding interrupted inside enumeration recovers the authored paths`() = runTest {
         val large = Scenario().drain(100)
-        for (work in listOf(4L, 5L, 6L, 9L)) for (results in listOf(1, 2, 20)) {
-            val small = Scenario().drain(work, results)
+        // Two route visits, one producer read, and one child route precede the initial scanner read.
+        val prefixWork = 2L + 1L + 1L
+        for (scanWork in listOf(3L, 4L, 5L, 8L)) for (results in listOf(1, 2, 20)) {
+            val scenario = Scenario()
+            val work = prefixWork + scanWork
+            val small = scenario.drain(work, results)
+            assertEquals(scanWork, scenario.grants.first().resources.workUnitLimit.value)
             assertEquals(large, small, "work=$work results=$results")
         }
     }

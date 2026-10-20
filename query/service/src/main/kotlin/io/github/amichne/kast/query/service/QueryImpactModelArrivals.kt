@@ -22,17 +22,55 @@ internal data class QueryImpactModelArrivals(val tasks: List<PipelineTask>, val 
         get() = tasks.isNotEmpty() || paths.isNotEmpty()
 }
 
+internal class QueryImpactModelSelection
+private constructor(
+    val route: QueryImpactRoute,
+    val source: QueryImpactSource,
+    val representations: List<RepresentationRule>,
+    val boundaries: List<BoundaryModel>,
+) {
+    val size: Long
+        get() = representations.size.toLong() + boundaries.size
+
+    companion object {
+        fun select(route: QueryImpactRoute, source: QueryImpactSource): QueryImpactModelSelection {
+            val argument = route.site.role as? ValueRole.Argument
+            val representations =
+                if (
+                    route.representation is QueryImpactRepresentation.Present &&
+                        argument != null &&
+                        route.site.valuePath == ValueAccessPath.Whole
+                )
+                    source.representationModels.filter { it.matchesInput(argument) }
+                else emptyList()
+            return QueryImpactModelSelection(
+                route,
+                source,
+                java.util.Collections.unmodifiableList(representations),
+                java.util.Collections.unmodifiableList(source.boundaryModels.filter { it.source.site == route.site }),
+            )
+        }
+    }
+}
+
 /** Pure reviewed-model application; task and retained-state mutation stays in the existing interpreter. */
 internal fun modeledImpactArrivals(
     route: QueryImpactRoute,
     source: QueryImpactSource,
+): Refinement<QueryImpactModelArrivals, QueryImpactExecutionFailure> =
+    modeledImpactArrivals(QueryImpactModelSelection.select(route, source))
+
+internal fun modeledImpactArrivals(
+    selection: QueryImpactModelSelection
 ): Refinement<QueryImpactModelArrivals, QueryImpactExecutionFailure> {
+    val route = selection.route
+    val source = selection.source
     val tasks = mutableListOf<PipelineTask>()
     val paths = mutableListOf<QueryImpactPath>()
     val present = route.representation as? QueryImpactRepresentation.Present
     val argument = route.site.role as? ValueRole.Argument
     if (present != null && argument != null && route.site.valuePath == ValueAccessPath.Whole) {
-        for (model in source.representationModels.filter { it.matchesInput(argument) }) {
+        for (model in selection.representations) {
             when (val arrival = representationArrival(route, present.evidence, argument, model)) {
                 is Refinement.Rejected -> return arrival
                 is Refinement.Refined -> {
@@ -42,7 +80,7 @@ internal fun modeledImpactArrivals(
             }
         }
     }
-    for (model in source.boundaryModels.filter { it.source.site == route.site }) {
+    for (model in selection.boundaries) {
         when (val arrival = boundaryArrival(route, model, source)) {
             is Refinement.Rejected -> return arrival
             is Refinement.Refined -> {

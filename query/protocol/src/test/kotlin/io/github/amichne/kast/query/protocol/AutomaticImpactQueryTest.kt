@@ -162,8 +162,12 @@ internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
 
     @Test
     fun `stopping before the final presentation page preserves original accounting but rejects completion`() = runTest {
-        val case = Case(1, work = 8)
+        // One runner transition, three seed reads, then visit/read/terminal for each of three producers.
+        val work = 1L + 3L + 3L * (1L + 1L + 1L)
+        val case = Case(1, work = work)
         val page = case.automatic()
+        assertEquals(listOf(12L, 11L, 10L), case.seedWorkGrants)
+        assertEquals(listOf(8L, 5L, 2L), case.nativeWorkGrants)
         val rejected = assertInstanceOf(OperationOutcome.Rejected::class.java, page)
         val failure = assertInstanceOf(QueryRunRejection.CompletionUnproven::class.java, rejected.reason)
         assertEquals(QueryInvocationStop.WORK_LIMIT, failure.stop)
@@ -222,6 +226,8 @@ internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
         private val sites = invocations.map { it.resultSite() }
         private val state = QueryStateStore()
         private var seeds = 0
+        val seedWorkGrants = mutableListOf<Long>()
+        val nativeWorkGrants = mutableListOf<Long>()
         var reads = 0
             private set
 
@@ -304,6 +310,7 @@ internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
                 error("Excess native observation")
             }
             assertEquals(sites[reads++], input.source)
+            nativeWorkGrants += input.budget.resources.workUnitLimit.value
             val obligations =
                 if (unresolved)
                     listOf(ValueFlowObligation(input.source, ValueFlowUnsupportedCause.MUTABLE_CONTROL_FLOW))
@@ -342,6 +349,7 @@ internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
                                 error("Excess seed")
                             }
                             val index = seeds++
+                            seedWorkGrants += request.budget.resources.workUnitLimit.value
                             assertEquals(invocations[index].range, request.anchor)
                             return ValueProducerSeedRead.Seeded(
                                 ValueProducerSeed.fromCompiler(request, sites[index], invocations[index]).refined(),

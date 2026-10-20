@@ -16,6 +16,7 @@ internal fun valueFlowStorageBytes(
     obligations: List<ValueFlowObligation>,
     remainder: LocalBindingReadRemainder? = null,
     applications: List<ValueModelApplication> = emptyList(),
+    knownDeclarations: ValueKnownDeclarations = ValueKnownDeclarations.Empty,
 ): RelationByteCount {
     val meter = ValueFootprintMeter()
     return meter
@@ -23,6 +24,7 @@ internal fun valueFlowStorageBytes(
         .addBytes(
             applications.fold(0L) { bytes, application -> bytes.addBytes(meter.application(application, source)) }
         )
+        .addBytes(meter.knownDeclarations(knownDeclarations))
         .addBytes(remainder?.let(meter::remainder) ?: 0L)
         .byteCount()
 }
@@ -37,11 +39,13 @@ internal fun localReferenceCandidateStorageBytes(
     obligations: List<ValueFlowObligation>,
     consumed: Set<LocalReferenceKey>,
     emitted: Set<ValueSiteIdentity>,
+    knownDeclarations: ValueKnownDeclarations = ValueKnownDeclarations.Empty,
 ): RelationByteCount {
     val meter = ValueFootprintMeter()
     return meter
         .flow(source, domain, transfers, obligations)
         .addBytes(VALUE_RECORD_OVERHEAD)
+        .addBytes(meter.knownDeclarations(knownDeclarations))
         .addBytes(meter.localReadSite(source))
         .addBytes(meter.referenceRemainder(source, domain.boundary, consumed, emitted))
         .addBytes(LOCAL_REFERENCE_KEY_STORAGE_BYTES)

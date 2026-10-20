@@ -8,9 +8,11 @@ import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
+import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowStepFailure
 import io.github.amichne.kast.relation.contract.ValueFlowSuspensionCause
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
+import io.github.amichne.kast.relation.contract.ValueFlowWorkReceipt
 
 internal sealed interface QueryImpactReadAcquisition {
     data object NotStarted : QueryImpactReadAcquisition
@@ -19,7 +21,13 @@ internal sealed interface QueryImpactReadAcquisition {
 
     data class Cutoff(val stop: QueryImpactExecutionStop.CheckpointCapacity) : QueryImpactReadAcquisition
 
-    data class Ready(val read: ValueFlowRead) : QueryImpactReadAcquisition
+    sealed interface Ready : QueryImpactReadAcquisition {
+        val read: ValueFlowRead
+
+        data class Cached(override val read: ValueFlowRead) : Ready
+
+        data class Acquired(override val read: ValueFlowRead) : Ready
+    }
 }
 
 internal fun ValueFlowRead.examinedImpactWork(): RelationWorkCount =
@@ -28,6 +36,22 @@ internal fun ValueFlowRead.examinedImpactWork(): RelationWorkCount =
         is ValueFlowRead.Suspended -> step.examinedWorkUnits
         is ValueFlowRead.Rejected -> examinedWorkUnits
         is ValueFlowRead.ContractRejected -> examinedWorkUnits
+    }
+
+internal fun shareImpactRead(read: ValueFlowRead, previous: Collection<ValueFlowStep>): ValueFlowRead =
+    when (read) {
+        is ValueFlowRead.Observed -> ValueFlowRead.Observed(read.step.shareCallableEvidence(previous))
+        is ValueFlowRead.Suspended -> read.copy(step = read.step.shareCallableEvidence(previous))
+        is ValueFlowRead.Rejected,
+        is ValueFlowRead.ContractRejected -> read
+    }
+
+internal fun impactReadReceipts(request: ValueFlowRequest, read: ValueFlowRead): List<ValueFlowWorkReceipt> =
+    when (read) {
+        is ValueFlowRead.Observed -> read.step.receipts
+        is ValueFlowRead.Suspended -> read.step.receipts
+        is ValueFlowRead.Rejected -> listOf(ValueFlowWorkReceipt.rejected(request, read.examinedWorkUnits))
+        is ValueFlowRead.ContractRejected -> listOf(ValueFlowWorkReceipt.rejected(request, read.examinedWorkUnits))
     }
 
 internal fun impactCapacityStop(
@@ -54,6 +78,8 @@ internal fun validateImpactRead(
     source: QueryImpactSource,
 ): ValueFlowRead {
     val work = read.examinedImpactWork()
+    if (!request.knownDeclarations.hasSameProofAs(source.knownDeclarations))
+        return ValueFlowRead.ContractRejected(ValueFlowStepFailure.DOMAIN_MISMATCH, work)
     if (work.value > request.budget.resources.workUnitLimit.value)
         return ValueFlowRead.ContractRejected(ValueFlowStepFailure.WORK_LIMIT_EXCEEDED, work)
     val page =
@@ -63,7 +89,7 @@ internal fun validateImpactRead(
             is ValueFlowRead.Rejected,
             is ValueFlowRead.ContractRejected -> return read
         }
-    if (page.receipts.size != 1 || page.domain.budget != request.budget)
+    if (!validImpactReceipt(page, request))
         return ValueFlowRead.ContractRejected(ValueFlowStepFailure.DOMAIN_MISMATCH, work)
     val step =
         when (val admitted = source.admitObservation(page)) {
@@ -91,6 +117,11 @@ internal fun validateImpactRead(
         }
     return ValueFlowRead.ContractRejected(failure, step.examinedWorkUnits)
 }
+
+private fun validImpactReceipt(step: ValueFlowStep, request: ValueFlowRequest): Boolean =
+    step.receipts.size == 1 &&
+        step.domain.budget == request.budget &&
+        step.receipts.single().knownDeclarations.hasSameProofAs(request.knownDeclarations)
 
 private fun validSuspension(read: ValueFlowRead.Suspended, request: ValueFlowRequest): Boolean {
     val next = read.remainder

@@ -15,6 +15,7 @@ import io.github.amichne.kast.relation.contract.RelationCallableBody
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationEndpointResolutionFailure
 import io.github.amichne.kast.relation.contract.RelationOccurrence
+import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
@@ -36,6 +37,7 @@ internal class IntellijCallbackFlowContext(
     private val admitWork: () -> CallbackWorkAdmission,
     val observation: IntellijReadObservation,
     private val callbackExpiry: () -> CallbackExpiryAdmission,
+    private val retainedHost: RevalidatedRelationEndpoint? = null,
 ) {
     fun providerSite(
         file: () -> com.intellij.openapi.vfs.VirtualFile?
@@ -96,19 +98,25 @@ internal class IntellijCallbackFlowContext(
             is Refinement.Rejected -> CallbackInvocationFlowRead.ContractRejected(result.failure)
         }
 
-    fun endpoint(evidence: CompilerGroundedSymbolEvidence): RelationEndpoint.Resolved? =
-        when (
+    fun endpoint(evidence: CompilerGroundedSymbolEvidence): RelationEndpoint.Resolved? {
+        val host =
+            retainedHost?.endpoint?.takeIf { expected ->
+                expected.hasSameProofAs(scope.request.subject) &&
+                    RevalidatedRelationEndpoint.validate(expected, evidence) is Refinement.Refined
+            }
+        return when (
             val result =
                 RelationEndpoint.resolve(
                     lease = scope.request.subject.lease,
-                    scope = scope.selectedScope,
+                    scope = host?.scope ?: scope.selectedScope,
                     evidence = evidence,
-                    constraints = scope.constraints,
+                    constraints = host?.constraints ?: scope.constraints,
                 )
         ) {
             is Refinement.Refined -> result.value
             is Refinement.Rejected -> null
         }
+    }
 
     fun receiverDeclaration(element: com.intellij.psi.PsiNamedElement): CompilerGroundedSymbolEvidence? =
         when (val result = projection.project(element)) {

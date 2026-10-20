@@ -109,10 +109,12 @@ class QueryImpactReadReuseOracleTest {
         val result =
             assertInstanceOf(
                 QueryExecutionResult.Qualified::class.java,
-                fixture.service(native.port).run(fixture.request(work = 1)),
+                // The route visit precedes the original one-unit native read.
+                fixture.service(native.port).run(fixture.request(work = 1 + 1)),
             )
+        assertEquals(1L, native.grants.single().resources.workUnitLimit.value)
         val checkpoint = (result.continuation as QueryContinuationState.Resumable).checkpoint
-        val budget = fixture.request(work = 1).budget
+        val budget = fixture.request(work = 1 + 1).budget
         val changedAuthority = QueryImpactExecutionFixture(generation = 2)
         assertEquals(
             Refinement.Rejected(QueryExecutionRequestFailure.CHECKPOINT_MISMATCH),

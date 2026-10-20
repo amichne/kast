@@ -18,6 +18,7 @@ import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.query.contract.QueryTerminalReason
 import io.github.amichne.kast.query.contract.QueryValuePathAccounting
+import io.github.amichne.kast.query.contract.QueryWorkUsage
 import io.github.amichne.kast.relation.contract.ContractModelIdentity
 import io.github.amichne.kast.relation.contract.ModelIdentifier
 import io.github.amichne.kast.relation.contract.ModelRuleReference
@@ -55,19 +56,25 @@ class QueryImpactStorageAdmissionTest {
             val arguments = denseArguments(f, owner)
             val expectations = denseExpectations(f, binding, locals, arguments)
             val native = f.unorderedScript(expectations)
+            // Every unique site needs one native read and one route visit.
+            val readsAndVisits = expectations.size * 2L
+            val childRoutes = 1L + locals.size + arguments.size
+            val terminalPaths = arguments.size.toLong()
+            val work = readsAndVisits + childRoutes + terminalPaths
             val result =
                 assertInstanceOf(
                     QueryExecutionResult.Qualified::class.java,
                     f.service(native.port)
                         .run(
                             f.request(
-                                work = 1000,
+                                work = work,
                                 results = 100,
                                 checkpointBytes = QueryByteLimit.DefaultCheckpoint.value,
                                 returnedBytes = 64000000,
                             )
                         ),
                 )
+            assertEquals(work, (result.workUsage as QueryWorkUsage.Observed).count.value)
             val captured =
                 (QueryRetainedResult.captureInvestigation(f.lease, result) as Refinement.Refined).value
                     as QueryRetainedResult.ValuePaths

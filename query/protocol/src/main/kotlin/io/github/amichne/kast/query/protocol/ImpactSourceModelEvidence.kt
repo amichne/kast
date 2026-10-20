@@ -16,6 +16,8 @@ import io.github.amichne.kast.relation.contract.BoundaryPosition
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RepresentationRule
 import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
+import io.github.amichne.kast.relation.contract.ValueKnownDeclarations
+import io.github.amichne.kast.relation.contract.ValueKnownDeclarationsFailure
 
 internal data class ImpactSourceModelEvidence(
     val producers: List<QueryImpactProducer>,
@@ -40,6 +42,11 @@ internal fun bindImpactSourceModels(
     flow: QueryImpactFlowDocument,
     budget: QueryBudget,
 ): Refinement<QueryImpactSourceAdmission, QueryRunRejection> {
+    val knownDeclarations =
+        when (val admitted = admitKnownDeclarations(evidence)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return admitted
+        }
     val models =
         when (val admitted = admitModels(references, modelSyntax, evidence)) {
             is Refinement.Refined -> admitted.value
@@ -58,6 +65,7 @@ internal fun bindImpactSourceModels(
                     },
                     evidence.requestedSites,
                     models.peers,
+                    knownDeclarations,
                 )
         ) {
             is Refinement.Refined -> admitted.value
@@ -142,4 +150,23 @@ private fun admitPeerModelBoundaries(
         }
     }
     return Refinement.Refined(peers.toList())
+}
+
+private fun admitKnownDeclarations(
+    evidence: ImpactSourceModelEvidence
+): Refinement<ValueKnownDeclarations, QueryRunRejection> {
+    val lease =
+        evidence.producers.firstOrNull()?.site?.enclosing?.lease
+            ?: return impactFailure(QueryImpactSourceFailureCode.EMPTY_PRODUCERS)
+    return when (val admitted = ValueKnownDeclarations.admit(evidence.declarations, lease)) {
+        is Refinement.Refined -> admitted
+        is Refinement.Rejected ->
+            impactFailure(
+                when (admitted.failure) {
+                    ValueKnownDeclarationsFailure.TOO_MANY_DECLARATIONS ->
+                        QueryImpactSourceFailureCode.TOO_MANY_DECLARATIONS
+                    ValueKnownDeclarationsFailure.FOREIGN_BASIS -> QueryImpactSourceFailureCode.BASIS_MISMATCH
+                }
+            )
+    }
 }

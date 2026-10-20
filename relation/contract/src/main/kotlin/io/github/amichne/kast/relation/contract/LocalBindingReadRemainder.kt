@@ -91,6 +91,7 @@ internal constructor(
     val examinedWorkUnits: RelationWorkCount,
     val returnedResults: RelationResultCount,
     val returnedBytes: RelationByteCount,
+    val knownDeclarations: ValueKnownDeclarations = ValueKnownDeclarations.Empty,
 ) {
     companion object {
         /** Rejected reads return no semantic payload; the actual grant and reported work remain evidence. */
@@ -107,6 +108,7 @@ internal constructor(
                 work,
                 (RelationResultCount.parse(0) as Refinement.Refined).value,
                 (RelationByteCount.parse(0) as Refinement.Refined).value,
+                request.knownDeclarations,
             )
         }
     }
@@ -116,3 +118,23 @@ private fun ExactDeclarationTextRange.contains(other: ExactDeclarationTextRange)
     startInclusive <= other.startInclusive && endExclusive >= other.endExclusive
 
 private const val MAXIMUM_REFERENCE_KIND_LENGTH = 256
+
+internal fun List<ValueFlowWorkReceipt>.totalExaminedValueFlowWork(): Long =
+    fold(0L) { total, receipt ->
+        if (receipt.examinedWorkUnits.value > Long.MAX_VALUE - total) Long.MAX_VALUE
+        else total + receipt.examinedWorkUnits.value
+    }
+
+internal fun RelationRequest.valueFlowReceipt(
+    work: RelationWorkCount,
+    resultCount: Int,
+    returnedBytes: RelationByteCount,
+    knownDeclarations: ValueKnownDeclarations,
+): ValueFlowWorkReceipt =
+    ValueFlowWorkReceipt(
+        this,
+        work,
+        (RelationResultCount.parse(resultCount) as Refinement.Refined).value,
+        returnedBytes,
+        knownDeclarations,
+    )

@@ -1,0 +1,3 @@
+d7d57278567f5933a2aa5bbde446c1ca6d9918c0c4097c7b1509ef9e73fd530f  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/LocalBindingReferenceScan.kt
+5f64974e77e22356284adf2377065817512e88662ea20e5bc0139aa67985c8a5  query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactKnownDeclarationsProjectionTest.kt
+9638790f6ae18118f096eedc79af955b2201cd299583cd7d793316267698ffd0  query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactRejectedReadReceiptTest.kt

@@ -1,0 +1,45 @@
+{
+  "status": "FROZEN_NOT_RUN",
+  "selector": "*NativePacketT1SeedCallbackReturnTest.testOriginalS1CombinedReturnKeepsTheIssuedHostAndActualSupplierProof",
+  "procedure": "mise exec -- ./gradlew --no-daemon --max-workers=1 :runtime:hosted:nativeFixtureTest --tests '*NativePacketT1SeedCallbackReturnTest.testOriginalS1CombinedReturnKeepsTheIssuedHostAndActualSupplierProof' --console=plain",
+  "owned_hashes": {
+    "NativePacketQueryServices.kt": "bd0ff91f0a8d340556254b48c4b424d3552f6f01345ab350e815544c15ed1006",
+    "NativePacketT1SeedCallbackCapture.kt": "003c55ae9db37a56ee456b511d96bebff3efc12135fdad7693bc34ae54445385",
+    "NativePacketT1SeedCallbackSource.kt": "449cc8a53af0fd6f68db0f62d6d75ecae3cef2236f2f6a075970833714a5e267",
+    "NativePacketT1SeedCallbackOracle.kt": "5439792e96b639ad8d65b7374372fe4632e3646e9a53fdc7ab41e6f30710a396",
+    "NativePacketT1SeedCallbackReturnTest.kt": "4bce5b0cf786cb65afcac58b42cc7fc2981789180c5c1120d112596e4103292b"
+  },
+  "receipt_sha256": "8c8c607dbb066e097e3329b8cc6a3ec0aa31d78a7e3ab700cbdb3dbbc660e70b",
+  "source_scope": "Fixture files only. Case-owned real port capture plus public CALLEES read. No production changes.",
+  "protected_input": "Original S1 constructor707:792, original combined request, targets, declarations, exclusions, grants, existing coordinator and retained presentation.",
+  "prerequisites": "Actual source Return1029:1057/Empty/Anonymous677:1063/FeatureResponse.link, actual K2 sequential658:1063 mapping and builtin872:897. Fresh CALLEES qualification and raw callback evidence remain visible.",
+  "expected_dimensions": {
+    "issued_host": "Exact existing original PRODUCTION_ONLY proof",
+    "fresh_host": "Same actual compiler declaration under exact COMBINED scope/constraints",
+    "equal": [
+      "lease",
+      "file",
+      "range",
+      "name",
+      "qualifiedIdentity",
+      "kind",
+      "signature",
+      "compilerIdentity"
+    ],
+    "different": [
+      "scope",
+      "constraints"
+    ],
+    "actual": "NOT_RUN"
+  },
+  "positive": "Actual original Return needs SOURCE_CALL_RETURN to builtin872:897 with exact issued source host, one actual direct supplier frame, exact callback proof and unchanged path/predicates. No weakened endpoint equality.",
+  "negative": "Existing combined emitted-witness assertions run independently. No jump directly to outer result.",
+  "limits": "A separate CALLEES read proves its own fresh binding, not the private value-return branch taken.",
+  "checks": {
+    "cached_ktfmt120": "PASSED",
+    "services_reverse_expansion": "PASSED",
+    "gradle": "NOT_RUN",
+    "native_assertions": "NOT_RUN",
+    "AGENTS_scope": "REVIEWED_NO_COMMAND_OWNER_RULE_CHANGE"
+  }
+}

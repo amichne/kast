@@ -153,9 +153,7 @@ private fun recordByteRejection(counters: NativeTraceCounters) {
         println("PACKET_NATIVE_BYTE_REFUSAL operands=UNAVAILABLE")
         return
     }
-    println(
-        "PACKET_NATIVE_BYTE_REFUSAL candidate=$candidate reserve=$reserve allowance=$allowance"
-    )
+    println("PACKET_NATIVE_BYTE_REFUSAL candidate=$candidate reserve=$reserve allowance=$allowance")
 }
 
 private fun ValueCallTarget.receipt(): String =

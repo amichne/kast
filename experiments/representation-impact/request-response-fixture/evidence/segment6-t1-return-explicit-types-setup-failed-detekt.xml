@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="4.3">
+<file name="runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativePacketT1SeedCallbackSource.kt">
+	<error line="24" column="5" severity="error" message="FUN has implicit platform type. Type must be declared explicitly." source="detekt.HasPlatformType" />
+	<error line="42" column="5" severity="error" message="FUN has implicit platform type. Type must be declared explicitly." source="detekt.HasPlatformType" />
+</file>
+</checkstyle>

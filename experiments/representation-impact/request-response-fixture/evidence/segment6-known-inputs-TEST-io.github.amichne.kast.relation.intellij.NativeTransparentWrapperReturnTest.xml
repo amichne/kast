@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativeTransparentWrapperReturnTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-20T21:44:25.710Z" hostname="Austins-MacBook-Pro.local" time="9.478">
+  <properties/>
+  <testcase name="testDifferentReturnedFormalDoesNotProveTransparentReturn" classname="io.github.amichne.kast.relation.intellij.NativeTransparentWrapperReturnTest" time="6.248"/>
+  <testcase name="testFinalConstantBodyDoesNotProveTransparentReturn" classname="io.github.amichne.kast.relation.intellij.NativeTransparentWrapperReturnTest" time="0.787"/>
+  <testcase name="testTopLevelFunctionKeepsTransparentReturn" classname="io.github.amichne.kast.relation.intellij.NativeTransparentWrapperReturnTest" time="0.499"/>
+  <testcase name="testFinalMemberKeepsTransparentReturn" classname="io.github.amichne.kast.relation.intellij.NativeTransparentWrapperReturnTest" time="0.411"/>
+  <testcase name="testOpenIdentityWithConstantOverrideDoesNotProveTransparentReturn" classname="io.github.amichne.kast.relation.intellij.NativeTransparentWrapperReturnTest" time="0.406"/>
+  <testcase name="testFinalCallAdapterEmitsOnlyTheMatchedWrapperResult" classname="io.github.amichne.kast.relation.intellij.NativeTransparentWrapperReturnTest" time="0.406"/>
+  <testcase name="testOpenCallAdapterKeepsImplementationEntryWithoutWrapperReturn" classname="io.github.amichne.kast.relation.intellij.NativeTransparentWrapperReturnTest" time="0.71"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[[   1461]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.rd.client
+[   1462]   WARN - #c.i.i.p.PluginManager - Environment-configured module is not found: intellij.platform.split
+]]></system-err>
+</testsuite>

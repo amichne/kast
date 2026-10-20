@@ -1,0 +1,49 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
+package io.github.amichne.kast.protocol.contract
+
+import io.github.amichne.kast.kernel.Refinement
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonClassDiscriminator
+
+/** Qualified output of explicit fresh inputs. Decoding supplies no native relationship or read authority. */
+@Serializable
+@JsonClassDiscriminator("type")
+sealed interface ImpactKnownDeclarationDocument {
+    val endpoint: ImpactModelEndpointDocument
+
+    @Serializable
+    @SerialName("SUBJECT")
+    data class Subject(override val endpoint: ImpactModelEndpointDocument) : ImpactKnownDeclarationDocument
+
+    @Serializable
+    @SerialName("RESOLVED")
+    data class Resolved(override val endpoint: ImpactModelEndpointDocument) : ImpactKnownDeclarationDocument
+}
+
+internal fun emptyKnownDeclarations(): BoundedProtocolList<ImpactKnownDeclarationDocument> =
+    (BoundedProtocolList.create(emptyList<ImpactKnownDeclarationDocument>()) as Refinement.Refined).value
+
+internal fun BoundedProtocolList<ImpactKnownDeclarationDocument>.admitsKnownDeclarations(
+    basis: ImpactSemanticBasisDocument
+): Boolean = values.size <= 128 && values.all { it.endpoint.admits(basis) }
+
+internal fun ImpactWitnessDocument.hasKnownDeclarations(
+    expected: BoundedProtocolList<ImpactKnownDeclarationDocument>
+): Boolean =
+    when (this) {
+        is ImpactWitnessDocument.NativeRead -> receipts.values.all { it.knownDeclarations == expected }
+        is ImpactWitnessDocument.ReadRejection -> receipts.values.all { it.knownDeclarations == expected }
+        is ImpactWitnessDocument.PeerBoundaryModel,
+        is ImpactWitnessDocument.SiteAccounting,
+        is ImpactWitnessDocument.Finding,
+        is ImpactWitnessDocument.ProducerSiteOnly,
+        is ImpactWitnessDocument.Producer,
+        is ImpactWitnessDocument.ProducerSourceFunction,
+        is ImpactWitnessDocument.RepresentationModel,
+        is ImpactWitnessDocument.BoundaryModel,
+        is ImpactWitnessDocument.CompilerTransfer,
+        is ImpactWitnessDocument.ValueModelApplication,
+        is ImpactWitnessDocument.FlowObligation -> true
+    }

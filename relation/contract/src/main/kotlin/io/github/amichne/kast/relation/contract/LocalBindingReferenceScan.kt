@@ -34,6 +34,8 @@ class LocalBindingReferenceScan<C>(
     private var suspension: ValueFlowSuspensionCause? = null
 
     fun read(): ValueFlowRead {
+        if (!request.knownDeclarations.belongsTo(request.source.enclosing.lease))
+            return ValueFlowRead.ContractRejected(ValueFlowStepFailure.BASIS_MISMATCH, count())
         if (!request.source.role.hasReferenceReads() || hasForeignRemainder())
             return ValueFlowRead.ContractRejected(ValueFlowStepFailure.SOURCE_MISMATCH, count())
         // Reserve a transfer, every possible semantic obligation and a detached address before confirmation.
@@ -49,14 +51,14 @@ class LocalBindingReferenceScan<C>(
         }
         admitTraversal()
         // Replay can consume the time grant before reaching new input; a later grant may still advance it.
-        if (
-            suspension != null &&
-                suspension != ValueFlowSuspensionCause.TIME_LIMIT_REACHED &&
-                consumed.size == (request.remainder?.consumed?.size ?: 0)
-        )
-            return ValueFlowRead.Rejected(ValueFlowRejection.GRANT_TOO_SMALL, count())
+        if (hasUnadvancedSuspension()) return ValueFlowRead.Rejected(ValueFlowRejection.GRANT_TOO_SMALL, count())
         return finish()
     }
+
+    private fun hasUnadvancedSuspension(): Boolean =
+        suspension != null &&
+            suspension != ValueFlowSuspensionCause.TIME_LIMIT_REACHED &&
+            consumed.size == (request.remainder?.consumed?.size ?: 0)
 
     private fun hasForeignRemainder(): Boolean =
         request.remainder?.let { it.source != request.source || it.boundary != request.boundary } ?: false
@@ -121,7 +123,15 @@ class LocalBindingReferenceScan<C>(
         val nextRemainder =
             LocalBindingReadRemainder.admit(request.source, request.boundary, nextConsumed, nextEmitted).value()
         val bytes =
-            ValueFlowStep.detachedByteCount(request.source, domain, nextEdges, nextObligations, nextRemainder).value
+            ValueFlowStep.detachedByteCount(
+                    request.source,
+                    domain,
+                    nextEdges,
+                    nextObligations,
+                    nextRemainder,
+                    knownDeclarations = request.knownDeclarations,
+                )
+                .value
         if (!fits(bytes)) {
             suspension = ValueFlowSuspensionCause.BYTE_LIMIT_REACHED
             return false
@@ -152,6 +162,7 @@ class LocalBindingReferenceScan<C>(
                         domain,
                         count(),
                         remainder,
+                        knownDeclarations = request.knownDeclarations,
                     )
             ) {
                 is Refinement.Rejected -> return ValueFlowRead.ContractRejected(result.failure, count())
@@ -175,7 +186,15 @@ class LocalBindingReferenceScan<C>(
 
     private fun fitsCandidate(): Boolean {
         val predicted =
-            localReferenceCandidateStorageBytes(request.source, domain, edges, obligations, consumed, emitted)
+            localReferenceCandidateStorageBytes(
+                request.source,
+                domain,
+                edges,
+                obligations,
+                consumed,
+                emitted,
+                request.knownDeclarations,
+            )
         return fits(predicted.value)
     }
 

@@ -1,0 +1,133 @@
+Calculating task graph as no cached configuration is available for tasks: :relation:contract:test --tests *LocalBindingKnownDeclarationsAuthorityTest :protocol:contract:test --tests *ImpactKnownDeclarationsDocumentTest :query:protocol:test --tests *ImpactKnownDeclarationsProjectionTest --tests *ImpactRejectedReadReceiptTest
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileJsonContractsKotlin UP-TO-DATE
+> Task :build-logic:compileJsonContractsJava NO-SOURCE
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:processJsonContractsResources NO-SOURCE
+> Task :build-logic:jsonContractsClasses UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :symbol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :workspace:contract:processResources NO-SOURCE
+> Task :source:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:contract:processTestResources NO-SOURCE
+> Task :kernel:processResources NO-SOURCE
+> Task :workspace:contract:processTestFixturesResources NO-SOURCE
+> Task :query:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :symbol:contract:processResources NO-SOURCE
+> Task :diagnostic:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :relation:contract:processResources NO-SOURCE
+> Task :traversal:contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:contract:processTestResources UP-TO-DATE
+> Task :protocol:contract:processResources UP-TO-DATE
+> Task :query:protocol:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :protocol:wire:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :query:contract:processResources NO-SOURCE
+> Task :query:protocol:processTestFixturesResources NO-SOURCE
+> Task :protocol:wire:processResources NO-SOURCE
+> Task :query:protocol:processResources NO-SOURCE
+> Task :protocol:registry:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :diagnostic:contract:processResources NO-SOURCE
+> Task :source:contract:processResources NO-SOURCE
+> Task :query:service:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :kernel:compileKotlin UP-TO-DATE
+> Task :query:service:processResources NO-SOURCE
+> Task :protocol:registry:processResources NO-SOURCE
+> Task :traversal:contract:processResources NO-SOURCE
+> Task :query:protocol:processTestResources UP-TO-DATE
+> Task :kernel:compileJava NO-SOURCE
+> Task :kernel:classes UP-TO-DATE
+> Task :kernel:jar UP-TO-DATE
+> Task :workspace:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileJava NO-SOURCE
+> Task :workspace:contract:classes UP-TO-DATE
+> Task :workspace:contract:jar UP-TO-DATE
+> Task :symbol:contract:compileKotlin UP-TO-DATE
+> Task :diagnostic:contract:compileKotlin UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesKotlin UP-TO-DATE
+> Task :symbol:contract:compileJava NO-SOURCE
+> Task :diagnostic:contract:compileJava NO-SOURCE
+> Task :symbol:contract:classes UP-TO-DATE
+> Task :diagnostic:contract:classes UP-TO-DATE
+> Task :workspace:contract:compileTestFixturesJava NO-SOURCE
+> Task :workspace:contract:testFixturesClasses UP-TO-DATE
+> Task :symbol:contract:jar UP-TO-DATE
+> Task :diagnostic:contract:jar UP-TO-DATE
+> Task :workspace:contract:testFixturesJar UP-TO-DATE
+> Task :protocol:contract:compileKotlin UP-TO-DATE
+> Task :source:contract:compileKotlin UP-TO-DATE
+> Task :protocol:contract:compileJava NO-SOURCE
+> Task :source:contract:compileJava NO-SOURCE
+> Task :protocol:contract:classes UP-TO-DATE
+> Task :source:contract:classes UP-TO-DATE
+> Task :protocol:contract:jar UP-TO-DATE
+> Task :source:contract:jar UP-TO-DATE
+> Task :protocol:registry:compileKotlin UP-TO-DATE
+> Task :protocol:contract:compileTestKotlin UP-TO-DATE
+> Task :protocol:registry:compileJava NO-SOURCE
+> Task :protocol:registry:classes UP-TO-DATE
+> Task :protocol:contract:compileTestJava NO-SOURCE
+> Task :protocol:contract:testClasses UP-TO-DATE
+> Task :protocol:registry:jar UP-TO-DATE
+> Task :protocol:contract:test UP-TO-DATE
+> Task :protocol:wire:compileKotlin UP-TO-DATE
+> Task :protocol:wire:compileJava NO-SOURCE
+> Task :protocol:wire:classes UP-TO-DATE
+> Task :protocol:wire:jar UP-TO-DATE
+> Task :relation:contract:compileKotlin
+> Task :relation:contract:compileJava NO-SOURCE
+> Task :relation:contract:classes UP-TO-DATE
+> Task :traversal:contract:compileKotlin UP-TO-DATE
+> Task :traversal:contract:compileJava NO-SOURCE
+> Task :traversal:contract:classes UP-TO-DATE
+> Task :traversal:contract:jar UP-TO-DATE
+> Task :query:contract:compileKotlin UP-TO-DATE
+> Task :query:contract:compileJava NO-SOURCE
+> Task :query:contract:classes UP-TO-DATE
+> Task :query:contract:jar UP-TO-DATE
+> Task :query:service:compileKotlin UP-TO-DATE
+> Task :query:service:compileJava NO-SOURCE
+> Task :query:service:classes UP-TO-DATE
+> Task :query:service:jar UP-TO-DATE
+> Task :query:protocol:compileKotlin UP-TO-DATE
+> Task :query:protocol:compileJava NO-SOURCE
+> Task :query:protocol:classes UP-TO-DATE
+> Task :relation:contract:jar
+> Task :query:protocol:jar UP-TO-DATE
+> Task :relation:contract:compileTestKotlin UP-TO-DATE
+> Task :relation:contract:compileTestJava NO-SOURCE
+> Task :relation:contract:testClasses UP-TO-DATE
+> Task :query:protocol:compileTestFixturesKotlin UP-TO-DATE
+> Task :query:protocol:compileTestFixturesJava NO-SOURCE
+> Task :query:protocol:testFixturesClasses UP-TO-DATE
+> Task :query:protocol:testFixturesJar UP-TO-DATE
+> Task :relation:contract:test
+> Task :query:protocol:compileTestKotlin
+> Task :query:protocol:compileTestJava NO-SOURCE
+> Task :query:protocol:testClasses UP-TO-DATE
+> Task :query:protocol:test
+Kotlin build report is written to file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/kotlin-build/kast-build-2026-10-20-17-22-04-0.txt
+
+[Incubating] Problems report is available at: file:///Users/amichne/.codex-workspaces/worktrees/ios-1f1d5048-b93c-4d88-b85c-6ed231f1dbfb/kast/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 7s
+49 actionable tasks: 5 executed, 44 up-to-date
+Configuration cache entry stored.

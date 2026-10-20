@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.LocalBindingKnownDeclarationsAuthorityTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T21:22:02.267Z" hostname="Austins-MacBook-Pro.local" time="0.08">
+  <properties/>
+  <testcase name="foreign explicit input rejects before every traversal effect and preserves its raw receipt()" classname="io.github.amichne.kast.relation.contract.LocalBindingKnownDeclarationsAuthorityTest" time="0.06"/>
+  <testcase name="current explicit input permits the same scanner and keeps its original question()" classname="io.github.amichne.kast.relation.contract.LocalBindingKnownDeclarationsAuthorityTest" time="0.012"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

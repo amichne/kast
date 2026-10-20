@@ -93,6 +93,7 @@ internal fun QueryImpactLedger.storageBytes(g: QueryImpactRetainedGraph): Long =
             .saturatedAdd(g.collection(requestedSites) { it.storageBytes(g) })
             .saturatedAdd(g.collection(siteAccounting) { it.storageBytes(g) })
             .saturatedAdd(g.collection(peerBoundaries) { it.storageBytes(g) })
+            .saturatedAdd(knownDeclarations.storageBytes(g))
             .saturatedAdd(
                 g.node(closure) {
                     when (val current = closure) {
@@ -112,6 +113,7 @@ internal fun QueryImpactSource.storageBytes(g: QueryImpactRetainedGraph): Long =
             .saturatedAdd(g.node(lease) { 0L })
             .saturatedAdd(g.collection(requestedSites) { it.storageBytes(g) })
             .saturatedAdd(g.collection(peerBoundaries) { it.storageBytes(g) })
+            .saturatedAdd(knownDeclarations.storageBytes(g))
     }
 
 internal fun QueryImpactProducer.storageBytes(g: QueryImpactRetainedGraph): Long =

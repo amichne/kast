@@ -13,6 +13,7 @@ import io.github.amichne.kast.query.contract.QueryImpactScopeExclusion
 import io.github.amichne.kast.query.contract.QueryImpactTerminal
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryRows
+import io.github.amichne.kast.query.contract.QueryWorkCount
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.ValueFlowCompilerPort
@@ -21,7 +22,6 @@ import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowSuspensionCause
-import io.github.amichne.kast.relation.contract.ValueFlowWorkReceipt
 
 internal sealed interface QueryImpactTaskTransition {
     data object Advanced : QueryImpactTaskTransition
@@ -73,7 +73,7 @@ internal class QueryImpactTasks(
         task: PipelineTask.ImpactExplore,
         retainedBytes: (QueryImpactRetainedGraph) -> Long,
     ): QueryImpactTaskTransition {
-        if (!state.canProcessImpact()) return QueryImpactTaskTransition.NotStarted
+        if (!state.consumeUnit()) return QueryImpactTaskTransition.NotStarted
         val route = task.route
         val cycle = QueryImpactExecutionStop.Cycle.admit(route.producer, route.steps)
         if (cycle is Refinement.Refined)
@@ -100,27 +100,41 @@ internal class QueryImpactTasks(
                 }
                 is QueryImpactReadAcquisition.Cutoff ->
                     return finishRoute(route, QueryImpactTerminal.Unresolved.ExecutionStop(acquired.stop))
-                is QueryImpactReadAcquisition.Ready -> acquired.read
+                is QueryImpactReadAcquisition.Ready -> acquired
             }
-        return when (read) {
+        return processRead(route, read, retainedBytes)
+    }
+
+    private fun processRead(
+        route: QueryImpactRoute,
+        read: QueryImpactReadAcquisition.Ready,
+        retainedBytes: (QueryImpactRetainedGraph) -> Long,
+    ): QueryImpactTaskTransition =
+        when (val value = read.read) {
             is ValueFlowRead.Rejected ->
                 finishRoute(
                     route,
                     QueryImpactTerminal.Unresolved.ReadRejected(
-                        QueryImpactReadRejection.Native(route.site, source.domain, read.cause, read.examinedWorkUnits)
+                        QueryImpactReadRejection.Native(route.site, source.domain, value.cause, value.examinedWorkUnits)
                     ),
+                    read.unfinishedTransition(),
                 )
             is ValueFlowRead.ContractRejected ->
                 finishRoute(
                     route,
                     QueryImpactTerminal.Unresolved.ReadRejected(
-                        QueryImpactReadRejection.Contract(route.site, source.domain, read.cause, read.examinedWorkUnits)
+                        QueryImpactReadRejection.Contract(
+                            route.site,
+                            source.domain,
+                            value.cause,
+                            value.examinedWorkUnits,
+                        )
                     ),
+                    read.unfinishedTransition(),
                 )
-            is ValueFlowRead.Observed -> observed(route, read.step, retainedBytes)
+            is ValueFlowRead.Observed -> observed(route, value.step, retainedBytes, read.unfinishedTransition())
             is ValueFlowRead.Suspended -> error("Suspension is acquired before route expansion")
         }
-    }
 
     fun finalizeInvestigation(): QueryImpactTaskTransition {
         val rejections = reads.mapNotNull { (site, read) ->
@@ -147,6 +161,7 @@ internal class QueryImpactTasks(
                 source.requestedSites,
                 source.peerBoundaries,
                 receipts,
+                source.knownDeclarations,
             )
         if (admitted is Refinement.Rejected)
             return QueryImpactTaskTransition.Rejected(QueryImpactExecutionFailure.Ledger(admitted.failure))
@@ -160,18 +175,22 @@ internal class QueryImpactTasks(
         route: QueryImpactRoute,
         observation: ValueFlowStep,
         retainedBytes: (QueryImpactRetainedGraph) -> Long,
+        unfinished: QueryImpactTaskTransition,
     ): QueryImpactTaskTransition {
         val required = requiredImpactExpansionBytes(route, observation, source, retainedBytes)
         if (required > request.budget.checkpointBytes.value) {
             val cutoff = impactCapacityStop(route, required, request.budget.checkpointBytes.value)
-            return finishRoute(route, QueryImpactTerminal.Unresolved.ExecutionStop(cutoff))
+            return finishRoute(route, QueryImpactTerminal.Unresolved.ExecutionStop(cutoff), unfinished)
         }
+        val selection = QueryImpactModelSelection.select(route, source)
+        val work = impactExpansionWork(observation, selection, route.site in readRejections)
+        if (!state.reserveImpactWork(work)) return unfinished
         val compilerTasks =
             when (val branches = compilerImpactArrivals(route, observation)) {
                 is Refinement.Rejected -> return QueryImpactTaskTransition.Rejected(branches.failure)
                 is Refinement.Refined -> branches.value
             }
-        val modeled = modeledImpactArrivals(route, source)
+        val modeled = modeledImpactArrivals(selection)
         if (modeled is Refinement.Rejected) return QueryImpactTaskTransition.Rejected(modeled.failure)
         val arrivals = (modeled as Refinement.Refined).value
         val valueTasks =
@@ -201,8 +220,13 @@ internal class QueryImpactTasks(
         return QueryImpactTaskTransition.Advanced
     }
 
-    private fun finishRoute(route: QueryImpactRoute, terminal: QueryImpactTerminal): QueryImpactTaskTransition =
-        when (val path = route.path(terminal)) {
+    private fun finishRoute(
+        route: QueryImpactRoute,
+        terminal: QueryImpactTerminal,
+        unfinished: QueryImpactTaskTransition = QueryImpactTaskTransition.NotStarted,
+    ): QueryImpactTaskTransition {
+        if (!state.reserveImpactWork(QueryWorkCount.parse(1L).impactRefined())) return unfinished
+        return when (val path = route.path(terminal)) {
             is Refinement.Rejected -> QueryImpactTaskTransition.Rejected(QueryImpactExecutionFailure.Path(path.failure))
             is Refinement.Refined -> {
                 record(path.value)
@@ -210,6 +234,7 @@ internal class QueryImpactTasks(
                 QueryImpactTaskTransition.Advanced
             }
         }
+    }
 
     private fun record(path: QueryImpactPath) {
         if (path !in paths) paths += path
@@ -220,7 +245,7 @@ internal class QueryImpactTasks(
         retainedBytes: (QueryImpactRetainedGraph) -> Long,
     ): QueryImpactReadAcquisition {
         val cached = reads[route.site]
-        if (cached != null && route.site !in remainders) return QueryImpactReadAcquisition.Ready(cached)
+        if (cached != null && route.site !in remainders) return QueryImpactReadAcquisition.Ready.Cached(cached)
         val graph = QueryImpactRetainedGraph()
         val current = retainedBytes(graph)
         val remaining = (request.budget.checkpointBytes.value - current).coerceAtLeast(0L)
@@ -231,32 +256,17 @@ internal class QueryImpactTasks(
                 impactCapacityStop(route, saturatedAdd(current, reserve), request.budget.checkpointBytes.value)
             )
         val budget = state.impactBudget(remaining / 2L, itemBytes) ?: return QueryImpactReadAcquisition.NotStarted
-        val requested = ValueFlowRequest(route.site, budget, source.domain, remainders[route.site])
-        val read = shareRead(validateImpactRead(port.read(requested), requested, source))
+        val requested =
+            ValueFlowRequest(route.site, budget, source.domain, remainders[route.site], source.knownDeclarations)
+        val previous = reads.values.filterIsInstance<ValueFlowRead.Observed>().map { it.step }
+        val read = shareImpactRead(validateImpactRead(port.read(requested), requested, source), previous)
         recordReceipt(route, requested, read)
         state.consume(read.examinedImpactWork().value)
         return retainRead(route, read, cached)
     }
 
-    private fun shareRead(read: ValueFlowRead): ValueFlowRead {
-        val previous = reads.values.filterIsInstance<ValueFlowRead.Observed>().map { it.step }
-        return when (read) {
-            is ValueFlowRead.Observed -> ValueFlowRead.Observed(read.step.shareCallableEvidence(previous))
-            is ValueFlowRead.Suspended -> read.copy(step = read.step.shareCallableEvidence(previous))
-            is ValueFlowRead.Rejected,
-            is ValueFlowRead.ContractRejected -> read
-        }
-    }
-
     private fun recordReceipt(route: QueryImpactRoute, request: ValueFlowRequest, read: ValueFlowRead) {
-        val actual =
-            when (read) {
-                is ValueFlowRead.Observed -> read.step.receipts
-                is ValueFlowRead.Suspended -> read.step.receipts
-                is ValueFlowRead.Rejected -> listOf(ValueFlowWorkReceipt.rejected(request, read.examinedWorkUnits))
-                is ValueFlowRead.ContractRejected ->
-                    listOf(ValueFlowWorkReceipt.rejected(request, read.examinedWorkUnits))
-            }
+        val actual = impactReadReceipts(request, read)
         val prior = receipts[route.site]
         receipts[route.site] = if (prior == null) actual else java.util.Collections.unmodifiableList(prior + actual)
     }
@@ -292,7 +302,7 @@ internal class QueryImpactTasks(
             return QueryImpactReadAcquisition.Suspended(read.cause)
         }
         remainders.remove(route.site)
-        return QueryImpactReadAcquisition.Ready(reads.getValue(route.site))
+        return QueryImpactReadAcquisition.Ready.Acquired(reads.getValue(route.site))
     }
 
     private fun retainRejection(
@@ -303,7 +313,7 @@ internal class QueryImpactTasks(
         remainders.remove(route.site)
         if (cached !is ValueFlowRead.Observed) {
             reads[route.site] = read
-            return QueryImpactReadAcquisition.Ready(read)
+            return QueryImpactReadAcquisition.Ready.Acquired(read)
         }
         readRejections[route.site] =
             when (read) {
@@ -323,7 +333,7 @@ internal class QueryImpactTasks(
                     )
                 else -> error("Only rejected reads can qualify an unfinished prefix")
             }
-        return QueryImpactReadAcquisition.Ready(cached)
+        return QueryImpactReadAcquisition.Ready.Acquired(cached)
     }
 }
 

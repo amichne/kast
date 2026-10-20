@@ -38,7 +38,11 @@ class ImpactRejectedReadReceiptTest {
             val encoded = Json.encodeToJsonElement(ImpactWitnessDocument.serializer(), witness).jsonObject
             assertEquals(setOf("type", "rejection", "receipts"), encoded.keys)
             val actual = encoded.getValue("receipts").jsonArray.single().jsonObject
-            assertEquals(setOf("domain", "examinedWorkUnits", "returnedResults", "returnedBytes"), actual.keys)
+            assertEquals(
+                setOf("domain", "examinedWorkUnits", "returnedResults", "returnedBytes", "knownDeclarations"),
+                actual.keys,
+            )
+            assertEquals(0, actual.getValue("knownDeclarations").jsonArray.size)
             assertEquals("1", actual.getValue("examinedWorkUnits").jsonPrimitive.content)
             assertEquals("0", actual.getValue("returnedResults").jsonPrimitive.content)
             assertEquals("0", actual.getValue("returnedBytes").jsonPrimitive.content)

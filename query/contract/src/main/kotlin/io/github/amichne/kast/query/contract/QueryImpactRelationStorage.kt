@@ -252,6 +252,7 @@ internal fun ValueFlowStep.storageBytes(g: QueryImpactRetainedGraph): Long =
         source
             .storageBytes(g)
             .saturatedAdd(domain.storageBytes(g))
+            .saturatedAdd(knownDeclarations.storageBytes(g))
             .saturatedAdd(g.receiptStorage(receipts))
             .saturatedAdd(g.collection(transfers) { it.storageBytes(g) })
             .saturatedAdd(g.collection(applications) { it.storageBytes(g) })

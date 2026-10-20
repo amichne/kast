@@ -7,6 +7,7 @@ import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowRead
 import io.github.amichne.kast.relation.contract.ImmutableCallbackValueOrigin
 import io.github.amichne.kast.relation.contract.RelationCallableBody
+import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFunction
@@ -22,6 +23,7 @@ internal fun readCallbackInvocationFlow(
     admitWork: () -> CallbackWorkAdmission,
     summaries: CallbackParameterSummaries,
     callbackExpiry: () -> CallbackExpiryAdmission,
+    retainedHost: RevalidatedRelationEndpoint? = null,
 ): CallbackInvocationFlowRead {
     val context =
         IntellijCallbackFlowContext(
@@ -30,6 +32,7 @@ internal fun readCallbackInvocationFlow(
             admitWork = admitWork,
             observation = summaries.observation,
             callbackExpiry = callbackExpiry,
+            retainedHost = retainedHost,
         )
     when (val allowed = context.permit()) {
         is Refinement.Refined -> Unit

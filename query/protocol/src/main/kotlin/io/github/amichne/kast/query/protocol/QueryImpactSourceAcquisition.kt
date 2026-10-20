@@ -49,6 +49,7 @@ internal class QueryImpactSourceAcquisition(
     private val sites = mutableMapOf<ImpactValueSiteReferenceDocument, QueryImpactRequestedSite>()
     private val requestedSites = mutableListOf<QueryImpactRequestedSite>()
     private val requestedSiteStorage = QueryImpactRetainedGraph()
+    private val declarationStorage = QueryImpactRetainedGraph()
 
     private suspend fun remaining(position: Int): Refinement<RelationBudget, QueryRunRejection> =
         remainingImpactReadBudget(authority, budget, examinedWork, retainedBytes, position)
@@ -194,6 +195,10 @@ internal class QueryImpactSourceAcquisition(
             is Refinement.Refined -> Unit
             is Refinement.Rejected -> return matched
         }
+        retainedBytes =
+            saturatingImpactAdmissionCount(retainedBytes, declarationStorage.knownDeclaration(read.declaration))
+        if (retainedBytes > budget.checkpointBytes.value)
+            return impactFailure(QueryImpactSourceFailureCode.BYTE_LIMIT_REACHED, position)
         current += read.declaration
         currentSelectors += selected
         return Refinement.Refined(Unit)

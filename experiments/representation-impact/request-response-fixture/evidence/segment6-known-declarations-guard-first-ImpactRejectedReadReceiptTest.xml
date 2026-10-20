@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactRejectedReadReceiptTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-10-20T21:20:31.058Z" hostname="Austins-MacBook-Pro.local" time="0.031">
+  <properties/>
+  <testcase name="rejected read witness encodes its actual grant with and without a suspended prefix()" classname="io.github.amichne.kast.query.protocol.ImpactRejectedReadReceiptTest" time="0.031">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;[domain, examinedWorkUnits, returnedResults, returnedBytes]&gt; but was: &lt;[domain, examinedWorkUnits, returnedResults, returnedBytes, knownDeclarations]&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;[domain, examinedWorkUnits, returnedResults, returnedBytes]&gt; but was: &lt;[domain, examinedWorkUnits, returnedResults, returnedBytes, knownDeclarations]&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1199)
+	at io.github.amichne.kast.query.protocol.ImpactRejectedReadReceiptTest.rejected read witness encodes its actual grant with and without a suspended prefix(ImpactRejectedReadReceiptTest.kt:41)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

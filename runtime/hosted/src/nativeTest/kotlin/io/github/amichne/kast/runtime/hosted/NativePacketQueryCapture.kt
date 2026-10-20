@@ -25,9 +25,14 @@ import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.protocol.QueryInvocationPolicy
+import io.github.amichne.kast.query.protocol.QueryInvocationRetentionObservation
+import io.github.amichne.kast.query.protocol.QueryPublishedPage
 
 /** The production protocol alone explores paths and owns their retained presentation. */
-internal class NativePacketQueryCapture(private val services: NativePacketQueryServices) {
+internal class NativePacketQueryCapture(
+    private val services: NativePacketQueryServices,
+    retentionObservation: QueryInvocationRetentionObservation = QueryInvocationRetentionObservation.None,
+) {
     private val budget = NativePacketQueryServices.budget
     private val policy =
         QueryInvocationPolicy(
@@ -35,6 +40,20 @@ internal class NativePacketQueryCapture(private val services: NativePacketQueryS
             previewBytesLimit = budget.returnedBytes,
             retainedBytes = QueryByteLimit.parse(32_000_000L).packetQueryRefined(),
             previewBytes = CanonicalQueryCliDocuments::previewBytes,
+            retentionObservation = retentionObservation,
+        )
+
+    suspend fun run(
+        producer: QueryImpactProducerDocument,
+        targets: List<ImpactValueSiteReferenceDocument>,
+        declarations: List<QueryImpactDeclarationDocument>,
+        domain: QueryExpansionScopeDocument.Sources = NativePacketCompositeQueryPolicy.PRODUCTION.domain,
+    ): QueryPublishedPage =
+        services.protocol.execute(
+            request = request(producer = producer, targets = targets, declarations = declarations, domain = domain),
+            lease = services.lease,
+            budget = budget,
+            policy = policy,
         )
 
     suspend fun paths(
@@ -44,13 +63,7 @@ internal class NativePacketQueryCapture(private val services: NativePacketQueryS
         declarations: List<QueryImpactDeclarationDocument>,
         domain: QueryExpansionScopeDocument.Sources = NativePacketCompositeQueryPolicy.PRODUCTION.domain,
     ): List<ImpactPathDocument> {
-        val outcome =
-            services.protocol.execute(
-                request = request(producer = producer, targets = targets, declarations = declarations, domain = domain),
-                lease = services.lease,
-                budget = budget,
-                policy = policy,
-            )
+        val outcome = run(producer = producer, targets = targets, declarations = declarations, domain = domain)
         val retained = retained(outcome, outgoing)
         check(services.nativeFlowReads > 0) { "No real K2 value-flow read ran" }
         val reads = services.nativeFlowReads

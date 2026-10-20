@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.runtime.hosted.NativePacketT1NativeReturnTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-20T21:45:14.595Z" hostname="Austins-MacBook-Pro.local" time="2.091">
+  <properties/>
+  <testcase name="testOriginalS1CombinedNativeReturnPreservesIssuedHostBeforeRetention" classname="io.github.amichne.kast.runtime.hosted.NativePacketT1NativeReturnTest" time="2.091"/>
+  <system-out><![CDATA[T1_NATIVE_ONLY_RETENTION stage=BEFORE_EXECUTION allowance=32000000 facts=0 issued=0 request=80452 total=80452 capacity=Available
+T1_NATIVE_ONLY_ACCEPTED_FACTS stage=BEFORE_EXECUTION semantic=0 preview=0 rowReferences=0
+PACKET_NATIVE_VALUE_MODEL kind=COLLECTION_INSERTION rule=collections.listOf.insert-zero source=ExactDeclarationTextRange(startInclusive=341, endExclusive=360) target=ExactDeclarationTextRange(startInclusive=334, endExclusive=361) invocation=ExactDeclarationTextRange(startInclusive=334, endExclusive=361) index=0 version=2.3.20-release-208 binarySha256=0ae12504a5040ebaf37703908483420d1a5624dd1d93f357665f8c77c848a01e sourcePathDepth=0 targetPathDepth=1 predicates=0
+PACKET_NATIVE_VALUE_MODEL kind=COLLECTION_SELECTION rule=collections.list.firstOrNull.select-zero source=ExactDeclarationTextRange(startInclusive=939, endExclusive=953) target=ExactDeclarationTextRange(startInclusive=939, endExclusive=967) invocation=ExactDeclarationTextRange(startInclusive=939, endExclusive=967) index=0 version=2.3.20-release-208 binarySha256=0ae12504a5040ebaf37703908483420d1a5624dd1d93f357665f8c77c848a01e sourcePathDepth=1 targetPathDepth=0 predicates=2
+PACKET_NATIVE_VALUE_MODEL kind=SCOPE_CALLBACK_INPUT rule=scope.let.invoke-block-value source=ExactDeclarationTextRange(startInclusive=1622, endExclusive=1626) target=ExactDeclarationTextRange(startInclusive=1632, endExclusive=1655) invocation=ExactDeclarationTextRange(startInclusive=1622, endExclusive=1655) version=2.3.20-release-208 binarySha256=0ae12504a5040ebaf37703908483420d1a5624dd1d93f357665f8c77c848a01e sourcePathDepth=0 targetPathDepth=0 sourceFrames=1 targetFrames=2 predicates=3
+PACKET_NATIVE_VALUE_MODEL kind=SCOPE_CALLBACK_RETURN rule=scope.let.invoke-block-value source=ExactDeclarationTextRange(startInclusive=1634, endExclusive=1653) target=ExactDeclarationTextRange(startInclusive=1622, endExclusive=1655) invocation=ExactDeclarationTextRange(startInclusive=1622, endExclusive=1655) version=2.3.20-release-208 binarySha256=0ae12504a5040ebaf37703908483420d1a5624dd1d93f357665f8c77c848a01e sourcePathDepth=1 targetPathDepth=1 sourceFrames=2 targetFrames=1 predicates=3
+T1_RETURN_PRIVATE_COMPARISON matched=1 mismatch=0 scopeMismatch=0 constraintsMismatch=0
+PACKET_NATIVE_READ_REJECTED range=ExactDeclarationTextRange(startInclusive=872, endExclusive=897) role=Argument cause=GRANT_TOO_SMALL sourceBytes=104990 allowance=197367 work=1 workLimit=98937 consumed=0 emitted=0
+PACKET_NATIVE_REJECTED_FRAME index=0 range=ExactDeclarationTextRange(startInclusive=658, endExclusive=1063) kind=DIRECT flowBytes=0 selectedBytes=0 identityBytes=0 frameEndpointReferences=3 physicalEndpoints=2 fullProofEndpoints=2
+PACKET_VALUE_PROOF_ALLOCATION physicalSites=7 physicalFrames=4 physicalCallbackFrames=0 distinctFullCallbackProofs=0 physicalEndpoints=9 distinctFullEndpointProofs=9 complete=true
+PACKET_NATIVE_BYTE_REFUSAL candidate=155418 reserve=43008 allowance=197367
+T1_NATIVE_ONLY_RETENTION stage=BEFORE_FACTS allowance=32000000 facts=0 issued=15798804 request=80452 total=15879256 capacity=Available
+T1_NATIVE_ONLY_ACCEPTED_FACTS stage=BEFORE_FACTS semantic=0 preview=0 rowReferences=0
+T1_NATIVE_ONLY_RETENTION stage=FACTS_REJECTED allowance=32000000 facts=0 issued=15798804 request=80452 total=15879256 capacity=Available
+T1_NATIVE_ONLY_ACCEPTED_FACTS stage=FACTS_REJECTED semantic=0 preview=0 rowReferences=0
+T1_NATIVE_ONLY_PUBLIC outcome=REJECTED type=ExecutionRejected reason=INVOCATION_RETAINED_BYTES_LIMIT
+T1_RETURN_CALLEES coverage=COMPLETE count=1
+T1_RETURN_CALLBACK scan=EXHAUSTIVE causes=[] invocations=1
+T1_RETURN_PRIMARY_SCOPE scope=Workspace(sourceKinds=PRODUCTION_AND_TEST, generatedSources=EXCLUDE, libraries=EXCLUDE) constraints=SymbolDiscoveryConstraints(directory=SymbolDiscoveryDirectoryConstraint(directory=SymbolDiscoveryDirectory(value=src), containment=DESCENDANTS), packageName=null, declarationKinds=null, sourceSets=io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets$Exact@694a4b)
+T1_RETURN_CALLBACK_UNIVERSE scope=Workspace(sourceKinds=PRODUCTION_AND_TEST, generatedSources=INCLUDE, libraries=EXCLUDE) constraints=SymbolDiscoveryConstraints(directory=null, packageName=null, declarationKinds=null, sourceSets=All)
+T1_RETURN_HOST lease=true scope=false constraints=true file=true range=true name=true qualified=true kind=true signature=true compiler=true
+T1_RETURN_HOST_SCOPE issued=Workspace(sourceKinds=PRODUCTION_ONLY, generatedSources=EXCLUDE, libraries=EXCLUDE) fresh=Workspace(sourceKinds=PRODUCTION_AND_TEST, generatedSources=INCLUDE, libraries=EXCLUDE)
+T1_RETURN_HOST_CONSTRAINTS issued=SymbolDiscoveryConstraints(directory=null, packageName=null, declarationKinds=null, sourceSets=All) fresh=SymbolDiscoveryConstraints(directory=null, packageName=null, declarationKinds=null, sourceSets=All)
+T1_NATIVE_ONLY_ASSERTION source=Return1029:1057 target=ExpressionResult872:897 publicGoal=NOT_PASSED
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

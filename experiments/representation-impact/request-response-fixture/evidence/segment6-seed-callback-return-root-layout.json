@@ -1,0 +1,4941 @@
+{
+  "findings": [
+    {
+      "evidence": {
+        "directKotlinFiles": 53
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.11,
+        "files": [
+          "BrokerEndpointAliasTest.kt",
+          "BrokerJvmUserHomeOptionTest.kt",
+          "BrokerPublicEndpointTest.kt",
+          "BrokerServiceDeactivationTest.kt",
+          "BrokerServiceJavaRuntimeTest.kt",
+          "BrokerServiceLoginResumeTest.kt"
+        ],
+        "prefix": "Broker"
+      },
+      "message": "prefix cluster 'Broker' appears in 6 peer files",
+      "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.06,
+        "files": [
+          "BrokerServiceDeactivationTest.kt",
+          "BrokerServiceJavaRuntimeTest.kt",
+          "BrokerServiceLoginResumeTest.kt"
+        ],
+        "prefix": "Broker Service"
+      },
+      "message": "prefix cluster 'Broker Service' appears in 3 peer files",
+      "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.17,
+        "files": [
+          "DaemonChangeProtocolTest.kt",
+          "DaemonControlProtocolTest.kt",
+          "DaemonManagementExchangeTest.kt",
+          "DaemonManagementRuntimeProjectionTest.kt",
+          "DaemonManagementTest.kt",
+          "DaemonManagementWireTest.kt",
+          "DaemonSessionManagementTest.kt",
+          "DaemonUpgradeProtocolTest.kt",
+          "DaemonWorkspacePreparationTest.kt"
+        ],
+        "prefix": "Daemon"
+      },
+      "message": "prefix cluster 'Daemon' appears in 9 peer files",
+      "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.08,
+        "files": [
+          "DaemonManagementExchangeTest.kt",
+          "DaemonManagementRuntimeProjectionTest.kt",
+          "DaemonManagementTest.kt",
+          "DaemonManagementWireTest.kt"
+        ],
+        "prefix": "Daemon Management"
+      },
+      "message": "prefix cluster 'Daemon Management' appears in 4 peer files",
+      "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.09,
+        "files": [
+          "DesktopAttachmentTest.kt",
+          "DesktopDaemonDiscoveryTest.kt",
+          "DesktopDiscoveryActivationTest.kt",
+          "DesktopDiscoveryOwnershipTest.kt",
+          "DesktopDiscoveryRejectionTest.kt"
+        ],
+        "prefix": "Desktop"
+      },
+      "message": "prefix cluster 'Desktop' appears in 5 peer files",
+      "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.06,
+        "files": [
+          "DesktopDiscoveryActivationTest.kt",
+          "DesktopDiscoveryOwnershipTest.kt",
+          "DesktopDiscoveryRejectionTest.kt"
+        ],
+        "prefix": "Desktop Discovery"
+      },
+      "message": "prefix cluster 'Desktop Discovery' appears in 3 peer files",
+      "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.09,
+        "files": [
+          "InstalledBrokerServerTest.kt",
+          "InstalledCoordinatorEndpointTest.kt",
+          "InstalledCoordinatorTest.kt",
+          "InstalledDaemonUpgradeTest.kt",
+          "InstalledKastCatalogFixture.kt"
+        ],
+        "prefix": "Installed"
+      },
+      "message": "prefix cluster 'Installed' appears in 5 peer files",
+      "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.06,
+        "files": [
+          "PersistentBrokerDiscoveryTransitionTest.kt",
+          "PersistentBrokerRecoveryTest.kt",
+          "PersistentBrokerServiceTest.kt"
+        ],
+        "prefix": "Persistent"
+      },
+      "message": "prefix cluster 'Persistent' appears in 3 peer files",
+      "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.06,
+        "files": [
+          "PersistentBrokerDiscoveryTransitionTest.kt",
+          "PersistentBrokerRecoveryTest.kt",
+          "PersistentBrokerServiceTest.kt"
+        ],
+        "prefix": "Persistent Broker"
+      },
+      "message": "prefix cluster 'Persistent Broker' appears in 3 peer files",
+      "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.06,
+        "files": [
+          "WorkspaceEnrollmentTest.kt",
+          "WorkspaceRegistrationCommandTest.kt",
+          "WorkspaceStartupRootTest.kt"
+        ],
+        "prefix": "Workspace"
+      },
+      "message": "prefix cluster 'Workspace' appears in 3 peer files",
+      "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 22
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/query",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.95,
+        "files": [
+          "PublicExecutionBudgetTest.kt",
+          "PublicImpactCallFrameContractTest.kt",
+          "PublicImpactReceiverKindContractTest.kt",
+          "PublicImpactSourceContractTest.kt",
+          "PublicToolBindingContractTest.kt",
+          "PublicToolCatalogTest.kt",
+          "PublicToolCompletionPolicyTest.kt",
+          "PublicToolCompletionRecoveryTest.kt",
+          "PublicToolContinuationTest.kt",
+          "PublicToolContractTest.kt",
+          "PublicToolEvidenceCursorTest.kt",
+          "PublicToolExpansionScopeContractTest.kt",
+          "PublicToolOccurrenceOutputTest.kt",
+          "PublicToolOutputDetailTest.kt",
+          "PublicToolRecipeTest.kt",
+          "PublicToolSchemaPolicyTest.kt",
+          "PublicToolSchemaTest.kt",
+          "PublicToolSourceAdmissionTest.kt",
+          "PublicToolTextContractTest.kt",
+          "PublicToolTraceContractTest.kt",
+          "PublicToolWalkContractTest.kt"
+        ],
+        "prefix": "Public"
+      },
+      "message": "prefix cluster 'Public' appears in 21 peer files",
+      "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/query",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.14,
+        "files": [
+          "PublicImpactCallFrameContractTest.kt",
+          "PublicImpactReceiverKindContractTest.kt",
+          "PublicImpactSourceContractTest.kt"
+        ],
+        "prefix": "Public Impact"
+      },
+      "message": "prefix cluster 'Public Impact' appears in 3 peer files",
+      "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/query",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.77,
+        "files": [
+          "PublicToolBindingContractTest.kt",
+          "PublicToolCatalogTest.kt",
+          "PublicToolCompletionPolicyTest.kt",
+          "PublicToolCompletionRecoveryTest.kt",
+          "PublicToolContinuationTest.kt",
+          "PublicToolContractTest.kt",
+          "PublicToolEvidenceCursorTest.kt",
+          "PublicToolExpansionScopeContractTest.kt",
+          "PublicToolOccurrenceOutputTest.kt",
+          "PublicToolOutputDetailTest.kt",
+          "PublicToolRecipeTest.kt",
+          "PublicToolSchemaPolicyTest.kt",
+          "PublicToolSchemaTest.kt",
+          "PublicToolSourceAdmissionTest.kt",
+          "PublicToolTextContractTest.kt",
+          "PublicToolTraceContractTest.kt",
+          "PublicToolWalkContractTest.kt"
+        ],
+        "prefix": "Public Tool"
+      },
+      "message": "prefix cluster 'Public Tool' appears in 17 peer files",
+      "path": "app-server/src/test/kotlin/io/github/amichne/kast/appserver/query",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 14
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "experiments/representation-impact/request-response-fixture/src/main/kotlin/fixture/controls",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 175
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "CallbackOwnerProofIdentity.kt",
+          "CallbackProofIdentity.kt",
+          "CallbackValueProofIdentity.kt"
+        ],
+        "prefix": "Callback"
+      },
+      "message": "prefix cluster 'Callback' appears in 3 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.07,
+        "files": [
+          "CanonicalChangeOperationModels.kt",
+          "CanonicalIndexOperationModels.kt",
+          "CanonicalOperation.kt",
+          "CanonicalOperationCapabilities.kt",
+          "CanonicalQueryBindingDocuments.kt",
+          "CanonicalQueryOperationModels.kt",
+          "CanonicalQueryStepModels.kt",
+          "CanonicalReadOperationModels.kt",
+          "CanonicalSourceReadAnchorDocument.kt",
+          "CanonicalSourceReadOperationModels.kt",
+          "CanonicalSymbolDocumentsConversions.kt",
+          "CanonicalSymbolDocumentsTypes.kt",
+          "CanonicalTopologyOperationModels.kt"
+        ],
+        "prefix": "Canonical"
+      },
+      "message": "prefix cluster 'Canonical' appears in 13 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "CanonicalQueryBindingDocuments.kt",
+          "CanonicalQueryOperationModels.kt",
+          "CanonicalQueryStepModels.kt"
+        ],
+        "prefix": "Canonical Query"
+      },
+      "message": "prefix cluster 'Canonical Query' appears in 3 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "ExecutionBudgetDocument.kt",
+          "ExecutionBudgetPresence.kt",
+          "ExecutionBudgetReport.kt",
+          "ExecutionLimitDocument.kt"
+        ],
+        "prefix": "Execution"
+      },
+      "message": "prefix cluster 'Execution' appears in 4 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "ExecutionBudgetDocument.kt",
+          "ExecutionBudgetPresence.kt",
+          "ExecutionBudgetReport.kt"
+        ],
+        "prefix": "Execution Budget"
+      },
+      "message": "prefix cluster 'Execution Budget' appears in 3 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "HostedCompatibilityDocument.kt",
+          "HostedContract.kt",
+          "HostedSymbolHandle.kt"
+        ],
+        "prefix": "Hosted"
+      },
+      "message": "prefix cluster 'Hosted' appears in 3 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.26,
+        "files": [
+          "ImpactAccountingDocument.kt",
+          "ImpactAccountingFailure.kt",
+          "ImpactAccountingSelection.kt",
+          "ImpactAccountingValidation.kt",
+          "ImpactBoundaryDocuments.kt",
+          "ImpactCallOccurrenceDocuments.kt",
+          "ImpactCallbackUnavailableValidation.kt",
+          "ImpactCallbackValidation.kt",
+          "ImpactCompilerTransferDocument.kt",
+          "ImpactExecutionFailureDocument.kt",
+          "ImpactExecutionOwnerValidation.kt",
+          "ImpactExecutionStopDocument.kt",
+          "ImpactFlowDomainDocuments.kt",
+          "ImpactImplementationDocuments.kt",
+          "ImpactImplementationIdentity.kt",
+          "ImpactImplementationValidation.kt",
+          "ImpactModelDocuments.kt",
+          "ImpactModelIngress.kt",
+          "ImpactModelPrimitives.kt",
+          "ImpactPathDocuments.kt",
+          "ImpactPeerAccountingValidation.kt",
+          "ImpactPeerAdmissionValidation.kt",
+          "ImpactPeerPathValidation.kt",
+          "ImpactPeerProofDocuments.kt",
+          "ImpactPeerWitnessBasisValidation.kt",
+          "ImpactPredicateDocuments.kt",
+          "ImpactPredicateValidation.kt",
+          "ImpactPresentationFailureDocument.kt",
+          "ImpactReadRejectionDocument.kt",
+          "ImpactRequestedBoundaryDocument.kt",
+          "ImpactReviewedCallbackIdentity.kt",
+          "ImpactReviewedCallbackValidation.kt",
+          "ImpactSeedCallbackEntryValidation.kt",
+          "ImpactSeedCallbackQuestionValidation.kt",
+          "ImpactSeedCallbackReturnQuestionValidation.kt",
+          "ImpactSeedCallbackReturnValidation.kt",
+          "ImpactSiteAccountingDocuments.kt",
+          "ImpactSiteAccountingValidation.kt",
+          "ImpactSourceFunctionProducerValidation.kt",
+          "ImpactStringInterpolationValidation.kt",
+          "ImpactValueModelDocuments.kt",
+          "ImpactValueModelPrimitives.kt",
+          "ImpactValueModelValidation.kt",
+          "ImpactValueStateDocuments.kt",
+          "ImpactValueStateValidation.kt",
+          "ImpactWitnessDocuments.kt"
+        ],
+        "prefix": "Impact"
+      },
+      "message": "prefix cluster 'Impact' appears in 46 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "ImpactAccountingDocument.kt",
+          "ImpactAccountingFailure.kt",
+          "ImpactAccountingSelection.kt",
+          "ImpactAccountingValidation.kt"
+        ],
+        "prefix": "Impact Accounting"
+      },
+      "message": "prefix cluster 'Impact Accounting' appears in 4 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "ImpactExecutionFailureDocument.kt",
+          "ImpactExecutionOwnerValidation.kt",
+          "ImpactExecutionStopDocument.kt"
+        ],
+        "prefix": "Impact Execution"
+      },
+      "message": "prefix cluster 'Impact Execution' appears in 3 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "ImpactImplementationDocuments.kt",
+          "ImpactImplementationIdentity.kt",
+          "ImpactImplementationValidation.kt"
+        ],
+        "prefix": "Impact Implementation"
+      },
+      "message": "prefix cluster 'Impact Implementation' appears in 3 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "ImpactModelDocuments.kt",
+          "ImpactModelIngress.kt",
+          "ImpactModelPrimitives.kt"
+        ],
+        "prefix": "Impact Model"
+      },
+      "message": "prefix cluster 'Impact Model' appears in 3 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "ImpactPeerAccountingValidation.kt",
+          "ImpactPeerAdmissionValidation.kt",
+          "ImpactPeerPathValidation.kt",
+          "ImpactPeerProofDocuments.kt",
+          "ImpactPeerWitnessBasisValidation.kt"
+        ],
+        "prefix": "Impact Peer"
+      },
+      "message": "prefix cluster 'Impact Peer' appears in 5 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "ImpactSeedCallbackEntryValidation.kt",
+          "ImpactSeedCallbackQuestionValidation.kt",
+          "ImpactSeedCallbackReturnQuestionValidation.kt",
+          "ImpactSeedCallbackReturnValidation.kt"
+        ],
+        "prefix": "Impact Seed"
+      },
+      "message": "prefix cluster 'Impact Seed' appears in 4 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "ImpactValueModelDocuments.kt",
+          "ImpactValueModelPrimitives.kt",
+          "ImpactValueModelValidation.kt",
+          "ImpactValueStateDocuments.kt",
+          "ImpactValueStateValidation.kt"
+        ],
+        "prefix": "Impact Value"
+      },
+      "message": "prefix cluster 'Impact Value' appears in 5 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.39,
+        "files": [
+          "QueryCallableObservationDocument.kt",
+          "QueryCallbackBindingWireDocuments.kt",
+          "QueryCallbackBodyBindingDocument.kt",
+          "QueryCallbackBodyBindingWireDocuments.kt",
+          "QueryCallbackBodyBindingWireSerializer.kt",
+          "QueryCallbackDocumentAdmission.kt",
+          "QueryCallbackFactoryBodyCallsDocument.kt",
+          "QueryCallbackFactoryBodyCallsWireDocument.kt",
+          "QueryCallbackFactoryCaptureDocument.kt",
+          "QueryCallbackFactoryDomainAdmission.kt",
+          "QueryCallbackFactoryReturnDocument.kt",
+          "QueryCallbackFactoryWireDocument.kt",
+          "QueryCallbackForwardingEvidenceWireDocument.kt",
+          "QueryCallbackGraphBoundaryDocument.kt",
+          "QueryCallbackGraphCauseDocument.kt",
+          "QueryCallbackGraphObligationsDocument.kt",
+          "QueryCallbackInvocationRouteAdmission.kt",
+          "QueryCallbackObservationDocument.kt",
+          "QueryCallbackObservationWireDocuments.kt",
+          "QueryCallbackOwnerBindingAdmission.kt",
+          "QueryCallbackOwnerExecutionAdmission.kt",
+          "QueryCallbackOwnerExecutionLimits.kt",
+          "QueryCallbackParameterSupplierDocument.kt",
+          "QueryCallbackParameterSupplierWireDocument.kt",
+          "QueryCallbackReferenceReceiverWireDocument.kt",
+          "QueryCallbackResultProjectionDocument.kt",
+          "QueryCallbackSupplierInventoryDocument.kt",
+          "QueryCompilerTargetWire.kt",
+          "QueryCompletionCauseDocument.kt",
+          "QueryCompletionDocument.kt",
+          "QueryContinuationDocuments.kt",
+          "QueryDeferredSupplierExecutionDocument.kt",
+          "QueryDeferredSupplierExecutionWireDocument.kt",
+          "QueryDiagnosticReadIdentity.kt",
+          "QueryDiscoveryObservationDocument.kt",
+          "QueryEvidenceWindowDocument.kt",
+          "QueryExcludedCompilerTargetWireDocument.kt",
+          "QueryExecutionContinuation.kt",
+          "QueryExpansionScopeDocument.kt",
+          "QueryImmutableCallbackFlowDocument.kt",
+          "QueryImmutableCallbackFlowWireDocument.kt",
+          "QueryImmutableCallbackOwnerAdmission.kt",
+          "QueryImmutableCallbackValueDecoding.kt",
+          "QueryImmutableCallbackValueDocument.kt",
+          "QueryImmutableCallbackValueEncoding.kt",
+          "QueryImmutableCallbackValueWireDocument.kt",
+          "QueryImpactSourceDocument.kt",
+          "QueryInvestigationCompletionFailureDocument.kt",
+          "QueryInvocationDocument.kt",
+          "QueryInvocationOutcome.kt",
+          "QueryNamedCallbackReferenceDocument.kt",
+          "QueryOriginalFailureDocument.kt",
+          "QueryOutputDocuments.kt",
+          "QueryQualifiedProgressDocument.kt",
+          "QueryQuestionDocument.kt",
+          "QueryReferenceRejectionSerializers.kt",
+          "QueryRelationObservationDocument.kt",
+          "QueryResultDocuments.kt",
+          "QueryResultReferences.kt",
+          "QueryRetainedPresentationWindow.kt",
+          "QueryRunActionSerializer.kt",
+          "QueryRunQualification.kt",
+          "QueryRunRejection.kt",
+          "QueryScopeExclusionDocument.kt",
+          "QuerySourceLessCallableWireDocument.kt",
+          "QuerySourceWindowDocument.kt",
+          "QueryTextMatchDocument.kt",
+          "QueryWalkDocuments.kt"
+        ],
+        "prefix": "Query"
+      },
+      "message": "prefix cluster 'Query' appears in 68 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.15,
+        "files": [
+          "QueryCallbackBindingWireDocuments.kt",
+          "QueryCallbackBodyBindingDocument.kt",
+          "QueryCallbackBodyBindingWireDocuments.kt",
+          "QueryCallbackBodyBindingWireSerializer.kt",
+          "QueryCallbackDocumentAdmission.kt",
+          "QueryCallbackFactoryBodyCallsDocument.kt",
+          "QueryCallbackFactoryBodyCallsWireDocument.kt",
+          "QueryCallbackFactoryCaptureDocument.kt",
+          "QueryCallbackFactoryDomainAdmission.kt",
+          "QueryCallbackFactoryReturnDocument.kt",
+          "QueryCallbackFactoryWireDocument.kt",
+          "QueryCallbackForwardingEvidenceWireDocument.kt",
+          "QueryCallbackGraphBoundaryDocument.kt",
+          "QueryCallbackGraphCauseDocument.kt",
+          "QueryCallbackGraphObligationsDocument.kt",
+          "QueryCallbackInvocationRouteAdmission.kt",
+          "QueryCallbackObservationDocument.kt",
+          "QueryCallbackObservationWireDocuments.kt",
+          "QueryCallbackOwnerBindingAdmission.kt",
+          "QueryCallbackOwnerExecutionAdmission.kt",
+          "QueryCallbackOwnerExecutionLimits.kt",
+          "QueryCallbackParameterSupplierDocument.kt",
+          "QueryCallbackParameterSupplierWireDocument.kt",
+          "QueryCallbackReferenceReceiverWireDocument.kt",
+          "QueryCallbackResultProjectionDocument.kt",
+          "QueryCallbackSupplierInventoryDocument.kt"
+        ],
+        "prefix": "Query Callback"
+      },
+      "message": "prefix cluster 'Query Callback' appears in 26 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "QueryImmutableCallbackFlowDocument.kt",
+          "QueryImmutableCallbackFlowWireDocument.kt",
+          "QueryImmutableCallbackOwnerAdmission.kt",
+          "QueryImmutableCallbackValueDecoding.kt",
+          "QueryImmutableCallbackValueDocument.kt",
+          "QueryImmutableCallbackValueEncoding.kt",
+          "QueryImmutableCallbackValueWireDocument.kt"
+        ],
+        "prefix": "Query Immutable"
+      },
+      "message": "prefix cluster 'Query Immutable' appears in 7 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "QueryRunActionSerializer.kt",
+          "QueryRunQualification.kt",
+          "QueryRunRejection.kt"
+        ],
+        "prefix": "Query Run"
+      },
+      "message": "prefix cluster 'Query Run' appears in 3 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "RelationOmissionDocument.kt",
+          "RelationOmissionSamplesDocument.kt",
+          "RelationReferenceDocuments.kt"
+        ],
+        "prefix": "Relation"
+      },
+      "message": "prefix cluster 'Relation' appears in 3 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "SourceExecutionBudgetIngress.kt",
+          "SourceLineRangeDocument.kt",
+          "SourceQualifiedProgressDocument.kt",
+          "SourceReadFailureDetails.kt",
+          "SourceReadOutcomeDocuments.kt",
+          "SourceReadSimpleIngress.kt",
+          "SourceReadSimpleRequest.kt",
+          "SourceRequestFieldReader.kt",
+          "SourceRequestIngress.kt"
+        ],
+        "prefix": "Source"
+      },
+      "message": "prefix cluster 'Source' appears in 9 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "SourceReadFailureDetails.kt",
+          "SourceReadOutcomeDocuments.kt",
+          "SourceReadSimpleIngress.kt",
+          "SourceReadSimpleRequest.kt"
+        ],
+        "prefix": "Source Read"
+      },
+      "message": "prefix cluster 'Source Read' appears in 4 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "TraversalExtentDocument.kt",
+          "TraversalPartialExpansionDocument.kt",
+          "TraversalStrategyDocument.kt"
+        ],
+        "prefix": "Traversal"
+      },
+      "message": "prefix cluster 'Traversal' appears in 3 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "WorkspaceLifecycleRequest.kt",
+          "WorkspacePreparationDeadline.kt",
+          "WorkspaceReadinessInspectionDocuments.kt",
+          "WorkspaceRefreshDocuments.kt",
+          "WorkspaceRefreshInspectionDocuments.kt"
+        ],
+        "prefix": "Workspace"
+      },
+      "message": "prefix cluster 'Workspace' appears in 5 peer files",
+      "path": "protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 62
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "ExecutionBudgetDocumentTest.kt",
+          "ExecutionReportAdmissionTest.kt",
+          "ExecutionReportDimensionTest.kt"
+        ],
+        "prefix": "Execution"
+      },
+      "message": "prefix cluster 'Execution' appears in 3 peer files",
+      "path": "protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.47,
+        "files": [
+          "ImpactCallbackDecodeDepthTest.kt",
+          "ImpactCallbackIdentityTest.kt",
+          "ImpactCallbackReturnQuestionTest.kt",
+          "ImpactCallbackUnavailableShapeTest.kt",
+          "ImpactCollectionInsertionContractTest.kt",
+          "ImpactFindingAccountingTest.kt",
+          "ImpactFindingFixture.kt",
+          "ImpactFindingShapeTest.kt",
+          "ImpactImplementationPeerIdentityTest.kt",
+          "ImpactImplementationShapeTest.kt",
+          "ImpactModelIngressTest.kt",
+          "ImpactPeerAccountingTest.kt",
+          "ImpactPeerAdmissionValidationTest.kt",
+          "ImpactPeerFixture.kt",
+          "ImpactPeerNativeWitnessValidationTest.kt",
+          "ImpactPeerShapeTest.kt",
+          "ImpactPeerSourceBasisValidationTest.kt",
+          "ImpactPredicateStateShapeTest.kt",
+          "ImpactReceiverKindContractTest.kt",
+          "ImpactSeedCallbackQuestionTest.kt",
+          "ImpactSeedCallbackReturnCase.kt",
+          "ImpactSeedCallbackReturnContractTest.kt",
+          "ImpactSeedCallbackReturnQuestionTest.kt",
+          "ImpactSiteAccountingShapeTest.kt",
+          "ImpactSiteAccountingValidationTest.kt",
+          "ImpactSourceRecoveryPolicyTest.kt",
+          "ImpactStringInterpolationContractTest.kt",
+          "ImpactValueModelStructureTest.kt",
+          "ImpactValueStateShapeTest.kt"
+        ],
+        "prefix": "Impact"
+      },
+      "message": "prefix cluster 'Impact' appears in 29 peer files",
+      "path": "protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.06,
+        "files": [
+          "ImpactCallbackDecodeDepthTest.kt",
+          "ImpactCallbackIdentityTest.kt",
+          "ImpactCallbackReturnQuestionTest.kt",
+          "ImpactCallbackUnavailableShapeTest.kt"
+        ],
+        "prefix": "Impact Callback"
+      },
+      "message": "prefix cluster 'Impact Callback' appears in 4 peer files",
+      "path": "protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "ImpactFindingAccountingTest.kt",
+          "ImpactFindingFixture.kt",
+          "ImpactFindingShapeTest.kt"
+        ],
+        "prefix": "Impact Finding"
+      },
+      "message": "prefix cluster 'Impact Finding' appears in 3 peer files",
+      "path": "protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.1,
+        "files": [
+          "ImpactPeerAccountingTest.kt",
+          "ImpactPeerAdmissionValidationTest.kt",
+          "ImpactPeerFixture.kt",
+          "ImpactPeerNativeWitnessValidationTest.kt",
+          "ImpactPeerShapeTest.kt",
+          "ImpactPeerSourceBasisValidationTest.kt"
+        ],
+        "prefix": "Impact Peer"
+      },
+      "message": "prefix cluster 'Impact Peer' appears in 6 peer files",
+      "path": "protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.06,
+        "files": [
+          "ImpactSeedCallbackQuestionTest.kt",
+          "ImpactSeedCallbackReturnCase.kt",
+          "ImpactSeedCallbackReturnContractTest.kt",
+          "ImpactSeedCallbackReturnQuestionTest.kt"
+        ],
+        "prefix": "Impact Seed"
+      },
+      "message": "prefix cluster 'Impact Seed' appears in 4 peer files",
+      "path": "protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.26,
+        "files": [
+          "QueryCallbackGraphCauseDocumentTest.kt",
+          "QueryCallbackGraphSubjectDocumentTest.kt",
+          "QueryCompletionCauseDocumentTest.kt",
+          "QueryCompletionContractTest.kt",
+          "QueryDiagnosticReadIdentityTest.kt",
+          "QueryDiscoveryUniverseContractTest.kt",
+          "QueryEvidenceWindowDocumentTest.kt",
+          "QueryExecutionContinuationTest.kt",
+          "QueryInvocationDocumentTest.kt",
+          "QueryOriginalFailureContractTest.kt",
+          "QueryResultReferencesTest.kt",
+          "QueryResultRetentionContractTest.kt",
+          "QueryRetainedOccurrenceRequestTest.kt",
+          "QueryRetainedPresentationWindowTest.kt",
+          "QueryRetentionProgressContractTest.kt",
+          "QuerySourceInterpretationContractTest.kt"
+        ],
+        "prefix": "Query"
+      },
+      "message": "prefix cluster 'Query' appears in 16 peer files",
+      "path": "protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 30
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.13,
+        "files": [
+          "CanonicalDiagnosticEnumMappings.kt",
+          "CanonicalHostedContract.kt",
+          "CanonicalSymbolDocuments.kt",
+          "CanonicalTopologySerializers.kt"
+        ],
+        "prefix": "Canonical"
+      },
+      "message": "prefix cluster 'Canonical' appears in 4 peer files",
+      "path": "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.1,
+        "files": [
+          "OperationWireBinding.kt",
+          "OperationWireModel.kt",
+          "OperationWireTable.kt"
+        ],
+        "prefix": "Operation"
+      },
+      "message": "prefix cluster 'Operation' appears in 3 peer files",
+      "path": "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.1,
+        "files": [
+          "OperationWireBinding.kt",
+          "OperationWireModel.kt",
+          "OperationWireTable.kt"
+        ],
+        "prefix": "Operation Wire"
+      },
+      "message": "prefix cluster 'Operation Wire' appears in 3 peer files",
+      "path": "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.43,
+        "files": [
+          "QueryCallableObservationWireDocuments.kt",
+          "QueryCallbackObservationWireDocuments.kt",
+          "QueryCallbackResultProjectionWireDocument.kt",
+          "QueryCallbackSupplierInventoryWireDocument.kt",
+          "QueryCompletionRejectionWireDocument.kt",
+          "QueryContinuationWireDocuments.kt",
+          "QueryNamedCallbackReferenceWireDocument.kt",
+          "QueryReferenceRejectionReasonWireDocument.kt",
+          "QueryResultItemWireDocuments.kt",
+          "QueryScopeExclusionWireDocuments.kt",
+          "QuerySourceWireDocuments.kt",
+          "QueryTextMatchWireDocuments.kt",
+          "QueryWalkWireDocuments.kt"
+        ],
+        "prefix": "Query"
+      },
+      "message": "prefix cluster 'Query' appears in 13 peer files",
+      "path": "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.1,
+        "files": [
+          "QueryCallbackObservationWireDocuments.kt",
+          "QueryCallbackResultProjectionWireDocument.kt",
+          "QueryCallbackSupplierInventoryWireDocument.kt"
+        ],
+        "prefix": "Query Callback"
+      },
+      "message": "prefix cluster 'Query Callback' appears in 3 peer files",
+      "path": "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.13,
+        "files": [
+          "WireDocumentConversion.kt",
+          "WireEnvelope.kt",
+          "WireEvidenceBasisValidation.kt",
+          "WireResponseByteMinimum.kt"
+        ],
+        "prefix": "Wire"
+      },
+      "message": "prefix cluster 'Wire' appears in 4 peer files",
+      "path": "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 33
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.36,
+        "files": [
+          "CanonicalCallbackSchemaDocuments.kt",
+          "CanonicalChangeCliDocuments.kt",
+          "CanonicalCliOutcomeProjectors.kt",
+          "CanonicalCliRequestPreparers.kt",
+          "CanonicalDiagnosticCliDocuments.kt",
+          "CanonicalDiagnosticRejectedDocument.kt",
+          "CanonicalIndexCliDocuments.kt",
+          "CanonicalQueryCliDocuments.kt",
+          "CanonicalReadCliDocuments.kt",
+          "CanonicalReadRejectedDocument.kt",
+          "CanonicalSourceReadCliDocuments.kt",
+          "CanonicalSymbolCliDocuments.kt"
+        ],
+        "prefix": "Canonical"
+      },
+      "message": "prefix cluster 'Canonical' appears in 12 peer files",
+      "path": "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.3,
+        "files": [
+          "QueryCliEnumSerializer.kt",
+          "QueryCliOperation.kt",
+          "QueryCompletionRejectionCliDocument.kt",
+          "QueryDiscoveryObservationCliDocument.kt",
+          "QueryItemFailureCliDocument.kt",
+          "QueryPageProgressCliDocument.kt",
+          "QueryRejectionCliDocument.kt",
+          "QueryRelationGraphCliDocument.kt",
+          "QueryResultRowCliDocuments.kt",
+          "QueryWalkCliDocuments.kt"
+        ],
+        "prefix": "Query"
+      },
+      "message": "prefix cluster 'Query' appears in 10 peer files",
+      "path": "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 13
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/serialization",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.85,
+        "files": [
+          "CanonicalChangeDocuments.kt",
+          "CanonicalChangeMappings.kt",
+          "CanonicalChangeSerializers.kt",
+          "CanonicalIndexDocuments.kt",
+          "CanonicalIndexSerializers.kt",
+          "CanonicalQueryDocuments.kt",
+          "CanonicalReadDocuments.kt",
+          "CanonicalReadEnumMappings.kt",
+          "CanonicalReadSerializers.kt",
+          "CanonicalSourceReadDocuments.kt",
+          "CanonicalSourceReadSerializers.kt"
+        ],
+        "prefix": "Canonical"
+      },
+      "message": "prefix cluster 'Canonical' appears in 11 peer files",
+      "path": "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/serialization",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.23,
+        "files": [
+          "CanonicalChangeDocuments.kt",
+          "CanonicalChangeMappings.kt",
+          "CanonicalChangeSerializers.kt"
+        ],
+        "prefix": "Canonical Change"
+      },
+      "message": "prefix cluster 'Canonical Change' appears in 3 peer files",
+      "path": "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/serialization",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.23,
+        "files": [
+          "CanonicalReadDocuments.kt",
+          "CanonicalReadEnumMappings.kt",
+          "CanonicalReadSerializers.kt"
+        ],
+        "prefix": "Canonical Read"
+      },
+      "message": "prefix cluster 'Canonical Read' appears in 3 peer files",
+      "path": "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/serialization",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 68
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.15,
+        "files": [
+          "CanonicalChangeGeneratedSerializationTest.kt",
+          "CanonicalOperationWireBindingsTest.kt",
+          "CanonicalQueryOccurrenceWireBindingTest.kt",
+          "CanonicalQueryQualificationWireTest.kt",
+          "CanonicalQueryWireBindingTest.kt",
+          "CanonicalReadGeneratedSerializationTest.kt",
+          "CanonicalRequestDtoSerializationTest.kt",
+          "CanonicalSelectableLocationWireTest.kt",
+          "CanonicalSourceReadWireBindingTest.kt",
+          "CanonicalTopologyRejectionWireTest.kt"
+        ],
+        "prefix": "Canonical"
+      },
+      "message": "prefix cluster 'Canonical' appears in 10 peer files",
+      "path": "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "CanonicalQueryOccurrenceWireBindingTest.kt",
+          "CanonicalQueryQualificationWireTest.kt",
+          "CanonicalQueryWireBindingTest.kt"
+        ],
+        "prefix": "Canonical Query"
+      },
+      "message": "prefix cluster 'Canonical Query' appears in 3 peer files",
+      "path": "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "CompactDiscoveryPresentationTest.kt",
+          "CompactSourceDocumentTest.kt",
+          "CompactToolPresentationTest.kt"
+        ],
+        "prefix": "Compact"
+      },
+      "message": "prefix cluster 'Compact' appears in 3 peer files",
+      "path": "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.07,
+        "files": [
+          "ImpactAccountingWireTest.kt",
+          "ImpactExecutionFailureWireTest.kt",
+          "ImpactPathWireTest.kt",
+          "ImpactPresentationRejectionWireTest.kt",
+          "ImpactWitnessWireTest.kt"
+        ],
+        "prefix": "Impact"
+      },
+      "message": "prefix cluster 'Impact' appears in 5 peer files",
+      "path": "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.57,
+        "files": [
+          "QueryCallableObservationWireTest.kt",
+          "QueryCallbackDefaultFlowWireTest.kt",
+          "QueryCallbackDeferredDependencyWireTest.kt",
+          "QueryCallbackDependencyContractWireTest.kt",
+          "QueryCallbackDirectFlowWireTest.kt",
+          "QueryCallbackEnvelopeBasisTest.kt",
+          "QueryCallbackFactoryBodyCallsWireTest.kt",
+          "QueryCallbackFactoryWireTest.kt",
+          "QueryCallbackForwardingGraphWireTest.kt",
+          "QueryCallbackForwardingWireTest.kt",
+          "QueryCallbackGraphOwnerBindingWireTest.kt",
+          "QueryCallbackLexicalRootWireTest.kt",
+          "QueryCallbackObservationAdmissionTest.kt",
+          "QueryCallbackObservationWireTest.kt",
+          "QueryCallbackOwnerBindingWireTest.kt",
+          "QueryCallbackOwnerExecutionDepthWireTest.kt",
+          "QueryCallbackOwnerExecutionWireTest.kt",
+          "QueryCallbackProjectionBasisWireTest.kt",
+          "QueryCallbackRefinementWireFixture.kt",
+          "QueryCallbackRefinementWireTest.kt",
+          "QueryCallbackResultProjectionWireTest.kt",
+          "QueryCallbackSupplierInventoryWireTest.kt",
+          "QueryCallbackSupplierSubjectWireTest.kt",
+          "QueryCallbackSupplyClassificationWireTest.kt",
+          "QueryCallbackSupplyInterruptionWireTest.kt",
+          "QueryCompletionAuthorityTest.kt",
+          "QueryCompletionWireTest.kt",
+          "QueryDeferredSupplierExecutionWireTest.kt",
+          "QueryImmutableCallbackFlowWireTest.kt",
+          "QueryImmutableCallbackOwnerWireTest.kt",
+          "QueryImmutableCallbackValueWireTest.kt",
+          "QueryNamedCallbackReferenceWireTest.kt",
+          "QueryRelationObservationWireTest.kt",
+          "QuerySelectedCallbackWireTest.kt",
+          "QuerySourceEnumerationQualificationTest.kt",
+          "QuerySourceInterpretationWireTest.kt",
+          "QueryTextMatchWireTest.kt",
+          "QueryWalkCallbackAdmissionTest.kt",
+          "QueryWalkObservationWireTest.kt"
+        ],
+        "prefix": "Query"
+      },
+      "message": "prefix cluster 'Query' appears in 39 peer files",
+      "path": "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.35,
+        "files": [
+          "QueryCallbackDefaultFlowWireTest.kt",
+          "QueryCallbackDeferredDependencyWireTest.kt",
+          "QueryCallbackDependencyContractWireTest.kt",
+          "QueryCallbackDirectFlowWireTest.kt",
+          "QueryCallbackEnvelopeBasisTest.kt",
+          "QueryCallbackFactoryBodyCallsWireTest.kt",
+          "QueryCallbackFactoryWireTest.kt",
+          "QueryCallbackForwardingGraphWireTest.kt",
+          "QueryCallbackForwardingWireTest.kt",
+          "QueryCallbackGraphOwnerBindingWireTest.kt",
+          "QueryCallbackLexicalRootWireTest.kt",
+          "QueryCallbackObservationAdmissionTest.kt",
+          "QueryCallbackObservationWireTest.kt",
+          "QueryCallbackOwnerBindingWireTest.kt",
+          "QueryCallbackOwnerExecutionDepthWireTest.kt",
+          "QueryCallbackOwnerExecutionWireTest.kt",
+          "QueryCallbackProjectionBasisWireTest.kt",
+          "QueryCallbackRefinementWireFixture.kt",
+          "QueryCallbackRefinementWireTest.kt",
+          "QueryCallbackResultProjectionWireTest.kt",
+          "QueryCallbackSupplierInventoryWireTest.kt",
+          "QueryCallbackSupplierSubjectWireTest.kt",
+          "QueryCallbackSupplyClassificationWireTest.kt",
+          "QueryCallbackSupplyInterruptionWireTest.kt"
+        ],
+        "prefix": "Query Callback"
+      },
+      "message": "prefix cluster 'Query Callback' appears in 24 peer files",
+      "path": "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "QueryImmutableCallbackFlowWireTest.kt",
+          "QueryImmutableCallbackOwnerWireTest.kt",
+          "QueryImmutableCallbackValueWireTest.kt"
+        ],
+        "prefix": "Query Immutable"
+      },
+      "message": "prefix cluster 'Query Immutable' appears in 3 peer files",
+      "path": "protocol/wire/src/test/kotlin/io/github/amichne/kast/protocol/wire",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 58
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 1.0,
+        "files": [
+          "QueryCheckpointPartialSymbols.kt",
+          "QueryCheckpointStorageObservation.kt",
+          "QueryCompleteMembership.kt",
+          "QueryDiscoveryObservation.kt",
+          "QueryExecution.kt",
+          "QueryImpactExecutionFailure.kt",
+          "QueryImpactExecutionStop.kt",
+          "QueryImpactFinding.kt",
+          "QueryImpactImplementationBasis.kt",
+          "QueryImpactImplementationStorage.kt",
+          "QueryImpactLedger.kt",
+          "QueryImpactLedgerModelConservation.kt",
+          "QueryImpactLedgerValidation.kt",
+          "QueryImpactModelStorage.kt",
+          "QueryImpactPath.kt",
+          "QueryImpactPeerAcquisitionReceipt.kt",
+          "QueryImpactPeerBoundary.kt",
+          "QueryImpactPeerContinuationReason.kt",
+          "QueryImpactPeerDeclarationFailure.kt",
+          "QueryImpactPeerElapsedNanos.kt",
+          "QueryImpactPeerProofFailure.kt",
+          "QueryImpactPeerSiteAdmission.kt",
+          "QueryImpactPredicateStorage.kt",
+          "QueryImpactProducerEvidence.kt",
+          "QueryImpactReadRejection.kt",
+          "QueryImpactRelationStorage.kt",
+          "QueryImpactRequestedSite.kt",
+          "QueryImpactRetainedGraph.kt",
+          "QueryImpactSiteAccounting.kt",
+          "QueryImpactSiteSelection.kt",
+          "QueryImpactSource.kt",
+          "QueryImpactValueModelStorage.kt",
+          "QueryImpactValueStateStorage.kt",
+          "QueryImpactWitness.kt",
+          "QueryInvestigationCompletion.kt",
+          "QueryOperations.kt",
+          "QueryPlan.kt",
+          "QueryPresentationExecution.kt",
+          "QueryRelationEvidence.kt",
+          "QueryRelationObservation.kt",
+          "QueryRetainedCaptureRows.kt",
+          "QueryRetainedEvidence.kt",
+          "QueryRetainedResult.kt",
+          "QueryRetainedResultCapture.kt",
+          "QueryRetainedResultFailure.kt",
+          "QueryRetainedRowOrdinal.kt",
+          "QueryRowAdmission.kt",
+          "QueryRows.kt",
+          "QuerySource.kt",
+          "QuerySteps.kt",
+          "QueryTextMatches.kt",
+          "QueryTrace.kt",
+          "QueryValuePathAccounting.kt",
+          "QueryValuePathBasis.kt",
+          "QueryValuePathEvidence.kt",
+          "QueryValuePathRetainedStorage.kt",
+          "QueryWalkEvidence.kt",
+          "QueryWorkCount.kt"
+        ],
+        "prefix": "Query"
+      },
+      "message": "prefix cluster 'Query' appears in 58 peer files",
+      "path": "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.5,
+        "files": [
+          "QueryImpactExecutionFailure.kt",
+          "QueryImpactExecutionStop.kt",
+          "QueryImpactFinding.kt",
+          "QueryImpactImplementationBasis.kt",
+          "QueryImpactImplementationStorage.kt",
+          "QueryImpactLedger.kt",
+          "QueryImpactLedgerModelConservation.kt",
+          "QueryImpactLedgerValidation.kt",
+          "QueryImpactModelStorage.kt",
+          "QueryImpactPath.kt",
+          "QueryImpactPeerAcquisitionReceipt.kt",
+          "QueryImpactPeerBoundary.kt",
+          "QueryImpactPeerContinuationReason.kt",
+          "QueryImpactPeerDeclarationFailure.kt",
+          "QueryImpactPeerElapsedNanos.kt",
+          "QueryImpactPeerProofFailure.kt",
+          "QueryImpactPeerSiteAdmission.kt",
+          "QueryImpactPredicateStorage.kt",
+          "QueryImpactProducerEvidence.kt",
+          "QueryImpactReadRejection.kt",
+          "QueryImpactRelationStorage.kt",
+          "QueryImpactRequestedSite.kt",
+          "QueryImpactRetainedGraph.kt",
+          "QueryImpactSiteAccounting.kt",
+          "QueryImpactSiteSelection.kt",
+          "QueryImpactSource.kt",
+          "QueryImpactValueModelStorage.kt",
+          "QueryImpactValueStateStorage.kt",
+          "QueryImpactWitness.kt"
+        ],
+        "prefix": "Query Impact"
+      },
+      "message": "prefix cluster 'Query Impact' appears in 29 peer files",
+      "path": "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.1,
+        "files": [
+          "QueryRetainedCaptureRows.kt",
+          "QueryRetainedEvidence.kt",
+          "QueryRetainedResult.kt",
+          "QueryRetainedResultCapture.kt",
+          "QueryRetainedResultFailure.kt",
+          "QueryRetainedRowOrdinal.kt"
+        ],
+        "prefix": "Query Retained"
+      },
+      "message": "prefix cluster 'Query Retained' appears in 6 peer files",
+      "path": "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.07,
+        "files": [
+          "QueryValuePathAccounting.kt",
+          "QueryValuePathBasis.kt",
+          "QueryValuePathEvidence.kt",
+          "QueryValuePathRetainedStorage.kt"
+        ],
+        "prefix": "Query Value"
+      },
+      "message": "prefix cluster 'Query Value' appears in 4 peer files",
+      "path": "query/contract/src/main/kotlin/io/github/amichne/kast/query/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 35
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "query/contract/src/test/kotlin/io/github/amichne/kast/query/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 1.0,
+        "files": [
+          "QueryBindingRetentionTest.kt",
+          "QueryCheckpointStorageAdmissionTest.kt",
+          "QueryCollectionInsertionConservationTest.kt",
+          "QueryCoverageRetentionTest.kt",
+          "QueryImpactAutomaticModelConservationTest.kt",
+          "QueryImpactAutomaticModelFixture.kt",
+          "QueryImpactAutomaticModelWitnessTest.kt",
+          "QueryImpactBranchLedgerTest.kt",
+          "QueryImpactExecutionOwnerRetentionTest.kt",
+          "QueryImpactFindingTest.kt",
+          "QueryImpactImplementationRetentionTest.kt",
+          "QueryImpactLedgerFixture.kt",
+          "QueryImpactLedgerTest.kt",
+          "QueryImpactModelConservationTest.kt",
+          "QueryImpactPathTest.kt",
+          "QueryImpactPeerAdmissionTest.kt",
+          "QueryImpactPeerBoundaryTest.kt",
+          "QueryImpactPeerLedgerTest.kt",
+          "QueryImpactPeerSourceTest.kt",
+          "QueryImpactPeerTestFixture.kt",
+          "QueryImpactPredicateRetentionTest.kt",
+          "QueryImpactRepresentationConservationTest.kt",
+          "QueryImpactSiteAccountingTest.kt",
+          "QueryImpactSiteSelectionTest.kt",
+          "QueryImpactSourceTest.kt",
+          "QueryImpactTransferStorageTest.kt",
+          "QueryOccurrenceSnapshotTest.kt",
+          "QueryPlanCompilerTest.kt",
+          "QueryPresentationExecutionTest.kt",
+          "QueryRelationObservationSizeTest.kt",
+          "QueryReviewedCallbackStorageTest.kt",
+          "QuerySeedCallbackReturnStorageTest.kt",
+          "QuerySourceFunctionProducerProofTest.kt",
+          "QueryStringInterpolationStorageTest.kt",
+          "QueryValuePathRetentionTest.kt"
+        ],
+        "prefix": "Query"
+      },
+      "message": "prefix cluster 'Query' appears in 35 peer files",
+      "path": "query/contract/src/test/kotlin/io/github/amichne/kast/query/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.63,
+        "files": [
+          "QueryImpactAutomaticModelConservationTest.kt",
+          "QueryImpactAutomaticModelFixture.kt",
+          "QueryImpactAutomaticModelWitnessTest.kt",
+          "QueryImpactBranchLedgerTest.kt",
+          "QueryImpactExecutionOwnerRetentionTest.kt",
+          "QueryImpactFindingTest.kt",
+          "QueryImpactImplementationRetentionTest.kt",
+          "QueryImpactLedgerFixture.kt",
+          "QueryImpactLedgerTest.kt",
+          "QueryImpactModelConservationTest.kt",
+          "QueryImpactPathTest.kt",
+          "QueryImpactPeerAdmissionTest.kt",
+          "QueryImpactPeerBoundaryTest.kt",
+          "QueryImpactPeerLedgerTest.kt",
+          "QueryImpactPeerSourceTest.kt",
+          "QueryImpactPeerTestFixture.kt",
+          "QueryImpactPredicateRetentionTest.kt",
+          "QueryImpactRepresentationConservationTest.kt",
+          "QueryImpactSiteAccountingTest.kt",
+          "QueryImpactSiteSelectionTest.kt",
+          "QueryImpactSourceTest.kt",
+          "QueryImpactTransferStorageTest.kt"
+        ],
+        "prefix": "Query Impact"
+      },
+      "message": "prefix cluster 'Query Impact' appears in 22 peer files",
+      "path": "query/contract/src/test/kotlin/io/github/amichne/kast/query/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 143
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.07,
+        "files": [
+          "CanonicalDiagnosticCheckProtocol.kt",
+          "CanonicalQueryProtocol.kt",
+          "CanonicalQueryReferences.kt",
+          "CanonicalRelationDocuments.kt",
+          "CanonicalRelationOmissions.kt",
+          "CanonicalSelectorCodec.kt",
+          "CanonicalSelectorDocumentAdmission.kt",
+          "CanonicalSelectorDocuments.kt",
+          "CanonicalSourceReadProtocol.kt",
+          "CanonicalSymbolDocuments.kt"
+        ],
+        "prefix": "Canonical"
+      },
+      "message": "prefix cluster 'Canonical' appears in 10 peer files",
+      "path": "query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "CanonicalSelectorCodec.kt",
+          "CanonicalSelectorDocumentAdmission.kt",
+          "CanonicalSelectorDocuments.kt"
+        ],
+        "prefix": "Canonical Selector"
+      },
+      "message": "prefix cluster 'Canonical Selector' appears in 3 peer files",
+      "path": "query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "DiagnosticCheckpointStore.kt",
+          "DiagnosticExecutionPublication.kt",
+          "DiagnosticRetentionOwnership.kt",
+          "DiagnosticStateContracts.kt",
+          "DiagnosticStateRecords.kt"
+        ],
+        "prefix": "Diagnostic"
+      },
+      "message": "prefix cluster 'Diagnostic' appears in 5 peer files",
+      "path": "query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.23,
+        "files": [
+          "ImpactAccountingProjection.kt",
+          "ImpactCallbackProjection.kt",
+          "ImpactExecutionFailureProjection.kt",
+          "ImpactExecutionStopProjection.kt",
+          "ImpactFindingProjection.kt",
+          "ImpactFindingTerminalProjection.kt",
+          "ImpactFlowCauseProjection.kt",
+          "ImpactFlowDomainProjection.kt",
+          "ImpactIdentityProjection.kt",
+          "ImpactImplementationObservationProjection.kt",
+          "ImpactImplementationProjection.kt",
+          "ImpactModelAdmissionFailure.kt",
+          "ImpactModelBinding.kt",
+          "ImpactModelEvidenceProjection.kt",
+          "ImpactPathProjectionFailure.kt",
+          "ImpactPeerProofProjection.kt",
+          "ImpactPeerSourceEvidence.kt",
+          "ImpactPeerTerminalProjection.kt",
+          "ImpactPredicateProjection.kt",
+          "ImpactPresentationRejection.kt",
+          "ImpactProjectionTools.kt",
+          "ImpactReadRejectionProjection.kt",
+          "ImpactRequestedBoundaryProjection.kt",
+          "ImpactReviewedCallbackProjection.kt",
+          "ImpactSiteAccountingProjection.kt",
+          "ImpactSiteAdmissionOrigin.kt",
+          "ImpactSiteRevalidation.kt",
+          "ImpactSourceFunctionProducerProjection.kt",
+          "ImpactSourceModelEvidence.kt",
+          "ImpactSourceReadBudget.kt",
+          "ImpactValueModelProjection.kt",
+          "ImpactValueStateProjection.kt",
+          "ImpactWitnessProjection.kt"
+        ],
+        "prefix": "Impact"
+      },
+      "message": "prefix cluster 'Impact' appears in 33 peer files",
+      "path": "query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "ImpactModelAdmissionFailure.kt",
+          "ImpactModelBinding.kt",
+          "ImpactModelEvidenceProjection.kt"
+        ],
+        "prefix": "Impact Model"
+      },
+      "message": "prefix cluster 'Impact Model' appears in 3 peer files",
+      "path": "query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "ImpactPeerProofProjection.kt",
+          "ImpactPeerSourceEvidence.kt",
+          "ImpactPeerTerminalProjection.kt"
+        ],
+        "prefix": "Impact Peer"
+      },
+      "message": "prefix cluster 'Impact Peer' appears in 3 peer files",
+      "path": "query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "ImpactSiteAccountingProjection.kt",
+          "ImpactSiteAdmissionOrigin.kt",
+          "ImpactSiteRevalidation.kt"
+        ],
+        "prefix": "Impact Site"
+      },
+      "message": "prefix cluster 'Impact Site' appears in 3 peer files",
+      "path": "query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "ImpactSourceFunctionProducerProjection.kt",
+          "ImpactSourceModelEvidence.kt",
+          "ImpactSourceReadBudget.kt"
+        ],
+        "prefix": "Impact Source"
+      },
+      "message": "prefix cluster 'Impact Source' appears in 3 peer files",
+      "path": "query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.56,
+        "files": [
+          "QueryAutomaticOutputAdmission.kt",
+          "QueryBoundaryPositionAdmission.kt",
+          "QueryCallableObservationProjection.kt",
+          "QueryCallbackCompletion.kt",
+          "QueryCallbackEnumProjection.kt",
+          "QueryCallbackFactoryBodyCallsProjection.kt",
+          "QueryCallbackFactoryProjection.kt",
+          "QueryCallbackGraphAdmission.kt",
+          "QueryCallbackGraphCauseProjection.kt",
+          "QueryCallbackObservationProjection.kt",
+          "QueryCallbackOwnerExecutionProjection.kt",
+          "QueryCallbackResultProjection.kt",
+          "QueryCallbackSupplierInventoryProjection.kt",
+          "QueryCallbackSupplierProjection.kt",
+          "QueryCompletionCheckpointEvidence.kt",
+          "QueryCompletionEvidence.kt",
+          "QueryCompletionEvidenceRead.kt",
+          "QueryCompletionFailure.kt",
+          "QueryCompletionRejectionPresentation.kt",
+          "QueryContinuationAuthorityFailure.kt",
+          "QueryContinuationRevocations.kt",
+          "QueryDeferredSupplierProjection.kt",
+          "QueryDiscoveryProjection.kt",
+          "QueryEvidencePresentation.kt",
+          "QueryExecutionPublication.kt",
+          "QueryExpansionScopeAdmission.kt",
+          "QueryExpansionScopeFailure.kt",
+          "QueryImmutableCallbackFlowProjection.kt",
+          "QueryImmutableCallbackValueProjection.kt",
+          "QueryImpactPathProjection.kt",
+          "QueryImpactPeerSelection.kt",
+          "QueryImpactPeerSiteAcquisition.kt",
+          "QueryImpactSourceAcquisition.kt",
+          "QueryImpactSourceAdmission.kt",
+          "QueryImpactSourceFailureProjection.kt",
+          "QueryInvocationCompletionRejection.kt",
+          "QueryInvocationExecution.kt",
+          "QueryInvocationFacts.kt",
+          "QueryInvocationFactsRetentionEstimate.kt",
+          "QueryInvocationImpactPresentation.kt",
+          "QueryInvocationPreviewRows.kt",
+          "QueryInvocationProjection.kt",
+          "QueryInvocationPublication.kt",
+          "QueryInvocationRetentionObservation.kt",
+          "QueryIssueProjection.kt",
+          "QueryItemProjector.kt",
+          "QueryLocationFailure.kt",
+          "QueryNamedCallbackReferenceProjection.kt",
+          "QueryOriginalFailureMetadata.kt",
+          "QueryOriginalFailureRejection.kt",
+          "QueryOutcomeProjection.kt",
+          "QueryPagePublication.kt",
+          "QueryPresentationWindowMapping.kt",
+          "QueryProgressOrigin.kt",
+          "QueryProgressProjection.kt",
+          "QueryProjectedEvidence.kt",
+          "QueryProjection.kt",
+          "QueryProjectionRows.kt",
+          "QueryPublicationTransition.kt",
+          "QueryReferenceAuthority.kt",
+          "QueryReferenceFailureProjection.kt",
+          "QueryReferenceTransport.kt",
+          "QueryRelationObservationProjection.kt",
+          "QueryResultEnvelope.kt",
+          "QueryResultPresentation.kt",
+          "QueryResultRetentionObservation.kt",
+          "QueryRetainedInputs.kt",
+          "QueryScopeExclusionProjection.kt",
+          "QueryStageSyntaxAdmission.kt",
+          "QueryStateAccounting.kt",
+          "QueryStateAcquisition.kt",
+          "QueryStateContracts.kt",
+          "QueryStateRecords.kt",
+          "QueryStateRetention.kt",
+          "QueryStateStore.kt",
+          "QuerySyntaxAdmission.kt",
+          "QuerySyntaxAdmissionOutcome.kt",
+          "QueryTextMatchProjection.kt",
+          "QueryUnobservedInvocation.kt",
+          "QueryWalkProjection.kt"
+        ],
+        "prefix": "Query"
+      },
+      "message": "prefix cluster 'Query' appears in 80 peer files",
+      "path": "query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.08,
+        "files": [
+          "QueryCallbackCompletion.kt",
+          "QueryCallbackEnumProjection.kt",
+          "QueryCallbackFactoryBodyCallsProjection.kt",
+          "QueryCallbackFactoryProjection.kt",
+          "QueryCallbackGraphAdmission.kt",
+          "QueryCallbackGraphCauseProjection.kt",
+          "QueryCallbackObservationProjection.kt",
+          "QueryCallbackOwnerExecutionProjection.kt",
+          "QueryCallbackResultProjection.kt",
+          "QueryCallbackSupplierInventoryProjection.kt",
+          "QueryCallbackSupplierProjection.kt"
+        ],
+        "prefix": "Query Callback"
+      },
+      "message": "prefix cluster 'Query Callback' appears in 11 peer files",
+      "path": "query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "QueryCompletionCheckpointEvidence.kt",
+          "QueryCompletionEvidence.kt",
+          "QueryCompletionEvidenceRead.kt",
+          "QueryCompletionFailure.kt",
+          "QueryCompletionRejectionPresentation.kt"
+        ],
+        "prefix": "Query Completion"
+      },
+      "message": "prefix cluster 'Query Completion' appears in 5 peer files",
+      "path": "query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "QueryImpactPathProjection.kt",
+          "QueryImpactPeerSelection.kt",
+          "QueryImpactPeerSiteAcquisition.kt",
+          "QueryImpactSourceAcquisition.kt",
+          "QueryImpactSourceAdmission.kt",
+          "QueryImpactSourceFailureProjection.kt"
+        ],
+        "prefix": "Query Impact"
+      },
+      "message": "prefix cluster 'Query Impact' appears in 6 peer files",
+      "path": "query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.06,
+        "files": [
+          "QueryInvocationCompletionRejection.kt",
+          "QueryInvocationExecution.kt",
+          "QueryInvocationFacts.kt",
+          "QueryInvocationFactsRetentionEstimate.kt",
+          "QueryInvocationImpactPresentation.kt",
+          "QueryInvocationPreviewRows.kt",
+          "QueryInvocationProjection.kt",
+          "QueryInvocationPublication.kt",
+          "QueryInvocationRetentionObservation.kt"
+        ],
+        "prefix": "Query Invocation"
+      },
+      "message": "prefix cluster 'Query Invocation' appears in 9 peer files",
+      "path": "query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "QueryReferenceAuthority.kt",
+          "QueryReferenceFailureProjection.kt",
+          "QueryReferenceTransport.kt"
+        ],
+        "prefix": "Query Reference"
+      },
+      "message": "prefix cluster 'Query Reference' appears in 3 peer files",
+      "path": "query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "QueryResultEnvelope.kt",
+          "QueryResultPresentation.kt",
+          "QueryResultRetentionObservation.kt"
+        ],
+        "prefix": "Query Result"
+      },
+      "message": "prefix cluster 'Query Result' appears in 3 peer files",
+      "path": "query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "QueryStateAccounting.kt",
+          "QueryStateAcquisition.kt",
+          "QueryStateContracts.kt",
+          "QueryStateRecords.kt",
+          "QueryStateRetention.kt",
+          "QueryStateStore.kt"
+        ],
+        "prefix": "Query State"
+      },
+      "message": "prefix cluster 'Query State' appears in 6 peer files",
+      "path": "query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "SourceProgressProjection.kt",
+          "SourceProtocolBudget.kt",
+          "SourceReadFormatProjection.kt",
+          "SourceReadReferenceAdmission.kt",
+          "SourceReferenceFailures.kt",
+          "SourceRequestAdmission.kt"
+        ],
+        "prefix": "Source"
+      },
+      "message": "prefix cluster 'Source' appears in 6 peer files",
+      "path": "query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 138
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.16,
+        "files": [
+          "AutomaticBindingCapacityTest.kt",
+          "AutomaticDenseOwnerAccountingTest.kt",
+          "AutomaticDensePrivateLifetimeTest.kt",
+          "AutomaticDenseRetentionCase.kt",
+          "AutomaticDenseRetentionTest.kt",
+          "AutomaticDenseStoreQuotaTest.kt",
+          "AutomaticFinalPublicationTest.kt",
+          "AutomaticImpactInvocationProofTest.kt",
+          "AutomaticImpactQueryTest.kt",
+          "AutomaticPrivateConcurrencyTest.kt",
+          "AutomaticPrivateDependencyTest.kt",
+          "AutomaticPrivateOwnershipTest.kt",
+          "AutomaticPrivateReplayTest.kt",
+          "AutomaticRelationTimeGrantTest.kt",
+          "AutomaticRowQueryTest.kt",
+          "AutomaticServiceRowQueryTest.kt",
+          "AutomaticSymbolQueryCase.kt",
+          "AutomaticSymbolQueryEvidenceTest.kt",
+          "AutomaticSymbolQueryLimitsTest.kt",
+          "AutomaticSymbolQueryRejectionTest.kt",
+          "AutomaticSymbolQueryReplayTest.kt",
+          "AutomaticSymbolQueryTest.kt"
+        ],
+        "prefix": "Automatic"
+      },
+      "message": "prefix cluster 'Automatic' appears in 22 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "AutomaticDenseOwnerAccountingTest.kt",
+          "AutomaticDensePrivateLifetimeTest.kt",
+          "AutomaticDenseRetentionCase.kt",
+          "AutomaticDenseRetentionTest.kt",
+          "AutomaticDenseStoreQuotaTest.kt"
+        ],
+        "prefix": "Automatic Dense"
+      },
+      "message": "prefix cluster 'Automatic Dense' appears in 5 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "AutomaticPrivateConcurrencyTest.kt",
+          "AutomaticPrivateDependencyTest.kt",
+          "AutomaticPrivateOwnershipTest.kt",
+          "AutomaticPrivateReplayTest.kt"
+        ],
+        "prefix": "Automatic Private"
+      },
+      "message": "prefix cluster 'Automatic Private' appears in 4 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "AutomaticSymbolQueryCase.kt",
+          "AutomaticSymbolQueryEvidenceTest.kt",
+          "AutomaticSymbolQueryLimitsTest.kt",
+          "AutomaticSymbolQueryRejectionTest.kt",
+          "AutomaticSymbolQueryReplayTest.kt",
+          "AutomaticSymbolQueryTest.kt"
+        ],
+        "prefix": "Automatic Symbol"
+      },
+      "message": "prefix cluster 'Automatic Symbol' appears in 6 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "CanonicalQueryProtocolTest.kt",
+          "CanonicalQueryRetentionProtocolTest.kt",
+          "CanonicalSourceIssuanceTest.kt"
+        ],
+        "prefix": "Canonical"
+      },
+      "message": "prefix cluster 'Canonical' appears in 3 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "CompleteOnlyCallbackQueryCase.kt",
+          "CompleteOnlyCallbackQueryTest.kt",
+          "CompleteOnlyCheckpointRecoveryTest.kt",
+          "CompleteOnlyNamedReferenceTest.kt",
+          "CompleteOnlyQueryTest.kt"
+        ],
+        "prefix": "Complete"
+      },
+      "message": "prefix cluster 'Complete' appears in 5 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "CompleteOnlyCallbackQueryCase.kt",
+          "CompleteOnlyCallbackQueryTest.kt",
+          "CompleteOnlyCheckpointRecoveryTest.kt",
+          "CompleteOnlyNamedReferenceTest.kt",
+          "CompleteOnlyQueryTest.kt"
+        ],
+        "prefix": "Complete Only"
+      },
+      "message": "prefix cluster 'Complete Only' appears in 5 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "DiagnosticAdmissionExpiryTest.kt",
+          "DiagnosticContinuationProtocolTest.kt",
+          "DiagnosticNonAdvancingPublicationTest.kt",
+          "DiagnosticPublicationFailureTest.kt",
+          "DiagnosticPublicationFixture.kt",
+          "DiagnosticPublicationTest.kt"
+        ],
+        "prefix": "Diagnostic"
+      },
+      "message": "prefix cluster 'Diagnostic' appears in 6 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "DiagnosticPublicationFailureTest.kt",
+          "DiagnosticPublicationFixture.kt",
+          "DiagnosticPublicationTest.kt"
+        ],
+        "prefix": "Diagnostic Publication"
+      },
+      "message": "prefix cluster 'Diagnostic Publication' appears in 3 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.22,
+        "files": [
+          "ImpactAccountingProjectionTest.kt",
+          "ImpactCallbackProjectionCase.kt",
+          "ImpactCallbackProjectionTest.kt",
+          "ImpactCallbackUnavailableProjectionTest.kt",
+          "ImpactCollectionInsertionProjectionTest.kt",
+          "ImpactExecutionFailureProjectionTest.kt",
+          "ImpactExecutionOwnerProjectionTest.kt",
+          "ImpactFindingFixture.kt",
+          "ImpactFindingModelFixture.kt",
+          "ImpactFindingPresentationTest.kt",
+          "ImpactFindingQualificationTest.kt",
+          "ImpactImplementationTargetProjectionTest.kt",
+          "ImpactModelAdmissionTest.kt",
+          "ImpactPathProjectionFixture.kt",
+          "ImpactPeerFailureProjectionTest.kt",
+          "ImpactPeerProjectionTest.kt",
+          "ImpactPredicateProjectionTest.kt",
+          "ImpactPresentationRejectionTest.kt",
+          "ImpactReceiverSlotAdmissionTest.kt",
+          "ImpactRejectedReadReceiptTest.kt",
+          "ImpactSeedCallbackEntryProjectionTest.kt",
+          "ImpactSeedCallbackQuestionProjectionTest.kt",
+          "ImpactSeedCallbackReturnProjectionTest.kt",
+          "ImpactSeedCallbackReturnQuestionProjectionTest.kt",
+          "ImpactSiteAccountingPresentationTest.kt",
+          "ImpactSourceValueProjectionTest.kt",
+          "ImpactStringInterpolationProjectionTest.kt",
+          "ImpactValueModelProjectionCase.kt",
+          "ImpactValueModelProjectionTest.kt",
+          "ImpactWitnessPresentationFixture.kt",
+          "ImpactWitnessPresentationTest.kt"
+        ],
+        "prefix": "Impact"
+      },
+      "message": "prefix cluster 'Impact' appears in 31 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "ImpactCallbackProjectionCase.kt",
+          "ImpactCallbackProjectionTest.kt",
+          "ImpactCallbackUnavailableProjectionTest.kt"
+        ],
+        "prefix": "Impact Callback"
+      },
+      "message": "prefix cluster 'Impact Callback' appears in 3 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "ImpactFindingFixture.kt",
+          "ImpactFindingModelFixture.kt",
+          "ImpactFindingPresentationTest.kt",
+          "ImpactFindingQualificationTest.kt"
+        ],
+        "prefix": "Impact Finding"
+      },
+      "message": "prefix cluster 'Impact Finding' appears in 4 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "ImpactSeedCallbackEntryProjectionTest.kt",
+          "ImpactSeedCallbackQuestionProjectionTest.kt",
+          "ImpactSeedCallbackReturnProjectionTest.kt",
+          "ImpactSeedCallbackReturnQuestionProjectionTest.kt"
+        ],
+        "prefix": "Impact Seed"
+      },
+      "message": "prefix cluster 'Impact Seed' appears in 4 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "PendingImpactReadResultTest.kt",
+          "PendingImpactRetentionFixture.kt",
+          "PendingImpactRetentionTest.kt"
+        ],
+        "prefix": "Pending"
+      },
+      "message": "prefix cluster 'Pending' appears in 3 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "PendingImpactReadResultTest.kt",
+          "PendingImpactRetentionFixture.kt",
+          "PendingImpactRetentionTest.kt"
+        ],
+        "prefix": "Pending Impact"
+      },
+      "message": "prefix cluster 'Pending Impact' appears in 3 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.28,
+        "files": [
+          "QueryCallbackEncodedSizeTest.kt",
+          "QueryCallbackGraphCauseProjectionTest.kt",
+          "QueryCheckpointPublicationTest.kt",
+          "QueryCheckpointReplayTest.kt",
+          "QueryConcatAdmissionTest.kt",
+          "QueryContinuationFailureTest.kt",
+          "QueryDependencyContractProjectionTest.kt",
+          "QueryEmptyProgressProjectionTest.kt",
+          "QueryEvidenceOutputOwnershipTest.kt",
+          "QueryExpansionScopeAdmissionTest.kt",
+          "QueryImpactBoundarySourceAdmissionTest.kt",
+          "QueryImpactBranchProjectionTest.kt",
+          "QueryImpactPathProjectionTest.kt",
+          "QueryImpactPeerCanonicalRetentionTest.kt",
+          "QueryImpactPeerReceiptBoundsTest.kt",
+          "QueryImpactPeerSelectionTest.kt",
+          "QueryImpactPeerSourceAdmissionTest.kt",
+          "QueryImpactRequestedSiteAdmissionTest.kt",
+          "QueryImpactSourceAdmissionCase.kt",
+          "QueryImpactSourceAdmissionTest.kt",
+          "QueryImpactSourceRetentionTest.kt",
+          "QueryOriginalFailureTest.kt",
+          "QueryOutputIdentityTest.kt",
+          "QueryOutputOwnershipTest.kt",
+          "QueryOutputPublicationFixture.kt",
+          "QueryPresentationWindowMappingTest.kt",
+          "QueryProducerPayloadReleaseTest.kt",
+          "QueryPublicationAuthorityTest.kt",
+          "QueryRetainedCallbackPresentationTest.kt",
+          "QueryRetainedForwardingGraphTest.kt",
+          "QueryRetainedOccurrencePresentationTest.kt",
+          "QueryRetainedRowAdmissionTest.kt",
+          "QueryRetainedTraversalPresentationTest.kt",
+          "QueryRetentionTestPolicy.kt",
+          "QueryStateDependencyAdmissionTest.kt",
+          "QueryStateLifetimeTest.kt",
+          "QueryTextMatchProjectionTest.kt",
+          "QueryValuePathStateTest.kt"
+        ],
+        "prefix": "Query"
+      },
+      "message": "prefix cluster 'Query' appears in 38 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.08,
+        "files": [
+          "QueryImpactBoundarySourceAdmissionTest.kt",
+          "QueryImpactBranchProjectionTest.kt",
+          "QueryImpactPathProjectionTest.kt",
+          "QueryImpactPeerCanonicalRetentionTest.kt",
+          "QueryImpactPeerReceiptBoundsTest.kt",
+          "QueryImpactPeerSelectionTest.kt",
+          "QueryImpactPeerSourceAdmissionTest.kt",
+          "QueryImpactRequestedSiteAdmissionTest.kt",
+          "QueryImpactSourceAdmissionCase.kt",
+          "QueryImpactSourceAdmissionTest.kt",
+          "QueryImpactSourceRetentionTest.kt"
+        ],
+        "prefix": "Query Impact"
+      },
+      "message": "prefix cluster 'Query Impact' appears in 11 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "QueryOutputIdentityTest.kt",
+          "QueryOutputOwnershipTest.kt",
+          "QueryOutputPublicationFixture.kt"
+        ],
+        "prefix": "Query Output"
+      },
+      "message": "prefix cluster 'Query Output' appears in 3 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "QueryRetainedCallbackPresentationTest.kt",
+          "QueryRetainedForwardingGraphTest.kt",
+          "QueryRetainedOccurrencePresentationTest.kt",
+          "QueryRetainedRowAdmissionTest.kt",
+          "QueryRetainedTraversalPresentationTest.kt"
+        ],
+        "prefix": "Query Retained"
+      },
+      "message": "prefix cluster 'Query Retained' appears in 5 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.11,
+        "files": [
+          "RetainedGraphDeliveryCapture.kt",
+          "RetainedGraphDeliveryFixture.kt",
+          "RetainedGraphDeliveryMeasurementTest.kt",
+          "RetainedGraphDeliveryTest.kt",
+          "RetainedGraphNodeRetrievalTest.kt",
+          "RetainedModeledValueOracleCase.kt",
+          "RetainedModeledValueOracleTest.kt",
+          "RetainedSymbolGraphDeliveryTest.kt",
+          "RetainedSymbolGraphFallbackTest.kt",
+          "RetainedSymbolGraphFixture.kt",
+          "RetainedSymbolGraphMeasurementTest.kt",
+          "RetainedSymbolGraphReconstruction.kt",
+          "RetainedSymbolGraphSharingTest.kt",
+          "RetainedValueEvidenceOracleCase.kt",
+          "RetainedValueEvidenceOracleTest.kt"
+        ],
+        "prefix": "Retained"
+      },
+      "message": "prefix cluster 'Retained' appears in 15 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "RetainedGraphDeliveryCapture.kt",
+          "RetainedGraphDeliveryFixture.kt",
+          "RetainedGraphDeliveryMeasurementTest.kt",
+          "RetainedGraphDeliveryTest.kt",
+          "RetainedGraphNodeRetrievalTest.kt"
+        ],
+        "prefix": "Retained Graph"
+      },
+      "message": "prefix cluster 'Retained Graph' appears in 5 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "RetainedSymbolGraphDeliveryTest.kt",
+          "RetainedSymbolGraphFallbackTest.kt",
+          "RetainedSymbolGraphFixture.kt",
+          "RetainedSymbolGraphMeasurementTest.kt",
+          "RetainedSymbolGraphReconstruction.kt",
+          "RetainedSymbolGraphSharingTest.kt"
+        ],
+        "prefix": "Retained Symbol"
+      },
+      "message": "prefix cluster 'Retained Symbol' appears in 6 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "ReviewedLetModelProjectionTest.kt",
+          "ReviewedScopeProjectionCase.kt",
+          "ReviewedScopeProjectionTest.kt"
+        ],
+        "prefix": "Reviewed"
+      },
+      "message": "prefix cluster 'Reviewed' appears in 3 peer files",
+      "path": "query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 33
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "query/service/src/main/kotlin/io/github/amichne/kast/query/service",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.09,
+        "files": [
+          "PipelineCheckpoint.kt",
+          "PipelineSeed.kt",
+          "PipelineTasks.kt"
+        ],
+        "prefix": "Pipeline"
+      },
+      "message": "prefix cluster 'Pipeline' appears in 3 peer files",
+      "path": "query/service/src/main/kotlin/io/github/amichne/kast/query/service",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.91,
+        "files": [
+          "QueryBindingTasks.kt",
+          "QueryCallbackEvidenceTasks.kt",
+          "QueryCheckpointStorageAdmission.kt",
+          "QueryCheckpointTraceProof.kt",
+          "QueryDiscoveryTasks.kt",
+          "QueryExecutionState.kt",
+          "QueryIdentityRows.kt",
+          "QueryImpactCapacity.kt",
+          "QueryImpactModelArrivals.kt",
+          "QueryImpactObservedArrivals.kt",
+          "QueryImpactReadAcquisition.kt",
+          "QueryImpactSnapshot.kt",
+          "QueryImpactTasks.kt",
+          "QueryJoinStage.kt",
+          "QueryJoins.kt",
+          "QueryNanoClock.kt",
+          "QueryPageCompletion.kt",
+          "QueryPageFacts.kt",
+          "QueryReadStages.kt",
+          "QueryRelationStage.kt",
+          "QueryRetainedLimitations.kt",
+          "QueryService.kt",
+          "QueryServiceSupport.kt",
+          "QuerySymbolOutput.kt",
+          "QueryTextDiscoveryStage.kt",
+          "QueryTraceMembers.kt",
+          "QueryTraceTasks.kt",
+          "QueryValuePathOutputAdmission.kt",
+          "QueryWalkStage.kt",
+          "QueryWhereTasks.kt"
+        ],
+        "prefix": "Query"
+      },
+      "message": "prefix cluster 'Query' appears in 30 peer files",
+      "path": "query/service/src/main/kotlin/io/github/amichne/kast/query/service",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.18,
+        "files": [
+          "QueryImpactCapacity.kt",
+          "QueryImpactModelArrivals.kt",
+          "QueryImpactObservedArrivals.kt",
+          "QueryImpactReadAcquisition.kt",
+          "QueryImpactSnapshot.kt",
+          "QueryImpactTasks.kt"
+        ],
+        "prefix": "Query Impact"
+      },
+      "message": "prefix cluster 'Query Impact' appears in 6 peer files",
+      "path": "query/service/src/main/kotlin/io/github/amichne/kast/query/service",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 50
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "query/service/src/test/kotlin/io/github/amichne/kast/query/service",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.94,
+        "files": [
+          "QueryCheckpointStorageObservationTest.kt",
+          "QueryCheckpointTraceProofTest.kt",
+          "QueryCompositionAndPredicateTest.kt",
+          "QueryDeadlineAdmissionTest.kt",
+          "QueryDenseReferenceRetentionTest.kt",
+          "QueryDiscoveryEvidenceTest.kt",
+          "QueryDiscoveryPlanningTest.kt",
+          "QueryDistinctResumeTest.kt",
+          "QueryImpactAutomaticValueExecutionTest.kt",
+          "QueryImpactBoundsTest.kt",
+          "QueryImpactExecutionFixture.kt",
+          "QueryImpactExecutionTest.kt",
+          "QueryImpactModelExecutionTest.kt",
+          "QueryImpactModelStateConservationTest.kt",
+          "QueryImpactPeerBoundaryExecutionTest.kt",
+          "QueryImpactReadReuseOracleTest.kt",
+          "QueryImpactRequestedSiteExecutionTest.kt",
+          "QueryImpactStorageAdmissionTest.kt",
+          "QueryIncrementalDiscoveryTest.kt",
+          "QueryJoinCompositionTest.kt",
+          "QueryLocalBindingAdverseTest.kt",
+          "QueryLocalBindingResumeTest.kt",
+          "QueryMethodTraceTest.kt",
+          "QueryNameDiscoveryPaginationTest.kt",
+          "QueryOccurrenceCompositionTest.kt",
+          "QueryPaginationTest.kt",
+          "QueryQualifiedCompositionTest.kt",
+          "QueryRelationCoverageTest.kt",
+          "QueryRetainedCompositionTest.kt",
+          "QueryServiceSourceTest.kt",
+          "QueryServiceTest.kt",
+          "QuerySetCompositionTest.kt",
+          "QueryTextDiscoveryFixture.kt",
+          "QueryTextDiscoveryRetentionTest.kt",
+          "QueryTextDiscoveryTest.kt",
+          "QueryTextMatchCapacityTest.kt",
+          "QueryTraceGroupedRecoveryTest.kt",
+          "QueryTraceMembersTest.kt",
+          "QueryTraceTest.kt",
+          "QueryTraceWorkTest.kt",
+          "QueryWalkCompositionTest.kt",
+          "QueryWalkDomainCoverageTest.kt",
+          "QueryWalkEvidencePaginationTest.kt",
+          "QueryWalkRetainedProgressTest.kt",
+          "QueryWalkTestBudget.kt",
+          "QueryWorkAdmissionTest.kt",
+          "QueryWorkUsageTest.kt"
+        ],
+        "prefix": "Query"
+      },
+      "message": "prefix cluster 'Query' appears in 47 peer files",
+      "path": "query/service/src/test/kotlin/io/github/amichne/kast/query/service",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.2,
+        "files": [
+          "QueryImpactAutomaticValueExecutionTest.kt",
+          "QueryImpactBoundsTest.kt",
+          "QueryImpactExecutionFixture.kt",
+          "QueryImpactExecutionTest.kt",
+          "QueryImpactModelExecutionTest.kt",
+          "QueryImpactModelStateConservationTest.kt",
+          "QueryImpactPeerBoundaryExecutionTest.kt",
+          "QueryImpactReadReuseOracleTest.kt",
+          "QueryImpactRequestedSiteExecutionTest.kt",
+          "QueryImpactStorageAdmissionTest.kt"
+        ],
+        "prefix": "Query Impact"
+      },
+      "message": "prefix cluster 'Query Impact' appears in 10 peer files",
+      "path": "query/service/src/test/kotlin/io/github/amichne/kast/query/service",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.08,
+        "files": [
+          "QueryTextDiscoveryFixture.kt",
+          "QueryTextDiscoveryRetentionTest.kt",
+          "QueryTextDiscoveryTest.kt",
+          "QueryTextMatchCapacityTest.kt"
+        ],
+        "prefix": "Query Text"
+      },
+      "message": "prefix cluster 'Query Text' appears in 4 peer files",
+      "path": "query/service/src/test/kotlin/io/github/amichne/kast/query/service",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.08,
+        "files": [
+          "QueryTraceGroupedRecoveryTest.kt",
+          "QueryTraceMembersTest.kt",
+          "QueryTraceTest.kt",
+          "QueryTraceWorkTest.kt"
+        ],
+        "prefix": "Query Trace"
+      },
+      "message": "prefix cluster 'Query Trace' appears in 4 peer files",
+      "path": "query/service/src/test/kotlin/io/github/amichne/kast/query/service",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.1,
+        "files": [
+          "QueryWalkCompositionTest.kt",
+          "QueryWalkDomainCoverageTest.kt",
+          "QueryWalkEvidencePaginationTest.kt",
+          "QueryWalkRetainedProgressTest.kt",
+          "QueryWalkTestBudget.kt"
+        ],
+        "prefix": "Query Walk"
+      },
+      "message": "prefix cluster 'Query Walk' appears in 5 peer files",
+      "path": "query/service/src/test/kotlin/io/github/amichne/kast/query/service",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 111
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.32,
+        "files": [
+          "CallbackArgumentBinding.kt",
+          "CallbackBindingCanonical.kt",
+          "CallbackBodyBinding.kt",
+          "CallbackDeclaredBinding.kt",
+          "CallbackDeferredDependency.kt",
+          "CallbackDeferredExecutionProjection.kt",
+          "CallbackDeferredSupplier.kt",
+          "CallbackDependencyContract.kt",
+          "CallbackEvidenceDomain.kt",
+          "CallbackEvidenceReadmission.kt",
+          "CallbackFactoryBodyAdmission.kt",
+          "CallbackFactoryBodyCalls.kt",
+          "CallbackFactoryBodyReadmission.kt",
+          "CallbackFactoryReturn.kt",
+          "CallbackFlowAdmission.kt",
+          "CallbackFlowComposition.kt",
+          "CallbackFlowRoutes.kt",
+          "CallbackInvocationFlow.kt",
+          "CallbackInvocationFlowCanonical.kt",
+          "CallbackOwnerBindingAdmission.kt",
+          "CallbackParameterForwarding.kt",
+          "CallbackParameterIdentity.kt",
+          "CallbackParameterSummary.kt",
+          "CallbackParameterSupplier.kt",
+          "CallbackResultProjection.kt",
+          "CallbackResultSites.kt",
+          "CallbackSummaryCache.kt",
+          "CallbackSummaryEndpoints.kt",
+          "CallbackSummaryReadmission.kt",
+          "CallbackSupplierCache.kt",
+          "CallbackSupplierEndpoints.kt",
+          "CallbackSupplierInventoryAdmission.kt",
+          "CallbackSupplierReadmission.kt",
+          "CallbackSupplyUnavailable.kt",
+          "CallbackValueProofLimits.kt",
+          "CallbackWorkspaceAdmission.kt"
+        ],
+        "prefix": "Callback"
+      },
+      "message": "prefix cluster 'Callback' appears in 36 peer files",
+      "path": "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "CallbackDeferredDependency.kt",
+          "CallbackDeferredExecutionProjection.kt",
+          "CallbackDeferredSupplier.kt"
+        ],
+        "prefix": "Callback Deferred"
+      },
+      "message": "prefix cluster 'Callback Deferred' appears in 3 peer files",
+      "path": "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "CallbackFactoryBodyAdmission.kt",
+          "CallbackFactoryBodyCalls.kt",
+          "CallbackFactoryBodyReadmission.kt",
+          "CallbackFactoryReturn.kt"
+        ],
+        "prefix": "Callback Factory"
+      },
+      "message": "prefix cluster 'Callback Factory' appears in 4 peer files",
+      "path": "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "CallbackFlowAdmission.kt",
+          "CallbackFlowComposition.kt",
+          "CallbackFlowRoutes.kt"
+        ],
+        "prefix": "Callback Flow"
+      },
+      "message": "prefix cluster 'Callback Flow' appears in 3 peer files",
+      "path": "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "CallbackParameterForwarding.kt",
+          "CallbackParameterIdentity.kt",
+          "CallbackParameterSummary.kt",
+          "CallbackParameterSupplier.kt"
+        ],
+        "prefix": "Callback Parameter"
+      },
+      "message": "prefix cluster 'Callback Parameter' appears in 4 peer files",
+      "path": "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "CallbackSummaryCache.kt",
+          "CallbackSummaryEndpoints.kt",
+          "CallbackSummaryReadmission.kt"
+        ],
+        "prefix": "Callback Summary"
+      },
+      "message": "prefix cluster 'Callback Summary' appears in 3 peer files",
+      "path": "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "CallbackSupplierCache.kt",
+          "CallbackSupplierEndpoints.kt",
+          "CallbackSupplierInventoryAdmission.kt",
+          "CallbackSupplierReadmission.kt"
+        ],
+        "prefix": "Callback Supplier"
+      },
+      "message": "prefix cluster 'Callback Supplier' appears in 4 peer files",
+      "path": "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.08,
+        "files": [
+          "CompleteCallbackDirectInvocations.kt",
+          "CompleteCallbackFlowGraph.kt",
+          "CompleteCallbackForwardingGraph.kt",
+          "CompleteCallbackSourceRelation.kt",
+          "CompleteCallbackSupplierInventory.kt",
+          "CompleteCallbackSupply.kt",
+          "CompleteNamedCallbackSourceReference.kt",
+          "CompleteNamedRelationPartition.kt",
+          "CompleteStaticCallbackGraph.kt"
+        ],
+        "prefix": "Complete"
+      },
+      "message": "prefix cluster 'Complete' appears in 9 peer files",
+      "path": "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "CompleteCallbackDirectInvocations.kt",
+          "CompleteCallbackFlowGraph.kt",
+          "CompleteCallbackForwardingGraph.kt",
+          "CompleteCallbackSourceRelation.kt",
+          "CompleteCallbackSupplierInventory.kt",
+          "CompleteCallbackSupply.kt"
+        ],
+        "prefix": "Complete Callback"
+      },
+      "message": "prefix cluster 'Complete Callback' appears in 6 peer files",
+      "path": "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "ImmutableCallbackInvocationFlow.kt",
+          "ImmutableCallbackOwnerAdmission.kt",
+          "ImmutableCallbackValue.kt"
+        ],
+        "prefix": "Immutable"
+      },
+      "message": "prefix cluster 'Immutable' appears in 3 peer files",
+      "path": "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "ImmutableCallbackInvocationFlow.kt",
+          "ImmutableCallbackOwnerAdmission.kt",
+          "ImmutableCallbackValue.kt"
+        ],
+        "prefix": "Immutable Callback"
+      },
+      "message": "prefix cluster 'Immutable Callback' appears in 3 peer files",
+      "path": "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "LocalBindingReadRemainder.kt",
+          "LocalBindingReferenceScan.kt",
+          "LocalReferenceTraversal.kt"
+        ],
+        "prefix": "Local"
+      },
+      "message": "prefix cluster 'Local' appears in 3 peer files",
+      "path": "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.18,
+        "files": [
+          "RelationBatch.kt",
+          "RelationCallableBody.kt",
+          "RelationCallableObservation.kt",
+          "RelationCallableTargetAdmission.kt",
+          "RelationCallbackObservation.kt",
+          "RelationEndpointFingerprint.kt",
+          "RelationFact.kt",
+          "RelationIdentityEncoding.kt",
+          "RelationOmissionEvidence.kt",
+          "RelationOmissionSamples.kt",
+          "RelationOperations.kt",
+          "RelationProviderCursor.kt",
+          "RelationProviderLocator.kt",
+          "RelationProviderRetainedGraph.kt",
+          "RelationProviderRetentionLedger.kt",
+          "RelationProviderState.kt",
+          "RelationReferenceOccurrence.kt",
+          "RelationRequest.kt",
+          "RelationRetainedLimitations.kt",
+          "RelationScopeExclusion.kt"
+        ],
+        "prefix": "Relation"
+      },
+      "message": "prefix cluster 'Relation' appears in 20 peer files",
+      "path": "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "RelationCallableBody.kt",
+          "RelationCallableObservation.kt",
+          "RelationCallableTargetAdmission.kt"
+        ],
+        "prefix": "Relation Callable"
+      },
+      "message": "prefix cluster 'Relation Callable' appears in 3 peer files",
+      "path": "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "RelationProviderCursor.kt",
+          "RelationProviderLocator.kt",
+          "RelationProviderRetainedGraph.kt",
+          "RelationProviderRetentionLedger.kt",
+          "RelationProviderState.kt"
+        ],
+        "prefix": "Relation Provider"
+      },
+      "message": "prefix cluster 'Relation Provider' appears in 5 peer files",
+      "path": "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.31,
+        "files": [
+          "ValueAccessPath.kt",
+          "ValueBoundary.kt",
+          "ValueCallBinding.kt",
+          "ValueCallbackTarget.kt",
+          "ValueConstructorStorage.kt",
+          "ValueEndpointEvidenceSharing.kt",
+          "ValueExecutionOwner.kt",
+          "ValueFlow.kt",
+          "ValueFlowEvidenceSharing.kt",
+          "ValueFlowFootprint.kt",
+          "ValueFlowObligation.kt",
+          "ValueFlowStepAdmission.kt",
+          "ValueFlowStorage.kt",
+          "ValueFunctionInvocation.kt",
+          "ValueImplementationDispatch.kt",
+          "ValueImplementationFootprint.kt",
+          "ValueImplementationIdentity.kt",
+          "ValueInvocationSelection.kt",
+          "ValueModelApplication.kt",
+          "ValueModelEvidenceSharing.kt",
+          "ValuePredicates.kt",
+          "ValueProducerOrigin.kt",
+          "ValueProducerSeed.kt",
+          "ValueProducerSeedAdmission.kt",
+          "ValueReviewedCallbackTarget.kt",
+          "ValueScopeCallbackApplication.kt",
+          "ValueSite.kt",
+          "ValueSiteRevalidation.kt",
+          "ValueSourceFunctionSeedAdmission.kt",
+          "ValueSourceOwnership.kt",
+          "ValueSourceTransfer.kt",
+          "ValueStateEvidence.kt",
+          "ValueTransferCanonical.kt",
+          "ValueTransferEvidence.kt"
+        ],
+        "prefix": "Value"
+      },
+      "message": "prefix cluster 'Value' appears in 34 peer files",
+      "path": "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "ValueFlow.kt",
+          "ValueFlowEvidenceSharing.kt",
+          "ValueFlowFootprint.kt",
+          "ValueFlowObligation.kt",
+          "ValueFlowStepAdmission.kt",
+          "ValueFlowStorage.kt"
+        ],
+        "prefix": "Value Flow"
+      },
+      "message": "prefix cluster 'Value Flow' appears in 6 peer files",
+      "path": "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "ValueImplementationDispatch.kt",
+          "ValueImplementationFootprint.kt",
+          "ValueImplementationIdentity.kt"
+        ],
+        "prefix": "Value Implementation"
+      },
+      "message": "prefix cluster 'Value Implementation' appears in 3 peer files",
+      "path": "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "ValueProducerOrigin.kt",
+          "ValueProducerSeed.kt",
+          "ValueProducerSeedAdmission.kt"
+        ],
+        "prefix": "Value Producer"
+      },
+      "message": "prefix cluster 'Value Producer' appears in 3 peer files",
+      "path": "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "ValueSourceFunctionSeedAdmission.kt",
+          "ValueSourceOwnership.kt",
+          "ValueSourceTransfer.kt"
+        ],
+        "prefix": "Value Source"
+      },
+      "message": "prefix cluster 'Value Source' appears in 3 peer files",
+      "path": "relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 111
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.24,
+        "files": [
+          "CallbackAliasForwardingTest.kt",
+          "CallbackCompositionDepthTest.kt",
+          "CallbackDeclaredFlowTest.kt",
+          "CallbackDeferredSupplierTest.kt",
+          "CallbackDependencyContractTest.kt",
+          "CallbackFactoryBodyCallsTest.kt",
+          "CallbackFactoryBodyCanonicalTest.kt",
+          "CallbackFactoryBodyFixture.kt",
+          "CallbackFactoryReturnTest.kt",
+          "CallbackImplicitReceiverReadmissionTest.kt",
+          "CallbackInvocationFlowAdmissionTest.kt",
+          "CallbackInvocationFlowContractTest.kt",
+          "CallbackInvocationFlowFixture.kt",
+          "CallbackInvocationFlowRetentionTest.kt",
+          "CallbackNestedForwardingTest.kt",
+          "CallbackOwnerBindingContractTest.kt",
+          "CallbackOwnerCompositionTest.kt",
+          "CallbackOwnerExecutionReadmissionTest.kt",
+          "CallbackParameterSummaryTest.kt",
+          "CallbackResultProjectionTest.kt",
+          "CallbackReturnedSupplierReadmissionTest.kt",
+          "CallbackSummaryReadmissionTest.kt",
+          "CallbackSupplierInventoryFixture.kt",
+          "CallbackSupplierInventoryTest.kt",
+          "CallbackSupplierReadmissionTest.kt",
+          "CallbackUnavailableSupplyContractTest.kt",
+          "CallbackValueProofLimitTest.kt"
+        ],
+        "prefix": "Callback"
+      },
+      "message": "prefix cluster 'Callback' appears in 27 peer files",
+      "path": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "CallbackFactoryBodyCallsTest.kt",
+          "CallbackFactoryBodyCanonicalTest.kt",
+          "CallbackFactoryBodyFixture.kt",
+          "CallbackFactoryReturnTest.kt"
+        ],
+        "prefix": "Callback Factory"
+      },
+      "message": "prefix cluster 'Callback Factory' appears in 4 peer files",
+      "path": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "CallbackInvocationFlowAdmissionTest.kt",
+          "CallbackInvocationFlowContractTest.kt",
+          "CallbackInvocationFlowFixture.kt",
+          "CallbackInvocationFlowRetentionTest.kt"
+        ],
+        "prefix": "Callback Invocation"
+      },
+      "message": "prefix cluster 'Callback Invocation' appears in 4 peer files",
+      "path": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "CallbackOwnerBindingContractTest.kt",
+          "CallbackOwnerCompositionTest.kt",
+          "CallbackOwnerExecutionReadmissionTest.kt"
+        ],
+        "prefix": "Callback Owner"
+      },
+      "message": "prefix cluster 'Callback Owner' appears in 3 peer files",
+      "path": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "CallbackSupplierInventoryFixture.kt",
+          "CallbackSupplierInventoryTest.kt",
+          "CallbackSupplierReadmissionTest.kt"
+        ],
+        "prefix": "Callback Supplier"
+      },
+      "message": "prefix cluster 'Callback Supplier' appears in 3 peer files",
+      "path": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "CompleteCallbackDirectInvocationsTest.kt",
+          "CompleteCallbackSupplyTest.kt",
+          "CompleteImmutableCallbackWorkspaceTest.kt",
+          "CompleteNamedRelationPartitionTest.kt",
+          "CompleteRecursiveCallbackSummaryTest.kt",
+          "CompleteStaticCallbackGraphTest.kt"
+        ],
+        "prefix": "Complete"
+      },
+      "message": "prefix cluster 'Complete' appears in 6 peer files",
+      "path": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "ImmutableCallbackInvocationFlowTest.kt",
+          "ImmutableCallbackOwnerCompositionTest.kt",
+          "ImmutableCallbackValueTest.kt"
+        ],
+        "prefix": "Immutable"
+      },
+      "message": "prefix cluster 'Immutable' appears in 3 peer files",
+      "path": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "ImmutableCallbackInvocationFlowTest.kt",
+          "ImmutableCallbackOwnerCompositionTest.kt",
+          "ImmutableCallbackValueTest.kt"
+        ],
+        "prefix": "Immutable Callback"
+      },
+      "message": "prefix cluster 'Immutable Callback' appears in 3 peer files",
+      "path": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "LocalBindingPhysicalCapacityTest.kt",
+          "LocalBindingRoleAdmissionTest.kt",
+          "LocalBindingTraversalAdmissionTest.kt",
+          "LocalFormalPaginationTest.kt"
+        ],
+        "prefix": "Local"
+      },
+      "message": "prefix cluster 'Local' appears in 4 peer files",
+      "path": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "LocalBindingPhysicalCapacityTest.kt",
+          "LocalBindingRoleAdmissionTest.kt",
+          "LocalBindingTraversalAdmissionTest.kt"
+        ],
+        "prefix": "Local Binding"
+      },
+      "message": "prefix cluster 'Local Binding' appears in 3 peer files",
+      "path": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.07,
+        "files": [
+          "RelationCallbackObservationTest.kt",
+          "RelationCallbackStorageTest.kt",
+          "RelationContractTest.kt",
+          "RelationDirectCallbackBatchTest.kt",
+          "RelationOmissionSamplesTest.kt",
+          "RelationProviderRetentionTest.kt",
+          "RelationReferenceIdentityTest.kt",
+          "RelationScopeFingerprintTest.kt"
+        ],
+        "prefix": "Relation"
+      },
+      "message": "prefix cluster 'Relation' appears in 8 peer files",
+      "path": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "RepresentationCollectionInsertionOracleTest.kt",
+          "RepresentationModeledValueOracleTest.kt",
+          "RepresentationSourceConservationTest.kt",
+          "RepresentationStringDerivationOracleTest.kt"
+        ],
+        "prefix": "Representation"
+      },
+      "message": "prefix cluster 'Representation' appears in 4 peer files",
+      "path": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "ReviewedLetBindingOracleTest.kt",
+          "ReviewedLibraryBindingOracleTest.kt",
+          "ReviewedModelOracleCase.kt",
+          "ReviewedSingleElementListOracleTest.kt"
+        ],
+        "prefix": "Reviewed"
+      },
+      "message": "prefix cluster 'Reviewed' appears in 4 peer files",
+      "path": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.41,
+        "files": [
+          "ValueAnonymousFormalOracleTest.kt",
+          "ValueCallbackContractRefusalTest.kt",
+          "ValueCallbackFrameOracleTest.kt",
+          "ValueCallbackObligationOracleTest.kt",
+          "ValueCallbackOracleCase.kt",
+          "ValueCallbackReturnQuestionTest.kt",
+          "ValueCallbackTransferOracleTest.kt",
+          "ValueCollectionInsertionBindingOracleTest.kt",
+          "ValueCollectionInsertionOracleTest.kt",
+          "ValueCollectionSelectionOracleTest.kt",
+          "ValueConstructorStorageOracleTest.kt",
+          "ValueDirectFrameProofTest.kt",
+          "ValueEndpointSharingCase.kt",
+          "ValueEndpointSharingInventory.kt",
+          "ValueExecutionOwnerContractTest.kt",
+          "ValueFlowModeledApplicationTest.kt",
+          "ValueFlowPhysicalStorageTest.kt",
+          "ValueFlowSourceAliasStorageTest.kt",
+          "ValueFullEndpointIdentityControlTest.kt",
+          "ValueFullEndpointSharingTest.kt",
+          "ValueFunctionInvocationOriginOracleTest.kt",
+          "ValueGuardedTransferOracleTest.kt",
+          "ValueImplementationCallOracleTest.kt",
+          "ValueImplementationObligationOracleTest.kt",
+          "ValueLetCallbackOracleCase.kt",
+          "ValueLetCallbackOracleTest.kt",
+          "ValueModelApplicationBindingProofTest.kt",
+          "ValueModeledApplicationAdmissionOrderTest.kt",
+          "ValueModeledApplicationPhysicalStorageTest.kt",
+          "ValuePredicateOracleTest.kt",
+          "ValueReceiverCallbackOracleTest.kt",
+          "ValueReceiverSlotContractTest.kt",
+          "ValueReviewedEvidenceSharingTest.kt",
+          "ValueReviewedReturnSharingTest.kt",
+          "ValueReviewedSharingCase.kt",
+          "ValueSeedCallbackEntryTest.kt",
+          "ValueSeedCallbackQuestionTest.kt",
+          "ValueSeedCallbackReturnObligationOracleTest.kt",
+          "ValueSeedCallbackReturnOracleTest.kt",
+          "ValueSeedCallbackReturnProofOracleTest.kt",
+          "ValueSiteContractTest.kt",
+          "ValueSiteRevalidationContractTest.kt",
+          "ValueSourceFlowOracleTest.kt",
+          "ValueStringDerivationContextOracleTest.kt",
+          "ValueStringDerivationOracleTest.kt"
+        ],
+        "prefix": "Value"
+      },
+      "message": "prefix cluster 'Value' appears in 45 peer files",
+      "path": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "ValueCallbackContractRefusalTest.kt",
+          "ValueCallbackFrameOracleTest.kt",
+          "ValueCallbackObligationOracleTest.kt",
+          "ValueCallbackOracleCase.kt",
+          "ValueCallbackReturnQuestionTest.kt",
+          "ValueCallbackTransferOracleTest.kt"
+        ],
+        "prefix": "Value Callback"
+      },
+      "message": "prefix cluster 'Value Callback' appears in 6 peer files",
+      "path": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "ValueCollectionInsertionBindingOracleTest.kt",
+          "ValueCollectionInsertionOracleTest.kt",
+          "ValueCollectionSelectionOracleTest.kt"
+        ],
+        "prefix": "Value Collection"
+      },
+      "message": "prefix cluster 'Value Collection' appears in 3 peer files",
+      "path": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "ValueFlowModeledApplicationTest.kt",
+          "ValueFlowPhysicalStorageTest.kt",
+          "ValueFlowSourceAliasStorageTest.kt"
+        ],
+        "prefix": "Value Flow"
+      },
+      "message": "prefix cluster 'Value Flow' appears in 3 peer files",
+      "path": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "ValueReviewedEvidenceSharingTest.kt",
+          "ValueReviewedReturnSharingTest.kt",
+          "ValueReviewedSharingCase.kt"
+        ],
+        "prefix": "Value Reviewed"
+      },
+      "message": "prefix cluster 'Value Reviewed' appears in 3 peer files",
+      "path": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "ValueSeedCallbackEntryTest.kt",
+          "ValueSeedCallbackQuestionTest.kt",
+          "ValueSeedCallbackReturnObligationOracleTest.kt",
+          "ValueSeedCallbackReturnOracleTest.kt",
+          "ValueSeedCallbackReturnProofOracleTest.kt"
+        ],
+        "prefix": "Value Seed"
+      },
+      "message": "prefix cluster 'Value Seed' appears in 5 peer files",
+      "path": "relation/contract/src/test/kotlin/io/github/amichne/kast/relation/contract",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 174
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.07,
+        "files": [
+          "CallbackBodyReads.kt",
+          "CallbackBodyScanOutcome.kt",
+          "CallbackCoverageStage.kt",
+          "CallbackEvidenceAccess.kt",
+          "CallbackExpiryAdmission.kt",
+          "CallbackFlowRetention.kt",
+          "CallbackFormalWorklist.kt",
+          "CallbackParameterSummaries.kt",
+          "CallbackRetainedRecords.kt",
+          "CallbackSummaryReuse.kt",
+          "CallbackSupplierObservation.kt",
+          "CallbackValueRoutes.kt",
+          "CallbackWorkAdmission.kt"
+        ],
+        "prefix": "Callback"
+      },
+      "message": "prefix cluster 'Callback' appears in 13 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "ImmutableCallbackEnumeration.kt",
+          "ImmutableCallbackOwnerReads.kt",
+          "ImmutableCallbackTryResult.kt"
+        ],
+        "prefix": "Immutable"
+      },
+      "message": "prefix cluster 'Immutable' appears in 3 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "ImmutableCallbackEnumeration.kt",
+          "ImmutableCallbackOwnerReads.kt",
+          "ImmutableCallbackTryResult.kt"
+        ],
+        "prefix": "Immutable Callback"
+      },
+      "message": "prefix cluster 'Immutable Callback' appears in 3 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.53,
+        "files": [
+          "IntellijAnonymousCallableBody.kt",
+          "IntellijCallableObservationEmitter.kt",
+          "IntellijCallbackBindingReader.kt",
+          "IntellijCallbackCallerProjection.kt",
+          "IntellijCallbackDeclaredSupplyReader.kt",
+          "IntellijCallbackDependencyContract.kt",
+          "IntellijCallbackFactoryCalls.kt",
+          "IntellijCallbackFactoryReturn.kt",
+          "IntellijCallbackFlowContext.kt",
+          "IntellijCallbackFlowRead.kt",
+          "IntellijCallbackFlowScan.kt",
+          "IntellijCallbackForwardingReader.kt",
+          "IntellijCallbackInvocationFlow.kt",
+          "IntellijCallbackLambdaSupply.kt",
+          "IntellijCallbackObservationProjection.kt",
+          "IntellijCallbackOwnerBindingReader.kt",
+          "IntellijCallbackParameterSummaryReader.kt",
+          "IntellijCallbackResultProjection.kt",
+          "IntellijCallbackSummaryReadmission.kt",
+          "IntellijCallbackSupplierCalls.kt",
+          "IntellijCallbackSupplierFormal.kt",
+          "IntellijCallbackSupplierInventory.kt",
+          "IntellijCallbackSupplierValues.kt",
+          "IntellijCalleeInventory.kt",
+          "IntellijClassConstructionConfirmation.kt",
+          "IntellijCompilerTypeProof.kt",
+          "IntellijDeferredSupplierExecution.kt",
+          "IntellijDefinitionInventory.kt",
+          "IntellijDirectCallbackFlow.kt",
+          "IntellijFactoryBodyCalls.kt",
+          "IntellijFactoryCaptureAudit.kt",
+          "IntellijFactoryCaptureValues.kt",
+          "IntellijFactoryCapturedInvocations.kt",
+          "IntellijImmutableCallbackAliasUses.kt",
+          "IntellijImmutableCallbackFlowReader.kt",
+          "IntellijImmutableCallbackSupplyUses.kt",
+          "IntellijImmutableCallbackValueResolver.kt",
+          "IntellijK2CallOwnership.kt",
+          "IntellijK2RelationProjection.kt",
+          "IntellijK2RelationSearch.kt",
+          "IntellijK2SymbolIdentity.kt",
+          "IntellijKotlinLazyBinaryEvidence.kt",
+          "IntellijLocalBindingReads.kt",
+          "IntellijLocalDeclarationAnchors.kt",
+          "IntellijLocalRelationAddress.kt",
+          "IntellijLocalRelationOwnerSignature.kt",
+          "IntellijLocalRelationProjection.kt",
+          "IntellijLocalRelationTypeFacts.kt",
+          "IntellijNamedCallbackObservationEmitter.kt",
+          "IntellijNamedCallbackReference.kt",
+          "IntellijNamedRelationReadmission.kt",
+          "IntellijOccurrenceProvenance.kt",
+          "IntellijReferenceContext.kt",
+          "IntellijReferenceInventory.kt",
+          "IntellijReferenceInventoryReuse.kt",
+          "IntellijReferenceOccurrenceEmitter.kt",
+          "IntellijRelationAllowance.kt",
+          "IntellijRelationCollectionState.kt",
+          "IntellijRelationCollector.kt",
+          "IntellijRelationCompilerAdapter.kt",
+          "IntellijRelationDefinition.kt",
+          "IntellijRelationEvidenceBuffer.kt",
+          "IntellijRelationFactEmitter.kt",
+          "IntellijRelationFileProjection.kt",
+          "IntellijRelationInventory.kt",
+          "IntellijRelationLocators.kt",
+          "IntellijRelationNativeSymbol.kt",
+          "IntellijRelationOmissionObservation.kt",
+          "IntellijRelationOmissionSample.kt",
+          "IntellijRelationPackageAdmission.kt",
+          "IntellijRelationPageCompletion.kt",
+          "IntellijRelationPlan.kt",
+          "IntellijRelationProjectionResults.kt",
+          "IntellijRelationProviderItems.kt",
+          "IntellijRelationScopeCompiler.kt",
+          "IntellijRelationTargetObservation.kt",
+          "IntellijResolvedCallableEvidence.kt",
+          "IntellijResolvedCallableObservation.kt",
+          "IntellijRetainedRelationRead.kt",
+          "IntellijSelectedCallbackInvocation.kt",
+          "IntellijSelectedCallbackSupplies.kt",
+          "IntellijSourceValueProjection.kt",
+          "IntellijTransparentWrapperReturn.kt",
+          "IntellijUnavailableCallbackSupply.kt",
+          "IntellijValueArgumentProjection.kt",
+          "IntellijValueConstructorProjection.kt",
+          "IntellijValueFlowCompilerAdapter.kt",
+          "IntellijValueFlowNative.kt",
+          "IntellijValueInvocationAnchor.kt",
+          "IntellijValueProducerSeedNative.kt",
+          "IntellijValueReceiverProjection.kt",
+          "IntellijValueSiteRevalidationNative.kt"
+        ],
+        "prefix": "Intellij"
+      },
+      "message": "prefix cluster 'Intellij' appears in 92 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.12,
+        "files": [
+          "IntellijCallbackBindingReader.kt",
+          "IntellijCallbackCallerProjection.kt",
+          "IntellijCallbackDeclaredSupplyReader.kt",
+          "IntellijCallbackDependencyContract.kt",
+          "IntellijCallbackFactoryCalls.kt",
+          "IntellijCallbackFactoryReturn.kt",
+          "IntellijCallbackFlowContext.kt",
+          "IntellijCallbackFlowRead.kt",
+          "IntellijCallbackFlowScan.kt",
+          "IntellijCallbackForwardingReader.kt",
+          "IntellijCallbackInvocationFlow.kt",
+          "IntellijCallbackLambdaSupply.kt",
+          "IntellijCallbackObservationProjection.kt",
+          "IntellijCallbackOwnerBindingReader.kt",
+          "IntellijCallbackParameterSummaryReader.kt",
+          "IntellijCallbackResultProjection.kt",
+          "IntellijCallbackSummaryReadmission.kt",
+          "IntellijCallbackSupplierCalls.kt",
+          "IntellijCallbackSupplierFormal.kt",
+          "IntellijCallbackSupplierInventory.kt",
+          "IntellijCallbackSupplierValues.kt"
+        ],
+        "prefix": "Intellij Callback"
+      },
+      "message": "prefix cluster 'Intellij Callback' appears in 21 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "IntellijFactoryBodyCalls.kt",
+          "IntellijFactoryCaptureAudit.kt",
+          "IntellijFactoryCaptureValues.kt",
+          "IntellijFactoryCapturedInvocations.kt"
+        ],
+        "prefix": "Intellij Factory"
+      },
+      "message": "prefix cluster 'Intellij Factory' appears in 4 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "IntellijImmutableCallbackAliasUses.kt",
+          "IntellijImmutableCallbackFlowReader.kt",
+          "IntellijImmutableCallbackSupplyUses.kt",
+          "IntellijImmutableCallbackValueResolver.kt"
+        ],
+        "prefix": "Intellij Immutable"
+      },
+      "message": "prefix cluster 'Intellij Immutable' appears in 4 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "IntellijK2CallOwnership.kt",
+          "IntellijK2RelationProjection.kt",
+          "IntellijK2RelationSearch.kt",
+          "IntellijK2SymbolIdentity.kt"
+        ],
+        "prefix": "Intellij K"
+      },
+      "message": "prefix cluster 'Intellij K' appears in 4 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.03,
+        "files": [
+          "IntellijLocalBindingReads.kt",
+          "IntellijLocalDeclarationAnchors.kt",
+          "IntellijLocalRelationAddress.kt",
+          "IntellijLocalRelationOwnerSignature.kt",
+          "IntellijLocalRelationProjection.kt",
+          "IntellijLocalRelationTypeFacts.kt"
+        ],
+        "prefix": "Intellij Local"
+      },
+      "message": "prefix cluster 'Intellij Local' appears in 6 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "IntellijNamedCallbackObservationEmitter.kt",
+          "IntellijNamedCallbackReference.kt",
+          "IntellijNamedRelationReadmission.kt"
+        ],
+        "prefix": "Intellij Named"
+      },
+      "message": "prefix cluster 'Intellij Named' appears in 3 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "IntellijReferenceContext.kt",
+          "IntellijReferenceInventory.kt",
+          "IntellijReferenceInventoryReuse.kt",
+          "IntellijReferenceOccurrenceEmitter.kt"
+        ],
+        "prefix": "Intellij Reference"
+      },
+      "message": "prefix cluster 'Intellij Reference' appears in 4 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.11,
+        "files": [
+          "IntellijRelationAllowance.kt",
+          "IntellijRelationCollectionState.kt",
+          "IntellijRelationCollector.kt",
+          "IntellijRelationCompilerAdapter.kt",
+          "IntellijRelationDefinition.kt",
+          "IntellijRelationEvidenceBuffer.kt",
+          "IntellijRelationFactEmitter.kt",
+          "IntellijRelationFileProjection.kt",
+          "IntellijRelationInventory.kt",
+          "IntellijRelationLocators.kt",
+          "IntellijRelationNativeSymbol.kt",
+          "IntellijRelationOmissionObservation.kt",
+          "IntellijRelationOmissionSample.kt",
+          "IntellijRelationPackageAdmission.kt",
+          "IntellijRelationPageCompletion.kt",
+          "IntellijRelationPlan.kt",
+          "IntellijRelationProjectionResults.kt",
+          "IntellijRelationProviderItems.kt",
+          "IntellijRelationScopeCompiler.kt",
+          "IntellijRelationTargetObservation.kt"
+        ],
+        "prefix": "Intellij Relation"
+      },
+      "message": "prefix cluster 'Intellij Relation' appears in 20 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "IntellijValueArgumentProjection.kt",
+          "IntellijValueConstructorProjection.kt",
+          "IntellijValueFlowCompilerAdapter.kt",
+          "IntellijValueFlowNative.kt",
+          "IntellijValueInvocationAnchor.kt",
+          "IntellijValueProducerSeedNative.kt",
+          "IntellijValueReceiverProjection.kt",
+          "IntellijValueSiteRevalidationNative.kt"
+        ],
+        "prefix": "Intellij Value"
+      },
+      "message": "prefix cluster 'Intellij Value' appears in 8 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.28,
+        "files": [
+          "NativeCallbackFactoryReturns.kt",
+          "NativeCompilerTypeProof.kt",
+          "NativeImplicitParameterReferences.kt",
+          "NativeRelationSearchScope.kt",
+          "NativeTryBranchResult.kt",
+          "NativeValueAnonymousReturn.kt",
+          "NativeValueArgumentBinding.kt",
+          "NativeValueArgumentFlow.kt",
+          "NativeValueArtifactRead.kt",
+          "NativeValueArtifactVirtualFile.kt",
+          "NativeValueCallbackCause.kt",
+          "NativeValueCallbackEntryPreparation.kt",
+          "NativeValueCallbackFlow.kt",
+          "NativeValueCallbackFormal.kt",
+          "NativeValueCallbackReturn.kt",
+          "NativeValueCallbackSupply.kt",
+          "NativeValueCallerFrames.kt",
+          "NativeValueCallerNonNull.kt",
+          "NativeValueCallerReferences.kt",
+          "NativeValueDestructuringReceiver.kt",
+          "NativeValueElvisResult.kt",
+          "NativeValueExecution.kt",
+          "NativeValueFieldRead.kt",
+          "NativeValueFlowCapacity.kt",
+          "NativeValueFlowTransfers.kt",
+          "NativeValueFunctionArgument.kt",
+          "NativeValueGuardedField.kt",
+          "NativeValueImplementationDispatch.kt",
+          "NativeValueImplementationFailure.kt",
+          "NativeValueImplicitReceiverCalls.kt",
+          "NativeValueOwnership.kt",
+          "NativeValueReceiverGuard.kt",
+          "NativeValueReceiverReads.kt",
+          "NativeValueReturnFlow.kt",
+          "NativeValueReviewedArtifact.kt",
+          "NativeValueReviewedCall.kt",
+          "NativeValueReviewedCallbacks.kt",
+          "NativeValueReviewedModels.kt",
+          "NativeValueReviewedNavigation.kt",
+          "NativeValueSeedCallbackEntry.kt",
+          "NativeValueSeedCallbackFlow.kt",
+          "NativeValueSeedCallbackReturn.kt",
+          "NativeValueSeedCallbackSupplies.kt",
+          "NativeValueSiteRestorationFailure.kt",
+          "NativeValueSourceFunctionSeed.kt",
+          "NativeValueSourceReceiver.kt",
+          "NativeValueSourceReturns.kt",
+          "NativeValueStringInterpolation.kt"
+        ],
+        "prefix": "Native"
+      },
+      "message": "prefix cluster 'Native' appears in 48 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.25,
+        "files": [
+          "NativeValueAnonymousReturn.kt",
+          "NativeValueArgumentBinding.kt",
+          "NativeValueArgumentFlow.kt",
+          "NativeValueArtifactRead.kt",
+          "NativeValueArtifactVirtualFile.kt",
+          "NativeValueCallbackCause.kt",
+          "NativeValueCallbackEntryPreparation.kt",
+          "NativeValueCallbackFlow.kt",
+          "NativeValueCallbackFormal.kt",
+          "NativeValueCallbackReturn.kt",
+          "NativeValueCallbackSupply.kt",
+          "NativeValueCallerFrames.kt",
+          "NativeValueCallerNonNull.kt",
+          "NativeValueCallerReferences.kt",
+          "NativeValueDestructuringReceiver.kt",
+          "NativeValueElvisResult.kt",
+          "NativeValueExecution.kt",
+          "NativeValueFieldRead.kt",
+          "NativeValueFlowCapacity.kt",
+          "NativeValueFlowTransfers.kt",
+          "NativeValueFunctionArgument.kt",
+          "NativeValueGuardedField.kt",
+          "NativeValueImplementationDispatch.kt",
+          "NativeValueImplementationFailure.kt",
+          "NativeValueImplicitReceiverCalls.kt",
+          "NativeValueOwnership.kt",
+          "NativeValueReceiverGuard.kt",
+          "NativeValueReceiverReads.kt",
+          "NativeValueReturnFlow.kt",
+          "NativeValueReviewedArtifact.kt",
+          "NativeValueReviewedCall.kt",
+          "NativeValueReviewedCallbacks.kt",
+          "NativeValueReviewedModels.kt",
+          "NativeValueReviewedNavigation.kt",
+          "NativeValueSeedCallbackEntry.kt",
+          "NativeValueSeedCallbackFlow.kt",
+          "NativeValueSeedCallbackReturn.kt",
+          "NativeValueSeedCallbackSupplies.kt",
+          "NativeValueSiteRestorationFailure.kt",
+          "NativeValueSourceFunctionSeed.kt",
+          "NativeValueSourceReceiver.kt",
+          "NativeValueSourceReturns.kt",
+          "NativeValueStringInterpolation.kt"
+        ],
+        "prefix": "Native Value"
+      },
+      "message": "prefix cluster 'Native Value' appears in 43 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "RelationFileEnumeration.kt",
+          "RelationFileEnumerationPlan.kt",
+          "RelationFileInventory.kt",
+          "RelationLocalOwnerCallableIdentity.kt",
+          "RelationLocalOwnerCallableIdentityObservation.kt",
+          "RelationProviderScopeObservation.kt",
+          "RelationSourceDomainMembership.kt",
+          "RelationSourceRootIndex.kt"
+        ],
+        "prefix": "Relation"
+      },
+      "message": "prefix cluster 'Relation' appears in 8 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.02,
+        "files": [
+          "RelationFileEnumeration.kt",
+          "RelationFileEnumerationPlan.kt",
+          "RelationFileInventory.kt"
+        ],
+        "prefix": "Relation File"
+      },
+      "message": "prefix cluster 'Relation File' appears in 3 peer files",
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 64
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.25,
+        "files": [
+          "CallbackBodyReadsTest.kt",
+          "CallbackBodyScanObservationTest.kt",
+          "CallbackCoverageObservationTest.kt",
+          "CallbackEvidenceAccessTest.kt",
+          "CallbackFlowRetentionObservationTest.kt",
+          "CallbackFlowRetentionTest.kt",
+          "CallbackFormalWorklistTest.kt",
+          "CallbackOwnerStorageTest.kt",
+          "CallbackParameterSummariesTest.kt",
+          "CallbackProviderSiteAdmissionTest.kt",
+          "CallbackResultWorkAdmissionTest.kt",
+          "CallbackSummaryOwnerStorageTest.kt",
+          "CallbackSummaryReuseTest.kt",
+          "CallbackSummaryStorageTest.kt",
+          "CallbackSupplierActivationTest.kt",
+          "CallbackSupplierObservationTest.kt"
+        ],
+        "prefix": "Callback"
+      },
+      "message": "prefix cluster 'Callback' appears in 16 peer files",
+      "path": "relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "CallbackSummaryOwnerStorageTest.kt",
+          "CallbackSummaryReuseTest.kt",
+          "CallbackSummaryStorageTest.kt"
+        ],
+        "prefix": "Callback Summary"
+      },
+      "message": "prefix cluster 'Callback Summary' appears in 3 peer files",
+      "path": "relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "ImmutableCallbackTryCompilerFixtureTest.kt",
+          "ImmutableCallbackTryResultTest.kt",
+          "ImmutableCallbackValueStorageTest.kt"
+        ],
+        "prefix": "Immutable"
+      },
+      "message": "prefix cluster 'Immutable' appears in 3 peer files",
+      "path": "relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "ImmutableCallbackTryCompilerFixtureTest.kt",
+          "ImmutableCallbackTryResultTest.kt",
+          "ImmutableCallbackValueStorageTest.kt"
+        ],
+        "prefix": "Immutable Callback"
+      },
+      "message": "prefix cluster 'Immutable Callback' appears in 3 peer files",
+      "path": "relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "KotlinCallOwnershipTest.kt",
+          "KotlinCallbackSupplyTest.kt",
+          "KotlinCallerAdmissionTest.kt"
+        ],
+        "prefix": "Kotlin"
+      },
+      "message": "prefix cluster 'Kotlin' appears in 3 peer files",
+      "path": "relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.08,
+        "files": [
+          "NativeCallbackFailureCase.kt",
+          "NativeRelationSearchScopeTest.kt",
+          "NativeValueArtifactReadTest.kt",
+          "NativeValueCallbackContractRejectedTest.kt",
+          "NativeValueCallbackUnavailableTest.kt"
+        ],
+        "prefix": "Native"
+      },
+      "message": "prefix cluster 'Native' appears in 5 peer files",
+      "path": "relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "NativeValueArtifactReadTest.kt",
+          "NativeValueCallbackContractRejectedTest.kt",
+          "NativeValueCallbackUnavailableTest.kt"
+        ],
+        "prefix": "Native Value"
+      },
+      "message": "prefix cluster 'Native Value' appears in 3 peer files",
+      "path": "relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "ReferenceInventoryReuseTest.kt",
+          "ReferenceInventoryWorkTest.kt",
+          "ReferenceProgressTest.kt"
+        ],
+        "prefix": "Reference"
+      },
+      "message": "prefix cluster 'Reference' appears in 3 peer files",
+      "path": "relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.31,
+        "files": [
+          "RelationCallbackAdmissionTest.kt",
+          "RelationCooperativeBudgetTest.kt",
+          "RelationFileEnumerationFixture.kt",
+          "RelationFileEnumerationTest.kt",
+          "RelationInventoryObservationTest.kt",
+          "RelationInventoryPreparationTest.kt",
+          "RelationLocalOwnerCallableIdentityObservationTest.kt",
+          "RelationModuleSearchScopeTest.kt",
+          "RelationOmissionObservationTest.kt",
+          "RelationPathOwnershipGrowthTest.kt",
+          "RelationPreparationAccountingTest.kt",
+          "RelationProviderProgressTest.kt",
+          "RelationProviderScopeObservationTest.kt",
+          "RelationReadTest.kt",
+          "RelationRetainedCoverageTest.kt",
+          "RelationScopeApiObservationTest.kt",
+          "RelationScopeExclusionTest.kt",
+          "RelationScopeSdkFixture.kt",
+          "RelationSourceDomainMembershipTest.kt",
+          "RelationTimeAdmissionTest.kt"
+        ],
+        "prefix": "Relation"
+      },
+      "message": "prefix cluster 'Relation' appears in 20 peer files",
+      "path": "relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "RelationScopeApiObservationTest.kt",
+          "RelationScopeExclusionTest.kt",
+          "RelationScopeSdkFixture.kt"
+        ],
+        "prefix": "Relation Scope"
+      },
+      "message": "prefix cluster 'Relation Scope' appears in 3 peer files",
+      "path": "relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 77
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.94,
+        "files": [
+          "HostedApplicationHistory.kt",
+          "HostedAutomaticQueryPreview.kt",
+          "HostedCallbackCaptureAllowance.kt",
+          "HostedCallbackDependencyAttempts.kt",
+          "HostedCallbackDependencyUniverse.kt",
+          "HostedCallbackSupplierFacts.kt",
+          "HostedCanonicalQuery.kt",
+          "HostedCanonicalSource.kt",
+          "HostedCapturedCallbackPartitions.kt",
+          "HostedChangeApply.kt",
+          "HostedChangeCoordinator.kt",
+          "HostedChangeFailure.kt",
+          "HostedChangeObservation.kt",
+          "HostedChangePlanning.kt",
+          "HostedChangeProtocol.kt",
+          "HostedChangeRecovery.kt",
+          "HostedChangeResources.kt",
+          "HostedChangeVerification.kt",
+          "HostedCompatibilityMetadata.kt",
+          "HostedConnection.kt",
+          "HostedConnectionAdmission.kt",
+          "HostedDiagnosticCompletion.kt",
+          "HostedDiagnosticPublicationSession.kt",
+          "HostedDiagnosticResponse.kt",
+          "HostedEndpointArtifact.kt",
+          "HostedEndpointCapabilities.kt",
+          "HostedEndpointDescriptor.kt",
+          "HostedEndpointProtocol.kt",
+          "HostedEndpointReclamation.kt",
+          "HostedEndpointService.kt",
+          "HostedEpochStore.kt",
+          "HostedExactRevalidationStore.kt",
+          "HostedExecutionBudgetRequest.kt",
+          "HostedGradleChangeTracker.kt",
+          "HostedListener.kt",
+          "HostedNamedRelationFacts.kt",
+          "HostedPeerCancellation.kt",
+          "HostedPeerSiteAdmissions.kt",
+          "HostedPeerSiteCompletion.kt",
+          "HostedPeerSiteReadPort.kt",
+          "HostedPlanningEvidenceFailure.kt",
+          "HostedProjectDocuments.kt",
+          "HostedQueryCheckpointStorageObservation.kt",
+          "HostedQueryContinuations.kt",
+          "HostedQueryDiagnosticIdentity.kt",
+          "HostedQueryPreparedCoverage.kt",
+          "HostedQueryPublicationSession.kt",
+          "HostedQueryResponse.kt",
+          "HostedQueryResultRetentionObservation.kt",
+          "HostedReadBudgetAdmission.kt",
+          "HostedReadBudgetReports.kt",
+          "HostedReadCallbackPartitions.kt",
+          "HostedReadCapabilities.kt",
+          "HostedReadFailureReports.kt",
+          "HostedRecoveryPreimageProof.kt",
+          "HostedReferenceStore.kt",
+          "HostedResponse.kt",
+          "HostedRetentionMeasurements.kt",
+          "HostedRetentionOwner.kt",
+          "HostedSemanticCallbackFacts.kt",
+          "HostedSemanticServices.kt",
+          "HostedSmartModeWait.kt",
+          "HostedSourceDependencyGraph.kt",
+          "HostedSourcePreparedCoverage.kt",
+          "HostedSourcePublicationSession.kt",
+          "HostedSourceResponse.kt",
+          "HostedSourceRetentionAdmission.kt",
+          "HostedSourceStateStore.kt",
+          "HostedSymbolInvocationPolicy.kt",
+          "HostedTransportObservation.kt",
+          "HostedTraversalOperations.kt",
+          "HostedVfsRefreshOutcome.kt"
+        ],
+        "prefix": "Hosted"
+      },
+      "message": "prefix cluster 'Hosted' appears in 72 peer files",
+      "path": "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "HostedCallbackCaptureAllowance.kt",
+          "HostedCallbackDependencyAttempts.kt",
+          "HostedCallbackDependencyUniverse.kt",
+          "HostedCallbackSupplierFacts.kt"
+        ],
+        "prefix": "Hosted Callback"
+      },
+      "message": "prefix cluster 'Hosted Callback' appears in 4 peer files",
+      "path": "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.12,
+        "files": [
+          "HostedChangeApply.kt",
+          "HostedChangeCoordinator.kt",
+          "HostedChangeFailure.kt",
+          "HostedChangeObservation.kt",
+          "HostedChangePlanning.kt",
+          "HostedChangeProtocol.kt",
+          "HostedChangeRecovery.kt",
+          "HostedChangeResources.kt",
+          "HostedChangeVerification.kt"
+        ],
+        "prefix": "Hosted Change"
+      },
+      "message": "prefix cluster 'Hosted Change' appears in 9 peer files",
+      "path": "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "HostedDiagnosticCompletion.kt",
+          "HostedDiagnosticPublicationSession.kt",
+          "HostedDiagnosticResponse.kt"
+        ],
+        "prefix": "Hosted Diagnostic"
+      },
+      "message": "prefix cluster 'Hosted Diagnostic' appears in 3 peer files",
+      "path": "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.08,
+        "files": [
+          "HostedEndpointArtifact.kt",
+          "HostedEndpointCapabilities.kt",
+          "HostedEndpointDescriptor.kt",
+          "HostedEndpointProtocol.kt",
+          "HostedEndpointReclamation.kt",
+          "HostedEndpointService.kt"
+        ],
+        "prefix": "Hosted Endpoint"
+      },
+      "message": "prefix cluster 'Hosted Endpoint' appears in 6 peer files",
+      "path": "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "HostedPeerCancellation.kt",
+          "HostedPeerSiteAdmissions.kt",
+          "HostedPeerSiteCompletion.kt",
+          "HostedPeerSiteReadPort.kt"
+        ],
+        "prefix": "Hosted Peer"
+      },
+      "message": "prefix cluster 'Hosted Peer' appears in 4 peer files",
+      "path": "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.09,
+        "files": [
+          "HostedQueryCheckpointStorageObservation.kt",
+          "HostedQueryContinuations.kt",
+          "HostedQueryDiagnosticIdentity.kt",
+          "HostedQueryPreparedCoverage.kt",
+          "HostedQueryPublicationSession.kt",
+          "HostedQueryResponse.kt",
+          "HostedQueryResultRetentionObservation.kt"
+        ],
+        "prefix": "Hosted Query"
+      },
+      "message": "prefix cluster 'Hosted Query' appears in 7 peer files",
+      "path": "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.06,
+        "files": [
+          "HostedReadBudgetAdmission.kt",
+          "HostedReadBudgetReports.kt",
+          "HostedReadCallbackPartitions.kt",
+          "HostedReadCapabilities.kt",
+          "HostedReadFailureReports.kt"
+        ],
+        "prefix": "Hosted Read"
+      },
+      "message": "prefix cluster 'Hosted Read' appears in 5 peer files",
+      "path": "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.08,
+        "files": [
+          "HostedSourceDependencyGraph.kt",
+          "HostedSourcePreparedCoverage.kt",
+          "HostedSourcePublicationSession.kt",
+          "HostedSourceResponse.kt",
+          "HostedSourceRetentionAdmission.kt",
+          "HostedSourceStateStore.kt"
+        ],
+        "prefix": "Hosted Source"
+      },
+      "message": "prefix cluster 'Hosted Source' appears in 6 peer files",
+      "path": "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 76
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.99,
+        "files": [
+          "HostedApplicationHistoryTest.kt",
+          "HostedApprovalFixture.kt",
+          "HostedAutomaticPublicationCase.kt",
+          "HostedAutomaticPublicationSessionTest.kt",
+          "HostedAutomaticQueryPreviewTest.kt",
+          "HostedCallbackByteAdmissionTest.kt",
+          "HostedCallbackCaptureAllowanceTest.kt",
+          "HostedCallbackCompletenessTest.kt",
+          "HostedCallbackDependencyAttemptsTest.kt",
+          "HostedCallbackResolutionInputsTest.kt",
+          "HostedChangeFailureTest.kt",
+          "HostedChangeObservationTest.kt",
+          "HostedChangeRequestBoundaryTest.kt",
+          "HostedCompletionRejectionPublicationTest.kt",
+          "HostedConnectionAdmissionTest.kt",
+          "HostedConnectionOutcomeTest.kt",
+          "HostedContainmentBudgetTest.kt",
+          "HostedContinuationOwnerRetentionTest.kt",
+          "HostedDiagnosticResponseTest.kt",
+          "HostedEndpointEncodingFixtureTest.kt",
+          "HostedEndpointReclamationTest.kt",
+          "HostedEndpointTest.kt",
+          "HostedGradleRevisionTest.kt",
+          "HostedImpactByteAdmissionTest.kt",
+          "HostedIndexingRetryTest.kt",
+          "HostedListenerTest.kt",
+          "HostedOutputPublicationTest.kt",
+          "HostedPackagingMetadataTest.kt",
+          "HostedPeerCancellationTest.kt",
+          "HostedPeerRoutingTest.kt",
+          "HostedPeerSiteAcquisitionTest.kt",
+          "HostedPeerSiteFixture.kt",
+          "HostedPlanningEvidenceTest.kt",
+          "HostedQueryCheckpointStorageObservationTest.kt",
+          "HostedQueryDiagnosticIdentityTest.kt",
+          "HostedQueryGrantAdmissionTest.kt",
+          "HostedQueryOccurrenceResponseTest.kt",
+          "HostedQueryPublicationProjectionTest.kt",
+          "HostedQueryResponseTest.kt",
+          "HostedQueryResultRetentionObservationTest.kt",
+          "HostedQueryRetainedPresentationTest.kt",
+          "HostedQueryUnsupportedIdentityTest.kt",
+          "HostedQueryWalkResponseTest.kt",
+          "HostedReadAllowanceIdentityTest.kt",
+          "HostedReadBudgetAdmissionTest.kt",
+          "HostedReadCallbackPartitionsTest.kt",
+          "HostedReadIdentityCodecTest.kt",
+          "HostedReadinessObservationTest.kt",
+          "HostedRecoveryPreimageProofTest.kt",
+          "HostedReferenceStoreTest.kt",
+          "HostedRejectedBudgetTest.kt",
+          "HostedScopedCaptureFixture.kt",
+          "HostedSemanticCallbackFactsTest.kt",
+          "HostedSemanticFactFixture.kt",
+          "HostedSemanticFactLifetimeTest.kt",
+          "HostedSemanticNamedFactsTest.kt",
+          "HostedSemanticPreparationBudgetTest.kt",
+          "HostedSemanticSupplierFactsTest.kt",
+          "HostedSmartModeWaitCodecTest.kt",
+          "HostedSmartModeWaitTest.kt",
+          "HostedSourceBudgetTest.kt",
+          "HostedSourceClaimExpiryTest.kt",
+          "HostedSourceCursorFixture.kt",
+          "HostedSourceCursorPublicationTest.kt",
+          "HostedSourceDependencyBindingTest.kt",
+          "HostedSourceDependencyExpiryTest.kt",
+          "HostedSourceOutputContinuationTest.kt",
+          "HostedSourceOutputOwnershipTest.kt",
+          "HostedSourcePagingFixture.kt",
+          "HostedSourcePublicationFailureTest.kt",
+          "HostedSourceResponseTest.kt",
+          "HostedSymbolInvocationPolicyTest.kt",
+          "HostedTraversalOperationsTest.kt",
+          "HostedVfsRefreshTest.kt",
+          "HostedWorkspaceRefreshSchemaTest.kt"
+        ],
+        "prefix": "Hosted"
+      },
+      "message": "prefix cluster 'Hosted' appears in 75 peer files",
+      "path": "runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "HostedAutomaticPublicationCase.kt",
+          "HostedAutomaticPublicationSessionTest.kt",
+          "HostedAutomaticQueryPreviewTest.kt"
+        ],
+        "prefix": "Hosted Automatic"
+      },
+      "message": "prefix cluster 'Hosted Automatic' appears in 3 peer files",
+      "path": "runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.07,
+        "files": [
+          "HostedCallbackByteAdmissionTest.kt",
+          "HostedCallbackCaptureAllowanceTest.kt",
+          "HostedCallbackCompletenessTest.kt",
+          "HostedCallbackDependencyAttemptsTest.kt",
+          "HostedCallbackResolutionInputsTest.kt"
+        ],
+        "prefix": "Hosted Callback"
+      },
+      "message": "prefix cluster 'Hosted Callback' appears in 5 peer files",
+      "path": "runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "HostedChangeFailureTest.kt",
+          "HostedChangeObservationTest.kt",
+          "HostedChangeRequestBoundaryTest.kt"
+        ],
+        "prefix": "Hosted Change"
+      },
+      "message": "prefix cluster 'Hosted Change' appears in 3 peer files",
+      "path": "runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.04,
+        "files": [
+          "HostedEndpointEncodingFixtureTest.kt",
+          "HostedEndpointReclamationTest.kt",
+          "HostedEndpointTest.kt"
+        ],
+        "prefix": "Hosted Endpoint"
+      },
+      "message": "prefix cluster 'Hosted Endpoint' appears in 3 peer files",
+      "path": "runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "HostedPeerCancellationTest.kt",
+          "HostedPeerRoutingTest.kt",
+          "HostedPeerSiteAcquisitionTest.kt",
+          "HostedPeerSiteFixture.kt"
+        ],
+        "prefix": "Hosted Peer"
+      },
+      "message": "prefix cluster 'Hosted Peer' appears in 4 peer files",
+      "path": "runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.13,
+        "files": [
+          "HostedQueryCheckpointStorageObservationTest.kt",
+          "HostedQueryDiagnosticIdentityTest.kt",
+          "HostedQueryGrantAdmissionTest.kt",
+          "HostedQueryOccurrenceResponseTest.kt",
+          "HostedQueryPublicationProjectionTest.kt",
+          "HostedQueryResponseTest.kt",
+          "HostedQueryResultRetentionObservationTest.kt",
+          "HostedQueryRetainedPresentationTest.kt",
+          "HostedQueryUnsupportedIdentityTest.kt",
+          "HostedQueryWalkResponseTest.kt"
+        ],
+        "prefix": "Hosted Query"
+      },
+      "message": "prefix cluster 'Hosted Query' appears in 10 peer files",
+      "path": "runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.05,
+        "files": [
+          "HostedReadAllowanceIdentityTest.kt",
+          "HostedReadBudgetAdmissionTest.kt",
+          "HostedReadCallbackPartitionsTest.kt",
+          "HostedReadIdentityCodecTest.kt"
+        ],
+        "prefix": "Hosted Read"
+      },
+      "message": "prefix cluster 'Hosted Read' appears in 4 peer files",
+      "path": "runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.08,
+        "files": [
+          "HostedSemanticCallbackFactsTest.kt",
+          "HostedSemanticFactFixture.kt",
+          "HostedSemanticFactLifetimeTest.kt",
+          "HostedSemanticNamedFactsTest.kt",
+          "HostedSemanticPreparationBudgetTest.kt",
+          "HostedSemanticSupplierFactsTest.kt"
+        ],
+        "prefix": "Hosted Semantic"
+      },
+      "message": "prefix cluster 'Hosted Semantic' appears in 6 peer files",
+      "path": "runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.14,
+        "files": [
+          "HostedSourceBudgetTest.kt",
+          "HostedSourceClaimExpiryTest.kt",
+          "HostedSourceCursorFixture.kt",
+          "HostedSourceCursorPublicationTest.kt",
+          "HostedSourceDependencyBindingTest.kt",
+          "HostedSourceDependencyExpiryTest.kt",
+          "HostedSourceOutputContinuationTest.kt",
+          "HostedSourceOutputOwnershipTest.kt",
+          "HostedSourcePagingFixture.kt",
+          "HostedSourcePublicationFailureTest.kt",
+          "HostedSourceResponseTest.kt"
+        ],
+        "prefix": "Hosted Source"
+      },
+      "message": "prefix cluster 'Hosted Source' appears in 11 peer files",
+      "path": "runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 50
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.82,
+        "files": [
+          "IntellijCallableIdentity.kt",
+          "IntellijCallableIdentityObservation.kt",
+          "IntellijClassArchiveOrigin.kt",
+          "IntellijClasslikeAstBinding.kt",
+          "IntellijClasslikeAstTraversal.kt",
+          "IntellijDeclarationDiscoveryAllowance.kt",
+          "IntellijDeclarationDiscoveryState.kt",
+          "IntellijDeclarationFileScanner.kt",
+          "IntellijDeclarationIndexes.kt",
+          "IntellijDeclarationPartitionFiles.kt",
+          "IntellijDeclarationPartitionObservation.kt",
+          "IntellijDeclarationPartitionScanner.kt",
+          "IntellijDeclarationSourceAdapter.kt",
+          "IntellijDeclarationSourceAdmission.kt",
+          "IntellijDirectoryDiscoveryPlan.kt",
+          "IntellijDiscoveryConstraintAdmission.kt",
+          "IntellijDiscoveryDeclarationInput.kt",
+          "IntellijDiscoveryDirectoryMembership.kt",
+          "IntellijDiscoveryLeafDeclaration.kt",
+          "IntellijExactNameCandidateFiles.kt",
+          "IntellijExactRevalidationCapture.kt",
+          "IntellijExactSelectorResolver.kt",
+          "IntellijIncrementalDeclarationDiscovery.kt",
+          "IntellijIndexedDeclarationName.kt",
+          "IntellijIndexedDiscoveryAdmission.kt",
+          "IntellijIndexedWordContext.kt",
+          "IntellijKotlinAstParserBinding.kt",
+          "IntellijKotlinAstSourceBinding.kt",
+          "IntellijLocalCompilerTypeFacts.kt",
+          "IntellijLocalCompilerTypeProof.kt",
+          "IntellijLocalDeclarationAddressProjection.kt",
+          "IntellijLocalDeclarationAnchors.kt",
+          "IntellijModelSearchScope.kt",
+          "IntellijNamedDeclarationIndexes.kt",
+          "IntellijNamedDirectoryPartitions.kt",
+          "IntellijNativeRelationQuery.kt",
+          "IntellijPsiExactDeclarationLookup.kt",
+          "IntellijScopedDeclarationEnumeration.kt",
+          "IntellijTextDeclarationDiscoveryQuery.kt",
+          "IntellijTextDeclarationProjector.kt",
+          "IntellijTextOccurrenceCollector.kt"
+        ],
+        "prefix": "Intellij"
+      },
+      "message": "prefix cluster 'Intellij' appears in 41 peer files",
+      "path": "symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.18,
+        "files": [
+          "IntellijDeclarationDiscoveryAllowance.kt",
+          "IntellijDeclarationDiscoveryState.kt",
+          "IntellijDeclarationFileScanner.kt",
+          "IntellijDeclarationIndexes.kt",
+          "IntellijDeclarationPartitionFiles.kt",
+          "IntellijDeclarationPartitionObservation.kt",
+          "IntellijDeclarationPartitionScanner.kt",
+          "IntellijDeclarationSourceAdapter.kt",
+          "IntellijDeclarationSourceAdmission.kt"
+        ],
+        "prefix": "Intellij Declaration"
+      },
+      "message": "prefix cluster 'Intellij Declaration' appears in 9 peer files",
+      "path": "symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.08,
+        "files": [
+          "IntellijDiscoveryConstraintAdmission.kt",
+          "IntellijDiscoveryDeclarationInput.kt",
+          "IntellijDiscoveryDirectoryMembership.kt",
+          "IntellijDiscoveryLeafDeclaration.kt"
+        ],
+        "prefix": "Intellij Discovery"
+      },
+      "message": "prefix cluster 'Intellij Discovery' appears in 4 peer files",
+      "path": "symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.06,
+        "files": [
+          "IntellijExactNameCandidateFiles.kt",
+          "IntellijExactRevalidationCapture.kt",
+          "IntellijExactSelectorResolver.kt"
+        ],
+        "prefix": "Intellij Exact"
+      },
+      "message": "prefix cluster 'Intellij Exact' appears in 3 peer files",
+      "path": "symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.06,
+        "files": [
+          "IntellijIndexedDeclarationName.kt",
+          "IntellijIndexedDiscoveryAdmission.kt",
+          "IntellijIndexedWordContext.kt"
+        ],
+        "prefix": "Intellij Indexed"
+      },
+      "message": "prefix cluster 'Intellij Indexed' appears in 3 peer files",
+      "path": "symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.08,
+        "files": [
+          "IntellijLocalCompilerTypeFacts.kt",
+          "IntellijLocalCompilerTypeProof.kt",
+          "IntellijLocalDeclarationAddressProjection.kt",
+          "IntellijLocalDeclarationAnchors.kt"
+        ],
+        "prefix": "Intellij Local"
+      },
+      "message": "prefix cluster 'Intellij Local' appears in 4 peer files",
+      "path": "symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.06,
+        "files": [
+          "IntellijTextDeclarationDiscoveryQuery.kt",
+          "IntellijTextDeclarationProjector.kt",
+          "IntellijTextOccurrenceCollector.kt"
+        ],
+        "prefix": "Intellij Text"
+      },
+      "message": "prefix cluster 'Intellij Text' appears in 3 peer files",
+      "path": "symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 1.0,
+        "files": [
+          "IntellijKotlinCompilerSymbolLookup.kt",
+          "IntellijSymbolExactCompilerAdapter.kt",
+          "IntellijSymbolSelectorResolver.kt"
+        ],
+        "prefix": "Intellij"
+      },
+      "message": "prefix cluster 'Intellij' appears in 3 peer files",
+      "path": "symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/exact",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 40
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.1,
+        "files": [
+          "DetachedIdeWorkspaceModel.kt",
+          "DetachedIdeWorkspaceModelRefinement.kt",
+          "DetachedModelCapture.kt",
+          "DetachedModelValueRefinement.kt"
+        ],
+        "prefix": "Detached"
+      },
+      "message": "prefix cluster 'Detached' appears in 4 peer files",
+      "path": "workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.33,
+        "files": [
+          "IntellijDiscoveryPageMeasurements.kt",
+          "IntellijLocalCompilerOwner.kt",
+          "IntellijLocalIdentityObservation.kt",
+          "IntellijProjectSourceFiles.kt",
+          "IntellijProjectSourceMembership.kt",
+          "IntellijReadActionObservation.kt",
+          "IntellijReadCall.kt",
+          "IntellijReadCounter.kt",
+          "IntellijReadGauge.kt",
+          "IntellijReadObservation.kt",
+          "IntellijReadSearch.kt",
+          "IntellijReadUnexpectedFailure.kt",
+          "IntellijSemanticSourceFileAdmission.kt"
+        ],
+        "prefix": "Intellij"
+      },
+      "message": "prefix cluster 'Intellij' appears in 13 peer files",
+      "path": "workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.17,
+        "files": [
+          "IntellijReadActionObservation.kt",
+          "IntellijReadCall.kt",
+          "IntellijReadCounter.kt",
+          "IntellijReadGauge.kt",
+          "IntellijReadObservation.kt",
+          "IntellijReadSearch.kt",
+          "IntellijReadUnexpectedFailure.kt"
+        ],
+        "prefix": "Intellij Read"
+      },
+      "message": "prefix cluster 'Intellij Read' appears in 7 peer files",
+      "path": "workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.17,
+        "files": [
+          "LiveDetachedModelCapture.kt",
+          "LiveExistingProjectObservation.kt",
+          "LiveIndexExclusionVerifier.kt",
+          "LiveNamedGradleSourceScopeCapture.kt",
+          "LiveProjectFileIndexClassifier.kt",
+          "LiveProjectReadEpochSourceFactory.kt",
+          "LiveSelectedGradleModuleRoots.kt"
+        ],
+        "prefix": "Live"
+      },
+      "message": "prefix cluster 'Live' appears in 7 peer files",
+      "path": "workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.1,
+        "files": [
+          "ProjectFileIndexClassification.kt",
+          "ProjectReadEpochDiagnostics.kt",
+          "ProjectReadEpochExecution.kt",
+          "ProjectReadEpochState.kt"
+        ],
+        "prefix": "Project"
+      },
+      "message": "prefix cluster 'Project' appears in 4 peer files",
+      "path": "workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.07,
+        "files": [
+          "ProjectReadEpochDiagnostics.kt",
+          "ProjectReadEpochExecution.kt",
+          "ProjectReadEpochState.kt"
+        ],
+        "prefix": "Project Read"
+      },
+      "message": "prefix cluster 'Project Read' appears in 3 peer files",
+      "path": "workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 22
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.18,
+        "files": [
+          "EpochSignalApiContract.kt",
+          "EpochSignalCharacterizationNegativeTest.kt",
+          "EpochSignalCharacterizationTest.kt",
+          "EpochSignalFixtures.kt"
+        ],
+        "prefix": "Epoch"
+      },
+      "message": "prefix cluster 'Epoch' appears in 4 peer files",
+      "path": "workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.18,
+        "files": [
+          "EpochSignalApiContract.kt",
+          "EpochSignalCharacterizationNegativeTest.kt",
+          "EpochSignalCharacterizationTest.kt",
+          "EpochSignalFixtures.kt"
+        ],
+        "prefix": "Epoch Signal"
+      },
+      "message": "prefix cluster 'Epoch Signal' appears in 4 peer files",
+      "path": "workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.14,
+        "files": [
+          "ExistingProjectAdmissionFixtures.kt",
+          "ExistingProjectAdmissionNegativeTest.kt",
+          "ExistingProjectAdmissionTest.kt"
+        ],
+        "prefix": "Existing"
+      },
+      "message": "prefix cluster 'Existing' appears in 3 peer files",
+      "path": "workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.14,
+        "files": [
+          "ExistingProjectAdmissionFixtures.kt",
+          "ExistingProjectAdmissionNegativeTest.kt",
+          "ExistingProjectAdmissionTest.kt"
+        ],
+        "prefix": "Existing Project"
+      },
+      "message": "prefix cluster 'Existing Project' appears in 3 peer files",
+      "path": "workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.18,
+        "files": [
+          "ProjectFileIndexClassificationTest.kt",
+          "ProjectReadEnvironmentTest.kt",
+          "ProjectReadEpochDiagnosticsTest.kt",
+          "ProjectReadEpochVfsOverflowTest.kt"
+        ],
+        "prefix": "Project"
+      },
+      "message": "prefix cluster 'Project' appears in 4 peer files",
+      "path": "workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.14,
+        "files": [
+          "ProjectReadEnvironmentTest.kt",
+          "ProjectReadEpochDiagnosticsTest.kt",
+          "ProjectReadEpochVfsOverflowTest.kt"
+        ],
+        "prefix": "Project Read"
+      },
+      "message": "prefix cluster 'Project Read' appears in 3 peer files",
+      "path": "workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directKotlinFiles": 52
+      },
+      "message": "package directory has 8 or more direct Kotlin files",
+      "path": "workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.96,
+        "files": [
+          "HostedBudgetDimensionTest.kt",
+          "HostedCallbackCoverageDiagnosticsTest.kt",
+          "HostedCallbackProofDiagnosticsTest.kt",
+          "HostedCallbackSummaryDiagnosticsTest.kt",
+          "HostedCallbackSupplierDiagnosticsTest.kt",
+          "HostedCheckpointStorageDiagnosticsTest.kt",
+          "HostedClassLookupTest.kt",
+          "HostedContainmentReportTest.kt",
+          "HostedDeadlineEvidenceTest.kt",
+          "HostedDefaultExecutionBudgetTest.kt",
+          "HostedDiagnosticNativePhaseTest.kt",
+          "HostedDiscoveryMeasurementsTest.kt",
+          "HostedEpochAdmissionTest.kt",
+          "HostedExecutionBudgetTest.kt",
+          "HostedFailureEncodingFixtureTest.kt",
+          "HostedK2InvokeDiagnosticsTest.kt",
+          "HostedLiveReadAuthoritySessionTest.kt",
+          "HostedNamedGradleSourceScopeTest.kt",
+          "HostedNativePageDiagnosticsTest.kt",
+          "HostedNativeScopeAdmissionDiagnosticsTest.kt",
+          "HostedPeerDiagnosticEncodingTest.kt",
+          "HostedPublicationDeadlineTest.kt",
+          "HostedQualifiedClassSelectionTest.kt",
+          "HostedQueryContractTest.kt",
+          "HostedQueryExecutorTest.kt",
+          "HostedQueryLifetimeTest.kt",
+          "HostedQueryRetentionDiagnosticsTest.kt",
+          "HostedQuerySettlementTest.kt",
+          "HostedReadActionAccountingTest.kt",
+          "HostedReadCallAccountingTest.kt",
+          "HostedReadDiagnosticsTest.kt",
+          "HostedReadPublicationEffectTest.kt",
+          "HostedReadRecoveryTest.kt",
+          "HostedReadReplayTest.kt",
+          "HostedReadSdkPlanEncodingTest.kt",
+          "HostedReadSearchAccountingTest.kt",
+          "HostedReadTraceIdentityTest.kt",
+          "HostedReadTransactionTest.kt",
+          "HostedReadValueSiteCounterTest.kt",
+          "HostedRejectedPublicationEffectTest.kt",
+          "HostedRelationShapeDiagnosticsTest.kt",
+          "HostedRepairBudgetMatrixTest.kt",
+          "HostedRevalidationCountDiagnosticsTest.kt",
+          "HostedSemanticFactDiagnosticsTest.kt",
+          "HostedTraversalPhaseDiagnosticsTest.kt",
+          "HostedValueFlowCapacityDiagnosticsTest.kt",
+          "HostedValueFlowDiagnosticsTest.kt",
+          "HostedVfsObservationTest.kt",
+          "HostedWorkspaceReadinessHistoryTest.kt",
+          "HostedWorkspaceReadinessTest.kt"
+        ],
+        "prefix": "Hosted"
+      },
+      "message": "prefix cluster 'Hosted' appears in 50 peer files",
+      "path": "workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.08,
+        "files": [
+          "HostedCallbackCoverageDiagnosticsTest.kt",
+          "HostedCallbackProofDiagnosticsTest.kt",
+          "HostedCallbackSummaryDiagnosticsTest.kt",
+          "HostedCallbackSupplierDiagnosticsTest.kt"
+        ],
+        "prefix": "Hosted Callback"
+      },
+      "message": "prefix cluster 'Hosted Callback' appears in 4 peer files",
+      "path": "workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.1,
+        "files": [
+          "HostedQueryContractTest.kt",
+          "HostedQueryExecutorTest.kt",
+          "HostedQueryLifetimeTest.kt",
+          "HostedQueryRetentionDiagnosticsTest.kt",
+          "HostedQuerySettlementTest.kt"
+        ],
+        "prefix": "Hosted Query"
+      },
+      "message": "prefix cluster 'Hosted Query' appears in 5 peer files",
+      "path": "workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted",
+      "severity": "concern"
+    },
+    {
+      "evidence": {
+        "directoryShare": 0.21,
+        "files": [
+          "HostedReadActionAccountingTest.kt",
+          "HostedReadCallAccountingTest.kt",
+          "HostedReadDiagnosticsTest.kt",
+          "HostedReadPublicationEffectTest.kt",
+          "HostedReadRecoveryTest.kt",
+          "HostedReadReplayTest.kt",
+          "HostedReadSdkPlanEncodingTest.kt",
+          "HostedReadSearchAccountingTest.kt",
+          "HostedReadTraceIdentityTest.kt",
+          "HostedReadTransactionTest.kt",
+          "HostedReadValueSiteCounterTest.kt"
+        ],
+        "prefix": "Hosted Read"
+      },
+      "message": "prefix cluster 'Hosted Read' appears in 11 peer files",
+      "path": "workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted",
+      "severity": "concern"
+    }
+  ],
+  "ok": true,
+  "status": "advisory"
+}

@@ -40,6 +40,7 @@ import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueInvocation
+import io.github.amichne.kast.relation.contract.ValueKnownDeclarations
 import io.github.amichne.kast.relation.contract.ValueModelApplication
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
@@ -120,6 +121,7 @@ internal class QueryImpactExecutionFixture(generation: Long = 1) {
         requestedSites: List<QueryImpactRequestedSite> = emptyList(),
         peerBoundaries: List<io.github.amichne.kast.query.contract.QueryImpactPeerBoundary> = emptyList(),
         producers: List<QueryImpactProducer> = listOf(producer),
+        knownDeclarations: ValueKnownDeclarations = ValueKnownDeclarations.Empty,
     ): AdmittedQueryPlan {
         val source =
             QueryImpactSource.admit(
@@ -129,6 +131,7 @@ internal class QueryImpactExecutionFixture(generation: Long = 1) {
                     domain,
                     requestedSites = requestedSites,
                     peerBoundaries = peerBoundaries,
+                    knownDeclarations = knownDeclarations,
                 )
                 .value()
         return (QueryPlanCompiler.admit(

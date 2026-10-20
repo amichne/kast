@@ -10,6 +10,7 @@ import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryMatch
 import io.github.amichne.kast.query.contract.QueryRetainedResult
+import io.github.amichne.kast.query.contract.QueryWorkCount
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.relation.contract.RelationFact
@@ -45,7 +46,15 @@ internal class QueryExecutionState(
         upstreamLimitations += inherited
     }
 
-    fun canProcessImpact(): Boolean = observeTime()
+    fun reserveImpactWork(work: QueryWorkCount): Boolean {
+        if (work.value > remainingWork()) {
+            limit(QueryLimitation.WORK_LIMIT_REACHED)
+            return false
+        }
+        if (!observeTime()) return false
+        usedWork += work.value
+        return true
+    }
 
     fun canContinue(workRequired: Boolean): Boolean {
         if (workRequired && remainingWork() < 1L) {

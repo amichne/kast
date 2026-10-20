@@ -84,8 +84,13 @@ private fun QueryImpactLedger.impactDocument(
                                 count(readRejections.size)
                                     .impactZip(count(observations.size))
                                     .impactZip(count(paths.size))
-                                    .impactZip(requestedSites.impactEach { it.site.impactDocument(references) })
-                                    .impactMap { (totals, requested) ->
+                                    .impactZip(
+                                        requestedSites
+                                            .impactEach { it.site.impactDocument(references) }
+                                            .impactZip(knownDeclarations.knownDeclarationDocuments())
+                                    )
+                                    .impactMap { (totals, inputs) ->
+                                        val (requested, known) = inputs
                                         val (counts, paths) = totals
                                         ImpactAccountingDocument.Investigated(
                                             seeds,
@@ -103,6 +108,7 @@ private fun QueryImpactLedger.impactDocument(
                                             status,
                                             view,
                                             requested,
+                                            known,
                                         )
                                     }
                             }

@@ -22,7 +22,11 @@ import io.github.amichne.kast.query.protocol.QueryStateStore
 import io.github.amichne.kast.query.service.QueryService
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
+import io.github.amichne.kast.relation.contract.RelationReadResult
+import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.ValueFlowCompilerPort
+import io.github.amichne.kast.relation.contract.ValueFlowRead
+import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueProducerSeedCompilerPort
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRequest
 import io.github.amichne.kast.relation.contract.ValueSiteRevalidationRequest
@@ -129,11 +133,19 @@ internal class NativePacketQueryServices(
     var lastRetention: QueryResultRetentionEvidence? = null
         private set
 
+    var captureNativeReadStart: (ValueFlowRequest) -> Unit = {}
+
+    var captureNativeRead: (ValueFlowRequest, ValueFlowRead) -> Unit = { _, _ -> }
+
+    suspend fun readRelations(request: RelationRequest): RelationReadResult = relations.read(request)
+
     private val valueFlow = ValueFlowCompilerPort { request ->
         observation.resetValueFlowByteRefusal()
+        captureNativeReadStart(request)
         compiler.read(project = project, current = lease, request = request, model = compiledModel).also { read ->
             nativeFlowReads++
             recordPacketNativeRead(request, read, observation)
+            captureNativeRead(request, read)
         }
     }
     private val producers =

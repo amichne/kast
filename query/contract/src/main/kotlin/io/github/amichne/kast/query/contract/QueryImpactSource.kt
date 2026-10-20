@@ -9,6 +9,7 @@ import io.github.amichne.kast.relation.contract.ValueCallOccurrence
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowStepFailure
 import io.github.amichne.kast.relation.contract.ValueInvocation
+import io.github.amichne.kast.relation.contract.ValueKnownDeclarations
 import io.github.amichne.kast.relation.contract.ValueProducerOrigin
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
@@ -86,11 +87,16 @@ private constructor(
     val lease: SemanticReadAuthority,
     val requestedSites: List<QueryImpactRequestedSite>,
     val peerBoundaries: List<QueryImpactPeerBoundary>,
+    val knownDeclarations: ValueKnownDeclarations,
 ) {
     /** Native observation admission retains the full current authority, beyond equal epoch identifiers. */
     fun admitObservation(step: ValueFlowStep): Refinement<ValueFlowStep, ValueFlowStepFailure> =
-        if (step.hasForeignBasis(lease)) Refinement.Rejected(ValueFlowStepFailure.BASIS_MISMATCH)
-        else Refinement.Refined(step)
+        when {
+            step.hasForeignBasis(lease) -> Refinement.Rejected(ValueFlowStepFailure.BASIS_MISMATCH)
+            !knownDeclarations.hasSameProofAs(step.knownDeclarations) ->
+                Refinement.Rejected(ValueFlowStepFailure.DOMAIN_MISMATCH)
+            else -> Refinement.Refined(step)
+        }
 
     val retainedBytes: Long
         get() = QueryImpactRetainedGraph().source(this)
@@ -104,6 +110,7 @@ private constructor(
             semantics: QueryImpactFlowSemantics = QueryImpactFlowSemantics.KOTLIN_FORWARD_V1,
             requestedSites: List<QueryImpactRequestedSite> = emptyList(),
             peerBoundaries: List<QueryImpactPeerBoundary> = emptyList(),
+            knownDeclarations: ValueKnownDeclarations = ValueKnownDeclarations.Empty,
         ): Refinement<QueryImpactSource, QueryImpactSourceFailure> {
             if (producers.isEmpty()) return Refinement.Rejected(QueryImpactSourceFailure.EMPTY_PRODUCERS)
             if (producers.map { it.site }.distinct().size != producers.size)
@@ -114,6 +121,7 @@ private constructor(
             if (requestedSites.map { it.site }.distinct().size != requestedSites.size)
                 return Refinement.Rejected(QueryImpactSourceFailure.DUPLICATE_REQUESTED_SITE)
             val lease = producers.first().site.enclosing.lease
+            if (!knownDeclarations.belongsTo(lease)) return Refinement.Rejected(QueryImpactSourceFailure.FOREIGN_BASIS)
             if (producers.any { it.hasForeignBasis(lease) } || representationModels.any { it.hasForeignBasis(lease) })
                 return Refinement.Rejected(QueryImpactSourceFailure.FOREIGN_BASIS)
             when (val admitted = admitPeerBoundaries(lease, boundaryModels, peerBoundaries)) {
@@ -141,6 +149,7 @@ private constructor(
                     lease,
                     Collections.unmodifiableList(requestedSites.toList()),
                     Collections.unmodifiableList(peerBoundaries.toList()),
+                    knownDeclarations,
                 )
             )
         }

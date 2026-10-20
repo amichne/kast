@@ -1,0 +1,8 @@
+package io.github.amichne.kast.query.contract
+
+import io.github.amichne.kast.relation.contract.ValueKnownDeclarations
+
+internal fun ValueKnownDeclarations.storageBytes(g: QueryImpactRetainedGraph): Long =
+    g.node(this) {
+        g.collection(declarations) { declaration -> g.node(declaration) { declaration.endpoint.storageBytes(g) } }
+    }

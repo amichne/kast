@@ -1,6 +1,7 @@
 package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.query.contract.QueryContinuationState
 import io.github.amichne.kast.query.contract.QueryCount
 import io.github.amichne.kast.query.contract.QueryCoverage
 import io.github.amichne.kast.query.contract.QueryExecutionResult
@@ -21,6 +22,7 @@ import io.github.amichne.kast.query.contract.QueryRetainedResult
 import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.query.contract.QuerySourceSyntax
 import io.github.amichne.kast.query.contract.QueryValuePathAccounting
+import io.github.amichne.kast.query.contract.QueryWorkUsage
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.relation.contract.RelationEndpoint
@@ -78,19 +80,32 @@ class QueryImpactBoundsTest {
     fun `failed native receipt exceeding granted work remains a contract failure with actual count`() = runTest {
         val f = QueryImpactExecutionFixture()
         var calls = 0
-        val port = ValueFlowCompilerPort {
+        var granted = 0L
+        val port = ValueFlowCompilerPort { request ->
             calls++
+            granted = request.budget.resources.workUnitLimit.value
             ValueFlowRead.Rejected(ValueFlowRejection.OWNER_UNAVAILABLE, RelationWorkCount.parse(101).value())
         }
+        val service = f.service(port)
+        // One route visit leaves the original native grant of 100.
+        val first = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(f.request(work = 1 + 100)))
+        assertEquals(100L, granted)
+        assertEquals(102L, (first.workUsage as QueryWorkUsage.Observed).count.value)
+        assertTrue(QueryLimitation.WORK_LIMIT_REACHED in first.coverage.limitations)
+        assertTrue((first.result.rows as QueryRows.ValuePaths).values.isEmpty())
+        val checkpoint = (first.continuation as QueryContinuationState.Resumable).checkpoint
+        // The cached rejection needs one route visit and one terminal path, without a native replay.
         val result =
-            assertInstanceOf(QueryExecutionResult.Qualified::class.java, f.service(port).run(f.request(work = 100)))
+            assertInstanceOf(
+                QueryExecutionResult.Qualified::class.java,
+                service.run(f.request(work = 1 + 1, checkpoint = checkpoint)),
+            )
         val rejection =
             (((result.result.rows as QueryRows.ValuePaths).values.single().terminal
                     as QueryImpactTerminal.Unresolved.ReadRejected)
                 .rejection as QueryImpactReadRejection.Contract)
         assertEquals(ValueFlowStepFailure.WORK_LIMIT_EXCEEDED, rejection.cause)
         assertEquals(101L, rejection.examinedWorkUnits.value)
-        assertTrue(QueryLimitation.WORK_LIMIT_REACHED in result.coverage.limitations)
         assertEquals(1, calls)
     }
 

@@ -210,7 +210,8 @@ internal fun BoundaryModel.hasForeignBasis(lease: SemanticReadAuthority): Boolea
         }
 
 internal fun ValueFlowStep.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
-    source.hasForeignBasis(lease) ||
+    !knownDeclarations.belongsTo(lease) ||
+        source.hasForeignBasis(lease) ||
         domain.subject.lease != lease ||
         transfers.any { it.hasForeignBasis(lease) } ||
         applications.any { it.hasForeignBasis(lease) } ||

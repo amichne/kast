@@ -1,0 +1,22 @@
+{
+  "workspaceHead": "543509a7f4d22d6ec850f52b70c898bca478c37d",
+  "refreshedMain": "e60c7e3113007860762d347ab8593676627829fd",
+  "upstreamSincePriorRefresh": [
+    {
+      "path": "relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijTransparentWrapperReturn.kt",
+      "mainSha256": "88b85c3629b5e054ee9f5a801fb4845a35f16619d804986cf211af5afd22bb26",
+      "workspaceExists": true,
+      "workspaceMatchesMain": true
+    },
+    {
+      "path": "relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeTransparentWrapperReturnTest.kt",
+      "mainSha256": "adcb978530bbefc177f55a403f321b526552631d6e14040b0c97089e338aea6c",
+      "workspaceExists": false,
+      "workspaceMatchesMain": false
+    }
+  ],
+  "guardPR": "https://github.com/amichne/kast/pull/1072",
+  "broadWipRebased": false,
+  "guardFixtureAdaptation": "The original fixture is copied from merged main. Its helper now passes the declaration execution owner through the newer WIP API.",
+  "mergedProductionMatchesWorkspace": true
+}

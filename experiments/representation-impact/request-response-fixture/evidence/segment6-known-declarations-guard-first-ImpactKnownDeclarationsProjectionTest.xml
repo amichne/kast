@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.query.protocol.ImpactKnownDeclarationsProjectionTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-20T21:20:30.810Z" hostname="Austins-MacBook-Pro.local" time="0.247">
+  <properties/>
+  <testcase name="a rejected native read preserves the actual original known question and raw finite cause()" classname="io.github.amichne.kast.query.protocol.ImpactKnownDeclarationsProjectionTest" time="0.205"/>
+  <testcase name="the investigated question and native receipts keep full variant proofs in original order()" classname="io.github.amichne.kast.query.protocol.ImpactKnownDeclarationsProjectionTest" time="0.031">
+    <failure message="java.lang.ClassCastException: class io.github.amichne.kast.protocol.contract.ImpactWitnessDocument$CompilerTransfer cannot be cast to class io.github.amichne.kast.protocol.contract.ImpactWitnessDocument$NativeRead (io.github.amichne.kast.protocol.contract.ImpactWitnessDocument$CompilerTransfer and io.github.amichne.kast.protocol.contract.ImpactWitnessDocument$NativeRead are in unnamed module of loader 'app')" type="java.lang.ClassCastException">java.lang.ClassCastException: class io.github.amichne.kast.protocol.contract.ImpactWitnessDocument$CompilerTransfer cannot be cast to class io.github.amichne.kast.protocol.contract.ImpactWitnessDocument$NativeRead (io.github.amichne.kast.protocol.contract.ImpactWitnessDocument$CompilerTransfer and io.github.amichne.kast.protocol.contract.ImpactWitnessDocument$NativeRead are in unnamed module of loader 'app')
+	at io.github.amichne.kast.query.protocol.ImpactKnownDeclarationsProjectionTest.the investigated question and native receipts keep full variant proofs in original order(ImpactKnownDeclarationsProjectionTest.kt:61)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -11,7 +11,7 @@ internal const val LOCAL_REFERENCE_KEY_STORAGE_BYTES = 1024L
 internal class ValueFootprintMeter {
     private val charged = IdentityHashMap<Any, Unit>()
 
-    private fun payload(owner: Any, fields: () -> Long): Long =
+    internal fun payload(owner: Any, fields: () -> Long): Long =
         if (charged.put(owner, Unit) == null) fields() else VALUE_REFERENCE_BYTES
 
     fun seed(seed: ValueProducerSeed): Long =
@@ -171,7 +171,7 @@ internal class ValueFootprintMeter {
                 .addBytes(identity.file.stableValue.length.toLong().multiplyBytes(2))
         }
 
-    private fun endpoint(endpoint: RelationEndpoint): Long =
+    internal fun endpoint(endpoint: RelationEndpoint): Long =
         payload(endpoint) { VALUE_RECORD_OVERHEAD.addBytes(endpoint.detachedTextUnits().multiplyBytes(2)) }
 
     private fun endpoints(values: List<RelationEndpoint>): Long =

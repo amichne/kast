@@ -1,0 +1,4 @@
+2dd4e0e1004855931af369566ca456c9d1071943174afe237baf4355fb5d2fa2  query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceAcquisition.kt
+5d1774143399268be156d8b454f54805b1721d0dc0f21c28fcd7cf4449bb1a00  query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactSourceModelEvidence.kt
+4fb1d698774ec084ff6a71c49c10179284720363e0167728993a7934e4c0c3c2  query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactKnownDeclarationsStorage.kt
+2939ac2369343bc4cf936d456a8320a2af001253226717051bef0f00d5a08567  query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRetainedGraph.kt

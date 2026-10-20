@@ -117,6 +117,7 @@ internal class NativeValueFlowTransfers(
                                 transfers = edges + transfer.value,
                                 obligations = obligations,
                                 applications = applications,
+                                knownDeclarations = request.knownDeclarations,
                             )
                             .value
                     if (
@@ -156,6 +157,7 @@ internal class NativeValueFlowTransfers(
                     transfers = edges,
                     obligations = obligations,
                     applications = applications + application,
+                    knownDeclarations = request.knownDeclarations,
                 )
                 .value
         if (
@@ -236,6 +238,7 @@ internal class NativeValueFlowTransfers(
                     transfers = edges,
                     obligations = (obligations + obligation).distinct(),
                     applications = applications,
+                    knownDeclarations = request.knownDeclarations,
                 )
                 .value
         if (

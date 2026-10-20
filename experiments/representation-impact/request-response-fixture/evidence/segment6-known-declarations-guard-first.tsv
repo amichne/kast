@@ -1,0 +1,10 @@
+LocalBindingKnownDeclarationsAuthorityTest	foreign explicit input rejects before every traversal effect and preserves its raw receipt()	FAIL	org.opentest4j.AssertionFailedError: expected: <1> but was: <2>
+LocalBindingKnownDeclarationsAuthorityTest	current explicit input permits the same scanner and keeps its original question()	PASS	
+ImpactKnownDeclarationsDocumentTest	qualified output keeps order duplicates basis and the exact question across receipts()	PASS	
+ImpactKnownDeclarationsDocumentTest	native receipts and investigated output encode empty known declarations explicitly()	PASS	
+ImpactKnownDeclarationsDocumentTest	both endpoint variants encode independent tags and every existing endpoint field()	PASS	
+ImpactKnownDeclarationsProjectionTest	a rejected native read preserves the actual original known question and raw finite cause()	PASS	
+ImpactKnownDeclarationsProjectionTest	the investigated question and native receipts keep full variant proofs in original order()	FAIL	java.lang.ClassCastException: class io.github.amichne.kast.protocol.contract.ImpactWitnessDocument$CompilerTransfer cannot be cast to class io.github.amichne.kast.protocol.contract.ImpactWitnessDocument$NativeRead (io.github.amichne.kast.protocol.contract.ImpactWitnessDocument$CompilerTransfer and io.github.amichne.kast.protocol.contract.ImpactWitnessDocument$NativeRead are in unnamed module of loader 'app')
+QueryKnownDeclarationsSourceAcquisitionTest	restored producer selectors do not become explicit known declarations or trigger another native read()	PASS	
+QueryKnownDeclarationsSourceAcquisitionTest	an unused explicit declaration enters the source with its original proof and acquisition work()	FAIL	org.opentest4j.AssertionFailedError: expected: <1> but was: <0>
+ImpactRejectedReadReceiptTest	rejected read witness encodes its actual grant with and without a suspended prefix()	FAIL	org.opentest4j.AssertionFailedError: expected: <[domain, examinedWorkUnits, returnedResults, returnedBytes]> but was: <[domain, examinedWorkUnits, returnedResults, returnedBytes, knownDeclarations]>

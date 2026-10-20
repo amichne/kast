@@ -1,0 +1,12 @@
+case	expected	observed	status
+known-conservation	31 assertions	31 passed, zero failures/errors/skips	PASSED
+five-owner-assertions	1394 assertions	1394 passed, zero failures/errors/skips	PASSED
+five-owner-gates	all five checks pass	four passed in second invocation, query protocol passed in final invocation	PASSED
+native-wrapper-and-carrier	11 assertions	11 passed, zero failures/errors/skips	PASSED
+original-t1-native-return	actual SOURCE_CALL_RETURN1029:1057 to872:897 with full issued host	asserted from actual native read with unchanged original request	PASSED
+original-t1-public-goal	retained full guarded FeatureReturn witness	ExecutionRejected INVOCATION_RETAINED_BYTES_LIMIT at102 native reads	FAILED
+next-required-t1-native-transfer	continue actual invoke argument872:897	GRANT_TOO_SMALL work1, candidate155418+reserve43008 greater than allowance197367	FAILED
+staged-facts-charge	exact rejected charge available	observer reports accepted facts only, no staged charge or exact shortfall	NOT_RUN
+m2	all required positive rows and controls	required rows remain unmet	FAILED
+m3	all corrected packet capability rows	not complete	FAILED
+broad-product-gate-current-wip	required product gate	not run on current broad WIP	NOT_RUN

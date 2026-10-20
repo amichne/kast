@@ -1,0 +1,28 @@
+{
+  "classification": "FIXTURE_SCOPE_EXPECTATION_CORRECTION",
+  "previous_failure": "PUBLIC_CALLBACK_UNIVERSE_DIFFERS_FROM_PRIMARY_EXPANSION",
+  "primary_scope": {
+    "sourceKinds": "PRODUCTION_AND_TEST",
+    "generatedSources": "EXCLUDE",
+    "libraries": "EXCLUDE"
+  },
+  "callback_scope": {
+    "sourceKinds": "PRODUCTION_AND_TEST",
+    "generatedSources": "INCLUDE",
+    "libraries": "EXCLUDE"
+  },
+  "callback_constraints": "SymbolDiscoveryConstraints.None",
+  "primary_constraints": "preserved from actual original question and separately printed",
+  "scope_transport_assertion_bytes_equal": true,
+  "source_sha256": "eae75bbd44bc3331331c2dc280559061f515f9475a44262b672bcd908a0e87d1",
+  "receipt_sha256": "00d31489f4ce72c098ca22ca14cf6cfcb2bb47992d5f2fe731a8f3d242ff6e91",
+  "selected_previous": 1,
+  "ran_previous": 1,
+  "intended_scope_assertion": "NOT_REACHED",
+  "new_procedure": "NOT_RUN",
+  "scope_guides_reviewed": [
+    "runtime/AGENTS.md",
+    "experiments/representation-impact/request-response-fixture/AGENTS.md"
+  ],
+  "instruction_change": "NONE: commands, owners, and rules unchanged"
+}

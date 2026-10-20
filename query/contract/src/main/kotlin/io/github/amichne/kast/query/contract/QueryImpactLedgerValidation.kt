@@ -2,12 +2,15 @@ package io.github.amichne.kast.query.contract
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.BoundaryModel
+import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RepresentationRule
 import io.github.amichne.kast.relation.contract.ValueFlowObligation
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
+import io.github.amichne.kast.relation.contract.ValueFlowWorkReceipt
+import io.github.amichne.kast.relation.contract.ValueKnownDeclarations
 import io.github.amichne.kast.relation.contract.ValueSite
 
 /** Pure conservation checks for the sole ledger constructor, preserving the first rejected invariant. */
@@ -17,22 +20,23 @@ internal class QueryImpactLedgerValidation(
     private val domain: RelationSearchBoundary,
     private val representations: List<RepresentationRule>,
     private val boundaries: List<BoundaryModel>,
-    observations: List<ValueFlowStep>,
+    private val observations: List<ValueFlowStep>,
     private val paths: List<QueryImpactPath>,
-    rejections: List<QueryImpactReadRejection>,
+    private val rejections: List<QueryImpactReadRejection>,
     private val peers: List<QueryImpactPeerBoundary>,
+    private val knownDeclarations: ValueKnownDeclarations,
 ) {
     private val native = observations.groupBy { it.source }
     private val rejected = rejections.groupBy { it.source }
 
-    fun validate(): Refinement<Unit, QueryImpactLedgerFailure> {
+    fun validate(readReceipts: Map<ValueSite, List<ValueFlowWorkReceipt>>): Refinement<Unit, QueryImpactLedgerFailure> {
         for (check in listOf(::origins, ::models, ::nativeDomain, ::observedPaths, ::modeledBranches, ::unaccounted)) {
             when (val result = check()) {
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return result
             }
         }
-        return Refinement.Refined(Unit)
+        return validateReadReceipts(readReceipts, observations, rejections, domain, knownDeclarations)
     }
 
     private fun origins(): Refinement<Unit, QueryImpactLedgerFailure> {
@@ -71,6 +75,11 @@ internal class QueryImpactLedgerValidation(
     }
 
     private fun nativeDomain(): Refinement<Unit, QueryImpactLedgerFailure> {
+        if (
+            !knownDeclarations.belongsTo(seeds.first().enclosing.lease) ||
+                native.values.flatten().any { !it.knownDeclarations.hasSameProofAs(knownDeclarations) }
+        )
+            return reject(QueryImpactLedgerFailure.DOMAIN_MISMATCH)
         if (peers.isNotEmpty() && native.values.flatten().any { it.hasForeignBasis(seeds.first().enclosing.lease) })
             return reject(QueryImpactLedgerFailure.FOREIGN_PEER_BASIS)
         if (
@@ -247,3 +256,29 @@ internal class QueryImpactLedgerValidation(
 
 private fun reject(cause: QueryImpactLedgerFailure): Refinement.Rejected<QueryImpactLedgerFailure> =
     Refinement.Rejected(cause)
+
+private fun validateReadReceipts(
+    receipts: Map<ValueSite, List<ValueFlowWorkReceipt>>,
+    observations: List<ValueFlowStep>,
+    rejections: List<QueryImpactReadRejection>,
+    domain: RelationSearchBoundary,
+    knownDeclarations: ValueKnownDeclarations,
+): Refinement<Unit, QueryImpactLedgerFailure> {
+    if (receipts.keys.any { site -> observations.none { it.source == site } && rejections.none { it.source == site } })
+        return Refinement.Rejected(QueryImpactLedgerFailure.UNACCOUNTED_NATIVE_READ)
+    if (
+        receipts.any { (site, values) ->
+            values.any { !it.belongsTo(site, domain) || !it.knownDeclarations.hasSameProofAs(knownDeclarations) }
+        }
+    )
+        return Refinement.Rejected(QueryImpactLedgerFailure.DOMAIN_MISMATCH)
+    return Refinement.Refined(Unit)
+}
+
+private fun ValueFlowWorkReceipt.belongsTo(site: ValueSite, boundary: RelationSearchBoundary): Boolean =
+    domain.boundary == boundary && domain.subject.lease == site.enclosing.lease && domain.subject.hasOwner(site)
+
+private fun RelationEndpoint.hasOwner(site: ValueSite): Boolean =
+    compilerIdentity == site.identity.owner.compiler &&
+        file == site.identity.owner.file &&
+        range == site.identity.owner.range

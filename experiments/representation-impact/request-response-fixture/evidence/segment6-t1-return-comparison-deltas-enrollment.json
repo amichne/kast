@@ -1,0 +1,15 @@
+{
+  "source_hashes": {
+    "NativePacketQueryServices.kt": "49d742c6b69a1f565cb05427ac89807b8e3a59c1a01bc30170639a3828184cb5",
+    "NativePacketT1SeedCallbackCapture.kt": "24baf448b3fc389f8c792634f8fbe60ea8dc3d1b31ed9affa321e2735a5bfd70",
+    "NativePacketT1SeedCallbackReturnTest.kt": "d889fda4c83b48f7339627b47eeb7180bec8fd3f7759c8d62ba5403d0ca1d691"
+  },
+  "oracle_sha256": "eae75bbd44bc3331331c2dc280559061f515f9475a44262b672bcd908a0e87d1",
+  "receipt_sha256": "19ca102992865917a96a27d8eeb0c17addbab5632549ad0ab3493b67fd1441bf",
+  "new_assertions": "NONE: finite diagnostics only, required transfer unchanged",
+  "counter_question": "actual private comparison for Return1029:1057 only",
+  "zero_counts": "comparison not reached, not success",
+  "public_callees": "separately broader callback universe, not private value proof",
+  "gradle": "NOT_RUN",
+  "scope_guide_review": "runtime/AGENTS.md and fixture/AGENTS.md current, commands/owners/rules unchanged"
+}

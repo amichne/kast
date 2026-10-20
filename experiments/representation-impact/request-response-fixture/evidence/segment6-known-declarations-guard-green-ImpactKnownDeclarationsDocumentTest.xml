@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.protocol.contract.ImpactKnownDeclarationsDocumentTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T21:06:20.765Z" hostname="Austins-MacBook-Pro.local" time="0.166">
+  <properties/>
+  <testcase name="qualified output keeps order duplicates basis and the exact question across receipts()" classname="io.github.amichne.kast.protocol.contract.ImpactKnownDeclarationsDocumentTest" time="0.033"/>
+  <testcase name="native receipts and investigated output encode empty known declarations explicitly()" classname="io.github.amichne.kast.protocol.contract.ImpactKnownDeclarationsDocumentTest" time="0.064"/>
+  <testcase name="both endpoint variants encode independent tags and every existing endpoint field()" classname="io.github.amichne.kast.protocol.contract.ImpactKnownDeclarationsDocumentTest" time="0.012"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

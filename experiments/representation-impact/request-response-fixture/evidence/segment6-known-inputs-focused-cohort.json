@@ -1,0 +1,87 @@
+{
+  "source": "First five-module gate invocation, archived under /tmp/kast-known-declarations-owning-first-xml",
+  "cohort": [
+    {
+      "class": "ValueKnownDeclarationsTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "status": "PASSED"
+    },
+    {
+      "class": "ValueKnownDeclarationsFlowTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "status": "PASSED"
+    },
+    {
+      "class": "LocalBindingKnownDeclarationsAuthorityTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "status": "PASSED"
+    },
+    {
+      "class": "QueryKnownDeclarationsConservationTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "status": "PASSED"
+    },
+    {
+      "class": "QueryKnownDeclarationsResumeTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "status": "PASSED"
+    },
+    {
+      "class": "ImpactKnownDeclarationsDocumentTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "status": "PASSED"
+    },
+    {
+      "class": "ImpactKnownDeclarationsProjectionTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "status": "PASSED"
+    },
+    {
+      "class": "QueryKnownDeclarationsSourceAcquisitionTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "status": "PASSED"
+    },
+    {
+      "class": "ImpactRejectedReadReceiptTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "status": "PASSED"
+    },
+    {
+      "class": "QueryImpactKnownDeclarationsTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "status": "PASSED"
+    }
+  ],
+  "totalTests": 31,
+  "allPassed": true
+}

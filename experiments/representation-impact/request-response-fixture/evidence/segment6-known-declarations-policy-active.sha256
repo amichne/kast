@@ -1,0 +1,12 @@
+6623e26610c6bce62b7fa1fd2619d0a12f82e5fff5a80c9f9447597468d841e1  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/LocalBindingReferenceScan.kt
+da02f8f5230b6e81a20a4b42b828255cf43fe15523a3dd506d938dae37646b48  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlow.kt
+2cdabc016d5c5edc282c3574e32c322b481b899b0b68dfcffbb0c8e9f3c5db75  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/LocalBindingReadRemainder.kt
+0429619708cd7d8da8d8d35962ddab34c6e40a1be3fcbcab8f3c536d0d7d602e  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlowFootprint.kt
+b82e2f9ce8a104c883967d594e17c54ca9c0fb06b77fc7b134ad7d14f62c394c  query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt
+b4ef5f321d6945b4f45bcbdf193f27b86ce9f1af5ffb812873acbe0ab50a82dc  query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedgerValidation.kt
+ebed74c6fc886b12265132120ad0f534ed7f44bf22dac66c0d5fc7125c4bacbf  protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactKnownDeclarationDocument.kt
+0a2c53e59cfaaabf3983409881e2a14e212bbf65408b2e41c47486ff1e66c755  protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingDocument.kt
+fcb629881a79604957a37062c08bda2665136f19e5de27b1df0b788672779dd3  protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactWitnessDocuments.kt
+6ea8040eff6864822daccd8e6d8ffa31f39e7a0e67e7509c50172c7de88a0bd2  query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt
+7d01ec6b183686c53bb6ba8256b39fc36a007c1cf7de631c826a36b85f7493d8  query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactKnownDeclarationsProjection.kt
+f999bdc271e9b8580173c2489c5046bea538bb2b15f8ecee2984bb1b16f13825  relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueKnownDeclarationsFootprint.kt

@@ -36,6 +36,7 @@ import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.relation.contract.ValueProducerOrigin
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -307,18 +308,7 @@ class ImpactWitnessPresentationTest {
             encoded.keys,
         )
         assertEquals("0", encoded.getValue("applicationCount").jsonPrimitive.content)
-        val receipts = encoded.getValue("receipts").jsonArray
-        assertEquals(2, receipts.size)
-        receipts.forEachIndexed { index, receipt ->
-            val item = receipt.jsonObject
-            assertEquals(setOf("domain", "examinedWorkUnits", "returnedResults", "returnedBytes"), item.keys)
-            assertEquals((index + 3).toString(), item.getValue("examinedWorkUnits").jsonPrimitive.content)
-            assertEquals("0", item.getValue("returnedResults").jsonPrimitive.content)
-            val grant = item.getValue("domain").jsonObject.getValue("budget").jsonObject
-            assertEquals((index + 3).toString(), grant.getValue("maxWorkUnits").jsonPrimitive.content)
-            assertEquals("1", grant.getValue("maxResults").jsonPrimitive.content)
-            assertEquals("100000", grant.getValue("maxReturnedBytes").jsonPrimitive.content)
-        }
+        assertResumedReceiptJson(encoded.getValue("receipts").jsonArray)
     }
 
     private fun assertRejectedWitnessAccounting(original: QueryRunResult, fixture: ImpactWitnessPresentationFixture) {
@@ -347,6 +337,24 @@ class ImpactWitnessPresentationTest {
     }
 
     private fun count(raw: Long) = QueryDiscoveryCountDocument.parse(raw).value()
+}
+
+private fun assertResumedReceiptJson(receipts: JsonArray) {
+    assertEquals(2, receipts.size)
+    receipts.forEachIndexed { index, receipt ->
+        val item = receipt.jsonObject
+        assertEquals(
+            setOf("domain", "examinedWorkUnits", "returnedResults", "returnedBytes", "knownDeclarations"),
+            item.keys,
+        )
+        assertEquals(0, item.getValue("knownDeclarations").jsonArray.size)
+        assertEquals((index + 3).toString(), item.getValue("examinedWorkUnits").jsonPrimitive.content)
+        assertEquals("0", item.getValue("returnedResults").jsonPrimitive.content)
+        val grant = item.getValue("domain").jsonObject.getValue("budget").jsonObject
+        assertEquals((index + 3).toString(), grant.getValue("maxWorkUnits").jsonPrimitive.content)
+        assertEquals("1", grant.getValue("maxResults").jsonPrimitive.content)
+        assertEquals("100000", grant.getValue("maxReturnedBytes").jsonPrimitive.content)
+    }
 }
 
 private fun <T> bounded(values: List<T>) = BoundedProtocolList.create(values).value()

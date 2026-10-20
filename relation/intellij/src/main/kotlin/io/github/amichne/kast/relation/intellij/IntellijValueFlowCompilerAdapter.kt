@@ -17,6 +17,7 @@ import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
+import io.github.amichne.kast.relation.contract.ValueFlowStepFailure
 import io.github.amichne.kast.relation.contract.ValueModelDeclarationRead
 import io.github.amichne.kast.relation.contract.ValueModelSiteRead
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRead
@@ -170,6 +171,8 @@ class IntellijValueFlowCompilerAdapter(
         model: WorkspaceSearchScopeModelCompilation,
     ): ValueFlowRead {
         var observedWork = flowWorkCount(0)
+        if (!request.knownDeclarations.belongsTo(request.source.enclosing.lease))
+            return ValueFlowRead.ContractRejected(ValueFlowStepFailure.BASIS_MISMATCH, observedWork)
         return nativeBoundary(
                 project,
                 current,

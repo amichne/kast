@@ -1,0 +1,15 @@
+{
+  "classification": "FIXTURE_POSITION_MISMATCH_NOT_SCOPE_RED",
+  "prior_source_sha256": "a6f2e89a4a81c3c9c8ceb7166601a13f07d969cc2c54454f7f902256e2947ad7",
+  "source_sha256": "0df35795a1dee7ceee3ad778c19f9278ce15f899384f64b3fb68a5c26212bc33",
+  "original_source_fact": "OffersProcessor.kt658:678 is Outcome.sequential {; selector666 starts sequential.",
+  "correction": "Assert actual qualified-parent/selector ownership, selector666:1063 and full supplier658:1063 separately.",
+  "preserved": "All producer/seed, native supplier658:1063, callback, scope, guard, stack, target and oracle expectations remain.",
+  "inverse_byte_identity": "PASSED",
+  "layout_width120": "PASSED",
+  "other_owned_files": "UNCHANGED",
+  "assertions": "NOT_RUN",
+  "gradle": "NOT_RUN",
+  "receipt_sha256": "13cd8f43a1a7ea45da2eab6412fce53023267b503d18700f938451e179df46ea",
+  "selector": "*NativePacketT1SeedCallbackReturnTest.testOriginalS1CombinedReturnKeepsTheIssuedHostAndActualSupplierProof"
+}

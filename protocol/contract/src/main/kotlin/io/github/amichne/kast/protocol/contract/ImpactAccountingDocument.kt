@@ -2,6 +2,7 @@
 
 package io.github.amichne.kast.protocol.contract
 
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
@@ -47,6 +48,9 @@ sealed interface ImpactAccountingDocument {
         val view: ImpactAccountingViewDocument,
         @ProtocolCollectionConstraint(maximumItems = 128)
         val requestedSites: BoundedProtocolList<ImpactValueSiteReferenceDocument>,
+        @EncodeDefault
+        @ProtocolCollectionConstraint(maximumItems = IMPACT_KNOWN_DECLARATIONS_MAX_SIZE)
+        val knownDeclarations: BoundedProtocolList<ImpactKnownDeclarationDocument> = emptyKnownDeclarations(),
     ) : ImpactAccountingDocument
 }
 

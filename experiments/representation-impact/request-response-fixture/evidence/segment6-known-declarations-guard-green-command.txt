@@ -1,0 +1,1 @@
+mise exec -- ./gradlew :relation:contract:test --tests '*LocalBindingKnownDeclarationsAuthorityTest' :protocol:contract:test --tests '*ImpactKnownDeclarationsDocumentTest' :query:protocol:test --tests '*ImpactKnownDeclarationsProjectionTest' --tests '*ImpactRejectedReadReceiptTest' --continue --console=plain

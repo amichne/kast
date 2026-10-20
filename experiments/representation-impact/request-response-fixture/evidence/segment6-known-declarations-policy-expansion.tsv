@@ -1,0 +1,8 @@
+scanner-unadvanced-predicate	UNCHANGED	Same operands and short-circuit order
+known-footprint-fields	UNCHANGED	Same physical meter and payload visits
+receipt-work-fold	UNCHANGED	Same saturation and ordered values
+protocol-structural-maximum	UNCHANGED	Named constant equals128
+ImpactAccountingDocument.kt	UNCHANGED_AFTER_CONSTANT_EXPANSION	Same annotation values and fields
+ImpactWitnessDocuments.kt	UNCHANGED_AFTER_CONSTANT_EXPANSION	Same annotation values and fields
+ImpactWitnessProjection.kt	FORMATTING_ONLY	Same expression tokens excluding optional trailing commas
+ImpactKnownDeclarationsProjection.kt	FORMATTING_ONLY	Same expression tokens excluding optional trailing commas

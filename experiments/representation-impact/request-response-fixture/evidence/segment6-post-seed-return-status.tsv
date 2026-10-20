@@ -1,0 +1,14 @@
+case	expected	observed	status	evidence_limit
+SeedCallbackReturn.detached	37 source-law and refusal cases	37 passed	PASSED	assumed compiler facts
+SeedCallbackReturn.originalS2	actual builtin result872:897 with one supplier frame	2 real-K2 cases passed	PASSED	focused transfer only
+SeedCallbackReturn.affected-native	anonymous, matched return, caller NonNull and seed-entry controls	15 cases passed	PASSED	focused real-K2 controls
+C2.9.originalS2	final getOffer Success.value.link under exact predicates	actual builtin result872:897 then GRANT_TOO_SMALL	FAILED	candidate120384 plus reserve43008 exceeds allowance120097 in captured case
+C2.4.originalS2	complete error mapper field route	required mapper route absent from emitted positive witnesses	FAILED	incomplete native query cannot establish semantic absence
+C2.5-C2.6.error	both reconstructed Error carriers and matched client return	required complete route not reached	FAILED	byte and checkpoint refusals stay explicit
+T1.production-known	fresh exact Echo SOURCE_DOMAIN exclusion	typed named exclusion missing	FAILED	explicit known declaration now supplied; new request snapshot
+T1.production-no-known	actual production dispatch and no Echo execution witness	case passed	PASSED	separate unchanged request; no named exclusion claim
+T1.combined	full original-S1 Echo route through getOffer return	required final route not reached	FAILED	partial positive prefixes do not satisfy full row
+S1.original	original constructor prefix and emitted controls	2 cases passed	PASSED	existing asserted prefix scope
+S3.original	return and logger-argument routes with emitted controls	4 cases passed	PASSED	raw logger argument is not reviewed terminal interpretation
+M2	all milestone positives and discriminating controls	five asserted full-query cases failed; known-empty proof absent	FAILED	no milestone completion claim
+M3	all corrected packet positives and reviewed terminals	header, catch, cardinality and remaining terminal work absent	NOT_RUN	full M3 selection did not run

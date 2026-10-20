@@ -43,7 +43,7 @@ class QueryLocalBindingAdverseTest {
     @Test
     fun `timeout while replaying the consumed prefix retains a resumable remainder`() = runTest {
         val s = ScanFixture()
-        val first = s.service.run(s.f.request(work = 5)) as QueryExecutionResult.Qualified
+        val first = s.service.run(s.f.request(work = INITIAL_QUERY_WORK)) as QueryExecutionResult.Qualified
         val predecessor = (first.continuation as QueryContinuationState.Resumable).checkpoint as PipelineCheckpoint
         val remainder = predecessor.impact!!.remainders.getValue(s.binding)
         var visits = 0
@@ -123,7 +123,7 @@ class QueryLocalBindingAdverseTest {
     @Test
     fun `authority rejection after suspension preserves confirmed prefix and a finite rejection`() = runTest {
         val s = ScanFixture()
-        val first = s.service.run(s.f.request(work = 5)) as QueryExecutionResult.Qualified
+        val first = s.service.run(s.f.request(work = INITIAL_QUERY_WORK)) as QueryExecutionResult.Qualified
         val checkpoint = (first.continuation as QueryContinuationState.Resumable).checkpoint as PipelineCheckpoint
         val before = checkpoint.impact!!
         assertEquals(1, (before.reads[s.binding] as ValueFlowRead.Observed).step.transfers.size)
@@ -134,7 +134,7 @@ class QueryLocalBindingAdverseTest {
             else s.port.read(request)
         }
         val result =
-            s.f.service(authorityMoved).run(s.f.request(work = 20, checkpoint = checkpoint))
+            s.f.service(authorityMoved).run(s.f.request(work = AUTHORITY_QUERY_WORK, checkpoint = checkpoint))
                 as QueryExecutionResult.Qualified
         assertTrue(result.continuation is QueryContinuationState.Terminal)
         val rows = result.result.rows as QueryRows.ValuePaths
@@ -159,13 +159,15 @@ class QueryLocalBindingAdverseTest {
     @Test
     fun `too little work for progress rejects finitely while retaining the prior observation`() = runTest {
         val s = ScanFixture()
-        val first = s.service.run(s.f.request(work = 5)) as QueryExecutionResult.Qualified
+        val first = s.service.run(s.f.request(work = INITIAL_QUERY_WORK)) as QueryExecutionResult.Qualified
         var checkpoint: QueryCheckpoint? = (first.continuation as QueryContinuationState.Resumable).checkpoint
         val paths = mutableListOf<QueryImpactPath>()
         var ledger: QueryImpactLedger? = null
         repeat(10) {
             if (checkpoint == null) return@repeat
-            val result = s.service.run(s.f.request(work = 2, checkpoint = checkpoint)) as QueryExecutionResult.Qualified
+            val result =
+                s.service.run(s.f.request(work = RETRY_QUERY_WORK, checkpoint = checkpoint))
+                    as QueryExecutionResult.Qualified
             val rows = result.result.rows as QueryRows.ValuePaths
             paths += rows.values
             ledger = (rows.accounting as? QueryValuePathAccounting.Investigated)?.ledger ?: ledger
@@ -179,13 +181,16 @@ class QueryLocalBindingAdverseTest {
         )
         assertEquals(listOf(0, 1), s.confirmed)
         assertEquals(1, ledger.observations.single { it.source == s.binding }.transfers.size)
+        val rejectedReceipt = ledger.readReceipts.getValue(s.binding).last()
+        assertEquals(2L, rejectedReceipt.domain.budget.resources.workUnitLimit.value)
+        assertEquals(1L, rejectedReceipt.examinedWorkUnits.value)
         s.native.assertConsumed()
     }
 
     @Test
     fun `cancellation through the scan callback leaves the published predecessor immutable`() = runTest {
         val s = ScanFixture(destinationExpected = false)
-        val first = s.service.run(s.f.request(work = 5)) as QueryExecutionResult.Qualified
+        val first = s.service.run(s.f.request(work = INITIAL_QUERY_WORK)) as QueryExecutionResult.Qualified
         val checkpoint = (first.continuation as QueryContinuationState.Resumable).checkpoint as PipelineCheckpoint
         val before = checkpoint.impact!!
         s.canceled = true
@@ -205,7 +210,7 @@ class QueryLocalBindingAdverseTest {
     @Test
     fun `epoch movement rejects the checkpoint before any additional enumeration`() = runTest {
         val s = ScanFixture(destinationExpected = false)
-        val first = s.service.run(s.f.request(work = 5)) as QueryExecutionResult.Qualified
+        val first = s.service.run(s.f.request(work = INITIAL_QUERY_WORK)) as QueryExecutionResult.Qualified
         val checkpoint = (first.continuation as QueryContinuationState.Resumable).checkpoint
         val foreign = QueryImpactExecutionFixture(generation = 2)
         assertEquals(
@@ -219,7 +224,7 @@ class QueryLocalBindingAdverseTest {
     @Test
     fun `insufficient retention terminates through the existing checkpoint owner`() = runTest {
         val s = ScanFixture(destinationExpected = false)
-        val first = s.service.run(s.f.request(work = 5)) as QueryExecutionResult.Qualified
+        val first = s.service.run(s.f.request(work = INITIAL_QUERY_WORK)) as QueryExecutionResult.Qualified
         val checkpoint = (first.continuation as QueryContinuationState.Resumable).checkpoint
         val result =
             s.service.run(s.f.request(checkpoint = checkpoint, checkpointBytes = 1)) as QueryExecutionResult.Qualified
@@ -228,6 +233,14 @@ class QueryLocalBindingAdverseTest {
         val paths = (result.result.rows as QueryRows.ValuePaths).values
         assertTrue(paths.single().terminal is QueryImpactTerminal.Unresolved.ExecutionStop)
         s.native.assertConsumed()
+    }
+
+    private companion object {
+        // Two route visits, one producer read, one child route, then the original four-unit scanner grant.
+        const val INITIAL_QUERY_WORK = 2L + 1L + 1L + 4L
+        // A cached route visit precedes each original native allowance.
+        const val AUTHORITY_QUERY_WORK = 1L + 20L
+        const val RETRY_QUERY_WORK = 1L + 2L
     }
 
     private class ScanFixture(destinationExpected: Boolean = true) {

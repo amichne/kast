@@ -139,7 +139,8 @@ class QueryImpactExecutionTest {
                 )
             )
         val service = f.service(native.port)
-        val first = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(f.request(work = 3)))
+        // One route visit leaves the original three-unit native grant.
+        val first = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(f.request(work = 1 + 3)))
         assertEquals(listOf(a), native.examined)
         assertEquals(emptyList<QueryImpactPath>(), (first.result.rows as QueryRows.ValuePaths).values)
         assertEquals(
@@ -152,41 +153,18 @@ class QueryImpactExecutionTest {
                 PipelineCheckpoint::class.java,
                 (first.continuation as QueryContinuationState.Resumable).checkpoint,
             )
+        assertEquals(3L, native.grants.single().resources.workUnitLimit.value)
         assertRetainedNativePrefix(f, checkpoint, native.grants.single())
         val last =
             assertInstanceOf(
                 QueryExecutionResult.Complete::class.java,
-                service.run(f.request(work = 3, checkpoint = checkpoint)),
+                // Cached parent visit, child creation, and child visit leave the original native grant.
+                service.run(f.request(work = 1 + 1 + 1 + 3, checkpoint = checkpoint)),
             )
         assertEquals(b, (last.result.rows as QueryRows.ValuePaths).values.single().destination)
         assertEquals(listOf(a, b), native.examined)
         assertEquals(listOf(3L, 3L), native.grants.map { it.resources.workUnitLimit.value })
         native.assertConsumed()
-    }
-
-    private fun assertRetainedNativePrefix(
-        fixture: QueryImpactExecutionFixture,
-        checkpoint: PipelineCheckpoint,
-        grant: RelationBudget,
-    ) {
-        val producer = fixture.producer.site
-        assertSame(fixture.plan, checkpoint.plan)
-        assertSame(fixture.lease, checkpoint.lease)
-        val saved = assertInstanceOf(QueryImpactSnapshot::class.java, checkpoint.impact)
-        assertEquals(null, saved.ledger)
-        assertEquals(emptyList<QueryImpactPath>(), saved.paths)
-        assertEquals(setOf(producer), saved.reads.keys)
-        val observed = assertInstanceOf(ValueFlowRead.Observed::class.java, saved.reads[producer])
-        assertEquals(producer, observed.step.source)
-        assertEquals(3L, observed.step.examinedWorkUnits.value)
-        assertEquals(grant, observed.step.domain.budget)
-        val pending = assertInstanceOf(PipelineTask.ImpactExplore::class.java, checkpoint.tasks.first())
-        assertEquals(producer, pending.route.producer)
-        assertEquals(
-            listOf(observed.step.transfers.single()),
-            pending.route.steps.map { (it as QueryImpactStep.Compiler).transfer },
-        )
-        assertEquals(listOf(pending, PipelineTask.ImpactFinalize), checkpoint.tasks)
     }
 
     @Test
@@ -216,12 +194,21 @@ class QueryImpactExecutionTest {
         var count = 0
         val service =
             f.service(
-                ValueFlowCompilerPort {
+                ValueFlowCompilerPort { request ->
                     count++
+                    assertEquals(3L, request.budget.resources.workUnitLimit.value)
                     ValueFlowRead.Rejected(ValueFlowRejection.AUTHORITY_MOVED, RelationWorkCount.parse(3).value())
                 }
             )
-        val result = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(f.request(work = 3)))
+        // One route visit leaves the original three-unit native grant and no terminal allowance.
+        val first = assertInstanceOf(QueryExecutionResult.Qualified::class.java, service.run(f.request(work = 1 + 3)))
+        assertTrue((first.result.rows as QueryRows.ValuePaths).values.isEmpty())
+        val checkpoint = (first.continuation as QueryContinuationState.Resumable).checkpoint
+        val result =
+            assertInstanceOf(
+                QueryExecutionResult.Qualified::class.java,
+                service.run(f.request(work = 1 + 1, checkpoint = checkpoint)),
+            )
         val rows = result.result.rows as QueryRows.ValuePaths
         val ledger = (rows.accounting as QueryValuePathAccounting.Investigated).ledger
         assertEquals(emptyList<ValueFlowStep>(), ledger.observations)
@@ -272,8 +259,9 @@ class QueryImpactExecutionTest {
         val result =
             assertInstanceOf(
                 QueryExecutionResult.Qualified::class.java,
-                f.service(native.port).run(f.request(work = 1)),
+                f.service(native.port).run(f.request(work = 1 + 1)),
             )
+        assertEquals(1L, native.grants.single().resources.workUnitLimit.value)
         val checkpoint = (result.continuation as QueryContinuationState.Resumable).checkpoint
         val other = QueryImpactExecutionFixture(generation = 2)
         assertEquals(
@@ -349,6 +337,30 @@ class QueryImpactExecutionTest {
         assertEquals(2L, rejection.examinedWorkUnits.value)
         native.assertConsumed()
     }
+}
+
+private fun assertRetainedNativePrefix(
+    fixture: QueryImpactExecutionFixture,
+    checkpoint: PipelineCheckpoint,
+    grant: RelationBudget,
+) {
+    val producer = fixture.producer.site
+    assertSame(fixture.plan, checkpoint.plan)
+    assertSame(fixture.lease, checkpoint.lease)
+    val saved = assertInstanceOf(QueryImpactSnapshot::class.java, checkpoint.impact)
+    assertEquals(null, saved.ledger)
+    assertEquals(emptyList<QueryImpactPath>(), saved.paths)
+    assertEquals(setOf(producer), saved.reads.keys)
+    val observed = assertInstanceOf(ValueFlowRead.Observed::class.java, saved.reads[producer])
+    assertEquals(producer, observed.step.source)
+    assertEquals(3L, observed.step.examinedWorkUnits.value)
+    assertEquals(grant, observed.step.domain.budget)
+    val pending = assertInstanceOf(PipelineTask.ImpactExplore::class.java, checkpoint.tasks.first())
+    assertEquals(producer, pending.route.producer)
+    assertEquals(1, observed.step.transfers.size)
+    assertEquals(producer, pending.route.site)
+    assertTrue(pending.route.steps.isEmpty(), "Unpaid expansion keeps the parent pending")
+    assertEquals(listOf(pending, PipelineTask.ImpactFinalize), checkpoint.tasks)
 }
 
 private fun <V> Refinement<V, *>.value(): V = (this as Refinement.Refined).value

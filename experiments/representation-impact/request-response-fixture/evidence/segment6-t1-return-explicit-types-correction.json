@@ -1,0 +1,14 @@
+{
+  "classification": "FIXTURE_POLICY_SETUP_FAILURE_NO_ASSERTIONS",
+  "old_source_sha256": "449cc8a53af0fd6f68db0f62d6d75ecae3cef2236f2f6a075970833714a5e267",
+  "new_source_sha256": "a6f2e89a4a81c3c9c8ceb7166601a13f07d969cc2c54454f7f902256e2947ad7",
+  "change": "Two explicit Unit return types match ReadAction.compute<Unit,RuntimeException>.",
+  "inverse_byte_identity": "PASSED",
+  "other_four_owned_hashes": "UNCHANGED",
+  "oracle_expectations": "UNCHANGED",
+  "source_layout_width120": "PASSED",
+  "gradle": "NOT_RUN",
+  "native_assertions": "NOT_RUN",
+  "receipt_sha256": "397e19068937b69b7dc4f33ce06945e3995d3b02c419b07ea94743f2d3b180e1",
+  "selector": "*NativePacketT1SeedCallbackReturnTest.testOriginalS1CombinedReturnKeepsTheIssuedHostAndActualSupplierProof"
+}

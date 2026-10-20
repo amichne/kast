@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketMatchedReturnTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T20:05:21.932Z" hostname="Austins-MacBook-Pro.local" time="1.881">
+  <properties/>
+  <testcase name="testSameTypedFieldsStayDistinctAtTheResolvedFieldRead" classname="io.github.amichne.kast.relation.intellij.NativePacketMatchedReturnTest" time="1.042"/>
+  <testcase name="testTwoMapperCallsReturnOnlyToTheirExactInvocation" classname="io.github.amichne.kast.relation.intellij.NativePacketMatchedReturnTest" time="0.839"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

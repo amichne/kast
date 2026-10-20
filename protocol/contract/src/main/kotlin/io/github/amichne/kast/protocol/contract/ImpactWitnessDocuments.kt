@@ -297,4 +297,7 @@ data class ImpactNativeReadReceiptDocument(
     val examinedWorkUnits: QueryDiscoveryCountDocument,
     val returnedResults: QueryDiscoveryCountDocument,
     val returnedBytes: QueryDiscoveryCountDocument,
+    @EncodeDefault
+    @ProtocolCollectionConstraint(maximumItems = IMPACT_KNOWN_DECLARATIONS_MAX_SIZE)
+    val knownDeclarations: BoundedProtocolList<ImpactKnownDeclarationDocument> = emptyKnownDeclarations(),
 )

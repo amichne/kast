@@ -10,6 +10,7 @@ import io.github.amichne.kast.relation.contract.CallbackInvocationFlowFailure
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowRead
 import io.github.amichne.kast.relation.contract.CallbackInvocationScan
 import io.github.amichne.kast.relation.contract.CallbackParameterInvocation
+import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueCallBindingFailure
 import io.github.amichne.kast.relation.contract.ValueCallFrame
 import io.github.amichne.kast.relation.contract.ValueCallStack
@@ -17,9 +18,11 @@ import io.github.amichne.kast.relation.contract.ValueExecutionBody
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
+import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.relation.contract.ValueSourceOperation
 import io.github.amichne.kast.relation.contract.ValueTransfer
 import io.github.amichne.kast.relation.contract.ValueTransferKind
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
@@ -67,10 +70,11 @@ internal class NativeValueSeedCallbackReturn(
                     admitWork = { allowance.admitCallbackWork(request.budget.resources) },
                     summaries = CallbackParameterSummaries(request.budget, projection.observation),
                     callbackExpiry = ::expiry,
+                    retainedHost = supplier.host,
                 )
         ) {
             is CallbackInvocationFlowRead.Observed ->
-                observed(body = body, supplier = supplier, flow = read.flow, permit = permit, consume = consume)
+                observed(body = body, supplier = supplier.frame, flow = read.flow, permit = permit, consume = consume)
             is CallbackInvocationFlowRead.Unavailable ->
                 consume(NativeValueReturnEffect.CallbackUnavailable(read.cause))
             is CallbackInvocationFlowRead.ContractRejected ->
@@ -80,7 +84,9 @@ internal class NativeValueSeedCallbackReturn(
         }
     }
 
-    private fun supplier(body: NativeCallbackReturnBody): Refinement<ValueCallFrame, NativeValueReturnEffect> {
+    private fun supplier(
+        body: NativeCallbackReturnBody
+    ): Refinement<NativeSeedCallbackReturnSupplier, NativeValueReturnEffect> {
         val supply =
             when (val value = explicitSupply(body)) {
                 is Refinement.Refined -> value.value
@@ -100,6 +106,11 @@ internal class NativeValueSeedCallbackReturn(
                 is IntellijRelationSubjectLookup.Found -> value
                 is IntellijRelationSubjectLookup.Rejected -> return unsupportedSupply()
             }
+        val currentHost =
+            when (val current = RevalidatedRelationEndpoint.validate(source.enclosing, host.evidence)) {
+                is Refinement.Refined -> current.value
+                is Refinement.Rejected -> return unsupportedSupply()
+            }
         val invocation =
             when (
                 val value =
@@ -114,7 +125,7 @@ internal class NativeValueSeedCallbackReturn(
         return when (
             val frame = ValueCallFrame.direct(invocation, ValueExecutionOwner.declaration(invocation.callable))
         ) {
-            is Refinement.Refined -> frame
+            is Refinement.Refined -> Refinement.Refined(NativeSeedCallbackReturnSupplier(frame.value, currentHost))
             is Refinement.Rejected -> unsupportedSupply()
         }
     }
@@ -156,7 +167,7 @@ internal class NativeValueSeedCallbackReturn(
         return when (val binding = flow.binding) {
             is CallbackBindingEvidence.Bound -> {
                 val bound = ValueCallFrame.direct(binding.binding.invocation, supplier.callee)
-                if (bound !is Refinement.Refined || !bound.value.hasSameDirectProofAs(supplier))
+                if (bound !is Refinement.Refined || !sameSupplierProof(bound.value, supplier))
                     consume(unsupportedSeedReturn())
                 else returns(supplier, flow, permit, consume)
             }
@@ -169,6 +180,35 @@ internal class NativeValueSeedCallbackReturn(
                 (flow.obligations + CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY).all {
                     consume(NativeValueReturnEffect.CallbackUnavailable(it))
                 }
+        }
+    }
+
+    private fun sameSupplierProof(actual: ValueCallFrame, expected: ValueCallFrame): Boolean {
+        val matched = actual.hasSameDirectProofAs(expected)
+        projection.observation.count(
+            if (matched) IntellijReadCounter.VALUE_FLOW_SEED_CALLBACK_SUPPLIER_MATCHED
+            else IntellijReadCounter.VALUE_FLOW_SEED_CALLBACK_SUPPLIER_MISMATCH
+        )
+        if (!matched) recordSupplierMismatch(actual, expected)
+        return matched
+    }
+
+    private fun recordSupplierMismatch(actual: ValueCallFrame, expected: ValueCallFrame) {
+        val first = actual.invocation as? ValueInvocation ?: return
+        val second = expected.invocation as? ValueInvocation ?: return
+        if (
+            first.enclosing.scope != second.enclosing.scope ||
+                first.callable.scope != second.callable.scope ||
+                first.executionOwner.enclosing.scope != second.executionOwner.enclosing.scope
+        ) {
+            projection.observation.count(IntellijReadCounter.VALUE_FLOW_SEED_CALLBACK_SUPPLIER_SCOPE_MISMATCH)
+        }
+        if (
+            first.enclosing.constraints != second.enclosing.constraints ||
+                first.callable.constraints != second.callable.constraints ||
+                first.executionOwner.enclosing.constraints != second.executionOwner.enclosing.constraints
+        ) {
+            projection.observation.count(IntellijReadCounter.VALUE_FLOW_SEED_CALLBACK_SUPPLIER_CONSTRAINTS_MISMATCH)
         }
     }
 
@@ -261,6 +301,11 @@ internal class NativeValueSeedCallbackReturn(
         if (allowance.elapsedLimitReached(request.budget.resources)) CallbackExpiryAdmission.EXPIRED
         else CallbackExpiryAdmission.CURRENT
 }
+
+private data class NativeSeedCallbackReturnSupplier(
+    val frame: ValueCallFrame,
+    val host: RevalidatedRelationEndpoint,
+)
 
 private fun unsupportedSeedReturn(cause: ValueFlowUnsupportedCause = ValueFlowUnsupportedCause.UNSUPPORTED_RETURN) =
     NativeValueReturnEffect.Transfer(Refinement.Rejected(cause))

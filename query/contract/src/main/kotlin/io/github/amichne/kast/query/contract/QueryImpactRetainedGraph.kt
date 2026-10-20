@@ -5,8 +5,10 @@ import io.github.amichne.kast.relation.contract.LocalBindingReadRemainder
 import io.github.amichne.kast.relation.contract.RelationProviderRetainedGraph
 import io.github.amichne.kast.relation.contract.RelationProviderState
 import io.github.amichne.kast.relation.contract.RepresentationRule
+import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowWorkReceipt
+import io.github.amichne.kast.relation.contract.ValueKnownDeclarations
 import io.github.amichne.kast.relation.contract.ValueSite
 import java.util.IdentityHashMap
 
@@ -68,6 +70,10 @@ class QueryImpactRetainedGraph private constructor(private val parent: QueryImpa
 
     fun source(value: QueryImpactSource): Long = value.storageBytes(this).scaledStorage()
 
+    fun knownDeclarations(value: ValueKnownDeclarations): Long = value.storageBytes(this).scaledStorage()
+
+    fun knownDeclaration(value: RevalidatedRelationEndpoint): Long = value.storageBytes(this).scaledStorage()
+
     fun ledger(value: QueryImpactLedger): Long = value.storageBytes(this).scaledStorage()
 
     fun route(producer: ValueSite, steps: List<QueryImpactStep>, representation: QueryImpactRepresentation): Long =
@@ -113,7 +119,9 @@ class QueryImpactRetainedGraph private constructor(private val parent: QueryImpa
     fun receipts(values: List<ValueFlowWorkReceipt>): Long = receiptStorage(values).scaledStorage()
 
     internal fun receiptStorage(values: List<ValueFlowWorkReceipt>): Long =
-        collection(values) { node(it) { it.domain.storageBytes(this) } }
+        collection(values) {
+            node(it) { it.domain.storageBytes(this).saturatedAdd(it.knownDeclarations.storageBytes(this)) }
+        }
 
     fun step(value: QueryImpactStep): Long = value.storageBytes(this).scaledStorage()
 

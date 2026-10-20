@@ -141,6 +141,10 @@ class QueryImpactPeerCanonicalRetentionTest {
             attempts += input.source
             assertEquals(1, attempts.size, "No peer or replay flow call is permitted")
             assertEquals(f.source.owner.lease, input.source.enclosing.lease)
+            assertEquals(1, input.knownDeclarations.declarations.size)
+            val known = input.knownDeclarations.declarations.single().endpoint
+            assertEquals(f.source.owner.fingerprint, known.fingerprint)
+            assertTrue(f.source.owner.hasSameProofAs(known))
             val obligation = ValueFlowObligation(input.source, ValueFlowUnsupportedCause.UNMODELED_CALL)
             val selector = SymbolSelector.issue(f.source.owner.lease, f.source.owner.scope, f.source.owner.evidence)
             val domain = RelationRequest.start(selector, RelationMeaning.References, input.budget, input.boundary)
@@ -152,6 +156,7 @@ class QueryImpactPeerCanonicalRetentionTest {
                         ValueFlowTerminal.Unresolved,
                         domain,
                         RelationWorkCount.parse(1).value(),
+                        knownDeclarations = input.knownDeclarations,
                     )
                     .value()
             )

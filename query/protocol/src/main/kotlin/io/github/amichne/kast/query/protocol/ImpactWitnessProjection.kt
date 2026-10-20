@@ -213,7 +213,13 @@ private fun ValueFlowWorkReceipt.receiptDocument(): ImpactProjected<ImpactNative
         .impactDocument()
         .impactZip(count(examinedWorkUnits.value))
         .impactZip(count(returnedResults.value))
-        .impactZip(count(returnedBytes.value))
-        .impactMap { (counts, bytes) ->
-            ImpactNativeReadReceiptDocument(counts.first.first, counts.first.second, counts.second, bytes)
+        .impactZip(count(returnedBytes.value).impactZip(knownDeclarations.knownDeclarationDocuments()))
+        .impactMap { (counts, evidence) ->
+            ImpactNativeReadReceiptDocument(
+                counts.first.first,
+                counts.first.second,
+                counts.second,
+                evidence.first,
+                evidence.second,
+            )
         }

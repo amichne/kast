@@ -24,7 +24,7 @@ internal fun ImpactWitnessDocument.hasSourceBasis(basis: ImpactSemanticBasisDocu
 
 private fun BoundedProtocolList<ImpactNativeReadReceiptDocument>.hasSourceBasis(
     basis: ImpactSemanticBasisDocument
-): Boolean = values.all { it.domain.subject.basis == basis }
+): Boolean = values.all { it.domain.subject.basis == basis && it.knownDeclarations.admitsKnownDeclarations(basis) }
 
 private fun ImpactFindingDocument.hasSourceBasis(basis: ImpactSemanticBasisDocument): Boolean =
     producer.isOnBasis(basis) &&

@@ -7,7 +7,8 @@ internal fun QueryRunResult.validatePeerEvidence(): Refinement<Unit, ImpactAccou
     val basis = accounting.seeds.values.firstOrNull()?.enclosing?.basis ?: return Refinement.Refined(Unit)
     if (
         accounting.seeds.values.any { !it.isOnBasis(basis) } ||
-            accounting.requestedSites.values.any { !it.isOnBasis(basis) }
+            accounting.requestedSites.values.any { !it.isOnBasis(basis) } ||
+            !accounting.knownDeclarations.admitsKnownDeclarations(basis)
     )
         return Refinement.Rejected(ImpactAccountingFailure.WITNESS_VIEW_MISMATCH)
     val valid =
@@ -18,7 +19,8 @@ internal fun QueryRunResult.validatePeerEvidence(): Refinement<Unit, ImpactAccou
                         item.path.terminal.hasRequiredPeerClosure(accounting.status) &&
                         question.declaresPeerPath(item.path)
                 is QueryResultItemDocument.ImpactWitness ->
-                    item.item.witness.hasValidPeerEvidence(basis, accounting.status, question)
+                    item.item.witness.hasValidPeerEvidence(basis, accounting.status, question) &&
+                        item.item.witness.hasKnownDeclarations(accounting.knownDeclarations)
                 else -> true
             }
         }

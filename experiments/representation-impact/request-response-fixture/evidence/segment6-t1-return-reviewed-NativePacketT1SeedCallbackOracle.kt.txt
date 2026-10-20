@@ -1,0 +1,126 @@
+package io.github.amichne.kast.runtime.hosted
+
+import io.github.amichne.kast.relation.contract.CallbackBindingEvidence
+import io.github.amichne.kast.relation.contract.CallbackInvocationFlow
+import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.relation.contract.ValueCallStack
+import io.github.amichne.kast.relation.contract.ValueCallbackTarget
+import io.github.amichne.kast.relation.contract.ValueExecutionBody
+import io.github.amichne.kast.relation.contract.ValueFlowRead
+import io.github.amichne.kast.relation.contract.ValueFlowRequest
+import io.github.amichne.kast.relation.contract.ValueFunctionInvocation
+import io.github.amichne.kast.relation.contract.ValueInvocation
+import io.github.amichne.kast.relation.contract.ValueRole
+import io.github.amichne.kast.relation.contract.ValueSourceOperation
+import io.github.amichne.kast.relation.contract.ValueSourceTransfer
+import io.github.amichne.kast.relation.contract.ValueTransferEvidence
+import io.github.amichne.kast.relation.contract.ValueTransferKind
+import io.github.amichne.kast.symbol.contract.SymbolSourceKindPolicy
+import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertFalse
+import junit.framework.TestCase.assertTrue
+
+/** A fresh expansion view does not replace the original issued host proof. */
+internal class NativePacketT1SeedCallbackOracle(private val issued: RelationEndpoint) {
+    fun assertSourceFacts(request: ValueFlowRequest, flow: CallbackInvocationFlow) {
+        val source = request.source
+        assertTrue(source.enclosing.hasSameProofAs(issued))
+        assertTrue(source.executionOwner.enclosing.hasSameProofAs(issued))
+        assertEquals(SymbolSourceKindPolicy.PRODUCTION_ONLY, issued.scope.sourceKinds)
+        assertEquals(ValueRole.Return, source.role)
+        assertEquals(ValueCallStack.Empty, source.callStack)
+        val body = source.executionOwner.body as ValueExecutionBody.Anonymous
+        assertEquals(body.callable, flow.body)
+        val supplied = (flow.binding as CallbackBindingEvidence.Bound).binding.invocation
+        assertEquals(SUPPLIER_START, supplied.range.startInclusive)
+        assertEquals(SUPPLIER_END, supplied.range.endExclusive)
+        val fresh = supplied.enclosing
+        val question =
+            RelationRequest.start(
+                subject = source.enclosing,
+                meaning = requestMeaning(),
+                budget = request.budget,
+                boundary = request.boundary,
+            )
+        assertEquals(question.searchScope, fresh.scope)
+        assertEquals(question.searchConstraints, fresh.constraints)
+        assertEquals(SymbolSourceKindPolicy.PRODUCTION_AND_TEST, fresh.scope.sourceKinds)
+        assertFalse("The actual fresh combined host is a distinct full proof", issued.hasSameProofAs(fresh))
+        assertTrue(
+            "The independent callback proof needs its actual builtin occurrence before scope-transport assessment",
+            flow.invocations.any { selected ->
+                selected.occurrence.range.startInclusive == BUILTIN_START &&
+                    selected.occurrence.range.endExclusive == BUILTIN_END
+            },
+        )
+        assertDeclarationDimensions(fresh)
+        recordDimensions(fresh)
+    }
+
+    fun assertScopeTransport(request: ValueFlowRequest, read: ValueFlowRead) {
+        val step = (read as? ValueFlowRead.Observed)?.step
+        val selected = step?.transfers.orEmpty().filter { it.kind == ValueTransferKind.SOURCE_CALL_RETURN }
+        assertEquals(
+            "Original T1 scope transport needs its actual anonymous return to builtin872:897 while keeping " +
+                "the issued host. Causes=${step?.obligations?.map { it.cause }} read=${read::class.simpleName}",
+            1,
+            selected.size,
+        )
+        val transfer = selected.single()
+        val evidence = (transfer.evidence as? ValueTransferEvidence.Guarded)?.delegate ?: transfer.evidence
+        val operation = (evidence as ValueSourceTransfer).operation as ValueSourceOperation.SeedCallbackReturn
+        val proof = operation.frame.target as ValueCallbackTarget
+        val invocation = operation.frame.invocation as ValueFunctionInvocation
+        assertEquals(request.source, transfer.source)
+        assertEquals(BUILTIN_START, transfer.target.range.startInclusive)
+        assertEquals(BUILTIN_END, transfer.target.range.endExclusive)
+        assertEquals(ValueRole.ExpressionResult, transfer.target.role)
+        assertEquals(request.source.valuePath, transfer.target.valuePath)
+        assertEquals(request.source.predicates, transfer.target.predicates)
+        assertTrue(operation.frame.callee.hasSameProofAs(request.source.executionOwner))
+        assertEquals(1, transfer.target.callStack.frames.size)
+        val supplier = transfer.target.callStack.frames.single()
+        assertTrue(supplier.hasSameDirectProofAs(proof.supplyingFrame))
+        assertTrue((supplier.invocation as ValueInvocation).enclosing.hasSameProofAs(issued))
+        val bound = (proof.flow.binding as CallbackBindingEvidence.Bound).binding.invocation
+        assertTrue(bound.enclosing.hasSameProofAs(issued))
+        assertTrue(invocation.executionOwner.hasSameProofAs(supplier.callee))
+        assertEquals(invocation.range, proof.selected.occurrence.range)
+        assertEquals("kotlin.Function1.invoke", invocation.signature.qualifiedIdentity.value)
+        assertTrue(checkNotNull(step).applications.isEmpty())
+    }
+
+    private fun assertDeclarationDimensions(fresh: RelationEndpoint) {
+        assertEquals(issued.lease, fresh.lease)
+        assertEquals(issued.file, fresh.file)
+        assertEquals(issued.range, fresh.range)
+        assertEquals(issued.name, fresh.name)
+        assertEquals(issued.qualifiedIdentity, fresh.qualifiedIdentity)
+        assertEquals(issued.kind, fresh.kind)
+        assertEquals(issued.signature, fresh.signature)
+        assertEquals(issued.compilerIdentity, fresh.compilerIdentity)
+    }
+
+    private fun recordDimensions(fresh: RelationEndpoint) {
+        println(
+            "T1_RETURN_HOST lease=${issued.lease == fresh.lease} scope=${issued.scope == fresh.scope} " +
+                "constraints=${issued.constraints == fresh.constraints} file=${issued.file == fresh.file} " +
+                "range=${issued.range == fresh.range} name=${issued.name == fresh.name} " +
+                "qualified=${issued.qualifiedIdentity == fresh.qualifiedIdentity} kind=${issued.kind == fresh.kind} " +
+                "signature=${issued.signature == fresh.signature} " +
+                "compiler=${issued.compilerIdentity == fresh.compilerIdentity}"
+        )
+        println("T1_RETURN_HOST_SCOPE issued=${issued.scope} fresh=${fresh.scope}")
+        println("T1_RETURN_HOST_CONSTRAINTS issued=${issued.constraints} fresh=${fresh.constraints}")
+    }
+
+    private fun requestMeaning() = io.github.amichne.kast.relation.contract.RelationMeaning.Callees
+
+    private companion object {
+        const val SUPPLIER_START = 658
+        const val SUPPLIER_END = 1063
+        const val BUILTIN_START = 872
+        const val BUILTIN_END = 897
+    }
+}

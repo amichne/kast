@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.intellij.NativePacketS3SeedCallbackTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-20T20:05:23.813Z" hostname="Austins-MacBook-Pro.local" time="3.129">
+  <properties/>
+  <testcase name="testOriginalLogArgumentNeverEntersTheDifferentActualMapSupplierBody" classname="io.github.amichne.kast.relation.intellij.NativePacketS3SeedCallbackTest" time="0.823"/>
+  <testcase name="testOriginalLogArgumentNeverSelectsTheDifferentActualTransformInvocation" classname="io.github.amichne.kast.relation.intellij.NativePacketS3SeedCallbackTest" time="0.799"/>
+  <testcase name="testOriginalEmptyStackLogArgumentEntersItsActualSuppliedImplicitFormal" classname="io.github.amichne.kast.relation.intellij.NativePacketS3SeedCallbackTest" time="0.781"/>
+  <testcase name="testSourceScopeExclusionCannotInventTheKnownClientSupplier" classname="io.github.amichne.kast.relation.intellij.NativePacketS3SeedCallbackTest" time="0.725"/>
+  <system-out><![CDATA[S3_PREFIX_K2 seed=761:768 property=594:642 builtin=Function0.invoke source_alias=ACTUAL_RESULT_LOCAL
+S3_SEED_CALLBACK_K2 seed=761:768 actual=ExactDeclarationTextRange(startInclusive=793, endExclusive=799) stack=EMPTY invoke=ExactDeclarationTextRange(startInclusive=789, endExclusive=800) caller=ExactDeclarationTextRange(startInclusive=769, endExclusive=954) supplier=ExactDeclarationTextRange(startInclusive=925, endExclusive=943) formal=ACTUAL_IMPLICIT_0 wrongSupplier=ExactDeclarationTextRange(startInclusive=959, endExclusive=989) wrongInvocation=ExactDeclarationTextRange(startInclusive=383, endExclusive=399)
+S3_PREFIX_K2 seed=761:768 property=594:642 builtin=Function0.invoke source_alias=ACTUAL_RESULT_LOCAL
+S3_SEED_CALLBACK_K2 seed=761:768 actual=ExactDeclarationTextRange(startInclusive=793, endExclusive=799) stack=EMPTY invoke=ExactDeclarationTextRange(startInclusive=789, endExclusive=800) caller=ExactDeclarationTextRange(startInclusive=769, endExclusive=954) supplier=ExactDeclarationTextRange(startInclusive=925, endExclusive=943) formal=ACTUAL_IMPLICIT_0 wrongSupplier=ExactDeclarationTextRange(startInclusive=959, endExclusive=989) wrongInvocation=ExactDeclarationTextRange(startInclusive=383, endExclusive=399)
+S3_PREFIX_K2 seed=761:768 property=594:642 builtin=Function0.invoke source_alias=ACTUAL_RESULT_LOCAL
+S3_SEED_CALLBACK_K2 seed=761:768 actual=ExactDeclarationTextRange(startInclusive=793, endExclusive=799) stack=EMPTY invoke=ExactDeclarationTextRange(startInclusive=789, endExclusive=800) caller=ExactDeclarationTextRange(startInclusive=769, endExclusive=954) supplier=ExactDeclarationTextRange(startInclusive=925, endExclusive=943) formal=ACTUAL_IMPLICIT_0 wrongSupplier=ExactDeclarationTextRange(startInclusive=959, endExclusive=989) wrongInvocation=ExactDeclarationTextRange(startInclusive=383, endExclusive=399)
+S3_PREFIX_K2 seed=761:768 property=594:642 builtin=Function0.invoke source_alias=ACTUAL_RESULT_LOCAL
+S3_SEED_CALLBACK_K2 seed=761:768 actual=ExactDeclarationTextRange(startInclusive=793, endExclusive=799) stack=EMPTY invoke=ExactDeclarationTextRange(startInclusive=789, endExclusive=800) caller=ExactDeclarationTextRange(startInclusive=769, endExclusive=954) supplier=ExactDeclarationTextRange(startInclusive=925, endExclusive=943) formal=ACTUAL_IMPLICIT_0 wrongSupplier=ExactDeclarationTextRange(startInclusive=959, endExclusive=989) wrongInvocation=ExactDeclarationTextRange(startInclusive=383, endExclusive=399)
+S3_SEED_CALLBACK_SCOPE known_supplier=EXCLUDED claim=NO_EMITTED_WITNESS completion=NOT_ASSERTED
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

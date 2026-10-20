@@ -110,9 +110,17 @@ private constructor(
     val examinedWorkUnits: RelationWorkCount,
     val receipts: List<ValueFlowWorkReceipt>,
     val applications: List<ValueModelApplication>,
+    val knownDeclarations: ValueKnownDeclarations,
 ) {
     val retainedBytes: Long =
-        detachedByteCount(source, domain, transfers, obligations, applications = applications)
+        detachedByteCount(
+                source,
+                domain,
+                transfers,
+                obligations,
+                applications = applications,
+                knownDeclarations = knownDeclarations,
+            )
             .value
             .addBytes((receipts.size - 1L).multiplyBytes(4096L))
 
@@ -120,7 +128,15 @@ private constructor(
         when (
             val count =
                 RelationByteCount.parse(
-                    detachedByteCount(source, domain, transfers, obligations, remainder, applications)
+                    detachedByteCount(
+                            source,
+                            domain,
+                            transfers,
+                            obligations,
+                            remainder,
+                            applications,
+                            knownDeclarations,
+                        )
                         .value
                         .addBytes((receipts.size - 1L).multiplyBytes(4096L))
                 )
@@ -154,6 +170,7 @@ private constructor(
                 examinedWorkUnits,
                 receipts,
                 if (sharedApplications.isEmpty()) emptyList() else Collections.unmodifiableList(sharedApplications),
+                knownDeclarations,
             )
         return if (candidate.retainedBytes <= retainedBytes) candidate else this
     }
@@ -163,16 +180,13 @@ private constructor(
         if (terminal != ValueFlowTerminal.ResourceSuspended || page.receipts.size != 1)
             return Refinement.Rejected(ValueFlowStepFailure.INVALID_PROGRESS)
         if (page.source != source) return Refinement.Rejected(ValueFlowStepFailure.SOURCE_MISMATCH)
-        if (page.domain.boundary != domain.boundary) return Refinement.Rejected(ValueFlowStepFailure.DOMAIN_MISMATCH)
+        if (page.domain.boundary != domain.boundary || !knownDeclarations.hasSameProofAs(page.knownDeclarations))
+            return Refinement.Rejected(ValueFlowStepFailure.DOMAIN_MISMATCH)
         if (page.transfers.any { it in transfers }) return Refinement.Rejected(ValueFlowStepFailure.INVALID_PROGRESS)
         if (page.applications.any { it in applications })
             return Refinement.Rejected(ValueFlowStepFailure.INVALID_PROGRESS)
         val allReceipts = Collections.unmodifiableList(receipts + page.receipts)
-        val work =
-            allReceipts.fold(0L) { total, receipt ->
-                if (receipt.examinedWorkUnits.value > Long.MAX_VALUE - total) Long.MAX_VALUE
-                else total + receipt.examinedWorkUnits.value
-            }
+        val work = allReceipts.totalExaminedValueFlowWork()
         val allObligations = (obligations + page.obligations).distinct()
         val end =
             if (page.terminal == ValueFlowTerminal.ResourceSuspended) page.terminal
@@ -188,6 +202,7 @@ private constructor(
                 (RelationWorkCount.parse(work) as Refinement.Refined).value,
                 allReceipts,
                 immutableApplications(applications, page.applications),
+                knownDeclarations,
             )
         )
     }
@@ -201,7 +216,9 @@ private constructor(
             obligations: List<ValueFlowObligation>,
             remainder: LocalBindingReadRemainder? = null,
             applications: List<ValueModelApplication> = emptyList(),
-        ): RelationByteCount = valueFlowStorageBytes(source, domain, transfers, obligations, remainder, applications)
+            knownDeclarations: ValueKnownDeclarations = ValueKnownDeclarations.Empty,
+        ): RelationByteCount =
+            valueFlowStorageBytes(source, domain, transfers, obligations, remainder, applications, knownDeclarations)
 
         fun fromCompiler(
             source: ValueSite,
@@ -212,7 +229,10 @@ private constructor(
             examinedWorkUnits: RelationWorkCount,
             remainder: LocalBindingReadRemainder? = null,
             applications: List<ValueModelApplication> = emptyList(),
+            knownDeclarations: ValueKnownDeclarations = ValueKnownDeclarations.Empty,
         ): Refinement<ValueFlowStep, ValueFlowStepFailure> {
+            if (!knownDeclarations.belongsTo(source.enclosing.lease))
+                return Refinement.Rejected(ValueFlowStepFailure.BASIS_MISMATCH)
             when (val admitted = remainder.admitValueFlow(source, domain)) {
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return admitted
@@ -225,10 +245,9 @@ private constructor(
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return admitted
             }
-            if (
-                detachedByteCount(source, domain, transfers, obligations, remainder, applications).value >
-                    domain.budget.returnedBytes.value
-            )
+            val bytes =
+                detachedByteCount(source, domain, transfers, obligations, remainder, applications, knownDeclarations)
+            if (bytes.value > domain.budget.returnedBytes.value)
                 return Refinement.Rejected(ValueFlowStepFailure.DETACHED_CAPACITY_EXCEEDED)
             if (examinedWorkUnits.value > domain.budget.resources.workUnitLimit.value)
                 return Refinement.Rejected(ValueFlowStepFailure.WORK_LIMIT_EXCEEDED)
@@ -249,14 +268,15 @@ private constructor(
                     terminal,
                     examinedWorkUnits,
                     listOf(
-                        ValueFlowWorkReceipt(
-                            domain,
+                        domain.valueFlowReceipt(
                             examinedWorkUnits,
-                            (RelationResultCount.parse(transfers.size + applications.size) as Refinement.Refined).value,
-                            detachedByteCount(source, domain, transfers, obligations, remainder, applications),
+                            transfers.size + applications.size,
+                            bytes,
+                            knownDeclarations,
                         )
                     ),
                     immutableApplications(applications),
+                    knownDeclarations,
                 )
             )
         }
@@ -326,6 +346,7 @@ data class ValueFlowRequest(
     val budget: RelationBudget,
     val boundary: RelationSearchBoundary,
     val remainder: LocalBindingReadRemainder? = null,
+    val knownDeclarations: ValueKnownDeclarations = ValueKnownDeclarations.Empty,
 )
 
 private fun ValueTransferKind.admitsRoles(source: ValueSite, target: ValueSite): Boolean =

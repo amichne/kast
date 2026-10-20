@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.amichne.kast.relation.contract.LocalBindingKnownDeclarationsAuthorityTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-10-20T21:20:16.063Z" hostname="Austins-MacBook-Pro.local" time="0.136">
+  <properties/>
+  <testcase name="foreign explicit input rejects before every traversal effect and preserves its raw receipt()" classname="io.github.amichne.kast.relation.contract.LocalBindingKnownDeclarationsAuthorityTest" time="0.107">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;1&gt; but was: &lt;2&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;1&gt; but was: &lt;2&gt;
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:673)
+	at io.github.amichne.kast.relation.contract.LocalBindingKnownDeclarationsAuthorityTest.foreign explicit input rejects before every traversal effect and preserves its raw receipt(LocalBindingKnownDeclarationsAuthorityTest.kt:15)
+</failure>
+  </testcase>
+  <testcase name="current explicit input permits the same scanner and keeps its original question()" classname="io.github.amichne.kast.relation.contract.LocalBindingKnownDeclarationsAuthorityTest" time="0.011"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
