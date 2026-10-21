@@ -10,6 +10,7 @@ import io.github.amichne.kast.protocol.contract.ImpactBoundaryRuleDocument
 import io.github.amichne.kast.protocol.contract.ImpactBoundaryTerminalDocument
 import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactEvidenceRevisionDocument
+import io.github.amichne.kast.protocol.contract.ImpactExecutionOwnerDocument
 import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactModelDocument
 import io.github.amichne.kast.protocol.contract.ImpactModelFormatDocument
@@ -58,7 +59,11 @@ class PublicImpactModelInputTest {
                 ImpactRequestedRoleDocument.PropertyAssignment to ImpactValueRoleDocument.PropertyAssignment,
                 ImpactRequestedRoleDocument.Argument(invocation, ProtocolOffset.parse(0).refined()) to
                     ImpactValueRoleDocument.Argument(
-                        ImpactInvocationReferenceDocument(invocation.range, invocation.callable),
+                        ImpactInvocationReferenceDocument(
+                            invocation.range,
+                            invocation.callable,
+                            ImpactExecutionOwnerDocument.Declaration,
+                        ),
                         ProtocolOffset.parse(0).refined(),
                     ),
             )
@@ -119,7 +124,14 @@ class PublicImpactModelInputTest {
     private fun expectedBoundaryModel(expectedRole: ImpactValueRoleDocument): ImpactModelDocument.Boundary {
         val expectedSource =
             ImpactBoundaryPositionDocument(
-                ImpactValueSiteReferenceDocument(declarationReference(), range(10, 11), expectedRole),
+                ImpactValueSiteReferenceDocument(
+                    enclosing = declarationReference(),
+                    range = range(10, 11),
+                    role = expectedRole,
+                    executionOwner = ImpactExecutionOwnerDocument.Declaration,
+                    valuePath = bounded(emptyList()),
+                    callStack = bounded(emptyList()),
+                ),
                 ImpactBoundaryKindDocument.PERSISTENCE,
                 ImpactBoundaryContractDocument(id("cache-schema"), ImpactModelVersionDocument.parse(2).refined()),
                 id("writer"),
