@@ -42,6 +42,9 @@ internal data class QueryRunResultWireDocument(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     @SerialName("presentation_output")
     val presentationOutput: io.github.amichne.kast.protocol.contract.QueryOutputDocument? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("presentation_window")
+    val presentationWindow: QueryRetainedPresentationWindowWireDocument? = null,
 )
 
 @Serializable

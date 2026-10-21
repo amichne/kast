@@ -239,9 +239,13 @@ private fun QueryRunResult.toQueryWireDocument() =
         executionBudget = executionBudget,
         referenceAcquisitions = referenceAcquisitions,
         presentationOutput = presentationOutput,
+        presentationWindow = presentationWindow?.toWireDocument(),
     )
 
 private fun QueryRunResultWireDocument.toContract(): WireDocumentConversion<QueryRunResult> =
+    toContractContent().flatMapConverted { it.withWirePresentationWindow(presentationWindow) }
+
+private fun QueryRunResultWireDocument.toContractContent(): WireDocumentConversion<QueryRunResult> =
     items.convertEach(QueryResultItemWireDocument::toContract).flatMapConverted { queryItems ->
         queryItems.bounded().flatMapConverted { boundedItems ->
             failures.convertEach(QueryItemFailureWireDocument::toContract).flatMapConverted { queryFailures ->
