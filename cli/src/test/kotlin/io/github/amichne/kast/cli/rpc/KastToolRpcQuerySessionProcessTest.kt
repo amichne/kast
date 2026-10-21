@@ -60,6 +60,9 @@ class KastToolRpcQuerySessionProcessTest {
         Files.writeString(temporary.resolve("settings.gradle.kts"), "rootProject.name = \"query-session-fixture\"")
         val stdout = temporary.resolve("stdout.jsonl")
         val stderr = temporary.resolve("stderr.txt")
+        val replies = temporary.resolve("replies.json")
+        // Validate canonical fixture output in the parent; the child owns only session and bridge composition.
+        Files.writeString(replies, QueryDeliveryFixtures.serialized())
         val command =
             listOf(
                 Path.of(System.getProperty("java.home"), "bin", "java").toString(),
@@ -69,6 +72,7 @@ class KastToolRpcQuerySessionProcessTest {
                 QuerySessionSubprocessFixture::class.java.name,
                 temporary.toString(),
                 scenario.name,
+                replies.toString(),
             )
         val process =
             ProcessBuilder(command)
@@ -78,7 +82,10 @@ class KastToolRpcQuerySessionProcessTest {
                 .start()
         try {
             process.outputStream.use { it.write(records.joinToString("\n", postfix = "\n").toByteArray()) }
-            assertTrue(process.waitFor(20, TimeUnit.SECONDS), "Bounded fixture child did not finish")
+            assertTrue(process.waitFor(20, TimeUnit.SECONDS)) {
+                "Bounded fixture child did not finish (pid=${process.pid()})\n" +
+                    "stdout:\n${Files.readString(stdout)}\nstderr:\n${Files.readString(stderr)}"
+            }
             assertEquals(0, process.exitValue(), Files.readString(stderr))
             return Files.readAllLines(stdout).map { Json.decodeFromString<ToolRpcReply>(it) }
         } finally {
@@ -93,7 +100,7 @@ internal object QuerySessionSubprocessFixture {
     fun main(args: Array<String>) {
         val root = Path.of(args[0])
         val scenario = QuerySessionFixtureScenario.valueOf(args[1])
-        val cases = Json.decodeFromString<Map<String, ToolRpcReply>>(QueryDeliveryFixtures.serialized())
+        val cases = Json.decodeFromString<Map<String, ToolRpcReply>>(Files.readString(Path.of(args[2])))
         val replies =
             when (scenario) {
                 QuerySessionFixtureScenario.QUERY -> listOf(cases.getValue("prefix"), cases.getValue("tail"))
