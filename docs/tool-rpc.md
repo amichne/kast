@@ -161,11 +161,16 @@ expire or become stale; no failed detail request silently starts another RUN.
 An optional boolean `catalog.querySession` advertises the invocation-owned `query-session`
 transport. Bundled adapters use one sequential child for the original query and its
 output drains when true; absent or false retains the one-shot path. The session admits at
-most 64 newline-delimited bounded requests. After the first request it accepts only the
-preceding reply's exact retained reference or output checkpoint. It rejects another RUN
-before execution. The child ends with the invocation; cancellation and the original
-aggregate deadline kill it and release its owned pipes. Catalog admission, per-RPC live
-authority checks and wire bounds still apply.
+most 64 newline-delimited bounded requests. Its first request can be `RUN`, `READ_RESULT`,
+`RESUME`, or `READ_SOURCE`. An initial `READ_SOURCE` emits its canonical reply and ends the child.
+
+While query output authority remains active, later requests must use the preceding reply's
+exact retained result reference or output checkpoint. Another `RUN` rejects before execution.
+A later `READ_SOURCE` rejects with `SOURCE_READ_REQUIRES_NEW_SESSION` and `START_NEW_QUERY_SESSION`.
+This session-policy rejection does not claim that its source selector is stale.
+The child ends with the invocation; cancellation and the original aggregate deadline kill
+it and release its owned pipes. Catalog admission, per-RPC live authority checks and wire
+bounds still apply.
 
 One model/tool turn can therefore require three physical RPCs. These are
 separate metrics. The byte fields count UTF-8 physical request and response bytes, including
