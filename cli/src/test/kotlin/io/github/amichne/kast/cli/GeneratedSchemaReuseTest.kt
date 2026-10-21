@@ -6,6 +6,7 @@ import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.protocol.contract.ProtocolHomogeneousCollection
 import io.github.amichne.kast.protocol.contract.ProtocolStringConstraint
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.serializer
@@ -22,6 +23,33 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class GeneratedSchemaReuseTest {
+    @Test
+    fun `output property projection preserves annotations generic shapes nullability and exact references`() {
+        val expectedProperties = expected("constrained-schema.json").jsonObject.getValue("properties").jsonObject
+        for (name in listOf("short", "long", "optional", "text", "number")) {
+            assertEquals(
+                expectedProperties.getValue(name),
+                generatedOutputPropertySchema(ConstrainedSchemaRoot.serializer(), name),
+            )
+        }
+        val references = CanonicalSchemaReferences.from(mapOf("leaf" to RepeatedSchemaLeaf.serializer()))
+        assertEquals(
+            expected("nullable-referenced-schema.json")
+                .jsonObject
+                .getValue("properties")
+                .jsonObject
+                .getValue("optional"),
+            generatedOutputPropertySchema(NullableSchemaRoot.serializer(), "optional", references),
+        )
+    }
+
+    @Test
+    fun `direct continuation projection equals the existing complete canonical output property`() {
+        val serializer = CanonicalQueryCliDocuments.qualifiedSerializer
+        val existing = generatedOutputSchema(serializer).getValue("properties").jsonObject.getValue("continuation")
+        assertEquals(existing, generatedOutputPropertySchema(serializer, "continuation"))
+    }
+
     @Test
     fun `default schema generation preserves the full independent closed shape`() {
         val schema = generatedRequestSchema(RepeatedSchemaRoot.serializer())

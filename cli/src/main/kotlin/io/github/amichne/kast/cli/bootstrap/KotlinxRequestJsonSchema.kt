@@ -48,6 +48,23 @@ internal fun generatedOutputSchema(
         allowReference = false,
     )
 
+/** Projects one output property through the same descriptor and annotation rules as a complete object. */
+internal fun generatedOutputPropertySchema(
+    serializer: KSerializer<*>,
+    propertyName: String,
+    references: CanonicalSchemaReferences = CanonicalSchemaReferences.Installed,
+): JsonObject {
+    val descriptor = serializer.descriptor
+    check(descriptor.kind == StructureKind.CLASS || descriptor.kind == StructureKind.OBJECT) {
+        "Output properties require an object descriptor"
+    }
+    val index = descriptor.getElementIndex(propertyName)
+    check(index in 0 until descriptor.elementsCount) { "Output property must exist: $propertyName" }
+    return descriptor
+        .getElementDescriptor(index)
+        .toJsonSchema(descriptor.getElementAnnotations(index), includeNullability = true, references = references)
+}
+
 /** Retains generated payload constraints while narrowing variants through the canonical hosted owner. */
 internal fun generatedHostedRequestSchema(serializer: KSerializer<*>, variants: HostedVariants): JsonObject {
     val generated = generatedRequestSchema(serializer)

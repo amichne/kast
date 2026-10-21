@@ -383,13 +383,10 @@ private fun queryTypedPropertySchema(kind: String, property: String): JsonObject
         .jsonObject
 
 private fun queryContinuationSchema(): JsonObject =
-    generatedOutputSchema(
-            io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.qualifiedSerializer
+    generatedOutputPropertySchema(
+            io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.qualifiedSerializer,
+            "continuation",
         )
-        .getValue("properties")
-        .jsonObject
-        .getValue("continuation")
-        .jsonObject
         .getValue("anyOf")
         .jsonArray
         .first()
