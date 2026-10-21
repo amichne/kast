@@ -166,7 +166,9 @@ class PublicImpactSourceContractTest {
     fun `optional requested sites preserve exact native role claims and null omission means empty universe`() {
         val target =
             ImpactRequestedValueSiteDocument(
-                declarationReference(), range(10, 20), ImpactRequestedRoleDocument.LocalRead
+                declarationReference(),
+                range(10, 20),
+                ImpactRequestedRoleDocument.LocalRead,
             )
         val argument =
             ImpactRequestedValueSiteDocument(
@@ -205,7 +207,9 @@ class PublicImpactSourceContractTest {
     fun `omitted requested universe uses empty default and unknown target role fails schema admission`() {
         val target =
             ImpactRequestedValueSiteDocument(
-                declarationReference(), range(10, 20), ImpactRequestedRoleDocument.LocalRead
+                declarationReference(),
+                range(10, 20),
+                ImpactRequestedRoleDocument.LocalRead,
             )
         val source =
             PublicToolImpactSource(
