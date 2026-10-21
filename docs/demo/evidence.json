@@ -1,0 +1,719 @@
+{
+  "version": "v0.50.2",
+  "sourceRevision": "f1ad6f4ce7b13be6a574183b2ba505149d92b581",
+  "source": {
+    "path": "relation/intellij/testData/request-response/src/main/kotlin/fixture/variants/v0/V0.kt",
+    "sha256": "75defdcdc8cb7cca72dd1991f5797ab71d8deb35acd76316813b165b5fec57a6",
+    "text": "package fixture.variants.v0\n\ndata class FeatureRequest(val destination: String)\ndata class ClientRequest(val destination: String)\ndata class WireRequest(val destination: String)\ndata class WireResponse(val link: String)\ndata class ClientResponse(val link: String)\ndata class FeatureResponse(val link: String)\n\n// External boundary: no implementation exists in any analyzable source set.\ninterface Transport {\n    fun send(request: WireRequest): WireResponse\n}\n\nclass BackendClient(private val transport: Transport) {\n    fun fetch(request: ClientRequest): ClientResponse {\n        val wireRequest = WireRequest(request.destination)\n        val wireResponse = transport.send(wireRequest)\n        return ClientResponse(wireResponse.link)\n    }\n}\n\nclass Feature(private val client: BackendClient) {\n    fun handle(request: FeatureRequest): FeatureResponse {\n        val clientRequest = ClientRequest(request.destination)\n        val clientResponse = client.fetch(clientRequest)\n        return FeatureResponse(clientResponse.link)\n    }\n}\n"
+  },
+  "scope": {
+    "variant": "V0",
+    "sourceSets": [
+      "main"
+    ],
+    "directory": "logging/src/main/kotlin/fixture/variants/v0",
+    "semantics": "KOTLIN_FORWARD_V1",
+    "completion": "COMPLETE_ONLY",
+    "authority": "COMPILER_RESOLVED_STATIC_V1",
+    "models": []
+  },
+  "audit": {
+    "checks": 112,
+    "failures": 0,
+    "sha256": "a7b537e0ea65b3e4d0f971497144d87446615e707c6ab4cce1c714f082a28a33"
+  },
+  "declarations": [
+    {
+      "name": "fixture.variants.v0.Feature.handle",
+      "kind": "function",
+      "range": {
+        "start": 800,
+        "end": 1032,
+        "line": 24,
+        "text": "fun handle(request: FeatureRequest): FeatureResponse {\n        val clientRequest = ClientRequest(request.destination)\n        val clientResponse = client.fetch(clientRequest)\n        return FeatureResponse(clientResponse.link)\n    }"
+      }
+    },
+    {
+      "name": "fixture.variants.v0.BackendClient.fetch",
+      "kind": "function",
+      "range": {
+        "start": 521,
+        "end": 741,
+        "line": 16,
+        "text": "fun fetch(request: ClientRequest): ClientResponse {\n        val wireRequest = WireRequest(request.destination)\n        val wireResponse = transport.send(wireRequest)\n        return ClientResponse(wireResponse.link)\n    }"
+      }
+    },
+    {
+      "name": "fixture.variants.v0.ClientRequest.<init>",
+      "kind": "constructor",
+      "range": {
+        "start": 104,
+        "end": 129,
+        "line": 4,
+        "text": "(val destination: String)"
+      }
+    },
+    {
+      "name": "fixture.variants.v0.FeatureResponse.<init>",
+      "kind": "constructor",
+      "range": {
+        "start": 290,
+        "end": 308,
+        "line": 8,
+        "text": "(val link: String)"
+      }
+    }
+  ],
+  "calls": [
+    {
+      "name": "feature-handle",
+      "requestType": "RUN",
+      "responseType": "complete",
+      "firstCompleteStdoutSeconds": 2.9121025000931695,
+      "completionSeconds": 2.9378533751005307,
+      "hashes": {
+        "request.jsonl": "af10ea975560f2dc712bdb4821c2378281d1477bc973371bb42e82be05987506",
+        "stdout.jsonl": "aa3247f65eea6ba47cbef4f37b639bb04a74492eee688a091c7d256a4637e34f",
+        "process.json": "dbc27550f63ac698d845fa76f0a0ea671f09b2f27416eeb0fadbc4a2e929295a"
+      }
+    },
+    {
+      "name": "handle-callees",
+      "requestType": "RUN",
+      "responseType": "complete",
+      "firstCompleteStdoutSeconds": 2.7995319589972496,
+      "completionSeconds": 2.8209702919702977,
+      "hashes": {
+        "request.jsonl": "10fb4794b73542a72982de10ffb220d39e21712a455fb5c24d5c8d3b1b145d3a",
+        "stdout.jsonl": "ac1a631086a23f8829383092d8c78493832530c98b0c6b07020358970846db76",
+        "process.json": "cdabb408048b87fdb198ccedcb10c8c75e309455596bbbe0a3af18dbc6d6f963"
+      }
+    },
+    {
+      "name": "incoming",
+      "requestType": "RUN",
+      "responseType": "complete",
+      "firstCompleteStdoutSeconds": 2.6335383750265464,
+      "completionSeconds": 2.6593697919743136,
+      "hashes": {
+        "request.jsonl": "fe28006d960cd3f0e95116649c4cf1e8a853cd3d6d3836cfee8692ba7afb3f2d",
+        "stdout.jsonl": "f6b82e2002ede2641f61d4c1f47cfd8e9b872074a54c6eb36daebef2bceb9542",
+        "process.json": "8f478c90752fa4cbbb1478495d080d252e992eb133980ca377ceea05f3367cfa"
+      }
+    },
+    {
+      "name": "incoming-read-default-0",
+      "requestType": "READ_RESULT",
+      "responseType": "complete",
+      "firstCompleteStdoutSeconds": 1.851086749928072,
+      "completionSeconds": 1.876833042013459,
+      "hashes": {
+        "request.jsonl": "e14434d977d0c455603ad032efa6b8930de3f49d7bb8ee78c57ceaf8da2706d1",
+        "stdout.jsonl": "71559b9ec1915c67733eb12ee925c0ec542f119ccc59a8657a00019f934f33a5",
+        "process.json": "93bfc86336ab4252569799248a67172a4c0dc963bd3f6b96cdc98cc4a557d734"
+      }
+    },
+    {
+      "name": "outgoing",
+      "requestType": "RUN",
+      "responseType": "rejected_document",
+      "firstCompleteStdoutSeconds": 2.3993115419289097,
+      "completionSeconds": 2.424789124983363,
+      "hashes": {
+        "request.jsonl": "1a1805b46db265e22a1e08d2b88a685a0f5b8373cba251c1b6fb89dd5ca17cdd",
+        "stdout.jsonl": "ac104339cc42918e299628bb3b98597a56ab319c076ea81b91b57058a2b440b5",
+        "process.json": "edcf9ef63db91cfd4ade7b5359ca3f6a2baa1a77b8cc4064164e6aa139fac5e9"
+      }
+    },
+    {
+      "name": "outgoing-read-default-0",
+      "requestType": "READ_RESULT",
+      "responseType": "rejected_document",
+      "firstCompleteStdoutSeconds": 1.6846466249553487,
+      "completionSeconds": 1.7100842079380527,
+      "hashes": {
+        "request.jsonl": "d3aa24927b4c9ec871aada58e07f5e19e286ef2f7527e8b6dd711fa7d9957403",
+        "stdout.jsonl": "17953bfdc06e14ca94a543aeffffaffa7e81b41ea00f4e177fdde1bcc7dfa5e2",
+        "process.json": "43160c90690874eeb64891f09ab3aa7adbf786148d6b621967b12a521a6bd238"
+      }
+    },
+    {
+      "name": "outgoing-read-expanded-0",
+      "requestType": "READ_RESULT",
+      "responseType": "qualified",
+      "firstCompleteStdoutSeconds": 1.81878199998755,
+      "completionSeconds": 1.8191230830270797,
+      "hashes": {
+        "request.jsonl": "781b0742330ba53c75ec2028a02377b9ed7875938dc142ef1c13b01b21d23d57",
+        "stdout.jsonl": "bad88193f2bf5c0450ba3c6ee452e6abf3b89fecf5b3b488d77678589978e779",
+        "process.json": "443a69a833b5b165294fbd0ad4372e481fadd702e8ef6fdf4f2bb9739772d5fa"
+      }
+    }
+  ],
+  "incoming": {
+    "responseType": "complete",
+    "previewRows": 0,
+    "retainedResponseType": "complete",
+    "path": {
+      "producer": {
+        "start": 659,
+        "end": 686,
+        "line": 18,
+        "text": "transport.send(wireRequest)",
+        "role": "EXPRESSION_RESULT",
+        "fields": []
+      },
+      "steps": [
+        {
+          "kind": "LOCAL_BINDING",
+          "source": {
+            "start": 659,
+            "end": 686,
+            "line": 18,
+            "text": "transport.send(wireRequest)",
+            "role": "EXPRESSION_RESULT",
+            "fields": []
+          },
+          "target": {
+            "start": 640,
+            "end": 686,
+            "line": 18,
+            "text": "val wireResponse = transport.send(wireRequest)",
+            "role": "LOCAL_BINDING",
+            "fields": []
+          }
+        },
+        {
+          "kind": "LOCAL_READ",
+          "source": {
+            "start": 640,
+            "end": 686,
+            "line": 18,
+            "text": "val wireResponse = transport.send(wireRequest)",
+            "role": "LOCAL_BINDING",
+            "fields": []
+          },
+          "target": {
+            "start": 717,
+            "end": 729,
+            "line": 19,
+            "text": "wireResponse",
+            "role": "LOCAL_READ",
+            "fields": []
+          }
+        },
+        {
+          "kind": "FIELD_READ",
+          "source": {
+            "start": 717,
+            "end": 729,
+            "line": 19,
+            "text": "wireResponse",
+            "role": "LOCAL_READ",
+            "fields": []
+          },
+          "target": {
+            "start": 717,
+            "end": 734,
+            "line": 19,
+            "text": "wireResponse.link",
+            "role": "EXPRESSION_RESULT",
+            "fields": []
+          },
+          "field": "WireResponse.link"
+        },
+        {
+          "kind": "ARGUMENT",
+          "source": {
+            "start": 717,
+            "end": 734,
+            "line": 19,
+            "text": "wireResponse.link",
+            "role": "EXPRESSION_RESULT",
+            "fields": []
+          },
+          "target": {
+            "start": 717,
+            "end": 734,
+            "line": 19,
+            "text": "wireResponse.link",
+            "role": "ARGUMENT",
+            "fields": []
+          }
+        },
+        {
+          "kind": "CONSTRUCTOR_FIELD",
+          "source": {
+            "start": 717,
+            "end": 734,
+            "line": 19,
+            "text": "wireResponse.link",
+            "role": "ARGUMENT",
+            "fields": []
+          },
+          "target": {
+            "start": 702,
+            "end": 735,
+            "line": 19,
+            "text": "ClientResponse(wireResponse.link)",
+            "role": "EXPRESSION_RESULT",
+            "fields": [
+              "ClientResponse.link"
+            ]
+          }
+        },
+        {
+          "kind": "RETURN",
+          "source": {
+            "start": 702,
+            "end": 735,
+            "line": 19,
+            "text": "ClientResponse(wireResponse.link)",
+            "role": "EXPRESSION_RESULT",
+            "fields": [
+              "ClientResponse.link"
+            ]
+          },
+          "target": {
+            "start": 702,
+            "end": 735,
+            "line": 19,
+            "text": "ClientResponse(wireResponse.link)",
+            "role": "RETURN",
+            "fields": [
+              "ClientResponse.link"
+            ]
+          }
+        },
+        {
+          "kind": "SOURCE_CALL_RETURN",
+          "source": {
+            "start": 702,
+            "end": 735,
+            "line": 19,
+            "text": "ClientResponse(wireResponse.link)",
+            "role": "RETURN",
+            "fields": [
+              "ClientResponse.link"
+            ]
+          },
+          "target": {
+            "start": 947,
+            "end": 974,
+            "line": 26,
+            "text": "client.fetch(clientRequest)",
+            "role": "EXPRESSION_RESULT",
+            "fields": [
+              "ClientResponse.link"
+            ]
+          }
+        },
+        {
+          "kind": "LOCAL_BINDING",
+          "source": {
+            "start": 947,
+            "end": 974,
+            "line": 26,
+            "text": "client.fetch(clientRequest)",
+            "role": "EXPRESSION_RESULT",
+            "fields": [
+              "ClientResponse.link"
+            ]
+          },
+          "target": {
+            "start": 926,
+            "end": 974,
+            "line": 26,
+            "text": "val clientResponse = client.fetch(clientRequest)",
+            "role": "LOCAL_BINDING",
+            "fields": [
+              "ClientResponse.link"
+            ]
+          }
+        },
+        {
+          "kind": "LOCAL_READ",
+          "source": {
+            "start": 926,
+            "end": 974,
+            "line": 26,
+            "text": "val clientResponse = client.fetch(clientRequest)",
+            "role": "LOCAL_BINDING",
+            "fields": [
+              "ClientResponse.link"
+            ]
+          },
+          "target": {
+            "start": 1006,
+            "end": 1020,
+            "line": 27,
+            "text": "clientResponse",
+            "role": "LOCAL_READ",
+            "fields": [
+              "ClientResponse.link"
+            ]
+          }
+        },
+        {
+          "kind": "FIELD_READ",
+          "source": {
+            "start": 1006,
+            "end": 1020,
+            "line": 27,
+            "text": "clientResponse",
+            "role": "LOCAL_READ",
+            "fields": [
+              "ClientResponse.link"
+            ]
+          },
+          "target": {
+            "start": 1006,
+            "end": 1025,
+            "line": 27,
+            "text": "clientResponse.link",
+            "role": "EXPRESSION_RESULT",
+            "fields": []
+          },
+          "field": "ClientResponse.link"
+        },
+        {
+          "kind": "ARGUMENT",
+          "source": {
+            "start": 1006,
+            "end": 1025,
+            "line": 27,
+            "text": "clientResponse.link",
+            "role": "EXPRESSION_RESULT",
+            "fields": []
+          },
+          "target": {
+            "start": 1006,
+            "end": 1025,
+            "line": 27,
+            "text": "clientResponse.link",
+            "role": "ARGUMENT",
+            "fields": []
+          }
+        },
+        {
+          "kind": "CONSTRUCTOR_FIELD",
+          "source": {
+            "start": 1006,
+            "end": 1025,
+            "line": 27,
+            "text": "clientResponse.link",
+            "role": "ARGUMENT",
+            "fields": []
+          },
+          "target": {
+            "start": 990,
+            "end": 1026,
+            "line": 27,
+            "text": "FeatureResponse(clientResponse.link)",
+            "role": "EXPRESSION_RESULT",
+            "fields": [
+              "FeatureResponse.link"
+            ]
+          }
+        },
+        {
+          "kind": "RETURN",
+          "source": {
+            "start": 990,
+            "end": 1026,
+            "line": 27,
+            "text": "FeatureResponse(clientResponse.link)",
+            "role": "EXPRESSION_RESULT",
+            "fields": [
+              "FeatureResponse.link"
+            ]
+          },
+          "target": {
+            "start": 990,
+            "end": 1026,
+            "line": 27,
+            "text": "FeatureResponse(clientResponse.link)",
+            "role": "RETURN",
+            "fields": [
+              "FeatureResponse.link"
+            ]
+          }
+        }
+      ],
+      "terminal": {
+        "type": "SUPPORTED_DOMAIN_END"
+      },
+      "accounting": {
+        "type": "CONSERVED"
+      }
+    }
+  },
+  "outgoing": {
+    "responseType": "rejected_document",
+    "rejection": "COMPLETION_UNPROVEN",
+    "policyProgress": "EVIDENCE_ONLY",
+    "defaultReadFailure": "RESULT_TOO_LARGE",
+    "presentationBudget": {
+      "maxResults": 1,
+      "maxReturnedBytes": 524288
+    },
+    "retainedResponseType": "qualified",
+    "interpretation": "POLICY_REJECTED_EVIDENCE",
+    "path": {
+      "producer": {
+        "start": 883,
+        "end": 917,
+        "line": 25,
+        "text": "ClientRequest(request.destination)",
+        "role": "EXPRESSION_RESULT",
+        "fields": []
+      },
+      "steps": [
+        {
+          "kind": "LOCAL_BINDING",
+          "source": {
+            "start": 883,
+            "end": 917,
+            "line": 25,
+            "text": "ClientRequest(request.destination)",
+            "role": "EXPRESSION_RESULT",
+            "fields": []
+          },
+          "target": {
+            "start": 863,
+            "end": 917,
+            "line": 25,
+            "text": "val clientRequest = ClientRequest(request.destination)",
+            "role": "LOCAL_BINDING",
+            "fields": []
+          }
+        },
+        {
+          "kind": "LOCAL_READ",
+          "source": {
+            "start": 863,
+            "end": 917,
+            "line": 25,
+            "text": "val clientRequest = ClientRequest(request.destination)",
+            "role": "LOCAL_BINDING",
+            "fields": []
+          },
+          "target": {
+            "start": 960,
+            "end": 973,
+            "line": 26,
+            "text": "clientRequest",
+            "role": "LOCAL_READ",
+            "fields": []
+          }
+        },
+        {
+          "kind": "ARGUMENT",
+          "source": {
+            "start": 960,
+            "end": 973,
+            "line": 26,
+            "text": "clientRequest",
+            "role": "LOCAL_READ",
+            "fields": []
+          },
+          "target": {
+            "start": 960,
+            "end": 973,
+            "line": 26,
+            "text": "clientRequest",
+            "role": "ARGUMENT",
+            "fields": []
+          }
+        },
+        {
+          "kind": "SOURCE_CALL_ENTRY",
+          "source": {
+            "start": 960,
+            "end": 973,
+            "line": 26,
+            "text": "clientRequest",
+            "role": "ARGUMENT",
+            "fields": []
+          },
+          "target": {
+            "start": 531,
+            "end": 553,
+            "line": 16,
+            "text": "request: ClientRequest",
+            "role": "FORMAL",
+            "fields": []
+          }
+        },
+        {
+          "kind": "LOCAL_READ",
+          "source": {
+            "start": 531,
+            "end": 553,
+            "line": 16,
+            "text": "request: ClientRequest",
+            "role": "FORMAL",
+            "fields": []
+          },
+          "target": {
+            "start": 611,
+            "end": 618,
+            "line": 17,
+            "text": "request",
+            "role": "LOCAL_READ",
+            "fields": []
+          }
+        },
+        {
+          "kind": "FIELD_READ",
+          "source": {
+            "start": 611,
+            "end": 618,
+            "line": 17,
+            "text": "request",
+            "role": "LOCAL_READ",
+            "fields": []
+          },
+          "target": {
+            "start": 611,
+            "end": 630,
+            "line": 17,
+            "text": "request.destination",
+            "role": "EXPRESSION_RESULT",
+            "fields": []
+          },
+          "field": "ClientRequest.destination"
+        },
+        {
+          "kind": "ARGUMENT",
+          "source": {
+            "start": 611,
+            "end": 630,
+            "line": 17,
+            "text": "request.destination",
+            "role": "EXPRESSION_RESULT",
+            "fields": []
+          },
+          "target": {
+            "start": 611,
+            "end": 630,
+            "line": 17,
+            "text": "request.destination",
+            "role": "ARGUMENT",
+            "fields": []
+          }
+        },
+        {
+          "kind": "CONSTRUCTOR_FIELD",
+          "source": {
+            "start": 611,
+            "end": 630,
+            "line": 17,
+            "text": "request.destination",
+            "role": "ARGUMENT",
+            "fields": []
+          },
+          "target": {
+            "start": 599,
+            "end": 631,
+            "line": 17,
+            "text": "WireRequest(request.destination)",
+            "role": "EXPRESSION_RESULT",
+            "fields": [
+              "WireRequest.destination"
+            ]
+          }
+        },
+        {
+          "kind": "LOCAL_BINDING",
+          "source": {
+            "start": 599,
+            "end": 631,
+            "line": 17,
+            "text": "WireRequest(request.destination)",
+            "role": "EXPRESSION_RESULT",
+            "fields": [
+              "WireRequest.destination"
+            ]
+          },
+          "target": {
+            "start": 581,
+            "end": 631,
+            "line": 17,
+            "text": "val wireRequest = WireRequest(request.destination)",
+            "role": "LOCAL_BINDING",
+            "fields": [
+              "WireRequest.destination"
+            ]
+          }
+        },
+        {
+          "kind": "LOCAL_READ",
+          "source": {
+            "start": 581,
+            "end": 631,
+            "line": 17,
+            "text": "val wireRequest = WireRequest(request.destination)",
+            "role": "LOCAL_BINDING",
+            "fields": [
+              "WireRequest.destination"
+            ]
+          },
+          "target": {
+            "start": 674,
+            "end": 685,
+            "line": 18,
+            "text": "wireRequest",
+            "role": "LOCAL_READ",
+            "fields": [
+              "WireRequest.destination"
+            ]
+          }
+        },
+        {
+          "kind": "ARGUMENT",
+          "source": {
+            "start": 674,
+            "end": 685,
+            "line": 18,
+            "text": "wireRequest",
+            "role": "LOCAL_READ",
+            "fields": [
+              "WireRequest.destination"
+            ]
+          },
+          "target": {
+            "start": 674,
+            "end": 685,
+            "line": 18,
+            "text": "wireRequest",
+            "role": "ARGUMENT",
+            "fields": [
+              "WireRequest.destination"
+            ]
+          }
+        }
+      ],
+      "terminal": {
+        "type": "UNRESOLVED_FLOW",
+        "cause": "UNMODELED_CALL",
+        "site": {
+          "start": 674,
+          "end": 685,
+          "line": 18,
+          "text": "wireRequest",
+          "role": "ARGUMENT",
+          "fields": [
+            "WireRequest.destination"
+          ]
+        }
+      },
+      "accounting": {
+        "type": "UNRESOLVED",
+        "required": [
+          "NATIVE_FLOW"
+        ]
+      }
+    }
+  }
+}

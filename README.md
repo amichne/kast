@@ -5,11 +5,15 @@
 Kast connects your agent to IntelliJ IDEA so it can find exact declarations,
 trace their connections, inspect diagnostics, and make targeted source changes.
 
-https://github.com/user-attachments/assets/be6b0e72-4da9-45ce-8311-260da3e42097
+[![Kast traces a response link through Kotlin fields and keeps an opaque transport boundary unproven.](docs/demo/kast-demo.svg)](docs/demo/kast-demo.mp4)
 
-Watch a 54-second native Pi + Kast demo of declaration lookup, callers, a bounded
-trace, source, and diagnostics. The recording uses Kast `0.0.3612` in a synthetic
-workspace, with shortened pauses. Results are static compiler evidence.
+Watch a 54-second edited evidence replay of Kast `v0.50.2` results from a small
+public Kotlin fixture. Follow a response into `FeatureResponse.link`, then inspect an outgoing
+request that remains unproven at the transport boundary. Recorded per-call waits
+are preserved; reading pauses are added. Results are static compiler evidence.
+
+[MP4](docs/demo/kast-demo.mp4) · [Still preview](docs/demo/kast-demo.png) ·
+[Transcript and reproduction](docs/demo/README.md)
 
 When several functions share a name, your agent needs to know which one matters.
 When you change a function, it needs to know who calls it.

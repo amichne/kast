@@ -1,0 +1,223 @@
+1 / 4   THE QUESTION
+Where does the response link come from?
+[6.000s]
+
+Public Kotlin fixture  ·  V0.kt  ·  source excerpt
+
+17  val wireRequest = WireRequest(request.destination)
+18  val wireResponse = transport.send(wireRequest)
+19  return ClientResponse(wireResponse.link)
+
+24  fun handle(request: FeatureRequest): FeatureResponse {
+25  val clientRequest = ClientRequest(request.destination)
+26  val clientResponse = client.fetch(clientRequest)
+27  return FeatureResponse(clientResponse.link)
+
+Transport.send has no implementation in the source.
+
+Read-only investigation. No boundary models are supplied.
+
+2 / 4   SELECT EXACT CODE
+Start from the declaration.
+[2.912s]
+
+query_symbols  ·  RUN / AT_LOCATION
+Feature.handle  ·  V0.kt:24
+
+Awaiting recorded reply…
+Measured process → first complete stdout: 2.91s
+
+Original per-call wait. Prepared IDEA project; not a cold-start benchmark.
+
+2 / 4   SELECT EXACT CODE
+Start from the declaration.
+[2.500s]
+
+query_symbols  ·  RUN / AT_LOCATION
+Feature.handle  ·  V0.kt:24
+
+fixture.variants.v0.Feature.handle
+kind: function  ·  V0.kt:24
+Result: complete  ·  exact issued ref retained privately
+
+Names and locations come from the recorded tool rows.
+
+2 / 4   SELECT EXACT CODE
+Follow compiler-resolved calls.
+[2.800s]
+
+query_symbols  ·  RUN / CALLEES
+Seed: issued Feature.handle ref  ·  main / V0 directory
+
+Awaiting recorded reply…
+Measured process → first complete stdout: 2.80s
+
+Original per-call wait. Prepared IDEA project; not a cold-start benchmark.
+
+2 / 4   SELECT EXACT CODE
+Follow compiler-resolved calls.
+[3.500s]
+
+query_symbols  ·  RUN / CALLEES
+Seed: issued Feature.handle ref  ·  main / V0 directory
+
+BackendClient.fetch  ·  function  ·  V0.kt:16
+ClientRequest.<init>  ·  constructor  ·  V0.kt:4
+FeatureResponse.<init>  ·  constructor  ·  V0.kt:8
+
+Result: complete  ·  constructor identity preserved
+
+The next query uses the actual issued callable references.
+
+3 / 4   TRACE THE RESPONSE
+Trace the response value.
+[2.634s]
+
+query_symbols  ·  RUN / IMPACT
+Seed: transport.send(wireRequest)  ·  V0.kt:18
+KOTLIN_FORWARD_V1  ·  main / V0 directory  ·  models: []
+
+Awaiting recorded reply…
+Measured process → first complete stdout: 2.63s
+
+Original per-call wait. Prepared IDEA project; not a cold-start benchmark.
+
+3 / 4   TRACE THE RESPONSE
+Completion and delivery are separate.
+[2.500s]
+
+query_symbols  ·  RUN / IMPACT
+Seed: transport.send(wireRequest)  ·  V0.kt:18
+KOTLIN_FORWARD_V1  ·  main / V0 directory  ·  models: []
+
+Result: complete  ·  preview rows: 0
+The path is retained. Read it from cursor 0.
+
+An empty inline preview is not an empty result.
+
+3 / 4   TRACE THE RESPONSE
+Read the compiler evidence.
+[1.851s]
+
+query_symbols  ·  READ_RESULT / VALUE_PATHS
+Same issued result  ·  cursor: 0  ·  maxResults: 1
+
+Awaiting recorded reply…
+Measured process → first complete stdout: 1.85s
+
+Original per-call wait. Prepared IDEA project; not a cold-start benchmark.
+
+3 / 4   TRACE THE RESPONSE
+The link reaches the feature response.
+[7.000s]
+
+query_symbols  ·  READ_RESULT / VALUE_PATHS
+Same issued result  ·  cursor: 0  ·  maxResults: 1
+
+transport.send(wireRequest)  ·  V0.kt:18
+  → WireResponse.link  → ClientResponse.link
+  → exact client.fetch(clientRequest) return  ·  V0.kt:26
+  → ClientResponse.link  → FeatureResponse.link
+
+13 compiler transfers  ·  CONSERVED
+Terminal: SUPPORTED_DOMAIN_END
+
+Selected field transfers shown. The evidence file retains all 13 transfer ranges.
+
+4 / 4   KEEP THE LIMIT
+Where does the request trace stop?
+[2.399s]
+
+query_symbols  ·  RUN / IMPACT
+Seed: ClientRequest(request.destination)  ·  V0.kt:25
+KOTLIN_FORWARD_V1  ·  main / V0 directory  ·  models: []
+
+Awaiting recorded reply…
+Measured process → first complete stdout: 2.40s
+
+Original per-call wait. Prepared IDEA project; not a cold-start benchmark.
+
+4 / 4   KEEP THE LIMIT
+The opaque boundary stays unproven.
+[3.000s]
+
+query_symbols  ·  RUN / IMPACT
+Seed: ClientRequest(request.destination)  ·  V0.kt:25
+KOTLIN_FORWARD_V1  ·  main / V0 directory  ·  models: []
+
+COMPLETION_UNPROVEN
+Retained evidence: EVIDENCE_ONLY
+Transport.send has no source implementation or model.
+
+The rejected investigation does not prove that the request reaches a response.
+
+4 / 4   KEEP THE LIMIT
+The default row does not fit.
+[1.685s]
+
+query_symbols  ·  READ_RESULT / VALUE_PATHS
+Same issued evidence result  ·  maxResults: 1
+
+Awaiting recorded reply…
+Measured process → first complete stdout: 1.68s
+
+Original per-call wait. Prepared IDEA project; not a cold-start benchmark.
+
+4 / 4   KEEP THE LIMIT
+The default row does not fit.
+[2.500s]
+
+query_symbols  ·  READ_RESULT / VALUE_PATHS
+Same issued evidence result  ·  maxResults: 1
+
+RESULT_TOO_LARGE
+The retained path needs a larger presentation allowance.
+
+This is an output-size limit. It does not change semantic completion.
+
+4 / 4   KEEP THE LIMIT
+Read the same evidence with more space.
+[1.819s]
+
+query_symbols  ·  READ_RESULT / VALUE_PATHS
+Same issued evidence result  ·  maxResults: 1
+Explicit maxReturnedBytes: 524288
+
+Awaiting recorded reply…
+Measured process → first complete stdout: 1.82s
+
+Original per-call wait. Prepared IDEA project; not a cold-start benchmark.
+
+4 / 4   KEEP THE LIMIT
+More evidence. The same honest limit.
+[6.000s]
+
+query_symbols  ·  READ_RESULT / VALUE_PATHS
+Same issued evidence result  ·  maxResults: 1
+Explicit maxReturnedBytes: 524288
+
+ClientRequest.destination  →  WireRequest.destination
+  → Transport.send(request[0])  ·  V0.kt:18
+11 compiler transfers  ·  UNMODELED_CALL
+Still COMPLETION_UNPROVEN  ·  POLICY_REJECTED_EVIDENCE
+No request → response dependency is asserted.
+
+Presentation-only increase. The original semantic investigation is unchanged.
+
+RECORDED RESULTS   ·   PUBLIC V0 FIXTURE
+Useful answers. Visible evidence limits.
+[5.000s]
+
+RESPONSE VALUE
+WireResponse.link  →  ClientResponse.link  →  FeatureResponse.link
+complete  ·  13 compiler transfers  ·  CONSERVED
+
+OUTGOING REQUEST
+ClientRequest.destination  →  WireRequest.destination  →  send
+COMPLETION_UNPROVEN  ·  UNMODELED_CALL
+
+Static compiler evidence. No claim that this code ran.
+
+Edited replay of real v0.50.2 output. Setup and witness drainage are outside this clip.
+
+Edited replay: per-call waits preserved; reading holds added. Not an end-to-end benchmark.
