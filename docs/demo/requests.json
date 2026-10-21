@@ -1,0 +1,202 @@
+{
+  "note": "Templates from actual calls. Replace placeholders with fresh issued refs/results in a prepared public fixture. Each RUN uses a fresh query-session child; retain its READ_RESULT lineage. These templates do not launch or select an IDE.",
+  "calls": [
+    {
+      "name": "feature-handle",
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "AT_LOCATION",
+          "file": "logging/src/main/kotlin/fixture/variants/v0/V0.kt",
+          "offset": 804
+        },
+        "output": {
+          "type": "SYMBOLS",
+          "fields": [
+            "NAME",
+            "LOCATION",
+            "SIGNATURE"
+          ]
+        }
+      }
+    },
+    {
+      "name": "handle-callees",
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "SYMBOL_REFS",
+          "symbolRefs": [
+            "<issued Feature.handle ref>"
+          ]
+        },
+        "steps": [
+          {
+            "type": "EXPAND_RELATION",
+            "relation": "CALLEES",
+            "expansionScope": {
+              "type": "SOURCE_DOMAIN",
+              "sourceSets": [
+                "main"
+              ],
+              "directory": "logging/src/main/kotlin/fixture/variants/v0",
+              "includeSubdirectories": true,
+              "sourcePolicy": "PRODUCTION_ONLY",
+              "generatedSources": "EXCLUDE"
+            }
+          },
+          {
+            "type": "DISTINCT_SYMBOLS"
+          }
+        ],
+        "output": {
+          "type": "SYMBOLS",
+          "fields": [
+            "NAME",
+            "LOCATION",
+            "SIGNATURE"
+          ]
+        }
+      }
+    },
+    {
+      "name": "transport-send",
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "AT_LOCATION",
+          "file": "logging/src/main/kotlin/fixture/variants/v0/V0.kt",
+          "offset": 417
+        },
+        "output": {
+          "type": "SYMBOLS",
+          "fields": [
+            "NAME",
+            "LOCATION",
+            "SIGNATURE"
+          ]
+        }
+      }
+    },
+    {
+      "name": "incoming",
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "IMPACT",
+          "seeds": [
+            {
+              "enclosing": "<issued BackendClient.fetch ref>",
+              "callable": "<issued Transport.send ref>",
+              "anchor": {
+                "start": 659,
+                "end": 686
+              }
+            }
+          ],
+          "declarations": [],
+          "domain": {
+            "type": "SOURCE_DOMAIN",
+            "sourceSets": [
+              "main"
+            ],
+            "directory": "logging/src/main/kotlin/fixture/variants/v0",
+            "includeSubdirectories": true,
+            "sourcePolicy": "PRODUCTION_ONLY",
+            "generatedSources": "EXCLUDE"
+          },
+          "flow": "KOTLIN_FORWARD_V1",
+          "models": []
+        },
+        "steps": [],
+        "output": {
+          "type": "VALUE_PATHS"
+        },
+        "retention": "RETAIN"
+      }
+    },
+    {
+      "name": "incoming-read-default-0",
+      "request": {
+        "type": "READ_RESULT",
+        "result": "<retained incoming result>",
+        "cursor": 0,
+        "evidence_cursor": 0,
+        "output": {
+          "type": "VALUE_PATHS"
+        },
+        "executionBudget": {
+          "maxResults": 1
+        }
+      }
+    },
+    {
+      "name": "outgoing",
+      "request": {
+        "type": "RUN",
+        "source": {
+          "type": "IMPACT",
+          "seeds": [
+            {
+              "enclosing": "<issued Feature.handle ref>",
+              "callable": "<issued ClientRequest constructor ref>",
+              "anchor": {
+                "start": 883,
+                "end": 917
+              }
+            }
+          ],
+          "declarations": [],
+          "domain": {
+            "type": "SOURCE_DOMAIN",
+            "sourceSets": [
+              "main"
+            ],
+            "directory": "logging/src/main/kotlin/fixture/variants/v0",
+            "includeSubdirectories": true,
+            "sourcePolicy": "PRODUCTION_ONLY",
+            "generatedSources": "EXCLUDE"
+          },
+          "flow": "KOTLIN_FORWARD_V1",
+          "models": []
+        },
+        "steps": [],
+        "output": {
+          "type": "VALUE_PATHS"
+        },
+        "retention": "RETAIN"
+      }
+    },
+    {
+      "name": "outgoing-read-default-0",
+      "request": {
+        "type": "READ_RESULT",
+        "result": "<retained outgoing evidence result>",
+        "cursor": 0,
+        "evidence_cursor": 0,
+        "output": {
+          "type": "VALUE_PATHS"
+        },
+        "executionBudget": {
+          "maxResults": 1
+        }
+      }
+    },
+    {
+      "name": "outgoing-read-expanded-0",
+      "request": {
+        "type": "READ_RESULT",
+        "result": "<retained outgoing evidence result>",
+        "cursor": 0,
+        "evidence_cursor": 0,
+        "output": {
+          "type": "VALUE_PATHS"
+        },
+        "executionBudget": {
+          "maxResults": 1,
+          "maxReturnedBytes": 524288
+        }
+      }
+    }
+  ]
+}

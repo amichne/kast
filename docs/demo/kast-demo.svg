@@ -1,0 +1,209 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="810" viewBox="0 0 1440 810" role="img" aria-label="Kast traces a response link through compiler-resolved fields and preserves the outgoing transport limitation."><title>Kast: trace the response, keep the boundary</title><rect width="1440" height="810" rx="24" fill="#10131C"/>
+  <rect x="28" y="28" width="1384" height="754" rx="18" fill="#171C29" stroke="#35415D"/>
+  <path d="M28 88H1412" stroke="#35415D"/>
+  <rect x="54" y="47" width="32" height="24" rx="5" fill="#3154C7"/>
+  <text x="61" y="64" fill="#E8ECF5" font-size="17" font-family="Menlo,monospace" font-weight="700" xml:space="preserve">{}</text>
+  <text x="102" y="66" fill="#E8ECF5" font-size="24" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">Kast 0.50.2</text>
+  <text x="928" y="66" fill="#A9B2C8" font-size="21" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">EDITED EVIDENCE REPLAY · V0</text><style>.still{display:none}@media(prefers-reduced-motion:reduce){.step{display:none}.still{display:inline}}</style><g class="step" opacity="0"><text x="62" y="133" fill="#A7BCFF" font-size="20" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">1 / 4   THE QUESTION</text>
+    <text x="62" y="181" fill="#E8ECF5" font-size="34" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">Where does the response link come from?</text>
+    <text x="62" y="238" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Public Kotlin fixture  ·  V0.kt  ·  source excerpt</text>
+<text x="62" y="274" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="310" fill="#D4DCF0" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">17  val wireRequest = WireRequest(request.destination)</text>
+<text x="62" y="346" fill="#D4DCF0" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">18  val wireResponse = transport.send(wireRequest)</text>
+<text x="62" y="382" fill="#D4DCF0" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">19  return ClientResponse(wireResponse.link)</text>
+<text x="62" y="418" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="454" fill="#D4DCF0" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">24  fun handle(request: FeatureRequest): FeatureResponse {</text>
+<text x="62" y="490" fill="#D4DCF0" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">25  val clientRequest = ClientRequest(request.destination)</text>
+<text x="62" y="526" fill="#D4DCF0" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">26  val clientResponse = client.fetch(clientRequest)</text>
+<text x="62" y="562" fill="#D4DCF0" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">27  return FeatureResponse(clientResponse.link)</text>
+<text x="62" y="598" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="634" fill="#FFD08A" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Transport.send has no implementation in the source.</text>
+    <path d="M62 691H1378" stroke="#35415D"/>
+    <text x="62" y="728" fill="#A9B2C8" font-size="21" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Read-only investigation. No boundary models are supplied.</text>
+    <text x="62" y="760" fill="#A9B2C8" font-size="19" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Edited projection · recorded call waits · reading holds added · static evidence</text><animate attributeName="opacity" calcMode="discrete" values="1;0;0" keyTimes="0;0.11090778069142239;1" dur="54.098999750916846s" repeatCount="indefinite"/></g>
+<g class="step" opacity="0"><text x="62" y="133" fill="#A7BCFF" font-size="20" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">2 / 4   SELECT EXACT CODE</text>
+    <text x="62" y="181" fill="#E8ECF5" font-size="34" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">Start from the declaration.</text>
+    <text x="62" y="238" fill="#A7BCFF" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">query_symbols  ·  RUN / AT_LOCATION</text>
+<text x="62" y="274" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Feature.handle  ·  V0.kt:24</text>
+<text x="62" y="310" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="346" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Awaiting recorded reply…</text>
+<text x="62" y="382" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Measured process → first complete stdout: 2.91s</text>
+    <path d="M62 691H1378" stroke="#35415D"/>
+    <text x="62" y="728" fill="#A9B2C8" font-size="21" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Original per-call wait. Prepared IDEA project; not a cold-start benchmark.</text>
+    <text x="62" y="760" fill="#A9B2C8" font-size="19" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Edited projection · recorded call waits · reading holds added · static evidence</text><animate attributeName="opacity" calcMode="discrete" values="0;1;0;0" keyTimes="0;0.11090778069142239;0.16473691826330172;1" dur="54.098999750916846s" repeatCount="indefinite"/></g>
+<g class="step" opacity="0"><text x="62" y="133" fill="#A7BCFF" font-size="20" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">2 / 4   SELECT EXACT CODE</text>
+    <text x="62" y="181" fill="#E8ECF5" font-size="34" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">Start from the declaration.</text>
+    <text x="62" y="238" fill="#A7BCFF" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">query_symbols  ·  RUN / AT_LOCATION</text>
+<text x="62" y="274" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Feature.handle  ·  V0.kt:24</text>
+<text x="62" y="310" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="346" fill="#83DFC4" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">fixture.variants.v0.Feature.handle</text>
+<text x="62" y="382" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">kind: function  ·  V0.kt:24</text>
+<text x="62" y="418" fill="#83DFC4" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Result: complete  ·  exact issued ref retained privately</text>
+    <path d="M62 691H1378" stroke="#35415D"/>
+    <text x="62" y="728" fill="#A9B2C8" font-size="21" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Names and locations come from the recorded tool rows.</text>
+    <text x="62" y="760" fill="#A9B2C8" font-size="19" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Edited projection · recorded call waits · reading holds added · static evidence</text><animate attributeName="opacity" calcMode="discrete" values="0;1;0;0" keyTimes="0;0.16473691826330172;0.2109484935513944;1" dur="54.098999750916846s" repeatCount="indefinite"/></g>
+<g class="step" opacity="0"><text x="62" y="133" fill="#A7BCFF" font-size="20" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">2 / 4   SELECT EXACT CODE</text>
+    <text x="62" y="181" fill="#E8ECF5" font-size="34" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">Follow compiler-resolved calls.</text>
+    <text x="62" y="238" fill="#A7BCFF" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">query_symbols  ·  RUN / CALLEES</text>
+<text x="62" y="274" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Seed: issued Feature.handle ref  ·  main / V0 directory</text>
+<text x="62" y="310" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="346" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Awaiting recorded reply…</text>
+<text x="62" y="382" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Measured process → first complete stdout: 2.80s</text>
+    <path d="M62 691H1378" stroke="#35415D"/>
+    <text x="62" y="728" fill="#A9B2C8" font-size="21" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Original per-call wait. Prepared IDEA project; not a cold-start benchmark.</text>
+    <text x="62" y="760" fill="#A9B2C8" font-size="19" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Edited projection · recorded call waits · reading holds added · static evidence</text><animate attributeName="opacity" calcMode="discrete" values="0;1;0;0" keyTimes="0;0.2109484935513944;0.2626968063092436;1" dur="54.098999750916846s" repeatCount="indefinite"/></g>
+<g class="step" opacity="0"><text x="62" y="133" fill="#A7BCFF" font-size="20" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">2 / 4   SELECT EXACT CODE</text>
+    <text x="62" y="181" fill="#E8ECF5" font-size="34" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">Follow compiler-resolved calls.</text>
+    <text x="62" y="238" fill="#A7BCFF" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">query_symbols  ·  RUN / CALLEES</text>
+<text x="62" y="274" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Seed: issued Feature.handle ref  ·  main / V0 directory</text>
+<text x="62" y="310" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="346" fill="#83DFC4" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">BackendClient.fetch  ·  function  ·  V0.kt:16</text>
+<text x="62" y="382" fill="#83DFC4" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">ClientRequest.&lt;init&gt;  ·  constructor  ·  V0.kt:4</text>
+<text x="62" y="418" fill="#83DFC4" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">FeatureResponse.&lt;init&gt;  ·  constructor  ·  V0.kt:8</text>
+<text x="62" y="454" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="490" fill="#83DFC4" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Result: complete  ·  constructor identity preserved</text>
+    <path d="M62 691H1378" stroke="#35415D"/>
+    <text x="62" y="728" fill="#A9B2C8" font-size="21" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">The next query uses the actual issued callable references.</text>
+    <text x="62" y="760" fill="#A9B2C8" font-size="19" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Edited projection · recorded call waits · reading holds added · static evidence</text><animate attributeName="opacity" calcMode="discrete" values="0;1;0;0" keyTimes="0;0.2626968063092436;0.3273930117125733;1" dur="54.098999750916846s" repeatCount="indefinite"/></g>
+<g class="step" opacity="0"><text x="62" y="133" fill="#A7BCFF" font-size="20" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">3 / 4   TRACE THE RESPONSE</text>
+    <text x="62" y="181" fill="#E8ECF5" font-size="34" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">Trace the response value.</text>
+    <text x="62" y="238" fill="#A7BCFF" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">query_symbols  ·  RUN / IMPACT</text>
+<text x="62" y="274" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Seed: transport.send(wireRequest)  ·  V0.kt:18</text>
+<text x="62" y="310" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">KOTLIN_FORWARD_V1  ·  main / V0 directory  ·  models: []</text>
+<text x="62" y="346" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="382" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Awaiting recorded reply…</text>
+<text x="62" y="418" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Measured process → first complete stdout: 2.63s</text>
+    <path d="M62 691H1378" stroke="#35415D"/>
+    <text x="62" y="728" fill="#A9B2C8" font-size="21" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Original per-call wait. Prepared IDEA project; not a cold-start benchmark.</text>
+    <text x="62" y="760" fill="#A9B2C8" font-size="19" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Edited projection · recorded call waits · reading holds added · static evidence</text><animate attributeName="opacity" calcMode="discrete" values="0;1;0;0" keyTimes="0;0.3273930117125733;0.3760729944692215;1" dur="54.098999750916846s" repeatCount="indefinite"/></g>
+<g class="step" opacity="0"><text x="62" y="133" fill="#A7BCFF" font-size="20" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">3 / 4   TRACE THE RESPONSE</text>
+    <text x="62" y="181" fill="#E8ECF5" font-size="34" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">Completion and delivery are separate.</text>
+    <text x="62" y="238" fill="#A7BCFF" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">query_symbols  ·  RUN / IMPACT</text>
+<text x="62" y="274" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Seed: transport.send(wireRequest)  ·  V0.kt:18</text>
+<text x="62" y="310" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">KOTLIN_FORWARD_V1  ·  main / V0 directory  ·  models: []</text>
+<text x="62" y="346" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="382" fill="#83DFC4" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Result: complete  ·  preview rows: 0</text>
+<text x="62" y="418" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">The path is retained. Read it from cursor 0.</text>
+    <path d="M62 691H1378" stroke="#35415D"/>
+    <text x="62" y="728" fill="#A9B2C8" font-size="21" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">An empty inline preview is not an empty result.</text>
+    <text x="62" y="760" fill="#A9B2C8" font-size="19" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Edited projection · recorded call waits · reading holds added · static evidence</text><animate attributeName="opacity" calcMode="discrete" values="0;1;0;0" keyTimes="0;0.3760729944692215;0.42228456975731415;1" dur="54.098999750916846s" repeatCount="indefinite"/></g>
+<g class="step" opacity="0"><text x="62" y="133" fill="#A7BCFF" font-size="20" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">3 / 4   TRACE THE RESPONSE</text>
+    <text x="62" y="181" fill="#E8ECF5" font-size="34" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">Read the compiler evidence.</text>
+    <text x="62" y="238" fill="#A7BCFF" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">query_symbols  ·  READ_RESULT / VALUE_PATHS</text>
+<text x="62" y="274" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Same issued result  ·  cursor: 0  ·  maxResults: 1</text>
+<text x="62" y="310" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="346" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Awaiting recorded reply…</text>
+<text x="62" y="382" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Measured process → first complete stdout: 1.85s</text>
+    <path d="M62 691H1378" stroke="#35415D"/>
+    <text x="62" y="728" fill="#A9B2C8" font-size="21" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Original per-call wait. Prepared IDEA project; not a cold-start benchmark.</text>
+    <text x="62" y="760" fill="#A9B2C8" font-size="19" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Edited projection · recorded call waits · reading holds added · static evidence</text><animate attributeName="opacity" calcMode="discrete" values="0;1;0;0" keyTimes="0;0.42228456975731415;0.4565012236409509;1" dur="54.098999750916846s" repeatCount="indefinite"/></g>
+<g class="step" opacity="0"><text x="62" y="133" fill="#A7BCFF" font-size="20" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">3 / 4   TRACE THE RESPONSE</text>
+    <text x="62" y="181" fill="#E8ECF5" font-size="34" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">The link reaches the feature response.</text>
+    <text x="62" y="238" fill="#A7BCFF" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">query_symbols  ·  READ_RESULT / VALUE_PATHS</text>
+<text x="62" y="274" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Same issued result  ·  cursor: 0  ·  maxResults: 1</text>
+<text x="62" y="310" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="346" fill="#83DFC4" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">transport.send(wireRequest)  ·  V0.kt:18</text>
+<text x="62" y="382" fill="#83DFC4" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">  → WireResponse.link  → ClientResponse.link</text>
+<text x="62" y="418" fill="#83DFC4" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">  → exact client.fetch(clientRequest) return  ·  V0.kt:26</text>
+<text x="62" y="454" fill="#83DFC4" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">  → ClientResponse.link  → FeatureResponse.link</text>
+<text x="62" y="490" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="526" fill="#83DFC4" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">13 compiler transfers  ·  CONSERVED</text>
+<text x="62" y="562" fill="#83DFC4" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Terminal: SUPPORTED_DOMAIN_END</text>
+    <path d="M62 691H1378" stroke="#35415D"/>
+    <text x="62" y="728" fill="#A9B2C8" font-size="21" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Selected field transfers shown. The evidence file retains all 13 transfer ranges.</text>
+    <text x="62" y="760" fill="#A9B2C8" font-size="19" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Edited projection · recorded call waits · reading holds added · static evidence</text><animate attributeName="opacity" calcMode="discrete" values="0;1;0;0" keyTimes="0;0.4565012236409509;0.5858936344476103;1" dur="54.098999750916846s" repeatCount="indefinite"/></g>
+<g class="step" opacity="0"><text x="62" y="133" fill="#A7BCFF" font-size="20" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">4 / 4   KEEP THE LIMIT</text>
+    <text x="62" y="181" fill="#E8ECF5" font-size="34" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">Where does the request trace stop?</text>
+    <text x="62" y="238" fill="#A7BCFF" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">query_symbols  ·  RUN / IMPACT</text>
+<text x="62" y="274" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Seed: ClientRequest(request.destination)  ·  V0.kt:25</text>
+<text x="62" y="310" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">KOTLIN_FORWARD_V1  ·  main / V0 directory  ·  models: []</text>
+<text x="62" y="346" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="382" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Awaiting recorded reply…</text>
+<text x="62" y="418" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Measured process → first complete stdout: 2.40s</text>
+    <path d="M62 691H1378" stroke="#35415D"/>
+    <text x="62" y="728" fill="#A9B2C8" font-size="21" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Original per-call wait. Prepared IDEA project; not a cold-start benchmark.</text>
+    <text x="62" y="760" fill="#A9B2C8" font-size="19" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Edited projection · recorded call waits · reading holds added · static evidence</text><animate attributeName="opacity" calcMode="discrete" values="0;1;0;0" keyTimes="0;0.5858936344476103;0.6302440208313853;1" dur="54.098999750916846s" repeatCount="indefinite"/></g>
+<g class="step" opacity="0"><text x="62" y="133" fill="#A7BCFF" font-size="20" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">4 / 4   KEEP THE LIMIT</text>
+    <text x="62" y="181" fill="#E8ECF5" font-size="34" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">The opaque boundary stays unproven.</text>
+    <text x="62" y="238" fill="#A7BCFF" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">query_symbols  ·  RUN / IMPACT</text>
+<text x="62" y="274" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Seed: ClientRequest(request.destination)  ·  V0.kt:25</text>
+<text x="62" y="310" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">KOTLIN_FORWARD_V1  ·  main / V0 directory  ·  models: []</text>
+<text x="62" y="346" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="382" fill="#FFD08A" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">COMPLETION_UNPROVEN</text>
+<text x="62" y="418" fill="#FFD08A" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Retained evidence: EVIDENCE_ONLY</text>
+<text x="62" y="454" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Transport.send has no source implementation or model.</text>
+    <path d="M62 691H1378" stroke="#35415D"/>
+    <text x="62" y="728" fill="#A9B2C8" font-size="21" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">The rejected investigation does not prove that the request reaches a response.</text>
+    <text x="62" y="760" fill="#A9B2C8" font-size="19" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Edited projection · recorded call waits · reading holds added · static evidence</text><animate attributeName="opacity" calcMode="discrete" values="0;1;0;0" keyTimes="0;0.6302440208313853;0.6856979111770966;1" dur="54.098999750916846s" repeatCount="indefinite"/></g>
+<g class="step" opacity="0"><text x="62" y="133" fill="#A7BCFF" font-size="20" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">4 / 4   KEEP THE LIMIT</text>
+    <text x="62" y="181" fill="#E8ECF5" font-size="34" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">The default row does not fit.</text>
+    <text x="62" y="238" fill="#A7BCFF" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">query_symbols  ·  READ_RESULT / VALUE_PATHS</text>
+<text x="62" y="274" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Same issued evidence result  ·  maxResults: 1</text>
+<text x="62" y="310" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="346" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Awaiting recorded reply…</text>
+<text x="62" y="382" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Measured process → first complete stdout: 1.68s</text>
+    <path d="M62 691H1378" stroke="#35415D"/>
+    <text x="62" y="728" fill="#A9B2C8" font-size="21" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Original per-call wait. Prepared IDEA project; not a cold-start benchmark.</text>
+    <text x="62" y="760" fill="#A9B2C8" font-size="19" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Edited projection · recorded call waits · reading holds added · static evidence</text><animate attributeName="opacity" calcMode="discrete" values="0;1;0;0" keyTimes="0;0.6856979111770966;0.7168379809142786;1" dur="54.098999750916846s" repeatCount="indefinite"/></g>
+<g class="step" opacity="0"><text x="62" y="133" fill="#A7BCFF" font-size="20" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">4 / 4   KEEP THE LIMIT</text>
+    <text x="62" y="181" fill="#E8ECF5" font-size="34" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">The default row does not fit.</text>
+    <text x="62" y="238" fill="#A7BCFF" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">query_symbols  ·  READ_RESULT / VALUE_PATHS</text>
+<text x="62" y="274" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Same issued evidence result  ·  maxResults: 1</text>
+<text x="62" y="310" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="346" fill="#FFD08A" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">RESULT_TOO_LARGE</text>
+<text x="62" y="382" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">The retained path needs a larger presentation allowance.</text>
+    <path d="M62 691H1378" stroke="#35415D"/>
+    <text x="62" y="728" fill="#A9B2C8" font-size="21" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">This is an output-size limit. It does not change semantic completion.</text>
+    <text x="62" y="760" fill="#A9B2C8" font-size="19" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Edited projection · recorded call waits · reading holds added · static evidence</text><animate attributeName="opacity" calcMode="discrete" values="0;1;0;0" keyTimes="0;0.7168379809142786;0.7630495562023714;1" dur="54.098999750916846s" repeatCount="indefinite"/></g>
+<g class="step" opacity="0"><text x="62" y="133" fill="#A7BCFF" font-size="20" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">4 / 4   KEEP THE LIMIT</text>
+    <text x="62" y="181" fill="#E8ECF5" font-size="34" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">Read the same evidence with more space.</text>
+    <text x="62" y="238" fill="#A7BCFF" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">query_symbols  ·  READ_RESULT / VALUE_PATHS</text>
+<text x="62" y="274" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Same issued evidence result  ·  maxResults: 1</text>
+<text x="62" y="310" fill="#A7BCFF" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Explicit maxReturnedBytes: 524288</text>
+<text x="62" y="346" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="382" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Awaiting recorded reply…</text>
+<text x="62" y="418" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Measured process → first complete stdout: 1.82s</text>
+    <path d="M62 691H1378" stroke="#35415D"/>
+    <text x="62" y="728" fill="#A9B2C8" font-size="21" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Original per-call wait. Prepared IDEA project; not a cold-start benchmark.</text>
+    <text x="62" y="760" fill="#A9B2C8" font-size="19" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Edited projection · recorded call waits · reading holds added · static evidence</text><animate attributeName="opacity" calcMode="discrete" values="0;1;0;0" keyTimes="0;0.7630495562023714;0.7966690687323923;1" dur="54.098999750916846s" repeatCount="indefinite"/></g>
+<g class="step" opacity="0"><text x="62" y="133" fill="#A7BCFF" font-size="20" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">4 / 4   KEEP THE LIMIT</text>
+    <text x="62" y="181" fill="#E8ECF5" font-size="34" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">More evidence. The same honest limit.</text>
+    <text x="62" y="238" fill="#A7BCFF" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">query_symbols  ·  READ_RESULT / VALUE_PATHS</text>
+<text x="62" y="274" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Same issued evidence result  ·  maxResults: 1</text>
+<text x="62" y="310" fill="#A7BCFF" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Explicit maxReturnedBytes: 524288</text>
+<text x="62" y="346" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="382" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">ClientRequest.destination  →  WireRequest.destination</text>
+<text x="62" y="418" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">  → Transport.send(request[0])  ·  V0.kt:18</text>
+<text x="62" y="454" fill="#FFD08A" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">11 compiler transfers  ·  UNMODELED_CALL</text>
+<text x="62" y="490" fill="#FFD08A" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Still COMPLETION_UNPROVEN  ·  POLICY_REJECTED_EVIDENCE</text>
+<text x="62" y="526" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">No request → response dependency is asserted.</text>
+    <path d="M62 691H1378" stroke="#35415D"/>
+    <text x="62" y="728" fill="#A9B2C8" font-size="21" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Presentation-only increase. The original semantic investigation is unchanged.</text>
+    <text x="62" y="760" fill="#A9B2C8" font-size="19" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Edited projection · recorded call waits · reading holds added · static evidence</text><animate attributeName="opacity" calcMode="discrete" values="0;1;0;0" keyTimes="0;0.7966690687323923;0.9075768494238147;1" dur="54.098999750916846s" repeatCount="indefinite"/></g>
+<g class="step" opacity="0"><text x="62" y="133" fill="#A7BCFF" font-size="20" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">RECORDED RESULTS   ·   PUBLIC V0 FIXTURE</text>
+    <text x="62" y="181" fill="#E8ECF5" font-size="34" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">Useful answers. Visible evidence limits.</text>
+    <text x="62" y="238" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">RESPONSE VALUE</text>
+<text x="62" y="274" fill="#83DFC4" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">WireResponse.link  →  ClientResponse.link  →  FeatureResponse.link</text>
+<text x="62" y="310" fill="#83DFC4" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">complete  ·  13 compiler transfers  ·  CONSERVED</text>
+<text x="62" y="346" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="382" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">OUTGOING REQUEST</text>
+<text x="62" y="418" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">ClientRequest.destination  →  WireRequest.destination  →  send</text>
+<text x="62" y="454" fill="#FFD08A" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">COMPLETION_UNPROVEN  ·  UNMODELED_CALL</text>
+<text x="62" y="490" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="526" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Static compiler evidence. No claim that this code ran.</text>
+    <path d="M62 691H1378" stroke="#35415D"/>
+    <text x="62" y="728" fill="#A9B2C8" font-size="21" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Edited replay of real v0.50.2 output. Setup and witness drainage are outside this clip.</text>
+    <text x="62" y="760" fill="#A9B2C8" font-size="19" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Edited projection · recorded call waits · reading holds added · static evidence</text><animate attributeName="opacity" calcMode="discrete" values="0;1;0" keyTimes="0;0.9075768494238147;1" dur="54.098999750916846s" repeatCount="indefinite"/></g><g class="still"><text x="62" y="133" fill="#A7BCFF" font-size="20" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">RECORDED RESULTS   ·   PUBLIC V0 FIXTURE</text>
+    <text x="62" y="181" fill="#E8ECF5" font-size="34" font-family="system-ui,sans-serif" font-weight="650" xml:space="preserve">Useful answers. Visible evidence limits.</text>
+    <text x="62" y="238" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">RESPONSE VALUE</text>
+<text x="62" y="274" fill="#83DFC4" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">WireResponse.link  →  ClientResponse.link  →  FeatureResponse.link</text>
+<text x="62" y="310" fill="#83DFC4" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">complete  ·  13 compiler transfers  ·  CONSERVED</text>
+<text x="62" y="346" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="382" fill="#A9B2C8" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">OUTGOING REQUEST</text>
+<text x="62" y="418" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">ClientRequest.destination  →  WireRequest.destination  →  send</text>
+<text x="62" y="454" fill="#FFD08A" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">COMPLETION_UNPROVEN  ·  UNMODELED_CALL</text>
+<text x="62" y="490" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve"></text>
+<text x="62" y="526" fill="#E8ECF5" font-size="25" font-family="Menlo,Consolas,monospace" font-weight="400" xml:space="preserve">Static compiler evidence. No claim that this code ran.</text>
+    <path d="M62 691H1378" stroke="#35415D"/>
+    <text x="62" y="728" fill="#A9B2C8" font-size="21" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Edited replay of real v0.50.2 output. Setup and witness drainage are outside this clip.</text>
+    <text x="62" y="760" fill="#A9B2C8" font-size="19" font-family="system-ui,sans-serif" font-weight="400" xml:space="preserve">Edited projection · recorded call waits · reading holds added · static evidence</text></g></svg>
