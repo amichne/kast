@@ -17,6 +17,7 @@ import io.github.amichne.kast.protocol.registry.AgentToolName
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import io.github.amichne.kast.protocol.wire.presentation.canonicalReadRejectedDocument
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
@@ -84,13 +85,40 @@ class KastToolRpcQuerySessionProcessTest {
             process.outputStream.use { it.write(records.joinToString("\n", postfix = "\n").toByteArray()) }
             assertTrue(process.waitFor(20, TimeUnit.SECONDS)) {
                 "Bounded fixture child did not finish (pid=${process.pid()})\n" +
-                    "stdout:\n${Files.readString(stdout)}\nstderr:\n${Files.readString(stderr)}"
+                    "stdout:\n${Files.readString(stdout)}\nstderr:\n${Files.readString(stderr)}\n" +
+                    "threads:\n${process.threadDump()}"
             }
             assertEquals(0, process.exitValue(), Files.readString(stderr))
             return Files.readAllLines(stdout).map { Json.decodeFromString<ToolRpcReply>(it) }
         } finally {
             if (process.isAlive) process.destroyForcibly().waitFor(5, TimeUnit.SECONDS)
         }
+    }
+
+    private fun Process.threadDump(): String =
+        try {
+            captureThreadDump()
+        } catch (failure: IOException) {
+            "Thread dump unavailable: ${failure.message}"
+        }
+
+    private fun Process.captureThreadDump(): String {
+        val tool = Path.of(System.getProperty("java.home"), "bin", "jcmd")
+        if (!Files.isExecutable(tool)) return "jcmd is unavailable"
+        val output = temporary.resolve("threads.txt")
+        val diagnostic =
+            ProcessBuilder(tool.toString(), pid().toString(), "Thread.print")
+                .redirectOutput(output.toFile())
+                .redirectErrorStream(true)
+                .start()
+        val completed =
+            try {
+                diagnostic.waitFor(5, TimeUnit.SECONDS)
+            } finally {
+                if (diagnostic.isAlive) diagnostic.destroyForcibly().waitFor(1, TimeUnit.SECONDS)
+            }
+        val status = if (completed) "jcmd exited ${diagnostic.exitValue()}" else "jcmd exceeded its 5-second bound"
+        return "$status\n${Files.readString(output)}"
     }
 }
 
