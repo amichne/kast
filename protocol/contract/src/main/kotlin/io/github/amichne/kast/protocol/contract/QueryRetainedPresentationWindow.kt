@@ -148,7 +148,8 @@ private class QueryPresentationPartition(private val count: Int, private val suf
     }
 }
 
-private fun QueryRunResult.admittedPresentationWindow():
+/** Revalidates the explicit window's retained-result identity and emitted row count without inferring offsets. */
+fun QueryRunResult.admittedPresentationWindow():
     Refinement<QueryRetainedPresentationWindow?, QueryPresentationWindowFailure> {
     val window = presentationWindow
     val retained = retention as? QueryResultRetention.Retained
