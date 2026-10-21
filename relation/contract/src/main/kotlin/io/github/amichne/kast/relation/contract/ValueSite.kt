@@ -73,13 +73,11 @@ private constructor(
     /** The exact native-confirmed invocation carries its result anchor; deriving it performs no semantic work. */
     fun resultSite(): ValueSite = ValueSite.invocationResult(this)
 
-    internal fun shareCallableEvidence(
-        callables: MutableMap<RelationEndpoint.Resolved, RelationEndpoint.Resolved>
-    ): ValueInvocation {
-        val resolved = callable as? RelationEndpoint.Resolved ?: return this
-        val shared = callables.getOrPut(resolved) { resolved }
-        // Full endpoint equality includes authority, scope, constraints and every compiler evidence field.
-        return if (shared === callable) this else ValueInvocation(enclosing, range, shared, executionOwner, signature)
+    internal fun shareCallableEvidence(proofs: ValueFlowProofSharing): ValueInvocation {
+        val shared = proofs.callable(this)
+        val owner = proofs.executionOwner(executionOwner)
+        return if (shared.endpoint === callable && shared.signature === signature && owner === executionOwner) this
+        else ValueInvocation(enclosing, range, shared.endpoint, owner, shared.signature)
     }
 
     companion object {
@@ -187,43 +185,28 @@ private constructor(
             Refinement.Rejected(ValueSiteFailure.STATE_BASIS_MISMATCH)
         else Refinement.Refined(ValueSite(enclosing, range, role, executionOwner, valuePath, callStack))
 
-    internal fun shareCallableEvidence(
-        callables: MutableMap<RelationEndpoint.Resolved, RelationEndpoint.Resolved>
-    ): ValueSite =
-        when (val current = role) {
-            is ValueRole.Argument -> {
-                val shared = current.call.shareCallableEvidence(callables)
-                if (shared === current.call) this
-                else
-                    ValueSite(
-                        enclosing,
-                        range,
-                        ValueRole.Argument(shared, current.position),
-                        executionOwner,
-                        valuePath,
-                        callStack,
-                    )
+    internal fun shareCallableEvidence(proofs: ValueFlowProofSharing): ValueSite {
+        val owner = proofs.executionOwner(executionOwner)
+        val sharedRole =
+            when (val current = role) {
+                is ValueRole.Argument -> {
+                    val shared = current.call.shareCallableEvidence(proofs)
+                    if (shared === current.call) current else ValueRole.Argument(shared, current.position)
+                }
+                is ValueRole.Receiver -> {
+                    val shared = current.call.shareCallableEvidence(proofs)
+                    if (shared === current.call) current else ValueRole.Receiver(shared, current.kind)
+                }
+                is ValueRole.Formal,
+                ValueRole.ExpressionResult,
+                ValueRole.LocalBinding,
+                ValueRole.LocalRead,
+                ValueRole.Return,
+                ValueRole.PropertyAssignment -> current
             }
-            is ValueRole.Receiver -> {
-                val shared = current.call.shareCallableEvidence(callables)
-                if (shared === current.call) this
-                else
-                    ValueSite(
-                        enclosing,
-                        range,
-                        ValueRole.Receiver(shared, current.kind),
-                        executionOwner,
-                        valuePath,
-                        callStack,
-                    )
-            }
-            is ValueRole.Formal,
-            ValueRole.ExpressionResult,
-            ValueRole.LocalBinding,
-            ValueRole.LocalRead,
-            ValueRole.Return,
-            ValueRole.PropertyAssignment -> this
-        }
+        return if (sharedRole === role && owner === executionOwner) this
+        else ValueSite(enclosing, range, sharedRole, owner, valuePath, callStack)
+    }
 
     companion object {
         internal fun invocationResult(invocation: ValueInvocation): ValueSite =

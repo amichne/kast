@@ -34,11 +34,9 @@ private constructor(
     val kind: ValueTransferKind,
     val evidence: ValueTransferEvidence,
 ) {
-    internal fun shareCallableEvidence(
-        callables: MutableMap<RelationEndpoint.Resolved, RelationEndpoint.Resolved>
-    ): ValueTransfer {
-        val sharedSource = source.shareCallableEvidence(callables)
-        val sharedTarget = target.shareCallableEvidence(callables)
+    internal fun shareCallableEvidence(proofs: ValueFlowProofSharing): ValueTransfer {
+        val sharedSource = proofs.site(source)
+        val sharedTarget = proofs.site(target)
         return if (sharedSource === source && sharedTarget === target) this
         else ValueTransfer(sharedSource, sharedTarget, kind, evidence)
     }
@@ -110,24 +108,15 @@ private constructor(
             .addBytes((receipts.size - 1L).multiplyBytes(4096L))
 
     /**
-     * Physically shares equal, already admitted callable proofs with retained reads. No invocation, role, range, branch
-     * or read observation is deduplicated. The temporary lookup is local to this pure transformation.
+     * Shares full callable and execution-owner proofs across retained reads. Each invocation, role, range, branch, and
+     * read stays distinct. The temporary lookup is local to this pure transformation.
      */
     fun shareCallableEvidence(previous: Collection<ValueFlowStep>): ValueFlowStep {
-        val callables = linkedMapOf<RelationEndpoint.Resolved, RelationEndpoint.Resolved>()
-        fun retain(site: ValueSite) {
-            val role = site.role as? ValueRole.Argument ?: return
-            val endpoint = role.call.callable as? RelationEndpoint.Resolved ?: return
-            callables.putIfAbsent(endpoint, endpoint)
-        }
-        for (step in previous) {
-            retain(step.source)
-            step.transfers.forEach { retain(it.target) }
-        }
-        val sharedSource = source.shareCallableEvidence(callables)
-        val sharedTransfers = transfers.map { it.shareCallableEvidence(callables) }
+        val proofs = ValueFlowProofSharing(previous)
+        val sharedSource = proofs.site(source)
+        val sharedTransfers = transfers.map { it.shareCallableEvidence(proofs) }
         val sharedObligations = obligations.map { obligation ->
-            val sharedSite = obligation.site.shareCallableEvidence(callables)
+            val sharedSite = proofs.site(obligation.site)
             if (sharedSite === obligation.site) obligation else obligation.shareCallableEvidence { sharedSite }
         }
         if (

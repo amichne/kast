@@ -113,7 +113,10 @@ class ValueSiteContractTest {
         for ((index, candidate) in copies.withIndex()) {
             val owner = endpoint("investigate", 0, 200, generation = if (index == 2) 2 else 1)
             val invocation = ValueInvocation.fromCompiler(owner, range(20, 50), candidate).refined()
-            val pool = linkedMapOf(original to original)
+            val pool = ValueFlowProofSharing(emptyList())
+            pool.callable(
+                ValueInvocation.fromCompiler(endpoint("canonicalOwner", 0, 200), range(20, 50), original).refined()
+            )
             val shared = invocation.shareCallableEvidence(pool)
             assertEquals(invocation.identity, shared.identity)
             assertSame(owner, shared.enclosing)
@@ -121,6 +124,7 @@ class ValueSiteContractTest {
             assertSame(if (index == 0) original else candidate, shared.callable)
             assertSame(owner.valueIdentity, shared.identity.owner)
             assertSame(shared.callable.valueIdentity, shared.identity.callable)
+            assertSame(shared.callable.signature, shared.signature)
         }
     }
 
