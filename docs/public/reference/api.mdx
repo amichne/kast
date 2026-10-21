@@ -188,7 +188,7 @@ Strict completion needs all original paths. It needs all proof rules from the or
 
 A complete investigation can first return a retained preview with no rows. Use its issued result reference and row cursor to read the stored paths. An empty preview alone does not mean that no paths were found.
 
-A full path row can exceed the default byte allowance. If `READ_RESULT` reports `RESULT_TOO_LARGE`, an explicit `budget.maxReturnedBytes` can raise the presentation allowance within the configured limits. It does no new semantic work and cannot discharge an unresolved obligation. A qualified path remains qualified after its full row is read.
+A full path row can exceed the default byte allowance. If `READ_RESULT` reports `RESULT_TOO_LARGE`, an explicit `executionBudget.maxReturnedBytes` can raise the presentation allowance within the configured limits. It does no new semantic work and cannot discharge an unresolved obligation. A qualified path remains qualified after its full row is read.
 
 | State | Meaning |
 | --- | --- |
