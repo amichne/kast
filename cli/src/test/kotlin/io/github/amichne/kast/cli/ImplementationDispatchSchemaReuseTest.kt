@@ -9,6 +9,7 @@ import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.ReturnedByteLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument
 import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactEvidenceRevisionDocument
 import io.github.amichne.kast.protocol.contract.ImpactFlowBudgetDocument
@@ -19,8 +20,11 @@ import io.github.amichne.kast.protocol.contract.ImpactImplementationDispatchDocu
 import io.github.amichne.kast.protocol.contract.ImpactImplementationEndpointDocument
 import io.github.amichne.kast.protocol.contract.ImpactImplementationFactDocument
 import io.github.amichne.kast.protocol.contract.ImpactImplementationOccurrenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
 import io.github.amichne.kast.protocol.contract.ImpactSourceRangeDocument
+import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
+import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
 import io.github.amichne.kast.protocol.contract.ProtocolOffset
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryCountDocument
@@ -48,6 +52,28 @@ class ImplementationDispatchSchemaReuseTest {
     private val schema by lazy { installedPublicToolOutputSchema(PublicToolIdentity.QUERY_SYMBOLS) }
     private val independent by lazy {
         generatedOutputSchema(ImpactImplementationDispatchDocument.serializer(), CanonicalSchemaReferences.None)
+    }
+
+    @Test
+    fun `shared impact definitions retain their independent complete serializer shapes`() {
+        val assertions = LocalSchemaAssertions(schema)
+        assertions.assertLocalReferences()
+        val serializers =
+            mapOf(
+                "impactSemanticBasis" to ImpactSemanticBasisDocument.serializer(),
+                "impactDeclarationReference" to ImpactDeclarationReferenceDocument.serializer(),
+                "impactInvocationReference" to ImpactInvocationReferenceDocument.serializer(),
+                "impactValueRole" to ImpactValueRoleDocument.serializer(),
+                "impactValueSiteReference" to ImpactValueSiteReferenceDocument.serializer(),
+                "impactCompilerTransfer" to ImpactCompilerTransferDocument.serializer(),
+                "impactImplementationDispatch" to ImpactImplementationDispatchDocument.serializer(),
+            )
+        for ((name, serializer) in serializers) {
+            assertions.assertDefinitionEquivalent(
+                name,
+                generatedOutputSchema(serializer, CanonicalSchemaReferences.None),
+            )
+        }
     }
 
     @Test
