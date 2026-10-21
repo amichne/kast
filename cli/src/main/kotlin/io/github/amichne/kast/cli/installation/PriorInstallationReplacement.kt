@@ -23,15 +23,12 @@ internal fun priorServiceRetirementEnvironment(
     home: Path,
     codexHome: Path,
     path: String,
-    javaHome: InstallationPath,
     configuration: SavedConfigurationDocument,
 ): Map<String, String> =
     mapOf(
         "HOME" to home.toString(),
         "PATH" to path,
         "CODEX_HOME" to codexHome.toString(),
-        "JAVA_HOME" to javaHome.value.toString(),
-        "JAVA" to javaHome.value.resolve("bin/java").toString(),
         "KAST_CONFIGURATION_FILE" to prior.resolve("config/environment").toString(),
     ) +
         if (

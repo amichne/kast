@@ -73,14 +73,17 @@ private constructor(
                     control,
                     prior.resolve("bin/kast"),
                     (recorded?.values
-                        ?: priorServiceRetirementEnvironment(
+                        ?: (priorServiceRetirementEnvironment(
                             prior = prior,
                             home = request.home.value,
                             codexHome = request.codexHome.value,
                             path = System.getenv("PATH") ?: "/usr/bin:/bin",
-                            javaHome = request.javaHome,
                             configuration = configuration,
-                        )) + ("KAST_OPTS" to request.jvmUserHomeOption.value),
+                        ) +
+                            mapOf(
+                                "JAVA_HOME" to request.javaHome.value.toString(),
+                                "JAVA" to request.javaHome.value.resolve("bin/java").toString(),
+                            ))) + ("KAST_OPTS" to request.jvmUserHomeOption.value),
                 )
             )
         }
