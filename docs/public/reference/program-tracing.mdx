@@ -80,11 +80,19 @@ The reviewed `kotlin.lazy` model records deferred initializer supply. It does no
 
 `IMPACT` starts from exact producer calls. Native reads prove source identity and supported Kotlin transfers.
 
+Plain request and response paths follow constructor results, proven immutable field storage and reads, arguments, receivers, and returns to the matching call. Supported nested calls and named locals preserve that route. Different fields and separate calls to the same mapper keep separate provenance.
+
+Interface calls can enter eligible source implementations within the declared domain. Each alternative retains its implementation proof and source ownership. A complete static target set does not select the target used at runtime.
+
+An opaque call does not connect a request argument to its response without source proof or a reviewed boundary model.
+
 Supplied reviewed models define how values change form and how modeled callables behave. Each path records where a model was used beside the native evidence.
 
 Under normal completion, the final value of a try or catch body can supply the try expression. Each catch alternative keeps its own producer identity.
 
 Throws do not supply a normal result. Transfers across `finally` keep `FINALLY_UNSUPPORTED` because its effect remains outside the supported proof.
+
+These transfers do not prove payload flow through containers, subtype or non-null branch conditions, anonymous function execution, or collection-element selection. They supply no automatic models for logging, headers, or errors. Field transfers require compiler-proven storage. Other property access keeps its proof obligations. Unsupported evidence still prevents strict completion.
 
 The retained witness lists producers, models, native reads, read rejections, and findings. It also keeps the record for each requested site. A site identity alone cannot prove a producer relationship.
 
