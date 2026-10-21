@@ -5,6 +5,8 @@ import io.github.amichne.kast.relation.contract.RelationReadPosition
 import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.ValueDeclarationIdentity
+import io.github.amichne.kast.relation.contract.ValueExecutionIdentity
+import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.relation.contract.ValueRole
@@ -147,6 +149,9 @@ internal fun ValueSite.storageBytes(g: QueryImpactRetainedGraph): Long =
             .saturatedAdd(role.storageBytes(g))
             .saturatedAdd(g.node(range) { 0L })
             .saturatedAdd(identity.storageBytes(g))
+            .saturatedAdd(executionOwner.storageBytes(g))
+            .saturatedAdd(valuePath.storageBytes(g))
+            .saturatedAdd(callStack.storageBytes(g))
             .saturatedAdd(g.node(basis) { 0L })
     }
 
@@ -154,6 +159,8 @@ internal fun ValueRole.storageBytes(g: QueryImpactRetainedGraph): Long =
     g.node(this) {
         when (this) {
             is ValueRole.Argument -> call.storageBytes(g)
+            is ValueRole.Receiver -> call.storageBytes(g).saturatedAdd(g.node(kind) { 0L })
+            is ValueRole.Formal -> position.storageBytes(g)
             ValueRole.ExpressionResult,
             ValueRole.LocalBinding,
             ValueRole.LocalRead,
@@ -167,6 +174,8 @@ internal fun ValueInvocation.storageBytes(g: QueryImpactRetainedGraph): Long =
         enclosing
             .storageBytes(g)
             .saturatedAdd(callable.storageBytes(g))
+            .saturatedAdd(signature.storageBytes(g))
+            .saturatedAdd(executionOwner.storageBytes(g))
             .saturatedAdd(g.node(range) { 0L })
             .saturatedAdd(g.node(basis) { 0L })
             .saturatedAdd(
@@ -174,6 +183,7 @@ internal fun ValueInvocation.storageBytes(g: QueryImpactRetainedGraph): Long =
                     identity.owner
                         .storageBytes(g)
                         .saturatedAdd(identity.callable.storageBytes(g))
+                        .saturatedAdd(identity.execution.storageBytes(g))
                         .saturatedAdd(g.node(identity.basis) { 0L })
                         .saturatedAdd(g.node(identity.range) { 0L })
                 }
@@ -186,14 +196,27 @@ internal fun ValueSiteIdentity.storageBytes(g: QueryImpactRetainedGraph): Long =
             .storageBytes(g)
             .saturatedAdd(g.node(basis) { 0L })
             .saturatedAdd(role.storageBytes(g))
+            .saturatedAdd(execution.storageBytes(g))
+            .saturatedAdd(valuePath.storageBytes(g))
+            .saturatedAdd(callStack.storageBytes(g))
             .saturatedAdd(g.node(range) { 0L })
     }
 
-private fun ValueDeclarationIdentity.storageBytes(g: QueryImpactRetainedGraph): Long =
+internal fun ValueDeclarationIdentity.storageBytes(g: QueryImpactRetainedGraph): Long =
     g.node(this) {
         g.text(compiler.value)
             .saturatedAdd(g.node(file) { g.text(file.stableValue) })
             .saturatedAdd(g.node(range) { 0L })
+    }
+
+internal fun ValueExecutionIdentity.storageBytes(g: QueryImpactRetainedGraph): Long =
+    g.node(this) {
+        host.storageBytes(g).saturatedAdd(g.node(basis) { 0L })
+    }
+
+internal fun ValueExecutionOwner.storageBytes(g: QueryImpactRetainedGraph): Long =
+    g.node(this) {
+        enclosing.storageBytes(g).saturatedAdd(identity.storageBytes(g))
     }
 
 internal fun ValueTransfer.storageBytes(g: QueryImpactRetainedGraph): Long =
@@ -211,7 +234,7 @@ internal fun ValueFlowStep.storageBytes(g: QueryImpactRetainedGraph): Long =
             .saturatedAdd(domain.storageBytes(g))
             .saturatedAdd(g.receiptStorage(receipts))
             .saturatedAdd(g.collection(transfers) { it.storageBytes(g) })
-            .saturatedAdd(g.collection(obligations) { g.node(it) { it.site.storageBytes(g) } })
+            .saturatedAdd(g.collection(obligations) { it.storageBytes(g) })
     }
 
 internal fun RelationRequest.storageBytes(g: QueryImpactRetainedGraph): Long =

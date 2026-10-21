@@ -27,11 +27,11 @@ internal data class PublicToolImpactSourceDomain(
 internal data class PublicToolImpactSource(
     val seeds: BoundedProtocolList<io.github.amichne.kast.protocol.contract.QueryImpactProducerDocument>,
     val declarations: BoundedProtocolList<io.github.amichne.kast.protocol.contract.QueryImpactDeclarationDocument>,
-    val models: BoundedProtocolList<io.github.amichne.kast.protocol.contract.ImpactModelDocument>,
+    val models: BoundedProtocolList<io.github.amichne.kast.protocol.contract.ImpactRequestedModelDocument>,
     val domain: PublicToolExpansionScope,
     val flow: io.github.amichne.kast.protocol.contract.QueryImpactFlowDocument,
     val requestedSites:
-        BoundedProtocolList<io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument>? =
+        BoundedProtocolList<io.github.amichne.kast.protocol.contract.ImpactRequestedValueSiteDocument>? =
         null,
 ) : PublicToolSource
 

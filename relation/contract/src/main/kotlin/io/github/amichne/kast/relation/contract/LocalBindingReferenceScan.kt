@@ -33,9 +33,9 @@ class LocalBindingReferenceScan<C>(
     private var suspension: ValueFlowSuspensionCause? = null
 
     fun read(): ValueFlowRead {
-        if (request.source.role != ValueRole.LocalBinding || hasForeignRemainder())
+        if (!request.source.role.hasReferenceReads() || hasForeignRemainder())
             return ValueFlowRead.ContractRejected(ValueFlowStepFailure.SOURCE_MISMATCH, count())
-        // Reserve a transfer, every possible semantic obligation and a detached address before confirmation.
+        // Reserve one transfer, one new obligation, and one detached address before confirmation.
         if (!fitsCandidate() || request.budget.resources.workUnitLimit.value < MINIMUM_PROGRESS_WORK)
             return ValueFlowRead.Rejected(ValueFlowRejection.GRANT_TOO_SMALL, count())
         spend() // role admission, after the adapter's authority/owner unit
@@ -124,7 +124,7 @@ class LocalBindingReferenceScan<C>(
     private fun fitsCandidate(): Boolean {
         val base = ValueFlowStep.detachedByteCount(request.source, domain, edges, obligations).value
         val remaining = request.budget.returnedBytes.value - base
-        val reserve = (2048L + request.source.retainedBytes) * ValueFlowUnsupportedCause.entries.size
+        val reserve = 2048L.addBytes(request.source.retainedBytes)
         val next =
             LocalBindingReadRemainder.storageBytes(request.source, consumed.size, emitted.size) +
                 1024L +

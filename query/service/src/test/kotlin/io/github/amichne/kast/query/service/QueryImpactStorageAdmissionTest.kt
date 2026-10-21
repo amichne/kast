@@ -76,12 +76,22 @@ class QueryImpactStorageAdmissionTest {
             assertTrue(
                 rows.values.all {
                     it.terminal is QueryImpactTerminal.Unresolved.Flow
-                }
+                },
+                unexpectedTerminal(rows.values),
             )
             assertEquals(arguments.map { it.identity }, rows.values.map { it.destination.identity })
             native.assertConsumed()
             assertDenseRetention(captured, result)
         }
+
+    private fun unexpectedTerminal(paths: List<QueryImpactPath>): String {
+        val terminal = paths.firstOrNull { it.terminal !is QueryImpactTerminal.Unresolved.Flow }?.terminal
+        val stop = (terminal as? QueryImpactTerminal.Unresolved.ExecutionStop)?.stop
+        return if (stop is io.github.amichne.kast.query.contract.QueryImpactExecutionStop.CheckpointCapacity)
+            "required=${stop.required.value} available=${stop.available.value} " +
+                "flowPaths=${paths.count { it.terminal is QueryImpactTerminal.Unresolved.Flow }}"
+        else terminal.toString().take(1500)
+    }
 
     private fun assertDenseRetention(captured: QueryRetainedResult.ValuePaths, result: QueryExecutionResult.Qualified) {
         val ledger = (captured.rows.accounting as QueryValuePathAccounting.Investigated).ledger

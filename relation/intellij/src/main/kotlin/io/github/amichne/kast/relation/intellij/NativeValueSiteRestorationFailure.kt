@@ -10,6 +10,7 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadPhase
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.KtQualifiedExpression
 import org.jetbrains.kotlin.psi.KtValueArgument
 
 internal enum class NativeValueSiteRestorationFailure {
@@ -40,9 +41,10 @@ internal fun PsiElement.restoreValueSiteElement(
 
 private fun KtExpression.matchesRoleShape(role: ValueSiteRoleClaim): Boolean =
     when (role) {
-        ValueSiteRoleClaim.LocalBinding,
+        ValueSiteRoleClaim.LocalBinding -> this is KtProperty || nativeLocalBindingMutability() is Refinement.Refined
         ValueSiteRoleClaim.PropertyAssignment -> this is KtProperty
         is ValueSiteRoleClaim.Argument -> (parent as? KtValueArgument)?.getArgumentExpression() === this
+        is ValueSiteRoleClaim.Receiver -> (parent as? KtQualifiedExpression)?.receiverExpression === this
         ValueSiteRoleClaim.ExpressionResult,
         ValueSiteRoleClaim.LocalRead,
         ValueSiteRoleClaim.Return -> this !is KtNamedDeclaration

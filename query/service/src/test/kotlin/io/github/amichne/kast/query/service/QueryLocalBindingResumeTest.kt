@@ -29,6 +29,7 @@ import io.github.amichne.kast.relation.contract.RelationRequest
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.ValueFlowCompilerPort
 import io.github.amichne.kast.relation.contract.ValueFlowRead
+import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
@@ -37,11 +38,25 @@ import io.github.amichne.kast.relation.contract.ValueTransferKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /** No PSI, filesystem, clock, process or RPC. Expected paths are authored separately from candidate observations. */
 class QueryLocalBindingResumeTest {
+    @Test
+    fun `an insufficient byte grant rejects before candidate confirmation`() = runTest {
+        val scenario = Scenario()
+        val read =
+            scenario.port.read(
+                ValueFlowRequest(scenario.binding, nativeGrant(3, 1, 1), RelationSearchBoundary.WORKSPACE_EXPANSION)
+            )
+        val rejected = assertInstanceOf(ValueFlowRead.Rejected::class.java, read)
+        assertEquals(ValueFlowRejection.GRANT_TOO_SMALL, rejected.cause)
+        assertEquals(1L, rejected.examinedWorkUnits.value)
+        assertEquals(emptyList<Int>(), scenario.confirmations)
+    }
+
     @Test
     fun `draining a binding interrupted inside enumeration recovers the authored paths`() = runTest {
         val large = Scenario().drain(100)

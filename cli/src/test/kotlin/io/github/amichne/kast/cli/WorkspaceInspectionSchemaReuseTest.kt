@@ -180,7 +180,7 @@ class WorkspaceInspectionSchemaReuseTest {
 }
 
 /** Resolve local references while comparing exact shapes; never allocate an expanded schema tree. */
-private class LocalSchemaAssertions(private val schema: JsonObject) {
+internal class LocalSchemaAssertions(private val schema: JsonObject) {
     private val definitions = schema["\$defs"]?.jsonObject.orEmpty()
 
     fun assertEquivalent(expected: JsonElement) {
@@ -257,7 +257,7 @@ private class LocalSchemaAssertions(private val schema: JsonObject) {
     }
 }
 
-private fun referenceCount(value: JsonElement, name: String): Int =
+internal fun referenceCount(value: JsonElement, name: String): Int =
     when (value) {
         is JsonArray -> value.sumOf { referenceCount(it, name) }
         is JsonObject -> {

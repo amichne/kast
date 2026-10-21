@@ -2,6 +2,13 @@
 
 package io.github.amichne.kast.cli
 
+import io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument
+import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactImplementationDispatchDocument
+import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
+import io.github.amichne.kast.protocol.contract.ImpactValueRoleDocument
+import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalCallbackSchemaDocuments
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
 import io.github.amichne.kast.protocol.wire.presentation.LocalDeclarationAddressCliDocument
@@ -25,6 +32,13 @@ private constructor(private val names: IdentityHashMap<SerialDescriptor, String>
                         "callableObservation" to CanonicalQueryCliDocuments.callableObservationSerializer,
                         "queryResultItem" to CanonicalQueryCliDocuments.itemSerializer,
                         "localDeclarationAddress" to LocalDeclarationAddressCliDocument.serializer(),
+                        "impactSemanticBasis" to ImpactSemanticBasisDocument.serializer(),
+                        "impactDeclarationReference" to ImpactDeclarationReferenceDocument.serializer(),
+                        "impactInvocationReference" to ImpactInvocationReferenceDocument.serializer(),
+                        "impactValueRole" to ImpactValueRoleDocument.serializer(),
+                        "impactValueSiteReference" to ImpactValueSiteReferenceDocument.serializer(),
+                        "impactCompilerTransfer" to ImpactCompilerTransferDocument.serializer(),
+                        "impactImplementationDispatch" to ImpactImplementationDispatchDocument.serializer(),
                     )
             )
         }

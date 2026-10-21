@@ -6,10 +6,14 @@ private const val VALUE_RECORD_OVERHEAD = 2048L
 
 internal fun valueSiteStorageBytes(site: ValueSite): Long =
     VALUE_RECORD_OVERHEAD.addBytes(site.enclosing.detachedTextUnits().multiplyBytes(2))
+        .addBytes(valueStateStorageBytes(site))
         .addBytes(
             when (val role = site.role) {
                 is ValueRole.Argument ->
                     VALUE_RECORD_OVERHEAD.addBytes(role.call.callable.detachedTextUnits().multiplyBytes(2))
+                is ValueRole.Receiver ->
+                    VALUE_RECORD_OVERHEAD.addBytes(role.call.callable.detachedTextUnits().multiplyBytes(2))
+                is ValueRole.Formal -> VALUE_RECORD_OVERHEAD
                 ValueRole.ExpressionResult,
                 ValueRole.LocalBinding,
                 ValueRole.LocalRead,
@@ -38,7 +42,9 @@ internal fun valueFlowStorageBytes(
             )
             .addBytes(
                 obligations.fold(0L) { sum, obligation ->
-                    sum.addBytes(VALUE_RECORD_OVERHEAD).addBytes(obligation.site.retainedBytes)
+                    sum.addBytes(VALUE_RECORD_OVERHEAD)
+                        .addBytes(obligation.site.retainedBytes)
+                        .addBytes(valueObligationEvidenceStorageBytes(obligation.evidence))
                 }
             )
     return when (val count = RelationByteCount.parse(bytes)) {

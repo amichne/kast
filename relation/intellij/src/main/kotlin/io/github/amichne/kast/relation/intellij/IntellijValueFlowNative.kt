@@ -6,7 +6,6 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationWorkCount
-import io.github.amichne.kast.relation.contract.ValueFlowObligation
 import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
@@ -14,23 +13,20 @@ import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueRole
-import io.github.amichne.kast.relation.contract.ValueSite
-import io.github.amichne.kast.relation.contract.ValueTransfer
 import io.github.amichne.kast.relation.contract.ValueTransferEvidence
 import io.github.amichne.kast.relation.contract.ValueTransferKind
-import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
-import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
-import org.jetbrains.kotlin.analysis.api.types.KaClassType
-import org.jetbrains.kotlin.analysis.api.types.KaErrorType
 import org.jetbrains.kotlin.psi.KtBlockExpression
 import org.jetbrains.kotlin.psi.KtContainerNodeForControlStructureBody
 import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtFunctionLiteral
 import org.jetbrains.kotlin.psi.KtIfExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParenthesizedExpression
 import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.KtQualifiedExpression
 import org.jetbrains.kotlin.psi.KtReturnExpression
 import org.jetbrains.kotlin.psi.KtThrowExpression
 import org.jetbrains.kotlin.psi.KtValueArgument
@@ -47,21 +43,33 @@ internal class IntellijValueFlowNative(
     private val started: Long,
     private val onWork: (RelationWorkCount) -> Unit,
 ) {
-    private val edges = mutableListOf<ValueTransfer>()
-    private val obligations = mutableListOf<ValueFlowObligation>()
-    private var examined = 1L
+    private val retained =
+        NativeValueFlowTransfers(request = request, owner = owner, scope = scope, observation = observation)
+    private val edges
+        get() = retained.edges
+
+    private val obligations
+        get() = retained.obligations
+
+    private val allowance = IntellijRelationAllowance(started) { System.nanoTime() }.apply { examine() }
+    private val examined: Long
+        get() = allowance.examined
 
     fun read(element: PsiElement): ValueFlowRead {
-        if (request.source.role == ValueRole.LocalBinding && element is KtProperty && element.isImmutableLocal())
+        val compiledFormal =
+            request.source.role is ValueRole.Formal && (element.containingFile as? KtFile)?.isCompiled == true
+        if (!compiledFormal && element.isNativeReferenceBinding(request.source.role))
             return IntellijLocalBindingReads(request, owner, scope, observation, started, onWork).read(element)
 
         val base = ValueFlowStep.detachedByteCount(request.source, scope.request, emptyList(), emptyList()).value
-        val reserved = reservedObligationBytes()
-        if (base > request.budget.returnedBytes.value || reserved > request.budget.returnedBytes.value - base)
+        val reserved = reservedValueObligationBytes(request.source)
+        if (base > request.budget.returnedBytes.value || reserved > request.budget.returnedBytes.value - base) {
+
             return ValueFlowRead.Rejected(ValueFlowRejection.GRANT_TOO_SMALL, nativeWorkCount())
-        when (permitted()) {
-            Allowance.READY -> readRole(element)
-            Allowance.EXHAUSTED -> Unit
+        }
+        when (val read = readPermittedRole(element, compiledFormal)) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return ValueFlowRead.Rejected(read.failure, nativeWorkCount())
         }
         val terminal =
             if (obligations.isEmpty()) ValueFlowTerminal.SupportedDomainExhausted else ValueFlowTerminal.Unresolved
@@ -81,18 +89,20 @@ internal class IntellijValueFlowNative(
         }
     }
 
-    private fun reservedObligationBytes(): Long {
-        val count = ValueFlowUnsupportedCause.entries.size.toLong()
-        val siteBytes = request.source.retainedBytes
-        return if (siteBytes > Long.MAX_VALUE / count - VALUE_OBLIGATION_OVERHEAD_BYTES) Long.MAX_VALUE
-        else (VALUE_OBLIGATION_OVERHEAD_BYTES + siteBytes) * count
+    private fun readPermittedRole(element: PsiElement, compiledFormal: Boolean): Refinement<Unit, ValueFlowRejection> {
+        if (permitted() is Refinement.Rejected) return Refinement.Refined(Unit)
+        if (!compiledFormal) return readRole(element)
+        unresolved(ValueFlowUnsupportedCause.EXTERNAL_CALL)
+        return Refinement.Refined(Unit)
     }
 
-    private fun readRole(element: PsiElement) {
+    private fun readRole(element: PsiElement): Refinement<Unit, ValueFlowRejection> {
         when (request.source.role) {
-            ValueRole.LocalBinding -> localReads(element as KtProperty)
-            is ValueRole.Argument -> wrapperReturn(request.source.role as ValueRole.Argument)
-            ValueRole.Return -> unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_RETURN)
+            ValueRole.LocalBinding -> unresolved(element.nativeLocalBindingCause())
+            is ValueRole.Argument -> return argumentReturn()
+            is ValueRole.Formal -> receiverFields(element)
+            is ValueRole.Receiver -> retained.adopt(nativeValueSourceReceiver(request.source, scope, projection))
+            ValueRole.Return -> return sourceReturn()
             ValueRole.PropertyAssignment -> unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_PROPERTY)
             ValueRole.ExpressionResult,
             ValueRole.LocalRead -> {
@@ -100,24 +110,68 @@ internal class IntellijValueFlowNative(
                     element as? KtExpression
                         ?: run {
                             unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-                            return
+                            return Refinement.Refined(Unit)
                         }
                 transferExpression(expression)
             }
         }
+        return Refinement.Refined(Unit)
     }
 
-    private fun wrapperReturn(argument: ValueRole.Argument) {
-        when (val result = nativeTransparentWrapperReturn(argument, scope, projection)) {
-            is Refinement.Refined -> {
-                val target = argument.call.resultSite()
-                emitTarget(target, ValueTransferKind.WRAPPER_RETURN)
-                if (edges.any { it.kind == ValueTransferKind.WRAPPER_RETURN })
-                    observation.count(IntellijReadCounter.VALUE_FLOW_WRAPPER_RETURNS)
-            }
-            is Refinement.Rejected -> unresolved(result.failure)
-        }
+    private fun argumentReturn(): Refinement<Unit, ValueFlowRejection> {
+        val result =
+            NativeValueArgumentFlow(
+                    request = request,
+                    scope = scope,
+                    projection = projection,
+                    allowance = allowance,
+                    retained = retained,
+                    permit = { permitted() is Refinement.Refined },
+                )
+                .read()
+        onWork(nativeWorkCount())
+        return result
     }
+
+    private fun sourceReturn(): Refinement<Unit, ValueFlowRejection> {
+        val read =
+            NativeValueReturnFlow(
+                    owner = owner,
+                    returns =
+                        NativeValueSourceReturns(
+                            request = request,
+                            scope = scope,
+                            projection = projection,
+                            allowance = allowance,
+                        ),
+                    retained = retained,
+                    permit = { permitted() is Refinement.Refined },
+                )
+                .read()
+        onWork(nativeWorkCount())
+        return read
+    }
+
+    private fun receiverFields(element: PsiElement) {
+        val function =
+            element as? KtNamedFunction
+                ?: run {
+                    unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+                    return
+                }
+        val exhausted =
+            NativeValueReceiverReads(request.source, scope, projection)
+                .forEachRead(
+                    function = function,
+                    admitTraversal = { sourceScopeAllowance() == IntellijRelationProviderEnumerationAdmission.READY },
+                    permit = { permitted() is Refinement.Refined },
+                    consume = retained::adopt,
+                )
+        if (!exhausted && obligations.isEmpty()) unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+    }
+
+    private fun sourceScopeAllowance(): IntellijRelationProviderEnumerationAdmission =
+        nativeSourceScopeAllowance(request, allowance, ::unresolved)
 
     private fun nativeWorkCount(): RelationWorkCount =
         when (val count = RelationWorkCount.parse(examined)) {
@@ -125,54 +179,36 @@ internal class IntellijValueFlowNative(
             is Refinement.Rejected -> error("Native work counter cannot be negative")
         }
 
-    private enum class Allowance {
-        READY,
-        EXHAUSTED,
-    }
-
-    private fun permitted(): Allowance {
+    private fun permitted(): Refinement<Unit, ValueFlowUnsupportedCause> {
         ProgressManager.checkCanceled()
         val grant = request.budget.resources
         return when {
             examined >= grant.workUnitLimit.value -> stopped(ValueFlowUnsupportedCause.WORK_LIMIT_REACHED)
-            edges.size >= grant.resultLimit.value -> stopped(ValueFlowUnsupportedCause.RESULT_LIMIT_REACHED)
-            System.nanoTime() - started >=
-                java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(grant.elapsedTimeLimit.value) ->
-                stopped(ValueFlowUnsupportedCause.TIME_LIMIT_REACHED)
+            retained.resultCount >= grant.resultLimit.value -> stopped(ValueFlowUnsupportedCause.RESULT_LIMIT_REACHED)
+            allowance.elapsedLimitReached(grant) -> stopped(ValueFlowUnsupportedCause.TIME_LIMIT_REACHED)
             else -> {
-                examined++
+                allowance.examine()
                 onWork(nativeWorkCount())
-                Allowance.READY
+                Refinement.Refined(Unit)
             }
         }
     }
 
-    private fun stopped(cause: ValueFlowUnsupportedCause): Allowance {
+    private fun stopped(cause: ValueFlowUnsupportedCause): Refinement.Rejected<ValueFlowUnsupportedCause> {
         unresolved(cause)
-        return Allowance.EXHAUSTED
-    }
-
-    private fun localReads(property: KtProperty) {
-        if (property.isVar) {
-            unresolved(ValueFlowUnsupportedCause.MUTABLE_CONTROL_FLOW)
-            return
-        }
-        if (!property.isLocal) {
-            unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_PROPERTY)
-            return
-        }
-        error("Immutable local binding must use the production reference scan")
+        return Refinement.Rejected(cause)
     }
 
     private fun transferExpression(expression: KtExpression) {
         when (permitted()) {
-            Allowance.READY -> Unit
-            Allowance.EXHAUSTED -> return
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return
         }
         when (val parent = expression.parent) {
             is KtParenthesizedExpression -> transferExpression(parent)
             is KtProperty -> propertyDestination(expression, parent)
             is KtValueArgument -> argument(expression, parent)
+            is KtQualifiedExpression -> receiver(expression, parent)
             is KtReturnExpression -> returnDestination(expression, parent)
             is KtThrowExpression -> {
                 observation.count(IntellijReadCounter.VALUE_FLOW_ABRUPT_REJECTIONS)
@@ -182,7 +218,7 @@ internal class IntellijValueFlowNative(
             is KtContainerNodeForControlStructureBody -> ifDestination(expression, parent)
             is KtWhenEntry -> {
                 val branch = parent.parent as? KtWhenExpression
-                if (branch != null && parent.expression === expression) branchResult(branch)
+                if (branch != null && parent.expression === expression) branchResult(expression, branch)
                 else unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
             }
             is KtBlockExpression -> blockDestination(expression, parent)
@@ -194,7 +230,8 @@ internal class IntellijValueFlowNative(
         if (returnCrossesFinally(returned, owner)) {
             observation.count(IntellijReadCounter.VALUE_FLOW_FINALLY_REJECTIONS)
             unresolved(ValueFlowUnsupportedCause.FINALLY_UNSUPPORTED)
-        } else emit(expression, ValueRole.Return, ValueTransferKind.RETURN)
+        } else if (owner is KtFunctionLiteral) unresolved(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+        else emit(expression, ValueRole.Return, ValueTransferKind.RETURN)
     }
 
     private fun blockDestination(expression: KtExpression, block: KtBlockExpression) {
@@ -202,7 +239,9 @@ internal class IntellijValueFlowNative(
             is TryBranchResultPosition.Result -> tryBranchResult(expression, position)
             TryBranchResultPosition.Discarded -> Unit
             TryBranchResultPosition.Unavailable ->
-                if (block.parent !is KtNamedFunction) unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+                if (owner is KtFunctionLiteral && block === owner.bodyExpression)
+                    unresolved(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+                else if (block.parent !is KtNamedFunction) unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
         }
     }
 
@@ -222,22 +261,15 @@ internal class IntellijValueFlowNative(
 
     private fun ifDestination(expression: KtExpression, container: KtContainerNodeForControlStructureBody) {
         val branch = container.parent as? KtIfExpression
-        if (branch != null && branch.condition !== expression) branchResult(branch)
+        if (branch != null && branch.condition !== expression) branchResult(expression, branch)
         else unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
     }
 
-    private fun branchResult(branch: KtExpression) {
-        val carriesValue =
-            observation.observedAnalyze(branch) {
-                when (val type = branch.expressionType) {
-                    null,
-                    is KaErrorType -> false
-                    is KaClassType -> type.classId.asSingleFqName().asString() != "kotlin.Unit"
-                    else -> false
-                }
-            }
-        if (carriesValue) emit(branch, ValueRole.ExpressionResult, ValueTransferKind.BRANCH_ALTERNATIVE)
-        else unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+    private fun branchResult(expression: KtExpression, branch: KtExpression) {
+        when (val result = nativeBranchCarriesValue(expression, branch, observation)) {
+            is Refinement.Refined -> emit(branch, ValueRole.ExpressionResult, ValueTransferKind.BRANCH_ALTERNATIVE)
+            is Refinement.Rejected -> unresolved(result.failure)
+        }
     }
 
     private fun tryBranchResult(expression: KtExpression, position: TryBranchResultPosition.Result) {
@@ -257,8 +289,45 @@ internal class IntellijValueFlowNative(
     }
 
     private fun argument(expression: KtExpression, argument: KtValueArgument) {
-        when (val role = nativeValueArgument(expression, argument, request.source.enclosing, scope, projection)) {
+        when (
+            val role =
+                nativeValueArgument(
+                    expression = expression,
+                    argument = argument,
+                    scope = scope,
+                    projection = projection,
+                    executionOwner = request.source.executionOwner,
+                )
+        ) {
             is Refinement.Refined -> emit(expression, role.value, ValueTransferKind.ARGUMENT)
+            is Refinement.Rejected -> unresolved(role.failure)
+        }
+    }
+
+    private fun receiver(expression: KtExpression, qualified: KtQualifiedExpression) {
+        if (qualified.selectorExpression !is org.jetbrains.kotlin.psi.KtCallElement) {
+            when (val result = nativeValueFieldRead(request.source, qualified, scope, projection)) {
+                is Refinement.Refined ->
+                    when (val read = result.value) {
+                        is NativeValueFieldRead.Transfer ->
+                            retained.emitTarget(read.value.target, read.value.kind, read.value.evidence)
+                        NativeValueFieldRead.DifferentField -> Unit
+                    }
+                is Refinement.Rejected -> unresolved(result.failure)
+            }
+            return
+        }
+        when (
+            val role =
+                nativeValueReceiver(
+                    expression = expression,
+                    qualified = qualified,
+                    scope = scope,
+                    projection = projection,
+                    executionOwner = request.source.executionOwner,
+                )
+        ) {
+            is Refinement.Refined -> emit(expression, role.value, ValueTransferKind.RECEIVER)
             is Refinement.Rejected -> unresolved(role.failure)
         }
     }
@@ -268,88 +337,7 @@ internal class IntellijValueFlowNative(
         role: ValueRole,
         kind: ValueTransferKind,
         evidence: ValueTransferEvidence = ValueTransferEvidence.Direct,
-    ) {
-        when (valueNativeOwnership(element, owner)) {
-            NativeValueOwnership.ADMITTED -> Unit
-            NativeValueOwnership.NESTED -> {
-                unresolved(ValueFlowUnsupportedCause.NESTED_EXECUTION)
-                return
-            }
-            NativeValueOwnership.UNAVAILABLE -> {
-                unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-                return
-            }
-        }
-        val file = element.containingFile.virtualFile
-        if (!scope.nativeScope.contains(file)) {
-            unresolved(ValueFlowUnsupportedCause.OUTSIDE_DOMAIN)
-            return
-        }
-        val range =
-            when (val result = nativeRange(element)) {
-                is Refinement.Refined -> result.value
-                is Refinement.Rejected -> {
-                    unresolved(result.failure)
-                    return
-                }
-            }
-        val target =
-            when (val result = ValueSite.fromCompiler(request.source.enclosing, range, role)) {
-                is Refinement.Refined -> result.value
-                is Refinement.Rejected -> {
-                    unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-                    return
-                }
-            }
-        emitTarget(target, kind, evidence)
-    }
+    ) = retained.emit(element = element, role = role, kind = kind, evidence = evidence)
 
-    private fun emitTarget(
-        target: ValueSite,
-        kind: ValueTransferKind,
-        evidence: ValueTransferEvidence = ValueTransferEvidence.Direct,
-    ) {
-        when (val transfer = ValueTransfer.fromCompiler(request.source, target, kind, evidence)) {
-            is Refinement.Refined -> {
-                if (transfer.value !in edges) {
-                    val bytes =
-                        ValueFlowStep.detachedByteCount(
-                                request.source,
-                                scope.request,
-                                edges + transfer.value,
-                                obligations,
-                            )
-                            .value
-                    if (
-                        bytes > request.budget.returnedBytes.value ||
-                            reservedObligationBytes() > request.budget.returnedBytes.value - bytes
-                    ) {
-                        unresolved(ValueFlowUnsupportedCause.BYTE_LIMIT_REACHED)
-                        return
-                    }
-                    edges += transfer.value
-                    observation.count(IntellijReadCounter.VALUE_FLOW_TRANSFERS)
-                }
-            }
-            is Refinement.Rejected -> unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-        }
-    }
-
-    private fun nativeRange(element: PsiElement): Refinement<ExactDeclarationTextRange, ValueFlowUnsupportedCause> =
-        when (val range = ExactDeclarationTextRange.parse(element.textRange.startOffset, element.textRange.endOffset)) {
-            is Refinement.Refined -> range
-            is Refinement.Rejected -> Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
-        }
-
-    private fun unresolved(cause: ValueFlowUnsupportedCause) {
-        val obligation = ValueFlowObligation(request.source, cause)
-        if (obligation !in obligations) {
-            obligations += obligation
-            observation.count(IntellijReadCounter.VALUE_FLOW_OBLIGATIONS)
-        }
-    }
+    private fun unresolved(cause: ValueFlowUnsupportedCause) = retained.unresolved(cause)
 }
-
-private const val VALUE_OBLIGATION_OVERHEAD_BYTES = 2048L
-
-private fun KtProperty.isImmutableLocal(): Boolean = !isVar && isLocal

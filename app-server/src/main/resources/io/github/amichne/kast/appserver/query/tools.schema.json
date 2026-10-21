@@ -2597,7 +2597,7 @@
       "discriminator": {
         "propertyName": "type"
       },
-      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.ImpactModelDocument"
+      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.ImpactRequestedModelDocument"
     },
     "ImpactFlow": {
       "type": "string",
@@ -2970,7 +2970,7 @@
         "range",
         "role"
       ],
-      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument"
+      "x-kotlin-type": "io.github.amichne.kast.protocol.contract.ImpactRequestedValueSiteDocument"
     },
     "SourceCandidateReference": {
       "type": "string",

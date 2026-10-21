@@ -203,7 +203,8 @@ class PublicQueryGenerationTest(unittest.TestCase):
     def test_requested_site_optional_collection_emits_formatter_stable_layout(self):
         generated = generator.render_tools(self.authority)
         source = generated[ROOT / "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactDocuments.kt"]
-        self.assertIn("val requestedSites:\n        BoundedProtocolList<io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument>? =\n        null,", source)
+        self.assertIn("val requestedSites:\n        BoundedProtocolList<io.github.amichne.kast.protocol.contract.ImpactRequestedValueSiteDocument>? =\n        null,", source)
+        self.assertNotIn("BoundedProtocolList<io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument>", source)
         self.assertTrue(all(len(line) <= 120 for line in source.splitlines()), source)
 
     def test_evidence_cursor_reuses_its_canonical_scalar(self):

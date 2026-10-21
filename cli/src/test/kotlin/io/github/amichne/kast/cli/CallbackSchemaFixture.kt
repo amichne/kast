@@ -11,8 +11,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 
-internal class CallbackSchemaFixture {
-    private val definitions = installedServerOutputSchema(CanonicalOperation.QUERY_RUN).getValue("\$defs").jsonObject
+internal class CallbackSchemaFixture(schema: JsonObject = installedServerOutputSchema(CanonicalOperation.QUERY_RUN)) {
+    private val definitions = schema.getValue("\$defs").jsonObject
 
     fun definition(name: String): JsonObject = definitions.getValue(name).jsonObject
 

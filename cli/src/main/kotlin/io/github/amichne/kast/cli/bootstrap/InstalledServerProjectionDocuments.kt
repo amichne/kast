@@ -178,6 +178,10 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
                 generatedOutputSchema(
                     io.github.amichne.kast.protocol.contract.ImpactCompilerTransferDocument.serializer()
                 ),
+            "impactImplementationDispatch" to
+                generatedOutputSchema(
+                    io.github.amichne.kast.protocol.contract.ImpactImplementationDispatchDocument.serializer()
+                ),
             "liveReadEvidence" to liveReadEvidenceSchema(),
             "hostedEndpointRejection" to HostedRejectionSchemas.endpoint,
             "hostedReadRejection" to HostedRejectionSchemas.read,
@@ -379,13 +383,10 @@ private fun queryTypedPropertySchema(kind: String, property: String): JsonObject
         .jsonObject
 
 private fun queryContinuationSchema(): JsonObject =
-    generatedOutputSchema(
-            io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.qualifiedSerializer
+    generatedOutputPropertySchema(
+            io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments.qualifiedSerializer,
+            "continuation",
         )
-        .getValue("properties")
-        .jsonObject
-        .getValue("continuation")
-        .jsonObject
         .getValue("anyOf")
         .jsonArray
         .first()
