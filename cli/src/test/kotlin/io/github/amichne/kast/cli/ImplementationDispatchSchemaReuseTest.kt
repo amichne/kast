@@ -111,30 +111,7 @@ class ImplementationDispatchSchemaReuseTest {
                 RelationFactCoverageDocument.EXACT_COMPILER_CONFIRMED,
             )
         return ImpactImplementationDispatchDocument(
-            question =
-                ImpactFlowDomainDocument(
-                    subject,
-                    RelationKindDocument.IMPLEMENTATIONS,
-                    QueryRelationRequestedDomainDocument.WORKSPACE,
-                    QueryRelationDomainDocument(
-                        QuerySemanticScopeDocument.Workspace,
-                        QueryDiscoverySourcePolicyDocument.PRODUCTION_ONLY,
-                        QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
-                        QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
-                        QueryDiscoverySourceSetsDocument.All,
-                        null,
-                        null,
-                        bounded(emptyList()),
-                    ),
-                    QueryRelationDomainFingerprint.parse("b".repeat(64)).value(),
-                    ImpactFlowBudgetDocument(
-                        ElapsedTimeLimitMillis.parse(100).value(),
-                        WorkUnitLimit.parse(10).value(),
-                        ResultLimit.parse(2).value(),
-                        ReturnedByteLimit.parse(10000).value(),
-                    ),
-                    ImpactFlowReadPositionDocument.Start,
-                ),
+            question = question(subject),
             subjectFingerprint = text("b".repeat(64)),
             provider = RelationProviderDocument.INTELLIJ_DEFINITIONS_V2,
             facts = bounded(listOf(fact)),
@@ -146,6 +123,31 @@ class ImplementationDispatchSchemaReuseTest {
             coverage = ImpactImplementationCoverageDocument.Exhausted(count(1)),
         )
     }
+
+    private fun question(subject: ImpactDeclarationReferenceDocument): ImpactFlowDomainDocument =
+        ImpactFlowDomainDocument(
+            subject,
+            RelationKindDocument.IMPLEMENTATIONS,
+            QueryRelationRequestedDomainDocument.WORKSPACE,
+            QueryRelationDomainDocument(
+                QuerySemanticScopeDocument.Workspace,
+                QueryDiscoverySourcePolicyDocument.PRODUCTION_ONLY,
+                QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
+                QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
+                QueryDiscoverySourceSetsDocument.All,
+                null,
+                null,
+                bounded(emptyList()),
+            ),
+            QueryRelationDomainFingerprint.parse("b".repeat(64)).value(),
+            ImpactFlowBudgetDocument(
+                ElapsedTimeLimitMillis.parse(100).value(),
+                WorkUnitLimit.parse(10).value(),
+                ResultLimit.parse(2).value(),
+                ReturnedByteLimit.parse(10000).value(),
+            ),
+            ImpactFlowReadPositionDocument.Start,
+        )
 
     private fun text(value: String) = ProtocolText.parse(value).value()
 
