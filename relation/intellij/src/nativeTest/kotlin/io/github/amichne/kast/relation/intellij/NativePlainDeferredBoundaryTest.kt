@@ -12,7 +12,6 @@ import io.github.amichne.kast.relation.contract.ValueFormalPosition
 import io.github.amichne.kast.relation.contract.ValueReceiverKind
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
-import io.github.amichne.kast.relation.contract.ValueSiteResolution
 import io.github.amichne.kast.relation.contract.ValueTransferKind
 import kotlinx.coroutines.runBlocking
 
